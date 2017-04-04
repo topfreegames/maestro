@@ -3,7 +3,7 @@ Maestro: Kubernetes Game Room Scheduler
 
 ## Goal:
 
-Have an unified system that automatically scales game rooms regardless of the protocol (TCP, UDP, HTTP). This system is related to a matchmaker but does not handle the specificities of a match such as how many players fit in a room. It only deals with high level room occupation, i.e. is the room occupied or available. The rooms communicate directly with the matchmaker in order to register and unregister themselves from the matchmaking.
+Have an unified system that automatically scales game rooms regardless of the protocol (TCP, UDP). This system is related to a matchmaker but does not handle the specificities of a match such as how many players fit in a room. It only deals with high level room occupation, i.e. is the room occupied or available. The rooms communicate directly with the matchmaker in order to register and unregister themselves from the matchmaking.
 
 Let us define a Game Room Unity (GRU) as a Kubernetes service (type nodePort) associated with a single pod. This restriction is made because in AWS we cannot load balance UDP. We're using containerized applications and Kubernetes in order to simplify the management and scaling of the game rooms.
 
@@ -71,9 +71,7 @@ TBD
 
 ### Validating Kubernetes performance
 
-Initial setup: Kubernetes 1.5
-
-Testing with 30 nodes m4.large and 900 GRUs (pods + service) using a simple image for UDP listener: [mendhak/udp-listener:latest](https://hub.docker.com/r/mendhak/udp-listener/).
+Testing with 30 nodes m4.large and 900 GRUs (pod + service) using a simple image for UDP listener: [mendhak/udp-listener:latest](https://hub.docker.com/r/mendhak/udp-listener/).
 
 To be checked:
 
@@ -81,10 +79,12 @@ To be checked:
   - [ ] Master CPU usage
   - [ ] Kube-System resources usage
   - [ ] Kube-Proxy logs
-  - [ ] Load test 
+  - [ ] Load test
     - [ ] What happens when a new service is created
 
 #### Observations:
+
+Initial setup: Kubernetes 1.5
 
 - While running the 900 pods + services
   - kube-system used 30 cores (CPU) and 9Gi (memory usage). Each kube-proxy pod consumes about 1 core.
@@ -97,3 +97,42 @@ To be checked:
 Changing --iptables-min-sync-period to 10s seems to have improved the CPU usage performance, but the cost is that anytime a new service is created it can take up to 10s until they are available.
 
 [This Kubernetes PR](https://github.com/kubernetes/kubernetes/pull/38996) might be related to the services scaling problem and it is available in Kubernetes 1.6 and greater.
+
+After changing to Kubernetes 1.6 and running the 900 pods + services:
+
+  - kube-system used 2 cores (CPU) and 2Gi (memory usage). Each kube-proxy pod consumes about 0.04 core.
+  - syncProxyRules took 1.25s
+
+kube-proxy relevant config options (to be tunned):
+
+  - `--iptables-min-sync-period`
+  - `--udp-timeout`
+  - `-proxy-port-range`
+
+#### Load Test:
+
+##### UDP
+
+Spec:
+
+- 900 GRUs
+- 8 players per game room (results in 7200 CCU)
+- 20 messages/second IN and OUT per player (144000 messages/second IN and OUT per second, 4800 messages/second per node)
+
+Traffic Source Generator:
+
+- Program that opens UDP sockets
+- Sends messages to game room (20 messages/second)
+- Listens to the messages sent by the game room
+- Calculates how many messages/second are sent and received (aggregates all the sockets) --> used to estimate data loss
+
+Game Room simulator:
+
+- Receives UDP packets from the clients (Traffic Source Generator)
+- Each time a new client sends a packet it register the client in a clients pool
+- Sends messages to the registered clients (20 messages/second)
+- Calculates how many messages/second are sent and received (aggregates all the sockets) --> used to estimate data loss
+
+##### TCP
+
+To be done later.
