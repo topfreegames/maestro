@@ -52,8 +52,8 @@ The config file must have the following information:
 
 ## TODOs:
 
-- [ ] Define Architecture
-  - [ ] Validate Kubernetes performance with a large amount of services
+- [X] Define Architecture
+  - [X] Validate Kubernetes performance with a large amount of services
 - [ ] Formalize room protocol
 - [ ] Release map
 
@@ -75,12 +75,12 @@ Testing with 30 nodes m4.large and 900 GRUs (pod + service) using a simple image
 
 To be checked:
 
-  - [ ] Nodes CPU usage
-  - [ ] Master CPU usage
-  - [ ] Kube-System resources usage
-  - [ ] Kube-Proxy logs
-  - [ ] Load test
-    - [ ] What happens when a new service is created
+  - [X] Nodes CPU usage
+  - [X] Master CPU usage
+  - [X] Kube-System resources usage
+  - [X] Kube-Proxy logs
+  - [X] Load test
+    - [X] What happens when a new service is created
 
 #### Observations:
 
@@ -106,33 +106,12 @@ After changing to Kubernetes 1.6 and running the 900 pods + services:
 kube-proxy relevant config options (to be tunned):
 
   - `--iptables-min-sync-period`
-  - `--udp-timeout`
+  - `--udp-timeout` (actually this flag is not used with iptables, in this case kube-proxy is using iptables default timeout: 30s)
   - `-proxy-port-range`
+
 
 #### Load Test:
 
-##### UDP
+- [UDP](load-test/README.md)
 
-Spec:
-
-- 900 GRUs
-- 8 players per game room (results in 7200 CCU)
-- 20 messages/second IN and OUT per player (144000 messages/second IN and OUT per second, 4800 messages/second per node)
-
-Traffic Source Generator:
-
-- Program that opens UDP sockets
-- Sends messages to game room (20 messages/second)
-- Listens to the messages sent by the game room
-- Calculates how many messages/second are sent and received (aggregates all the sockets) --> used to estimate data loss
-
-Game Room simulator:
-
-- Receives UDP packets from the clients (Traffic Source Generator)
-- Each time a new client sends a packet it register the client in a clients pool
-- Sends messages to the registered clients (20 messages/second)
-- Calculates how many messages/second are sent and received (aggregates all the sockets) --> used to estimate data loss
-
-##### TCP
-
-To be done later.
+- TCP (To be done later)
