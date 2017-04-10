@@ -9,33 +9,38 @@ Let us define a Game Room Unity (GRU) as a Kubernetes service (type nodePort) as
 
 ## Architecture:
 
-Create a room scheduler that is composed by a controller, a watcher, an API and a CLI. In the future we may have an UI for displaying metrics such as:
+Maestro is a game room scheduler that is composed by a controller, a watcher, an API and a CLI. In the future we may have an UI for displaying metrics such as:
 
 - % of rooms usage
 - rate of room occupation increase/decrease
 - rooms cpu and memory usage
 - etc.
 
+<img src='maestro.png' width='330' height='355'/>
 
 ### maestro-controller:
 
-The controller is responsible for managing the Game Room Unities (GRUs). It creates, gracefully restarts and gracefully terminates GRUs according to auto scaling policies defined by the user. It makes use of the Kubernetes cluster's API endpoints in order to have updated information about the GRUs managed by the scheduler.
+The controller is responsible for managing the Game Room Unities (GRUs). It creates and gracefully terminates GRUs according to auto scaling policies defined by the user. It makes use of the Kubernetes cluster's API endpoints in order to have updated information about the GRUs managed by Maestro. It is also responsible for persisting relevant information in the database and managing rooms statuses.
 
 ### maestro-watcher:
 
-The watcher ensures that at any time, the Game Room Unities (GRUs) state is as expected. If the scaling policies say that one should have 10 GRUs of a given type, the watcher will ask the controller to create or remove GRUs as needed. The desired state is kept in a database that is consulted by the watcher each time it runs. It has a lock so maestro can be scaled horizontally.
+The watcher ensures that at any time the Game Room Unities (GRUs) state is as expected. If the scaling policies say that one should have 10 GRUs of a given type, the watcher will ask the controller to create or terminate GRUs as needed. The desired state is kept in a database that is consulted by the watcher (via controller) each time it runs. It has a lock so Maestro can be scaled horizontally. Each config (i.e. maestro scalable entity) has its own watcher.
 
 ### maestro-api:
 
-The API is the connections of maestro to the external world. It is responsible for:
+The API is the connection of Maestro to the external world and with the game room itself. It is responsible for:
 
-- Managing GRUs status and healthcheck (status are: creating, ready, occupied, restarting, terminating);
+- Managing GRUs status and healthcheck (status are: creating, ready, occupied and terminating);
 - Saving the scheduler config in a database that will be consulted by the watcher;
-- Managing the pool of GRUs with each GRU ip and port;
+- Managing the pool of GRUs with each GRU host ip and port;
 
 ### maestro-cli:
 
-The CLI is an abstraction on top of the maestro-api.
+The CLI is a wrapper for the maestro-api endpoints.
+
+### maestro-client:
+
+A client lib for Unity and cocos2dx responsible for calling maestro HTTP routes defined in the [room protocol](#room-protocol). It also must catch sigterm/sigkill and handle the room graceful shutdown.
 
 ## Configuring Maestro
 
@@ -52,14 +57,94 @@ The config file must have the following information:
 
 ## TODOs:
 
-- [X] Define Architecture
-  - [X] Validate Kubernetes performance with a large amount of services
-- [ ] Formalize room protocol
-- [ ] Release map
+- [x] Define Architecture
+  - [x] Validate Kubernetes performance with a large amount of services
+- [x] Formalize room protocol
+- [x] Release map
+- [ ] Define config template
 
 ## Release Map:
 
-TBD
+- Milestone 1
+  - [ ] maestro-controller
+    - [ ] scheduler
+      - [ ] create new scheduler with given config
+        - [ ] generate Kubernetes manifest template from the config
+        - [ ] create config in database
+        - [ ] create namespace in kubernetes
+        - [ ] create initial GRUs
+          - [ ] create service
+          - [ ] create pod with service nodePort as an argument
+        - [ ] delete scheduler
+          - [ ] remove config from database
+          - [ ] gracefully terminate running scheduler GRUs
+          - [ ] remove namespace from kubernetes
+    - [ ] scheduler state
+      - [ ] get rooms statuses
+      - [ ] update rooms status
+      - [ ] get autoscaling policy (from config persisted in db)
+    - [ ] scaling
+      - [ ] create GRUs
+    - [ ] docs
+  - [ ] maestro-watcher
+    - [ ] validate rooms status vs autoscaling policy
+    - [ ] scale cluster
+      - [ ] up
+    - [ ] docs
+  - [ ] maestro-api
+    - [ ] scheduler
+      - [ ] create new scheduler with given config
+      - [ ] delete scheduler
+    - [ ] room protocol routes
+      - [ ] ping
+      - [ ] room ready
+      - [ ] match started
+      - [ ] match ended
+    - [ ] docs
+  - [ ] maestro-client
+    - [ ] docs
+    - [ ] configuration (maestro url / ping interval)
+    - [ ] http client
+    - [ ] polling to retrieve (host / port)
+    - [ ] catch sigterm/sigkill and handle graceful shutdown
+    - [ ] unity support
+
+- Milestone 2
+  - [ ] maestro-controller
+    - [ ] scheduler
+        - [ ] update running scheduler config
+          - [ ] update Kubernetes manifest template with the new config
+          - [ ] update config in database
+          - [ ] update GRUs
+            - [ ] launch new GRUs with the updates config
+            - [ ] gracefully terminate GRUs running with old config
+    - [ ] scheduler state
+      - [ ] report room occupation metrics
+    - [ ] scaling
+      - [ ] remove GRUs
+  - [ ] maestro-watcher
+    - [ ] scale cluster
+      - [ ] down
+  - [ ] maestro-api
+    - [ ] scheduler
+      - [ ] update running scheduler config
+    - [ ] room protocol routes
+      - [ ] address polling
+    - [ ] get rooms metrics
+  - [ ] maestro-cli
+    - [ ] scheduler
+      - [ ] create new scheduler with given config
+      - [ ] update running scheduler config
+      - [ ] delete scheduler
+    - [ ] docs
+  - [ ] maestro-client
+    - [ ] cocos2dx support
+  - [ ] UI
+    - [ ] display rooms metrics
+    - [ ] scheduler
+      - [ ] create new scheduler with given config
+      - [ ] update running scheduler config
+      - [ ] delete scheduler
 
 ## Doubts
 
@@ -75,12 +160,12 @@ Testing with 30 nodes m4.large and 900 GRUs (pod + service) using a simple image
 
 To be checked:
 
-  - [X] Nodes CPU usage
-  - [X] Master CPU usage
-  - [X] Kube-System resources usage
-  - [X] Kube-Proxy logs
-  - [X] Load test
-    - [X] What happens when a new service is created
+  - [x] Nodes CPU usage
+  - [x] Master CPU usage
+  - [x] Kube-System resources usage
+  - [x] Kube-Proxy logs
+  - [x] Load test
+    - [x] What happens when a new service is created
 
 #### Observations:
 
@@ -110,8 +195,125 @@ kube-proxy relevant config options (to be tunned):
   - `-proxy-port-range`
 
 
-#### Load Test:
+#### [Load Test](load-test/README.md)
 
-- [UDP](load-test/README.md)
+## Room Protocol:
 
-- TCP (To be done later)
+Game rooms have four different statuses:
+
+  - Creating
+
+    From the time maestro starts creating the GRU in Kubernetes until a room ready is received.
+
+  - Ready
+
+    From the time room ready is called until a match started is received. It means the room is available for matches.
+
+  - Occupied
+
+    From the time match started is called until a match ended is received. It means the room is not available for matches.
+
+  - Terminating
+
+    From the time a sigkill/sigterm signal is received by the room until the GRU is no longer available in Kubernetes.
+
+Maestro's auto scaling policies are based on the number of rooms that are in ready state.
+
+
+In order to properly set their statuses, game rooms must call the following maestro-api HTTP routes:
+
+### Ping
+
+  This route should be called every 10 seconds and serves as a keep alive sent by the GRU to Maestro.
+
+#### Request:
+  `POST /games/:gameId/rooms/:roomId/ping`
+
+  ```
+  {
+    timestamp: <seconds since epoch>
+  }
+  ```
+
+#### Response:
+  ```
+  {
+    "success": <bool>
+  }
+  ```
+
+### Address Polling
+
+  This route should be polled by the GRU in order to obtain the room address (host ip and port).
+
+#### Request:
+  `GET  /games/:gameId/rooms/:roomId/address`
+
+#### Response:
+  ```
+  {
+    "success": <bool>,
+    "host": <host ip>,
+    "port": <int>
+  }
+  ```
+
+### Room ready
+
+  This route should be called every time a room is ready to receive a match. You'll need to make sure it is only called after the room has its address.
+
+#### Request:
+  `POST /games/:gameId/rooms/:roomId/room-ready`
+
+  ```
+  {
+    timestamp: <seconds since epoch>
+  }
+  ```
+
+#### Response:
+  ```
+  {
+    "success": <bool>
+  }
+  ```
+
+### Match started
+
+  This route should be called every time a match is started. It'll indicate that this GRU is occupied and is not available for new matches.
+
+#### Request:
+  `POST /games/:gameId/rooms/:roomId/room-ready`
+
+  ```
+  {
+    timestamp: <seconds since epoch>
+  }
+  ```
+
+#### Response:
+  ```
+  {
+    "success": <bool>
+  }
+  ```
+
+### Match ended
+
+  This route should be called every time a match is ended. It'll indicate that this GRU is no longer occupied and is available for new matches.
+
+#### Request:
+  `POST /games/:gameId/rooms/:roomId/room-ready`
+
+  ```
+  {
+    timestamp: <seconds since epoch>
+  }
+  ```
+
+#### Response:
+  ```
+  {
+    "success": <bool>
+  }
+  ```
