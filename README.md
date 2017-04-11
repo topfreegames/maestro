@@ -62,19 +62,23 @@ Example yaml config:
 name: pong-free-for-all    # this will be the name of the kubernetes namespace (it must be unique)
 game: pong                 # several configs can refer to the same game
 image: pong/pong:v123
-containerPort: 5050        # port exposed in the container
-protocol: UDP              # supported protocols are TCP and UDP
+ports:
+  - containerPort: 5050   # port exposed in the container
+    protocol: UDP         # supported protocols are TCP and UDP
+  - containerPort: 8888
+    protocol: TCP
 limits:                    # these will be the resources limits applied to the pods created in kubernetes
   memory: "128Mi"          # they are used to decide how many rooms can run in each node
   cpu: "1"                 # more info: https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-ram-container/
+shutdownTimeout: 180       # duration in seconds the pod needs to terminate gracefully
 autoscaling:
   min: 100                 # minimum amount of GRUs
   up:
     delta: 10              # how many GRUs will be created every time the scaling policy is triggered
     trigger:
       usage: 70            # minimum usage (percentage) that can trigger the scaling policy
-      time: 600            # time in seconds to wait before scaling policy takes place
-    cooldown: 300          # time in seconds to wait before consecutive scaling
+      time: 600            # duration in seconds to wait before scaling policy takes place
+    cooldown: 300          # duration in seconds to wait before consecutive scaling
   down:
     delta: 2               # how many GRUs will be terminated every time the scaling policy is triggered
     trigger:

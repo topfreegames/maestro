@@ -1,0 +1,32 @@
+
+[[dependencies]]
+  branch = "master"
+  name = "github.com/lib/pq"
+
+[[dependencies]]
+  branch = "master"
+  name = "github.com/onsi/ginkgo"
+
+[[dependencies]]
+  branch = "master"
+  name = "github.com/onsi/gomega"
+
+[[dependencies]]
+  branch = "master"
+  name = "github.com/spf13/cobra"
+
+[[dependencies]]
+  branch = "master"
+  name = "github.com/spf13/viper"
+
+[[dependencies]]
+  branch = "master"
+  name = "github.com/topfreegames/extensions"
+
+[[dependencies]]
+  branch = "v2"
+  name = "gopkg.in/yaml.v2"
+
+[[dependencies]]
+  name = "k8s.io/client-go"
+  version = "v2.0.0"

@@ -1,0 +1,10 @@
+extensions:
+  pg:
+    host: "localhost"
+    port: 8765
+    user: "maestro"
+    pass: ""
+    poolSize: 20
+    maxRetries: 3
+    database: "maestro"
+    connectionTimeout: 100
