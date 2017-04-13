@@ -63,8 +63,8 @@ name: pong-free-for-all    # this will be the name of the kubernetes namespace (
 game: pong                 # several configs can refer to the same game
 image: pong/pong:v123
 ports:
-  - containerPort: 5050   # port exposed in the container
-    protocol: UDP         # supported protocols are TCP and UDP
+  - containerPort: 5050    # port exposed in the container
+    protocol: UDP          # supported protocols are TCP and UDP
   - containerPort: 8888
     protocol: TCP
 limits:                    # these will be the resources limits applied to the pods created in kubernetes
@@ -281,7 +281,7 @@ In order to properly set their statuses, game rooms must call the following maes
   This route should be called every 10 seconds and serves as a keep alive sent by the GRU to Maestro.
 
 #### Request:
-  `POST /games/:gameId/rooms/:roomId/ping`
+  `PUT /namespaces/:namespaceName/rooms/:roomName/ping`
 
   ```
   {
@@ -301,7 +301,7 @@ In order to properly set their statuses, game rooms must call the following maes
   This route should be polled by the GRU in order to obtain the room address (host ip and port).
 
 #### Request:
-  `GET  /games/:gameId/rooms/:roomId/address`
+  `GET  /namespaces/:namespaceName/rooms/:roomName/address`
 
 #### Response:
   ```
@@ -317,11 +317,12 @@ In order to properly set their statuses, game rooms must call the following maes
   This route should be called every time a room is ready to receive a match. You'll need to make sure it is only called after the room has its address.
 
 #### Request:
-  `POST /games/:gameId/rooms/:roomId/room-ready`
+  `PUT /namespaces/:namespaceName/rooms/:roomName/status`
 
   ```
   {
-    timestamp: <seconds since epoch>
+    timestamp: <seconds since epoch>,
+    status: "room-ready"
   }
   ```
 
@@ -337,11 +338,12 @@ In order to properly set their statuses, game rooms must call the following maes
   This route should be called every time a match is started. It'll indicate that this GRU is occupied and is not available for new matches.
 
 #### Request:
-  `POST /games/:gameId/rooms/:roomId/room-ready`
+  `PUT /namespaces/:namespaceName/rooms/:roomName/status`
 
   ```
   {
-    timestamp: <seconds since epoch>
+    timestamp: <seconds since epoch>,
+    status: "match-started"
   }
   ```
 
@@ -357,11 +359,12 @@ In order to properly set their statuses, game rooms must call the following maes
   This route should be called every time a match is ended. It'll indicate that this GRU is no longer occupied and is available for new matches.
 
 #### Request:
-  `POST /games/:gameId/rooms/:roomId/room-ready`
+  `PUT /namespaces/:namespaceName/rooms/:roomName/status`
 
   ```
   {
-    timestamp: <seconds since epoch>
+    timestamp: <seconds since epoch>,
+    status: "match-ended"
   }
   ```
 
