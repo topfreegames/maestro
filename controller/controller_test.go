@@ -70,20 +70,18 @@ var _ = Describe("Controller", func() {
 			svcs, err := clientset.CoreV1().Services("controller-name").List(v1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(svcs.Items).To(HaveLen(3))
-			names := []string{
-				"controller-name-0",
-				"controller-name-1",
-				"controller-name-2",
-			}
+
 			for _, svc := range svcs.Items {
-				Expect(names).To(ContainElement(svc.GetName()))
+				Expect(svc.GetName()).To(ContainSubstring("controller-name-"))
+				Expect(svc.GetName()).To(HaveLen(len("controller-name-") + 8))
 			}
 
 			pods, err := clientset.CoreV1().Pods("controller-name").List(v1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(3))
 			for _, pod := range pods.Items {
-				Expect(names).To(ContainElement(pod.GetName()))
+				Expect(pod.GetName()).To(ContainSubstring("controller-name-"))
+				Expect(pod.GetName()).To(HaveLen(len("controller-name-") + 8))
 				Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_NAMESPACE"))
 				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
 				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_NODE_PORT_1234_UDP"))

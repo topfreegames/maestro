@@ -10,9 +10,10 @@ package controller
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
-
+	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/extensions/interfaces"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
@@ -41,8 +42,7 @@ func CreateScheduler(logger *logrus.Logger, db interfaces.DB, clientset kubernet
 
 	// TODO: optimize creation (in parallel?)
 	for i := 0; i < configYAML.AutoScaling.Min; i++ {
-		name := fmt.Sprintf("%s-%d", configYAML.Name, i)
-		err := createServiceAndPod(logger, db, clientset, configYAML, config.ID, name)
+		err := createServiceAndPod(logger, db, clientset, configYAML, config.ID)
 		if err != nil {
 			deleteSchedulerHelper(logger, db, clientset, config, namespace)
 			return err
@@ -78,6 +78,26 @@ func GetSchedulerScalingInfo(logger *logrus.Logger, db interfaces.DB, configName
 	return scalingPolicy, roomCountByStatus, nil
 }
 
+// ScaleUp scales up a scheduler using its config
+func ScaleUp(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, configName string) error {
+	config := models.NewConfig(configName, "", "")
+	// TODO: new relic support
+	err := config.Load(db)
+	if err != nil {
+		return err
+	}
+	configYAML, _ := models.NewConfigYAML(config.YAML)
+
+	// TODO: optimize creation (in parallel?)
+	for i := 0; i < configYAML.AutoScaling.Up.Delta; i++ {
+		err := createServiceAndPod(logger, db, clientset, configYAML, config.ID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func deleteSchedulerHelper(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, config *models.Config, namespace *models.Namespace) error {
 	err := namespace.Delete(clientset) // TODO: we're assuming that deleting a namespace gracefully terminates all its pods
 	if err != nil {
@@ -103,7 +123,9 @@ func buildNodePortEnvVars(ports []v1.ServicePort) []*models.EnvVar {
 	return nodePortEnvVars
 }
 
-func createServiceAndPod(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML, configID, name string) error {
+func createServiceAndPod(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML, configID string) error {
+	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
+	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
 	room := models.NewRoom(name, configID)
 	err := room.Create(db)
 	if err != nil {
@@ -144,6 +166,5 @@ func createServiceAndPod(logger *logrus.Logger, db interfaces.DB, clientset kube
 		"node": nodeName,
 		"name": name,
 	}).Info("Created service and pod successfully.")
-	// TODO: also create rooms with status pending
 	return nil
 }

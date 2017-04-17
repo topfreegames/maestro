@@ -130,8 +130,8 @@ cmd:                       # if the image can run with different arguments you c
       - [x] get rooms statuses
       - [x] update rooms status
       - [x] get autoscaling policy (from config persisted in db)
-    - [ ] scaling
-      - [ ] create GRUs
+    - [x] scaling
+      - [x] create GRUs
     - [ ] docs
   - [ ] maestro-watcher
     - [ ] validate rooms status vs autoscaling policy
