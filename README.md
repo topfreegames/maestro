@@ -114,7 +114,7 @@ cmd:                       # if the image can run with different arguments you c
 
   Tasks:
   - [ ] maestro-controller
-    - [ ] scheduler
+    - [x] scheduler
       - [x] create new scheduler with given config
         - [x] generate Kubernetes manifest template from the config
         - [x] create config in database
@@ -126,10 +126,10 @@ cmd:                       # if the image can run with different arguments you c
           - [x] remove config from database
           - [x] gracefully terminate running scheduler GRUs
           - [x] remove namespace from kubernetes
-    - [ ] scheduler state
-      - [ ] get rooms statuses
-      - [ ] update rooms status
-      - [ ] get autoscaling policy (from config persisted in db)
+    - [x] scheduler state
+      - [x] get rooms statuses
+      - [x] update rooms status
+      - [x] get autoscaling policy (from config persisted in db)
     - [ ] scaling
       - [ ] create GRUs
     - [ ] docs

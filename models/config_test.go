@@ -103,7 +103,7 @@ var _ = Describe("Config", func() {
 		})
 	})
 
-	Describe("Save Config", func() {
+	Describe("Create Config", func() {
 		It("should save config in the database", func() {
 			config := models.NewConfig("pong-free-for-all", "pong", yaml1)
 			err := config.Create(db)
@@ -127,6 +127,22 @@ var _ = Describe("Config", func() {
 			err := config.Delete(db)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(db.Execs).To(HaveLen(1))
+		})
+	})
+
+	Describe("GetAutoScalingPolicy", func() {
+		It("should return the config auto scaling policy", func() {
+			config := models.NewConfig("pong-free-for-all", "pong", yaml1)
+			autoScalingPolicy := config.GetAutoScalingPolicy()
+			Expect(autoScalingPolicy.Min).To(Equal(100))
+			Expect(autoScalingPolicy.Up.Cooldown).To(Equal(300))
+			Expect(autoScalingPolicy.Up.Delta).To(Equal(10))
+			Expect(autoScalingPolicy.Up.Trigger.Time).To(Equal(600))
+			Expect(autoScalingPolicy.Up.Trigger.Usage).To(Equal(70))
+			Expect(autoScalingPolicy.Down.Cooldown).To(Equal(300))
+			Expect(autoScalingPolicy.Down.Delta).To(Equal(2))
+			Expect(autoScalingPolicy.Down.Trigger.Time).To(Equal(900))
+			Expect(autoScalingPolicy.Down.Trigger.Usage).To(Equal(50))
 		})
 	})
 })

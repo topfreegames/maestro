@@ -91,12 +91,14 @@ var _ = Describe("Controller", func() {
 				Expect(pod.Spec.Containers[0].Env[3].Name).To(Equal("MAESTRO_NODE_PORT_7654_TCP"))
 				Expect(pod.Spec.Containers[0].Env[3].Value).NotTo(BeNil())
 			}
+			Expect(db.Execs).To(HaveLen(4)) // config + 3 pods creation
 		})
 
 		It("should rollback if error in db occurs", func() {
 			db = mocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
 			err := controller.CreateScheduler(logger, db, clientset, yaml1)
 			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Some error in db"))
 
 			ns, err := clientset.CoreV1().Namespaces().List(v1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -138,6 +140,24 @@ var _ = Describe("Controller", func() {
 			err := controller.DeleteScheduler(logger, db, clientset, "bad-yaml")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cannot unmarshal !!str `bad-yaml` into models.ConfigYAML"))
+		})
+	})
+
+	Describe("GetSchedulerScalingInfo", func() {
+		It("should succeed", func() {
+			err := controller.CreateScheduler(logger, db, clientset, yaml1)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, _, err = controller.GetSchedulerScalingInfo(logger, db, "controller-name")
+			Expect(err).NotTo(HaveOccurred())
+			// TODO: test returned info
+		})
+
+		It("should fail if error in db", func() {
+			db = mocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
+			_, _, err := controller.GetSchedulerScalingInfo(logger, db, "controller-name")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Some error in db"))
 		})
 	})
 })

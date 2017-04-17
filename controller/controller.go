@@ -42,7 +42,7 @@ func CreateScheduler(logger *logrus.Logger, db interfaces.DB, clientset kubernet
 	// TODO: optimize creation (in parallel?)
 	for i := 0; i < configYAML.AutoScaling.Min; i++ {
 		name := fmt.Sprintf("%s-%d", configYAML.Name, i)
-		err := createServiceAndPod(logger, clientset, configYAML, name)
+		err := createServiceAndPod(logger, db, clientset, configYAML, config.ID, name)
 		if err != nil {
 			deleteSchedulerHelper(logger, db, clientset, config, namespace)
 			return err
@@ -60,6 +60,22 @@ func DeleteScheduler(logger *logrus.Logger, db interfaces.DB, clientset kubernet
 	config := models.NewConfig(configYAML.Name, configYAML.Game, yamlString)
 	namespace := models.NewNamespace(config.Name)
 	return deleteSchedulerHelper(logger, db, clientset, config, namespace)
+}
+
+// GetSchedulerScalingInfo returns the scheduler scaling policies and room count by status
+func GetSchedulerScalingInfo(logger *logrus.Logger, db interfaces.DB, configName string) (*models.AutoScaling, map[string]int, error) {
+	config := models.NewConfig(configName, "", "")
+	// TODO: new relic support
+	err := config.Load(db)
+	if err != nil {
+		return nil, nil, err
+	}
+	scalingPolicy := config.GetAutoScalingPolicy()
+	roomCountByStatus, err := models.GetRoomsCountByStatus(db, config.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return scalingPolicy, roomCountByStatus, nil
 }
 
 func deleteSchedulerHelper(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, config *models.Config, namespace *models.Namespace) error {
@@ -87,7 +103,12 @@ func buildNodePortEnvVars(ports []v1.ServicePort) []*models.EnvVar {
 	return nodePortEnvVars
 }
 
-func createServiceAndPod(logger *logrus.Logger, clientset kubernetes.Interface, configYAML *models.ConfigYAML, name string) error {
+func createServiceAndPod(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML, configID, name string) error {
+	room := models.NewRoom(name, configID)
+	err := room.Create(db)
+	if err != nil {
+		return err
+	}
 	service := models.NewService(name, configYAML.Name, configYAML.Ports)
 	kubeService, err := service.Create(clientset)
 	if err != nil {
@@ -123,6 +144,6 @@ func createServiceAndPod(logger *logrus.Logger, clientset kubernetes.Interface, 
 		"node": nodeName,
 		"name": name,
 	}).Info("Created service and pod successfully.")
-
+	// TODO: also create rooms with status pending
 	return nil
 }

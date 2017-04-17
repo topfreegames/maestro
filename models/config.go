@@ -15,6 +15,7 @@ import (
 
 // Config is the struct that defines a config for running maestro
 type Config struct {
+	ID   string
 	Name string `yaml:"name"`
 	Game string `yaml:"game"`
 	YAML string
@@ -107,6 +108,15 @@ func (c *Config) Create(db interfaces.DB) error {
 
 // Delete deletes a config from the database using the config name
 func (c *Config) Delete(db interfaces.DB) error {
-	_, err := db.Query(c, `DELETE FROM configs WHERE name = ?`, c.Name)
-	return err
+	_, err := db.Exec(`DELETE FROM configs WHERE name = ?`, c.Name)
+	if err != nil && err.Error() != "pg: no rows in result set" {
+		return err
+	}
+	return nil
+}
+
+// GetAutoScalingPolicy returns the config auto scaling policy
+func (c *Config) GetAutoScalingPolicy() *AutoScaling {
+	configYAML, _ := NewConfigYAML(c.YAML)
+	return configYAML.AutoScaling
 }
