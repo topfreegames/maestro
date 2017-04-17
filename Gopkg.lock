@@ -1,4 +1,4 @@
-memo = "62090993289c827dde7b1fe895b6780e16ae1c4a8f2cbd12cf4eb8429739fa85"
+memo = "76f140341054b86c0ccb18aa92ab0fddc9da2103a52a3299d85f1e06d26cc806"
 
 [[projects]]
   name = "cloud.google.com/go"
@@ -23,6 +23,12 @@ memo = "62090993289c827dde7b1fe895b6780e16ae1c4a8f2cbd12cf4eb8429739fa85"
   name = "github.com/PuerkitoBio/urlesc"
   packages = ["."]
   revision = "bbf7a2afc14f93e1e0a5c06df524fbd75e5031e5"
+
+[[projects]]
+  name = "github.com/Sirupsen/logrus"
+  packages = ["."]
+  revision = "ba1b36c82c5e05c4f912a88eab0dcd91a171688f"
+  version = "v0.11.5"
 
 [[projects]]
   name = "github.com/blang/semver"

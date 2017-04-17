@@ -115,17 +115,17 @@ cmd:                       # if the image can run with different arguments you c
   Tasks:
   - [ ] maestro-controller
     - [ ] scheduler
-      - [ ] create new scheduler with given config
-        - [ ] generate Kubernetes manifest template from the config
-        - [ ] create config in database
-        - [ ] create namespace in kubernetes
-        - [ ] create initial GRUs
-          - [ ] create service
-          - [ ] create pod with service nodePort as an argument
-        - [ ] delete scheduler
-          - [ ] remove config from database
-          - [ ] gracefully terminate running scheduler GRUs
-          - [ ] remove namespace from kubernetes
+      - [x] create new scheduler with given config
+        - [x] generate Kubernetes manifest template from the config
+        - [x] create config in database
+        - [x] create namespace in kubernetes
+        - [x] create initial GRUs
+          - [x] create service
+          - [x] create pod with service nodePort as an argument
+        - [x] delete scheduler
+          - [x] remove config from database
+          - [x] gracefully terminate running scheduler GRUs
+          - [x] remove namespace from kubernetes
     - [ ] scheduler state
       - [ ] get rooms statuses
       - [ ] update rooms status

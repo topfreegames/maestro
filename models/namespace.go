@@ -40,3 +40,11 @@ func (n *Namespace) Exists(clientset kubernetes.Interface) bool {
 	_, err := clientset.CoreV1().Namespaces().Get(n.Name)
 	return err == nil
 }
+
+// Delete returns true if namespace is already created in Kubernetes
+func (n *Namespace) Delete(clientset kubernetes.Interface) error {
+	if n.Exists(clientset) {
+		return clientset.CoreV1().Namespaces().Delete(n.Name, &v1.DeleteOptions{})
+	}
+	return nil
+}

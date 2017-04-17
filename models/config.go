@@ -104,3 +104,9 @@ func (c *Config) Create(db interfaces.DB) error {
 	`, c)
 	return err
 }
+
+// Delete deletes a config from the database using the config name
+func (c *Config) Delete(db interfaces.DB) error {
+	_, err := db.Query(c, `DELETE FROM configs WHERE name = ?`, c.Name)
+	return err
+}

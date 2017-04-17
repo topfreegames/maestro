@@ -120,4 +120,13 @@ var _ = Describe("Config", func() {
 			Expect(db.Execs).To(HaveLen(1))
 		})
 	})
+
+	Describe("Delete Config", func() {
+		It("should delete config in the database", func() {
+			config := models.NewConfig("pong-free-for-all", "pong", yaml1)
+			err := config.Delete(db)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(db.Execs).To(HaveLen(1))
+		})
+	})
 })

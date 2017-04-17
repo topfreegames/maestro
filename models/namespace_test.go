@@ -55,13 +55,35 @@ var _ = Describe("Namespace", func() {
 			Expect(exists).To(BeFalse())
 		})
 
-		It("should return true is namespace exists", func() {
+		It("should return true if namespace exists", func() {
 			namespace := models.NewNamespace("pong-free-for-all")
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			exists := namespace.Exists(clientset)
 			Expect(exists).To(BeTrue())
+		})
+	})
+
+	Describe("Delete", func() {
+		It("should succeed if namespace does not exist", func() {
+			namespace := models.NewNamespace("pong-free-for-all")
+			err := namespace.Delete(clientset)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should succeed if namespace exists", func() {
+			namespace := models.NewNamespace("pong-free-for-all")
+			err := namespace.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = namespace.Delete(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			ns, err := clientset.CoreV1().Namespaces().List(v1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ns.Items).To(HaveLen(0))
+
 		})
 	})
 })
