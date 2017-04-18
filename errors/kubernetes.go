@@ -37,6 +37,7 @@ func (e *KubernetesError) Serialize() []byte {
 		"code":        "MAE-003",
 		"error":       e.message,
 		"description": e.sourceError.Error(),
+		"success":     false,
 	})
 
 	return g

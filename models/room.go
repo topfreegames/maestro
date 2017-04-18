@@ -8,14 +8,18 @@
 package models
 
 import (
+	"time"
+
 	"github.com/topfreegames/extensions/interfaces"
+	pg "gopkg.in/pg.v5"
 )
 
 // Room is the struct that defines a room in maestro
 type Room struct {
-	ID       string `db:"id"`
-	ConfigID string `db:"config_id"`
-	Status   string `db:"status"`
+	ID         string      `db:"id"`
+	ConfigID   string      `db:"config_id"`
+	Status     string      `db:"status"`
+	LastPingAt pg.NullTime `db:"last_ping_at"`
 }
 
 // RoomsStatus is the struct that defines a rooms status
@@ -44,7 +48,15 @@ func (r *Room) Create(db interfaces.DB) error {
 
 // SetStatus updates the status of a given room in the database
 func (r *Room) SetStatus(db interfaces.DB, status string) error {
-	_, err := db.Query(r, `UPDATE rooms SET status = ? WHERE id = ?`, status, r.ConfigID)
+	_, err := db.Query(r, `
+		UPDATE rooms SET status = ?, last_ping_at = ? WHERE id = ?
+	`, status, time.Now(), r.ID)
+	return err
+}
+
+// Ping updates the last_ping_at field of a given room in the database
+func (r *Room) Ping(db interfaces.DB) error {
+	_, err := db.Query(r, `UPDATE rooms SET last_ping_at = ? WHERE id = ?`, time.Now(), r.ID)
 	return err
 }
 

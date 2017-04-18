@@ -21,30 +21,46 @@ import (
 )
 
 // CreateScheduler creates a new scheduler from a yaml configuration
-func CreateScheduler(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, yamlString string) error {
-	configYAML, err := models.NewConfigYAML(yamlString)
+func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, yamlString string) error {
+	var configYAML *models.ConfigYAML
+	var err error
+	err = mr.WithSegment(models.SegmentYaml, func() error {
+		configYAML, err = models.NewConfigYAML(yamlString)
+		return err
+	})
 	if err != nil {
 		return err
 	}
+
 	config := models.NewConfig(configYAML.Name, configYAML.Game, yamlString)
-	// TODO: new relic support
-	err = config.Create(db)
+	err = mr.WithSegment(models.SegmentInsert, func() error {
+		return config.Create(db)
+	})
 	if err != nil {
 		return err
 	}
 
 	namespace := models.NewNamespace(config.Name)
-	err = namespace.Create(clientset)
+	err = mr.WithSegment(models.SegmentNamespace, func() error {
+		return namespace.Create(clientset)
+	})
+
 	if err != nil {
-		deleteSchedulerHelper(logger, db, clientset, config, namespace)
+		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, config, namespace)
+		if deleteErr != nil {
+			return deleteErr
+		}
 		return err
 	}
 
 	// TODO: optimize creation (in parallel?)
 	for i := 0; i < configYAML.AutoScaling.Min; i++ {
-		err := createServiceAndPod(logger, db, clientset, configYAML, config.ID)
+		err := createServiceAndPod(logger, mr, db, clientset, configYAML, config.ID)
 		if err != nil {
-			deleteSchedulerHelper(logger, db, clientset, config, namespace)
+			deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, config, namespace)
+			if deleteErr != nil {
+				return deleteErr
+			}
 			return err
 		}
 	}
@@ -52,26 +68,33 @@ func CreateScheduler(logger *logrus.Logger, db interfaces.DB, clientset kubernet
 }
 
 // DeleteScheduler deletes a scheduler from a yaml configuration
-func DeleteScheduler(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, yamlString string) error {
-	configYAML, err := models.NewConfigYAML(yamlString)
+func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, configName string) error {
+	config := models.NewConfig(configName, "", "")
+	err := mr.WithSegment(models.SegmentSelect, func() error {
+		return config.Load(db)
+	})
 	if err != nil {
 		return err
 	}
-	config := models.NewConfig(configYAML.Name, configYAML.Game, yamlString)
 	namespace := models.NewNamespace(config.Name)
-	return deleteSchedulerHelper(logger, db, clientset, config, namespace)
+	return deleteSchedulerHelper(logger, mr, db, clientset, config, namespace)
 }
 
 // GetSchedulerScalingInfo returns the scheduler scaling policies and room count by status
-func GetSchedulerScalingInfo(logger *logrus.Logger, db interfaces.DB, configName string) (*models.AutoScaling, map[string]int, error) {
+func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, configName string) (*models.AutoScaling, map[string]int, error) {
 	config := models.NewConfig(configName, "", "")
-	// TODO: new relic support
-	err := config.Load(db)
+	err := mr.WithSegment(models.SegmentSelect, func() error {
+		return config.Load(db)
+	})
 	if err != nil {
 		return nil, nil, err
 	}
 	scalingPolicy := config.GetAutoScalingPolicy()
-	roomCountByStatus, err := models.GetRoomsCountByStatus(db, config.ID)
+	var roomCountByStatus map[string]int
+	err = mr.WithSegment(models.SegmentGroupBy, func() error {
+		roomCountByStatus, err = models.GetRoomsCountByStatus(db, config.ID)
+		return err
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -79,10 +102,11 @@ func GetSchedulerScalingInfo(logger *logrus.Logger, db interfaces.DB, configName
 }
 
 // ScaleUp scales up a scheduler using its config
-func ScaleUp(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, configName string) error {
+func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, configName string) error {
 	config := models.NewConfig(configName, "", "")
-	// TODO: new relic support
-	err := config.Load(db)
+	err := mr.WithSegment(models.SegmentSelect, func() error {
+		return config.Load(db)
+	})
 	if err != nil {
 		return err
 	}
@@ -90,7 +114,7 @@ func ScaleUp(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Inter
 
 	// TODO: optimize creation (in parallel?)
 	for i := 0; i < configYAML.AutoScaling.Up.Delta; i++ {
-		err := createServiceAndPod(logger, db, clientset, configYAML, config.ID)
+		err := createServiceAndPod(logger, mr, db, clientset, configYAML, config.ID)
 		if err != nil {
 			return err
 		}
@@ -98,15 +122,19 @@ func ScaleUp(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Inter
 	return nil
 }
 
-func deleteSchedulerHelper(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, config *models.Config, namespace *models.Namespace) error {
-	err := namespace.Delete(clientset) // TODO: we're assuming that deleting a namespace gracefully terminates all its pods
+func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, config *models.Config, namespace *models.Namespace) error {
+	err := mr.WithSegment(models.SegmentNamespace, func() error {
+		return namespace.Delete(clientset) // TODO: we're assuming that deleting a namespace gracefully terminates all its pods
+	})
 	if err != nil {
-		logger.WithError(err).Error("Failed to delete namespace while rolling back config creation.")
+		logger.WithError(err).Error("Failed to delete namespace while rolling back cluster creation.")
 		return err
 	}
-	err = config.Delete(db)
+	err = mr.WithSegment(models.SegmentDelete, func() error {
+		return config.Delete(db)
+	})
 	if err != nil {
-		logger.WithError(err).Error("Failed to delete config while rolling back config creation.")
+		logger.WithError(err).Error("Failed to delete config while rolling back cluster creation.")
 		return err
 	}
 	return nil
@@ -123,24 +151,36 @@ func buildNodePortEnvVars(ports []v1.ServicePort) []*models.EnvVar {
 	return nodePortEnvVars
 }
 
-func createServiceAndPod(logger *logrus.Logger, db interfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML, configID string) error {
+func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML, configID string) error {
 	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
 	room := models.NewRoom(name, configID)
-	err := room.Create(db)
+	err := mr.WithSegment(models.SegmentInsert, func() error {
+		return room.Create(db)
+	})
 	if err != nil {
 		return err
 	}
 	service := models.NewService(name, configYAML.Name, configYAML.Ports)
-	kubeService, err := service.Create(clientset)
+	var kubeService *v1.Service
+	err = mr.WithSegment(models.SegmentService, func() error {
+		kubeService, err = service.Create(clientset)
+		return err
+	})
 	if err != nil {
 		return err
 	}
-	namespaceEnvVar := &models.EnvVar{
-		Name:  "MAESTRO_NAMESPACE",
-		Value: configYAML.Name,
+	namesEnvVars := []*models.EnvVar{
+		&models.EnvVar{
+			Name:  "MAESTRO_SCHEDULER_NAME",
+			Value: configYAML.Name,
+		},
+		&models.EnvVar{
+			Name:  "MAESTRO_ROOM_NAME",
+			Value: name,
+		},
 	}
-	env := append(configYAML.Env, namespaceEnvVar)
+	env := append(configYAML.Env, namesEnvVars...)
 	nodePortEnvVars := buildNodePortEnvVars(kubeService.Spec.Ports)
 	env = append(env, nodePortEnvVars...)
 	pod := models.NewPod(
@@ -157,7 +197,11 @@ func createServiceAndPod(logger *logrus.Logger, db interfaces.DB, clientset kube
 		configYAML.Cmd,
 		env,
 	)
-	kubePod, err := pod.Create(clientset)
+	var kubePod *v1.Pod
+	err = mr.WithSegment(models.SegmentPod, func() error {
+		kubePod, err = pod.Create(clientset)
+		return err
+	})
 	if err != nil {
 		return err
 	}
@@ -165,6 +209,6 @@ func createServiceAndPod(logger *logrus.Logger, db interfaces.DB, clientset kube
 	logger.WithFields(logrus.Fields{
 		"node": nodeName,
 		"name": name,
-	}).Info("Created service and pod successfully.")
+	}).Info("Created GRU (service and pod) successfully.")
 	return nil
 }

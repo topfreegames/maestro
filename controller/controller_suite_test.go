@@ -16,6 +16,9 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/topfreegames/extensions/mocks"
+	"github.com/topfreegames/maestro/models"
+
+	mtesting "github.com/topfreegames/maestro/testing"
 )
 
 var (
@@ -23,6 +26,7 @@ var (
 	logger *logrus.Logger
 	hook   *test.Hook
 	err    error
+	mr     *models.MixedMetricsReporter
 )
 
 func TestController(t *testing.T) {
@@ -34,6 +38,9 @@ var _ = BeforeEach(func() {
 	db = mocks.NewPGMock(1, 1)
 	logger, hook = test.NewNullLogger()
 	logger.Level = logrus.DebugLevel
+	fakeReporter := mtesting.FakeMetricsReporter{}
+	mr := models.NewMixedMetricsReporter()
+	mr.AddReporter(fakeReporter)
 })
 
 var _ = AfterEach(func() {

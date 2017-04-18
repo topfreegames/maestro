@@ -1,4 +1,4 @@
-memo = "bdb0aac0abbeac527926df4c6a57383890043c371095af8299e7cf57b3b576f2"
+memo = "0151c06e8c093bd23770551fd4b32de4a2b72b63193af19990b385861ad3dce3"
 
 [[projects]]
   branch = "master"
@@ -23,6 +23,24 @@ memo = "bdb0aac0abbeac527926df4c6a57383890043c371095af8299e7cf57b3b576f2"
   packages = [".","hooks/test"]
   revision = "ba1b36c82c5e05c4f912a88eab0dcd91a171688f"
   version = "v0.11.5"
+
+[[projects]]
+  name = "github.com/alexcesaro/statsd"
+  packages = ["."]
+  revision = "7fea3f0d2fab1ad973e641e51dba45443a311a90"
+  version = "v2.0.0"
+
+[[projects]]
+  name = "github.com/asaskevich/govalidator"
+  packages = ["."]
+  revision = "7b3beb6df3c42abd3509abfc3bcacc0fbfb7c877"
+  version = "v5"
+
+[[projects]]
+  name = "github.com/certifi/gocertifi"
+  packages = ["."]
+  revision = "a9c833d2837d3b16888d55d5aafa9ffe9afb22b0"
+  version = "2017.04.17"
 
 [[projects]]
   name = "github.com/confluentinc/confluent-kafka-go"
@@ -53,6 +71,12 @@ memo = "bdb0aac0abbeac527926df4c6a57383890043c371095af8299e7cf57b3b576f2"
   packages = ["."]
   revision = "629574ca2a5df945712d3079857300b5e4da0236"
   version = "v1.4.2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/getsentry/raven-go"
+  packages = ["."]
+  revision = "b68337dbf03e7fbb53d9fd9b63fd09b28e8f13f7"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
@@ -103,6 +127,18 @@ memo = "bdb0aac0abbeac527926df4c6a57383890043c371095af8299e7cf57b3b576f2"
   revision = "44d81051d367757e1c7c6a5a86423ece9afcf63c"
 
 [[projects]]
+  name = "github.com/gorilla/context"
+  packages = ["."]
+  revision = "1ea25387ff6f684839d82767c1733ff4d4d15d0a"
+  version = "v1.1"
+
+[[projects]]
+  name = "github.com/gorilla/mux"
+  packages = ["."]
+  revision = "392c28fe23e1c45ddba891b0320b3b5df220beea"
+  version = "v1.3.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/hashicorp/hcl"
   packages = [".","hcl/ast","hcl/parser","hcl/scanner","hcl/strconv","hcl/token","json/parser","json/scanner","json/token"]
@@ -113,6 +149,12 @@ memo = "bdb0aac0abbeac527926df4c6a57383890043c371095af8299e7cf57b3b576f2"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/jinzhu/inflection"
+  packages = ["."]
+  revision = "1c35d901db3da928c72a72d8458480cc9ade058f"
 
 [[projects]]
   branch = "master"
@@ -143,6 +185,12 @@ memo = "bdb0aac0abbeac527926df4c6a57383890043c371095af8299e7cf57b3b576f2"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   revision = "53818660ed4955e899c0bcafa97299a388bd7c8e"
+
+[[projects]]
+  name = "github.com/newrelic/go-agent"
+  packages = [".","internal","internal/jsonx","internal/logger","internal/sysinfo","internal/utilization"]
+  revision = "29ec3cd1bb2f21d21d36da37dae52695cb2c3a17"
+  version = "v1.9.0"
 
 [[projects]]
   branch = "master"
@@ -212,7 +260,7 @@ memo = "bdb0aac0abbeac527926df4c6a57383890043c371095af8299e7cf57b3b576f2"
 
 [[projects]]
   name = "github.com/topfreegames/extensions"
-  packages = ["interfaces","mocks"]
+  packages = [".","interfaces","mocks","util"]
   revision = "6d2d919d70a2b605f2774cf28337bd14f5d2cd25"
   version = "v1.1.0"
 
@@ -248,7 +296,7 @@ memo = "bdb0aac0abbeac527926df4c6a57383890043c371095af8299e7cf57b3b576f2"
 
 [[projects]]
   name = "gopkg.in/pg.v5"
-  packages = ["internal","internal/parser","types"]
+  packages = [".","internal","internal/parser","internal/pool","orm","types"]
   revision = "2246060a2a43f8282ad53295d56d780dbc930b7f"
   version = "v5.3.3"
 

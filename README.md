@@ -139,14 +139,14 @@ cmd:                       # if the image can run with different arguments you c
       - [ ] up
     - [ ] docs
   - [ ] maestro-api
-    - [ ] scheduler
-      - [ ] create new scheduler with given config
-      - [ ] delete scheduler
-    - [ ] room protocol routes
-      - [ ] ping
-      - [ ] room ready
-      - [ ] match started
-      - [ ] match ended
+    - [x] scheduler
+      - [x] create new scheduler with given config
+      - [x] delete scheduler
+    - [x] room protocol routes
+      - [x] ping
+      - [x] room ready
+      - [x] match started
+      - [x] match ended
     - [ ] docs
   - [ ] maestro-client
     - [ ] docs
@@ -281,7 +281,7 @@ In order to properly set their statuses, game rooms must call the following maes
   This route should be called every 10 seconds and serves as a keep alive sent by the GRU to Maestro.
 
 #### Request:
-  `PUT /namespaces/:namespaceName/rooms/:roomName/ping`
+  `PUT /schedulers/:schedulerName/rooms/:roomName/ping`
 
   ```
   {
@@ -301,7 +301,7 @@ In order to properly set their statuses, game rooms must call the following maes
   This route should be polled by the GRU in order to obtain the room address (host ip and port).
 
 #### Request:
-  `GET  /namespaces/:namespaceName/rooms/:roomName/address`
+  `GET  /schedulers/:schedulerName/rooms/:roomName/address`
 
 #### Response:
   ```
@@ -317,7 +317,7 @@ In order to properly set their statuses, game rooms must call the following maes
   This route should be called every time a room is ready to receive a match. You'll need to make sure it is only called after the room has its address.
 
 #### Request:
-  `PUT /namespaces/:namespaceName/rooms/:roomName/status`
+  `PUT /schedulers/:schedulerName/rooms/:roomName/status`
 
   ```
   {
@@ -338,7 +338,7 @@ In order to properly set their statuses, game rooms must call the following maes
   This route should be called every time a match is started. It'll indicate that this GRU is occupied and is not available for new matches.
 
 #### Request:
-  `PUT /namespaces/:namespaceName/rooms/:roomName/status`
+  `PUT /schedulers/:schedulerName/rooms/:roomName/status`
 
   ```
   {
@@ -359,7 +359,7 @@ In order to properly set their statuses, game rooms must call the following maes
   This route should be called every time a match is ended. It'll indicate that this GRU is no longer occupied and is available for new matches.
 
 #### Request:
-  `PUT /namespaces/:namespaceName/rooms/:roomName/status`
+  `PUT /schedulers/:schedulerName/rooms/:roomName/status`
 
   ```
   {
@@ -367,6 +367,42 @@ In order to properly set their statuses, game rooms must call the following maes
     status: "match-ended"
   }
   ```
+
+#### Response:
+  ```
+  {
+    "success": <bool>
+  }
+  ```
+
+## Scheduler Management:
+
+### Create
+
+  This route creates a scheduler in Maestro using a provided YAML config.
+
+#### Request:
+  `POST /schedulers`
+
+  ```
+  {
+    "yaml": <string>
+  }
+  ```
+
+#### Response:
+  ```
+  {
+    "success": <bool>
+  }
+  ```
+
+### Delete
+
+  This route deletes a scheduler in Maestro using the scheduler name.
+
+#### Request:
+  `DELETE /scheduler/:schedulerName`
 
 #### Response:
   ```

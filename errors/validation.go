@@ -9,27 +9,27 @@ package errors
 
 import "encoding/json"
 
-//DatabaseError happens when an error occur when running a command in the database
-type DatabaseError struct {
+//ValidationFailedError happens when validation of a struct fails
+type ValidationFailedError struct {
 	SourceError error
 }
 
-//NewDatabaseError ctor
-func NewDatabaseError(err error) *DatabaseError {
-	return &DatabaseError{
+//NewValidationFailedError ctor
+func NewValidationFailedError(err error) *ValidationFailedError {
+	return &ValidationFailedError{
 		SourceError: err,
 	}
 }
 
-func (e *DatabaseError) Error() string {
+func (e *ValidationFailedError) Error() string {
 	return e.SourceError.Error()
 }
 
 //Serialize returns the error serialized
-func (e *DatabaseError) Serialize() []byte {
+func (e *ValidationFailedError) Serialize() []byte {
 	g, _ := json.Marshal(map[string]interface{}{
-		"code":        "MAE-001",
-		"error":       "database error",
+		"code":        "MAE-004",
+		"error":       "ValidationFailedError",
 		"description": e.SourceError.Error(),
 		"success":     false,
 	})

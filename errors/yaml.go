@@ -37,6 +37,7 @@ func (e *YamlError) Serialize() []byte {
 		"code":        "MAE-002",
 		"error":       e.message,
 		"description": e.sourceError.Error(),
+		"success":     false,
 	})
 
 	return g

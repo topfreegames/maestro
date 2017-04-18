@@ -33,6 +33,7 @@ func (e *GenericError) Serialize() []byte {
 		"code":        "MAE-000",
 		"error":       e.Message,
 		"description": e.SourceError.Error(),
+		"success":     false,
 	})
 
 	return g

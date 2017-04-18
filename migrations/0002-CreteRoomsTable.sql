@@ -10,7 +10,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE rooms (
     id varchar(255) NOT NULL,
     config_id UUID references configs(id) ON DELETE CASCADE,
-    status varchar(20) NOT NULL,
+    status varchar(255) NOT NULL,
+    last_ping_at timestamp WITH TIME ZONE NULL,
     created_at timestamp WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at timestamp WITH TIME ZONE NULL
 );

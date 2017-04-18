@@ -59,7 +59,7 @@ var _ = Describe("Controller", func() {
 
 	Describe("CreateScheduler", func() {
 		It("should succeed", func() {
-			err := controller.CreateScheduler(logger, db, clientset, yaml1)
+			err := controller.CreateScheduler(logger, mr, db, clientset, yaml1)
 			Expect(err).NotTo(HaveOccurred())
 
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
@@ -82,19 +82,21 @@ var _ = Describe("Controller", func() {
 			for _, pod := range pods.Items {
 				Expect(pod.GetName()).To(ContainSubstring("controller-name-"))
 				Expect(pod.GetName()).To(HaveLen(len("controller-name-") + 8))
-				Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_NAMESPACE"))
+				Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
 				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
-				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_NODE_PORT_1234_UDP"))
-				Expect(pod.Spec.Containers[0].Env[2].Value).NotTo(BeNil())
-				Expect(pod.Spec.Containers[0].Env[3].Name).To(Equal("MAESTRO_NODE_PORT_7654_TCP"))
+				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_NAME"))
+				Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
+				Expect(pod.Spec.Containers[0].Env[3].Name).To(Equal("MAESTRO_NODE_PORT_1234_UDP"))
 				Expect(pod.Spec.Containers[0].Env[3].Value).NotTo(BeNil())
+				Expect(pod.Spec.Containers[0].Env[4].Name).To(Equal("MAESTRO_NODE_PORT_7654_TCP"))
+				Expect(pod.Spec.Containers[0].Env[4].Value).NotTo(BeNil())
 			}
 			Expect(db.Execs).To(HaveLen(4)) // config + 3 pods creation
 		})
 
 		It("should rollback if error in db occurs", func() {
 			db = mocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
-			err := controller.CreateScheduler(logger, db, clientset, yaml1)
+			err := controller.CreateScheduler(logger, mr, db, clientset, yaml1)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Some error in db"))
 
@@ -116,7 +118,7 @@ var _ = Describe("Controller", func() {
 		})
 
 		It("should fail if bad yaml", func() {
-			err := controller.CreateScheduler(logger, db, clientset, "bad-yaml")
+			err := controller.CreateScheduler(logger, mr, db, clientset, "bad-yaml")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cannot unmarshal !!str `bad-yaml` into models.ConfigYAML"))
 		})
@@ -124,36 +126,30 @@ var _ = Describe("Controller", func() {
 
 	Describe("DeleteScheduler", func() {
 		It("should succeed", func() {
-			err := controller.CreateScheduler(logger, db, clientset, yaml1)
+			err := controller.CreateScheduler(logger, mr, db, clientset, yaml1)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = controller.DeleteScheduler(logger, db, clientset, yaml1)
+			err = controller.DeleteScheduler(logger, mr, db, clientset, "controller-name")
 			Expect(err).NotTo(HaveOccurred())
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ns.Items).To(HaveLen(0))
 		})
-
-		It("should fail if bad yaml", func() {
-			err := controller.DeleteScheduler(logger, db, clientset, "bad-yaml")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cannot unmarshal !!str `bad-yaml` into models.ConfigYAML"))
-		})
 	})
 
 	Describe("GetSchedulerScalingInfo", func() {
 		It("should succeed", func() {
-			err := controller.CreateScheduler(logger, db, clientset, yaml1)
+			err := controller.CreateScheduler(logger, mr, db, clientset, yaml1)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, _, err = controller.GetSchedulerScalingInfo(logger, db, "controller-name")
+			_, _, err = controller.GetSchedulerScalingInfo(logger, mr, db, "controller-name")
 			Expect(err).NotTo(HaveOccurred())
 			// TODO: test returned info
 		})
 
 		It("should fail if error in db", func() {
 			db = mocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
-			_, _, err := controller.GetSchedulerScalingInfo(logger, db, "controller-name")
+			_, _, err := controller.GetSchedulerScalingInfo(logger, mr, db, "controller-name")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Some error in db"))
 		})

@@ -18,7 +18,7 @@ var _ = Describe("Room", func() {
 	})
 
 	Describe("Create Room", func() {
-		It("should save room in the database", func() {
+		It("should call the database successfully", func() {
 			room := models.NewRoom("pong-free-for-all-0", "pong-free-for-all")
 			err := room.Create(db)
 			Expect(err).NotTo(HaveOccurred())
@@ -27,7 +27,7 @@ var _ = Describe("Room", func() {
 	})
 
 	Describe("Set Status", func() {
-		It("should update a room status", func() {
+		It("should call the database successfully", func() {
 			room := models.NewRoom("pong-free-for-all-0", "pong-free-for-all")
 			err := room.SetStatus(db, "room-ready")
 			Expect(err).NotTo(HaveOccurred())
@@ -35,8 +35,17 @@ var _ = Describe("Room", func() {
 		})
 	})
 
+	Describe("Set Status", func() {
+		It("should call the database successfully", func() {
+			room := models.NewRoom("pong-free-for-all-0", "pong-free-for-all")
+			err := room.Ping(db)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(db.Execs).To(HaveLen(1))
+		})
+	})
+
 	Describe("Get rooms count by status", func() {
-		It("should return the count of rooms for each status", func() {
+		It("should call the database successfully", func() {
 			_, err := models.GetRoomsCountByStatus(db, "config-name")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(db.Execs).To(HaveLen(1))
