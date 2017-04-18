@@ -5,8 +5,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 var _ = Describe("Namespace", func() {
@@ -31,7 +31,7 @@ var _ = Describe("Namespace", func() {
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			ns, err := clientset.CoreV1().Namespaces().List(v1.ListOptions{})
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ns.Items).To(HaveLen(1))
 			Expect(ns.Items[0].GetName()).To(Equal("pong-free-for-all"))
@@ -80,7 +80,7 @@ var _ = Describe("Namespace", func() {
 			err = namespace.Delete(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			ns, err := clientset.CoreV1().Namespaces().List(v1.ListOptions{})
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ns.Items).To(HaveLen(0))
 

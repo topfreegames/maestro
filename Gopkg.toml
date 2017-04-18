@@ -28,5 +28,9 @@
   name = "gopkg.in/yaml.v2"
 
 [[dependencies]]
+  name = "k8s.io/apimachinery"
+  revision = "75b8dd260ef0469d96d578705a87cffd0e09dab8"
+
+[[dependencies]]
   name = "k8s.io/client-go"
-  version = "v2.0.0"
+  version = "v3.0.0-beta.0"

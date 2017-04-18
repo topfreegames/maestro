@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("Service", func() {
@@ -49,7 +50,7 @@ var _ = Describe("Service", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(servicev1.GetNamespace()).To(Equal(namespace))
-			svcs, err := clientset.CoreV1().Services(namespace).List(v1.ListOptions{})
+			svcs, err := clientset.CoreV1().Services(namespace).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(svcs.Items).To(HaveLen(1))
 			Expect(svcs.Items[0].GetName()).To(Equal(name))

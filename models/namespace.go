@@ -8,6 +8,7 @@
 package models
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -27,7 +28,7 @@ func NewNamespace(name string) *Namespace {
 // Create creates a namespace in Kubernetes
 func (n *Namespace) Create(clientset kubernetes.Interface) error {
 	namespace := &v1.Namespace{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: n.Name,
 		},
 	}
@@ -37,14 +38,14 @@ func (n *Namespace) Create(clientset kubernetes.Interface) error {
 
 // Exists returns true if namespace is already created in Kubernetes
 func (n *Namespace) Exists(clientset kubernetes.Interface) bool {
-	_, err := clientset.CoreV1().Namespaces().Get(n.Name)
+	_, err := clientset.CoreV1().Namespaces().Get(n.Name, metav1.GetOptions{})
 	return err == nil
 }
 
 // Delete returns true if namespace is already created in Kubernetes
 func (n *Namespace) Delete(clientset kubernetes.Interface) error {
 	if n.Exists(clientset) {
-		return clientset.CoreV1().Namespaces().Delete(n.Name, &v1.DeleteOptions{})
+		return clientset.CoreV1().Namespaces().Delete(n.Name, &metav1.DeleteOptions{})
 	}
 	return nil
 }

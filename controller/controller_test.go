@@ -8,8 +8,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
@@ -62,12 +62,12 @@ var _ = Describe("Controller", func() {
 			err := controller.CreateScheduler(logger, db, clientset, yaml1)
 			Expect(err).NotTo(HaveOccurred())
 
-			ns, err := clientset.CoreV1().Namespaces().List(v1.ListOptions{})
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ns.Items).To(HaveLen(1))
 			Expect(ns.Items[0].GetName()).To(Equal("controller-name"))
 
-			svcs, err := clientset.CoreV1().Services("controller-name").List(v1.ListOptions{})
+			svcs, err := clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(svcs.Items).To(HaveLen(3))
 
@@ -76,7 +76,7 @@ var _ = Describe("Controller", func() {
 				Expect(svc.GetName()).To(HaveLen(len("controller-name-") + 8))
 			}
 
-			pods, err := clientset.CoreV1().Pods("controller-name").List(v1.ListOptions{})
+			pods, err := clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(3))
 			for _, pod := range pods.Items {
@@ -98,15 +98,15 @@ var _ = Describe("Controller", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Some error in db"))
 
-			ns, err := clientset.CoreV1().Namespaces().List(v1.ListOptions{})
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ns.Items).To(HaveLen(0))
 
-			svcs, err := clientset.CoreV1().Services("controller-name").List(v1.ListOptions{})
+			svcs, err := clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(svcs.Items).To(HaveLen(0))
 
-			pods, err := clientset.CoreV1().Pods("controller-name").List(v1.ListOptions{})
+			pods, err := clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(0))
 		})
@@ -129,7 +129,7 @@ var _ = Describe("Controller", func() {
 
 			err = controller.DeleteScheduler(logger, db, clientset, yaml1)
 			Expect(err).NotTo(HaveOccurred())
-			ns, err := clientset.CoreV1().Namespaces().List(v1.ListOptions{})
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ns.Items).To(HaveLen(0))
 		})

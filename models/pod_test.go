@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"github.com/topfreegames/maestro/models"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api/v1"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -115,7 +115,7 @@ var _ = Describe("Pod", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(podv1.GetNamespace()).To(Equal(namespace))
-			pods, err := clientset.CoreV1().Pods(namespace).List(v1.ListOptions{})
+			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(1))
 			Expect(pods.Items[0].GetName()).To(Equal(name))
