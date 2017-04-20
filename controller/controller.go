@@ -81,7 +81,7 @@ func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 }
 
 // GetSchedulerScalingInfo returns the scheduler scaling policies and room count by status
-func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, configName string) (*models.AutoScaling, map[string]int, error) {
+func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, configName string) (*models.AutoScaling, *models.RoomsStatusCount, error) {
 	config := models.NewConfig(configName, "", "")
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return config.Load(db)
@@ -90,7 +90,7 @@ func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsR
 		return nil, nil, err
 	}
 	scalingPolicy := config.GetAutoScalingPolicy()
-	var roomCountByStatus map[string]int
+	var roomCountByStatus *models.RoomsStatusCount
 	err = mr.WithSegment(models.SegmentGroupBy, func() error {
 		roomCountByStatus, err = models.GetRoomsCountByStatus(db, config.ID)
 		return err
@@ -99,6 +99,25 @@ func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsR
 		return nil, nil, err
 	}
 	return scalingPolicy, roomCountByStatus, nil
+}
+
+// GetSchedulerStateInfo returns the scheduler state information
+func GetSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, client interfaces.RedisClient, configName string) (*models.SchedulerState, error) {
+	state := models.NewSchedulerState(configName, "", 0, 0)
+	err := mr.WithSegment(models.SegmentHGetAll, func() error {
+		return state.Load(client)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+// SaveSchedulerStateInfo updates the scheduler state information
+func SaveSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, client interfaces.RedisClient, state *models.SchedulerState) error {
+	return mr.WithSegment(models.SegmentHMSet, func() error {
+		return state.Save(client)
+	})
 }
 
 // ScaleUp scales up a scheduler using its config
@@ -119,6 +138,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db inte
 			return err
 		}
 	}
+	// TODO: set SchedulerState.State back to "in-sync"
 	return nil
 }
 

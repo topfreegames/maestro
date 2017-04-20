@@ -17,8 +17,9 @@ import (
 )
 
 var (
-	db  *mocks.PGMock
-	err error
+	db          *mocks.PGMock
+	redisClient *mocks.RedisMock
+	err         error
 )
 
 func TestModels(t *testing.T) {
@@ -28,6 +29,7 @@ func TestModels(t *testing.T) {
 
 var _ = BeforeEach(func() {
 	db = mocks.NewPGMock(1, 1)
+	redisClient = mocks.NewRedisMock("PONG")
 })
 
 var _ = AfterEach(func() {

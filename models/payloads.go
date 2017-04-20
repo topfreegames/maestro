@@ -14,7 +14,7 @@ type RoomPingPayload struct {
 
 // RoomStatusPayload is the struct that defines the payload for the status route
 type RoomStatusPayload struct {
-	Status    string `json:"status" valid:"in(room-ready|match-started|match-ended),required"`
+	Status    string `json:"status" valid:"in(ready|occupied),required"`
 	Timestamp int64  `json:"timestamp" valid:"int64,required"`
 }
 

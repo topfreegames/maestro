@@ -22,10 +22,19 @@ type Room struct {
 	LastPingAt pg.NullTime `db:"last_ping_at"`
 }
 
-// RoomsStatus is the struct that defines a rooms status
-type RoomsStatus struct {
+// RoomStatus is the struct that defines a room status
+type RoomStatus struct {
 	Count  int
 	Status string
+}
+
+// RoomsStatusCount is the struct that defines the rooms status status count
+type RoomsStatusCount struct {
+	Creating    int
+	Occupied    int
+	Ready       int
+	Terminating int
+	Total       int
 }
 
 // NewRoom is the room constructor
@@ -61,8 +70,8 @@ func (r *Room) Ping(db interfaces.DB) error {
 }
 
 // GetRoomsCountByStatus returns the count of rooms for each status
-func GetRoomsCountByStatus(db interfaces.DB, configID string) (map[string]int, error) {
-	roomStatuses := []*RoomsStatus{}
+func GetRoomsCountByStatus(db interfaces.DB, configID string) (*RoomsStatusCount, error) {
+	roomStatuses := []*RoomStatus{}
 	_, err := db.Query(
 		roomStatuses,
 		`SELECT COUNT(*) as count, status FROM rooms WHERE config_id = ? GROUP BY status`,
@@ -71,9 +80,24 @@ func GetRoomsCountByStatus(db interfaces.DB, configID string) (map[string]int, e
 	if err != nil {
 		return nil, err
 	}
-	countByStatus := map[string]int{}
+	countByStatus := &RoomsStatusCount{}
 	for _, rs := range roomStatuses {
-		countByStatus[rs.Status] = rs.Count
+		switch status := rs.Status; status {
+		case "creating":
+			countByStatus.Creating = rs.Count
+			countByStatus.Total += rs.Count
+		case "ready":
+			countByStatus.Ready = rs.Count
+			countByStatus.Total += rs.Count
+		case "occupied":
+			countByStatus.Occupied = rs.Count
+			countByStatus.Total += rs.Count
+		case "terminating":
+			countByStatus.Terminating = rs.Count
+			countByStatus.Total += rs.Count
+		default:
+			countByStatus.Total += rs.Count
+		}
 	}
 	return countByStatus, nil
 }

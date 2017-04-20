@@ -134,9 +134,9 @@ cmd:                       # if the image can run with different arguments you c
       - [x] create GRUs
     - [ ] docs
   - [ ] maestro-watcher
-    - [ ] validate rooms status vs autoscaling policy
-    - [ ] scale cluster
-      - [ ] up
+    - [x] validate rooms status vs autoscaling policy
+    - [x] scale cluster
+      - [x] up
     - [ ] docs
   - [ ] maestro-api
     - [x] scheduler
@@ -322,7 +322,7 @@ In order to properly set their statuses, game rooms must call the following maes
   ```
   {
     timestamp: <seconds since epoch>,
-    status: "room-ready"
+    status: "ready"
   }
   ```
 
@@ -343,7 +343,7 @@ In order to properly set their statuses, game rooms must call the following maes
   ```
   {
     timestamp: <seconds since epoch>,
-    status: "match-started"
+    status: "occupied"
   }
   ```
 
@@ -364,7 +364,7 @@ In order to properly set their statuses, game rooms must call the following maes
   ```
   {
     timestamp: <seconds since epoch>,
-    status: "match-ended"
+    status: "ready"
   }
   ```
 

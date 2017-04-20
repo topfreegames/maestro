@@ -1,4 +1,4 @@
-memo = "0151c06e8c093bd23770551fd4b32de4a2b72b63193af19990b385861ad3dce3"
+memo = "a3647ce364d32fc4a52ddef3b8ff227fc96eac53bf6b5ccfd8894e03efd2fae6"
 
 [[projects]]
   branch = "master"
@@ -107,6 +107,12 @@ memo = "0151c06e8c093bd23770551fd4b32de4a2b72b63193af19990b385861ad3dce3"
   name = "github.com/go-openapi/swag"
   packages = ["."]
   revision = "aa30237cf993e01e1a1e467eead45d1ce5ad155e"
+
+[[projects]]
+  name = "github.com/go-redis/redis"
+  packages = [".","internal","internal/consistenthash","internal/hashtag","internal/pool","internal/proto"]
+  revision = "15786cf82174d65ac7f478c7faa6d2e055dad8b7"
+  version = "v6.2.3"
 
 [[projects]]
   name = "github.com/gogo/protobuf"
@@ -261,8 +267,8 @@ memo = "0151c06e8c093bd23770551fd4b32de4a2b72b63193af19990b385861ad3dce3"
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = [".","interfaces","mocks","util"]
-  revision = "6d2d919d70a2b605f2774cf28337bd14f5d2cd25"
-  version = "v1.1.0"
+  revision = "29848c38b3d49cc870baaca7ef37d351b94b680f"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"

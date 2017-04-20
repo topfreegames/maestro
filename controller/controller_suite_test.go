@@ -22,11 +22,12 @@ import (
 )
 
 var (
-	db     *mocks.PGMock
-	logger *logrus.Logger
-	hook   *test.Hook
-	err    error
-	mr     *models.MixedMetricsReporter
+	db          *mocks.PGMock
+	logger      *logrus.Logger
+	hook        *test.Hook
+	err         error
+	mr          *models.MixedMetricsReporter
+	redisClient *mocks.RedisMock
 )
 
 func TestController(t *testing.T) {
@@ -41,6 +42,7 @@ var _ = BeforeEach(func() {
 	fakeReporter := mtesting.FakeMetricsReporter{}
 	mr := models.NewMixedMetricsReporter()
 	mr.AddReporter(fakeReporter)
+	redisClient = mocks.NewRedisMock("PONG")
 })
 
 var _ = AfterEach(func() {
