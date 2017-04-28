@@ -1,4 +1,4 @@
-memo = "a3647ce364d32fc4a52ddef3b8ff227fc96eac53bf6b5ccfd8894e03efd2fae6"
+memo = "eec42a59a6433724fb9be03c61c169ff1fda989893b007f1b0fe7eb17942a1b6"
 
 [[projects]]
   branch = "master"
@@ -265,10 +265,10 @@ memo = "a3647ce364d32fc4a52ddef3b8ff227fc96eac53bf6b5ccfd8894e03efd2fae6"
   revision = "5d46e70da8c0b6f812e0b170b7a985753b5c63cb"
 
 [[projects]]
+  branch = "master"
   name = "github.com/topfreegames/extensions"
   packages = [".","interfaces","mocks","util"]
-  revision = "29848c38b3d49cc870baaca7ef37d351b94b680f"
-  version = "v1.2.0"
+  revision = "cc632b9e1e44a423231894b65395a5d283731200"
 
 [[projects]]
   branch = "master"

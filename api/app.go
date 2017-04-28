@@ -34,7 +34,6 @@ type App struct {
 	Address          string
 	Config           *viper.Viper
 	DB               interfaces.DB
-	Debug            bool
 	KubernetesClient kubernetes.Interface
 	Logger           logrus.FieldLogger
 	NewRelic         newrelic.Application
@@ -43,11 +42,10 @@ type App struct {
 }
 
 //NewApp ctor
-func NewApp(host string, port int, config *viper.Viper, debug bool, logger logrus.FieldLogger) (*App, error) {
+func NewApp(host string, port int, config *viper.Viper, logger logrus.FieldLogger) (*App, error) {
 	a := &App{
 		Config:  config,
 		Address: fmt.Sprintf("%s:%d", host, port),
-		Debug:   debug,
 		Logger:  logger,
 	}
 	err := a.configureApp()

@@ -30,7 +30,6 @@ func NewSchedulerCreateHandler(a *App) *SchedulerCreateHandler {
 func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
-	mr
 	payload := schedulerPayloadFromCtx(r.Context())
 
 	logger := l.WithFields(logrus.Fields{

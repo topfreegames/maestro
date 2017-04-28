@@ -17,6 +17,7 @@ import (
 )
 
 var config *viper.Viper
+var json bool
 
 // ConfigFile is the configuration file used for running a command
 var ConfigFile string
@@ -33,6 +34,7 @@ var RootCmd = &cobra.Command{
 
 // Execute runs RootCmd to initialize maestro CLI application
 func Execute(cmd *cobra.Command) {
+	InitConfig()
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
@@ -40,6 +42,10 @@ func Execute(cmd *cobra.Command) {
 }
 
 func init() {
+	RootCmd.PersistentFlags().BoolVarP(
+		&json, "json", "j",
+		false, "json output mode")
+
 	RootCmd.PersistentFlags().IntVarP(
 		&Verbose, "verbose", "v", 0,
 		"Verbosity level => v0: Error, v1=Warning, v2=Info, v3=Debug",
