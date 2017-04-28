@@ -10,66 +10,70 @@ package models
 import (
 	"github.com/topfreegames/extensions/interfaces"
 	"github.com/topfreegames/maestro/errors"
+	pg "gopkg.in/pg.v5"
 	yaml "gopkg.in/yaml.v2"
 )
 
 // Config is the struct that defines a config for running maestro
 type Config struct {
-	ID   string
-	Name string `yaml:"name"`
-	Game string `yaml:"game"`
-	YAML string
+	ID        string
+	Name      string `yaml:"name"`
+	Game      string `yaml:"game"`
+	YAML      string
+	CreatedAt pg.NullTime
+	UpdatedAt pg.NullTime
 }
 
 // Port has the port container port and protocol
 type Port struct {
-	ContainerPort int    `yaml:"containerPort"`
-	Protocol      string `yaml:"protocol"`
+	ContainerPort int    `yaml:"containerPort" json:"containerPort" valid:"int64,required"`
+	Protocol      string `yaml:"protocol" json:"protocol" valid:"required"`
+	Name          string `yaml:"name" json:"name" valid:"required"`
 }
 
 // Limits has the CPU and memory resources limits
 type Limits struct {
-	CPU    string `yaml:"cpu"`
-	Memory string `yaml:"memory"`
+	CPU    string `yaml:"cpu" json:"cpu" valid:"int64"`
+	Memory string `yaml:"memory" json:"memory" valid:"int64"`
 }
 
 // EnvVar has name and value of an enviroment variable
 type EnvVar struct {
-	Name  string `yaml:"name"`
-	Value string `yaml:"value"`
+	Name  string `yaml:"name" json:"name"`
+	Value string `yaml:"value" json:"value"`
 }
 
 // ScalingPolicyTrigger has the configuration for a scaling policy trigger
 type ScalingPolicyTrigger struct {
-	Time  int `yaml:"time"`
-	Usage int `yaml:"usage"`
+	Time  int `yaml:"time" json:"time" valid:"int64"`
+	Usage int `yaml:"usage" json:"usage" valid:"int64"`
 }
 
 // ScalingPolicy has the configuration for a scaling policy
 type ScalingPolicy struct {
-	Cooldown int                   `yaml:"cooldown"`
-	Delta    int                   `yaml:"delta"`
-	Trigger  *ScalingPolicyTrigger `yaml:"trigger"`
+	Cooldown int                   `yaml:"cooldown" json:"cooldown" valid:"int64"`
+	Delta    int                   `yaml:"delta" json:"delta" valid:"int64"`
+	Trigger  *ScalingPolicyTrigger `yaml:"trigger" json:"trigger"`
 }
 
 // AutoScaling has the configuration for the GRU's auto scaling
 type AutoScaling struct {
-	Min  int            `yaml:"min"`
-	Up   *ScalingPolicy `yaml:"up"`
-	Down *ScalingPolicy `yaml:"down"`
+	Min  int            `yaml:"min" json:"min" valid:"int64"`
+	Up   *ScalingPolicy `yaml:"up" json:"up" valid:"int64"`
+	Down *ScalingPolicy `yaml:"down" json:"down" valid:"int64"`
 }
 
 // ConfigYAML is the struct for the config yaml
 type ConfigYAML struct {
-	Name            string       `yaml:"name"`
-	Game            string       `yaml:"game"`
-	Image           string       `yaml:"image"`
-	Ports           []*Port      `yaml:"ports"`
-	Limits          *Limits      `yaml:"limits"`
-	ShutdownTimeout int          `yaml:"shutdownTimeout"`
-	AutoScaling     *AutoScaling `yaml:"autoscaling"`
-	Env             []*EnvVar    `yaml:"env"`
-	Cmd             []string     `yaml:"cmd"`
+	Name            string       `yaml:"name" json:"name" valid:"required"`
+	Game            string       `yaml:"game" json:"game" valid:"required"`
+	Image           string       `yaml:"image" json:"image" valid:"required"`
+	Ports           []*Port      `yaml:"ports" json:"ports"`
+	Limits          *Limits      `yaml:"limits" json:"limits"`
+	ShutdownTimeout int          `yaml:"shutdownTimeout" json:"shutdownTimeout" valid:"int64"`
+	AutoScaling     *AutoScaling `yaml:"autoscaling" json:"autoScaling"`
+	Env             []*EnvVar    `yaml:"env" json:"env"`
+	Cmd             []string     `yaml:"cmd" json:"cmd"`
 }
 
 // NewConfig is the config constructor

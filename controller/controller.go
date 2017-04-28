@@ -16,22 +16,18 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/extensions/interfaces"
 	"github.com/topfreegames/maestro/models"
+	yaml "gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
 // CreateScheduler creates a new scheduler from a yaml configuration
-func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, yamlString string) error {
-	var configYAML *models.ConfigYAML
-	var err error
-	err = mr.WithSegment(models.SegmentYaml, func() error {
-		configYAML, err = models.NewConfigYAML(yamlString)
-		return err
-	})
+func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML) error {
+	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
 		return err
 	}
-
+	yamlString := string(configBytes)
 	config := models.NewConfig(configYAML.Name, configYAML.Game, yamlString)
 	err = mr.WithSegment(models.SegmentInsert, func() error {
 		return config.Create(db)

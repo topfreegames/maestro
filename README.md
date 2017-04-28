@@ -386,7 +386,60 @@ In order to properly set their statuses, game rooms must call the following maes
 
   ```
   {
-    "yaml": <string>
+    "name": "room-name",
+    "game": "game-name",
+    "image": "somens/someimage:v123",
+    "ports": [
+      {
+        "containerPort": 5050,
+        "protocol": "UDP",
+        "name": "port1"
+      },
+      {
+        "containerPort": 8888,
+        "protocol": "TCP",
+        "name": "port2"
+      }
+    ],
+    "limits": {
+      "memory": "128Mi",
+      "cpu": "1"
+    },
+    "shutdownTimeout": 180,
+    "autoscaling": {
+      "min": 100,
+      "up": {
+        "delta": 10,
+        "trigger": {
+          "usage": 70,
+          "time": 600
+        },
+        "cooldown": 300
+      },
+      "down": {
+        "delta": 2,
+        "trigger": {
+          "usage": 50,
+          "time": 900
+        },
+        "cooldown": 300
+      }
+    },
+    "env": [
+      {
+        "name": "EXAMPLE_ENV_VAR",
+        "value": "examplevalue"
+      },
+      {
+        "name": "ANOTHER_ENV_VAR",
+        "value": "anothervalue"
+      }
+    ],
+    "cmd": [
+      "./room-binary",
+      "-serverType",
+      "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
+    ]
   }
   ```
 

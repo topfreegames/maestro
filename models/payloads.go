@@ -17,8 +17,3 @@ type RoomStatusPayload struct {
 	Status    string `json:"status" valid:"in(ready|occupied|terminating|terminated),required"`
 	Timestamp int64  `json:"timestamp" valid:"int64,required"`
 }
-
-// SchedulerPayload is the struct that defines the payload for the scheduler routes
-type SchedulerPayload struct {
-	Yaml string `json:"yaml" valid:"required"`
-}

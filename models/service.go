@@ -32,6 +32,7 @@ spec:
     - protocol: {{.Protocol}}
       port: {{.ContainerPort}}
       targetPort: {{.ContainerPort}}
+      name: "{{.Name}}"
     {{end}}
   type: NodePort
 `

@@ -30,7 +30,7 @@ func NewSchedulerCreateHandler(a *App) *SchedulerCreateHandler {
 func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
-	payload := schedulerPayloadFromCtx(r.Context())
+	payload := configYamlFromCtx(r.Context())
 
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
@@ -40,7 +40,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger.Debug("Creating scheduler...")
 
 	err := mr.WithSegment(models.SegmentController, func() error {
-		return controller.CreateScheduler(l, mr, g.App.DB, g.App.KubernetesClient, payload.Yaml)
+		return controller.CreateScheduler(l, mr, g.App.DB, g.App.KubernetesClient, payload)
 	})
 
 	if err != nil {

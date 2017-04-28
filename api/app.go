@@ -78,7 +78,7 @@ func (a *App) getRouter() *mux.Router {
 		NewNewRelicMiddleware(a),
 		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
-		NewValidationMiddleware(func() interface{} { return &models.SchedulerPayload{} }),
+		NewValidationMiddleware(func() interface{} { return &models.ConfigYAML{} }),
 	).ServeHTTP).Methods("POST").Name("schedulerCreate")
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
@@ -89,8 +89,7 @@ func (a *App) getRouter() *mux.Router {
 		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
-		NewValidationMiddleware(func() interface{} { return &models.SchedulerPayload{} }),
-	).ServeHTTP).Methods("POST").Name("schedulerDelete")
+	).ServeHTTP).Methods("DELETE").Name("schedulerDelete")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),

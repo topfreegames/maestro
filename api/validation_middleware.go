@@ -54,12 +54,12 @@ func statusPayloadFromCtx(ctx context.Context) *models.RoomStatusPayload {
 	return payload.(*models.RoomStatusPayload)
 }
 
-func schedulerPayloadFromCtx(ctx context.Context) *models.SchedulerPayload {
+func configYamlFromCtx(ctx context.Context) *models.ConfigYAML {
 	payload := ctx.Value(payloadString)
 	if payload == nil {
 		return nil
 	}
-	return payload.(*models.SchedulerPayload)
+	return payload.(*models.ConfigYAML)
 }
 
 //ServeHTTP method

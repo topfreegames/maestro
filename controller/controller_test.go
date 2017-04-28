@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
@@ -22,8 +23,10 @@ image: controller/controller:v123
 ports:
   - containerPort: 1234
     protocol: UDP
+    name: port1
   - containerPort: 7654
     protocol: TCP
+    name: port2
 limits:
   memory: "66Mi"
   cpu: "2"
@@ -61,7 +64,10 @@ var _ = Describe("Controller", func() {
 
 	Describe("CreateScheduler", func() {
 		It("should succeed", func() {
-			err := controller.CreateScheduler(logger, mr, db, clientset, yaml1)
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			err = controller.CreateScheduler(logger, mr, db, clientset, &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
 
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
@@ -98,7 +104,10 @@ var _ = Describe("Controller", func() {
 
 		It("should rollback if error in db occurs", func() {
 			db = mocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
-			err := controller.CreateScheduler(logger, mr, db, clientset, yaml1)
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			err = controller.CreateScheduler(logger, mr, db, clientset, &configYaml1)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Some error in db"))
 
@@ -119,16 +128,14 @@ var _ = Describe("Controller", func() {
 			// TODO: test it later
 		})
 
-		It("should fail if bad yaml", func() {
-			err := controller.CreateScheduler(logger, mr, db, clientset, "bad-yaml")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cannot unmarshal !!str `bad-yaml` into models.ConfigYAML"))
-		})
 	})
 
 	Describe("DeleteScheduler", func() {
 		It("should succeed", func() {
-			err := controller.CreateScheduler(logger, mr, db, clientset, yaml1)
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			err = controller.CreateScheduler(logger, mr, db, clientset, &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = controller.DeleteScheduler(logger, mr, db, clientset, "controller-name")
@@ -141,7 +148,10 @@ var _ = Describe("Controller", func() {
 
 	Describe("GetSchedulerScalingInfo", func() {
 		It("should succeed", func() {
-			err := controller.CreateScheduler(logger, mr, db, clientset, yaml1)
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			err = controller.CreateScheduler(logger, mr, db, clientset, &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, _, err = controller.GetSchedulerScalingInfo(logger, mr, db, "controller-name")
