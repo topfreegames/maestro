@@ -1,4 +1,4 @@
-memo = "71fbec73982547d90ce686b978040d65a2ac3b3bddcc05e034aa272f06f890b8"
+memo = "d1eae3a274c90008b012d3046c2c75dc3177a0c3e6ac12f22651c9d6cc1ba4c5"
 
 [[projects]]
   branch = "master"
@@ -25,12 +25,6 @@ memo = "71fbec73982547d90ce686b978040d65a2ac3b3bddcc05e034aa272f06f890b8"
   version = "v0.11.5"
 
 [[projects]]
-  name = "github.com/alexcesaro/statsd"
-  packages = ["."]
-  revision = "7fea3f0d2fab1ad973e641e51dba45443a311a90"
-  version = "v2.0.0"
-
-[[projects]]
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
   revision = "7b3beb6df3c42abd3509abfc3bcacc0fbfb7c877"
@@ -41,12 +35,6 @@ memo = "71fbec73982547d90ce686b978040d65a2ac3b3bddcc05e034aa272f06f890b8"
   packages = ["."]
   revision = "a9c833d2837d3b16888d55d5aafa9ffe9afb22b0"
   version = "2017.04.17"
-
-[[projects]]
-  name = "github.com/confluentinc/confluent-kafka-go"
-  packages = ["kafka"]
-  revision = "a9b5c269c66e9a2eb5f195563b2f01e65a84c527"
-  version = "v0.9.4"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -283,10 +271,10 @@ memo = "71fbec73982547d90ce686b978040d65a2ac3b3bddcc05e034aa272f06f890b8"
   revision = "5d46e70da8c0b6f812e0b170b7a985753b5c63cb"
 
 [[projects]]
+  branch = "master"
   name = "github.com/topfreegames/extensions"
-  packages = [".","interfaces","mocks","util"]
-  revision = "cc632b9e1e44a423231894b65395a5d283731200"
-  version = "v1.2.1"
+  packages = ["pg","pg/interfaces","pg/mocks","redis/interfaces"]
+  revision = "ffd71d0fd632829a70809e2f6c674860635c1356"
 
 [[projects]]
   branch = "master"

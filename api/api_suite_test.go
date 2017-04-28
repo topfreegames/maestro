@@ -17,7 +17,7 @@ import (
 
 	"testing"
 
-	"github.com/topfreegames/extensions/mocks"
+	"github.com/topfreegames/extensions/pg/mocks"
 	"github.com/topfreegames/maestro/api"
 	mtesting "github.com/topfreegames/maestro/testing"
 )

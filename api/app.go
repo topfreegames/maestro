@@ -17,8 +17,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions"
-	"github.com/topfreegames/extensions/interfaces"
+	"github.com/topfreegames/extensions/pg"
+	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
@@ -189,7 +189,7 @@ func (a *App) getDB() (interfaces.DB, error) {
 		"operation": "configureDatabase",
 	})
 	l.Debug("Connecting to DB...")
-	client, err := extensions.NewPGClient("extensions.pg", a.Config)
+	client, err := pg.NewClient("extensions.pg", a.Config)
 	if err != nil {
 		l.WithError(err).Error("Connection to database failed.")
 		return nil, err

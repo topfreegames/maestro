@@ -14,7 +14,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
-	"github.com/topfreegames/extensions/interfaces"
+	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/models"
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes"
@@ -22,7 +23,7 @@ import (
 )
 
 // CreateScheduler creates a new scheduler from a yaml configuration
-func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML) error {
+func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML) error {
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
 		return err
@@ -64,7 +65,7 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 }
 
 // DeleteScheduler deletes a scheduler from a yaml configuration
-func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, configName string) error {
+func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, configName string) error {
 	config := models.NewConfig(configName, "", "")
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return config.Load(db)
@@ -77,7 +78,7 @@ func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 }
 
 // GetSchedulerScalingInfo returns the scheduler scaling policies and room count by status
-func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, configName string) (*models.AutoScaling, *models.RoomsStatusCount, error) {
+func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, configName string) (*models.AutoScaling, *models.RoomsStatusCount, error) {
 	config := models.NewConfig(configName, "", "")
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return config.Load(db)
@@ -98,7 +99,7 @@ func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsR
 }
 
 // GetSchedulerStateInfo returns the scheduler state information
-func GetSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, client interfaces.RedisClient, configName string) (*models.SchedulerState, error) {
+func GetSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, client redisinterfaces.RedisClient, configName string) (*models.SchedulerState, error) {
 	state := models.NewSchedulerState(configName, "", 0, 0)
 	err := mr.WithSegment(models.SegmentHGetAll, func() error {
 		return state.Load(client)
@@ -110,14 +111,14 @@ func GetSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 }
 
 // SaveSchedulerStateInfo updates the scheduler state information
-func SaveSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, client interfaces.RedisClient, state *models.SchedulerState) error {
+func SaveSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, client redisinterfaces.RedisClient, state *models.SchedulerState) error {
 	return mr.WithSegment(models.SegmentHMSet, func() error {
 		return state.Save(client)
 	})
 }
 
 // ScaleUp scales up a scheduler using its config
-func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, configName string) error {
+func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, configName string) error {
 	config := models.NewConfig(configName, "", "")
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return config.Load(db)
@@ -138,7 +139,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db inte
 	return nil
 }
 
-func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, config *models.Config, namespace *models.Namespace) error {
+func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, config *models.Config, namespace *models.Namespace) error {
 	err := mr.WithSegment(models.SegmentNamespace, func() error {
 		return namespace.Delete(clientset) // TODO: we're assuming that deleting a namespace gracefully terminates all its pods
 	})
@@ -167,7 +168,7 @@ func buildNodePortEnvVars(ports []v1.ServicePort) []*models.EnvVar {
 	return nodePortEnvVars
 }
 
-func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db interfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML, configID string) error {
+func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML, configID string) error {
 	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
 	room := models.NewRoom(name, configID)

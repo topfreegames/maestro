@@ -15,19 +15,20 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/Sirupsen/logrus/hooks/test"
-	"github.com/topfreegames/extensions/mocks"
+	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/models"
 
 	mtesting "github.com/topfreegames/maestro/testing"
 )
 
 var (
-	db          *mocks.PGMock
+	db          *pgmocks.PGMock
 	logger      *logrus.Logger
 	hook        *test.Hook
 	err         error
 	mr          *models.MixedMetricsReporter
-	redisClient *mocks.RedisMock
+	redisClient *redismocks.RedisMock
 )
 
 func TestController(t *testing.T) {
@@ -36,13 +37,13 @@ func TestController(t *testing.T) {
 }
 
 var _ = BeforeEach(func() {
-	db = mocks.NewPGMock(1, 1)
+	db = pgmocks.NewPGMock(1, 1)
 	logger, hook = test.NewNullLogger()
 	logger.Level = logrus.DebugLevel
 	fakeReporter := mtesting.FakeMetricsReporter{}
 	mr := models.NewMixedMetricsReporter()
 	mr.AddReporter(fakeReporter)
-	redisClient = mocks.NewRedisMock("PONG")
+	redisClient = redismocks.NewRedisMock("PONG")
 })
 
 var _ = AfterEach(func() {

@@ -10,7 +10,7 @@ package models
 import (
 	"strconv"
 
-	"github.com/topfreegames/extensions/interfaces"
+	"github.com/topfreegames/extensions/redis/interfaces"
 )
 
 const stateStr = "state"

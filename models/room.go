@@ -10,7 +10,7 @@ package models
 import (
 	"time"
 
-	"github.com/topfreegames/extensions/interfaces"
+	"github.com/topfreegames/extensions/pg/interfaces"
 	pg "gopkg.in/pg.v5"
 )
 

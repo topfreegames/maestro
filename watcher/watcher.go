@@ -16,7 +16,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/interfaces"
+	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"

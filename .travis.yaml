@@ -1,0 +1,11 @@
+language: go
+go:
+- 1.8
+services:
+- docker
+sudo: true
+install:
+- make setup-ci
+script:
+- make test
+after_success: bash after-success.sh

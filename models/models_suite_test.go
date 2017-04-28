@@ -13,12 +13,13 @@ import (
 
 	"testing"
 
-	"github.com/topfreegames/extensions/mocks"
+	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	redismocks "github.com/topfreegames/extensions/redis/mocks"
 )
 
 var (
-	db          *mocks.PGMock
-	redisClient *mocks.RedisMock
+	db          *pgmocks.PGMock
+	redisClient *redismocks.RedisMock
 	err         error
 )
 
@@ -28,8 +29,8 @@ func TestModels(t *testing.T) {
 }
 
 var _ = BeforeEach(func() {
-	db = mocks.NewPGMock(1, 1)
-	redisClient = mocks.NewRedisMock("PONG")
+	db = pgmocks.NewPGMock(1, 1)
+	redisClient = redismocks.NewRedisMock("PONG")
 })
 
 var _ = AfterEach(func() {

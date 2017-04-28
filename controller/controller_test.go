@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/topfreegames/extensions/mocks"
+	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
 
@@ -103,7 +104,7 @@ var _ = Describe("Controller", func() {
 		})
 
 		It("should rollback if error in db occurs", func() {
-			db = mocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
+			db = pgmocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
@@ -160,7 +161,7 @@ var _ = Describe("Controller", func() {
 		})
 
 		It("should fail if error in db", func() {
-			db = mocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
+			db = pgmocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
 			_, _, err := controller.GetSchedulerScalingInfo(logger, mr, db, "controller-name")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Some error in db"))
@@ -179,7 +180,7 @@ var _ = Describe("Controller", func() {
 		})
 
 		It("should fail if error in redis", func() {
-			redisClient = mocks.NewRedisMock("PONG", fmt.Errorf("Some error in redis"))
+			redisClient = redismocks.NewRedisMock("PONG", fmt.Errorf("Some error in redis"))
 			name := "controller-name"
 			state := "in-sync"
 			lastChangedAt := time.Now().Unix()
@@ -207,7 +208,7 @@ var _ = Describe("Controller", func() {
 		})
 
 		It("should fail if error in redis", func() {
-			redisClient = mocks.NewRedisMock("PONG", fmt.Errorf("Some error in redis"))
+			redisClient = redismocks.NewRedisMock("PONG", fmt.Errorf("Some error in redis"))
 			name := "controller-name"
 			state := "in-sync"
 			lastChangedAt := time.Now().Unix()

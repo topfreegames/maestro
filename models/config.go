@@ -8,7 +8,7 @@
 package models
 
 import (
-	"github.com/topfreegames/extensions/interfaces"
+	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	pg "gopkg.in/pg.v5"
 	yaml "gopkg.in/yaml.v2"
