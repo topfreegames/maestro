@@ -45,7 +45,7 @@ type App struct {
 }
 
 //NewApp ctor
-func NewApp(host string, port int, config *viper.Viper, logger logrus.FieldLogger, incluster bool, kubeconfigPath string) (*App, error) {
+func NewApp(host string, port int, config *viper.Viper, logger logrus.FieldLogger, incluster bool, kubeconfigPath string, dbOrNil interfaces.DB, kubernetesClientOrNil kubernetes.Interface) (*App, error) {
 	a := &App{
 		Config:         config,
 		Address:        fmt.Sprintf("%s:%d", host, port),
@@ -53,7 +53,7 @@ func NewApp(host string, port int, config *viper.Viper, logger logrus.FieldLogge
 		InCluster:      incluster,
 		KubeconfigPath: kubeconfigPath,
 	}
-	err := a.configureApp()
+	err := a.configureApp(dbOrNil, kubernetesClientOrNil)
 	if err != nil {
 		return nil, err
 	}
@@ -117,15 +117,15 @@ func (a *App) getRouter() *mux.Router {
 	return r
 }
 
-func (a *App) configureApp() error {
+func (a *App) configureApp(dbOrNil interfaces.DB, kubernetesClientOrNil kubernetes.Interface) error {
 	a.configureLogger()
 
-	err := a.configureDatabase()
+	err := a.configureDatabase(dbOrNil)
 	if err != nil {
 		return err
 	}
 
-	err = a.configureKubernetesClient()
+	err = a.configureKubernetesClient(kubernetesClientOrNil)
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,11 @@ func (a *App) configureApp() error {
 	return nil
 }
 
-func (a *App) configureKubernetesClient() error {
+func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interface) error {
+	if kubernetesClientOrNil != nil {
+		a.KubernetesClient = kubernetesClientOrNil
+		return nil
+	}
 	var err error
 	l := a.Logger.WithFields(logrus.Fields{
 		"source": "configureKubernetesClient",
@@ -167,7 +171,11 @@ func (a *App) configureKubernetesClient() error {
 	return nil
 }
 
-func (a *App) configureDatabase() error {
+func (a *App) configureDatabase(dbOrNil interfaces.DB) error {
+	if dbOrNil != nil {
+		a.DB = dbOrNil
+		return nil
+	}
 	db, err := a.getDB()
 	if err != nil {
 		return err

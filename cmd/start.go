@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -59,7 +60,7 @@ var startCmd = &cobra.Command{
 
 		cmdL.Info("starting maestro")
 
-		app, err := api.NewApp(bind, port, config, log, incluster, kubeconfig)
+		app, err := api.NewApp(bind, port, config, log, incluster, kubeconfig, nil, nil)
 		if err != nil {
 			cmdL.Fatal(err)
 		}
