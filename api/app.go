@@ -24,6 +24,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	raven "github.com/getsentry/raven-go"
 	newrelic "github.com/newrelic/go-agent"
@@ -39,14 +40,18 @@ type App struct {
 	NewRelic         newrelic.Application
 	Router           *mux.Router
 	Server           *http.Server
+	InCluster        bool
+	KubeconfigPath   string
 }
 
 //NewApp ctor
-func NewApp(host string, port int, config *viper.Viper, logger logrus.FieldLogger) (*App, error) {
+func NewApp(host string, port int, config *viper.Viper, logger logrus.FieldLogger, incluster bool, kubeconfigPath string) (*App, error) {
 	a := &App{
-		Config:  config,
-		Address: fmt.Sprintf("%s:%d", host, port),
-		Logger:  logger,
+		Config:         config,
+		Address:        fmt.Sprintf("%s:%d", host, port),
+		Logger:         logger,
+		InCluster:      incluster,
+		KubeconfigPath: kubeconfigPath,
 	}
 	err := a.configureApp()
 	if err != nil {
@@ -137,7 +142,18 @@ func (a *App) configureApp() error {
 }
 
 func (a *App) configureKubernetesClient() error {
-	config, err := rest.InClusterConfig()
+	var err error
+	l := a.Logger.WithFields(logrus.Fields{
+		"source": "configureKubernetesClient",
+	})
+	var config *rest.Config
+	if a.InCluster {
+		l.Debug("starting with incluster configuration")
+		config, err = rest.InClusterConfig()
+	} else {
+		l.Debug("starting outside kubernetes cluster")
+		config, err = clientcmd.BuildConfigFromFlags("", a.KubeconfigPath)
+	}
 	if err != nil {
 		return err
 	}

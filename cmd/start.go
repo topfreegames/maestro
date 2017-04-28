@@ -15,13 +15,18 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/Sirupsen/logrus"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/api"
 )
 
 var bind string
 var port int
+var incluster bool
+var context string
+var kubeconfig string
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
@@ -54,7 +59,7 @@ var startCmd = &cobra.Command{
 
 		cmdL.Info("starting maestro")
 
-		app, err := api.NewApp(bind, port, config, log)
+		app, err := api.NewApp(bind, port, config, log, incluster, kubeconfig)
 		if err != nil {
 			cmdL.Fatal(err)
 		}
@@ -65,6 +70,13 @@ var startCmd = &cobra.Command{
 }
 
 func init() {
+	startCmd.Flags().BoolVar(&incluster, "incluster", false, "incluster mode (for running on kubernetes)")
+	startCmd.Flags().StringVar(&context, "context", "", "kubeconfig context")
+	home, err := homedir.Dir()
+	if err != nil {
+		panic(err)
+	}
+	startCmd.Flags().StringVar(&kubeconfig, "kubeconfig", fmt.Sprintf("%s/.kube/config", home), "path to the kubeconfig file (not needed if using --incluster)")
 	startCmd.Flags().StringVarP(&bind, "bind", "b", "0.0.0.0", "bind address")
 	startCmd.Flags().IntVarP(&port, "port", "p", 8080, "bind port")
 	RootCmd.AddCommand(startCmd)
