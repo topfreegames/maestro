@@ -196,7 +196,7 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 			Value: configYAML.Name,
 		},
 		&models.EnvVar{
-			Name:  "MAESTRO_ROOM_NAME",
+			Name:  "MAESTRO_ROOM_ID",
 			Value: name,
 		},
 	}

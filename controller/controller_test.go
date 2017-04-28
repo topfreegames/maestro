@@ -86,7 +86,7 @@ var _ = Describe("Controller", func() {
 				Expect(pod.GetName()).To(HaveLen(len("controller-name-") + 8))
 				Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
 				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
-				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_NAME"))
+				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
 				Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
 				Expect(pod.Spec.Containers[0].Env[3].Name).To(Equal("MAESTRO_NODE_PORT_1234_UDP"))
 				Expect(pod.Spec.Containers[0].Env[3].Value).NotTo(BeNil())
