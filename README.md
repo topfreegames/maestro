@@ -66,8 +66,10 @@ image: pong/pong:v123
 ports:
   - containerPort: 5050    # port exposed in the container
     protocol: UDP          # supported protocols are TCP and UDP
+    name: gamebinary       # name identifying the port (must be unique for a config)
   - containerPort: 8888
     protocol: TCP
+    name: websocket
 limits:                    # these will be the resources limits applied to the pods created in kubernetes
   memory: "128Mi"          # they are used to decide how many rooms can run in each node
   cpu: "1"                 # more info: https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-ram-container/

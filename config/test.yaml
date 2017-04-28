@@ -8,3 +8,6 @@ extensions:
     maxRetries: 3
     database: "maestro_test"
     connectionTimeout: 100
+newrelic:
+  app: maestro
+  key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

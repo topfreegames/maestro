@@ -26,7 +26,6 @@ var (
 	app       *api.App
 	config    *viper.Viper
 	db        *mocks.PGMock
-	err       error
 	hook      *test.Hook
 	logger    *logrus.Logger
 	clientset *fake.Clientset
@@ -38,6 +37,7 @@ func TestApi(t *testing.T) {
 }
 
 var _ = BeforeEach(func() {
+	var err error
 	logger, hook = test.NewNullLogger()
 	logger.Level = logrus.DebugLevel
 	clientset = fake.NewSimpleClientset()

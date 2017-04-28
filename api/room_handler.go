@@ -52,7 +52,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusOK, `{"healthy": true}`)
+		Write(w, http.StatusOK, `{"success": true}`)
 		return nil
 	})
 	logger.Debug("Ping successful.")
@@ -96,7 +96,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusOK, `{"healthy": true}`)
+		Write(w, http.StatusOK, `{"success": true}`)
 		return nil
 	})
 	logger.Debug("Performed status update.")

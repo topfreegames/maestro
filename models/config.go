@@ -71,7 +71,7 @@ type ConfigYAML struct {
 	Ports           []*Port      `yaml:"ports" json:"ports"`
 	Limits          *Limits      `yaml:"limits" json:"limits"`
 	ShutdownTimeout int          `yaml:"shutdownTimeout" json:"shutdownTimeout" valid:"int64"`
-	AutoScaling     *AutoScaling `yaml:"autoscaling" json:"autoScaling"`
+	AutoScaling     *AutoScaling `yaml:"autoscaling" json:"autoscaling" valid:"required"`
 	Env             []*EnvVar    `yaml:"env" json:"env"`
 	Cmd             []string     `yaml:"cmd" json:"cmd"`
 }

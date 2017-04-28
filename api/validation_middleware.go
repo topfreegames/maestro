@@ -75,7 +75,7 @@ func (m *ValidationMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		l.WithError(err).Error("Payload could not be decoded.")
 		vErr := errors.NewValidationFailedError(err)
-		WriteBytes(w, http.StatusBadRequest, vErr.Serialize())
+		WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
 		return
 	}
 

@@ -29,7 +29,7 @@ func (e *DatabaseError) Error() string {
 func (e *DatabaseError) Serialize() []byte {
 	g, _ := json.Marshal(map[string]interface{}{
 		"code":        "MAE-001",
-		"error":       "database error",
+		"error":       "DatabaseError",
 		"description": e.SourceError.Error(),
 		"success":     false,
 	})
