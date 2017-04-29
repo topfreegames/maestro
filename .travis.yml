@@ -3,6 +3,11 @@ go:
 - 1.8
 services:
 - docker
+cache:
+  directories:
+    - $GOPATH/src
+    - $GOPATH/pkg
+    - vendor
 sudo: true
 install:
 - make setup-ci
