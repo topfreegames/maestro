@@ -8,6 +8,7 @@
 package models_test
 
 import (
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -19,7 +20,8 @@ import (
 
 var (
 	db          *pgmocks.PGMock
-	redisClient *redismocks.RedisMock
+	redisClient *redismocks.MockRedisClient
+	mockCtrl    *gomock.Controller
 	err         error
 )
 
@@ -30,7 +32,8 @@ func TestModels(t *testing.T) {
 
 var _ = BeforeEach(func() {
 	db = pgmocks.NewPGMock(1, 1)
-	redisClient = redismocks.NewRedisMock("PONG")
+	mockCtrl = gomock.NewController(GinkgoT())
+	redisClient = redismocks.NewMockRedisClient(mockCtrl)
 })
 
 var _ = AfterEach(func() {

@@ -1,4 +1,4 @@
-memo = "0d2f4beb9fe4504efe69197ed89f3f953e4bce01b9c35b5fe0910239f0765ca0"
+memo = "3564bb46a1853c5677e03357c59b4b34b7b92e5b2c48ae39c71faf053b7793c3"
 
 [[projects]]
   branch = "master"
@@ -113,6 +113,12 @@ memo = "0d2f4beb9fe4504efe69197ed89f3f953e4bce01b9c35b5fe0910239f0765ca0"
   name = "github.com/golang/glog"
   packages = ["."]
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/golang/mock"
+  packages = ["gomock"]
+  revision = "bd3c8e81be01eef76d4b503f5e687d2d1354d2d9"
 
 [[projects]]
   branch = "master"
@@ -273,8 +279,8 @@ memo = "0d2f4beb9fe4504efe69197ed89f3f953e4bce01b9c35b5fe0910239f0765ca0"
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = ["pg","pg/interfaces","pg/mocks","redis/interfaces","redis/mocks"]
-  revision = "ffd71d0fd632829a70809e2f6c674860635c1356"
-  version = "v2.0.1"
+  revision = "b6670618482fee2e320b92c8aaabaa18d805ff20"
+  version = "v2.1.0"
 
 [[projects]]
   branch = "master"

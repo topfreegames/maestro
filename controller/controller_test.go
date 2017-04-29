@@ -2,10 +2,11 @@ package controller_test
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/go-redis/redis"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
-	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
 
@@ -174,17 +175,26 @@ var _ = Describe("Controller", func() {
 			state := "in-sync"
 			lastChangedAt := time.Now().Unix()
 			lastScaleAt := time.Now().Unix()
+			redisClient.EXPECT().HMSet(name, map[string]interface{}{
+				"state":         state,
+				"lastChangedAt": lastChangedAt,
+				"lastScaleOpAt": lastScaleAt,
+			}).Return(&redis.StatusCmd{})
 			schedulerState := models.NewSchedulerState(name, state, lastChangedAt, lastScaleAt)
 			err = controller.SaveSchedulerStateInfo(logger, mr, redisClient, schedulerState)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should fail if error in redis", func() {
-			redisClient = redismocks.NewRedisMock("PONG", fmt.Errorf("Some error in redis"))
 			name := "controller-name"
 			state := "in-sync"
 			lastChangedAt := time.Now().Unix()
 			lastScaleAt := time.Now().Unix()
+			redisClient.EXPECT().HMSet(name, map[string]interface{}{
+				"state":         "in-sync",
+				"lastChangedAt": lastChangedAt,
+				"lastScaleOpAt": lastScaleAt,
+			}).Return(redis.NewStatusResult("", fmt.Errorf("Some error in redis")))
 			schedulerState := models.NewSchedulerState(name, state, lastChangedAt, lastScaleAt)
 			err = controller.SaveSchedulerStateInfo(logger, mr, redisClient, schedulerState)
 			Expect(err).To(HaveOccurred())
@@ -198,21 +208,35 @@ var _ = Describe("Controller", func() {
 			state := "in-sync"
 			lastChangedAt := time.Now().Unix()
 			lastScaleAt := time.Now().Unix()
+			redisClient.EXPECT().HMSet(name, map[string]interface{}{
+				"state":         "in-sync",
+				"lastChangedAt": lastChangedAt,
+				"lastScaleOpAt": lastScaleAt,
+			}).Return(redis.NewStatusResult("OK", nil))
 			schedulerState := models.NewSchedulerState(name, state, lastChangedAt, lastScaleAt)
 			err = controller.SaveSchedulerStateInfo(logger, mr, redisClient, schedulerState)
 			Expect(err).NotTo(HaveOccurred())
 
+			redisClient.EXPECT().HGetAll(name).Return(redis.NewStringStringMapResult(map[string]string{
+				"state":         state,
+				"lastChangedAt": strconv.Itoa(int(lastChangedAt)),
+				"lastScaleOpAt": strconv.Itoa(int(lastScaleAt)),
+			}, nil))
 			retrievedSchedulerState, err := controller.GetSchedulerStateInfo(logger, mr, redisClient, name)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(retrievedSchedulerState).To(Equal(schedulerState))
 		})
 
 		It("should fail if error in redis", func() {
-			redisClient = redismocks.NewRedisMock("PONG", fmt.Errorf("Some error in redis"))
 			name := "controller-name"
 			state := "in-sync"
 			lastChangedAt := time.Now().Unix()
 			lastScaleAt := time.Now().Unix()
+			redisClient.EXPECT().HMSet(name, map[string]interface{}{
+				"state":         "in-sync",
+				"lastChangedAt": lastChangedAt,
+				"lastScaleOpAt": lastScaleAt,
+			}).Return(redis.NewStatusResult("", fmt.Errorf("Some error in redis")))
 			schedulerState := models.NewSchedulerState(name, state, lastChangedAt, lastScaleAt)
 			err = controller.SaveSchedulerStateInfo(logger, mr, redisClient, schedulerState)
 			Expect(err).To(HaveOccurred())

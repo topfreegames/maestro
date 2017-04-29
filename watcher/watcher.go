@@ -32,6 +32,8 @@ type Watcher struct {
 	Logger              logrus.FieldLogger
 	MetricsReporter     *models.MixedMetricsReporter
 	RedisClient         interfaces.RedisClient
+	LockKey             string
+	LockTimeoutMS       int
 	run                 bool
 	SchedulerConfigName string
 }
@@ -54,6 +56,7 @@ func NewWatcher(
 		SchedulerConfigName: configName,
 	}
 	w.loadConfigurationDefaults()
+	w.configure()
 	w.AutoScalingPeriod = w.Config.GetInt("autoScalingPeriod")
 	w.configureLogger()
 	return w
@@ -61,6 +64,13 @@ func NewWatcher(
 
 func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("autoScalingPeriod", 10)
+	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
+	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
+}
+
+func (w *Watcher) configure() {
+	w.LockKey = w.Config.GetString("watcher.lockKey")
+	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
 }
 
 func (w *Watcher) configureLogger() {
@@ -81,8 +91,9 @@ func (w *Watcher) Start() {
 	for w.run == true {
 		select {
 		case <-ticker.C:
-			// TODO: get a lock so it can be safe
+			lock, err := w.RedisClient.EnterCriticalSection(w.RedisClient.Client(), w.LockKey, w.LockTimeoutMS, 0, 0)
 			w.AutoScale()
+			w.RedisClient.LeaveCriticalSection(lock)
 		case sig := <-sigchan:
 			w.Logger.Warnf("caught signal %v: terminating\n", sig)
 			w.run = false
@@ -160,7 +171,6 @@ func (w *Watcher) checkState(
 			state.LastChangedAt = time.Now().Unix()
 			return false, false, true
 		}
-		// TODO: should we check any scaling op or just scale up?
 		if time.Now().Unix()-state.LastScaleOpAt > int64(autoScalingInfo.Up.Cooldown) &&
 			time.Now().Unix()-state.LastChangedAt > int64(autoScalingInfo.Up.Trigger.Time) {
 			return true, false, false
@@ -174,7 +184,6 @@ func (w *Watcher) checkState(
 			state.LastChangedAt = time.Now().Unix()
 			return false, false, true
 		}
-		// TODO: should we check any scaling op or just scale down?
 		if time.Now().Unix()-state.LastScaleOpAt > int64(autoScalingInfo.Down.Cooldown) &&
 			time.Now().Unix()-state.LastChangedAt > int64(autoScalingInfo.Down.Trigger.Time) {
 			return false, true, false

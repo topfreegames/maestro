@@ -73,7 +73,7 @@
 
 [[dependencies]]
   name = "github.com/topfreegames/extensions"
-  version = "v2.0.1"
+  version = "v2.1.0"
 
 [[dependencies]]
   branch = "v2"

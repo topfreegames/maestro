@@ -8,6 +8,7 @@
 package controller_test
 
 import (
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -28,7 +29,8 @@ var (
 	hook        *test.Hook
 	err         error
 	mr          *models.MixedMetricsReporter
-	redisClient *redismocks.RedisMock
+	redisClient *redismocks.MockRedisClient
+	mockCtrl    *gomock.Controller
 )
 
 func TestController(t *testing.T) {
@@ -43,9 +45,11 @@ var _ = BeforeEach(func() {
 	fakeReporter := mtesting.FakeMetricsReporter{}
 	mr := models.NewMixedMetricsReporter()
 	mr.AddReporter(fakeReporter)
-	redisClient = redismocks.NewRedisMock("PONG")
+	mockCtrl = gomock.NewController(GinkgoT())
+	redisClient = redismocks.NewMockRedisClient(mockCtrl)
 })
 
 var _ = AfterEach(func() {
+	mockCtrl.Finish()
 	defer db.Close()
 })

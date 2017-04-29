@@ -8,3 +8,6 @@ extensions:
     maxRetries: 3
     database: "maestro"
     connectionTimeout: 100
+watcher:
+  lockKey: "maestro-lock-key"
+  lockTimeoutMs: 180000 
