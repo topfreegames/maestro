@@ -1,4 +1,4 @@
-memo = "3564bb46a1853c5677e03357c59b4b34b7b92e5b2c48ae39c71faf053b7793c3"
+memo = "ea1b79beaa90f171617465714a34cbfeed2aebbe23b17b19746221eb1a93d1b4"
 
 [[projects]]
   branch = "master"
@@ -29,6 +29,12 @@ memo = "3564bb46a1853c5677e03357c59b4b34b7b92e5b2c48ae39c71faf053b7793c3"
   packages = ["."]
   revision = "7b3beb6df3c42abd3509abfc3bcacc0fbfb7c877"
   version = "v5"
+
+[[projects]]
+  name = "github.com/bsm/redis-lock"
+  packages = ["."]
+  revision = "0a3c01f764b4864e340afce6ffa26c97da6927bb"
+  version = "v6.0.0"
 
 [[projects]]
   name = "github.com/certifi/gocertifi"
@@ -278,7 +284,7 @@ memo = "3564bb46a1853c5677e03357c59b4b34b7b92e5b2c48ae39c71faf053b7793c3"
 
 [[projects]]
   name = "github.com/topfreegames/extensions"
-  packages = ["pg","pg/interfaces","pg/mocks","redis/interfaces","redis/mocks"]
+  packages = ["pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
   revision = "b6670618482fee2e320b92c8aaabaa18d805ff20"
   version = "v2.1.0"
 

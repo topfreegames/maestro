@@ -16,7 +16,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/pg/interfaces"
+	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	redis "github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
@@ -27,11 +28,11 @@ import (
 type Watcher struct {
 	AutoScalingPeriod   int
 	Config              *viper.Viper
-	DB                  interfaces.DB
+	DB                  pginterfaces.DB
 	KubernetesClient    kubernetes.Interface
 	Logger              logrus.FieldLogger
 	MetricsReporter     *models.MixedMetricsReporter
-	RedisClient         interfaces.RedisClient
+	RedisClient         *redis.Client
 	LockKey             string
 	LockTimeoutMS       int
 	run                 bool
@@ -43,7 +44,8 @@ func NewWatcher(
 	config *viper.Viper,
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
-	db interfaces.DB,
+	db pginterfaces.DB,
+	redisClient *redis.Client,
 	clientset kubernetes.Interface,
 	configName string,
 ) *Watcher {
@@ -51,6 +53,7 @@ func NewWatcher(
 		Config:              config,
 		Logger:              logger,
 		DB:                  db,
+		RedisClient:         redisClient,
 		KubernetesClient:    clientset,
 		MetricsReporter:     mr,
 		SchedulerConfigName: configName,
@@ -82,18 +85,31 @@ func (w *Watcher) configureLogger() {
 
 // Start starts the watcher
 func (w *Watcher) Start() {
+	l := w.Logger.WithFields(logrus.Fields{
+		"source":  "maestro-watcher",
+		"version": metadata.Version,
+	})
 	w.run = true
 	sigchan := make(chan os.Signal)
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	ticker := time.NewTicker(time.Duration(w.AutoScalingPeriod) * time.Second)
 
+	// TODO better use that buckets algorithm?
 	for w.run == true {
 		select {
 		case <-ticker.C:
-			lock, err := w.RedisClient.EnterCriticalSection(w.RedisClient.Client(), w.LockKey, w.LockTimeoutMS, 0, 0)
-			w.AutoScale()
-			w.RedisClient.LeaveCriticalSection(lock)
+			lock, err := w.RedisClient.EnterCriticalSection(w.RedisClient.Client, w.LockKey, time.Duration(w.LockTimeoutMS)*time.Millisecond, 0, 0)
+			if lock == nil || err != nil {
+				if lock == nil {
+					l.Warn("unnable to get watcher lock, maybe some other process has it...")
+				} else if err != nil {
+					l.Errorf("error getting watcher lock: %s", err.Error())
+				}
+			} else if lock.IsLocked() {
+				w.AutoScale()
+				w.RedisClient.LeaveCriticalSection(lock)
+			}
 		case sig := <-sigchan:
 			w.Logger.Warnf("caught signal %v: terminating\n", sig)
 			w.run = false
@@ -123,7 +139,7 @@ func (w *Watcher) AutoScale() {
 	state, err := controller.GetSchedulerStateInfo(
 		logger,
 		w.MetricsReporter,
-		w.RedisClient,
+		w.RedisClient.Client,
 		w.SchedulerConfigName,
 	)
 	if err != nil {
@@ -142,7 +158,7 @@ func (w *Watcher) AutoScale() {
 		state,
 	)
 	if changedState {
-		err = controller.SaveSchedulerStateInfo(logger, w.MetricsReporter, w.RedisClient, state)
+		err = controller.SaveSchedulerStateInfo(logger, w.MetricsReporter, w.RedisClient.Client, state)
 		if err != nil {
 			logger.WithError(err).Error("Failed to save scheduler state info.")
 		}
