@@ -102,7 +102,7 @@ var _ = Describe("Controller", func() {
 				Expect(pod.Spec.Containers[0].Env[4].Name).To(Equal("MAESTRO_NODE_PORT_7654_TCP"))
 				Expect(pod.Spec.Containers[0].Env[4].Value).NotTo(BeNil())
 			}
-			Expect(db.Execs).To(HaveLen(4)) // config + 3 pods creation
+			Expect(db.Execs).To(HaveLen(4)) // scheduler + 3 pods creation
 		})
 
 		It("should rollback if error in db occurs", func() {

@@ -16,10 +16,10 @@ import (
 
 // Room is the struct that defines a room in maestro
 type Room struct {
-	ID         string
-	ConfigName string
-	Status     string
-	LastPingAt int64
+	ID            string
+	SchedulerName string
+	Status        string
+	LastPingAt    int64
 }
 
 // RoomsStatusCount is the struct that defines the rooms status status count
@@ -36,23 +36,23 @@ func (c *RoomsStatusCount) Total() int64 {
 }
 
 // NewRoom is the room constructor
-func NewRoom(id, configName string) *Room {
+func NewRoom(id, schedulerName string) *Room {
 	return &Room{
-		ID:         id,
-		ConfigName: configName,
-		Status:     "creating",
-		LastPingAt: 0,
+		ID:            id,
+		SchedulerName: schedulerName,
+		Status:        "creating",
+		LastPingAt:    0,
 	}
 }
 
 // GetRoomRedisKey gets the key that will keep the room state in redis
 func (r *Room) GetRoomRedisKey() string {
-	return fmt.Sprintf("scheduler:%s:rooms:%s", r.ConfigName, r.ID)
+	return fmt.Sprintf("scheduler:%s:rooms:%s", r.SchedulerName, r.ID)
 }
 
 // GetRoomStatusSetRedisKey gets the key for the set that will keep rooms in a determined state in redis
-func GetRoomStatusSetRedisKey(configName, status string) string {
-	return fmt.Sprintf("scheduler:%s:status:%s", configName, status)
+func GetRoomStatusSetRedisKey(schedulerName, status string) string {
+	return fmt.Sprintf("scheduler:%s:status:%s", schedulerName, status)
 }
 
 // Create creates a room in and update redis
@@ -62,14 +62,14 @@ func (r *Room) Create(redisClient interfaces.RedisClient) error {
 		"status":   r.Status,
 		"lastPing": r.LastPingAt,
 	})
-	pipe.SAdd(GetRoomStatusSetRedisKey(r.ConfigName, r.Status), r.GetRoomRedisKey())
+	pipe.SAdd(GetRoomStatusSetRedisKey(r.SchedulerName, r.Status), r.GetRoomRedisKey())
 	_, err := pipe.Exec()
 	return err
 }
 
 func (r *Room) remove(redisClient interfaces.RedisClient) error {
 	pipe := redisClient.TxPipeline()
-	pipe.SRem(GetRoomStatusSetRedisKey(r.ConfigName, "terminating"), r.GetRoomRedisKey())
+	pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, "terminating"), r.GetRoomRedisKey())
 	pipe.Del(r.GetRoomRedisKey())
 	_, err := pipe.Exec()
 	return err
@@ -86,9 +86,9 @@ func (r *Room) SetStatus(redisClient interfaces.RedisClient, lastStatus string, 
 		"status": r.Status,
 	})
 	if len(lastStatus) > 0 {
-		pipe.SRem(GetRoomStatusSetRedisKey(r.ConfigName, lastStatus), r.GetRoomRedisKey())
+		pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, lastStatus), r.GetRoomRedisKey())
 	}
-	pipe.SAdd(GetRoomStatusSetRedisKey(r.ConfigName, r.Status), r.GetRoomRedisKey())
+	pipe.SAdd(GetRoomStatusSetRedisKey(r.SchedulerName, r.Status), r.GetRoomRedisKey())
 	_, err := pipe.Exec()
 	return err
 }
@@ -105,12 +105,12 @@ func (r *Room) Ping(redisClient interfaces.RedisClient, status string) error {
 }
 
 // GetRoomsCountByStatus returns the count of rooms for each status
-func GetRoomsCountByStatus(redisClient interfaces.RedisClient, configName string) (*RoomsStatusCount, error) {
+func GetRoomsCountByStatus(redisClient interfaces.RedisClient, schedulerName string) (*RoomsStatusCount, error) {
 	pipe := redisClient.TxPipeline()
-	sCreating := pipe.SCard(GetRoomStatusSetRedisKey(configName, "creating"))
-	sReady := pipe.SCard(GetRoomStatusSetRedisKey(configName, "ready"))
-	sOccupied := pipe.SCard(GetRoomStatusSetRedisKey(configName, "occupied"))
-	sTerminating := pipe.SCard(GetRoomStatusSetRedisKey(configName, "terminating"))
+	sCreating := pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, "creating"))
+	sReady := pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, "ready"))
+	sOccupied := pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, "occupied"))
+	sTerminating := pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, "terminating"))
 	_, err := pipe.Exec()
 	if err != nil {
 		return nil, err

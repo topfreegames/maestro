@@ -100,7 +100,7 @@ var _ = Describe("Scheduler Handler", func() {
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(201))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
-				Expect(db.Execs).To(HaveLen(101)) // 1 (config) + 100 (rooms)
+				Expect(db.Execs).To(HaveLen(101)) // 1 (scheduler) + 100 (rooms)
 			})
 		})
 

@@ -15,5 +15,5 @@ type RoomParams struct {
 
 // SchedulerParams is the struct that defines the params for scheduler routes
 type SchedulerParams struct {
-	ConfigName string `json:"schedulerName" valid:"required"`
+	SchedulerName string `json:"schedulerName" valid:"required"`
 }

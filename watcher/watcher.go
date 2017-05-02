@@ -26,17 +26,17 @@ import (
 
 // Watcher struct for watcher
 type Watcher struct {
-	AutoScalingPeriod   int
-	Config              *viper.Viper
-	DB                  pginterfaces.DB
-	KubernetesClient    kubernetes.Interface
-	Logger              logrus.FieldLogger
-	MetricsReporter     *models.MixedMetricsReporter
-	RedisClient         *redis.Client
-	LockKey             string
-	LockTimeoutMS       int
-	run                 bool
-	SchedulerConfigName string
+	AutoScalingPeriod int
+	Config            *viper.Viper
+	DB                pginterfaces.DB
+	KubernetesClient  kubernetes.Interface
+	Logger            logrus.FieldLogger
+	MetricsReporter   *models.MixedMetricsReporter
+	RedisClient       *redis.Client
+	LockKey           string
+	LockTimeoutMS     int
+	run               bool
+	SchedulerName     string
 }
 
 // NewWatcher is the watcher constructor
@@ -47,16 +47,16 @@ func NewWatcher(
 	db pginterfaces.DB,
 	redisClient *redis.Client,
 	clientset kubernetes.Interface,
-	configName string,
+	schedulerName string,
 ) *Watcher {
 	w := &Watcher{
-		Config:              config,
-		Logger:              logger,
-		DB:                  db,
-		RedisClient:         redisClient,
-		KubernetesClient:    clientset,
-		MetricsReporter:     mr,
-		SchedulerConfigName: configName,
+		Config:           config,
+		Logger:           logger,
+		DB:               db,
+		RedisClient:      redisClient,
+		KubernetesClient: clientset,
+		MetricsReporter:  mr,
+		SchedulerName:    schedulerName,
 	}
 	w.loadConfigurationDefaults()
 	w.configure()
@@ -130,7 +130,7 @@ func (w *Watcher) AutoScale() {
 		logger,
 		w.MetricsReporter,
 		w.DB,
-		w.SchedulerConfigName,
+		w.SchedulerName,
 	)
 	if err != nil {
 		logger.WithError(err).Error("Failed to get scheduler scaling info.")
@@ -140,7 +140,7 @@ func (w *Watcher) AutoScale() {
 		logger,
 		w.MetricsReporter,
 		w.RedisClient.Client,
-		w.SchedulerConfigName,
+		w.SchedulerName,
 	)
 	if err != nil {
 		logger.WithError(err).Error("Failed to get scheduler state info.")
@@ -165,7 +165,7 @@ func (w *Watcher) AutoScale() {
 	}
 	if shouldScaleUp {
 		l.Info("Scheduler is subdimensioned, scaling up. ")
-		controller.ScaleUp(logger, w.MetricsReporter, w.DB, w.KubernetesClient, w.SchedulerConfigName)
+		controller.ScaleUp(logger, w.MetricsReporter, w.DB, w.KubernetesClient, w.SchedulerName)
 	} else if shouldScaleDown {
 		l.Warn("Scheduler is overdimensioned, should scale down.")
 	} else {

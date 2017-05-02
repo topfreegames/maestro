@@ -80,7 +80,7 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger.Debug("Deleting scheduler...")
 
 	err := mr.WithSegment(models.SegmentController, func() error {
-		return controller.DeleteScheduler(l, mr, g.App.DB, g.App.KubernetesClient, params.ConfigName)
+		return controller.DeleteScheduler(l, mr, g.App.DB, g.App.KubernetesClient, params.SchedulerName)
 	})
 
 	if err != nil {

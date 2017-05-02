@@ -7,7 +7,7 @@
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE configs (
+CREATE TABLE schedulers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name varchar(255) NOT NULL,
     game varchar(255) NOT NULL,
@@ -16,4 +16,4 @@ CREATE TABLE configs (
     updated_at timestamp WITH TIME ZONE NULL
 );
 
-CREATE UNIQUE INDEX configs_name_unique ON configs (name);
+CREATE UNIQUE INDEX schedulers_name_unique ON schedulers (name);

@@ -72,10 +72,6 @@
   name = "github.com/spf13/viper"
 
 [[dependencies]]
-  name = "github.com/topfreegames/extensions"
-  version = "v2.2.1"
-
-[[dependencies]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
 
