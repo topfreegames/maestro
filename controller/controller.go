@@ -8,9 +8,11 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
@@ -18,12 +20,15 @@ import (
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/models"
 	yaml "gopkg.in/yaml.v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
 // CreateScheduler creates a new scheduler from a yaml configuration
-func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML) error {
+func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configYAML *models.ConfigYAML) error {
+	// TODO only return when cluster is ready
+	// TODO on case of error rollback everything
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
 		return err
@@ -51,17 +56,10 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 	}
 
 	// TODO: optimize creation (in parallel?)
-	for i := 0; i < configYAML.AutoScaling.Min; i++ {
-		err := createServiceAndPod(logger, mr, db, clientset, configYAML, config.ID)
-		if err != nil {
-			deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, config, namespace)
-			if deleteErr != nil {
-				return deleteErr
-			}
-			return err
-		}
-	}
-	return nil
+	// TODO nao esta removendo do banco
+	// TODO pegar timeout da config
+	err = ScaleUp(logger, mr, db, redisClient, clientset, config.Name, configYAML.AutoScaling.Min, 300)
+	return err
 }
 
 // DeleteScheduler deletes a scheduler from a yaml configuration
@@ -78,7 +76,7 @@ func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 }
 
 // GetSchedulerScalingInfo returns the scheduler scaling policies and room count by status
-func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, configName string) (*models.AutoScaling, *models.RoomsStatusCount, error) {
+func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, client redisinterfaces.RedisClient, configName string) (*models.AutoScaling, *models.RoomsStatusCount, error) {
 	config := models.NewConfig(configName, "", "")
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return config.Load(db)
@@ -89,7 +87,7 @@ func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsR
 	scalingPolicy := config.GetAutoScalingPolicy()
 	var roomCountByStatus *models.RoomsStatusCount
 	err = mr.WithSegment(models.SegmentGroupBy, func() error {
-		roomCountByStatus, err = models.GetRoomsCountByStatus(db, config.ID)
+		roomCountByStatus, err = models.GetRoomsCountByStatus(client, config.Name)
 		return err
 	})
 	if err != nil {
@@ -118,7 +116,13 @@ func SaveSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsRe
 }
 
 // ScaleUp scales up a scheduler using its config
-func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, configName string) error {
+func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configName string, amount, timeoutSec int) error {
+	l := logger.WithFields(logrus.Fields{
+		"source":    "scaleUp",
+		"scheduler": configName,
+		"amount":    amount,
+	})
+	l.Info("scaling scheduler up")
 	config := models.NewConfig(configName, "", "")
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return config.Load(db)
@@ -128,12 +132,42 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 	}
 	configYAML, _ := models.NewConfigYAML(config.YAML)
 
-	// TODO: optimize creation (in parallel?)
-	for i := 0; i < configYAML.AutoScaling.Up.Delta; i++ {
-		err := createServiceAndPod(logger, mr, db, clientset, configYAML, config.ID)
+	timeout := make(chan bool, 1)
+	pods := make([]string, amount)
+	go func() {
+		time.Sleep(time.Duration(timeoutSec) * time.Second)
+		timeout <- true
+	}()
+	for i := 0; i < amount; i++ {
+		podName, err := createServiceAndPod(l, mr, redisClient, clientset, configYAML, config.Name)
 		if err != nil {
-			return err
+			//TODO logica quando da erro
+			l.WithError(err).Error("scale up error")
 		}
+		pods[i] = podName
+	}
+	select {
+	case <-timeout:
+		return errors.New("timeout scaling up scheduler")
+	default:
+		exit := true
+		for i := 0; i < amount; i++ {
+			pod, err := clientset.CoreV1().Pods(config.Name).Get(pods[i], metav1.GetOptions{})
+			if err != nil {
+				l.WithError(err).Error("scale up pod error")
+			}
+			for _, containerStatus := range pod.Status.ContainerStatuses {
+				if !containerStatus.Ready {
+					exit = false
+				}
+			}
+			if exit {
+				l.Info("finished scaling up scheduler")
+				break
+			}
+		}
+		l.Debug("scaling up scheduler...")
+		time.Sleep(time.Duration(1) * time.Second)
 	}
 	// TODO: set SchedulerState.State back to "in-sync"
 	return nil
@@ -168,15 +202,15 @@ func buildNodePortEnvVars(ports []v1.ServicePort) []*models.EnvVar {
 	return nodePortEnvVars
 }
 
-func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, configYAML *models.ConfigYAML, configID string) error {
+func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configYAML *models.ConfigYAML, configName string) (string, error) {
 	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
-	room := models.NewRoom(name, configID)
+	room := models.NewRoom(name, configName)
 	err := mr.WithSegment(models.SegmentInsert, func() error {
-		return room.Create(db)
+		return room.Create(redisClient)
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	service := models.NewService(name, configYAML.Name, configYAML.Ports)
 	var kubeService *v1.Service
@@ -185,7 +219,7 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 		return err
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	namesEnvVars := []*models.EnvVar{
 		&models.EnvVar{
@@ -220,12 +254,12 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 		return err
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	nodeName := kubePod.Spec.NodeName
 	logger.WithFields(logrus.Fields{
 		"node": nodeName,
 		"name": name,
 	}).Info("Created GRU (service and pod) successfully.")
-	return nil
+	return name, nil
 }

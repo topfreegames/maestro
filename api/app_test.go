@@ -16,7 +16,7 @@ import (
 var _ = Describe("App", func() {
 	Describe("NewApp", func() {
 		It("should return new app", func() {
-			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", db, clientset)
+			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", db, mockRedisClient, clientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(application).NotTo(BeNil())
 			Expect(application.Address).NotTo(Equal(""))
@@ -33,7 +33,7 @@ var _ = Describe("App", func() {
 
 		It("should fail if some error occured", func() {
 			config.Set("newrelic.key", 12345)
-			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", db, clientset)
+			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", db, mockRedisClient, clientset)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("license length is not 40"))
 			Expect(application).To(BeNil())
@@ -41,7 +41,7 @@ var _ = Describe("App", func() {
 
 		It("should not fail if no newrelic key is provided", func() {
 			config.Set("newrelic.key", "")
-			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", db, clientset)
+			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", db, mockRedisClient, clientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(application).NotTo(BeNil())
 		})

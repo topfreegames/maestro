@@ -69,7 +69,8 @@ var _ = Describe("Controller", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
-			err = controller.CreateScheduler(logger, mr, db, clientset, &configYaml1)
+			mockRedisClient.EXPECT().TxPipeline()
+			err = controller.CreateScheduler(logger, mr, db, mockRedisClient, clientset, &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
 
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
@@ -109,7 +110,7 @@ var _ = Describe("Controller", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
-			err = controller.CreateScheduler(logger, mr, db, clientset, &configYaml1)
+			err = controller.CreateScheduler(logger, mr, db, mockRedisClient, clientset, &configYaml1)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Some error in db"))
 
@@ -137,7 +138,8 @@ var _ = Describe("Controller", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
-			err = controller.CreateScheduler(logger, mr, db, clientset, &configYaml1)
+			mockRedisClient.EXPECT().TxPipeline()
+			err = controller.CreateScheduler(logger, mr, db, mockRedisClient, clientset, &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = controller.DeleteScheduler(logger, mr, db, clientset, "controller-name")
@@ -153,17 +155,18 @@ var _ = Describe("Controller", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
-			err = controller.CreateScheduler(logger, mr, db, clientset, &configYaml1)
+			mockRedisClient.EXPECT().TxPipeline()
+			err = controller.CreateScheduler(logger, mr, db, mockRedisClient, clientset, &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, _, err = controller.GetSchedulerScalingInfo(logger, mr, db, "controller-name")
+			_, _, err = controller.GetSchedulerScalingInfo(logger, mr, db, mockRedisClient, "controller-name")
 			Expect(err).NotTo(HaveOccurred())
 			// TODO: test returned info
 		})
 
 		It("should fail if error in db", func() {
 			db = pgmocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
-			_, _, err := controller.GetSchedulerScalingInfo(logger, mr, db, "controller-name")
+			_, _, err := controller.GetSchedulerScalingInfo(logger, mr, db, mockRedisClient, "controller-name")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Some error in db"))
 		})
@@ -175,13 +178,13 @@ var _ = Describe("Controller", func() {
 			state := "in-sync"
 			lastChangedAt := time.Now().Unix()
 			lastScaleAt := time.Now().Unix()
-			redisClient.EXPECT().HMSet(name, map[string]interface{}{
+			mockRedisClient.EXPECT().HMSet(name, map[string]interface{}{
 				"state":         state,
 				"lastChangedAt": lastChangedAt,
 				"lastScaleOpAt": lastScaleAt,
 			}).Return(&redis.StatusCmd{})
 			schedulerState := models.NewSchedulerState(name, state, lastChangedAt, lastScaleAt)
-			err = controller.SaveSchedulerStateInfo(logger, mr, redisClient, schedulerState)
+			err = controller.SaveSchedulerStateInfo(logger, mr, mockRedisClient, schedulerState)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -190,13 +193,13 @@ var _ = Describe("Controller", func() {
 			state := "in-sync"
 			lastChangedAt := time.Now().Unix()
 			lastScaleAt := time.Now().Unix()
-			redisClient.EXPECT().HMSet(name, map[string]interface{}{
+			mockRedisClient.EXPECT().HMSet(name, map[string]interface{}{
 				"state":         "in-sync",
 				"lastChangedAt": lastChangedAt,
 				"lastScaleOpAt": lastScaleAt,
 			}).Return(redis.NewStatusResult("", fmt.Errorf("Some error in redis")))
 			schedulerState := models.NewSchedulerState(name, state, lastChangedAt, lastScaleAt)
-			err = controller.SaveSchedulerStateInfo(logger, mr, redisClient, schedulerState)
+			err = controller.SaveSchedulerStateInfo(logger, mr, mockRedisClient, schedulerState)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Some error in redis"))
 		})
@@ -208,21 +211,21 @@ var _ = Describe("Controller", func() {
 			state := "in-sync"
 			lastChangedAt := time.Now().Unix()
 			lastScaleAt := time.Now().Unix()
-			redisClient.EXPECT().HMSet(name, map[string]interface{}{
+			mockRedisClient.EXPECT().HMSet(name, map[string]interface{}{
 				"state":         "in-sync",
 				"lastChangedAt": lastChangedAt,
 				"lastScaleOpAt": lastScaleAt,
 			}).Return(redis.NewStatusResult("OK", nil))
 			schedulerState := models.NewSchedulerState(name, state, lastChangedAt, lastScaleAt)
-			err = controller.SaveSchedulerStateInfo(logger, mr, redisClient, schedulerState)
+			err = controller.SaveSchedulerStateInfo(logger, mr, mockRedisClient, schedulerState)
 			Expect(err).NotTo(HaveOccurred())
 
-			redisClient.EXPECT().HGetAll(name).Return(redis.NewStringStringMapResult(map[string]string{
+			mockRedisClient.EXPECT().HGetAll(name).Return(redis.NewStringStringMapResult(map[string]string{
 				"state":         state,
 				"lastChangedAt": strconv.Itoa(int(lastChangedAt)),
 				"lastScaleOpAt": strconv.Itoa(int(lastScaleAt)),
 			}, nil))
-			retrievedSchedulerState, err := controller.GetSchedulerStateInfo(logger, mr, redisClient, name)
+			retrievedSchedulerState, err := controller.GetSchedulerStateInfo(logger, mr, mockRedisClient, name)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(retrievedSchedulerState).To(Equal(schedulerState))
 		})
@@ -232,13 +235,14 @@ var _ = Describe("Controller", func() {
 			state := "in-sync"
 			lastChangedAt := time.Now().Unix()
 			lastScaleAt := time.Now().Unix()
-			redisClient.EXPECT().HMSet(name, map[string]interface{}{
+			mockRedisClient.EXPECT().TxPipeline()
+			mockRedisClient.EXPECT().HMSet(name, map[string]interface{}{
 				"state":         "in-sync",
 				"lastChangedAt": lastChangedAt,
 				"lastScaleOpAt": lastScaleAt,
 			}).Return(redis.NewStatusResult("", fmt.Errorf("Some error in redis")))
 			schedulerState := models.NewSchedulerState(name, state, lastChangedAt, lastScaleAt)
-			err = controller.SaveSchedulerStateInfo(logger, mr, redisClient, schedulerState)
+			err = controller.SaveSchedulerStateInfo(logger, mr, mockRedisClient, schedulerState)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Some error in redis"))
 		})

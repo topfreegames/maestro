@@ -106,7 +106,7 @@ memo = "ea1b79beaa90f171617465714a34cbfeed2aebbe23b17b19746221eb1a93d1b4"
   name = "github.com/go-redis/redis"
   packages = [".","internal","internal/consistenthash","internal/hashtag","internal/pool","internal/proto"]
   revision = "15786cf82174d65ac7f478c7faa6d2e055dad8b7"
-  version = "v6.2.3"
+  version = "v6.2.5"
 
 [[projects]]
   name = "github.com/gogo/protobuf"
@@ -286,7 +286,7 @@ memo = "ea1b79beaa90f171617465714a34cbfeed2aebbe23b17b19746221eb1a93d1b4"
   name = "github.com/topfreegames/extensions"
   packages = ["pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
   revision = "b6670618482fee2e320b92c8aaabaa18d805ff20"
-  version = "v2.1.0"
+  version = "v2.2.1"
 
 [[projects]]
   branch = "master"

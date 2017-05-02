@@ -10,6 +10,7 @@ package api_test
 import (
 	"github.com/Sirupsen/logrus"
 	"github.com/Sirupsen/logrus/hooks/test"
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
@@ -17,18 +18,21 @@ import (
 
 	"testing"
 
-	"github.com/topfreegames/extensions/pg/mocks"
+	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/api"
 	mtesting "github.com/topfreegames/maestro/testing"
 )
 
 var (
-	app       *api.App
-	config    *viper.Viper
-	db        *mocks.PGMock
-	hook      *test.Hook
-	logger    *logrus.Logger
-	clientset *fake.Clientset
+	app             *api.App
+	config          *viper.Viper
+	db              *pgmocks.PGMock
+	hook            *test.Hook
+	logger          *logrus.Logger
+	clientset       *fake.Clientset
+	mockRedisClient *redismocks.MockRedisClient
+	mockCtrl        *gomock.Controller
 )
 
 func TestApi(t *testing.T) {
@@ -41,9 +45,16 @@ var _ = BeforeEach(func() {
 	logger, hook = test.NewNullLogger()
 	logger.Level = logrus.DebugLevel
 	clientset = fake.NewSimpleClientset()
+	mockCtrl = gomock.NewController(GinkgoT())
+	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
 
 	config, err = mtesting.GetDefaultConfig()
-	db = mocks.NewPGMock(1, 1)
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", db, clientset)
+	db = pgmocks.NewPGMock(1, 1)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", db, mockRedisClient, clientset)
 	Expect(err).NotTo(HaveOccurred())
+})
+
+var _ = AfterEach(func() {
+	mockCtrl.Finish()
+	defer db.Close()
 })

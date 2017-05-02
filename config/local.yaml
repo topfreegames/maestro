@@ -8,6 +8,9 @@ extensions:
     maxRetries: 3
     database: "maestro"
     connectionTimeout: 100
+  redis:
+    url: redis://localhost:6363
+    connectionTimeout: 200
 watcher:
   lockKey: "maestro-lock-key"
   lockTimeoutMs: 180000 

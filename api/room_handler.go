@@ -42,7 +42,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := mr.WithSegment(models.SegmentUpdate, func() error {
-		return room.Ping(g.App.DB)
+		return room.Ping(g.App.RedisClient, payload.Status)
 	})
 
 	if err != nil {
@@ -78,7 +78,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	logger := l.WithFields(logrus.Fields{
 		"source":           "roomHandler",
-		"operation":        "ping",
+		"operation":        "statusHandler",
 		"payloadTimestamp": payload.Timestamp,
 	})
 
@@ -86,7 +86,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := mr.WithSegment(models.SegmentUpdate, func() error {
-		return room.SetStatus(g.App.DB, payload.Status)
+		return room.SetStatus(g.App.RedisClient, payload.LastStatus, payload.Status)
 	})
 
 	if err != nil {

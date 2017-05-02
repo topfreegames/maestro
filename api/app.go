@@ -18,7 +18,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/pg"
-	"github.com/topfreegames/extensions/pg/interfaces"
+	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/redis"
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
@@ -34,7 +36,8 @@ import (
 type App struct {
 	Address          string
 	Config           *viper.Viper
-	DB               interfaces.DB
+	DB               pginterfaces.DB
+	RedisClient      redisinterfaces.RedisClient
 	KubernetesClient kubernetes.Interface
 	Logger           logrus.FieldLogger
 	NewRelic         newrelic.Application
@@ -45,7 +48,7 @@ type App struct {
 }
 
 //NewApp ctor
-func NewApp(host string, port int, config *viper.Viper, logger logrus.FieldLogger, incluster bool, kubeconfigPath string, dbOrNil interfaces.DB, kubernetesClientOrNil kubernetes.Interface) (*App, error) {
+func NewApp(host string, port int, config *viper.Viper, logger logrus.FieldLogger, incluster bool, kubeconfigPath string, dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface) (*App, error) {
 	a := &App{
 		Config:         config,
 		Address:        fmt.Sprintf("%s:%d", host, port),
@@ -53,7 +56,7 @@ func NewApp(host string, port int, config *viper.Viper, logger logrus.FieldLogge
 		InCluster:      incluster,
 		KubeconfigPath: kubeconfigPath,
 	}
-	err := a.configureApp(dbOrNil, kubernetesClientOrNil)
+	err := a.configureApp(dbOrNil, redisClientOrNil, kubernetesClientOrNil)
 	if err != nil {
 		return nil, err
 	}
@@ -116,10 +119,15 @@ func (a *App) getRouter() *mux.Router {
 	return r
 }
 
-func (a *App) configureApp(dbOrNil interfaces.DB, kubernetesClientOrNil kubernetes.Interface) error {
+func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface) error {
 	a.configureLogger()
 
 	err := a.configureDatabase(dbOrNil)
+	if err != nil {
+		return err
+	}
+
+	err = a.configureRedisClient(redisClientOrNil)
 	if err != nil {
 		return err
 	}
@@ -170,7 +178,7 @@ func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interfa
 	return nil
 }
 
-func (a *App) configureDatabase(dbOrNil interfaces.DB) error {
+func (a *App) configureDatabase(dbOrNil pginterfaces.DB) error {
 	if dbOrNil != nil {
 		a.DB = dbOrNil
 		return nil
@@ -184,7 +192,35 @@ func (a *App) configureDatabase(dbOrNil interfaces.DB) error {
 	return nil
 }
 
-func (a *App) getDB() (interfaces.DB, error) {
+func (a *App) configureRedisClient(redisClientOrNil redisinterfaces.RedisClient) error {
+	if redisClientOrNil != nil {
+		a.RedisClient = redisClientOrNil
+		return nil
+	}
+	redisClient, err := a.getRedisClient()
+	if err != nil {
+		return err
+	}
+	a.RedisClient = redisClient
+	return nil
+}
+
+func (a *App) getRedisClient() (redisinterfaces.RedisClient, error) {
+	l := a.Logger.WithFields(logrus.Fields{
+		"operation": "configureRedisClient",
+	})
+
+	l.Debug("Connecting to Redis...")
+	client, err := redis.NewClient("extensions.redis", a.Config)
+	if err != nil {
+		l.WithError(err).Error("Connection to redis failed.")
+		return nil, err
+	}
+	l.Info("Successfully connected to redis.")
+	return client.Client, nil
+}
+
+func (a *App) getDB() (pginterfaces.DB, error) {
 	l := a.Logger.WithFields(logrus.Fields{
 		"operation": "configureDatabase",
 	})
@@ -194,7 +230,7 @@ func (a *App) getDB() (interfaces.DB, error) {
 		l.WithError(err).Error("Connection to database failed.")
 		return nil, err
 	}
-	l.Debug("Successful connection to database.")
+	l.Info("Successful connected to database.")
 	return client.DB, nil
 }
 

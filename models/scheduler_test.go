@@ -33,13 +33,13 @@ var _ = Describe("Scheduler", func() {
 				state := "in-sync"
 				lastChangedAt := time.Now().Unix()
 				lastScaleAt := time.Now().Unix()
-				redisClient.EXPECT().HMSet("pong-free-for-all", map[string]interface{}{
+				mockRedisClient.EXPECT().HMSet("pong-free-for-all", map[string]interface{}{
 					"state":         state,
 					"lastChangedAt": lastChangedAt,
 					"lastScaleOpAt": lastScaleAt,
 				}).Return(&redis.StatusCmd{})
 				schedulerState := models.NewSchedulerState(name, state, lastChangedAt, lastScaleAt)
-				err := schedulerState.Save(redisClient)
+				err := schedulerState.Save(mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -55,9 +55,9 @@ var _ = Describe("Scheduler", func() {
 					"lastChangedAt": lastChangedAt,
 					"lastScaleOpAt": lastScaleAt,
 				}
-				redisClient.EXPECT().HMSet("pong-free-for-all", m).Return(&redis.StatusCmd{})
+				mockRedisClient.EXPECT().HMSet("pong-free-for-all", m).Return(&redis.StatusCmd{})
 				schedulerState := models.NewSchedulerState(name, state, lastChangedAt, lastScaleAt)
-				err := schedulerState.Save(redisClient)
+				err := schedulerState.Save(mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 
 				loadedState := models.NewSchedulerState(name, "", 0, 0)
@@ -66,8 +66,8 @@ var _ = Describe("Scheduler", func() {
 					"lastChangedAt": strconv.Itoa(int(lastChangedAt)),
 					"lastScaleOpAt": strconv.Itoa(int(lastScaleAt)),
 				}
-				redisClient.EXPECT().HGetAll("pong-free-for-all").Return(redis.NewStringStringMapResult(mRes, nil))
-				err = loadedState.Load(redisClient)
+				mockRedisClient.EXPECT().HGetAll("pong-free-for-all").Return(redis.NewStringStringMapResult(mRes, nil))
+				err = loadedState.Load(mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(loadedState).To(Equal(schedulerState))
 			})
