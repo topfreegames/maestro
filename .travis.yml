@@ -5,7 +5,6 @@ services:
 - docker
 cache:
   directories:
-    - $GOPATH/src
     - $GOPATH/pkg
     - vendor
 sudo: true
