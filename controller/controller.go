@@ -28,24 +28,42 @@ import (
 // CreateScheduler creates a new scheduler from a yaml configuration
 func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configYAML *models.ConfigYAML) error {
 	// TODO only return when cluster is ready
-	// TODO on case of error rollback everything
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
 		return err
 	}
 	yamlString := string(configBytes)
+
+	// by creating the namespace first we ensure it is available in kubernetes
+	namespace := models.NewNamespace(configYAML.Name)
+	err = mr.WithSegment(models.SegmentNamespace, func() error {
+		return namespace.Create(clientset)
+	})
+
+	if err != nil {
+		deleteErr := mr.WithSegment(models.SegmentNamespace, func() error {
+			return namespace.Delete(clientset)
+		})
+		if deleteErr != nil {
+			return deleteErr
+		}
+		return err
+	}
+
 	scheduler := models.NewScheduler(configYAML.Name, configYAML.Game, yamlString)
 	err = mr.WithSegment(models.SegmentInsert, func() error {
 		return scheduler.Create(db)
 	})
+
 	if err != nil {
+		deleteErr := mr.WithSegment(models.SegmentNamespace, func() error {
+			return namespace.Delete(clientset)
+		})
+		if deleteErr != nil {
+			return deleteErr
+		}
 		return err
 	}
-
-	namespace := models.NewNamespace(scheduler.Name)
-	err = mr.WithSegment(models.SegmentNamespace, func() error {
-		return namespace.Create(clientset)
-	})
 
 	if err != nil {
 		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
@@ -55,11 +73,16 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 		return err
 	}
 
-	// TODO: optimize creation (in parallel?)
-	// TODO nao esta removendo do banco
 	// TODO pegar timeout da config
 	err = ScaleUp(logger, mr, db, redisClient, clientset, scheduler.Name, configYAML.AutoScaling.Min, 300)
-	return err
+	if err != nil {
+		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
+		if deleteErr != nil {
+			return deleteErr
+		}
+		return err
+	}
+	return nil
 }
 
 // DeleteScheduler deletes a scheduler from a yaml configuration
