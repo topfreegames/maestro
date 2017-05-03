@@ -1,6 +1,8 @@
 package models_test
 
 import (
+	"fmt"
+
 	"github.com/topfreegames/maestro/models"
 
 	. "github.com/onsi/ginkgo"
@@ -10,9 +12,8 @@ import (
 )
 
 var _ = Describe("Namespace", func() {
-	var (
-		clientset *fake.Clientset
-	)
+	var clientset *fake.Clientset
+	name := "pong-free-for-all"
 
 	BeforeEach(func() {
 		clientset = fake.NewSimpleClientset()
@@ -20,43 +21,43 @@ var _ = Describe("Namespace", func() {
 
 	Describe("NewNamespace", func() {
 		It("should build correct namespace struct", func() {
-			namespace := models.NewNamespace("pong-free-for-all")
-			Expect(namespace.Name).To(Equal("pong-free-for-all"))
+			namespace := models.NewNamespace(name)
+			Expect(namespace.Name).To(Equal(name))
 		})
 	})
 
 	Describe("Create", func() {
-		It("should create a namespace", func() {
-			namespace := models.NewNamespace("pong-free-for-all")
+		It("should create a namespace in kubernetes", func() {
+			namespace := models.NewNamespace(name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ns.Items).To(HaveLen(1))
-			Expect(ns.Items[0].GetName()).To(Equal("pong-free-for-all"))
+			Expect(ns.Items[0].GetName()).To(Equal(name))
 		})
 
 		It("should return error when creating existing namespace", func() {
-			namespace := models.NewNamespace("pong-free-for-all")
+			namespace := models.NewNamespace(name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = namespace.Create(clientset)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Namespace \"pong-free-for-all\" already exists"))
+			Expect(err.Error()).To(Equal(fmt.Sprintf("Namespace \"%s\" already exists", name)))
 		})
 	})
 
 	Describe("Exists", func() {
 		It("should return false if namespace does not exist", func() {
-			namespace := models.NewNamespace("pong-free-for-all")
+			namespace := models.NewNamespace(name)
 			exists := namespace.Exists(clientset)
 			Expect(exists).To(BeFalse())
 		})
 
 		It("should return true if namespace exists", func() {
-			namespace := models.NewNamespace("pong-free-for-all")
+			namespace := models.NewNamespace(name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -67,13 +68,13 @@ var _ = Describe("Namespace", func() {
 
 	Describe("Delete", func() {
 		It("should succeed if namespace does not exist", func() {
-			namespace := models.NewNamespace("pong-free-for-all")
+			namespace := models.NewNamespace(name)
 			err := namespace.Delete(clientset)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should succeed if namespace exists", func() {
-			namespace := models.NewNamespace("pong-free-for-all")
+			namespace := models.NewNamespace(name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 

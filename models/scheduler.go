@@ -97,7 +97,7 @@ func NewConfigYAML(yamlString string) (*ConfigYAML, error) {
 
 // Load loads a scheduler from the database using the scheduler name
 func (c *Scheduler) Load(db interfaces.DB) error {
-	_, err := db.Query(c, `SELECT * FROM schedulers WHERE name = ?`, c.Name)
+	_, err := db.Query(c, "SELECT * FROM schedulers WHERE name = ?", c.Name)
 	return err
 }
 
@@ -109,7 +109,7 @@ func (c *Scheduler) Create(db interfaces.DB) error {
 
 // Delete deletes a scheduler from the database using the scheduler name
 func (c *Scheduler) Delete(db interfaces.DB) error {
-	_, err := db.Exec(`DELETE FROM schedulers WHERE name = ?`, c.Name)
+	_, err := db.Exec("DELETE FROM schedulers WHERE name = ?", c.Name)
 	if err != nil && err.Error() != "pg: no rows in result set" {
 		return err
 	}

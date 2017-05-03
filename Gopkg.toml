@@ -82,3 +82,11 @@
 [[dependencies]]
   name = "k8s.io/client-go"
   version = "v3.0.0-beta.0"
+
+[[dependencies]]
+  name = "github.com/topfreegames/extensions"
+  version = "v2.5.0"
+
+[[dependencies]]
+  name = "github.com/go-redis/redis"
+  version = "v6.3.1"

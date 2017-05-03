@@ -44,7 +44,7 @@ var _ = Describe("Service", func() {
 	})
 
 	Describe("Create", func() {
-		It("should create a service", func() {
+		It("should create a service in kubernetes", func() {
 			service := models.NewService(name, namespace, ports)
 			servicev1, err := service.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())

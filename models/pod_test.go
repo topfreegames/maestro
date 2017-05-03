@@ -1,6 +1,7 @@
 package models_test
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/topfreegames/maestro/models"
@@ -88,15 +89,15 @@ var _ = Describe("Pod", func() {
 			Expect(pod.ResourcesLimitsMemory).To(Equal(resourcesLimitsMemory))
 			Expect(pod.ResourcesRequestsCPU).To(Equal(resourcesRequestsCPU))
 			Expect(pod.ResourcesRequestsMemory).To(Equal(resourcesRequestsMemory))
-			Expect(pod.Ports).To(Equal(ports))
 			Expect(pod.ShutdownTimeout).To(Equal(shutdownTimeout))
+			Expect(pod.Ports).To(Equal(ports))
 			Expect(pod.Command).To(Equal(command))
 			Expect(pod.Env).To(Equal(env))
 		})
 	})
 
 	Describe("Create", func() {
-		It("should create a pod", func() {
+		It("should create a pod in kubernetes", func() {
 			pod := models.NewPod(
 				game,
 				image,
@@ -124,7 +125,6 @@ var _ = Describe("Pod", func() {
 			Expect(podv1.ObjectMeta.Labels).To(HaveLen(1))
 			Expect(podv1.ObjectMeta.Labels["app"]).To(Equal(name))
 			Expect(*podv1.Spec.TerminationGracePeriodSeconds).To(BeEquivalentTo(shutdownTimeout))
-			// TODO: update go client so we can use tolerations
 			Expect(podv1.Spec.Containers).To(HaveLen(1))
 			Expect(podv1.Spec.Containers[0].Name).To(Equal(name))
 			Expect(podv1.Spec.Containers[0].Image).To(Equal(image))
@@ -169,7 +169,7 @@ var _ = Describe("Pod", func() {
 
 			_, err = pod.Create(clientset)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Pod \"pong-free-for-all-0\" already exists"))
+			Expect(err.Error()).To(Equal(fmt.Sprintf("Pod \"%s\" already exists", name)))
 		})
 	})
 })

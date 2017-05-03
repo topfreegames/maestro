@@ -19,11 +19,10 @@ import (
 )
 
 var (
-	db              *pgmocks.PGMock
-	mockRedisClient *redismocks.MockRedisClient
-	mockPipeline    *redismocks.MockPipeline
 	mockCtrl        *gomock.Controller
-	err             error
+	mockDb          *pgmocks.MockDB
+	mockPipeline    *redismocks.MockPipeliner
+	mockRedisClient *redismocks.MockRedisClient
 )
 
 func TestModels(t *testing.T) {
@@ -32,13 +31,12 @@ func TestModels(t *testing.T) {
 }
 
 var _ = BeforeEach(func() {
-	db = pgmocks.NewPGMock(1, 1)
 	mockCtrl = gomock.NewController(GinkgoT())
+	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
-	mockPipeline = redismocks.NewMockPipeline(mockCtrl)
+	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 })
 
 var _ = AfterEach(func() {
 	mockCtrl.Finish()
-	defer db.Close()
 })

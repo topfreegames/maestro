@@ -1,7 +1,10 @@
 package models_test
 
 import (
+	"errors"
 	"fmt"
+
+	"gopkg.in/pg.v5/types"
 
 	"github.com/topfreegames/maestro/models"
 
@@ -50,6 +53,9 @@ cmd:
 )
 
 var _ = Describe("Scheduler", func() {
+	name := "pong-free-for-all"
+	game := "pong"
+
 	Describe("NewConfigYAML", func() {
 		It("should build correct config yaml struct from yaml", func() {
 			configYAML, err := models.NewConfigYAML(yaml1)
@@ -96,43 +102,92 @@ var _ = Describe("Scheduler", func() {
 
 	Describe("NewScheduler", func() {
 		It("should build correct scheduler struct", func() {
-			scheduler := models.NewScheduler("pong-free-for-all", "pong", yaml1)
-			Expect(scheduler.Name).To(Equal("pong-free-for-all"))
-			Expect(scheduler.Game).To(Equal("pong"))
+			scheduler := models.NewScheduler(name, game, yaml1)
+			Expect(scheduler.Name).To(Equal(name))
+			Expect(scheduler.Game).To(Equal(game))
 			Expect(scheduler.YAML).To(Equal(yaml1))
 		})
 	})
 
 	Describe("Create Scheduler", func() {
 		It("should save scheduler in the database", func() {
-			scheduler := models.NewScheduler("pong-free-for-all", "pong", yaml1)
-			err := scheduler.Create(db)
+			scheduler := models.NewScheduler(name, game, yaml1)
+			mockDb.EXPECT().Query(
+				scheduler,
+				"INSERT INTO schedulers (name, game, yaml) VALUES (?name, ?game, ?yaml) RETURNING id",
+				scheduler,
+			)
+			err := scheduler.Create(mockDb)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(db.Execs).To(HaveLen(1))
+		})
+
+		It("should return an error if db returns an error", func() {
+			scheduler := models.NewScheduler(name, game, yaml1)
+			mockDb.EXPECT().Query(
+				scheduler,
+				"INSERT INTO schedulers (name, game, yaml) VALUES (?name, ?game, ?yaml) RETURNING id",
+				scheduler,
+			).Return(&types.Result{}, errors.New("some error in pg"))
+			err := scheduler.Create(mockDb)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error in pg"))
 		})
 	})
 
 	Describe("Load Scheduler", func() {
 		It("should load scheduler from the database", func() {
-			scheduler := models.NewScheduler("pong-free-for-all", "", "")
-			err := scheduler.Load(db)
+			scheduler := models.NewScheduler(name, "", "")
+			mockDb.EXPECT().Query(scheduler, "SELECT * FROM schedulers WHERE name = ?", name)
+			err := scheduler.Load(mockDb)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(db.Execs).To(HaveLen(1))
+		})
+
+		It("should return an error if db returns an error", func() {
+			scheduler := models.NewScheduler(name, game, yaml1)
+			mockDb.EXPECT().Query(
+				scheduler,
+				"SELECT * FROM schedulers WHERE name = ?",
+				name,
+			).Return(&types.Result{}, errors.New("some error in pg"))
+			err := scheduler.Load(mockDb)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error in pg"))
 		})
 	})
 
 	Describe("Delete Scheduler", func() {
 		It("should delete scheduler in the database", func() {
-			scheduler := models.NewScheduler("pong-free-for-all", "pong", yaml1)
-			err := scheduler.Delete(db)
+			scheduler := models.NewScheduler(name, game, yaml1)
+			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", name)
+			err := scheduler.Delete(mockDb)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(db.Execs).To(HaveLen(1))
+		})
+
+		It("should succeed if error is 'no rows in result set'", func() {
+			scheduler := models.NewScheduler(name, game, yaml1)
+			mockDb.EXPECT().Exec(
+				"DELETE FROM schedulers WHERE name = ?",
+				name,
+			).Return(&types.Result{}, errors.New("pg: no rows in result set"))
+			err := scheduler.Delete(mockDb)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return an error if db returns an error", func() {
+			scheduler := models.NewScheduler(name, game, yaml1)
+			mockDb.EXPECT().Exec(
+				"DELETE FROM schedulers WHERE name = ?",
+				name,
+			).Return(&types.Result{}, errors.New("some error in pg"))
+			err := scheduler.Delete(mockDb)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error in pg"))
 		})
 	})
 
 	Describe("GetAutoScalingPolicy", func() {
 		It("should return the scheduler auto scaling policy", func() {
-			scheduler := models.NewScheduler("pong-free-for-all", "pong", yaml1)
+			scheduler := models.NewScheduler(name, game, yaml1)
 			autoScalingPolicy := scheduler.GetAutoScalingPolicy()
 			Expect(autoScalingPolicy.Min).To(Equal(100))
 			Expect(autoScalingPolicy.Up.Cooldown).To(Equal(300))
