@@ -26,8 +26,11 @@ import (
 )
 
 // CreateScheduler creates a new scheduler from a yaml configuration
-func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configYAML *models.ConfigYAML, timeoutSec int) error {
-	// TODO only return when cluster is ready
+func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configYAML *models.ConfigYAML) error {
+	configBytes, err := yaml.Marshal(configYAML)
+	if err != nil {
+		return err
+	}
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
 		return err
@@ -190,11 +193,12 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 		for i := 0; i < amount; i++ {
 			pod, err := clientset.CoreV1().Pods(scheduler.Name).Get(pods[i], metav1.GetOptions{})
 			if err != nil {
-				l.WithError(err).Error("failed to get pod")
-			}
-			for _, containerStatus := range pod.Status.ContainerStatuses {
-				if !containerStatus.Ready {
-					exit = false
+				l.WithError(err).Error("scale up pod error")
+			} else {
+				for _, containerStatus := range pod.Status.ContainerStatuses {
+					if !containerStatus.Ready {
+						exit = false
+					}
 				}
 			}
 			if exit {
@@ -277,8 +281,8 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 		configYAML.Name,
 		configYAML.Limits.CPU,
 		configYAML.Limits.Memory,
-		configYAML.Limits.CPU,    // TODO: requests should be < limits calculate it
-		configYAML.Limits.Memory, // TODO: requests should be < limits calculate it
+		configYAML.Limits.CPU,    // TODO: requests should be <= limits calculate it
+		configYAML.Limits.Memory, // TODO: requests should be <= limits calculate it
 		configYAML.ShutdownTimeout,
 		configYAML.Ports,
 		configYAML.Cmd,
@@ -297,5 +301,10 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 		"node": nodeName,
 		"name": name,
 	}).Info("Created GRU (service and pod) successfully.")
+	// TODO WIP guardar ip
+	// node, err := clientset.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	// if err != nil {
+	// 	return "", err
+	// }
 	return name, nil
 }

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis"
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	"github.com/golang/mock/gomock"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
 
@@ -69,7 +69,17 @@ var _ = Describe("Controller", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
-			mockRedisClient.EXPECT().TxPipeline()
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
+				"status":   "creating",
+				"lastPing": int64(0),
+			}).Times(configYaml1.AutoScaling.Min)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Min)
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
+			db.EXPECT().Query(gomock.Any(), "INSERT INTO schedulers (name, game, yaml) VALUES (?name, ?game, ?yaml) RETURNING id", gomock.Any())
+			db.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.YAML = yaml1
+			})
 			err = controller.CreateScheduler(logger, mr, db, mockRedisClient, clientset, &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -102,11 +112,9 @@ var _ = Describe("Controller", func() {
 				Expect(pod.Spec.Containers[0].Env[4].Name).To(Equal("MAESTRO_NODE_PORT_7654_TCP"))
 				Expect(pod.Spec.Containers[0].Env[4].Value).NotTo(BeNil())
 			}
-			Expect(db.Execs).To(HaveLen(4)) // scheduler + 3 pods creation
 		})
 
 		It("should rollback if error in db occurs", func() {
-			db = pgmocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
@@ -165,7 +173,6 @@ var _ = Describe("Controller", func() {
 		})
 
 		It("should fail if error in db", func() {
-			db = pgmocks.NewPGMock(0, 0, fmt.Errorf("Some error in db"))
 			_, _, err := controller.GetSchedulerScalingInfo(logger, mr, db, mockRedisClient, "controller-name")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Some error in db"))

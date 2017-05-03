@@ -24,13 +24,13 @@ import (
 )
 
 var (
-	db              *pgmocks.PGMock
+	db              *pgmocks.MockDB
 	logger          *logrus.Logger
 	hook            *test.Hook
 	err             error
 	mr              *models.MixedMetricsReporter
 	mockRedisClient *redismocks.MockRedisClient
-	mockPipeline    *redismocks.MockPipeline
+	mockPipeline    *redismocks.MockPipeliner
 	mockCtrl        *gomock.Controller
 )
 
@@ -40,18 +40,17 @@ func TestController(t *testing.T) {
 }
 
 var _ = BeforeEach(func() {
-	db = pgmocks.NewPGMock(1, 1)
 	logger, hook = test.NewNullLogger()
 	logger.Level = logrus.DebugLevel
 	fakeReporter := mtesting.FakeMetricsReporter{}
 	mr := models.NewMixedMetricsReporter()
 	mr.AddReporter(fakeReporter)
 	mockCtrl = gomock.NewController(GinkgoT())
+	db = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
-	mockPipeline = redismocks.NewMockPipeline(mockCtrl)
+	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 })
 
 var _ = AfterEach(func() {
 	mockCtrl.Finish()
-	defer db.Close()
 })

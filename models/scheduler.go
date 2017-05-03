@@ -103,10 +103,7 @@ func (c *Scheduler) Load(db interfaces.DB) error {
 
 // Create creates a scheduler in the database
 func (c *Scheduler) Create(db interfaces.DB) error {
-	_, err := db.Query(c, `
-		INSERT INTO schedulers (name, game, yaml) VALUES (?name, ?game, ?yaml)
-		RETURNING id
-	`, c)
+	_, err := db.Query(c, "INSERT INTO schedulers (name, game, yaml) VALUES (?name, ?game, ?yaml) RETURNING id", c)
 	return err
 }
 
