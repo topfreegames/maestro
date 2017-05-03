@@ -24,14 +24,14 @@ type Room struct {
 
 // RoomsStatusCount is the struct that defines the rooms status status count
 type RoomsStatusCount struct {
-	Creating    int64
-	Occupied    int64
-	Ready       int64
-	Terminating int64
+	Creating    int
+	Occupied    int
+	Ready       int
+	Terminating int
 }
 
 // Total returns the total number of rooms
-func (c *RoomsStatusCount) Total() int64 {
+func (c *RoomsStatusCount) Total() int {
 	return c.Creating + c.Occupied + c.Ready + c.Terminating
 }
 
@@ -116,9 +116,9 @@ func GetRoomsCountByStatus(redisClient interfaces.RedisClient, schedulerName str
 		return nil, err
 	}
 	countByStatus := &RoomsStatusCount{}
-	countByStatus.Creating = sCreating.Val()
-	countByStatus.Ready = sReady.Val()
-	countByStatus.Occupied = sOccupied.Val()
-	countByStatus.Terminating = sTerminating.Val()
+	countByStatus.Creating = int(sCreating.Val())
+	countByStatus.Ready = int(sReady.Val())
+	countByStatus.Occupied = int(sOccupied.Val())
+	countByStatus.Terminating = int(sTerminating.Val())
 	return countByStatus, nil
 }

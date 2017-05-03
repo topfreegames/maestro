@@ -67,6 +67,7 @@ func NewWatcher(
 
 func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("autoScalingPeriod", 10)
+	w.Config.SetDefault("scaleUpTimeout", 300)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
 }
@@ -130,10 +131,12 @@ func (w *Watcher) AutoScale() {
 		logger,
 		w.MetricsReporter,
 		w.DB,
+		w.RedisClient.Client,
 		w.SchedulerName,
 	)
 	if err != nil {
 		logger.WithError(err).Error("Failed to get scheduler scaling info.")
+		return
 	}
 
 	state, err := controller.GetSchedulerStateInfo(
@@ -144,6 +147,7 @@ func (w *Watcher) AutoScale() {
 	)
 	if err != nil {
 		logger.WithError(err).Error("Failed to get scheduler state info.")
+		return
 	}
 
 	l := logger.WithFields(logrus.Fields{
@@ -157,19 +161,35 @@ func (w *Watcher) AutoScale() {
 		roomCountByStatus,
 		state,
 	)
+	if shouldScaleUp {
+		l.Info("Scheduler is subdimensioned, scaling up. ")
+		timeoutSec := w.Config.GetInt("scaleUpTimeout")
+		err = controller.ScaleUp(
+			logger,
+			w.MetricsReporter,
+			w.DB,
+			w.RedisClient.Client,
+			w.KubernetesClient,
+			w.SchedulerName,
+			autoScalingInfo.Up.Delta,
+			timeoutSec,
+			false,
+		)
+		state.State = "in-sync"
+		changedState = true
+		if err == nil {
+			state.LastScaleOpAt = time.Now().Unix()
+		}
+	} else if shouldScaleDown {
+		l.Warn("Scheduler is overdimensioned, should scale down.")
+	} else {
+		l.Info("Scheduler state is as expected. ")
+	}
 	if changedState {
 		err = controller.SaveSchedulerStateInfo(logger, w.MetricsReporter, w.RedisClient.Client, state)
 		if err != nil {
 			logger.WithError(err).Error("Failed to save scheduler state info.")
 		}
-	}
-	if shouldScaleUp {
-		l.Info("Scheduler is subdimensioned, scaling up. ")
-		controller.ScaleUp(logger, w.MetricsReporter, w.DB, w.KubernetesClient, w.SchedulerName)
-	} else if shouldScaleDown {
-		l.Warn("Scheduler is overdimensioned, should scale down.")
-	} else {
-		l.Info("Scheduler state is as expected. ")
 	}
 }
 
@@ -178,10 +198,10 @@ func (w *Watcher) checkState(
 	roomCount *models.RoomsStatusCount,
 	state *models.SchedulerState,
 ) (bool, bool, bool) {
-	if roomCount.Total < autoScalingInfo.Min { // this should never happen
+	if roomCount.Total() < autoScalingInfo.Min { // this should never happen
 		return true, false, false
 	}
-	if roomCount.Ready/roomCount.Total < 1-(autoScalingInfo.Up.Trigger.Usage/100) {
+	if roomCount.Ready/roomCount.Total() < 1-(autoScalingInfo.Up.Trigger.Usage/100) {
 		if state.State != "subdimensioned" {
 			state.State = "subdimensioned"
 			state.LastChangedAt = time.Now().Unix()
@@ -193,8 +213,8 @@ func (w *Watcher) checkState(
 		}
 	}
 
-	if roomCount.Ready/roomCount.Total > 1-(autoScalingInfo.Down.Trigger.Usage/100) &&
-		roomCount.Total-autoScalingInfo.Down.Delta > autoScalingInfo.Min {
+	if roomCount.Ready/roomCount.Total() > 1-(autoScalingInfo.Down.Trigger.Usage/100) &&
+		roomCount.Total()-autoScalingInfo.Down.Delta > autoScalingInfo.Min {
 		if state.State != "overdimensioned" {
 			state.State = "overdimensioned"
 			state.LastChangedAt = time.Now().Unix()

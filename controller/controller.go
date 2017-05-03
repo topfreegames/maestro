@@ -26,7 +26,7 @@ import (
 )
 
 // CreateScheduler creates a new scheduler from a yaml configuration
-func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configYAML *models.ConfigYAML) error {
+func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configYAML *models.ConfigYAML, timeoutSec int) error {
 	// TODO only return when cluster is ready
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
@@ -73,8 +73,17 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 		return err
 	}
 
-	// TODO pegar timeout da config
-	err = ScaleUp(logger, mr, db, redisClient, clientset, scheduler.Name, configYAML.AutoScaling.Min, 300)
+	err = ScaleUp(logger, mr, db, redisClient, clientset, scheduler.Name, configYAML.AutoScaling.Min, timeoutSec, true)
+	if err != nil {
+		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
+		if deleteErr != nil {
+			return deleteErr
+		}
+		return err
+	}
+
+	state := models.NewSchedulerState(scheduler.Name, "in-sync", time.Now().Unix(), time.Now().Unix())
+	err = SaveSchedulerStateInfo(logger, mr, redisClient, state)
 	if err != nil {
 		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
 		if deleteErr != nil {
@@ -139,7 +148,7 @@ func SaveSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsRe
 }
 
 // ScaleUp scales up a scheduler using its config
-func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, schedulerName string, amount, timeoutSec int) error {
+func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, schedulerName string, amount, timeoutSec int, initalOp bool) error {
 	l := logger.WithFields(logrus.Fields{
 		"source":    "scaleUp",
 		"scheduler": schedulerName,
@@ -157,6 +166,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 
 	timeout := make(chan bool, 1)
 	pods := make([]string, amount)
+	var creationErr error
 	go func() {
 		time.Sleep(time.Duration(timeoutSec) * time.Second)
 		timeout <- true
@@ -164,8 +174,11 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 	for i := 0; i < amount; i++ {
 		podName, err := createServiceAndPod(l, mr, redisClient, clientset, configYAML, scheduler.Name)
 		if err != nil {
-			//TODO logica quando da erro
 			l.WithError(err).Error("scale up error")
+			if initalOp {
+				return err
+			}
+			creationErr = err
 		}
 		pods[i] = podName
 	}
@@ -177,7 +190,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 		for i := 0; i < amount; i++ {
 			pod, err := clientset.CoreV1().Pods(scheduler.Name).Get(pods[i], metav1.GetOptions{})
 			if err != nil {
-				l.WithError(err).Error("scale up pod error")
+				l.WithError(err).Error("failed to get pod")
 			}
 			for _, containerStatus := range pod.Status.ContainerStatuses {
 				if !containerStatus.Ready {
@@ -193,7 +206,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 	// TODO: set SchedulerState.State back to "in-sync"
-	return nil
+	return creationErr
 }
 
 func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, scheduler *models.Scheduler, namespace *models.Namespace) error {

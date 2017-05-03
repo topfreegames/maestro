@@ -40,7 +40,8 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger.Debug("Creating scheduler...")
 
 	err := mr.WithSegment(models.SegmentController, func() error {
-		return controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, payload)
+		timeoutSec := g.App.Config.GetInt("scaleUpTimeout")
+		return controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, payload, timeoutSec)
 	})
 
 	if err != nil {

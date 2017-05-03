@@ -14,7 +14,7 @@ var _ = Describe("Room", func() {
 		It("should build correct room struct", func() {
 			room := models.NewRoom("pong-free-for-all-0", "pong-free-for-all")
 			Expect(room.ID).To(Equal("pong-free-for-all-0"))
-			Expect(room.ConfigName).To(Equal("pong-free-for-all"))
+			Expect(room.SchedulerName).To(Equal("pong-free-for-all"))
 			Expect(room.Status).To(Equal("creating"))
 		})
 	})

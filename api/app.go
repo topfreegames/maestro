@@ -120,6 +120,7 @@ func (a *App) getRouter() *mux.Router {
 }
 
 func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface) error {
+	a.loadConfigurationDefaults()
 	a.configureLogger()
 
 	err := a.configureDatabase(dbOrNil)
@@ -146,6 +147,10 @@ func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 
 	a.configureServer()
 	return nil
+}
+
+func (a *App) loadConfigurationDefaults() {
+	a.Config.SetDefault("scaleUpTimeout", 300)
 }
 
 func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interface) error {
