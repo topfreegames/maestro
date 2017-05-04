@@ -26,13 +26,14 @@ import (
 
 var (
 	app             *api.App
+	clientset       *fake.Clientset
 	config          *viper.Viper
-	db              *pgmocks.PGMock
 	hook            *test.Hook
 	logger          *logrus.Logger
-	clientset       *fake.Clientset
-	mockRedisClient *redismocks.MockRedisClient
 	mockCtrl        *gomock.Controller
+	mockDb          *pgmocks.MockDB
+	mockPipeline    *redismocks.MockPipeliner
+	mockRedisClient *redismocks.MockRedisClient
 )
 
 func TestApi(t *testing.T) {
@@ -46,15 +47,15 @@ var _ = BeforeEach(func() {
 	logger.Level = logrus.DebugLevel
 	clientset = fake.NewSimpleClientset()
 	mockCtrl = gomock.NewController(GinkgoT())
+	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
+	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 
 	config, err = mtesting.GetDefaultConfig()
-	db = pgmocks.NewPGMock(1, 1)
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", db, mockRedisClient, clientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
 	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterEach(func() {
 	mockCtrl.Finish()
-	defer db.Close()
 })

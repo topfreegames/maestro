@@ -9,14 +9,15 @@ package api_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"time"
 
+	"github.com/go-redis/redis"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/topfreegames/extensions/pg/mocks"
 	. "github.com/topfreegames/maestro/testing"
 )
 
@@ -31,23 +32,31 @@ var _ = Describe("Room Handler", func() {
 
 	Describe("PUT /scheduler/{schedulerName}/rooms/{roomName}/ping", func() {
 		url := "/scheduler/schedulerName/rooms/roomName/ping"
-		BeforeEach(func() {
-			reader := JSONFor(JSON{
-				"timestamp": time.Now().Unix(),
-			})
-			request, _ = http.NewRequest("PUT", url, reader)
-		})
+		rKey := "scheduler:schedulerName:rooms:roomName"
+		status := "ready"
 
 		Context("when all services are healthy", func() {
 			It("returns a status code of 200 and success body", func() {
+				reader := JSONFor(JSON{
+					"timestamp": time.Now().Unix(),
+					"status":    status,
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				mockRedisClient.EXPECT().HMSet(rKey, map[string]interface{}{
+					"lastPing": time.Now().Unix(),
+					"status":   status,
+				}).Return(redis.NewStatusResult("OK", nil))
+
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(200))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
-				Expect(db.Execs).To(HaveLen(1))
 			})
 
 			It("returns status code of 422 if missing timestamp", func() {
-				reader := JSONFor(JSON{})
+				reader := JSONFor(JSON{
+					"status": status,
+				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
 				app.Router.ServeHTTP(recorder, request)
@@ -59,12 +68,12 @@ var _ = Describe("Room Handler", func() {
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
 				Expect(obj["description"]).To(ContainSubstring("Timestamp: non zero value required"))
 				Expect(obj["success"]).To(Equal(false))
-				Expect(db.Execs).To(HaveLen(0))
 			})
 
 			It("returns status code of 422 if invalid timestamp", func() {
 				reader := JSONFor(JSON{
 					"timestamp": "not-a-timestamp",
+					"status":    status,
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
@@ -77,81 +86,6 @@ var _ = Describe("Room Handler", func() {
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
 				Expect(obj["description"]).To(ContainSubstring("RoomPingPayload.timestamp"))
 				Expect(obj["success"]).To(Equal(false))
-				Expect(db.Execs).To(HaveLen(0))
-			})
-		})
-
-		Context("when postgres is down", func() {
-			It("returns status code of 500 if database is unavailable", func() {
-				app.DB = mocks.NewPGMock(1, 1, fmt.Errorf("sql: database is closed"))
-				app.Router.ServeHTTP(recorder, request)
-
-				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
-				var obj map[string]interface{}
-				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(obj["code"]).To(Equal("MAE-000"))
-				Expect(obj["error"]).To(Equal("Ping failed"))
-				Expect(obj["description"]).To(Equal("sql: database is closed"))
-				Expect(obj["success"]).To(Equal(false))
-				Expect(db.Execs).To(HaveLen(0))
-			})
-		})
-	})
-
-	Describe("PUT /scheduler/{schedulerName}/rooms/{roomName}/status", func() {
-		url := "/scheduler/schedulerName/rooms/roomName/status"
-		BeforeEach(func() {
-			reader := JSONFor(JSON{
-				"status":    "ready",
-				"timestamp": time.Now().Unix(),
-			})
-			request, _ = http.NewRequest("PUT", url, reader)
-		})
-
-		Context("when all services are healthy", func() {
-			It("returns a status code of 200 and success body", func() {
-				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(200))
-				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
-				Expect(db.Execs).To(HaveLen(1))
-			})
-
-			It("returns status code of 422 if missing timestamp", func() {
-				reader := JSONFor(JSON{
-					"status": "ready",
-				})
-				request, _ = http.NewRequest("PUT", url, reader)
-
-				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(422))
-				var obj map[string]interface{}
-				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(obj["code"]).To(Equal("MAE-004"))
-				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("Timestamp: non zero value required"))
-				Expect(obj["success"]).To(Equal(false))
-				Expect(db.Execs).To(HaveLen(0))
-			})
-
-			It("returns status code of 422 if invalid timestamp", func() {
-				reader := JSONFor(JSON{
-					"status":    "ready",
-					"timestamp": "not-a-timestamp",
-				})
-				request, _ = http.NewRequest("PUT", url, reader)
-
-				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(422))
-				var obj map[string]interface{}
-				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(obj["code"]).To(Equal("MAE-004"))
-				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("RoomStatusPayload.timestamp"))
-				Expect(obj["success"]).To(Equal(false))
-				Expect(db.Execs).To(HaveLen(0))
 			})
 
 			It("returns status code of 422 if missing status", func() {
@@ -169,13 +103,158 @@ var _ = Describe("Room Handler", func() {
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
 				Expect(obj["description"]).To(ContainSubstring("Status: non zero value required"))
 				Expect(obj["success"]).To(Equal(false))
-				Expect(db.Execs).To(HaveLen(0))
 			})
 
 			It("returns status code of 422 if invalid status", func() {
 				reader := JSONFor(JSON{
-					"status":    "invalid",
 					"timestamp": time.Now().Unix(),
+					"status":    "not-valid",
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(422))
+				var obj map[string]interface{}
+				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(obj["code"]).To(Equal("MAE-004"))
+				Expect(obj["error"]).To(Equal("ValidationFailedError"))
+				Expect(obj["description"]).To(ContainSubstring("Status: not-valid does not validate as matches"))
+				Expect(obj["success"]).To(Equal(false))
+			})
+		})
+
+		Context("when redis is down", func() {
+			It("returns status code of 500 if redis is unavailable", func() {
+				reader := JSONFor(JSON{
+					"timestamp": time.Now().Unix(),
+					"status":    status,
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				mockRedisClient.EXPECT().HMSet(rKey, map[string]interface{}{
+					"lastPing": time.Now().Unix(),
+					"status":   status,
+				}).Return(redis.NewStatusResult("", errors.New("some error in redis")))
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				var obj map[string]interface{}
+				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(obj["code"]).To(Equal("MAE-000"))
+				Expect(obj["error"]).To(Equal("Ping failed"))
+				Expect(obj["description"]).To(Equal("some error in redis"))
+				Expect(obj["success"]).To(Equal(false))
+			})
+		})
+	})
+
+	Describe("PUT /scheduler/{schedulerName}/rooms/{roomName}/status", func() {
+		url := "/scheduler/schedulerName/rooms/roomName/status"
+		rKey := "scheduler:schedulerName:rooms:roomName"
+		status := "ready"
+		lastStatus := "occupied"
+		oldSKey := fmt.Sprintf("scheduler:schedulerName:status:%s", lastStatus)
+		newSKey := fmt.Sprintf("scheduler:schedulerName:status:%s", status)
+
+		Context("when all services are healthy", func() {
+			It("returns a status code of 200 and success body", func() {
+				reader := JSONFor(JSON{
+					"lastStatus": lastStatus,
+					"status":     status,
+					"timestamp":  time.Now().Unix(),
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{"status": status})
+				mockPipeline.EXPECT().SRem(oldSKey, rKey)
+				mockPipeline.EXPECT().SAdd(newSKey, rKey)
+				mockPipeline.EXPECT().Exec()
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(200))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			})
+
+			It("returns a status code of 200 even if missing lastStatus", func() {
+				reader := JSONFor(JSON{
+					"status":    status,
+					"timestamp": time.Now().Unix(),
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{"status": status})
+				mockPipeline.EXPECT().SAdd(newSKey, rKey)
+				mockPipeline.EXPECT().Exec()
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(200))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			})
+
+			It("returns status code of 422 if missing timestamp", func() {
+				reader := JSONFor(JSON{
+					"lastStatus": lastStatus,
+					"status":     status,
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(422))
+				var obj map[string]interface{}
+				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(obj["code"]).To(Equal("MAE-004"))
+				Expect(obj["error"]).To(Equal("ValidationFailedError"))
+				Expect(obj["description"]).To(ContainSubstring("Timestamp: non zero value required"))
+				Expect(obj["success"]).To(Equal(false))
+			})
+
+			It("returns status code of 422 if invalid timestamp", func() {
+				reader := JSONFor(JSON{
+					"lastStatus": lastStatus,
+					"status":     status,
+					"timestamp":  "not-a-timestamp",
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(422))
+				var obj map[string]interface{}
+				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(obj["code"]).To(Equal("MAE-004"))
+				Expect(obj["error"]).To(Equal("ValidationFailedError"))
+				Expect(obj["description"]).To(ContainSubstring("RoomStatusPayload.timestamp"))
+				Expect(obj["success"]).To(Equal(false))
+			})
+
+			It("returns status code of 422 if missing status", func() {
+				reader := JSONFor(JSON{
+					"lastStatus": lastStatus,
+					"timestamp":  time.Now().Unix(),
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(422))
+				var obj map[string]interface{}
+				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(obj["code"]).To(Equal("MAE-004"))
+				Expect(obj["error"]).To(Equal("ValidationFailedError"))
+				Expect(obj["description"]).To(ContainSubstring("Status: non zero value required"))
+				Expect(obj["success"]).To(Equal(false))
+			})
+
+			It("returns status code of 422 if invalid status", func() {
+				reader := JSONFor(JSON{
+					"lastStatus": lastStatus,
+					"status":     "invalid-status",
+					"timestamp":  time.Now().Unix(),
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
@@ -188,24 +267,52 @@ var _ = Describe("Room Handler", func() {
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
 				Expect(obj["description"]).To(ContainSubstring("does not validate as matches"))
 				Expect(obj["success"]).To(Equal(false))
-				Expect(db.Execs).To(HaveLen(0))
+			})
+
+			It("returns status code of 422 if invalid lastStatus", func() {
+				reader := JSONFor(JSON{
+					"lastStatus": "invalid-last-status",
+					"status":     status,
+					"timestamp":  time.Now().Unix(),
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(422))
+				var obj map[string]interface{}
+				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(obj["code"]).To(Equal("MAE-004"))
+				Expect(obj["error"]).To(Equal("ValidationFailedError"))
+				Expect(obj["description"]).To(ContainSubstring("does not validate as matches"))
+				Expect(obj["success"]).To(Equal(false))
 			})
 		})
 
-		Context("when postgres is down", func() {
-			It("returns status code of 500 if database is unavailable", func() {
-				app.DB = mocks.NewPGMock(1, 1, fmt.Errorf("sql: database is closed"))
-				app.Router.ServeHTTP(recorder, request)
+		Context("when redis is down", func() {
+			It("returns status code of 500 if redis is unavailable", func() {
+				reader := JSONFor(JSON{
+					"lastStatus": lastStatus,
+					"status":     status,
+					"timestamp":  time.Now().Unix(),
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
 
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{"status": status})
+				mockPipeline.EXPECT().SRem(oldSKey, rKey)
+				mockPipeline.EXPECT().SAdd(newSKey, rKey)
+				mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
+
+				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
 				var obj map[string]interface{}
 				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(obj["code"]).To(Equal("MAE-000"))
 				Expect(obj["error"]).To(Equal("Status update failed"))
-				Expect(obj["description"]).To(Equal("sql: database is closed"))
+				Expect(obj["description"]).To(Equal("some error in redis"))
 				Expect(obj["success"]).To(Equal(false))
-				Expect(db.Execs).To(HaveLen(0))
 			})
 		})
 	})

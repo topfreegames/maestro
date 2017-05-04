@@ -9,13 +9,14 @@ package api_test
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 
+	"gopkg.in/pg.v5/types"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/topfreegames/extensions/pg/mocks"
 	"github.com/topfreegames/maestro/metadata"
 )
 
@@ -35,16 +36,19 @@ var _ = Describe("Healthcheck Handler", func() {
 
 		Context("when all services are healthy", func() {
 			It("returns a status code of 200", func() {
+				mockDb.EXPECT().Exec("select 1")
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(200))
 			})
 
 			It("returns working string", func() {
+				mockDb.EXPECT().Exec("select 1")
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Body.String()).To(Equal(`{"healthy": true}`))
 			})
 
 			It("returns the version as a header", func() {
+				mockDb.EXPECT().Exec("select 1")
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Header().Get("X-Maestro-Version")).To(Equal(metadata.Version))
 			})
@@ -52,7 +56,7 @@ var _ = Describe("Healthcheck Handler", func() {
 
 		Context("when postgres is down", func() {
 			It("returns status code of 500 if database is unavailable", func() {
-				app.DB = mocks.NewPGMock(1, 1, fmt.Errorf("sql: database is closed"))
+				mockDb.EXPECT().Exec("select 1").Return(&types.Result{}, errors.New("sql: database is closed"))
 				app.Router.ServeHTTP(recorder, request)
 
 				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
