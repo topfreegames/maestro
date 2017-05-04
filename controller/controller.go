@@ -55,16 +55,6 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 	})
 
 	if err != nil {
-		deleteErr := mr.WithSegment(models.SegmentNamespace, func() error {
-			return namespace.Delete(clientset)
-		})
-		if deleteErr != nil {
-			return deleteErr
-		}
-		return err
-	}
-
-	if err != nil {
 		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
 		if deleteErr != nil {
 			return deleteErr
@@ -220,6 +210,7 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 	err = mr.WithSegment(models.SegmentDelete, func() error {
 		return scheduler.Delete(db)
 	})
+	// TODO: we should also remove scheduler rooms from redis
 	if err != nil {
 		logger.WithError(err).Error("Failed to delete scheduler while rolling back cluster creation.")
 		return err

@@ -24,14 +24,13 @@ import (
 )
 
 var (
-	db              *pgmocks.MockDB
-	logger          *logrus.Logger
 	hook            *test.Hook
-	err             error
-	mr              *models.MixedMetricsReporter
-	mockRedisClient *redismocks.MockRedisClient
-	mockPipeline    *redismocks.MockPipeliner
+	logger          *logrus.Logger
 	mockCtrl        *gomock.Controller
+	mockDb          *pgmocks.MockDB
+	mockPipeline    *redismocks.MockPipeliner
+	mockRedisClient *redismocks.MockRedisClient
+	mr              *models.MixedMetricsReporter
 )
 
 func TestController(t *testing.T) {
@@ -46,7 +45,7 @@ var _ = BeforeEach(func() {
 	mr := models.NewMixedMetricsReporter()
 	mr.AddReporter(fakeReporter)
 	mockCtrl = gomock.NewController(GinkgoT())
-	db = pgmocks.NewMockDB(mockCtrl)
+	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 })
