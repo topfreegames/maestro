@@ -59,10 +59,11 @@ cmd:
 
 var _ = Describe("Controller", func() {
 	var clientset *fake.Clientset
-	timeoutSec := 300
+	var timeoutSec int
 
 	BeforeEach(func() {
 		clientset = fake.NewSimpleClientset()
+		timeoutSec = 300
 	})
 
 	Describe("CreateScheduler", func() {
