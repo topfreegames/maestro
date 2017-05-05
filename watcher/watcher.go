@@ -35,7 +35,7 @@ type Watcher struct {
 	RedisClient       *redis.Client
 	LockKey           string
 	LockTimeoutMS     int
-	run               bool
+	Run               bool
 	SchedulerName     string
 }
 
@@ -90,22 +90,22 @@ func (w *Watcher) Start() {
 		"source":  "maestro-watcher",
 		"version": metadata.Version,
 	})
-	w.run = true
+	w.Run = true
 	sigchan := make(chan os.Signal)
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	ticker := time.NewTicker(time.Duration(w.AutoScalingPeriod) * time.Second)
 
 	// TODO better use that buckets algorithm?
-	for w.run == true {
+	for w.Run == true {
 		select {
 		case <-ticker.C:
 			lock, err := w.RedisClient.EnterCriticalSection(w.RedisClient.Client, w.LockKey, time.Duration(w.LockTimeoutMS)*time.Millisecond, 0, 0)
 			if lock == nil || err != nil {
-				if lock == nil {
-					l.Warn("unnable to get watcher lock, maybe some other process has it...")
-				} else if err != nil {
-					l.Errorf("error getting watcher lock: %s", err.Error())
+				if err != nil {
+					l.WithError(err).Error("error getting watcher lock")
+				} else if lock == nil {
+					l.Warn("unable to get watcher lock, maybe some other process has it...")
 				}
 			} else if lock.IsLocked() {
 				w.AutoScale()
@@ -113,7 +113,7 @@ func (w *Watcher) Start() {
 			}
 		case sig := <-sigchan:
 			w.Logger.Warnf("caught signal %v: terminating\n", sig)
-			w.run = false
+			w.Run = false
 		}
 	}
 	// TODO: implement graceful shutdown
@@ -121,9 +121,11 @@ func (w *Watcher) Start() {
 
 // AutoScale checks if the GRUs state is as expected and scale up or down if necessary
 func (w *Watcher) AutoScale() {
+	nowTimestamp := time.Now().Unix()
 	logger := w.Logger.WithFields(logrus.Fields{
 		"executionID": uuid.NewV4().String(),
 		"operation":   "autoScale",
+		"timestamp":   nowTimestamp,
 	})
 
 	// check cooldown
@@ -135,7 +137,7 @@ func (w *Watcher) AutoScale() {
 		w.SchedulerName,
 	)
 	if err != nil {
-		logger.WithError(err).Error("Failed to get scheduler scaling info.")
+		logger.WithError(err).Error("failed to get scheduler scaling info")
 		return
 	}
 
@@ -146,7 +148,7 @@ func (w *Watcher) AutoScale() {
 		w.SchedulerName,
 	)
 	if err != nil {
-		logger.WithError(err).Error("Failed to get scheduler state info.")
+		logger.WithError(err).Error("failed to get scheduler state info")
 		return
 	}
 
@@ -160,9 +162,10 @@ func (w *Watcher) AutoScale() {
 		autoScalingInfo,
 		roomCountByStatus,
 		state,
+		nowTimestamp,
 	)
 	if shouldScaleUp {
-		l.Info("Scheduler is subdimensioned, scaling up. ")
+		l.Info("scheduler is subdimensioned, scaling up")
 		timeoutSec := w.Config.GetInt("scaleUpTimeout")
 		err = controller.ScaleUp(
 			logger,
@@ -176,19 +179,20 @@ func (w *Watcher) AutoScale() {
 			false,
 		)
 		state.State = "in-sync"
+		state.LastChangedAt = nowTimestamp
 		changedState = true
 		if err == nil {
-			state.LastScaleOpAt = time.Now().Unix()
+			state.LastScaleOpAt = nowTimestamp
 		}
 	} else if shouldScaleDown {
-		l.Warn("Scheduler is overdimensioned, should scale down.")
+		l.Warn("scheduler is overdimensioned, should scale down")
 	} else {
-		l.Info("Scheduler state is as expected. ")
+		l.Info("scheduler state is as expected")
 	}
 	if changedState {
 		err = controller.SaveSchedulerStateInfo(logger, w.MetricsReporter, w.RedisClient.Client, state)
 		if err != nil {
-			logger.WithError(err).Error("Failed to save scheduler state info.")
+			logger.WithError(err).Error("failed to save scheduler state info")
 		}
 	}
 }
@@ -197,31 +201,32 @@ func (w *Watcher) checkState(
 	autoScalingInfo *models.AutoScaling,
 	roomCount *models.RoomsStatusCount,
 	state *models.SchedulerState,
+	nowTimestamp int64,
 ) (bool, bool, bool) {
 	if roomCount.Total() < autoScalingInfo.Min { // this should never happen
 		return true, false, false
 	}
-	if roomCount.Ready/roomCount.Total() < 1-(autoScalingInfo.Up.Trigger.Usage/100) {
+	if float64(roomCount.Ready)/float64(roomCount.Total()) < 1.0-(float64(autoScalingInfo.Up.Trigger.Usage)/100.0) {
 		if state.State != "subdimensioned" {
 			state.State = "subdimensioned"
-			state.LastChangedAt = time.Now().Unix()
+			state.LastChangedAt = nowTimestamp
 			return false, false, true
 		}
-		if time.Now().Unix()-state.LastScaleOpAt > int64(autoScalingInfo.Up.Cooldown) &&
-			time.Now().Unix()-state.LastChangedAt > int64(autoScalingInfo.Up.Trigger.Time) {
+		if nowTimestamp-state.LastScaleOpAt > int64(autoScalingInfo.Up.Cooldown) &&
+			nowTimestamp-state.LastChangedAt > int64(autoScalingInfo.Up.Trigger.Time) {
 			return true, false, false
 		}
 	}
 
-	if roomCount.Ready/roomCount.Total() > 1-(autoScalingInfo.Down.Trigger.Usage/100) &&
+	if float64(roomCount.Ready)/float64(roomCount.Total()) > 1.0-float64(autoScalingInfo.Down.Trigger.Usage)/100.0 &&
 		roomCount.Total()-autoScalingInfo.Down.Delta > autoScalingInfo.Min {
 		if state.State != "overdimensioned" {
 			state.State = "overdimensioned"
-			state.LastChangedAt = time.Now().Unix()
+			state.LastChangedAt = nowTimestamp
 			return false, false, true
 		}
-		if time.Now().Unix()-state.LastScaleOpAt > int64(autoScalingInfo.Down.Cooldown) &&
-			time.Now().Unix()-state.LastChangedAt > int64(autoScalingInfo.Down.Trigger.Time) {
+		if nowTimestamp-state.LastScaleOpAt > int64(autoScalingInfo.Down.Cooldown) &&
+			nowTimestamp-state.LastChangedAt > int64(autoScalingInfo.Down.Trigger.Time) {
 			return false, true, false
 		}
 	}
