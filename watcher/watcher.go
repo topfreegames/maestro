@@ -191,6 +191,8 @@ func (w *Watcher) checkState(
 	scheduler *models.Scheduler,
 	nowTimestamp int64,
 ) (bool, bool, bool) {
+	inCooldownPeriod := false
+
 	if scheduler.State == models.StateCreating || scheduler.State == models.StateTerminating {
 		return false, false, false
 	}
@@ -209,6 +211,7 @@ func (w *Watcher) checkState(
 			nowTimestamp-scheduler.StateLastChangedAt > int64(autoScalingInfo.Up.Trigger.Time) {
 			return true, false, false
 		}
+		inCooldownPeriod = true
 	}
 
 	if float64(roomCount.Ready)/float64(roomCount.Total()) > 1.0-float64(autoScalingInfo.Down.Trigger.Usage)/100.0 &&
@@ -222,6 +225,13 @@ func (w *Watcher) checkState(
 			nowTimestamp-scheduler.StateLastChangedAt > int64(autoScalingInfo.Down.Trigger.Time) {
 			return false, true, false
 		}
+		inCooldownPeriod = true
+	}
+
+	if !inCooldownPeriod && scheduler.State != models.StateInSync {
+		scheduler.State = models.StateInSync
+		scheduler.StateLastChangedAt = nowTimestamp
+		return false, false, true
 	}
 
 	return false, false, false

@@ -351,6 +351,43 @@ var _ = Describe("Watcher", func() {
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
 		})
 
+		It("should change state and not scale if in-sync but wrong state reported", func() {
+			// GetSchedulerScalingInfo
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = models.StateOverdimensioned
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
+				scheduler.YAML = yaml1
+			})
+			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			expC := &models.RoomsStatusCount{0, 2, 4, 0} // creating,occupied,ready,terminating
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().Exec()
+
+			// UpdateScheduler
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("in-sync"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
+				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
+			}).Return(&types.Result{}, nil)
+
+			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+		})
+
 		It("should do nothing if in cooldown - subdimensioned", func() {
 			// GetSchedulerScalingInfo
 			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
