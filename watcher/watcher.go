@@ -128,8 +128,7 @@ func (w *Watcher) AutoScale() {
 		"timestamp":   nowTimestamp,
 	})
 
-	// check cooldown
-	autoScalingInfo, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
+	scheduler, autoScalingInfo, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
 		logger,
 		w.MetricsReporter,
 		w.DB,
@@ -141,29 +140,18 @@ func (w *Watcher) AutoScale() {
 		return
 	}
 
-	state, err := controller.GetSchedulerStateInfo(
-		logger,
-		w.MetricsReporter,
-		w.RedisClient.Client,
-		w.SchedulerName,
-	)
-	if err != nil {
-		logger.WithError(err).Error("failed to get scheduler state info")
-		return
-	}
-
 	l := logger.WithFields(logrus.Fields{
 		"roomsByStatus": roomCountByStatus,
-		"state":         state,
+		"state":         scheduler.State,
 	})
-	// TODO: we should not try to scale a cluster that is being created, check is somewhere
-	// Maybe we should set a cooldown for cluster creation
+
 	shouldScaleUp, shouldScaleDown, changedState := w.checkState(
 		autoScalingInfo,
 		roomCountByStatus,
-		state,
+		scheduler,
 		nowTimestamp,
 	)
+
 	if shouldScaleUp {
 		l.Info("scheduler is subdimensioned, scaling up")
 		timeoutSec := w.Config.GetInt("scaleUpTimeout")
@@ -173,16 +161,16 @@ func (w *Watcher) AutoScale() {
 			w.DB,
 			w.RedisClient.Client,
 			w.KubernetesClient,
-			w.SchedulerName,
+			scheduler,
 			autoScalingInfo.Up.Delta,
 			timeoutSec,
 			false,
 		)
-		state.State = "in-sync"
-		state.LastChangedAt = nowTimestamp
+		scheduler.State = "in-sync"
+		scheduler.StateLastChangedAt = nowTimestamp
 		changedState = true
 		if err == nil {
-			state.LastScaleOpAt = nowTimestamp
+			scheduler.LastScaleOpAt = nowTimestamp
 		}
 	} else if shouldScaleDown {
 		l.Warn("scheduler is overdimensioned, should scale down")
@@ -190,9 +178,9 @@ func (w *Watcher) AutoScale() {
 		l.Info("scheduler state is as expected")
 	}
 	if changedState {
-		err = controller.SaveSchedulerStateInfo(logger, w.MetricsReporter, w.RedisClient.Client, state)
+		err = controller.UpdateScheduler(logger, w.MetricsReporter, w.DB, scheduler)
 		if err != nil {
-			logger.WithError(err).Error("failed to save scheduler state info")
+			logger.WithError(err).Error("failed to update scheduler info")
 		}
 	}
 }
@@ -200,35 +188,41 @@ func (w *Watcher) AutoScale() {
 func (w *Watcher) checkState(
 	autoScalingInfo *models.AutoScaling,
 	roomCount *models.RoomsStatusCount,
-	state *models.SchedulerState,
+	scheduler *models.Scheduler,
 	nowTimestamp int64,
 ) (bool, bool, bool) {
-	if roomCount.Total() < autoScalingInfo.Min { // this should never happen
+	if scheduler.State == "creating" || scheduler.State == "terminating" {
+		return false, false, false
+	}
+
+	if roomCount.Total() < autoScalingInfo.Min {
 		return true, false, false
 	}
+
 	if float64(roomCount.Ready)/float64(roomCount.Total()) < 1.0-(float64(autoScalingInfo.Up.Trigger.Usage)/100.0) {
-		if state.State != "subdimensioned" {
-			state.State = "subdimensioned"
-			state.LastChangedAt = nowTimestamp
+		if scheduler.State != "subdimensioned" {
+			scheduler.State = "subdimensioned"
+			scheduler.StateLastChangedAt = nowTimestamp
 			return false, false, true
 		}
-		if nowTimestamp-state.LastScaleOpAt > int64(autoScalingInfo.Up.Cooldown) &&
-			nowTimestamp-state.LastChangedAt > int64(autoScalingInfo.Up.Trigger.Time) {
+		if nowTimestamp-scheduler.LastScaleOpAt > int64(autoScalingInfo.Up.Cooldown) &&
+			nowTimestamp-scheduler.StateLastChangedAt > int64(autoScalingInfo.Up.Trigger.Time) {
 			return true, false, false
 		}
 	}
 
 	if float64(roomCount.Ready)/float64(roomCount.Total()) > 1.0-float64(autoScalingInfo.Down.Trigger.Usage)/100.0 &&
 		roomCount.Total()-autoScalingInfo.Down.Delta > autoScalingInfo.Min {
-		if state.State != "overdimensioned" {
-			state.State = "overdimensioned"
-			state.LastChangedAt = nowTimestamp
+		if scheduler.State != "overdimensioned" {
+			scheduler.State = "overdimensioned"
+			scheduler.StateLastChangedAt = nowTimestamp
 			return false, false, true
 		}
-		if nowTimestamp-state.LastScaleOpAt > int64(autoScalingInfo.Down.Cooldown) &&
-			nowTimestamp-state.LastChangedAt > int64(autoScalingInfo.Down.Trigger.Time) {
+		if nowTimestamp-scheduler.LastScaleOpAt > int64(autoScalingInfo.Down.Cooldown) &&
+			nowTimestamp-scheduler.StateLastChangedAt > int64(autoScalingInfo.Down.Trigger.Time) {
 			return false, true, false
 		}
 	}
+
 	return false, false, false
 }

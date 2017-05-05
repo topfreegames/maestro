@@ -17,7 +17,6 @@ import (
 
 	"gopkg.in/pg.v5/types"
 
-	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -110,11 +109,16 @@ var _ = Describe("Scheduler Handler", func() {
 				}).Times(100)
 				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(100)
 				mockPipeline.EXPECT().Exec().Times(100)
-				mockRedisClient.EXPECT().HMSet("scheduler-name", gomock.Any()).Return(redis.NewStatusResult("OK", nil))
-				mockDb.EXPECT().Query(gomock.Any(), "INSERT INTO schedulers (name, game, yaml) VALUES (?name, ?game, ?yaml) RETURNING id", gomock.Any())
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", "scheduler-name").Do(func(scheduler *models.Scheduler, query string, modifier string) {
-					scheduler.YAML = jsonString
-				})
+				mockDb.EXPECT().Query(
+					gomock.Any(),
+					"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
+					gomock.Any(),
+				)
+				mockDb.EXPECT().Query(
+					gomock.Any(),
+					"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+					gomock.Any(),
+				)
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(201))
@@ -165,7 +169,7 @@ var _ = Describe("Scheduler Handler", func() {
 			It("returns status code of 500 if database is unavailable", func() {
 				mockDb.EXPECT().Query(
 					gomock.Any(),
-					"INSERT INTO schedulers (name, game, yaml) VALUES (?name, ?game, ?yaml) RETURNING id",
+					"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
 					gomock.Any(),
 				).Return(&types.Result{}, errors.New("sql: database is closed"))
 				mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", gomock.Any())

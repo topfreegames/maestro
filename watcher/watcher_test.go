@@ -9,7 +9,7 @@ package watcher_test
 
 import (
 	"errors"
-	"strconv"
+	"fmt"
 	"time"
 
 	"gopkg.in/pg.v5/types"
@@ -107,7 +107,6 @@ var _ = Describe("Watcher", func() {
 
 			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name)
 			Expect(w).NotTo(BeNil())
-			defer func() { w.Run = false }()
 
 			// EnterCriticalSection (lock done by redis-lock)
 			mockRedisClient.EXPECT().SetNX("maestro-lock-key", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).AnyTimes()
@@ -115,6 +114,7 @@ var _ = Describe("Watcher", func() {
 			// GetSchedulerScalingInfo
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yaml1
+				scheduler.State = "in-sync"
 			}).AnyTimes()
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
 			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
@@ -128,27 +128,21 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil)).AnyTimes()
 			mockPipeline.EXPECT().Exec().AnyTimes()
 
-			// GetSchedulerStateInfo
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(map[string]string{
-					"state":         "in-sync",
-					"lastChangedAt": strconv.Itoa(int(time.Now().Unix())),
-					"lastScaleOpAt": strconv.Itoa(int(time.Now().Unix())),
-				}, nil),
-			).AnyTimes()
-
-			// SaveSchedulerStateInfo
-			mockRedisClient.EXPECT().HMSet(configYaml1.Name, gomock.Any()).Return(&redis.StatusCmd{}).AnyTimes()
+			// UpdateScheduler
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				w.Run = false
+			}).Return(&types.Result{}, nil)
 
 			// LeaveCriticalSection (unlock done by redis-lock)
 			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{"maestro-lock-key"}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
-
-			Expect(func() { go w.Start() }).ShouldNot(Panic())
-			Eventually(func() bool { return w.Run }).Should(BeTrue())
-			time.Sleep(1000 * time.Millisecond)
+			w.Start()
 		})
 
-		It("should start watcher if error acquiring lock", func() {
+		It("should not panic if error acquiring lock", func() {
 			name := "my-scheduler"
 			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name)
 			Expect(w).NotTo(BeNil())
@@ -163,7 +157,7 @@ var _ = Describe("Watcher", func() {
 			Expect(hook.LastEntry().Message).To(Equal("error getting watcher lock"))
 		})
 
-		It("should start watcher if lock is being used", func() {
+		It("should not panic if lock is being used", func() {
 			name := "my-scheduler"
 			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name)
 			Expect(w).NotTo(BeNil())
@@ -192,7 +186,12 @@ var _ = Describe("Watcher", func() {
 
 		It("should scale up and update scheduler state", func() {
 			// GetSchedulerScalingInfo
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "subdimensioned"
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 				scheduler.YAML = yaml1
 			})
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
@@ -207,21 +206,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
-			// GetSchedulerStateInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(map[string]string{
-					"state":         "subdimensioned",
-					"lastChangedAt": strconv.Itoa(int(lastChangedAt.Unix())),
-					"lastScaleOpAt": strconv.Itoa(int(lastScaleOpAt.Unix())),
-				}, nil),
-			)
-
 			// ScaleUp
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
-				scheduler.YAML = yaml1
-			})
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
 				"status":   "creating",
@@ -230,20 +215,30 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
-			// SaveSchedulerStateInfo
-			mockRedisClient.EXPECT().HMSet(configYaml1.Name, map[string]interface{}{
-				"state":         "in-sync",
-				"lastChangedAt": time.Now().Unix(),
-				"lastScaleOpAt": time.Now().Unix(),
-			}).Return(&redis.StatusCmd{})
+			// UpdateScheduler
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("in-sync"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
+				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
+			}).Return(&types.Result{}, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+			fmt.Sprintf("%v \n", hook.Entries)
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
 		})
 
 		It("should scale if roomCount is less than min", func() {
 			// GetSchedulerScalingInfo
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "in-sync"
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 				scheduler.YAML = yaml1
 			})
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
@@ -258,21 +253,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
-			// GetSchedulerStateInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(map[string]string{
-					"state":         "subdimensioned",
-					"lastChangedAt": strconv.Itoa(int(lastChangedAt.Unix())),
-					"lastScaleOpAt": strconv.Itoa(int(lastScaleOpAt.Unix())),
-				}, nil),
-			)
-
 			// ScaleUp
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
-				scheduler.YAML = yaml1
-			})
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
 				"status":   "creating",
@@ -281,12 +262,16 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
-			// SaveSchedulerStateInfo
-			mockRedisClient.EXPECT().HMSet(configYaml1.Name, map[string]interface{}{
-				"state":         "in-sync",
-				"lastChangedAt": time.Now().Unix(),
-				"lastScaleOpAt": time.Now().Unix(),
-			}).Return(&redis.StatusCmd{})
+			// UpdateScheduler
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("in-sync"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
+				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
+			}).Return(&types.Result{}, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
@@ -294,7 +279,12 @@ var _ = Describe("Watcher", func() {
 
 		It("should change state and not scale if first state change - subdimensioned", func() {
 			// GetSchedulerScalingInfo
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "in-sync"
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 				scheduler.YAML = yaml1
 			})
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
@@ -309,23 +299,16 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
-			// GetSchedulerStateInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(map[string]string{
-					"state":         "in-sync",
-					"lastChangedAt": strconv.Itoa(int(lastChangedAt.Unix())),
-					"lastScaleOpAt": strconv.Itoa(int(lastScaleOpAt.Unix())),
-				}, nil),
-			)
-
-			// SaveSchedulerStateInfo
-			mockRedisClient.EXPECT().HMSet(configYaml1.Name, map[string]interface{}{
-				"state":         "subdimensioned",
-				"lastChangedAt": time.Now().Unix(),
-				"lastScaleOpAt": lastScaleOpAt.Unix(),
-			}).Return(&redis.StatusCmd{})
+			// UpdateScheduler
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("subdimensioned"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
+				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
+			}).Return(&types.Result{}, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
@@ -333,7 +316,12 @@ var _ = Describe("Watcher", func() {
 
 		It("should change state and not scale if first state change - overdimensioned", func() {
 			// GetSchedulerScalingInfo
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "in-sync"
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 				scheduler.YAML = yaml1
 			})
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
@@ -348,23 +336,16 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
-			// GetSchedulerStateInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(map[string]string{
-					"state":         "in-sync",
-					"lastChangedAt": strconv.Itoa(int(lastChangedAt.Unix())),
-					"lastScaleOpAt": strconv.Itoa(int(lastScaleOpAt.Unix())),
-				}, nil),
-			)
-
-			// SaveSchedulerStateInfo
-			mockRedisClient.EXPECT().HMSet(configYaml1.Name, map[string]interface{}{
-				"state":         "overdimensioned",
-				"lastChangedAt": time.Now().Unix(),
-				"lastScaleOpAt": lastScaleOpAt.Unix(),
-			}).Return(&redis.StatusCmd{})
+			// UpdateScheduler
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("overdimensioned"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
+				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
+			}).Return(&types.Result{}, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
@@ -372,7 +353,12 @@ var _ = Describe("Watcher", func() {
 
 		It("should do nothing if in cooldown - subdimensioned", func() {
 			// GetSchedulerScalingInfo
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now()
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "subdimensioned"
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 				scheduler.YAML = yaml1
 			})
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
@@ -387,24 +373,18 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
-			// GetSchedulerStateInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-			lastScaleOpAt := time.Now()
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(map[string]string{
-					"state":         "subdimensioned",
-					"lastChangedAt": strconv.Itoa(int(lastChangedAt.Unix())),
-					"lastScaleOpAt": strconv.Itoa(int(lastScaleOpAt.Unix())),
-				}, nil),
-			)
-
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
 		})
 
 		It("should do nothing if in cooldown - overdimensioned", func() {
 			// GetSchedulerScalingInfo
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now()
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "overdimensioned"
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 				scheduler.YAML = yaml1
 			})
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
@@ -418,17 +398,6 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
-
-			// GetSchedulerStateInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
-			lastScaleOpAt := time.Now()
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(map[string]string{
-					"state":         "overdimensioned",
-					"lastChangedAt": strconv.Itoa(int(lastChangedAt.Unix())),
-					"lastScaleOpAt": strconv.Itoa(int(lastScaleOpAt.Unix())),
-				}, nil),
-			)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
@@ -436,7 +405,12 @@ var _ = Describe("Watcher", func() {
 
 		It("should warn if scale down is required", func() {
 			// GetSchedulerScalingInfo
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "overdimensioned"
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 				scheduler.YAML = yaml1
 			})
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
@@ -451,24 +425,18 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
-			// GetSchedulerStateInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
-			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Cooldown+1) * time.Second)
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(map[string]string{
-					"state":         "overdimensioned",
-					"lastChangedAt": strconv.Itoa(int(lastChangedAt.Unix())),
-					"lastScaleOpAt": strconv.Itoa(int(lastScaleOpAt.Unix())),
-				}, nil),
-			)
-
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is overdimensioned, should scale down"))
 		})
 
 		It("should do nothing if state is expected", func() {
 			// GetSchedulerScalingInfo
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "in-sync"
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 				scheduler.YAML = yaml1
 			})
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
@@ -483,16 +451,49 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
-			// GetSchedulerStateInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(map[string]string{
-					"state":         "in-sync",
-					"lastChangedAt": strconv.Itoa(int(lastChangedAt.Unix())),
-					"lastScaleOpAt": strconv.Itoa(int(lastScaleOpAt.Unix())),
-				}, nil),
-			)
+			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+		})
+
+		It("should do nothing if state is creating", func() {
+			// GetSchedulerScalingInfo
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "creating"
+				scheduler.YAML = yaml1
+			})
+			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			expC := &models.RoomsStatusCount{0, 2, 4, 0} // creating,occupied,ready,terminating
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().Exec()
+
+			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+		})
+
+		It("should do nothing if state is terminating", func() {
+			// GetSchedulerScalingInfo
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "terminating"
+				scheduler.YAML = yaml1
+			})
+			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			expC := &models.RoomsStatusCount{0, 2, 4, 0} // creating,occupied,ready,terminating
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().Exec()
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
@@ -508,38 +509,14 @@ var _ = Describe("Watcher", func() {
 			Expect(hook.Entries).To(testing.ContainLogMessage("failed to get scheduler scaling info"))
 		})
 
-		It("should not panic and exit if error retrieving scheduler state info", func() {
-			// GetSchedulerScalingInfo
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
-				scheduler.YAML = yaml1
-			})
-			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
-			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
-			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
-			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
-			expC := &models.RoomsStatusCount{0, 2, 4, 0} // creating,occupied,ready,terminating
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
-			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
-			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
-			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
-			mockPipeline.EXPECT().Exec()
-
-			// GetSchedulerStateInfo
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(
-					map[string]string{},
-					errors.New("some cool error in redis"),
-				),
-			)
-
-			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("failed to get scheduler state info"))
-		})
-
 		It("should not panic and log error if failed to change state info", func() {
 			// GetSchedulerScalingInfo
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = "in-sync"
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 				scheduler.YAML = yaml1
 			})
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
@@ -554,26 +531,19 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
-			// GetSchedulerStateInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-			mockRedisClient.EXPECT().HGetAll(configYaml1.Name).Return(
-				redis.NewStringStringMapResult(map[string]string{
-					"state":         "in-sync",
-					"lastChangedAt": strconv.Itoa(int(lastChangedAt.Unix())),
-					"lastScaleOpAt": strconv.Itoa(int(lastScaleOpAt.Unix())),
-				}, nil),
-			)
-
-			// SaveSchedulerStateInfo
-			mockRedisClient.EXPECT().HMSet(configYaml1.Name, map[string]interface{}{
-				"state":         "subdimensioned",
-				"lastChangedAt": time.Now().Unix(),
-				"lastScaleOpAt": lastScaleOpAt.Unix(),
-			}).Return(redis.NewStatusResult("", errors.New("some error in redis")))
+			// UpdateScheduler
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("subdimensioned"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
+				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
+			}).Return(&types.Result{}, errors.New("some error in pg"))
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("failed to save scheduler state info"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("failed to update scheduler info"))
 		})
 	})
 })

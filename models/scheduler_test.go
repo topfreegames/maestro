@@ -10,6 +10,7 @@ package models_test
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"gopkg.in/pg.v5/types"
 
@@ -121,7 +122,7 @@ var _ = Describe("Scheduler", func() {
 			scheduler := models.NewScheduler(name, game, yaml1)
 			mockDb.EXPECT().Query(
 				scheduler,
-				"INSERT INTO schedulers (name, game, yaml) VALUES (?name, ?game, ?yaml) RETURNING id",
+				"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
 				scheduler,
 			)
 			err := scheduler.Create(mockDb)
@@ -132,7 +133,7 @@ var _ = Describe("Scheduler", func() {
 			scheduler := models.NewScheduler(name, game, yaml1)
 			mockDb.EXPECT().Query(
 				scheduler,
-				"INSERT INTO schedulers (name, game, yaml) VALUES (?name, ?game, ?yaml) RETURNING id",
+				"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
 				scheduler,
 			).Return(&types.Result{}, errors.New("some error in pg"))
 			err := scheduler.Create(mockDb)
@@ -162,6 +163,36 @@ var _ = Describe("Scheduler", func() {
 		})
 	})
 
+	Describe("Update Scheduler", func() {
+		It("should update scheduler in the database", func() {
+			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler.State = "terminating"
+			scheduler.StateLastChangedAt = time.Now().Unix()
+			scheduler.LastScaleOpAt = time.Now().Unix()
+			mockDb.EXPECT().Query(
+				scheduler,
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				scheduler,
+			)
+			err := scheduler.Update(mockDb)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return an error if db returns an error", func() {
+			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler.State = "terminating"
+			scheduler.StateLastChangedAt = time.Now().Unix()
+			scheduler.LastScaleOpAt = time.Now().Unix()
+			mockDb.EXPECT().Query(
+				scheduler,
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				scheduler,
+			).Return(&types.Result{}, errors.New("some error in pg"))
+			err := scheduler.Update(mockDb)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error in pg"))
+		})
+	})
 	Describe("Delete Scheduler", func() {
 		It("should delete scheduler in the database", func() {
 			scheduler := models.NewScheduler(name, game, yaml1)

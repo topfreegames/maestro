@@ -8,6 +8,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	pg "gopkg.in/pg.v5"
@@ -16,12 +18,15 @@ import (
 
 // Scheduler is the struct that defines a maestro scheduler
 type Scheduler struct {
-	ID        string
-	Name      string `yaml:"name"`
-	Game      string `yaml:"game"`
-	YAML      string
-	CreatedAt pg.NullTime
-	UpdatedAt pg.NullTime
+	ID                 string      `db:"id"`
+	Name               string      `db:"name" yaml:"name"`
+	Game               string      `db:"game" yaml:"game"`
+	YAML               string      `db:"yaml"`
+	State              string      `db:"state"`
+	StateLastChangedAt int64       `db:"state_last_changed_at"`
+	LastScaleOpAt      int64       `db:"last_scale_op_at"`
+	CreatedAt          pg.NullTime `db:"created_at"`
+	UpdatedAt          pg.NullTime `db:"updated_at"`
 }
 
 // Port has the port container port and protocol
@@ -79,9 +84,11 @@ type ConfigYAML struct {
 // NewScheduler is the scheduler constructor
 func NewScheduler(name, game, yaml string) *Scheduler {
 	return &Scheduler{
-		Name: name,
-		Game: game,
-		YAML: yaml,
+		Name:               name,
+		Game:               game,
+		YAML:               yaml,
+		State:              "creating",
+		StateLastChangedAt: time.Now().Unix(),
 	}
 }
 
@@ -103,7 +110,13 @@ func (c *Scheduler) Load(db interfaces.DB) error {
 
 // Create creates a scheduler in the database
 func (c *Scheduler) Create(db interfaces.DB) error {
-	_, err := db.Query(c, "INSERT INTO schedulers (name, game, yaml) VALUES (?name, ?game, ?yaml) RETURNING id", c)
+	_, err := db.Query(c, "INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id", c)
+	return err
+}
+
+// Update updates a scheduler in the database
+func (c *Scheduler) Update(db interfaces.DB) error {
+	_, err := db.Query(c, "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", c)
 	return err
 }
 

@@ -62,7 +62,7 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 		return err
 	}
 
-	err = ScaleUp(logger, mr, db, redisClient, clientset, scheduler.Name, configYAML.AutoScaling.Min, timeoutSec, true)
+	err = ScaleUp(logger, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true)
 	if err != nil {
 		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
 		if deleteErr != nil {
@@ -71,8 +71,12 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 		return err
 	}
 
-	state := models.NewSchedulerState(scheduler.Name, "in-sync", time.Now().Unix(), time.Now().Unix())
-	err = SaveSchedulerStateInfo(logger, mr, redisClient, state)
+	scheduler.State = "in-sync"
+	scheduler.StateLastChangedAt = time.Now().Unix()
+	scheduler.LastScaleOpAt = time.Now().Unix()
+	err = mr.WithSegment(models.SegmentUpdate, func() error {
+		return scheduler.Update(db)
+	})
 	if err != nil {
 		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
 		if deleteErr != nil {
@@ -81,6 +85,13 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 		return err
 	}
 	return nil
+}
+
+// UpdateScheduler updates a scheduler
+func UpdateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, scheduler *models.Scheduler) error {
+	return mr.WithSegment(models.SegmentUpdate, func() error {
+		return scheduler.Update(db)
+	})
 }
 
 // DeleteScheduler deletes a scheduler from a yaml configuration
@@ -97,13 +108,13 @@ func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 }
 
 // GetSchedulerScalingInfo returns the scheduler scaling policies and room count by status
-func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, client redisinterfaces.RedisClient, schedulerName string) (*models.AutoScaling, *models.RoomsStatusCount, error) {
+func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, client redisinterfaces.RedisClient, schedulerName string) (*models.Scheduler, *models.AutoScaling, *models.RoomsStatusCount, error) {
 	scheduler := models.NewScheduler(schedulerName, "", "")
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return scheduler.Load(db)
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	scalingPolicy := scheduler.GetAutoScalingPolicy()
 	var roomCountByStatus *models.RoomsStatusCount
@@ -112,45 +123,18 @@ func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsR
 		return err
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return scalingPolicy, roomCountByStatus, nil
-}
-
-// GetSchedulerStateInfo returns the scheduler state information
-func GetSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, client redisinterfaces.RedisClient, schedulerName string) (*models.SchedulerState, error) {
-	state := models.NewSchedulerState(schedulerName, "", 0, 0)
-	err := mr.WithSegment(models.SegmentHGetAll, func() error {
-		return state.Load(client)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return state, nil
-}
-
-// SaveSchedulerStateInfo updates the scheduler state information
-func SaveSchedulerStateInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, client redisinterfaces.RedisClient, state *models.SchedulerState) error {
-	return mr.WithSegment(models.SegmentHMSet, func() error {
-		return state.Save(client)
-	})
+	return scheduler, scalingPolicy, roomCountByStatus, nil
 }
 
 // ScaleUp scales up a scheduler using its config
-func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, schedulerName string, amount, timeoutSec int, initalOp bool) error {
+func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, scheduler *models.Scheduler, amount, timeoutSec int, initalOp bool) error {
 	l := logger.WithFields(logrus.Fields{
 		"source":    "scaleUp",
-		"scheduler": schedulerName,
+		"scheduler": scheduler.Name,
 		"amount":    amount,
 	})
-	l.Info("scaling scheduler up")
-	scheduler := models.NewScheduler(schedulerName, "", "")
-	err := mr.WithSegment(models.SegmentSelect, func() error {
-		return scheduler.Load(db)
-	})
-	if err != nil {
-		return err
-	}
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 
 	timeout := make(chan bool, 1)
@@ -195,7 +179,6 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 		l.Debug("scaling up scheduler...")
 		time.Sleep(time.Duration(1) * time.Second)
 	}
-	// TODO: set SchedulerState.State back to "in-sync"
 	return creationErr
 }
 
