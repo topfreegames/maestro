@@ -71,7 +71,7 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 		return err
 	}
 
-	scheduler.State = "in-sync"
+	scheduler.State = models.StateInSync
 	scheduler.StateLastChangedAt = time.Now().Unix()
 	scheduler.LastScaleOpAt = time.Now().Unix()
 	err = mr.WithSegment(models.SegmentUpdate, func() error {
@@ -183,6 +183,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 }
 
 func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, scheduler *models.Scheduler, namespace *models.Namespace) error {
+	// TODO: set scheduler state to models.StateTerminating
 	err := mr.WithSegment(models.SegmentNamespace, func() error {
 		return namespace.Delete(clientset) // TODO: we're assuming that deleting a namespace gracefully terminates all its pods
 	})

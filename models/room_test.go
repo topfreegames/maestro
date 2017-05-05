@@ -50,7 +50,7 @@ var _ = Describe("Room", func() {
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
-				"status":   "creating",
+				"status":   models.StatusCreating,
 				"lastPing": int64(0),
 			})
 			mockPipeline.EXPECT().SAdd(sKey, rKey)
@@ -67,7 +67,7 @@ var _ = Describe("Room", func() {
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
-				"status":   "creating",
+				"status":   models.StatusCreating,
 				"lastPing": int64(0),
 			})
 			mockPipeline.EXPECT().SAdd(sKey, rKey)
@@ -81,8 +81,8 @@ var _ = Describe("Room", func() {
 
 	Describe("Set Status", func() {
 		It("should call redis successfully", func() {
-			status := "room-ready"
-			lastStatus := "creating"
+			status := models.StatusReady
+			lastStatus := models.StatusCreating
 			room := models.NewRoom(name, schedulerName)
 			rKey := room.GetRoomRedisKey()
 			oldSKey := models.GetRoomStatusSetRedisKey(schedulerName, lastStatus)
@@ -101,7 +101,7 @@ var _ = Describe("Room", func() {
 		It("should call redis successfully with empty last status", func() {
 			room := models.NewRoom(name, schedulerName)
 			rKey := room.GetRoomRedisKey()
-			status := "room-ready"
+			status := models.StatusReady
 			lastStatus := ""
 			newSKey := models.GetRoomStatusSetRedisKey(schedulerName, status)
 
@@ -117,8 +117,8 @@ var _ = Describe("Room", func() {
 		It("should remove from redis is status is 'terminated'", func() {
 			room := models.NewRoom(name, schedulerName)
 			rKey := room.GetRoomRedisKey()
-			status := "terminated"
-			lastStatus := "room-ready"
+			status := models.StatusTerminated
+			lastStatus := models.StatusReady
 			oldSKey := models.GetRoomStatusSetRedisKey(schedulerName, "terminating")
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -131,8 +131,8 @@ var _ = Describe("Room", func() {
 		})
 
 		It("should return an error if redis returns an error", func() {
-			status := "room-ready"
-			lastStatus := "creating"
+			status := models.StatusReady
+			lastStatus := models.StatusCreating
 			room := models.NewRoom(name, schedulerName)
 			rKey := room.GetRoomRedisKey()
 			oldSKey := models.GetRoomStatusSetRedisKey(schedulerName, lastStatus)
@@ -154,7 +154,7 @@ var _ = Describe("Room", func() {
 		It("should call redis successfully", func() {
 			name := "pong-free-for-all-0"
 			scheduler := "pong-free-for-all"
-			status := "room-ready"
+			status := models.StatusReady
 			room := models.NewRoom(name, scheduler)
 			rKey := room.GetRoomRedisKey()
 
@@ -170,7 +170,7 @@ var _ = Describe("Room", func() {
 		It("should return an error if redis returns an error", func() {
 			name := "pong-free-for-all-0"
 			scheduler := "pong-free-for-all"
-			status := "room-ready"
+			status := models.StatusReady
 			room := models.NewRoom(name, scheduler)
 			rKey := room.GetRoomRedisKey()
 

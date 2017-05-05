@@ -87,8 +87,7 @@ func (w *Watcher) configureLogger() {
 // Start starts the watcher
 func (w *Watcher) Start() {
 	l := w.Logger.WithFields(logrus.Fields{
-		"source":  "maestro-watcher",
-		"version": metadata.Version,
+		"operation": "start",
 	})
 	w.Run = true
 	sigchan := make(chan os.Signal)
@@ -166,7 +165,7 @@ func (w *Watcher) AutoScale() {
 			timeoutSec,
 			false,
 		)
-		scheduler.State = "in-sync"
+		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
 		changedState = true
 		if err == nil {
@@ -177,6 +176,7 @@ func (w *Watcher) AutoScale() {
 	} else {
 		l.Info("scheduler state is as expected")
 	}
+
 	if changedState {
 		err = controller.UpdateScheduler(logger, w.MetricsReporter, w.DB, scheduler)
 		if err != nil {
@@ -191,7 +191,7 @@ func (w *Watcher) checkState(
 	scheduler *models.Scheduler,
 	nowTimestamp int64,
 ) (bool, bool, bool) {
-	if scheduler.State == "creating" || scheduler.State == "terminating" {
+	if scheduler.State == models.StateCreating || scheduler.State == models.StateTerminating {
 		return false, false, false
 	}
 
@@ -200,8 +200,8 @@ func (w *Watcher) checkState(
 	}
 
 	if float64(roomCount.Ready)/float64(roomCount.Total()) < 1.0-(float64(autoScalingInfo.Up.Trigger.Usage)/100.0) {
-		if scheduler.State != "subdimensioned" {
-			scheduler.State = "subdimensioned"
+		if scheduler.State != models.StateSubdimensioned {
+			scheduler.State = models.StateSubdimensioned
 			scheduler.StateLastChangedAt = nowTimestamp
 			return false, false, true
 		}
@@ -213,8 +213,8 @@ func (w *Watcher) checkState(
 
 	if float64(roomCount.Ready)/float64(roomCount.Total()) > 1.0-float64(autoScalingInfo.Down.Trigger.Usage)/100.0 &&
 		roomCount.Total()-autoScalingInfo.Down.Delta > autoScalingInfo.Min {
-		if scheduler.State != "overdimensioned" {
-			scheduler.State = "overdimensioned"
+		if scheduler.State != models.StateOverdimensioned {
+			scheduler.State = models.StateOverdimensioned
 			scheduler.StateLastChangedAt = nowTimestamp
 			return false, false, true
 		}

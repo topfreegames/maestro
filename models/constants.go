@@ -57,3 +57,33 @@ const SegmentHGetAll = "Redis/HGetAll"
 
 //SegmentHMSet represents a segment
 const SegmentHMSet = "Redis/HMSet"
+
+//StateCreating represents a cluster state
+const StateCreating = "creating"
+
+//StateTerminating represents a cluster state
+const StateTerminating = "terminating"
+
+//StateInSync represents a cluster state
+const StateInSync = "in-sync"
+
+//StateSubdimensioned represents a cluster state
+const StateSubdimensioned = "subdimensioned"
+
+//StateOverdimensioned represents a cluster state
+const StateOverdimensioned = "overdimensioned"
+
+//StatusCreating represents a room status
+const StatusCreating = "creating"
+
+//StatusReady represents a room status
+const StatusReady = "ready"
+
+//StatusOccupied represents a room status
+const StatusOccupied = "occupied"
+
+//StatusTerminating represents a room status
+const StatusTerminating = "terminating"
+
+//StatusTerminated represents a room status
+const StatusTerminated = "terminated"

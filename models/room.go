@@ -27,7 +27,7 @@ func NewRoom(id, schedulerName string) *Room {
 	return &Room{
 		ID:            id,
 		SchedulerName: schedulerName,
-		Status:        "creating",
+		Status:        StatusCreating,
 		LastPingAt:    0,
 	}
 }
@@ -51,7 +51,7 @@ func (r *Room) Create(redisClient interfaces.RedisClient) error {
 
 func (r *Room) remove(redisClient interfaces.RedisClient) error {
 	pipe := redisClient.TxPipeline()
-	pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, "terminating"), r.GetRoomRedisKey())
+	pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, StatusTerminating), r.GetRoomRedisKey())
 	pipe.Del(r.GetRoomRedisKey())
 	_, err := pipe.Exec()
 	return err
@@ -60,7 +60,7 @@ func (r *Room) remove(redisClient interfaces.RedisClient) error {
 // SetStatus updates the status of a given room in the database
 func (r *Room) SetStatus(redisClient interfaces.RedisClient, lastStatus string, status string) error {
 	r.Status = status
-	if status == "terminated" {
+	if status == StatusTerminated {
 		return r.remove(redisClient)
 	}
 	pipe := redisClient.TxPipeline()

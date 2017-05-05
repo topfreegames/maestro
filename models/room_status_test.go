@@ -49,10 +49,10 @@ var _ = Describe("Room Status", func() {
 
 	Describe("Get rooms count by status", func() {
 		It("should call redis successfully", func() {
-			kCreating := models.GetRoomStatusSetRedisKey(schedulerName, "creating")
-			kReady := models.GetRoomStatusSetRedisKey(schedulerName, "ready")
-			kOccupied := models.GetRoomStatusSetRedisKey(schedulerName, "occupied")
-			kTerminating := models.GetRoomStatusSetRedisKey(schedulerName, "terminating")
+			kCreating := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusCreating)
+			kReady := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)
+			kOccupied := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusOccupied)
+			kTerminating := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusTerminating)
 			expectedCountByStatus := &models.RoomsStatusCount{
 				Creating:    creating,
 				Occupied:    occupied,
@@ -73,10 +73,10 @@ var _ = Describe("Room Status", func() {
 		})
 
 		It("should return an error if redis returns an error", func() {
-			kCreating := models.GetRoomStatusSetRedisKey(schedulerName, "creating")
-			kReady := models.GetRoomStatusSetRedisKey(schedulerName, "ready")
-			kOccupied := models.GetRoomStatusSetRedisKey(schedulerName, "occupied")
-			kTerminating := models.GetRoomStatusSetRedisKey(schedulerName, "terminating")
+			kCreating := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusCreating)
+			kReady := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)
+			kOccupied := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusOccupied)
+			kTerminating := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusTerminating)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SCard(kCreating)
 			mockPipeline.EXPECT().SCard(kReady)

@@ -87,7 +87,7 @@ func NewScheduler(name, game, yaml string) *Scheduler {
 		Name:               name,
 		Game:               game,
 		YAML:               yaml,
-		State:              "creating",
+		State:              StateCreating,
 		StateLastChangedAt: time.Now().Unix(),
 	}
 }
