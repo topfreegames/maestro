@@ -30,11 +30,11 @@ var _ = Describe("Service", func() {
 		name = "pong-free-for-all-0"
 		namespace = "pong-free-for-all"
 		ports = []*models.Port{
-			&models.Port{
+			{
 				ContainerPort: 5050,
 				Protocol:      "UDP",
 			},
-			&models.Port{
+			{
 				ContainerPort: 8888,
 				Protocol:      "TCP",
 			},

@@ -31,7 +31,7 @@ var _ = Describe("App", func() {
 			Expect(application.KubeconfigPath).To(HaveLen(0))
 		})
 
-		It("should fail if some error occured", func() {
+		It("should fail if some error occurred", func() {
 			config.Set("newrelic.key", 12345)
 			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
 			Expect(err).To(HaveOccurred())

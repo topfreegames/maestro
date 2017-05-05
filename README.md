@@ -1,6 +1,8 @@
 Maestro: Kubernetes Game Room Scheduler
 =======================================
 [![Build Status](https://travis-ci.org/topfreegames/maestro.svg?branch=master)](https://travis-ci.org/topfreegames/maestro)
+[![Coverage Status](https://coveralls.io/repos/github/topfreegames/maestro/badge.svg?branch=master)](https://coveralls.io/github/topfreegames/maestro?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/topfreegames/maestro)](https://goreportcard.com/report/github.com/topfreegames/maestro)
 
 ## Goal:
 

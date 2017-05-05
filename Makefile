@@ -18,6 +18,7 @@ setup-hooks:
 	@cd .git/hooks && ln -sf ./hooks/pre-commit.sh pre-commit
 
 setup-ci:
+	@go get github.com/mattn/goveralls
 	@go get -u github.com/golang/dep/...
 	@go get github.com/onsi/ginkgo/ginkgo
 	@go get -u github.com/wadey/gocovmerge

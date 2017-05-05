@@ -44,11 +44,11 @@ var _ = Describe("Pod", func() {
 			"6a8e136b-2dc1-417e-bbe8-0f0a2d2df431",
 		}
 		env = []*models.EnvVar{
-			&models.EnvVar{
+			{
 				Name:  "EXAMPLE_ENV_VAR",
 				Value: "examplevalue",
 			},
-			&models.EnvVar{
+			{
 				Name:  "ANOTHER_ENV_VAR",
 				Value: "anothervalue",
 			},
@@ -58,10 +58,10 @@ var _ = Describe("Pod", func() {
 		name = "pong-free-for-all-0"
 		namespace = "pong-free-for-all"
 		ports = []*models.Port{
-			&models.Port{
+			{
 				ContainerPort: 5050,
 			},
-			&models.Port{
+			{
 				ContainerPort: 8888,
 			},
 		}

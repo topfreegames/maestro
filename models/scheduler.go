@@ -42,7 +42,7 @@ type Limits struct {
 	Memory string `yaml:"memory" json:"memory" valid:"int64"`
 }
 
-// EnvVar has name and value of an enviroment variable
+// EnvVar has name and value of an environment variable
 type EnvVar struct {
 	Name  string `yaml:"name" json:"name"`
 	Value string `yaml:"value" json:"value"`

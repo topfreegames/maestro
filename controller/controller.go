@@ -232,11 +232,11 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 		return "", err
 	}
 	namesEnvVars := []*models.EnvVar{
-		&models.EnvVar{
+		{
 			Name:  "MAESTRO_SCHEDULER_NAME",
 			Value: configYAML.Name,
 		},
-		&models.EnvVar{
+		{
 			Name:  "MAESTRO_ROOM_ID",
 			Value: name,
 		},
