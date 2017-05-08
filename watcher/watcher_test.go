@@ -184,6 +184,19 @@ var _ = Describe("Watcher", func() {
 			Expect(w).NotTo(BeNil())
 		})
 
+		It("should terminate watcher if scheduler is not in database", func() {
+			// GetSchedulerScalingInfo
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"SELECT * FROM schedulers WHERE name = ?",
+				configYaml1.Name,
+			).Return(&types.Result{}, errors.New("pg: no rows in result set"))
+
+			w.Run = true
+			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+			Expect(w.Run).To(BeFalse())
+		})
+
 		It("should scale up and update scheduler state", func() {
 			// GetSchedulerScalingInfo
 			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)

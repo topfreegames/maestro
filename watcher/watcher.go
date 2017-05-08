@@ -134,6 +134,10 @@ func (w *Watcher) AutoScale() {
 		w.RedisClient.Client,
 		w.SchedulerName,
 	)
+	if err != nil && err.Error() == "pg: no rows in result set" {
+		w.Run = false
+		return
+	}
 	if err != nil {
 		logger.WithError(err).Error("failed to get scheduler scaling info")
 		return
