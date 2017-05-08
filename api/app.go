@@ -17,16 +17,13 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/pg"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 
 	raven "github.com/getsentry/raven-go"
 	newrelic "github.com/newrelic/go-agent"
@@ -158,27 +155,10 @@ func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interfa
 		a.KubernetesClient = kubernetesClientOrNil
 		return nil
 	}
-	var err error
-	l := a.Logger.WithFields(logrus.Fields{
-		"source": "configureKubernetesClient",
-	})
-	var config *rest.Config
-	if a.InCluster {
-		l.Debug("starting with incluster configuration")
-		config, err = rest.InClusterConfig()
-	} else {
-		l.Debug("starting outside kubernetes cluster")
-		config, err = clientcmd.BuildConfigFromFlags("", a.KubeconfigPath)
-	}
+	clientset, err := extensions.GetKubernetesClient(a.Logger, a.InCluster, a.KubeconfigPath)
 	if err != nil {
 		return err
 	}
-	clientset, err := kubernetes.NewForConfig(config)
-
-	if err != nil {
-		return err
-	}
-
 	a.KubernetesClient = clientset
 	return nil
 }
@@ -188,7 +168,7 @@ func (a *App) configureDatabase(dbOrNil pginterfaces.DB) error {
 		a.DB = dbOrNil
 		return nil
 	}
-	db, err := a.getDB()
+	db, err := extensions.GetDB(a.Logger, a.Config)
 	if err != nil {
 		return err
 	}
@@ -202,41 +182,12 @@ func (a *App) configureRedisClient(redisClientOrNil redisinterfaces.RedisClient)
 		a.RedisClient = redisClientOrNil
 		return nil
 	}
-	redisClient, err := a.getRedisClient()
+	redisClient, err := extensions.GetRedisClient(a.Logger, a.Config)
 	if err != nil {
 		return err
 	}
-	a.RedisClient = redisClient
+	a.RedisClient = redisClient.Client
 	return nil
-}
-
-func (a *App) getRedisClient() (redisinterfaces.RedisClient, error) {
-	l := a.Logger.WithFields(logrus.Fields{
-		"operation": "configureRedisClient",
-	})
-
-	l.Debug("Connecting to Redis...")
-	client, err := redis.NewClient("extensions.redis", a.Config)
-	if err != nil {
-		l.WithError(err).Error("Connection to redis failed.")
-		return nil, err
-	}
-	l.Info("Successfully connected to redis.")
-	return client.Client, nil
-}
-
-func (a *App) getDB() (pginterfaces.DB, error) {
-	l := a.Logger.WithFields(logrus.Fields{
-		"operation": "configureDatabase",
-	})
-	l.Debug("Connecting to DB...")
-	client, err := pg.NewClient("extensions.pg", a.Config)
-	if err != nil {
-		l.WithError(err).Error("Connection to database failed.")
-		return nil, err
-	}
-	l.Info("Successful connected to database.")
-	return client.DB, nil
 }
 
 func (a *App) configureLogger() {
