@@ -393,6 +393,41 @@ var _ = Describe("Controller", func() {
 		})
 	})
 
+	Describe("List Schedulers Names", func() {
+		It("should get schedulers names from the database", func() {
+			expectedNames := []string{"scheduler1", "scheduler2", "scheduler3"}
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Do(
+				func(schedulers *[]models.Scheduler, query string) {
+					expectedSchedulers := make([]models.Scheduler, len(expectedNames))
+					for idx, name := range expectedNames {
+						expectedSchedulers[idx] = models.Scheduler{Name: name}
+					}
+					*schedulers = expectedSchedulers
+				},
+			)
+			names, err := controller.ListSchedulersNames(logger, mr, mockDb)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(names).To(Equal(expectedNames))
+		})
+
+		It("should succeed if error is 'no rows in result set'", func() {
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Return(
+				&types.Result{}, errors.New("pg: no rows in result set"),
+			)
+			_, err := controller.ListSchedulersNames(logger, mr, mockDb)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return an error if db returns an error", func() {
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Return(
+				&types.Result{}, errors.New("some error in pg"),
+			)
+			_, err := controller.ListSchedulersNames(logger, mr, mockDb)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error in pg"))
+		})
+	})
+
 	Describe("ScaleUp", func() {
 		It("should succeed", func() {
 			amount := 5

@@ -128,6 +128,20 @@ func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsR
 	return scheduler, scalingPolicy, roomCountByStatus, nil
 }
 
+// ListSchedulersNames list all scheduler names
+func ListSchedulersNames(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB) ([]string, error) {
+	var names []string
+	err := mr.WithSegment(models.SegmentSelect, func() error {
+		var err error
+		names, err = models.ListSchedulersNames(db)
+		return err
+	})
+	if err != nil {
+		return []string{}, err
+	}
+	return names, nil
+}
+
 // ScaleUp scales up a scheduler using its config
 func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, scheduler *models.Scheduler, amount, timeoutSec int, initalOp bool) error {
 	l := logger.WithFields(logrus.Fields{
