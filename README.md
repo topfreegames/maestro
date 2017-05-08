@@ -29,6 +29,10 @@ The controller is responsible for managing the Game Room Unities (GRUs). It crea
 
 The watcher ensures that at any time the Game Room Unities (GRUs) state is as expected. If the scaling policies say that one should have 10 GRUs of a given type, the watcher will ask the controller to create or terminate GRUs as needed. The desired state is kept in a database that is consulted by the watcher (via controller) each time it runs. It has a lock so Maestro can be scaled horizontally. Each config (i.e. maestro scalable entity) has its own watcher.
 
+### maestro-worker:
+
+The worker ensures that all valid schedulers (i.e. schedulers that exist in the database) have running watchers.
+
 ### maestro-api:
 
 The API is the connection of Maestro to the external world and with the game room itself. It is responsible for:

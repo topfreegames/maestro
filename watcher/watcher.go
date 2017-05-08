@@ -60,7 +60,6 @@ func NewWatcher(
 	}
 	w.loadConfigurationDefaults()
 	w.configure()
-	w.AutoScalingPeriod = w.Config.GetInt("autoScalingPeriod")
 	w.configureLogger()
 	return w
 }
@@ -73,6 +72,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 }
 
 func (w *Watcher) configure() {
+	w.AutoScalingPeriod = w.Config.GetInt("autoScalingPeriod")
 	w.LockKey = w.Config.GetString("watcher.lockKey")
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
 }
@@ -111,7 +111,7 @@ func (w *Watcher) Start() {
 				w.RedisClient.LeaveCriticalSection(lock)
 			}
 		case sig := <-sigchan:
-			w.Logger.Warnf("caught signal %v: terminating\n", sig)
+			l.Warnf("caught signal %v: terminating\n", sig)
 			w.Run = false
 		}
 	}

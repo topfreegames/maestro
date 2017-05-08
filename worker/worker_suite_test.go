@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license
 // Copyright © 2017 Top Free Games <backend@tfgco.com>
 
-package watcher_test
+package worker_test
 
 import (
 	"github.com/Sirupsen/logrus"
@@ -38,9 +38,9 @@ var (
 	redisClient     *redis.Client
 )
 
-func TestWatcher(t *testing.T) {
+func TestWorker(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Watcher Suite")
+	RunSpecs(t, "Worker Suite")
 }
 
 var _ = BeforeEach(func() {
