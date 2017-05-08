@@ -39,6 +39,8 @@ func (n *Namespace) Create(clientset kubernetes.Interface) error {
 // Exists returns true if namespace is already created in Kubernetes
 func (n *Namespace) Exists(clientset kubernetes.Interface) bool {
 	_, err := clientset.CoreV1().Namespaces().Get(n.Name, metav1.GetOptions{})
+	// TODO: we should return a bool + an error
+	// TODO: we should check err == kube's namespace does not exist error before returning true
 	return err == nil
 }
 

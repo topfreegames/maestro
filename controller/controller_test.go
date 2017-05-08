@@ -248,6 +248,38 @@ var _ = Describe("Controller", func() {
 		})
 	})
 
+	Describe("CreateNamespaceIfNecessary", func() {
+		It("should succeed if namespace exists", func() {
+			name := "test-123"
+			namespace := models.NewNamespace(name)
+			err := namespace.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ns.Items).To(HaveLen(1))
+			Expect(ns.Items[0].GetName()).To(Equal(name))
+
+			err = controller.CreateNamespaceIfNecessary(logger, mr, clientset, name)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should succeed if namespace needs to be created", func() {
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ns.Items).To(HaveLen(0))
+
+			name := "test-123"
+			err = controller.CreateNamespaceIfNecessary(logger, mr, clientset, name)
+			Expect(err).NotTo(HaveOccurred())
+
+			ns, err = clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ns.Items).To(HaveLen(1))
+			Expect(ns.Items[0].GetName()).To(Equal(name))
+		})
+	})
+
 	Describe("DeleteScheduler", func() {
 		It("should succeed", func() {
 			var configYaml1 models.ConfigYAML

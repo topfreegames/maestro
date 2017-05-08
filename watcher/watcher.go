@@ -120,12 +120,21 @@ func (w *Watcher) Start() {
 
 // AutoScale checks if the GRUs state is as expected and scale up or down if necessary
 func (w *Watcher) AutoScale() {
-	nowTimestamp := time.Now().Unix()
 	logger := w.Logger.WithFields(logrus.Fields{
 		"executionID": uuid.NewV4().String(),
 		"operation":   "autoScale",
-		"timestamp":   nowTimestamp,
 	})
+
+	err := controller.CreateNamespaceIfNecessary(
+		logger,
+		w.MetricsReporter,
+		w.KubernetesClient,
+		w.SchedulerName,
+	)
+	if err != nil {
+		logger.WithError(err).Error("failed to create namespace")
+		return
+	}
 
 	scheduler, autoScalingInfo, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
 		logger,
@@ -148,6 +157,7 @@ func (w *Watcher) AutoScale() {
 		"state":         scheduler.State,
 	})
 
+	nowTimestamp := time.Now().Unix()
 	shouldScaleUp, shouldScaleDown, changedState := w.checkState(
 		autoScalingInfo,
 		roomCountByStatus,
