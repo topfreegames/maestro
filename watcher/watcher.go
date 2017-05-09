@@ -108,6 +108,7 @@ func (w *Watcher) Start() {
 				}
 			} else if lock.IsLocked() {
 				w.AutoScale()
+				// TODO: should also have a job to remove rooms that didn't ping for some time
 				w.RedisClient.LeaveCriticalSection(lock)
 			}
 		case sig := <-sigchan:
@@ -215,7 +216,7 @@ func (w *Watcher) checkState(
 		return true, false, false
 	}
 
-	if float64(roomCount.Ready)/float64(roomCount.Total()) < 1.0-(float64(autoScalingInfo.Up.Trigger.Usage)/100.0) {
+	if 100*roomCount.Ready < (100-autoScalingInfo.Up.Trigger.Usage)*roomCount.Total() {
 		if scheduler.State != models.StateSubdimensioned {
 			scheduler.State = models.StateSubdimensioned
 			scheduler.StateLastChangedAt = nowTimestamp
@@ -228,7 +229,7 @@ func (w *Watcher) checkState(
 		inCooldownPeriod = true
 	}
 
-	if float64(roomCount.Ready)/float64(roomCount.Total()) > 1.0-float64(autoScalingInfo.Down.Trigger.Usage)/100.0 &&
+	if 100*roomCount.Ready > (100-autoScalingInfo.Down.Trigger.Usage)*roomCount.Total() &&
 		roomCount.Total()-autoScalingInfo.Down.Delta > autoScalingInfo.Min {
 		if scheduler.State != models.StateOverdimensioned {
 			scheduler.State = models.StateOverdimensioned
