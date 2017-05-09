@@ -9,6 +9,7 @@ package models_test
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"k8s.io/client-go/kubernetes/fake"
@@ -302,6 +303,37 @@ var _ = Describe("Room", func() {
 			err := room.ClearAll(mockRedisClient)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
+		})
+	})
+
+	Describe("GetRoomsNoPingSince", func() {
+		It("should call redis successfully", func() {
+			scheduler := "pong-free-for-all"
+			pKey := models.GetRoomPingRedisKey(scheduler)
+			since := time.Now().Unix()
+
+			expectedRooms := []string{"room1", "room2", "room3"}
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+			).Return(redis.NewStringSliceResult(expectedRooms, nil))
+			rooms, err := models.GetRoomsNoPingSince(mockRedisClient, scheduler, since)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rooms).To(Equal(expectedRooms))
+		})
+
+		It("should return an error if redis returns an error", func() {
+			scheduler := "pong-free-for-all"
+			pKey := models.GetRoomPingRedisKey(scheduler)
+			since := time.Now().Unix()
+
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+			).Return(redis.NewStringSliceResult([]string{}, errors.New("some error")))
+			_, err := models.GetRoomsNoPingSince(mockRedisClient, scheduler, since)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error"))
 		})
 	})
 })

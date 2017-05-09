@@ -155,6 +155,38 @@ func ListSchedulersNames(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 	return names, nil
 }
 
+// DeleteRoomsNoPingSince delete rooms where lastPing < since
+func DeleteRoomsNoPingSince(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, schedulerName string, since int64) error {
+	var roomNames []string
+	err := mr.WithSegment(models.SegmentZRangeBy, func() error {
+		var err error
+		roomNames, err = models.GetRoomsNoPingSince(redisClient, schedulerName, since)
+		return err
+	})
+	if err != nil {
+		logger.WithError(err).Error("error listing rooms")
+		return err
+	}
+	if len(roomNames) == 0 {
+		logger.Debug("no rooms need to be deleted")
+		return nil
+	}
+	for _, roomName := range roomNames {
+		err := deleteServiceAndPod(logger, mr, clientset, schedulerName, roomName)
+		if err != nil {
+			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
+		} else {
+			room := models.NewRoom(roomName, schedulerName)
+			err := room.ClearAll(redisClient)
+			if err != nil {
+				logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
+			}
+		}
+	}
+
+	return nil
+}
+
 // ScaleUp scales up a scheduler using its config
 func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, scheduler *models.Scheduler, amount, timeoutSec int, initalOp bool) error {
 	l := logger.WithFields(logrus.Fields{
@@ -307,4 +339,22 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 		"name": name,
 	}).Info("Created GRU (service and pod) successfully.")
 	return name, nil
+}
+
+func deleteServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, clientset kubernetes.Interface, schedulerName, name string) error {
+	service := models.NewService(name, schedulerName, []*models.Port{})
+	err := mr.WithSegment(models.SegmentService, func() error {
+		return service.Delete(clientset)
+	})
+	if err != nil {
+		return err
+	}
+	pod := models.NewPod("", "", name, schedulerName, "", "", "", "", 0, []*models.Port{}, []string{}, []*models.EnvVar{})
+	err = mr.WithSegment(models.SegmentPod, func() error {
+		return pod.Delete(clientset)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }

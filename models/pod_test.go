@@ -179,4 +179,48 @@ var _ = Describe("Pod", func() {
 			Expect(err.Error()).To(Equal(fmt.Sprintf("Pod \"%s\" already exists", name)))
 		})
 	})
+
+	Describe("Delete", func() {
+		It("should delete a pod from kubernetes", func() {
+			pod := models.NewPod(
+				game,
+				image,
+				name,
+				namespace,
+				resourcesLimitsCPU,
+				resourcesLimitsMemory,
+				resourcesRequestsCPU,
+				resourcesRequestsMemory,
+				shutdownTimeout,
+				ports,
+				command,
+				env,
+			)
+			_, err := pod.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = pod.Delete(clientset)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return error when deleting non existent pod", func() {
+			pod := models.NewPod(
+				game,
+				image,
+				name,
+				namespace,
+				resourcesLimitsCPU,
+				resourcesLimitsMemory,
+				resourcesRequestsCPU,
+				resourcesRequestsMemory,
+				shutdownTimeout,
+				ports,
+				command,
+				env,
+			)
+			err := pod.Delete(clientset)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Pod \"pong-free-for-all-0\" not found"))
+		})
+	})
 })

@@ -69,6 +69,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("scaleUpTimeoutSeconds", 300)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
+	w.Config.SetDefault("pingTimeout", 30)
 }
 
 func (w *Watcher) configure() {
@@ -107,8 +108,8 @@ func (w *Watcher) Start() {
 					l.Warn("unable to get watcher lock, maybe some other process has it...")
 				}
 			} else if lock.IsLocked() {
+				w.RemoveDeadRooms()
 				w.AutoScale()
-				// TODO: should also have a job to remove rooms that didn't ping for some time
 				w.RedisClient.LeaveCriticalSection(lock)
 			}
 		case sig := <-sigchan:
@@ -117,6 +118,27 @@ func (w *Watcher) Start() {
 		}
 	}
 	// TODO: implement graceful shutdown
+}
+
+// RemoveDeadRooms remove rooms that have not sent ping requests for a while
+func (w *Watcher) RemoveDeadRooms() {
+	since := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
+	logger := w.Logger.WithFields(logrus.Fields{
+		"executionID": uuid.NewV4().String(),
+		"operation":   "removeDeadRooms",
+		"since":       since,
+	})
+	err := controller.DeleteRoomsNoPingSince(
+		logger,
+		w.MetricsReporter,
+		w.RedisClient.Client,
+		w.KubernetesClient,
+		w.SchedulerName,
+		since,
+	)
+	if err != nil {
+		logger.WithError(err).Error("error removing dead rooms")
+	}
 }
 
 // AutoScale checks if the GRUs state is as expected and scale up or down if necessary

@@ -86,4 +86,22 @@ var _ = Describe("Service", func() {
 			Expect(err.Error()).To(Equal("Service \"pong-free-for-all-0\" already exists"))
 		})
 	})
+
+	Describe("Delete", func() {
+		It("should delete a service from kubernetes", func() {
+			service := models.NewService(name, namespace, ports)
+			_, err := service.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = service.Delete(clientset)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return error when deleting non existent service", func() {
+			service := models.NewService(name, namespace, ports)
+			err := service.Delete(clientset)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Service \"pong-free-for-all-0\" not found"))
+		})
+	})
 })

@@ -9,6 +9,7 @@ package models
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -157,4 +158,12 @@ func (r *Room) GetAddresses(kubernetesClient kubernetes.Interface) (*RoomAddress
 		})
 	}
 	return rAddresses, nil
+}
+
+// GetRoomsNoPingSince returns a list of rooms ids that have lastPing < since
+func GetRoomsNoPingSince(redisClient interfaces.RedisClient, schedulerName string, since int64) ([]string, error) {
+	return redisClient.ZRangeByScore(
+		GetRoomPingRedisKey(schedulerName),
+		redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+	).Result()
 }

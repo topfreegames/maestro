@@ -10,6 +10,7 @@ package watcher_test
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"gopkg.in/pg.v5/types"
@@ -110,6 +111,13 @@ var _ = Describe("Watcher", func() {
 
 			// EnterCriticalSection (lock done by redis-lock)
 			mockRedisClient.EXPECT().SetNX("maestro-lock-key", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).AnyTimes()
+
+			// DeleteRoomsNoPingSince
+			pKey := models.GetRoomPingRedisKey(configYaml1.Name)
+			// DeleteRoomsNoPingSince
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey, gomock.Any(),
+			).Return(redis.NewStringSliceResult([]string{}, nil))
 
 			// GetSchedulerScalingInfo
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -596,6 +604,43 @@ var _ = Describe("Watcher", func() {
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("failed to update scheduler info"))
+		})
+	})
+
+	Describe("RemoveDeadRooms", func() {
+		var configYaml1 models.ConfigYAML
+		var w *watcher.Watcher
+
+		BeforeEach(func() {
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name)
+			Expect(w).NotTo(BeNil())
+		})
+
+		It("should call controller DeleteRoomsNoPingSince", func() {
+			pKey := models.GetRoomPingRedisKey(configYaml1.Name)
+			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
+			// DeleteRoomsNoPingSince
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
+			).Return(redis.NewStringSliceResult([]string{}, nil))
+
+			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
+		})
+
+		It("should log and not panic in case of error", func() {
+			pKey := models.GetRoomPingRedisKey(configYaml1.Name)
+			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
+			// DeleteRoomsNoPingSince
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
+			).Return(redis.NewStringSliceResult([]string{}, errors.New("some error")))
+
+			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
+			Expect(hook.Entries).To(testing.ContainLogMessage("error removing dead rooms"))
 		})
 	})
 })

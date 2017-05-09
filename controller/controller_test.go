@@ -10,6 +10,7 @@ package controller_test
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -460,6 +461,116 @@ var _ = Describe("Controller", func() {
 			_, err := controller.ListSchedulersNames(logger, mr, mockDb)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
+		})
+	})
+
+	Describe("DeleteRoomsNoPingSince", func() {
+		It("should delete GRUs", func() {
+			scheduler := "pong-free-for-all"
+			pKey := models.GetRoomPingRedisKey(scheduler)
+			since := time.Now().Unix()
+
+			expectedRooms := []string{"room1", "room2", "room3"}
+			namespace := models.NewNamespace(scheduler)
+			err := namespace.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+			for _, roomName := range expectedRooms {
+				service := models.NewService(roomName, scheduler, []*models.Port{})
+				_, err = service.Create(clientset)
+				Expect(err).NotTo(HaveOccurred())
+				pod := models.NewPod("", "", roomName, scheduler, "", "", "", "", 0, []*models.Port{}, []string{}, []*models.EnvVar{})
+				_, err = pod.Create(clientset)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+			).Return(redis.NewStringSliceResult(expectedRooms, nil))
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(len(expectedRooms))
+			mockPipeline.EXPECT().Del(gomock.Any()).Times(len(expectedRooms))
+			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
+			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
+			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
+			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
+			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
+			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
+			mockPipeline.EXPECT().Exec().Times(len(expectedRooms))
+			err = controller.DeleteRoomsNoPingSince(logger, mr, mockRedisClient, clientset, scheduler, since)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should call redis successfully and exit if no rooms should be deleted", func() {
+			scheduler := "pong-free-for-all"
+			pKey := models.GetRoomPingRedisKey(scheduler)
+			since := time.Now().Unix()
+
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+			).Return(redis.NewStringSliceResult([]string{}, nil))
+			err := controller.DeleteRoomsNoPingSince(logger, mr, mockRedisClient, clientset, scheduler, since)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should not return an error if failed to delete service", func() {
+			scheduler := "pong-free-for-all"
+			pKey := models.GetRoomPingRedisKey(scheduler)
+			since := time.Now().Unix()
+
+			expectedRooms := []string{"room1", "room2", "room3"}
+			namespace := models.NewNamespace(scheduler)
+			err := namespace.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+			for _, roomName := range expectedRooms {
+				pod := models.NewPod("", "", roomName, scheduler, "", "", "", "", 0, []*models.Port{}, []string{}, []*models.EnvVar{})
+				_, err = pod.Create(clientset)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+			).Return(redis.NewStringSliceResult(expectedRooms, nil))
+			err = controller.DeleteRoomsNoPingSince(logger, mr, mockRedisClient, clientset, scheduler, since)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should not return an error if failed to delete pod", func() {
+			scheduler := "pong-free-for-all"
+			pKey := models.GetRoomPingRedisKey(scheduler)
+			since := time.Now().Unix()
+
+			expectedRooms := []string{"room1", "room2", "room3"}
+			namespace := models.NewNamespace(scheduler)
+			err := namespace.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+			for _, roomName := range expectedRooms {
+				service := models.NewService(roomName, scheduler, []*models.Port{})
+				_, err = service.Create(clientset)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+			).Return(redis.NewStringSliceResult(expectedRooms, nil))
+			err = controller.DeleteRoomsNoPingSince(logger, mr, mockRedisClient, clientset, scheduler, since)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return an error if redis returns an error", func() {
+			scheduler := "pong-free-for-all"
+			pKey := models.GetRoomPingRedisKey(scheduler)
+			since := time.Now().Unix()
+
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+			).Return(redis.NewStringSliceResult([]string{}, errors.New("some error")))
+			err := controller.DeleteRoomsNoPingSince(logger, mr, mockRedisClient, clientset, scheduler, since)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error"))
 		})
 	})
 

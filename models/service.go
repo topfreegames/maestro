@@ -11,6 +11,9 @@ import (
 	"bytes"
 	"text/template"
 
+	"github.com/topfreegames/maestro/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
@@ -80,5 +83,19 @@ func (s *Service) Create(clientset kubernetes.Interface) (*v1.Service, error) {
 		return nil, err
 	}
 
-	return clientset.CoreV1().Services(s.Namespace).Create(dst)
+	svc, err := clientset.CoreV1().Services(s.Namespace).Create(dst)
+	if err != nil {
+		return nil, errors.NewKubernetesError("create service error", err)
+	}
+	return svc, nil
+}
+
+// Delete deletes a service from kubernetes
+func (s *Service) Delete(clientset kubernetes.Interface) error {
+	err := clientset.CoreV1().Services(s.Namespace).Delete(s.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		return errors.NewKubernetesError("delete service error", err)
+	}
+
+	return nil
 }

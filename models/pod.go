@@ -11,6 +11,9 @@ import (
 	"bytes"
 	"text/template"
 
+	"github.com/topfreegames/maestro/errors"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
@@ -123,5 +126,19 @@ func (p *Pod) Create(clientset kubernetes.Interface) (*v1.Pod, error) {
 		return nil, err
 	}
 
-	return clientset.CoreV1().Pods(p.Namespace).Create(dst)
+	pod, err := clientset.CoreV1().Pods(p.Namespace).Create(dst)
+	if err != nil {
+		return nil, errors.NewKubernetesError("create pod error", err)
+	}
+	return pod, nil
+}
+
+// Delete deletes a pod from kubernetes
+func (p *Pod) Delete(clientset kubernetes.Interface) error {
+	err := clientset.CoreV1().Pods(p.Namespace).Delete(p.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		return errors.NewKubernetesError("delete pod error", err)
+	}
+
+	return nil
 }

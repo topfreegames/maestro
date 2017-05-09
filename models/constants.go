@@ -58,6 +58,9 @@ const SegmentHGetAll = "Redis/HGetAll"
 //SegmentHMSet represents a segment
 const SegmentHMSet = "Redis/HMSet"
 
+//SegmentZRangeBy represents a segment
+const SegmentZRangeBy = "Redis/ZRangeBy"
+
 //StateCreating represents a cluster state
 const StateCreating = "creating"
 
