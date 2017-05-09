@@ -14,3 +14,4 @@ extensions:
 watcher:
   lockKey: "maestro-lock-key"
   lockTimeoutMs: 180000 
+scaleUpTimeoutSeconds: 300

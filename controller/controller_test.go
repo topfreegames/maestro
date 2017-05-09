@@ -462,6 +462,7 @@ var _ = Describe("Controller", func() {
 
 	Describe("ScaleUp", func() {
 		It("should succeed", func() {
+			Skip("has to be an integration test")
 			amount := 5
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)

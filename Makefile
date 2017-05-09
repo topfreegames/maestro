@@ -52,6 +52,9 @@ start-deps:
 	@sleep 10
 	@echo "Dependencies started successfully."
 
+run:
+	@go run main.go start
+
 stop-deps:
 	@env MY_IP=${MY_IP} docker-compose --project-name maestro down
 

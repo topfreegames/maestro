@@ -102,6 +102,16 @@ func (a *App) getRouter() *mux.Router {
 		NewValidationMiddleware(func() interface{} { return &models.RoomPingPayload{} }),
 	).ServeHTTP).Methods("PUT").Name("ping")
 
+	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/address", Chain(
+		NewRoomAddressHandler(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewLoggingMiddleware(a),
+		NewVersionMiddleware(),
+		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
+	).ServeHTTP).Methods("GET").Name("address")
+
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/status", Chain(
 		NewRoomStatusHandler(a),
 		NewMetricsReporterMiddleware(a),
@@ -147,7 +157,7 @@ func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 }
 
 func (a *App) loadConfigurationDefaults() {
-	a.Config.SetDefault("scaleUpTimeout", 300)
+	a.Config.SetDefault("scaleUpTimeoutSeconds", 300)
 }
 
 func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interface) error {

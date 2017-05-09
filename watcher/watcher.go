@@ -66,7 +66,7 @@ func NewWatcher(
 
 func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("autoScalingPeriod", 10)
-	w.Config.SetDefault("scaleUpTimeout", 300)
+	w.Config.SetDefault("scaleUpTimeoutSeconds", 300)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
 }
@@ -167,7 +167,7 @@ func (w *Watcher) AutoScale() {
 
 	if shouldScaleUp {
 		l.Info("scheduler is subdimensioned, scaling up")
-		timeoutSec := w.Config.GetInt("scaleUpTimeout")
+		timeoutSec := w.Config.GetInt("scaleUpTimeoutSeconds")
 		err = controller.ScaleUp(
 			logger,
 			w.MetricsReporter,

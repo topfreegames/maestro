@@ -11,6 +11,8 @@ import (
 	"errors"
 	"time"
 
+	"k8s.io/client-go/kubernetes/fake"
+
 	"github.com/go-redis/redis"
 	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/maestro/models"
@@ -20,8 +22,13 @@ import (
 )
 
 var _ = Describe("Room", func() {
+	var clientset *fake.Clientset
 	schedulerName := uuid.NewV4().String()
 	name := uuid.NewV4().String()
+
+	BeforeEach(func() {
+		clientset = fake.NewSimpleClientset()
+	})
 
 	Describe("NewRoom", func() {
 		It("should build correct room struct", func() {
@@ -147,6 +154,73 @@ var _ = Describe("Room", func() {
 			err := room.SetStatus(mockRedisClient, lastStatus, status)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
+		})
+	})
+
+	Describe("GetAddresses", func() {
+		It("should not crash if pod does not exist", func() {
+			name := "pong-free-for-all-0"
+			scheduler := "pong-free-for-all"
+			room := models.NewRoom(name, scheduler)
+			_, err := room.GetAddresses(clientset)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(`Pod "pong-free-for-all-0" not found`))
+		})
+
+		It("should return no address if no node assigned to the room", func() {
+			command := []string{
+				"./room-binary",
+				"-serverType",
+				"6a8e136b-2dc1-417e-bbe8-0f0a2d2df431",
+			}
+			env := []*models.EnvVar{
+				{
+					Name:  "EXAMPLE_ENV_VAR",
+					Value: "examplevalue",
+				},
+				{
+					Name:  "ANOTHER_ENV_VAR",
+					Value: "anothervalue",
+				},
+			}
+			game := "pong"
+			image := "pong/pong:v123"
+			name := "pong-free-for-all-0"
+			namespace := "pong-free-for-all"
+			ports := []*models.Port{
+				{
+					ContainerPort: 5050,
+				},
+				{
+					ContainerPort: 8888,
+				},
+			}
+			resourcesLimitsCPU := "2"
+			resourcesLimitsMemory := "128974848"
+			resourcesRequestsCPU := "1"
+			resourcesRequestsMemory := "64487424"
+			shutdownTimeout := 180
+
+			pod := models.NewPod(
+				game,
+				image,
+				name,
+				namespace,
+				resourcesLimitsCPU,
+				resourcesLimitsMemory,
+				resourcesRequestsCPU,
+				resourcesRequestsMemory,
+				shutdownTimeout,
+				ports,
+				command,
+				env,
+			)
+			_, err := pod.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+			room := models.NewRoom(name, namespace)
+			addresses, err := room.GetAddresses(clientset)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(addresses.Addresses)).To(Equal(0))
 		})
 	})
 

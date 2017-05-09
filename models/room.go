@@ -11,7 +11,11 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
+
 	"github.com/topfreegames/extensions/redis/interfaces"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Room is the struct that defines a room in maestro
@@ -20,6 +24,17 @@ type Room struct {
 	SchedulerName string
 	Status        string
 	LastPingAt    int64
+}
+
+// RoomAddresses struct
+type RoomAddresses struct {
+	Addresses []*RoomAddress `json:"addresses"`
+}
+
+// RoomAddress struct
+type RoomAddress struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
 }
 
 // NewRoom is the room constructor
@@ -85,4 +100,39 @@ func (r *Room) Ping(redisClient interfaces.RedisClient, status string) error {
 		"status":   status,
 	})
 	return s.Err()
+}
+
+// GetAddresses gets room public addresses
+func (r *Room) GetAddresses(kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
+	rAddresses := &RoomAddresses{}
+	roomPod, err := kubernetesClient.CoreV1().Pods(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(roomPod.Spec.NodeName) == 0 {
+		return rAddresses, nil
+	}
+
+	node, err := kubernetesClient.CoreV1().Nodes().Get(roomPod.Spec.NodeName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	var podNodeIP string
+	for _, address := range node.Status.Addresses {
+		if address.Type == v1.NodeExternalIP {
+			podNodeIP = address.Address
+		}
+	}
+	svc, err := kubernetesClient.CoreV1().Services(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, port := range svc.Spec.Ports {
+		rAddresses.Addresses = append(rAddresses.Addresses, &RoomAddress{
+			Name:    port.Name,
+			Address: fmt.Sprintf("%s:%d", podNodeIP, port.NodePort),
+		})
+	}
+	return rAddresses, nil
 }

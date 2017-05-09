@@ -8,6 +8,8 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/Sirupsen/logrus"
@@ -100,4 +102,53 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	logger.Debug("Performed status update.")
+}
+
+// RoomAddressHandler handler
+type RoomAddressHandler struct {
+	App *App
+}
+
+// NewRoomAddressHandler creates a new address handler
+func NewRoomAddressHandler(a *App) *RoomAddressHandler {
+	m := &RoomAddressHandler{App: a}
+	return m
+}
+
+// ServerHTTP method
+func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	l := loggerFromContext(r.Context())
+	mr := metricsReporterFromCtx(r.Context())
+	params := roomParamsFromContext(r.Context())
+
+	logger := l.WithFields(logrus.Fields{
+		"source":    "roomHandler",
+		"operation": "addressHandler",
+	})
+
+	logger.Debug("Address handler called")
+
+	room := models.NewRoom(params.Name, params.Scheduler)
+	roomAddresses, err := room.GetAddresses(h.App.KubernetesClient)
+
+	if err != nil {
+		logger.WithError(err).Error("Address handler failed.")
+		h.App.HandleError(w, http.StatusInternalServerError, "Address handler error", err)
+		return
+	}
+
+	bytes, err := json.Marshal(&roomAddresses.Addresses)
+	if err != nil {
+		logger.WithError(err).Error("Address handler failed.")
+		h.App.HandleError(w, http.StatusInternalServerError, "Address handler error", err)
+		return
+	}
+	mr.WithSegment(models.SegmentSerialization, func() error {
+		Write(w, http.StatusOK, fmt.Sprintf(
+			`{"success": true, "addresses": %s}`,
+			string(bytes),
+		))
+		return nil
+	})
+	logger.Debug("Performed address handler.")
 }
