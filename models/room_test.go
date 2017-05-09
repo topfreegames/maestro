@@ -54,13 +54,16 @@ var _ = Describe("Room", func() {
 			room := models.NewRoom(name, schedulerName)
 			rKey := room.GetRoomRedisKey()
 			sKey := models.GetRoomStatusSetRedisKey(schedulerName, room.Status)
+			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
+			now := time.Now().Unix()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 				"status":   models.StatusCreating,
-				"lastPing": int64(0),
+				"lastPing": now,
 			})
 			mockPipeline.EXPECT().SAdd(sKey, rKey)
+			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			mockPipeline.EXPECT().Exec()
 
 			err := room.Create(mockRedisClient)
@@ -71,13 +74,16 @@ var _ = Describe("Room", func() {
 			room := models.NewRoom(name, schedulerName)
 			rKey := room.GetRoomRedisKey()
 			sKey := models.GetRoomStatusSetRedisKey(schedulerName, room.Status)
+			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
+			now := time.Now().Unix()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 				"status":   models.StatusCreating,
-				"lastPing": int64(0),
+				"lastPing": now,
 			})
 			mockPipeline.EXPECT().SAdd(sKey, rKey)
+			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
 			err := room.Create(mockRedisClient)
@@ -94,9 +100,15 @@ var _ = Describe("Room", func() {
 			rKey := room.GetRoomRedisKey()
 			oldSKey := models.GetRoomStatusSetRedisKey(schedulerName, lastStatus)
 			newSKey := models.GetRoomStatusSetRedisKey(schedulerName, status)
+			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
+			now := time.Now().Unix()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{"status": status})
+			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+				"status":   status,
+				"lastPing": now,
+			})
+			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			mockPipeline.EXPECT().SRem(oldSKey, rKey)
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
 			mockPipeline.EXPECT().Exec()
@@ -111,9 +123,15 @@ var _ = Describe("Room", func() {
 			status := models.StatusReady
 			lastStatus := ""
 			newSKey := models.GetRoomStatusSetRedisKey(schedulerName, status)
+			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
+			now := time.Now().Unix()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{"status": status})
+			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+				"status":   status,
+				"lastPing": now,
+			})
+			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
 			mockPipeline.EXPECT().Exec()
 
@@ -127,9 +145,11 @@ var _ = Describe("Room", func() {
 			status := models.StatusTerminated
 			lastStatus := models.StatusReady
 			oldSKey := models.GetRoomStatusSetRedisKey(schedulerName, "terminating")
+			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SRem(oldSKey, rKey)
+			mockPipeline.EXPECT().ZRem(pKey, room.ID)
 			mockPipeline.EXPECT().Del(rKey)
 			mockPipeline.EXPECT().Exec()
 
@@ -144,9 +164,15 @@ var _ = Describe("Room", func() {
 			rKey := room.GetRoomRedisKey()
 			oldSKey := models.GetRoomStatusSetRedisKey(schedulerName, lastStatus)
 			newSKey := models.GetRoomStatusSetRedisKey(schedulerName, status)
+			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
+			now := time.Now().Unix()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{"status": status})
+			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+				"status":   status,
+				"lastPing": now,
+			})
+			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			mockPipeline.EXPECT().SRem(oldSKey, rKey)
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
@@ -224,36 +250,56 @@ var _ = Describe("Room", func() {
 		})
 	})
 
-	Describe("Ping", func() {
+	Describe("ClearAll", func() {
 		It("should call redis successfully", func() {
 			name := "pong-free-for-all-0"
 			scheduler := "pong-free-for-all"
-			status := models.StatusReady
 			room := models.NewRoom(name, scheduler)
 			rKey := room.GetRoomRedisKey()
+			creatingKey := models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusCreating)
+			readyKey := models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusReady)
+			occupiedKey := models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusOccupied)
+			terminatingKey := models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusTerminating)
+			terminatedKey := models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusTerminated)
+			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
 
-			mockRedisClient.EXPECT().HMSet(rKey, map[string]interface{}{
-				"lastPing": time.Now().Unix(),
-				"status":   status,
-			}).Return(redis.NewStatusResult("OK", nil))
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().Del(rKey)
+			mockPipeline.EXPECT().ZRem(pKey, room.ID)
+			mockPipeline.EXPECT().SRem(creatingKey, rKey)
+			mockPipeline.EXPECT().SRem(readyKey, rKey)
+			mockPipeline.EXPECT().SRem(occupiedKey, rKey)
+			mockPipeline.EXPECT().SRem(terminatingKey, rKey)
+			mockPipeline.EXPECT().SRem(terminatedKey, rKey)
+			mockPipeline.EXPECT().Exec()
 
-			err := room.Ping(mockRedisClient, status)
+			err := room.ClearAll(mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return an error if redis returns an error", func() {
 			name := "pong-free-for-all-0"
 			scheduler := "pong-free-for-all"
-			status := models.StatusReady
 			room := models.NewRoom(name, scheduler)
 			rKey := room.GetRoomRedisKey()
+			creatingKey := models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusCreating)
+			readyKey := models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusReady)
+			occupiedKey := models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusOccupied)
+			terminatingKey := models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusTerminating)
+			terminatedKey := models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusTerminated)
+			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
 
-			mockRedisClient.EXPECT().HMSet(rKey, map[string]interface{}{
-				"lastPing": time.Now().Unix(),
-				"status":   status,
-			}).Return(redis.NewStatusResult("", errors.New("some error in redis")))
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().Del(rKey)
+			mockPipeline.EXPECT().ZRem(pKey, room.ID)
+			mockPipeline.EXPECT().SRem(creatingKey, rKey)
+			mockPipeline.EXPECT().SRem(readyKey, rKey)
+			mockPipeline.EXPECT().SRem(occupiedKey, rKey)
+			mockPipeline.EXPECT().SRem(terminatingKey, rKey)
+			mockPipeline.EXPECT().SRem(terminatedKey, rKey)
+			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
-			err := room.Ping(mockRedisClient, status)
+			err := room.ClearAll(mockRedisClient)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 		})

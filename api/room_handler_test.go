@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis"
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/topfreegames/maestro/testing"
@@ -33,6 +34,8 @@ var _ = Describe("Room Handler", func() {
 	Describe("PUT /scheduler/{schedulerName}/rooms/{roomName}/ping", func() {
 		url := "/scheduler/schedulerName/rooms/roomName/ping"
 		rKey := "scheduler:schedulerName:rooms:roomName"
+		pKey := "scheduler:schedulerName:ping"
+		sKey := "scheduler:schedulerName:status:ready"
 		status := "ready"
 
 		Context("when all services are healthy", func() {
@@ -43,10 +46,14 @@ var _ = Describe("Room Handler", func() {
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
-				mockRedisClient.EXPECT().HMSet(rKey, map[string]interface{}{
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
 					"status":   status,
-				}).Return(redis.NewStatusResult("OK", nil))
+				})
+				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+				mockPipeline.EXPECT().SAdd(sKey, rKey)
+				mockPipeline.EXPECT().Exec()
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(200))
@@ -84,7 +91,7 @@ var _ = Describe("Room Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(obj["code"]).To(Equal("MAE-004"))
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("RoomPingPayload.timestamp"))
+				Expect(obj["description"]).To(ContainSubstring("RoomStatusPayload.timestamp"))
 				Expect(obj["success"]).To(Equal(false))
 			})
 
@@ -132,10 +139,14 @@ var _ = Describe("Room Handler", func() {
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
-				mockRedisClient.EXPECT().HMSet(rKey, map[string]interface{}{
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
 					"status":   status,
-				}).Return(redis.NewStatusResult("", errors.New("some error in redis")))
+				})
+				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+				mockPipeline.EXPECT().SAdd(sKey, rKey)
+				mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
@@ -153,6 +164,7 @@ var _ = Describe("Room Handler", func() {
 	Describe("PUT /scheduler/{schedulerName}/rooms/{roomName}/status", func() {
 		url := "/scheduler/schedulerName/rooms/roomName/status"
 		rKey := "scheduler:schedulerName:rooms:roomName"
+		pKey := "scheduler:schedulerName:ping"
 		status := "ready"
 		lastStatus := "occupied"
 		oldSKey := fmt.Sprintf("scheduler:schedulerName:status:%s", lastStatus)
@@ -168,7 +180,11 @@ var _ = Describe("Room Handler", func() {
 				request, _ = http.NewRequest("PUT", url, reader)
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{"status": status})
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+					"lastPing": time.Now().Unix(),
+					"status":   status,
+				})
+				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().SRem(oldSKey, rKey)
 				mockPipeline.EXPECT().SAdd(newSKey, rKey)
 				mockPipeline.EXPECT().Exec()
@@ -186,7 +202,11 @@ var _ = Describe("Room Handler", func() {
 				request, _ = http.NewRequest("PUT", url, reader)
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{"status": status})
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+					"lastPing": time.Now().Unix(),
+					"status":   status,
+				})
+				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().SAdd(newSKey, rKey)
 				mockPipeline.EXPECT().Exec()
 
@@ -299,7 +319,11 @@ var _ = Describe("Room Handler", func() {
 				request, _ = http.NewRequest("PUT", url, reader)
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{"status": status})
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+					"lastPing": time.Now().Unix(),
+					"status":   status,
+				})
+				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().SRem(oldSKey, rKey)
 				mockPipeline.EXPECT().SAdd(newSKey, rKey)
 				mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))

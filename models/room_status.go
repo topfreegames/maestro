@@ -33,7 +33,6 @@ func GetRoomStatusSetRedisKey(schedulerName, status string) string {
 
 // GetRoomsCountByStatus returns the count of rooms for each status
 func GetRoomsCountByStatus(redisClient interfaces.RedisClient, schedulerName string) (*RoomsStatusCount, error) {
-	// TODO: treat redis nil error
 	pipe := redisClient.TxPipeline()
 	sCreating := pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, StatusCreating))
 	sReady := pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, StatusReady))

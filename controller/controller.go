@@ -223,15 +223,14 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 		return namespace.Delete(clientset) // TODO: we're assuming that deleting a namespace gracefully terminates all its pods
 	})
 	if err != nil {
-		logger.WithError(err).Error("Failed to delete namespace while rolling back cluster creation.")
+		logger.WithError(err).Error("Failed to delete namespace while deleting scheduler.")
 		return err
 	}
 	err = mr.WithSegment(models.SegmentDelete, func() error {
 		return scheduler.Delete(db)
 	})
-	// TODO: we should also remove scheduler rooms from redis
 	if err != nil {
-		logger.WithError(err).Error("Failed to delete scheduler while rolling back cluster creation.")
+		logger.WithError(err).Error("Failed to delete scheduler from database while deleting scheduler.")
 		return err
 	}
 	return nil

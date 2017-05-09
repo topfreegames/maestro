@@ -99,7 +99,7 @@ func (a *App) getRouter() *mux.Router {
 		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
-		NewValidationMiddleware(func() interface{} { return &models.RoomPingPayload{} }),
+		NewValidationMiddleware(func() interface{} { return &models.RoomStatusPayload{} }),
 	).ServeHTTP).Methods("PUT").Name("ping")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/address", Chain(

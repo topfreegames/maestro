@@ -38,14 +38,6 @@ func newContextWithPayload(ctx context.Context, payload interface{}, r *http.Req
 	return c
 }
 
-func pingPayloadFromCtx(ctx context.Context) *models.RoomPingPayload {
-	payload := ctx.Value(payloadString)
-	if payload == nil {
-		return nil
-	}
-	return payload.(*models.RoomPingPayload)
-}
-
 func statusPayloadFromCtx(ctx context.Context) *models.RoomStatusPayload {
 	payload := ctx.Value(payloadString)
 	if payload == nil {

@@ -223,8 +223,9 @@ var _ = Describe("Watcher", func() {
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
 				"status":   "creating",
-				"lastPing": int64(0),
+				"lastPing": time.Now().Unix(),
 			}).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
@@ -270,8 +271,9 @@ var _ = Describe("Watcher", func() {
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
 				"status":   "creating",
-				"lastPing": int64(0),
+				"lastPing": time.Now().Unix(),
 			}).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 

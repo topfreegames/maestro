@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	"gopkg.in/pg.v5/types"
 
@@ -103,10 +104,12 @@ var _ = Describe("Scheduler Handler", func() {
 		Context("when all services are healthy", func() {
 			It("returns a status code of 201 and success body", func() {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+
 				mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
 					"status":   "creating",
-					"lastPing": int64(0),
+					"lastPing": time.Now().Unix(),
 				}).Times(100)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(100)
 				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(100)
 				mockPipeline.EXPECT().Exec().Times(100)
 				mockDb.EXPECT().Query(

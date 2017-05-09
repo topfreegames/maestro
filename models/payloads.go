@@ -7,12 +7,6 @@
 
 package models
 
-// RoomPingPayload is the struct that defines the payload for the ping route
-type RoomPingPayload struct {
-	Timestamp int64  `json:"timestamp" valid:"int64,required"`
-	Status    string `json:"status" valid:"matches(creating|ready|occupied|terminating|terminated),required"`
-}
-
 // RoomStatusPayload is the struct that defines the payload for the status route
 type RoomStatusPayload struct {
 	Status     string `json:"status" valid:"matches(ready|occupied|terminating|terminated),required"`
