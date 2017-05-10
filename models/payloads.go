@@ -9,7 +9,6 @@ package models
 
 // RoomStatusPayload is the struct that defines the payload for the status route
 type RoomStatusPayload struct {
-	Status     string `json:"status" valid:"matches(ready|occupied|terminating|terminated),required"`
-	LastStatus string `json:"lastStatus" valid:"matches(creating|ready|occupied|terminating|terminated)"`
-	Timestamp  int64  `json:"timestamp" valid:"int64,required"`
+	Status    string `json:"status" valid:"matches(ready|occupied|terminating|terminated),required"`
+	Timestamp int64  `json:"timestamp" valid:"int64,required"`
 }

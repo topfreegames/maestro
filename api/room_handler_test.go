@@ -178,41 +178,16 @@ var _ = Describe("Room Handler", func() {
 		rKey := "scheduler:schedulerName:rooms:roomName"
 		pKey := "scheduler:schedulerName:ping"
 		status := "ready"
-		lastStatus := "occupied"
-		oldSKey := fmt.Sprintf("scheduler:schedulerName:status:%s", lastStatus)
 		newSKey := fmt.Sprintf("scheduler:schedulerName:status:%s", status)
+		allStatusKeys := []string{
+			"scheduler:schedulerName:status:creating",
+			"scheduler:schedulerName:status:occupied",
+			"scheduler:schedulerName:status:terminating",
+			"scheduler:schedulerName:status:terminated",
+		}
 
 		Context("when all services are healthy", func() {
 			It("returns a status code of 200 and success body", func() {
-				reader := JSONFor(JSON{
-					"lastStatus": lastStatus,
-					"status":     status,
-					"timestamp":  time.Now().Unix(),
-				})
-				request, _ = http.NewRequest("PUT", url, reader)
-
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
-					"lastPing": time.Now().Unix(),
-					"status":   status,
-				})
-				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
-				mockPipeline.EXPECT().SRem(oldSKey, rKey)
-				mockPipeline.EXPECT().SAdd(newSKey, rKey)
-				mockPipeline.EXPECT().Exec()
-
-				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(200))
-				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
-			})
-
-			It("returns a status code of 200 even if missing lastStatus", func() {
-				allStatusKeys := []string{
-					"scheduler:schedulerName:status:creating",
-					"scheduler:schedulerName:status:occupied",
-					"scheduler:schedulerName:status:terminating",
-					"scheduler:schedulerName:status:terminated",
-				}
 				reader := JSONFor(JSON{
 					"status":    status,
 					"timestamp": time.Now().Unix(),
@@ -238,8 +213,7 @@ var _ = Describe("Room Handler", func() {
 
 			It("returns status code of 422 if missing timestamp", func() {
 				reader := JSONFor(JSON{
-					"lastStatus": lastStatus,
-					"status":     status,
+					"status": status,
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
@@ -256,9 +230,8 @@ var _ = Describe("Room Handler", func() {
 
 			It("returns status code of 422 if invalid timestamp", func() {
 				reader := JSONFor(JSON{
-					"lastStatus": lastStatus,
-					"status":     status,
-					"timestamp":  "not-a-timestamp",
+					"status":    status,
+					"timestamp": "not-a-timestamp",
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
@@ -275,8 +248,7 @@ var _ = Describe("Room Handler", func() {
 
 			It("returns status code of 422 if missing status", func() {
 				reader := JSONFor(JSON{
-					"lastStatus": lastStatus,
-					"timestamp":  time.Now().Unix(),
+					"timestamp": time.Now().Unix(),
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
@@ -293,28 +265,8 @@ var _ = Describe("Room Handler", func() {
 
 			It("returns status code of 422 if invalid status", func() {
 				reader := JSONFor(JSON{
-					"lastStatus": lastStatus,
-					"status":     "invalid-status",
-					"timestamp":  time.Now().Unix(),
-				})
-				request, _ = http.NewRequest("PUT", url, reader)
-
-				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(422))
-				var obj map[string]interface{}
-				err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(obj["code"]).To(Equal("MAE-004"))
-				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("does not validate as matches"))
-				Expect(obj["success"]).To(Equal(false))
-			})
-
-			It("returns status code of 422 if invalid lastStatus", func() {
-				reader := JSONFor(JSON{
-					"lastStatus": "invalid-last-status",
-					"status":     status,
-					"timestamp":  time.Now().Unix(),
+					"status":    "invalid-status",
+					"timestamp": time.Now().Unix(),
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
@@ -333,9 +285,8 @@ var _ = Describe("Room Handler", func() {
 		Context("when redis is down", func() {
 			It("returns status code of 500 if redis is unavailable", func() {
 				reader := JSONFor(JSON{
-					"lastStatus": lastStatus,
-					"status":     status,
-					"timestamp":  time.Now().Unix(),
+					"status":    status,
+					"timestamp": time.Now().Unix(),
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
@@ -345,7 +296,9 @@ var _ = Describe("Room Handler", func() {
 					"status":   status,
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
-				mockPipeline.EXPECT().SRem(oldSKey, rKey)
+				for _, key := range allStatusKeys {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
 				mockPipeline.EXPECT().SAdd(newSKey, rKey)
 				mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
