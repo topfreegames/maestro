@@ -119,6 +119,12 @@ var _ = Describe("Room", func() {
 		})
 
 		It("should call redis successfully with empty last status", func() {
+			allStatus := []string{
+				models.StatusCreating,
+				models.StatusOccupied,
+				models.StatusTerminating,
+				models.StatusTerminated,
+			}
 			room := models.NewRoom(name, schedulerName)
 			rKey := room.GetRoomRedisKey()
 			status := models.StatusReady
@@ -133,6 +139,10 @@ var _ = Describe("Room", func() {
 				"lastPing": now,
 			})
 			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
+			for _, st := range allStatus {
+				mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, st), rKey)
+			}
+
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
 			mockPipeline.EXPECT().Exec()
 

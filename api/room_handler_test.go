@@ -37,6 +37,12 @@ var _ = Describe("Room Handler", func() {
 		pKey := "scheduler:schedulerName:ping"
 		sKey := "scheduler:schedulerName:status:ready"
 		status := "ready"
+		allStatusKeys := []string{
+			"scheduler:schedulerName:status:creating",
+			"scheduler:schedulerName:status:occupied",
+			"scheduler:schedulerName:status:terminating",
+			"scheduler:schedulerName:status:terminated",
+		}
 
 		Context("when all services are healthy", func() {
 			It("returns a status code of 200 and success body", func() {
@@ -53,6 +59,9 @@ var _ = Describe("Room Handler", func() {
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().SAdd(sKey, rKey)
+				for _, key := range allStatusKeys {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
 				mockPipeline.EXPECT().Exec()
 
 				app.Router.ServeHTTP(recorder, request)
@@ -146,6 +155,9 @@ var _ = Describe("Room Handler", func() {
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().SAdd(sKey, rKey)
+				for _, key := range allStatusKeys {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
 				mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
 				app.Router.ServeHTTP(recorder, request)
@@ -195,6 +207,12 @@ var _ = Describe("Room Handler", func() {
 			})
 
 			It("returns a status code of 200 even if missing lastStatus", func() {
+				allStatusKeys := []string{
+					"scheduler:schedulerName:status:creating",
+					"scheduler:schedulerName:status:occupied",
+					"scheduler:schedulerName:status:terminating",
+					"scheduler:schedulerName:status:terminated",
+				}
 				reader := JSONFor(JSON{
 					"status":    status,
 					"timestamp": time.Now().Unix(),
@@ -208,6 +226,9 @@ var _ = Describe("Room Handler", func() {
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().SAdd(newSKey, rKey)
+				for _, key := range allStatusKeys {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
 				mockPipeline.EXPECT().Exec()
 
 				app.Router.ServeHTTP(recorder, request)

@@ -81,6 +81,7 @@ func (r *Room) remove(redisClient interfaces.RedisClient) error {
 
 // SetStatus updates the status of a given room in the database
 func (r *Room) SetStatus(redisClient interfaces.RedisClient, lastStatus string, status string) error {
+	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
 	r.Status = status
 	r.LastPingAt = time.Now().Unix()
 	if status == StatusTerminated {
@@ -95,11 +96,15 @@ func (r *Room) SetStatus(redisClient interfaces.RedisClient, lastStatus string, 
 		Score:  float64(r.LastPingAt),
 		Member: r.ID,
 	})
-	// TODO ver se estado é coerente?
-	// TODO talvez seja melhor um script lua, ve o estado atual, remove se n bater e adiciona no novo
-	// TODO: search for roomrediskey in all status in case the client desynchronized
-	if len(lastStatus) > 0 {
+	if len(lastStatus) > 0 && lastStatus != status {
 		pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, lastStatus), r.GetRoomRedisKey())
+	} else {
+		// remove from other statuses to be safe
+		for _, st := range allStatus {
+			if st != status {
+				pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
+			}
+		}
 	}
 	pipe.SAdd(GetRoomStatusSetRedisKey(r.SchedulerName, r.Status), r.GetRoomRedisKey())
 	_, err := pipe.Exec()
