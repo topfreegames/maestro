@@ -6,7 +6,6 @@ services:
 cache:
   directories:
     - $GOPATH/pkg
-    - vendor
 sudo: true
 install:
 - make setup-ci
