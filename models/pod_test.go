@@ -14,6 +14,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/v1"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -132,6 +133,12 @@ var _ = Describe("Pod", func() {
 			Expect(podv1.ObjectMeta.Labels).To(HaveLen(1))
 			Expect(podv1.ObjectMeta.Labels["app"]).To(Equal(name))
 			Expect(*podv1.Spec.TerminationGracePeriodSeconds).To(BeEquivalentTo(shutdownTimeout))
+			Expect(podv1.Spec.Tolerations).To(HaveLen(1))
+			Expect(podv1.Spec.Tolerations[0].Key).To(Equal("game"))
+			Expect(podv1.Spec.Tolerations[0].Operator).To(Equal(v1.TolerationOpEqual))
+			Expect(podv1.Spec.Tolerations[0].Value).To(Equal(game))
+			Expect(podv1.Spec.Tolerations[0].Effect).To(Equal(v1.TaintEffectNoSchedule))
+
 			Expect(podv1.Spec.Containers).To(HaveLen(1))
 			Expect(podv1.Spec.Containers[0].Name).To(Equal(name))
 			Expect(podv1.Spec.Containers[0].Image).To(Equal(image))

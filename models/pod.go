@@ -20,7 +20,6 @@ import (
 )
 
 // TODO: setup livenessProbe
-// TODO: setup tolerations
 const podYaml = `
 apiVersion: v1
 kind: Pod
