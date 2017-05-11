@@ -59,7 +59,8 @@ var _ = Describe("Namespace", func() {
 	Describe("Exists", func() {
 		It("should return false if namespace does not exist", func() {
 			namespace := models.NewNamespace(name)
-			exists := namespace.Exists(clientset)
+			exists, err := namespace.Exists(clientset)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeFalse())
 		})
 
@@ -68,7 +69,8 @@ var _ = Describe("Namespace", func() {
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			exists := namespace.Exists(clientset)
+			exists, err := namespace.Exists(clientset)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
 		})
 	})

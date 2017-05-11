@@ -8,6 +8,8 @@
 package models
 
 import (
+	"strings"
+
 	"github.com/topfreegames/maestro/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -41,17 +43,25 @@ func (n *Namespace) Create(clientset kubernetes.Interface) error {
 }
 
 // Exists returns true if namespace is already created in Kubernetes
-func (n *Namespace) Exists(clientset kubernetes.Interface) bool {
+func (n *Namespace) Exists(clientset kubernetes.Interface) (bool, error) {
 	_, err := clientset.CoreV1().Namespaces().Get(n.Name, metav1.GetOptions{})
-	// TODO: we should return a bool + an error
-	// TODO: we should check err == kube's namespace does not exist error before returning true
-	return err == nil
+	if err == nil {
+		return true, nil
+	}
+	if strings.Contains(err.Error(), "not found") {
+		return false, nil
+	}
+	return false, err
 }
 
 // Delete returns true if namespace is already created in Kubernetes
 func (n *Namespace) Delete(clientset kubernetes.Interface) error {
-	if n.Exists(clientset) {
-		err := clientset.CoreV1().Namespaces().Delete(n.Name, &metav1.DeleteOptions{})
+	exists, err := n.Exists(clientset)
+	if err != nil {
+		return errors.NewKubernetesError("delete namespace error", err)
+	}
+	if exists {
+		err = clientset.CoreV1().Namespaces().Delete(n.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return errors.NewKubernetesError("delete namespace error", err)
 		}
