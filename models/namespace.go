@@ -8,6 +8,7 @@
 package models
 
 import (
+	"github.com/topfreegames/maestro/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
@@ -33,7 +34,10 @@ func (n *Namespace) Create(clientset kubernetes.Interface) error {
 		},
 	}
 	_, err := clientset.CoreV1().Namespaces().Create(namespace)
-	return err
+	if err != nil {
+		return errors.NewKubernetesError("create namespace error", err)
+	}
+	return nil
 }
 
 // Exists returns true if namespace is already created in Kubernetes
@@ -47,7 +51,19 @@ func (n *Namespace) Exists(clientset kubernetes.Interface) bool {
 // Delete returns true if namespace is already created in Kubernetes
 func (n *Namespace) Delete(clientset kubernetes.Interface) error {
 	if n.Exists(clientset) {
-		return clientset.CoreV1().Namespaces().Delete(n.Name, &metav1.DeleteOptions{})
+		err := clientset.CoreV1().Namespaces().Delete(n.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			return errors.NewKubernetesError("delete namespace error", err)
+		}
+	}
+	return nil
+}
+
+// DeletePods deletes all pods from a kubernetes namespace
+func (n *Namespace) DeletePods(clientset kubernetes.Interface) error {
+	err := clientset.CoreV1().Pods(n.Name).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{})
+	if err != nil {
+		return errors.NewKubernetesError("delete namespace pods error", err)
 	}
 	return nil
 }

@@ -55,7 +55,7 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 	})
 
 	if err != nil {
-		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
+		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace, timeoutSec)
 		if deleteErr != nil {
 			return deleteErr
 		}
@@ -64,7 +64,7 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 
 	err = ScaleUp(logger, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true)
 	if err != nil {
-		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
+		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace, timeoutSec)
 		if deleteErr != nil {
 			return deleteErr
 		}
@@ -78,7 +78,7 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 		return scheduler.Update(db)
 	})
 	if err != nil {
-		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
+		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace, timeoutSec)
 		if deleteErr != nil {
 			return deleteErr
 		}
@@ -108,7 +108,7 @@ func UpdateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 }
 
 // DeleteScheduler deletes a scheduler from a yaml configuration
-func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, schedulerName string) error {
+func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, schedulerName string, timeoutSec int) error {
 	scheduler := models.NewScheduler(schedulerName, "", "")
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return scheduler.Load(db)
@@ -117,7 +117,7 @@ func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 		return err
 	}
 	namespace := models.NewNamespace(scheduler.Name)
-	return deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace)
+	return deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace, timeoutSec)
 }
 
 // GetSchedulerScalingInfo returns the scheduler scaling policies and room count by status
@@ -249,7 +249,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 	return creationErr
 }
 
-func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, scheduler *models.Scheduler, namespace *models.Namespace) error {
+func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, scheduler *models.Scheduler, namespace *models.Namespace, timeoutSec int) error {
 	var err error
 	if scheduler.ID != "" {
 		scheduler.State = models.StateTerminating
@@ -262,13 +262,65 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 			return err
 		}
 	}
+
+	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
+	// Delete pods and wait for graceful termination before deleting the namespace
 	err = mr.WithSegment(models.SegmentNamespace, func() error {
-		return namespace.Delete(clientset) // TODO: we're assuming that deleting a namespace gracefully terminates all its pods
+		return namespace.DeletePods(clientset)
+	})
+	if err != nil {
+		logger.WithError(err).Error("failed to delete namespace pods")
+		return err
+	}
+	timeoutPods := make(chan bool, 1)
+	go func() {
+		time.Sleep(time.Duration(2*configYAML.ShutdownTimeout) * time.Second)
+		timeoutPods <- true
+	}()
+	exit := false
+	for !exit {
+		select {
+		case <-timeoutPods:
+			return errors.New("timeout deleting scheduler pods")
+		default:
+			pods, listErr := clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
+			if listErr != nil {
+				logger.WithError(listErr).Error("error listing pods")
+			} else if len(pods.Items) == 0 {
+				exit = true
+			}
+			logger.Debug("deleting scheduler pods")
+			time.Sleep(time.Duration(1) * time.Second)
+		}
+	}
+
+	err = mr.WithSegment(models.SegmentNamespace, func() error {
+		return namespace.Delete(clientset)
 	})
 	if err != nil {
 		logger.WithError(err).Error("failed to delete namespace while deleting scheduler")
 		return err
 	}
+	timeoutNamespace := make(chan bool, 1)
+	go func() {
+		time.Sleep(time.Duration(timeoutSec) * time.Second)
+		timeoutNamespace <- true
+	}()
+	exit = false
+	for !exit {
+		select {
+		case <-timeoutNamespace:
+			return errors.New("timeout deleting namespace")
+		default:
+			exists := namespace.Exists(clientset)
+			if !exists {
+				exit = true
+			}
+			logger.Debug("deleting scheduler pods")
+			time.Sleep(time.Duration(1) * time.Second)
+		}
+	}
+
 	err = mr.WithSegment(models.SegmentDelete, func() error {
 		return scheduler.Delete(db)
 	})

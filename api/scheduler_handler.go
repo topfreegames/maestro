@@ -39,8 +39,8 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	logger.Debug("Creating scheduler...")
 
+	timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
 	err := mr.WithSegment(models.SegmentController, func() error {
-		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
 		return controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, payload, timeoutSec)
 	})
 
@@ -80,8 +80,9 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	logger.Debug("Deleting scheduler...")
 
+	timeoutSec := g.App.Config.GetInt("deleteTimeoutSeconds")
 	err := mr.WithSegment(models.SegmentController, func() error {
-		return controller.DeleteScheduler(l, mr, g.App.DB, g.App.KubernetesClient, params.SchedulerName)
+		return controller.DeleteScheduler(l, mr, g.App.DB, g.App.KubernetesClient, params.SchedulerName, timeoutSec)
 	})
 
 	if err != nil {
