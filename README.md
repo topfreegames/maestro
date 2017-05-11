@@ -3,6 +3,8 @@ Maestro: Kubernetes Game Room Scheduler
 [![Build Status](https://travis-ci.org/topfreegames/maestro.svg?branch=master)](https://travis-ci.org/topfreegames/maestro)
 [![Coverage Status](https://coveralls.io/repos/github/topfreegames/maestro/badge.svg?branch=master)](https://coveralls.io/github/topfreegames/maestro?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/topfreegames/maestro)](https://goreportcard.com/report/github.com/topfreegames/maestro)
+[![Docs](https://readthedocs.org/projects/maestro/badge/?version=latest
+)](http://maestro.readthedocs.io/en/latest/)
 
 ## Goal:
 
@@ -12,7 +14,7 @@ Let us define a Game Room Unity (GRU) as a Kubernetes service (type nodePort) as
 
 ## Architecture:
 
-Maestro is a game room scheduler that is composed by a controller, a watcher, an API and a CLI. In the future we may have an UI for displaying metrics such as:
+Maestro is a game room scheduler that is composed by a controller, a watcher, a worker, an API and a CLI. In the future we may have an UI for displaying metrics such as:
 
 - % of rooms usage
 - rate of room occupation increase/decrease
@@ -27,7 +29,7 @@ The controller is responsible for managing the Game Room Unities (GRUs). It crea
 
 ### maestro-watcher:
 
-The watcher ensures that at any time the Game Room Unities (GRUs) state is as expected. If the scaling policies say that one should have 10 GRUs of a given type, the watcher will ask the controller to create or terminate GRUs as needed. The desired state is kept in a database that is consulted by the watcher (via controller) each time it runs. It has a lock so Maestro can be scaled horizontally. Each config (i.e. maestro scalable entity) has its own watcher.
+The watcher ensures that at any time the Game Room Unities (GRUs) state is as expected. If the scaling policies say that one should have 10 GRUs of a given type, the watcher will ask the controller to create or terminate GRUs as needed. The desired state is kept in a database that is consulted by the watcher (via controller) each time it runs. It has a lock so Maestro can be scaled horizontally. Each scheduler (i.e. maestro scalable entity) has its own watcher.
 
 ### maestro-worker:
 
@@ -37,7 +39,7 @@ The worker ensures that all valid schedulers (i.e. schedulers that exist in the 
 
 The API is the connection of Maestro to the external world and with the game room itself. It is responsible for:
 
-- Managing GRUs status and healthcheck (status are: creating, ready, occupied and terminating);
+- Managing GRUs status and healthcheck (status are: creating, ready, occupied, terminating and terminated);
 - Saving the scheduler config in a database that will be consulted by the watcher;
 - Managing the pool of GRUs with each GRU host ip and port;
 
@@ -105,6 +107,8 @@ cmd:                       # if the image can run with different arguments you c
   - "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
 ```
 
+A JSON file equivalent to the yaml above can also be used.
+
 ## TODOs:
 
 - [x] Define Architecture
@@ -122,7 +126,7 @@ cmd:                       # if the image can run with different arguments you c
     - Delete scheduler.
 
   Tasks:
-  - [ ] maestro-controller
+  - [x] maestro-controller
     - [x] scheduler
       - [x] create new scheduler with given config
         - [x] generate Kubernetes manifest template from the config
@@ -141,13 +145,13 @@ cmd:                       # if the image can run with different arguments you c
       - [x] get autoscaling policy (from config persisted in db)
     - [x] scaling
       - [x] create GRUs
-    - [ ] docs
-  - [ ] maestro-watcher
+    - [x] docs
+  - [x] maestro-watcher
     - [x] validate rooms status vs autoscaling policy
     - [x] scale cluster
       - [x] up
-    - [ ] docs
-  - [ ] maestro-api
+    - [x] docs
+  - [x] maestro-api
     - [x] scheduler
       - [x] create new scheduler with given config
       - [x] delete scheduler
@@ -156,14 +160,9 @@ cmd:                       # if the image can run with different arguments you c
       - [x] room ready
       - [x] match started
       - [x] match ended
-    - [ ] docs
-  - [ ] maestro-client
-    - [ ] docs
-    - [ ] configuration (maestro url / ping interval)
-    - [ ] http client
-    - [ ] polling to retrieve (host / port)
-    - [ ] catch sigterm/sigkill and handle graceful shutdown
-    - [ ] unity support
+      - [x] address polling
+    - [x] docs
+  - [x] (maestro-client)[https://github.com/topfreegames/maestro-client]
 
 - Milestone 2:
 
@@ -191,8 +190,6 @@ cmd:                       # if the image can run with different arguments you c
   - [ ] maestro-api
     - [ ] scheduler
       - [ ] update running scheduler config
-    - [ ] room protocol routes
-      - [ ] address polling
     - [ ] get rooms metrics
   - [ ] maestro-cli
     - [ ] scheduler
@@ -283,192 +280,4 @@ Game rooms have four different statuses:
 Maestro's auto scaling policies are based on the number of rooms that are in ready state.
 
 
-In order to properly set their statuses, game rooms must call the following maestro-api HTTP routes:
-
-### Ping
-
-  This route should be called every 10 seconds and serves as a keep alive sent by the GRU to Maestro.
-
-#### Request:
-  `PUT /schedulers/:schedulerName/rooms/:roomName/ping`
-
-  ```
-  {
-    timestamp: <seconds since epoch>
-  }
-  ```
-
-#### Response:
-  ```
-  {
-    "success": <bool>
-  }
-  ```
-
-### Address Polling
-
-  This route should be polled by the GRU in order to obtain the room address (host ip and port).
-
-#### Request:
-  `GET  /schedulers/:schedulerName/rooms/:roomName/address`
-
-#### Response:
-  ```
-  {
-    "success": <bool>,
-    "host": <host ip>,
-    "port": <int>
-  }
-  ```
-
-### Room ready
-
-  This route should be called every time a room is ready to receive a match. You'll need to make sure it is only called after the room has its address.
-
-#### Request:
-  `PUT /schedulers/:schedulerName/rooms/:roomName/status`
-
-  ```
-  {
-    timestamp: <seconds since epoch>,
-    status: "ready"
-  }
-  ```
-
-#### Response:
-  ```
-  {
-    "success": <bool>
-  }
-  ```
-
-### Match started
-
-  This route should be called every time a match is started. It'll indicate that this GRU is occupied and is not available for new matches.
-
-#### Request:
-  `PUT /schedulers/:schedulerName/rooms/:roomName/status`
-
-  ```
-  {
-    timestamp: <seconds since epoch>,
-    status: "occupied"
-  }
-  ```
-
-#### Response:
-  ```
-  {
-    "success": <bool>
-  }
-  ```
-
-### Match ended
-
-  This route should be called every time a match is ended. It'll indicate that this GRU is no longer occupied and is available for new matches.
-
-#### Request:
-  `PUT /schedulers/:schedulerName/rooms/:roomName/status`
-
-  ```
-  {
-    timestamp: <seconds since epoch>,
-    status: "ready"
-  }
-  ```
-
-#### Response:
-  ```
-  {
-    "success": <bool>
-  }
-  ```
-
-## Scheduler Management:
-
-### Create
-
-  This route creates a scheduler in Maestro using a provided YAML config.
-
-#### Request:
-  `POST /schedulers`
-
-  ```
-  {
-    "name": "room-name",
-    "game": "game-name",
-    "image": "somens/someimage:v123",
-    "ports": [
-      {
-        "containerPort": 5050,
-        "protocol": "UDP",
-        "name": "port1"
-      },
-      {
-        "containerPort": 8888,
-        "protocol": "TCP",
-        "name": "port2"
-      }
-    ],
-    "limits": {
-      "memory": "128Mi",
-      "cpu": "1"
-    },
-    "shutdownTimeout": 180,
-    "autoscaling": {
-      "min": 100,
-      "up": {
-        "delta": 10,
-        "trigger": {
-          "usage": 70,
-          "time": 600
-        },
-        "cooldown": 300
-      },
-      "down": {
-        "delta": 2,
-        "trigger": {
-          "usage": 50,
-          "time": 900
-        },
-        "cooldown": 300
-      }
-    },
-    "env": [
-      {
-        "name": "EXAMPLE_ENV_VAR",
-        "value": "examplevalue"
-      },
-      {
-        "name": "ANOTHER_ENV_VAR",
-        "value": "anothervalue"
-      }
-    ],
-    "cmd": [
-      "./room-binary",
-      "-serverType",
-      "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
-    ]
-  }
-  ```
-
-#### Response:
-  ```
-  {
-    "success": <bool>
-  }
-  ```
-
-### Delete
-
-  This route deletes a scheduler in Maestro using the scheduler name.
-
-#### Request:
-  `DELETE /scheduler/:schedulerName`
-
-#### Response:
-  ```
-  {
-    "success": <bool>
-  }
-  ```
+In order to properly set their statuses, game rooms must call the maestro-api HTTP routes described in the (Maestro API docs)[http://maestro.readthedocs.io/en/latest/api.html].

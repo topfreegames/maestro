@@ -108,3 +108,8 @@ test: unit test-coverage-func
 
 test-coverage-html cover:
 	@go tool cover -html=_build/coverage-all.out
+
+rtfd:
+	@rm -rf docs/_build
+	@sphinx-build -b html -d ./docs/_build/doctrees ./docs/ docs/_build/html
+	@open docs/_build/html/index.html
