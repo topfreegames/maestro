@@ -76,20 +76,20 @@ func NewWorker(
 }
 
 func (w *Worker) loadConfigurationDefaults() {
-	w.Config.SetDefault("syncPeriod", 10)
-	w.Config.SetDefault("workerGracefulShutdownTimeout", 300)
+	w.Config.SetDefault("worker.syncPeriod", 10)
+	w.Config.SetDefault("worker.gracefulShutdownTimeout", 300)
 }
 
 func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface) error {
 	w.loadConfigurationDefaults()
 	w.configureLogger()
 
-	w.SyncPeriod = w.Config.GetInt("syncPeriod")
+	w.SyncPeriod = w.Config.GetInt("worker.syncPeriod")
 	w.Watchers = make(map[string]*watcher.Watcher)
 	var wg sync.WaitGroup
 	w.gracefulShutdown = &gracefulShutdown{
 		wg:      &wg,
-		timeout: time.Duration(w.Config.GetInt("workerGracefulShutdownTimeout")) * time.Second,
+		timeout: time.Duration(w.Config.GetInt("worker.gracefulShutdownTimeout")) * time.Second,
 	}
 
 	err := w.configureDatabase(dbOrNil)

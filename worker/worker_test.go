@@ -45,7 +45,7 @@ var _ = Describe("Worker", func() {
 		var w *worker.Worker
 
 		BeforeEach(func() {
-			config.Set("syncPeriod", 1)
+			config.Set("worker.syncPeriod", 1)
 			var err error
 			mockRedisClient.EXPECT().Ping()
 			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)

@@ -73,22 +73,22 @@ func NewWatcher(
 }
 
 func (w *Watcher) loadConfigurationDefaults() {
-	w.Config.SetDefault("autoScalingPeriod", 10)
 	w.Config.SetDefault("scaleUpTimeoutSeconds", 300)
+	w.Config.SetDefault("watcher.autoScalingPeriod", 10)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
+	w.Config.SetDefault("watcher.gracefulShutdownTimeout", 300)
 	w.Config.SetDefault("pingTimeout", 30)
-	w.Config.SetDefault("watcherGracefulShutdownTimeout", 300)
 }
 
 func (w *Watcher) configure() {
-	w.AutoScalingPeriod = w.Config.GetInt("autoScalingPeriod")
+	w.AutoScalingPeriod = w.Config.GetInt("watcher.autoScalingPeriod")
 	w.LockKey = w.Config.GetString("watcher.lockKey")
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
 	var wg sync.WaitGroup
 	w.gracefulShutdown = &gracefulShutdown{
 		wg:      &wg,
-		timeout: time.Duration(w.Config.GetInt("watcherGracefulShutdownTimeout")) * time.Second,
+		timeout: time.Duration(w.Config.GetInt("watcher.gracefulShutdownTimeout")) * time.Second,
 	}
 }
 

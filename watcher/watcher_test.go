@@ -70,7 +70,7 @@ var _ = Describe("Watcher", func() {
 			autoScalingPeriod := 1234
 			lockKey := "myLockKey"
 			lockTimeoutMs := 1000
-			config.Set("autoScalingPeriod", autoScalingPeriod)
+			config.Set("watcher.autoScalingPeriod", autoScalingPeriod)
 			config.Set("watcher.lockKey", lockKey)
 			config.Set("watcher.lockTimeoutMs", lockTimeoutMs)
 			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name)
@@ -97,7 +97,7 @@ var _ = Describe("Watcher", func() {
 
 	Describe("Start", func() {
 		BeforeEach(func() {
-			config.Set("autoScalingPeriod", 1)
+			config.Set("watcher.autoScalingPeriod", 1)
 		})
 
 		It("should start watcher", func() {
