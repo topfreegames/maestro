@@ -10,6 +10,7 @@ package watcher
 import (
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -19,10 +20,16 @@ import (
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/controller"
+	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
 )
+
+type gracefulShutdown struct {
+	wg      *sync.WaitGroup
+	timeout time.Duration
+}
 
 // Watcher struct for watcher
 type Watcher struct {
@@ -37,6 +44,7 @@ type Watcher struct {
 	LockTimeoutMS     int
 	Run               bool
 	SchedulerName     string
+	gracefulShutdown  *gracefulShutdown
 }
 
 // NewWatcher is the watcher constructor
@@ -70,12 +78,18 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
 	w.Config.SetDefault("pingTimeout", 30)
+	w.Config.SetDefault("watcherGracefulShutdownTimeout", 300)
 }
 
 func (w *Watcher) configure() {
 	w.AutoScalingPeriod = w.Config.GetInt("autoScalingPeriod")
 	w.LockKey = w.Config.GetString("watcher.lockKey")
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
+	var wg sync.WaitGroup
+	w.gracefulShutdown = &gracefulShutdown{
+		wg:      &wg,
+		timeout: time.Duration(w.Config.GetInt("watcherGracefulShutdownTimeout")) * time.Second,
+	}
 }
 
 func (w *Watcher) configureLogger() {
@@ -117,11 +131,14 @@ func (w *Watcher) Start() {
 			w.Run = false
 		}
 	}
-	// TODO: implement graceful shutdown
+	extensions.GracefulShutdown(l, w.gracefulShutdown.wg, w.gracefulShutdown.timeout)
 }
 
 // RemoveDeadRooms remove rooms that have not sent ping requests for a while
 func (w *Watcher) RemoveDeadRooms() {
+	w.gracefulShutdown.wg.Add(1)
+	defer w.gracefulShutdown.wg.Done()
+
 	since := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
 	logger := w.Logger.WithFields(logrus.Fields{
 		"executionID": uuid.NewV4().String(),
@@ -143,6 +160,9 @@ func (w *Watcher) RemoveDeadRooms() {
 
 // AutoScale checks if the GRUs state is as expected and scale up or down if necessary
 func (w *Watcher) AutoScale() {
+	w.gracefulShutdown.wg.Add(1)
+	defer w.gracefulShutdown.wg.Done()
+
 	logger := w.Logger.WithFields(logrus.Fields{
 		"executionID": uuid.NewV4().String(),
 		"operation":   "autoScale",

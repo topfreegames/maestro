@@ -8,6 +8,9 @@
 package extensions
 
 import (
+	"sync"
+	"time"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/pg"
@@ -76,4 +79,34 @@ func GetKubernetesClient(logger logrus.FieldLogger, inCluster bool, kubeConfigPa
 	}
 	l.Info("successfully connected to Kubernetes")
 	return clientset, nil
+}
+
+// WaitTimeout waits for the waitgroup for the specified max timeout.
+// Returns true if waiting timed out.
+// got from http://stackoverflow.com/a/32843750/3987733
+func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+	c := make(chan struct{})
+	go func() {
+		defer close(c)
+		wg.Wait()
+	}()
+	select {
+	case <-c:
+		return false // completed normally
+	case <-time.After(timeout):
+		return true // timed out
+	}
+}
+
+// GracefulShutdown waits for wg do complete then exits
+func GracefulShutdown(logger logrus.FieldLogger, wg *sync.WaitGroup, timeout time.Duration) {
+	if wg != nil {
+		logger.Info("waiting for graceful shutdown...")
+		e := WaitTimeout(wg, timeout)
+		if e {
+			logger.Warn("exited because of graceful shutdown timeout")
+		} else {
+			logger.Info("exited gracefully")
+		}
+	}
 }

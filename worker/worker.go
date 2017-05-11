@@ -10,6 +10,7 @@ package worker
 import (
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,6 +28,11 @@ import (
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 )
 
+type gracefulShutdown struct {
+	wg      *sync.WaitGroup
+	timeout time.Duration
+}
+
 // Worker struct for worker
 type Worker struct {
 	Config           *viper.Viper
@@ -40,6 +46,7 @@ type Worker struct {
 	Run              bool
 	SyncPeriod       int
 	Watchers         map[string]*watcher.Watcher
+	gracefulShutdown *gracefulShutdown
 }
 
 // NewWorker is the worker constructor
@@ -70,6 +77,7 @@ func NewWorker(
 
 func (w *Worker) loadConfigurationDefaults() {
 	w.Config.SetDefault("syncPeriod", 10)
+	w.Config.SetDefault("workerGracefulShutdownTimeout", 300)
 }
 
 func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface) error {
@@ -78,6 +86,11 @@ func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 
 	w.SyncPeriod = w.Config.GetInt("syncPeriod")
 	w.Watchers = make(map[string]*watcher.Watcher)
+	var wg sync.WaitGroup
+	w.gracefulShutdown = &gracefulShutdown{
+		wg:      &wg,
+		timeout: time.Duration(w.Config.GetInt("workerGracefulShutdownTimeout")) * time.Second,
+	}
 
 	err := w.configureDatabase(dbOrNil)
 	if err != nil {
@@ -174,11 +187,15 @@ func (w *Worker) Start() {
 			w.Run = false
 		}
 	}
-	// TODO: implement graceful shutdown
+
+	extensions.GracefulShutdown(l, w.gracefulShutdown.wg, w.gracefulShutdown.timeout)
 }
 
 // EnsureRunningWatchers ensures all schedulers have running watchers
 func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
+	w.gracefulShutdown.wg.Add(1)
+	defer w.gracefulShutdown.wg.Done()
+
 	l := w.Logger.WithFields(logrus.Fields{
 		"operation": "ensureRunningWatchers",
 	})
@@ -207,6 +224,9 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 
 // RemoveDeadWatchers removes dead watchers from worker watcher map
 func (w *Worker) RemoveDeadWatchers() {
+	w.gracefulShutdown.wg.Add(1)
+	defer w.gracefulShutdown.wg.Done()
+
 	l := w.Logger.WithFields(logrus.Fields{
 		"operation": "removeDeadWatchers",
 	})
