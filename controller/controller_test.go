@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
+	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
 
@@ -193,7 +194,20 @@ var _ = Describe("Controller", func() {
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockDb.EXPECT().Query(gomock.Any(), "INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id", gomock.Any())
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
+				gomock.Any(),
+			).Do(
+				func(scheduler *models.Scheduler, query string, srcScheduler *models.Scheduler) {
+					scheduler.ID = uuid.NewV4().String()
+				},
+			)
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
 				"status":   "creating",

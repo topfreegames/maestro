@@ -250,19 +250,30 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 }
 
 func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, scheduler *models.Scheduler, namespace *models.Namespace) error {
-	// TODO: set scheduler state to models.StateTerminating
-	err := mr.WithSegment(models.SegmentNamespace, func() error {
+	var err error
+	if scheduler.ID != "" {
+		scheduler.State = models.StateTerminating
+		scheduler.StateLastChangedAt = time.Now().Unix()
+		err = mr.WithSegment(models.SegmentDelete, func() error {
+			return scheduler.Update(db)
+		})
+		if err != nil {
+			logger.WithError(err).Error("failed to update scheduler state")
+			return err
+		}
+	}
+	err = mr.WithSegment(models.SegmentNamespace, func() error {
 		return namespace.Delete(clientset) // TODO: we're assuming that deleting a namespace gracefully terminates all its pods
 	})
 	if err != nil {
-		logger.WithError(err).Error("Failed to delete namespace while deleting scheduler.")
+		logger.WithError(err).Error("failed to delete namespace while deleting scheduler")
 		return err
 	}
 	err = mr.WithSegment(models.SegmentDelete, func() error {
 		return scheduler.Delete(db)
 	})
 	if err != nil {
-		logger.WithError(err).Error("Failed to delete scheduler from database while deleting scheduler.")
+		logger.WithError(err).Error("failed to delete scheduler from database while deleting scheduler")
 		return err
 	}
 	return nil
