@@ -229,10 +229,12 @@ var _ = Describe("Watcher", func() {
 
 			// ScaleUp
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
-				"status":   "creating",
-				"lastPing": time.Now().Unix(),
-			}).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal("creating"))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
@@ -277,10 +279,12 @@ var _ = Describe("Watcher", func() {
 
 			// ScaleUp
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
-				"status":   "creating",
-				"lastPing": time.Now().Unix(),
-			}).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal("creating"))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
@@ -624,8 +628,13 @@ var _ = Describe("Watcher", func() {
 			// DeleteRoomsNoPingSince
 			mockRedisClient.EXPECT().ZRangeByScore(
 				pKey,
-				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
-			).Return(redis.NewStringSliceResult([]string{}, nil))
+				gomock.Any(),
+			).Do(func(key string, zrangeby redis.ZRangeBy) {
+				Expect(zrangeby.Min).To(Equal("-inf"))
+				max, err := strconv.Atoi(zrangeby.Max)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(max).To(BeNumerically("~", ts, 1))
+			}).Return(redis.NewStringSliceResult([]string{}, nil))
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 		})
@@ -636,8 +645,13 @@ var _ = Describe("Watcher", func() {
 			// DeleteRoomsNoPingSince
 			mockRedisClient.EXPECT().ZRangeByScore(
 				pKey,
-				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
-			).Return(redis.NewStringSliceResult([]string{}, errors.New("some error")))
+				gomock.Any(),
+			).Do(func(key string, zrangeby redis.ZRangeBy) {
+				Expect(zrangeby.Min).To(Equal("-inf"))
+				max, err := strconv.Atoi(zrangeby.Max)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(max).To(BeNumerically("~", ts, 1))
+			}).Return(redis.NewStringSliceResult([]string{}, errors.New("some error")))
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("error removing dead rooms"))

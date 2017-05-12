@@ -81,10 +81,12 @@ var _ = Describe("Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
-				"status":   "creating",
-				"lastPing": time.Now().Unix(),
-			}).Times(configYaml1.AutoScaling.Min)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
@@ -209,10 +211,12 @@ var _ = Describe("Controller", func() {
 				gomock.Any(),
 			)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
-				"status":   "creating",
-				"lastPing": time.Now().Unix(),
-			})
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any())
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
@@ -243,10 +247,12 @@ var _ = Describe("Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
-				"status":   "creating",
-				"lastPing": time.Now().Unix(),
-			}).Times(configYaml1.AutoScaling.Min)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
@@ -600,10 +606,12 @@ var _ = Describe("Controller", func() {
 			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(amount)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
-				"status":   "creating",
-				"lastPing": time.Now().Unix(),
-			}).Times(amount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(amount)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(amount)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(amount)
 			mockPipeline.EXPECT().Exec().Times(amount)
@@ -627,10 +635,12 @@ var _ = Describe("Controller", func() {
 			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
-				"status":   "creating",
-				"lastPing": time.Now().Unix(),
-			})
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any())
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
@@ -655,10 +665,12 @@ var _ = Describe("Controller", func() {
 			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(amount)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
-				"status":   "creating",
-				"lastPing": time.Now().Unix(),
-			}).Times(amount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(amount)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(amount)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(amount)
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
@@ -684,10 +696,12 @@ var _ = Describe("Controller", func() {
 			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(amount)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
-				"status":   "creating",
-				"lastPing": time.Now().Unix(),
-			}).Times(amount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(amount)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(amount)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(amount)
 			mockPipeline.EXPECT().Exec().Times(amount)

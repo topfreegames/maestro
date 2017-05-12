@@ -162,7 +162,7 @@ A JSON file equivalent to the yaml above can also be used.
       - [x] match ended
       - [x] address polling
     - [x] docs
-  - [x] (maestro-client)[https://github.com/topfreegames/maestro-client]
+  - [x] [maestro-client](https://github.com/topfreegames/maestro-client)
 
 - Milestone 2:
 

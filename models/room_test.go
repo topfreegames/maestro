@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/go-redis/redis"
+	"github.com/golang/mock/gomock"
 	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/maestro/models"
 
@@ -59,10 +60,12 @@ var _ = Describe("Room", func() {
 			now := time.Now().Unix()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
-				"status":   models.StatusCreating,
-				"lastPing": now,
-			})
+			mockPipeline.EXPECT().HMSet(rKey, gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", now, 1))
+				},
+			)
 			mockPipeline.EXPECT().SAdd(sKey, rKey)
 			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			mockPipeline.EXPECT().Exec()
@@ -79,10 +82,12 @@ var _ = Describe("Room", func() {
 			now := time.Now().Unix()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
-				"status":   models.StatusCreating,
-				"lastPing": now,
-			})
+			mockPipeline.EXPECT().HMSet(rKey, gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", now, 1))
+				},
+			)
 			mockPipeline.EXPECT().SAdd(sKey, rKey)
 			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
@@ -110,10 +115,12 @@ var _ = Describe("Room", func() {
 			now := time.Now().Unix()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
-				"status":   status,
-				"lastPing": now,
-			})
+			mockPipeline.EXPECT().HMSet(rKey, gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(status))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", now, 1))
+				},
+			)
 			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			for _, st := range allStatus {
 				mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, st), rKey)
@@ -153,10 +160,12 @@ var _ = Describe("Room", func() {
 			now := time.Now().Unix()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
-				"status":   status,
-				"lastPing": now,
-			})
+			mockPipeline.EXPECT().HMSet(rKey, gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(status))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", now, 1))
+				},
+			)
 			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			for _, st := range allStatus {
 				mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, st), rKey)

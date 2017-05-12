@@ -105,10 +105,12 @@ var _ = Describe("Scheduler Handler", func() {
 			It("returns a status code of 201 and success body", func() {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
 
-				mockPipeline.EXPECT().HMSet(gomock.Any(), map[string]interface{}{
-					"status":   "creating",
-					"lastPing": time.Now().Unix(),
-				}).Times(100)
+				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+					func(schedulerName string, statusInfo map[string]interface{}) {
+						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+					},
+				).Times(100)
 				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(100)
 				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(100)
 				mockPipeline.EXPECT().Exec().Times(100)
