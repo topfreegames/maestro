@@ -280,4 +280,4 @@ Game rooms have four different statuses:
 Maestro's auto scaling policies are based on the number of rooms that are in ready state.
 
 
-In order to properly set their statuses, game rooms must call the maestro-api HTTP routes described in the (Maestro API docs)[http://maestro.readthedocs.io/en/latest/api.html].
+In order to properly set their statuses, game rooms must call the maestro-api HTTP routes described in the [Maestro API docs](http://maestro.readthedocs.io/en/latest/api.html).
