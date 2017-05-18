@@ -36,6 +36,7 @@ var (
 	mockRedisClient *redismocks.MockRedisClient
 	mr              *models.MixedMetricsReporter
 	redisClient     *redis.Client
+	allStatus       = []string{models.StatusCreating, models.StatusReady, models.StatusOccupied, models.StatusTerminating, models.StatusTerminated}
 )
 
 func TestWatcher(t *testing.T) {

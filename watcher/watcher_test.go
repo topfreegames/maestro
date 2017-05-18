@@ -15,11 +15,14 @@ import (
 
 	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/pkg/fields"
 
 	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/watcher"
@@ -198,7 +201,7 @@ var _ = Describe("Watcher", func() {
 				gomock.Any(),
 				"SELECT * FROM schedulers WHERE name = ?",
 				configYaml1.Name,
-			).Return(&types.Result{}, errors.New("pg: no rows in result set"))
+			).Return(&types.Result{}, errors.New(fmt.Sprintf("scheduler \"%s\" not found")))
 
 			w.Run = true
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
@@ -489,8 +492,64 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
+			// Create rooms (ScaleUp)
+			timeoutSec := 0
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+			scaleUpAmount := 5
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(scaleUpAmount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+
+			// ScaleDown
+			scaleDownAmount := 2
+			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
+			Expect(err).NotTo(HaveOccurred())
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().
+				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
+				Return(redis.NewStringSliceResult(names, nil))
+			mockPipeline.EXPECT().Exec()
+			for _, name := range names {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				room := models.NewRoom(name, scheduler.Name)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().
+						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+			}
+
+			// UpdateScheduler
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("in-sync"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+			}).Return(&types.Result{}, nil)
+
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is overdimensioned, should scale down"))
+			services, err := clientset.CoreV1().Services(scheduler.Name).List(metav1.ListOptions{
+				FieldSelector: fields.Everything().String(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(services.Items).To(HaveLen(scaleUpAmount - scaleDownAmount))
 		})
 
 		It("should do nothing if state is expected", func() {

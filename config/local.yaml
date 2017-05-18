@@ -20,6 +20,7 @@ worker:
   syncPeriod: 10
   gracefulShutdownTimeout: 300
 scaleUpTimeoutSeconds: 300
+scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 150
 pingTimeout: 30
 sentry:
