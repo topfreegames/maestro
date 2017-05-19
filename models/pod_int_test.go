@@ -1,5 +1,5 @@
 // maestro
-// +build unit
+// +build integration
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:
@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"strings"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/maestro/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
 
 	. "github.com/onsi/ginkgo"
@@ -23,7 +23,6 @@ import (
 
 var _ = Describe("Pod", func() {
 	var (
-		clientset               *fake.Clientset
 		command                 []string
 		env                     []*models.EnvVar
 		game                    string
@@ -39,7 +38,6 @@ var _ = Describe("Pod", func() {
 	)
 
 	BeforeEach(func() {
-		clientset = fake.NewSimpleClientset()
 		command = []string{
 			"./room-binary",
 			"-serverType",
@@ -58,7 +56,7 @@ var _ = Describe("Pod", func() {
 		game = "pong"
 		image = "pong/pong:v123"
 		name = "pong-free-for-all-0"
-		namespace = "pong-free-for-all"
+		namespace = fmt.Sprintf("maestro-test-%s", uuid.NewV4())
 		ports = []*models.Port{
 			{
 				ContainerPort: 5050,
@@ -74,39 +72,17 @@ var _ = Describe("Pod", func() {
 		shutdownTimeout = 180
 	})
 
-	Describe("NewPod", func() {
-		It("should build correct pod struct", func() {
-			pod := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-			)
-			Expect(pod.Game).To(Equal(game))
-			Expect(pod.Image).To(Equal(image))
-			Expect(pod.Name).To(Equal(name))
-			Expect(pod.Namespace).To(Equal(namespace))
-			Expect(pod.ResourcesLimitsCPU).To(Equal(resourcesLimitsCPU))
-			Expect(pod.ResourcesLimitsMemory).To(Equal(resourcesLimitsMemory))
-			Expect(pod.ResourcesRequestsCPU).To(Equal(resourcesRequestsCPU))
-			Expect(pod.ResourcesRequestsMemory).To(Equal(resourcesRequestsMemory))
-			Expect(pod.ShutdownTimeout).To(Equal(shutdownTimeout))
-			Expect(pod.Ports).To(Equal(ports))
-			Expect(pod.Command).To(Equal(command))
-			Expect(pod.Env).To(Equal(env))
-		})
+	AfterEach(func() {
+		err := clientset.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{})
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Describe("Create", func() {
 		It("should create a pod in kubernetes", func() {
+			ns := models.NewNamespace(namespace)
+			err := ns.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
 			pod := models.NewPod(
 				game,
 				image,
@@ -162,73 +138,6 @@ var _ = Describe("Pod", func() {
 			}
 			Expect(podv1.Spec.Containers[0].Command).To(HaveLen(1))
 			Expect(podv1.Spec.Containers[0].Command[0]).To(Equal(strings.Join(command, " ")))
-		})
-
-		It("should return error when creating existing pod", func() {
-			pod := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-			)
-			_, err := pod.Create(clientset)
-			Expect(err).NotTo(HaveOccurred())
-
-			_, err = pod.Create(clientset)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(fmt.Sprintf("Pod \"%s\" already exists", name)))
-		})
-	})
-
-	Describe("Delete", func() {
-		It("should delete a pod from kubernetes", func() {
-			pod := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-			)
-			_, err := pod.Create(clientset)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = pod.Delete(clientset)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should return error when deleting non existent pod", func() {
-			pod := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-			)
-			err := pod.Delete(clientset)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Pod \"pong-free-for-all-0\" not found"))
 		})
 	})
 })

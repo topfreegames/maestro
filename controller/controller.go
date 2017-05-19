@@ -208,13 +208,11 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 	})
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 
-	timeout := make(chan bool, 1)
 	pods := make([]string, amount)
 	var creationErr error
-	go func() {
-		time.Sleep(time.Duration(timeoutSec) * time.Second)
-		timeout <- true
-	}()
+
+	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
+
 	for i := 0; i < amount; i++ {
 		podName, err := createServiceAndPod(l, mr, redisClient, clientset, configYAML, scheduler.Name)
 		if err != nil {
@@ -226,6 +224,12 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 		}
 		pods[i] = podName
 	}
+
+	if willTimeoutAt.Sub(time.Now()) < 0 {
+		return errors.New("timeout scaling up scheduler")
+	}
+	timeout := time.NewTimer(willTimeoutAt.Sub(time.Now())).C
+
 	for {
 		exit := true
 		select {
@@ -267,11 +271,8 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 		"scheduler": scheduler.Name,
 		"amount":    amount,
 	})
-	timeout := make(chan bool, 1)
-	go func() {
-		time.Sleep(time.Duration(timeoutSec) * time.Second)
-		timeout <- true
-	}()
+
+	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
 
 	l.Debug("accessing redis")
 	sReady := redisClient.SPopN(models.GetRoomStatusSetRedisKey(scheduler.Name, models.StatusReady), int64(amount))
@@ -305,6 +306,11 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 		}
 	}
 
+	if willTimeoutAt.Sub(time.Now()) < 0 {
+		return errors.New("timeout scaling down scheduler")
+	}
+	timeout := time.NewTimer(willTimeoutAt.Sub(time.Now())).C
+
 	for {
 		exit := true
 		select {
@@ -319,6 +325,8 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 					l.WithError(err).Error("scale down pod error")
 				}
 			}
+			l.Debug("scaling down scheduler...")
+			time.Sleep(time.Duration(1) * time.Second)
 		}
 		if exit {
 			l.Info("finished scaling down scheduler")

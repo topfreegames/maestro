@@ -1,4 +1,5 @@
 // maestro
+// +build unit
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:
