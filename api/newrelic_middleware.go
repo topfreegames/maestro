@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	newrelic "github.com/newrelic/go-agent"
 )
 
@@ -38,7 +39,8 @@ func (m *NewRelicMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if m.App.NewRelic != nil {
-		txn := m.App.NewRelic.StartTransaction(fmt.Sprintf("%s %s", r.Method, r.URL.Path), w, r)
+		route, _ := mux.CurrentRoute(r).GetPathTemplate()
+		txn := m.App.NewRelic.StartTransaction(fmt.Sprintf("%s %s", r.Method, route), w, r)
 		defer txn.End()
 		ctx = newContextWithNewRelicTransaction(r.Context(), txn, r)
 

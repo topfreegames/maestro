@@ -51,9 +51,9 @@ The CLI is a wrapper for the maestro-api endpoints.
 
 A client lib for Unity and cocos2dx responsible for calling maestro HTTP routes defined in the [room protocol](#room-protocol). It also must catch sigterm/sigkill and handle the room graceful shutdown.
 
-## Configuring Maestro
+## Configuring Maestro Schedulers
 
-The maestro binary receives a list of config files and spawn one maestro-controller for each config.
+Maestro receives a config file (yaml or json) for each scheduler.
 
 The config file must have the following information:
 
