@@ -24,8 +24,8 @@ import (
 	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/fields"
 )
 
 const (

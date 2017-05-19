@@ -9,8 +9,8 @@ package controller
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/fields"
 )
 
 // GetServiceNames return n services that are currently running
