@@ -739,11 +739,9 @@ var _ = Describe("Controller", func() {
 			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().
+			mockRedisClient.EXPECT().
 				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
 				Return(redis.NewStringSliceResult(names, nil))
-			mockPipeline.EXPECT().Exec()
 
 			for _, name := range names {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -792,11 +790,9 @@ var _ = Describe("Controller", func() {
 			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().
+			mockRedisClient.EXPECT().
 				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
 				Return(redis.NewStringSliceResult(names, nil))
-			mockPipeline.EXPECT().Exec()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			room := models.NewRoom(names[0], scheduler.Name)
@@ -843,11 +839,9 @@ var _ = Describe("Controller", func() {
 			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().
+			mockRedisClient.EXPECT().
 				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
-				Return(redis.NewStringSliceResult(names, nil))
-			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
+				Return(redis.NewStringSliceResult(names, errors.New("some error in redis")))
 
 			timeoutSec = 0
 			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
@@ -878,11 +872,9 @@ var _ = Describe("Controller", func() {
 			// ScaleDown
 			scaleDownAmount := 2
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().
+			mockRedisClient.EXPECT().
 				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
 				Return(redis.NewStringSliceResult(nil, errors.New("some error in redis")))
-			mockPipeline.EXPECT().Exec()
 
 			timeoutSec = 0
 			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
@@ -901,11 +893,9 @@ var _ = Describe("Controller", func() {
 			names := []string{"non-existing-service"}
 			Expect(err).NotTo(HaveOccurred())
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().
+			mockRedisClient.EXPECT().
 				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
 				Return(redis.NewStringSliceResult(names, nil))
-			mockPipeline.EXPECT().Exec()
 
 			timeoutSec = 300
 			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
@@ -938,11 +928,9 @@ var _ = Describe("Controller", func() {
 			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().
+			mockRedisClient.EXPECT().
 				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
 				Return(redis.NewStringSliceResult(names, nil))
-			mockPipeline.EXPECT().Exec()
 
 			for _, name := range names {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)

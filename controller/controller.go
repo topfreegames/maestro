@@ -274,17 +274,11 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 	}()
 
 	l.Debug("accessing redis")
-	pipe := redisClient.TxPipeline()
-	sReady := pipe.SPopN(models.GetRoomStatusSetRedisKey(scheduler.Name, models.StatusReady), int64(amount))
-	_, err := pipe.Exec()
-	if err != nil {
-		l.WithError(err).Error("scale down error")
-		return err
-	}
+	sReady := redisClient.SPopN(models.GetRoomStatusSetRedisKey(scheduler.Name, models.StatusReady), int64(amount))
 
 	idleRooms, err := sReady.Result()
 	if err != nil {
-		l.WithError(err).Error("scale down error")
+		l.WithError(err).Error("scale down error, failed to retrieve ready rooms from redis")
 		return err
 	}
 
@@ -349,14 +343,6 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 		}
 	}
 
-	err = mr.WithSegment(models.SegmentDelete, func() error {
-		return scheduler.Delete(db)
-	})
-	if err != nil {
-		logger.WithError(err).Error("failed to delete scheduler from database while deleting scheduler")
-		return err
-	}
-
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 	// Delete pods and wait for graceful termination before deleting the namespace
 	err = mr.WithSegment(models.SegmentNamespace, func() error {
@@ -416,6 +402,18 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 			time.Sleep(time.Duration(1) * time.Second)
 		}
 	}
+
+	// Delete from DB must be the last operation because
+	// if kubernetes failed to delete service and pods, watcher will recreate
+	// and keep the last state
+	err = mr.WithSegment(models.SegmentDelete, func() error {
+		return scheduler.Delete(db)
+	})
+	if err != nil {
+		logger.WithError(err).Error("failed to delete scheduler from database while deleting scheduler")
+		return err
+	}
+
 	return nil
 }
 
