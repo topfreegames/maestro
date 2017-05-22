@@ -33,6 +33,8 @@ var (
 	mr              *models.MixedMetricsReporter
 )
 
+var allStatus = []string{models.StatusCreating, models.StatusReady, models.StatusOccupied, models.StatusTerminating, models.StatusTerminated}
+
 func TestController(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Controller Suite")

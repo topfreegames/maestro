@@ -1,4 +1,4 @@
-memo = "1107a1891bd511e31de4f230e9a48603699278ca925067076cdebee28b8d877a"
+memo = "486eea1fb4752688896c1920e7b3e1c3ac99f1b87fca7b39a65316bc8882513b"
 
 [[projects]]
   branch = "master"
@@ -285,8 +285,8 @@ memo = "1107a1891bd511e31de4f230e9a48603699278ca925067076cdebee28b8d877a"
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = ["pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
-  revision = "f22266dd30886af073db9c84fefd1188bf2f8e3b"
-  version = "v2.5.2"
+  revision = "a52da04dfd4528d888efae8562ffe76d6d98facb"
+  version = "v2.5.3"
 
 [[projects]]
   branch = "master"

@@ -135,8 +135,11 @@ func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsR
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return scheduler.Load(db)
 	})
+
 	if err != nil {
 		return nil, nil, nil, err
+	} else if scheduler.YAML == "" {
+		return nil, nil, nil, fmt.Errorf("scheduler \"%s\" not found", schedulerName)
 	}
 	scalingPolicy := scheduler.GetAutoScalingPolicy()
 	var roomCountByStatus *models.RoomsStatusCount
@@ -258,6 +261,74 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 	return creationErr
 }
 
+func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, scheduler *models.Scheduler, amount, timeoutSec int) error {
+	l := logger.WithFields(logrus.Fields{
+		"source":    "scaleDown",
+		"scheduler": scheduler.Name,
+		"amount":    amount,
+	})
+	timeout := make(chan bool, 1)
+	go func() {
+		time.Sleep(time.Duration(timeoutSec) * time.Second)
+		timeout <- true
+	}()
+
+	l.Debug("accessing redis")
+	sReady := redisClient.SPopN(models.GetRoomStatusSetRedisKey(scheduler.Name, models.StatusReady), int64(amount))
+
+	idleRooms, err := sReady.Result()
+	if err != nil {
+		l.WithError(err).Error("scale down error, failed to retrieve ready rooms from redis")
+		return err
+	}
+
+	for i, key := range idleRooms {
+		pieces := strings.Split(key, ":")
+		name := pieces[len(pieces)-1]
+		idleRooms[i] = name
+	}
+
+	var deletionErr error
+
+	for _, roomName := range idleRooms {
+		err := deleteServiceAndPod(logger, mr, clientset, scheduler.Name, roomName)
+		if err != nil {
+			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
+			deletionErr = err
+		} else {
+			room := models.NewRoom(roomName, scheduler.Name)
+			err := room.ClearAll(redisClient)
+			if err != nil {
+				logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
+				return err
+			}
+		}
+	}
+
+	for {
+		exit := true
+		select {
+		case <-timeout:
+			return errors.New("timeout scaling down scheduler")
+		default:
+			for _, name := range idleRooms {
+				_, err := clientset.CoreV1().Pods(scheduler.Name).Get(name, metav1.GetOptions{})
+				if err == nil || !strings.Contains(err.Error(), "not found") {
+					exit = false
+				} else {
+					l.WithError(err).Error("scale down pod error")
+				}
+			}
+		}
+		if exit {
+			l.Info("finished scaling down scheduler")
+			break
+		}
+	}
+
+	return deletionErr
+}
+
 func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, scheduler *models.Scheduler, namespace *models.Namespace, timeoutSec int) error {
 	var err error
 	if scheduler.ID != "" {
@@ -332,6 +403,9 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 		}
 	}
 
+	// Delete from DB must be the last operation because
+	// if kubernetes failed to delete service and pods, watcher will recreate
+	// and keep the last state
 	err = mr.WithSegment(models.SegmentDelete, func() error {
 		return scheduler.Delete(db)
 	})
@@ -339,6 +413,7 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 		logger.WithError(err).Error("failed to delete scheduler from database while deleting scheduler")
 		return err
 	}
+
 	return nil
 }
 

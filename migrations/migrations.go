@@ -83,7 +83,7 @@ func migrations0001CreateschedulertableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0001-CreateSchedulerTable.sql", size: 716, mode: os.FileMode(420), modTime: time.Unix(1494349030, 0)}
+	info := bindataFileInfo{name: "migrations/0001-CreateSchedulerTable.sql", size: 716, mode: os.FileMode(420), modTime: time.Unix(1495042893, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

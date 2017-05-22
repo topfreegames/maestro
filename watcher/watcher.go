@@ -10,6 +10,7 @@ package watcher
 import (
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -168,17 +169,6 @@ func (w *Watcher) AutoScale() {
 		"operation":   "autoScale",
 	})
 
-	err := controller.CreateNamespaceIfNecessary(
-		logger,
-		w.MetricsReporter,
-		w.KubernetesClient,
-		w.SchedulerName,
-	)
-	if err != nil {
-		logger.WithError(err).Error("failed to create namespace")
-		return
-	}
-
 	scheduler, autoScalingInfo, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
 		logger,
 		w.MetricsReporter,
@@ -186,7 +176,7 @@ func (w *Watcher) AutoScale() {
 		w.RedisClient.Client,
 		w.SchedulerName,
 	)
-	if err != nil && err.Error() == "pg: no rows in result set" {
+	if err != nil && strings.Contains(err.Error(), "not found") {
 		w.Run = false
 		return
 	}
@@ -196,9 +186,23 @@ func (w *Watcher) AutoScale() {
 	}
 
 	l := logger.WithFields(logrus.Fields{
-		"roomsByStatus": roomCountByStatus,
-		"state":         scheduler.State,
+		"ready":       roomCountByStatus.Ready,
+		"creating":    roomCountByStatus.Creating,
+		"occupied":    roomCountByStatus.Occupied,
+		"terminating": roomCountByStatus.Terminating,
+		"state":       scheduler.State,
 	})
+
+	err = controller.CreateNamespaceIfNecessary(
+		logger,
+		w.MetricsReporter,
+		w.KubernetesClient,
+		w.SchedulerName,
+	)
+	if err != nil {
+		logger.WithError(err).Error("failed to create namespace")
+		return
+	}
 
 	nowTimestamp := time.Now().Unix()
 	shouldScaleUp, shouldScaleDown, changedState := w.checkState(
@@ -229,7 +233,24 @@ func (w *Watcher) AutoScale() {
 			scheduler.LastScaleOpAt = nowTimestamp
 		}
 	} else if shouldScaleDown {
-		l.Warn("scheduler is overdimensioned, should scale down")
+		l.Info("scheduler is overdimensioned, should scale down")
+		timeoutSec := w.Config.GetInt("scaleDownTimeoutSeconds")
+		err = controller.ScaleDown(
+			logger,
+			w.MetricsReporter,
+			w.DB,
+			w.RedisClient.Client,
+			w.KubernetesClient,
+			scheduler,
+			autoScalingInfo.Up.Delta,
+			timeoutSec,
+		)
+		scheduler.State = models.StateInSync
+		scheduler.StateLastChangedAt = nowTimestamp
+		changedState = true
+		if err == nil {
+			scheduler.LastScaleOpAt = nowTimestamp
+		}
 	} else {
 		l.Info("scheduler state is as expected")
 	}
@@ -272,7 +293,7 @@ func (w *Watcher) checkState(
 	}
 
 	if 100*roomCount.Ready > (100-autoScalingInfo.Down.Trigger.Usage)*roomCount.Total() &&
-		roomCount.Total()-autoScalingInfo.Down.Delta > autoScalingInfo.Min {
+		roomCount.Total()-autoScalingInfo.Down.Delta >= autoScalingInfo.Min {
 		if scheduler.State != models.StateOverdimensioned {
 			scheduler.State = models.StateOverdimensioned
 			scheduler.StateLastChangedAt = nowTimestamp

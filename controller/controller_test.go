@@ -24,6 +24,7 @@ import (
 	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -416,6 +417,16 @@ var _ = Describe("Controller", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 		})
+
+		It("should return error if no scheduler found", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name)
+			_, _, _, err = controller.GetSchedulerScalingInfo(logger, mr, mockDb, mockRedisClient, configYaml1.Name)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("scheduler \"controller-name\" not found"))
+		})
 	})
 
 	Describe("UpdateScheduler", func() {
@@ -709,6 +720,244 @@ var _ = Describe("Controller", func() {
 			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timeout scaling up scheduler"))
+		})
+	})
+
+	Describe("ScaleDown", func() {
+		It("should succeed in scaling down", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+
+			// ScaleUp
+			scaleUpAmount := 5
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(scaleUpAmount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+
+			// ScaleDown
+			scaleDownAmount := 2
+			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockRedisClient.EXPECT().
+				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
+				Return(redis.NewStringSliceResult(names, nil))
+
+			for _, name := range names {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				room := models.NewRoom(name, scheduler.Name)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().
+						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+			}
+
+			timeoutSec = 300
+			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
+			Expect(err).NotTo(HaveOccurred())
+			services, err := clientset.CoreV1().Services(scheduler.Name).List(metav1.ListOptions{
+				FieldSelector: fields.Everything().String(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(services.Items).To(HaveLen(scaleUpAmount - scaleDownAmount))
+		})
+
+		It("should return error if redis fails to clear room statuses", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+
+			// ScaleUp
+			scaleUpAmount := 5
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(scaleUpAmount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+
+			// ScaleDown
+			scaleDownAmount := 2
+			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockRedisClient.EXPECT().
+				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
+				Return(redis.NewStringSliceResult(names, nil))
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			room := models.NewRoom(names[0], scheduler.Name)
+			for _, status := range allStatus {
+				mockPipeline.EXPECT().
+					SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+			}
+			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
+			mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
+
+			timeoutSec = 0
+			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			services, err := clientset.CoreV1().Services(scheduler.Name).List(metav1.ListOptions{
+				FieldSelector: fields.Everything().String(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(services.Items).To(HaveLen(scaleUpAmount - 1))
+		})
+
+		It("should return error if redis fails to get N ready rooms", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+
+			// ScaleUp
+			scaleUpAmount := 5
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(scaleUpAmount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+
+			// ScaleDown
+			scaleDownAmount := 2
+			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockRedisClient.EXPECT().
+				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
+				Return(redis.NewStringSliceResult(names, errors.New("some error in redis")))
+
+			timeoutSec = 0
+			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error in redis"))
+		})
+
+		It("should return error if redis fails to get string slice", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+
+			// ScaleUp
+			scaleUpAmount := 5
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(scaleUpAmount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+
+			// ScaleDown
+			scaleDownAmount := 2
+
+			mockRedisClient.EXPECT().
+				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
+				Return(redis.NewStringSliceResult(nil, errors.New("some error in redis")))
+
+			timeoutSec = 0
+			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error in redis"))
+		})
+
+		It("should return error if delete non existing service and pod", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+
+			// ScaleDown
+			scaleDownAmount := 1
+			names := []string{"non-existing-service"}
+			Expect(err).NotTo(HaveOccurred())
+
+			mockRedisClient.EXPECT().
+				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
+				Return(redis.NewStringSliceResult(names, nil))
+
+			timeoutSec = 300
+			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Service \"non-existing-service\" not found"))
+		})
+
+		It("should return timeout error", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+
+			// ScaleUp
+			scaleUpAmount := 5
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(scaleUpAmount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+
+			// ScaleDown
+			scaleDownAmount := 2
+			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockRedisClient.EXPECT().
+				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
+				Return(redis.NewStringSliceResult(names, nil))
+
+			for _, name := range names {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				room := models.NewRoom(name, scheduler.Name)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().
+						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+			}
+
+			timeoutSec = 0
+			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("timeout scaling down scheduler"))
 		})
 	})
 })
