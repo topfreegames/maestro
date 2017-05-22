@@ -417,6 +417,16 @@ var _ = Describe("Controller", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 		})
+
+		It("should return error if no scheduler found", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name)
+			_, _, _, err = controller.GetSchedulerScalingInfo(logger, mr, mockDb, mockRedisClient, configYaml1.Name)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("scheduler \"controller-name\" not found"))
+		})
 	})
 
 	Describe("UpdateScheduler", func() {
