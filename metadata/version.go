@@ -8,4 +8,4 @@
 package metadata
 
 //Version of Maestro
-var Version = "0.1.0"
+var Version = "1.0.0"

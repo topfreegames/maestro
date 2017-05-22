@@ -182,11 +182,11 @@ A JSON file equivalent to the yaml above can also be used.
             - [ ] gracefully terminate GRUs running with old config
     - [ ] scheduler state
       - [ ] report room occupation metrics
-    - [ ] scaling
-      - [ ] remove GRUs
-  - [ ] maestro-watcher
-    - [ ] scale cluster
-      - [ ] down
+    - [x] scaling
+      - [x] remove GRUs
+  - [x] maestro-watcher
+    - [x] scale cluster
+      - [x] down
   - [ ] maestro-api
     - [ ] scheduler
       - [ ] update running scheduler config
