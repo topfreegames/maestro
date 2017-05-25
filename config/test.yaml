@@ -23,6 +23,7 @@ scaleUpTimeoutSeconds: 300
 scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 150
 pingTimeout: 300
+updateTimeoutSeconds: 600
 newrelic:
   app: maestro
   key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

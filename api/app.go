@@ -82,6 +82,17 @@ func (a *App) getRouter() *mux.Router {
 	).ServeHTTP).Methods("POST").Name("schedulerCreate")
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
+		NewSchedulerUpdateHandler(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewLoggingMiddleware(a),
+		NewVersionMiddleware(),
+		NewValidationMiddleware(func() interface{} { return &models.ConfigYAML{} }),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+	).ServeHTTP).Methods("PUT").Name("schedulerUpdate")
+
+	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerDeleteHandler(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),

@@ -9,6 +9,7 @@
 package api_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -31,7 +32,7 @@ var _ = Describe("App", func() {
 
 	var (
 		recorder    *httptest.ResponseRecorder
-		yaml        *models.ConfigYAML
+		configYaml  *models.ConfigYAML
 		err         error
 		url         string
 		jsonStr     string
@@ -49,7 +50,7 @@ var _ = Describe("App", func() {
 	})
 
 	AfterEach(func() {
-		svcs, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+		svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
 		Expect(err).NotTo(HaveOccurred())
 		for _, svc := range svcs.Items {
 			room := models.NewRoom(svc.GetName(), svc.GetNamespace())
@@ -57,10 +58,10 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 		}
 
-		exists, err := models.NewNamespace(yaml.Name).Exists(clientset)
+		exists, err := models.NewNamespace(configYaml.Name).Exists(clientset)
 		Expect(err).NotTo(HaveOccurred())
 		if exists {
-			err := clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
+			err := clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
 			Expect(err).NotTo(HaveOccurred())
 		}
 	})
@@ -73,7 +74,7 @@ var _ = Describe("App", func() {
 		It("should POST a scheduler", func() {
 			body := strings.NewReader(jsonStr)
 
-			yaml, err = models.NewConfigYAML(jsonStr)
+			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
 			request, err := http.NewRequest("POST", url, body)
@@ -83,15 +84,15 @@ var _ = Describe("App", func() {
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 			Expect(recorder.Code).To(Equal(http.StatusCreated))
 
-			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+			pods, err := clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(pods.Items)).To(Equal(yaml.AutoScaling.Min))
+			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
 
-			svcs, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(svcs.Items)).To(Equal(yaml.AutoScaling.Min))
+			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min))
 
-			ns := yaml.Name
+			ns := configYaml.Name
 			sch := &models.Scheduler{Name: ns}
 			err = sch.Load(app.DB)
 			Expect(err).NotTo(HaveOccurred())
@@ -130,7 +131,7 @@ var _ = Describe("App", func() {
 		It("should return 422 if missing body parameter", func() {
 			body := strings.NewReader("")
 
-			yaml, err = models.NewConfigYAML(jsonStr)
+			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
 			request, err := http.NewRequest("POST", url, body)
@@ -146,11 +147,11 @@ var _ = Describe("App", func() {
 			Expect(resp).To(HaveKeyWithValue("success", false))
 			Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
 
-			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+			pods, err := clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(BeEmpty())
 
-			svcs, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(svcs.Items).To(BeEmpty())
 		})
@@ -164,7 +165,7 @@ var _ = Describe("App", func() {
 
 			body := strings.NewReader(jsonStr)
 
-			yaml, err = models.NewConfigYAML(jsonStr)
+			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
 			request, err := http.NewRequest("POST", url, body)
@@ -193,7 +194,7 @@ var _ = Describe("App", func() {
 			// Create the scheduler
 			body := strings.NewReader(jsonStr)
 
-			yaml, err = models.NewConfigYAML(jsonStr)
+			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
 			request, err := http.NewRequest("POST", url, body)
@@ -203,12 +204,12 @@ var _ = Describe("App", func() {
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 			Expect(recorder.Code).To(Equal(http.StatusCreated))
 
-			svcsBefore, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+			svcsBefore, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Delete the scheduler
 			recorder = httptest.NewRecorder()
-			url := fmt.Sprintf("%s/%s", url, yaml.Name)
+			url := fmt.Sprintf("%s/%s", url, configYaml.Name)
 			request, err = http.NewRequest("DELETE", url, body)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -216,15 +217,15 @@ var _ = Describe("App", func() {
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 
-			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+			pods, err := clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(BeEmpty())
 
-			svcs, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(svcs.Items).To(BeEmpty())
 
-			ns := yaml.Name
+			ns := configYaml.Name
 			nameSpace := models.NewNamespace(ns)
 			exists, err := nameSpace.Exists(clientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -276,6 +277,72 @@ var _ = Describe("App", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("redis: nil"))
 			}
+		})
+	})
+
+	Describe("PUT /scheduler/{schedulerName}", func() {
+		It("should update scheduler on database", func() {
+			// Create the scheduler
+			body := strings.NewReader(jsonStr)
+
+			configYaml, err = models.NewConfigYAML(jsonStr)
+			Expect(err).NotTo(HaveOccurred())
+
+			url := fmt.Sprintf("http://%s/scheduler", app.Address)
+			request, err := http.NewRequest("POST", url, body)
+			Expect(err).NotTo(HaveOccurred())
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusCreated))
+
+			// Update the scheduler
+			configYaml.AutoScaling.Min = 5
+			configYaml.Image = "nginx:latest"
+			bts, err := json.Marshal(configYaml)
+			Expect(err).NotTo(HaveOccurred())
+			bodyRdr := bytes.NewReader(bts)
+
+			url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, configYaml.Name)
+			request, err = http.NewRequest("PUT", url, bodyRdr)
+			Expect(err).NotTo(HaveOccurred())
+
+			recorder = httptest.NewRecorder()
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			scheduler := &models.Scheduler{Name: configYaml.Name}
+			err = scheduler.Load(app.DB)
+			Expect(err).NotTo(HaveOccurred())
+
+			newConfigYaml, err := models.NewConfigYAML(scheduler.YAML)
+			newConfigYaml.Env = nil
+			newConfigYaml.Cmd = nil
+			Expect(err).NotTo(HaveOccurred())
+			Expect(newConfigYaml).To(Equal(configYaml))
+		})
+
+		It("should return error if updating nonexisting scheduler", func() {
+			body := strings.NewReader(jsonStr)
+
+			configYaml, err = models.NewConfigYAML(jsonStr)
+			Expect(err).NotTo(HaveOccurred())
+
+			url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, configYaml.Name)
+			request, err := http.NewRequest("PUT", url, body)
+			Expect(err).NotTo(HaveOccurred())
+
+			recorder = httptest.NewRecorder()
+			app.Router.ServeHTTP(recorder, request)
+			resp := make(map[string]interface{})
+			err = json.Unmarshal(recorder.Body.Bytes(), &resp)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(HaveKeyWithValue("code", "MAE-004"))
+			Expect(resp["description"]).To(ContainSubstring("not found, create it first"))
+			Expect(resp).To(HaveKeyWithValue("error", "ValidationFailedError"))
+			Expect(resp).To(HaveKeyWithValue("success", false))
+			Expect(recorder.Code).To(Equal(http.StatusNotFound))
 		})
 	})
 })

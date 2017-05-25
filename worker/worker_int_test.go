@@ -9,6 +9,8 @@
 package worker_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 var _ = Describe("Worker", func() {
@@ -307,6 +310,70 @@ var _ = Describe("Worker", func() {
 				svcs, _ := clientset.CoreV1().Services(yaml.Name).List(listOptions)
 				return len(svcs.Items)
 			}, 120*time.Second, 1*time.Second).Should(BeZero())
+
+			for _, svc := range svcsBefore.Items {
+				room := models.NewRoom(svc.GetName(), svc.GetNamespace())
+				err = room.ClearAll(app.RedisClient)
+				Expect(err).NotTo(HaveOccurred())
+			}
+		})
+
+		It("should update running scheduler", func() {
+			url = fmt.Sprintf("http://%s/scheduler", app.Address)
+			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			Expect(err).NotTo(HaveOccurred())
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusCreated))
+
+			yaml, err = models.NewConfigYAML(jsonStr)
+			Expect(err).NotTo(HaveOccurred())
+
+			svcsBefore, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+
+			newEnvVar := &models.EnvVar{
+				Name:  "MY_NEW_ENV_VAR",
+				Value: "my_new_env_var",
+			}
+			yaml.AutoScaling.Min = yaml.AutoScaling.Min + 1
+			yaml.Image = "nginx:latest"
+			yaml.Env = append(yaml.Env, newEnvVar)
+			bts, err := json.Marshal(yaml)
+			Expect(err).NotTo(HaveOccurred())
+
+			body := bytes.NewReader(bts)
+
+			url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, yaml.Name)
+			request, err = http.NewRequest("PUT", url, body)
+			Expect(err).NotTo(HaveOccurred())
+
+			recorder = httptest.NewRecorder()
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			nRoomsBefore := len(svcsBefore.Items)
+			newPodEnvVar := v1.EnvVar{
+				Name:  newEnvVar.Name,
+				Value: newEnvVar.Value,
+			}
+
+			Eventually(func() int {
+				svcs, _ := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+				return len(svcs.Items)
+			}, 120*time.Second, 1*time.Second).Should(Equal(nRoomsBefore + 1))
+
+			Eventually(func() []v1.EnvVar {
+				pods, _ := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+				return pods.Items[0].Spec.Containers[0].Env
+			}, 120*time.Second, 1*time.Second).Should(ContainElement(newPodEnvVar))
+
+			Eventually(func() string {
+				pods, _ := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+				return pods.Items[0].Spec.Containers[0].Image
+			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.Image))
 
 			for _, svc := range svcsBefore.Items {
 				room := models.NewRoom(svc.GetName(), svc.GetNamespace())

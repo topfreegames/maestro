@@ -22,6 +22,7 @@ import (
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/api"
+	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
 )
 
@@ -35,6 +36,15 @@ var (
 	mockDb          *pgmocks.MockDB
 	mockPipeline    *redismocks.MockPipeliner
 	mockRedisClient *redismocks.MockRedisClient
+	allStatus       = []string{
+		models.StatusCreating,
+		models.StatusReady,
+		models.StatusOccupied,
+		models.StatusTerminating,
+		models.StatusTerminated,
+	}
+	lockTimeoutMS int
+	lockKey       string
 )
 
 func TestApi(t *testing.T) {
@@ -53,6 +63,10 @@ var _ = BeforeEach(func() {
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 
 	config, err = mtesting.GetDefaultConfig()
+
+	lockTimeoutMS = config.GetInt("watcher.lockTimeoutMs")
+	lockKey = config.GetString("watcher.lockKey")
+
 	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
 	Expect(err).NotTo(HaveOccurred())
 })

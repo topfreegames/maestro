@@ -173,13 +173,12 @@ A JSON file equivalent to the yaml above can also be used.
 
   Tasks:
   - [ ] maestro-controller
-    - [ ] scheduler
-        - [ ] update running scheduler config
-          - [ ] update Kubernetes manifest template with the new config
-          - [ ] update config in database
-          - [ ] update GRUs
-            - [ ] launch new GRUs with the updates config
-            - [ ] gracefully terminate GRUs running with old config
+    - [x] scheduler
+        - [x] update running scheduler config
+          - [x] update config in database
+          - [x] update GRUs
+            - [x] launch new GRUs with the updates config
+            - [x] gracefully terminate GRUs running with old config
     - [ ] scheduler state
       - [ ] report room occupation metrics
     - [x] scaling
@@ -188,8 +187,8 @@ A JSON file equivalent to the yaml above can also be used.
     - [x] scale cluster
       - [x] down
   - [ ] maestro-api
-    - [ ] scheduler
-      - [ ] update running scheduler config
+    - [x] scheduler
+      - [x] update running scheduler config
     - [ ] get rooms metrics
   - [ ] maestro-cli
     - [ ] scheduler

@@ -23,6 +23,7 @@ scaleUpTimeoutSeconds: 300
 scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 150
 pingTimeout: 30
+updateTimeoutSeconds: 600
 sentry:
   url: ""
 newrelic:

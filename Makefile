@@ -48,6 +48,12 @@ deps: start-deps wait-for-pg
 
 start-deps:
 	@echo "Starting dependencies using HOST IP of ${MY_IP}..."
+	@env MY_IP=${MY_IP} docker-compose --project-name maestro up -d
+	@sleep 10
+	@echo "Dependencies started successfully."
+
+start-deps-test:
+	@echo "Starting dependencies using HOST IP of ${MY_IP}..."
 	@env MY_IP=${MY_IP} docker-compose -f docker-compose-test.yaml --project-name maestro up -d
 	@sleep 10
 	@echo "Dependencies started successfully."
@@ -62,7 +68,7 @@ wait-for-pg:
 	@until docker exec maestro_postgres_1 pg_isready; do echo 'Waiting for Postgres...' && sleep 1; done
 	@sleep 2
 
-deps-test: deps drop-test migrate-test minikube
+deps-test: start-deps-test wait-for-pg drop-test migrate-test minikube
 
 deps-test-ci: deps drop-test migrate-test minikube-ci
 
@@ -143,3 +149,6 @@ minikube:
 
 minikube-ci:
 	@MAESTRO_TEST_CI=true /bin/bash ./scripts/start-minikube-if-not-yet.sh
+
+work:
+	@go run main.go worker
