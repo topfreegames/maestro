@@ -51,6 +51,13 @@ if [ ! $(which minikube) ]; then
     echo No support to that system
     exit 1
   fi
+fi 
+ 
+localKubeVersion=$(kubectl version --short=true --client=true | awk '{print $3}')
+desiredKubeVersion=$(cat ./metadata/version.go | grep "KubeVersion" | egrep -oh "v(\d+\.?)+")
+if [ "$localKubeVersion" != "$desiredKubeVersion" ]; then
+  echo "Your kubernetes version is $localKubeVersion, please update to the latest version before running Integration Tests"
+  exit 1
 fi
 
 echo Starting minikube
