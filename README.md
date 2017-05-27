@@ -257,6 +257,16 @@ kube-proxy relevant config options (to be tunned):
 
 #### [Load Test](load-test/README.md)
 
+### Integration Tests
+
+The integration tests run on local minikube. The script can download kubectl and minikube if the machine doesn't have them. 
+
+The tests won't interfere on running clusters because it creates namespaces with uuid v4 as prefix. All namespaces created are deleted after the tests. 
+
+Redis and Postgres run on containers defined on a docker-compose.yaml.
+
+**Important**: If you have minikube installed, make sure it is the latest version. If it isn't, probably the tests won't work.
+
 ## Room Protocol:
 
 Game rooms have four different statuses:

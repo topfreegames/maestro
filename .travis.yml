@@ -10,7 +10,7 @@ sudo: true
 install:
 - make setup-ci
 script:
-- make test
+- make test-ci
 after_success: bash after-success.sh
 env:
   global:

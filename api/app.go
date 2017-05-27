@@ -158,6 +158,7 @@ func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 
 func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("scaleUpTimeoutSeconds", 300)
+	a.Config.SetDefault("scaleDownTimeoutSeconds", 300)
 	a.Config.SetDefault("deleteTimeoutSeconds", 150)
 }
 
@@ -240,6 +241,7 @@ func (a *App) configureNewRelic() error {
 		l.WithError(err).Error("Failed to configure new relic.")
 		return err
 	}
+
 	l.WithFields(logrus.Fields{
 		"key": key,
 	}).Info("New Relic configured successfully.")

@@ -38,7 +38,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
   ### Ping
 
-  `PUT /schedulers/:schedulerName/rooms/:roomName/ping`
+  `PUT /scheduler/:schedulerName/rooms/:roomName/ping`
 
   This route should be called every 10 seconds and serves as a keep alive sent by the GRU to Maestro.
 
@@ -93,7 +93,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
   ### Address Polling
 
-  `GET  /schedulers/:schedulerName/rooms/:roomName/address`
+  `GET  /scheduler/:schedulerName/rooms/:roomName/address`
 
   This route should be polled by the GRU in order to obtain the room address (host ip and port).
 
@@ -127,7 +127,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
   ### Room ready
 
-  `PUT /schedulers/:schedulerName/rooms/:roomName/status`
+  `PUT /scheduler/:schedulerName/rooms/:roomName/status`
 
   This route should be called every time a room is ready to receive a match. You'll need to make sure it is only called after the room has its address.
 
@@ -182,7 +182,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
   ### Match started
 
-  `PUT /schedulers/:schedulerName/rooms/:roomName/status`
+  `PUT /scheduler/:schedulerName/rooms/:roomName/status`
 
   This route should be called every time a match is started. It'll indicate that this GRU is occupied and is not available for new matches.
 
@@ -237,7 +237,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
   ### Match ended
 
-  `PUT /schedulers/:schedulerName/rooms/:roomName/status`
+  `PUT /scheduler/:schedulerName/rooms/:roomName/status`
 
   This route should be called every time a match is ended. It'll indicate that this GRU is no longer occupied and is available for new matches.
 
@@ -294,7 +294,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
   ### Create
 
-  `POST /schedulers`
+  `POST /scheduler`
 
   This route creates a scheduler in Maestro using a provided YAML config.
 

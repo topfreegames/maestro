@@ -1,4 +1,5 @@
 // maestro
+// +build unit
 // https://github.com/topfree/ames/maestro
 //
 // Licensed under the MIT license:

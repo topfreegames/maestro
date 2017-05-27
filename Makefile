@@ -6,7 +6,7 @@
 # Copyright © 2017 Top Free Games <backend@tfgco.com>
 
 MY_IP=`ifconfig | grep --color=none -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep --color=none -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' | head -n 1`
-TEST_PACKAGES=`find . -type f -name "*.go" ! \( -path "*vendor*" \) | sed -En "s/([^\.])\/.*/\1/p" | uniq | grep -v integration`
+TEST_PACKAGES=`find . -type f -name "*.go" ! \( -path "*vendor*" \) | sed -En "s/([^\.])\/.*/\1/p" | uniq`
 
 setup: setup-hooks
 	@go get -u github.com/golang/dep...
@@ -44,11 +44,11 @@ migrate: assets
 migrate-test: assets
 	@go run main.go migrate -c ./config/test.yaml
 
-deps: start-deps wait-for-pg
+deps: start-deps wait-for-pg 
 
 start-deps:
 	@echo "Starting dependencies using HOST IP of ${MY_IP}..."
-	@env MY_IP=${MY_IP} docker-compose --project-name maestro up -d
+	@env MY_IP=${MY_IP} docker-compose -f docker-compose-test.yaml --project-name maestro up -d
 	@sleep 10
 	@echo "Dependencies started successfully."
 
@@ -62,7 +62,9 @@ wait-for-pg:
 	@until docker exec maestro_postgres_1 pg_isready; do echo 'Waiting for Postgres...' && sleep 1; done
 	@sleep 2
 
-deps-test: deps drop-test migrate-test
+deps-test: deps drop-test migrate-test minikube
+
+deps-test-ci: deps drop-test migrate-test minikube-ci
 
 drop:
 	@-psql -d postgres -h localhost -p 8765 -U postgres -c "SELECT pg_terminate_backend(pid.pid) FROM pg_stat_activity, (SELECT pid FROM pg_stat_activity where pid <> pg_backend_pid()) pid WHERE datname='maestro';"
@@ -93,6 +95,26 @@ gather-unit-profiles:
 	@echo "mode: count" > _build/coverage-unit.out
 	@bash -c 'for f in $$(find . -name "*.coverprofile"); do tail -n +2 $$f >> _build/coverage-unit.out; done'
 
+int integration: integration-board clear-coverage-profiles deps-test integration-run gather-integration-profiles
+
+integration-board:
+	@echo
+	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
+	@echo "\033[1;34m=     Integration Tests      -\033[0m"
+	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
+
+integration-run:
+	@MAESTRO_EXTENSIONS_PG_HOST=${MY_IP} \
+		MAESTRO_EXTENSIONS_REDIS_URL=redis://${MY_IP}:6333 \
+		ginkgo -tags integration -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements worker api models 
+
+int-ci: integration-board clear-coverage-profiles deps-test-ci integration-run gather-integration-profiles
+
+gather-integration-profiles:
+	@mkdir -p _build
+	@echo "mode: count" > _build/coverage-integration.out
+	@bash -c 'for f in $$(find . -name "*.coverprofile"); do tail -n +2 $$f >> _build/coverage-integration.out; done'
+
 merge-profiles:
 	@mkdir -p _build
 	@gocovmerge _build/*.out > _build/coverage-all.out
@@ -104,7 +126,9 @@ test-coverage-func coverage-func: merge-profiles
 	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
 	@go tool cover -func=_build/coverage-all.out | egrep -v "100.0[%]"
 
-test: unit test-coverage-func
+test: unit int test-coverage-func 
+
+test-ci: unit test-coverage-func 
 
 test-coverage-html cover:
 	@go tool cover -html=_build/coverage-all.out
@@ -113,3 +137,9 @@ rtfd:
 	@rm -rf docs/_build
 	@sphinx-build -b html -d ./docs/_build/doctrees ./docs/ docs/_build/html
 	@open docs/_build/html/index.html
+
+minikube:
+	@/bin/bash ./scripts/start-minikube-if-not-yet.sh 
+
+minikube-ci:
+	@MAESTRO_TEST_CI=true /bin/bash ./scripts/start-minikube-if-not-yet.sh

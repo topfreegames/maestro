@@ -1,7 +1,7 @@
 extensions:
   pg:
     host: "localhost"
-    port: 8765
+    port: 8585
     user: "maestro_test"
     pass: ""
     poolSize: 20
@@ -9,8 +9,20 @@ extensions:
     database: "maestro_test"
     connectionTimeout: 100
   redis:
-    url: redis://localhost:6363
+    url: redis://localhost:6333
     connectionTimeout: 200
+watcher:
+  autoScalingPeriod: 10
+  lockKey: "maestro-lock-key"
+  lockTimeoutMs: 180000
+  gracefulShutdownTimeout: 300
+worker:
+  syncPeriod: 10
+  gracefulShutdownTimeout: 300
+scaleUpTimeoutSeconds: 300
+scaleDownTimeoutSeconds: 300
+deleteTimeoutSeconds: 150
+pingTimeout: 300
 newrelic:
   app: maestro
   key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
