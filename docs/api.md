@@ -430,3 +430,124 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     		"success":     false
       }
     ```
+
+  ### Update
+
+  `PUT /scheduler/:schedulerName`
+
+  This route updates a scheduler in Maestro using a provided YAML config.
+
+  * Request
+
+    ```
+    {
+      "name": "room-name",
+      "game": "game-name",
+      "image": "somens/someimage:v123",
+      "ports": [
+        {
+          "containerPort": 5050,
+          "protocol": "UDP",
+          "name": "port1"
+        },
+        {
+          "containerPort": 8888,
+          "protocol": "TCP",
+          "name": "port2"
+        }
+      ],
+      "limits": {
+        "memory": "128Mi",
+        "cpu": "1"
+      },
+      "shutdownTimeout": 180,
+      "autoscaling": {
+        "min": 100,
+        "up": {
+          "delta": 10,
+          "trigger": {
+            "usage": 70,
+            "time": 600
+          },
+          "cooldown": 300
+        },
+        "down": {
+          "delta": 2,
+          "trigger": {
+            "usage": 50,
+            "time": 900
+          },
+          "cooldown": 300
+        }
+      },
+      "env": [
+        {
+          "name": "EXAMPLE_ENV_VAR",
+          "value": "examplevalue"
+        },
+        {
+          "name": "ANOTHER_ENV_VAR",
+          "value": "anothervalue"
+        }
+      ],
+      "cmd": [
+        "./room-binary",
+        "-serverType",
+        "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
+      ]
+    }
+    ```
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "success": true
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if scheduler to update is not found on DB
+
+    * Code: `404`
+    * Content:
+
+    ```
+      {
+        "code":        <error-code>,
+    		"error":       <error-message>,
+    		"description": <error-description>,
+    		"success":     false
+      }
+    ```
+
+    It will return an error if `:schedulerName` doesn't match name on config
+
+    * Code: `400`
+    * Content:
+
+    ```
+      {
+        "code":        <error-code>,
+    		"error":       <error-message>,
+    		"description": <error-description>,
+    		"success":     false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        <error-code>,
+    		"error":       <error-message>,
+    		"description": <error-description>,
+    		"success":     false
+      }
+    ```

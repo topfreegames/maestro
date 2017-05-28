@@ -15,12 +15,17 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	redisLock "github.com/bsm/redis-lock"
 	uuid "github.com/satori/go.uuid"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	maestroErrors "github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/models"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -199,6 +204,53 @@ func DeleteRoomsNoPingSince(logger logrus.FieldLogger, mr *models.MixedMetricsRe
 	return nil
 }
 
+func waitForPods(
+	timeout time.Duration,
+	clientset kubernetes.Interface,
+	numberOfPods int,
+	namespace string,
+	pods []string,
+	l logrus.FieldLogger,
+) error {
+	timeoutChan := time.NewTimer(timeout).C
+	tickerChan := time.NewTicker(1 * time.Second).C
+	for {
+		exit := true
+		select {
+		case <-timeoutChan:
+			return errors.New("timeout scaling up scheduler")
+		case <-tickerChan:
+			for i := 0; i < numberOfPods; i++ {
+				pod, err := clientset.CoreV1().Pods(namespace).Get(pods[i], metav1.GetOptions{})
+				if err != nil {
+					l.WithError(err).Error("scale up pod error")
+				} else {
+					if len(pod.Status.Phase) == 0 {
+						break // TODO: HACK!!!  Trying to detect if we are running unit tests
+					}
+					if pod.Status.Phase != v1.PodRunning {
+						exit = false
+						break
+					}
+					for _, containerStatus := range pod.Status.ContainerStatuses {
+						if !containerStatus.Ready {
+							exit = false
+							break
+						}
+					}
+				}
+			}
+			l.Debug("scaling scheduler...")
+		}
+		if exit {
+			l.Info("finished scaling scheduler")
+			break
+		}
+	}
+
+	return nil
+}
+
 // ScaleUp scales up a scheduler using its config
 func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, scheduler *models.Scheduler, amount, timeoutSec int, initalOp bool) error {
 	l := logger.WithFields(logrus.Fields{
@@ -228,40 +280,19 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 	if willTimeoutAt.Sub(time.Now()) < 0 {
 		return errors.New("timeout scaling up scheduler")
 	}
-	timeout := time.NewTimer(willTimeoutAt.Sub(time.Now())).C
 
-	for {
-		exit := true
-		select {
-		case <-timeout:
-			return errors.New("timeout scaling up scheduler")
-		default:
-			for i := 0; i < amount; i++ {
-				pod, err := clientset.CoreV1().Pods(scheduler.Name).Get(pods[i], metav1.GetOptions{})
-				if err != nil {
-					l.WithError(err).Error("scale up pod error")
-				} else {
-					if len(pod.Status.Phase) == 0 {
-						break // TODO: HACK!!!  Trying to detect if we are running unit tests
-					}
-					if pod.Status.Phase != v1.PodRunning {
-						exit = false
-					}
-					for _, containerStatus := range pod.Status.ContainerStatuses {
-						if !containerStatus.Ready {
-							exit = false
-						}
-					}
-				}
-			}
-			l.Debug("scaling up scheduler...")
-			time.Sleep(time.Duration(1) * time.Second)
-		}
-		if exit {
-			l.Info("finished scaling up scheduler")
-			break
-		}
+	err := waitForPods(
+		willTimeoutAt.Sub(time.Now()),
+		clientset,
+		amount,
+		configYAML.Name,
+		pods,
+		l,
+	)
+	if err != nil {
+		return err
 	}
+
 	return creationErr
 }
 
@@ -337,12 +368,185 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 	return deletionErr
 }
 
+// UpdateSchedulerConfig updates a Scheduler with new image, scale info, etc
+// Old pods and services are deleted and recreated with new config
+// Scale up and down are locked
+func UpdateSchedulerConfig(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	redisClient *redis.Client,
+	clientset kubernetes.Interface,
+	configYAML *models.ConfigYAML,
+	timeoutSec, lockTimeoutMS int,
+	lockKey string,
+) error {
+	schedulerName := configYAML.Name
+	l := logger.WithFields(logrus.Fields{
+		"source":    "updateSchedulerConfig",
+		"scheduler": schedulerName,
+	})
+
+	// Check if scheduler to Update exists indeed
+	scheduler := models.NewScheduler(schedulerName, "", "")
+	err := mr.WithSegment(models.SegmentSelect, func() error {
+		return scheduler.Load(db)
+	})
+	if err != nil {
+		l.Debug("update error", err)
+		return maestroErrors.NewDatabaseError(err)
+	}
+	if scheduler.YAML == "" {
+		l.Debug("scheduler not found")
+		msg := fmt.Sprintf("scheduler %s not found, create it first", schedulerName)
+		return maestroErrors.NewValidationFailedError(errors.New(msg))
+	}
+
+	var oldConfig models.ConfigYAML
+	err = yaml.Unmarshal([]byte(scheduler.YAML), &oldConfig)
+	if err != nil {
+		l.Debug("invalid config saved on db", err)
+		return err
+	}
+
+	var lock *redisLock.Lock
+	if MustUpdatePods(&oldConfig, configYAML) {
+		// Lock watchers so they don't scale up and down
+		timeoutDur := time.Duration(timeoutSec) * time.Second
+		willTimeoutAt := time.Now().Add(timeoutDur)
+		lock, err = redisClient.EnterCriticalSection(redisClient.Client, lockKey, time.Duration(lockTimeoutMS)*time.Millisecond, 0, 0)
+		ticker := time.NewTicker(500 * time.Millisecond)
+		timeout := time.NewTimer(timeoutDur)
+	waitForLock:
+		for {
+			select {
+			case <-timeout.C:
+				return errors.New("timeout while wating for redis lock")
+			case <-ticker.C:
+				if lock == nil || err != nil {
+					if err != nil {
+						l.WithError(err).Error("error getting watcher lock")
+						return err
+					} else if lock == nil {
+						l.Warn("unable to get watcher lock, maybe some other process has it...")
+					}
+				} else if lock.IsLocked() {
+					break waitForLock
+				}
+			}
+		}
+		ticker.Stop()
+		defer func() {
+			if lock != nil {
+				redisClient.LeaveCriticalSection(lock)
+			}
+		}()
+
+		// Delete old rooms
+		listOptions := metav1.ListOptions{
+			LabelSelector: labels.Set{}.AsSelector().String(),
+			FieldSelector: fields.Everything().String(),
+		}
+		svcs, err := clientset.CoreV1().Services(schedulerName).List(listOptions)
+		if err != nil {
+			return maestroErrors.NewKubernetesError("error when listing  services", err)
+		}
+		numberOldPods := len(svcs.Items)
+		i := 0
+		timeout = time.NewTimer(willTimeoutAt.Sub(time.Now()))
+		for i < numberOldPods {
+			svc := svcs.Items[i]
+			select {
+			case <-timeout.C:
+				return maestroErrors.NewKubernetesError("error when deleting old rooms. Maestro will scale up, if necessary, with previous room configuration.", err)
+			default:
+				err := deleteServiceAndPod(logger, mr, clientset, schedulerName, svc.GetName())
+				if err != nil {
+					logger.WithField("roomName", svc.GetName()).WithError(err).Error("error deleting room")
+					time.Sleep(1 * time.Second)
+				} else {
+					i = i + 1
+					room := models.NewRoom(svc.GetName(), schedulerName)
+					err := room.ClearAll(redisClient.Client)
+					if err != nil {
+						//TODO: try again so Redis doesn't hold trash data
+						logger.WithField("roomName", svc.GetName()).WithError(err).Error("error removing room info from redis")
+					}
+				}
+			}
+		}
+
+		pods := make([]string, numberOldPods)
+		numberNewPods := 0
+		timeout = time.NewTimer(willTimeoutAt.Sub(time.Now()))
+		ticker = time.NewTicker(1 * time.Second)
+
+		// Creates pods as they are deleted
+		for numberNewPods < numberOldPods {
+			select {
+			case <-timeout.C:
+				return errors.New("timeout while updating scheduler")
+			case <-ticker.C:
+				svcs, err := clientset.CoreV1().Services(schedulerName).List(listOptions)
+				if err != nil {
+					logger.WithError(err).Error("error when getting services")
+					continue
+				}
+
+				numberCurrentPods := len(svcs.Items)
+				numberPodsToCreate := numberOldPods - numberCurrentPods
+
+				for i := 0; i < numberPodsToCreate; i++ {
+					name, err := createServiceAndPod(l, mr, redisClient.Client, clientset, configYAML, schedulerName)
+					if err != nil {
+						logger.WithError(err).Error("error when creating pod and service")
+						continue
+					}
+					pods[numberNewPods] = name
+					numberNewPods = numberNewPods + 1
+				}
+			}
+		}
+		ticker.Stop()
+		if willTimeoutAt.Sub(time.Now()) < 0 {
+			return errors.New("timeout scaling up scheduler")
+		}
+
+		// Wait for pods to be created
+		err = waitForPods(
+			willTimeoutAt.Sub(time.Now()),
+			clientset,
+			numberNewPods,
+			configYAML.Name,
+			pods,
+			l,
+		)
+		if err != nil {
+			logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
+			return err
+		}
+	}
+
+	// Update new config on DB
+	configBytes, err := yaml.Marshal(configYAML)
+	if err != nil {
+		return err
+	}
+	yamlString := string(configBytes)
+	scheduler.YAML = yamlString
+	err = mr.WithSegment(models.SegmentUpdate, func() error {
+		return scheduler.Update(db)
+	})
+
+	return err
+}
+
 func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, scheduler *models.Scheduler, namespace *models.Namespace, timeoutSec int) error {
 	var err error
 	if scheduler.ID != "" {
 		scheduler.State = models.StateTerminating
 		scheduler.StateLastChangedAt = time.Now().Unix()
-		err = mr.WithSegment(models.SegmentDelete, func() error {
+		err = mr.WithSegment(models.SegmentUpdate, func() error {
 			return scheduler.Update(db)
 		})
 		if err != nil {
@@ -514,4 +718,62 @@ func deleteServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 		return err
 	}
 	return nil
+}
+
+// MustUpdatePods returns true if it's necessary to delete old pod and create a new one
+//  so this have the new configuration.
+func MustUpdatePods(old, new *models.ConfigYAML) bool {
+	samePorts := func(ps1, ps2 []*models.Port) bool {
+		set := make(map[models.Port]bool)
+		for _, p1 := range ps1 {
+			set[*p1] = true
+		}
+
+		for _, p2 := range ps2 {
+			if _, contains := set[*p2]; !contains {
+				return false
+			}
+		}
+		return true
+	}
+
+	sameEnv := func(envs1, envs2 []*models.EnvVar) bool {
+		set := make(map[models.EnvVar]bool)
+		for _, env1 := range envs1 {
+			set[*env1] = true
+		}
+		for _, env2 := range envs2 {
+			if _, contains := set[*env2]; !contains {
+				return false
+			}
+		}
+		return true
+	}
+
+	sameCmd := func(cmd1, cmd2 []string) bool {
+		if len(cmd1) != len(cmd2) {
+			return false
+		}
+		for i, cmd := range cmd1 {
+			if cmd != cmd2[i] {
+				return false
+			}
+		}
+		return true
+	}
+
+	switch {
+	case old.Image != new.Image:
+		return true
+	case !samePorts(old.Ports, new.Ports):
+		return true
+	case *old.Limits != *new.Limits:
+		return true
+	case !sameCmd(old.Cmd, new.Cmd):
+		return true
+	case !sameEnv(old.Env, new.Env):
+		return true
+	default:
+		return false
+	}
 }

@@ -32,7 +32,7 @@ var (
 
 func TestIntModels(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Models Integration Suite")
+	RunSpecs(t, "Api Integration Suite")
 }
 
 var _ = BeforeSuite(func() {

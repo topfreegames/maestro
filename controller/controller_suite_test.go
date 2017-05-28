@@ -12,6 +12,8 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/viper"
+	"github.com/topfreegames/extensions/redis"
 
 	"testing"
 
@@ -28,29 +30,51 @@ var (
 	hook            *test.Hook
 	logger          *logrus.Logger
 	mockCtrl        *gomock.Controller
+	config          *viper.Viper
 	mockDb          *pgmocks.MockDB
 	mockPipeline    *redismocks.MockPipeliner
 	mockRedisClient *redismocks.MockRedisClient
+	redisClient     *redis.Client
 	mr              *models.MixedMetricsReporter
+	allStatus       = []string{
+		models.StatusCreating,
+		models.StatusReady,
+		models.StatusOccupied,
+		models.StatusTerminating,
+		models.StatusTerminated,
+	}
 )
-
-var allStatus = []string{models.StatusCreating, models.StatusReady, models.StatusOccupied, models.StatusTerminating, models.StatusTerminated}
 
 func TestController(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Controller Suite")
 }
 
+var _ = BeforeSuite(func() {
+	var err error
+	config, err = mtesting.GetDefaultConfig()
+	Expect(err).NotTo(HaveOccurred())
+})
+
 var _ = BeforeEach(func() {
+	var err error
 	logger, hook = test.NewNullLogger()
 	logger.Level = logrus.DebugLevel
+
 	fakeReporter := mtesting.FakeMetricsReporter{}
 	mr := models.NewMixedMetricsReporter()
 	mr.AddReporter(fakeReporter)
+
 	mockCtrl = gomock.NewController(GinkgoT())
+
 	mockDb = pgmocks.NewMockDB(mockCtrl)
+
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
+
+	mockRedisClient.EXPECT().Ping()
+	redisClient, err = redis.NewClient("extensions.redis", config, mockRedisClient)
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterEach(func() {
