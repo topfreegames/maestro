@@ -125,15 +125,15 @@ var _ = Describe("Worker", func() {
 		var yaml1 *models.ConfigYAML
 
 		AfterEach(func() {
-			if yaml1 != nil {
-				svcs, err := clientset.CoreV1().Services(yaml1.Name).List(listOptions)
-				Expect(err).NotTo(HaveOccurred())
-				for _, svc := range svcs.Items {
-					room := models.NewRoom(svc.GetName(), svc.GetNamespace())
-					err = room.ClearAll(app.RedisClient)
-					Expect(err).NotTo(HaveOccurred())
-				}
+			pipe := app.RedisClient.TxPipeline()
+			cmd := pipe.FlushAll()
+			_, err := pipe.Exec()
+			Expect(err).NotTo(HaveOccurred())
 
+			err = cmd.Err()
+			Expect(err).NotTo(HaveOccurred())
+
+			if yaml1 != nil {
 				exists, err := models.NewNamespace(yaml1.Name).Exists(clientset)
 				Expect(err).NotTo(HaveOccurred())
 				if exists {
@@ -279,6 +279,16 @@ var _ = Describe("Worker", func() {
 			Eventually(func() int {
 				svcs, _ = clientset.CoreV1().Services(yaml.Name).List(listOptions)
 				return len(svcs.Items)
+			}, 120*time.Second, 1*time.Second).Should(Equal(newRoomNumber))
+
+			Eventually(func() int {
+				pipe := app.RedisClient.TxPipeline()
+				cmd := pipe.Keys("scheduler:*:rooms:*")
+				_, err := pipe.Exec()
+				Expect(err).NotTo(HaveOccurred())
+				keys, err := cmd.Result()
+				Expect(err).NotTo(HaveOccurred())
+				return len(keys)
 			}, 120*time.Second, 1*time.Second).Should(Equal(newRoomNumber))
 		})
 

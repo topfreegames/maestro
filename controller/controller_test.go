@@ -1372,20 +1372,20 @@ cmd:
 			}
 
 			// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml2.AutoScaling.Min)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 				func(schedulerName string, statusInfo map[string]interface{}) {
 					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
 					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 				},
-			).Times(configYaml1.AutoScaling.Min)
+			).Times(configYaml2.AutoScaling.Min)
 			mockPipeline.EXPECT().
-				ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).
-				Times(configYaml1.AutoScaling.Min)
+				ZAdd(models.GetRoomPingRedisKey(configYaml2.Name), gomock.Any()).
+				Times(configYaml2.AutoScaling.Min)
 			mockPipeline.EXPECT().
-				SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).
-				Times(configYaml1.AutoScaling.Min)
-			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
+				SAdd(models.GetRoomStatusSetRedisKey(configYaml2.Name, "creating"), gomock.Any()).
+				Times(configYaml2.AutoScaling.Min)
+			mockPipeline.EXPECT().Exec().Times(configYaml2.AutoScaling.Min)
 
 			mockDb.EXPECT().
 				Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
@@ -1415,7 +1415,7 @@ cmd:
 
 			svcs, err = clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(svcs.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+			Expect(svcs.Items).To(HaveLen(configYaml2.AutoScaling.Min))
 
 			for _, svc := range svcs.Items {
 				Expect(svc.GetName()).To(ContainSubstring("controller-name-"))
@@ -1424,7 +1424,7 @@ cmd:
 
 			pods, err := clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(pods.Items).To(HaveLen(3))
+			Expect(pods.Items).To(HaveLen(4))
 			for _, pod := range pods.Items {
 				Expect(pod.GetName()).To(ContainSubstring("controller-name-"))
 				Expect(pod.GetName()).To(HaveLen(len("controller-name-") + 8))
@@ -1845,7 +1845,7 @@ cmd:
 					Now().
 					Return(time.Unix(int64(timeoutSec-100), 0)))
 
-			for range svcs.Items {
+			for i := 0; i < configYaml2.AutoScaling.Min; i++ {
 				calls.Add(
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
 				calls.Add(
@@ -1941,7 +1941,7 @@ cmd:
 					Now().
 					Return(time.Unix(int64(timeoutSec-100), 0)))
 
-			for range svcs.Items {
+			for i := 0; i < configYaml2.AutoScaling.Min; i++ {
 				calls.Add(
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
 				calls.Add(
@@ -2046,7 +2046,7 @@ cmd:
 					Now().
 					Return(time.Unix(int64(timeoutSec-100), 0)))
 
-			for range svcs.Items {
+			for i := 0; i < configYaml2.AutoScaling.Min; i++ {
 				calls.Add(
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
 				calls.Add(

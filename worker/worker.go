@@ -216,6 +216,7 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 				w.KubernetesClient,
 				schedulerName,
 			)
+			w.Watchers[schedulerName].Run = true // Avoids race condition
 			go w.Watchers[schedulerName].Start()
 			l.WithField("name", schedulerName).Info("started watcher for scheduler")
 		}

@@ -461,9 +461,11 @@ func UpdateSchedulerConfig(
 		if err != nil {
 			return maestroErrors.NewKubernetesError("error when listing  services", err)
 		}
+
 		timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
 		time.Sleep(1 * time.Millisecond) // This sleep avoids race condition between select goroutine and timer goroutine
 		numberOldPods := len(svcs.Items)
+		logger.WithField("numberOfRooms", numberOldPods).Info("deleting old rooms")
 		i := 0
 		for i < numberOldPods {
 			svc := svcs.Items[i]
@@ -487,6 +489,11 @@ func UpdateSchedulerConfig(
 				}
 			}
 		}
+
+		if numberOldPods < configYAML.AutoScaling.Min {
+			numberOldPods = configYAML.AutoScaling.Min
+		}
+		logger.WithField("numberOfRooms", numberOldPods).Info("recreating rooms")
 
 		pods := make([]string, numberOldPods)
 		numberNewPods := 0

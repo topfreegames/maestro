@@ -16,7 +16,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
@@ -31,7 +30,6 @@ var (
 	logger    *logrus.Logger
 	mr        *models.MixedMetricsReporter
 	app       *api.App
-	appRedis  redisinterfaces.RedisClient
 	w         *worker.Worker
 )
 

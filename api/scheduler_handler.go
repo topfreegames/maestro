@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/extensions/clock"
@@ -143,6 +144,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 
 	timeoutSec := g.App.Config.GetInt("updateTimeoutSeconds")
+	logger.WithField("time", time.Now()).Info("Starting update")
 	err = mr.WithSegment(models.SegmentController, func() error {
 		return controller.UpdateSchedulerConfig(
 			l,
@@ -156,6 +158,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			&clock.Clock{},
 		)
 	})
+	logger.WithField("time", time.Now()).Info("Finished update")
 
 	if err != nil {
 		status := http.StatusInternalServerError
