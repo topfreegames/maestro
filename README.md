@@ -187,8 +187,8 @@ A JSON file equivalent to the yaml above can also be used.
     - [x] scale cluster
       - [x] down
   - [ ] maestro-api
-    - [ ] scheduler
-      - [ ] update running scheduler config
+    - [x] scheduler
+      - [x] update running scheduler config
     - [ ] get rooms metrics
   - [ ] maestro-cli
     - [ ] scheduler

@@ -17,6 +17,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	redisLock "github.com/bsm/redis-lock"
 	uuid "github.com/satori/go.uuid"
+	clockinterfaces "github.com/topfreegames/extensions/clock/interfaces"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
@@ -211,14 +212,19 @@ func waitForPods(
 	namespace string,
 	pods []string,
 	l logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
 ) error {
 	timeoutChan := time.NewTimer(timeout).C
 	tickerChan := time.NewTicker(1 * time.Second).C
+
 	for {
 		exit := true
 		select {
 		case <-timeoutChan:
-			return errors.New("timeout scaling up scheduler")
+			for _, podToDelete := range pods {
+				deleteServiceAndPod(l, mr, clientset, namespace, podToDelete)
+			}
+			return errors.New("timeout waiting for rooms to be created")
 		case <-tickerChan:
 			for i := 0; i < numberOfPods; i++ {
 				pod, err := clientset.CoreV1().Pods(namespace).Get(pods[i], metav1.GetOptions{})
@@ -288,6 +294,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 		configYAML.Name,
 		pods,
 		l,
+		mr,
 	)
 	if err != nil {
 		return err
@@ -380,6 +387,7 @@ func UpdateSchedulerConfig(
 	configYAML *models.ConfigYAML,
 	timeoutSec, lockTimeoutMS int,
 	lockKey string,
+	clock clockinterfaces.Clock,
 ) error {
 	schedulerName := configYAML.Name
 	l := logger.WithFields(logrus.Fields{
@@ -413,7 +421,7 @@ func UpdateSchedulerConfig(
 	if MustUpdatePods(&oldConfig, configYAML) {
 		// Lock watchers so they don't scale up and down
 		timeoutDur := time.Duration(timeoutSec) * time.Second
-		willTimeoutAt := time.Now().Add(timeoutDur)
+		willTimeoutAt := clock.Now().Add(timeoutDur)
 		lock, err = redisClient.EnterCriticalSection(redisClient.Client, lockKey, time.Duration(lockTimeoutMS)*time.Millisecond, 0, 0)
 		ticker := time.NewTicker(500 * time.Millisecond)
 		timeout := time.NewTimer(timeoutDur)
@@ -451,13 +459,15 @@ func UpdateSchedulerConfig(
 		if err != nil {
 			return maestroErrors.NewKubernetesError("error when listing  services", err)
 		}
+		timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
+		time.Sleep(1 * time.Millisecond) // This sleep avoids race condition between select goroutine and timer goroutine
 		numberOldPods := len(svcs.Items)
 		i := 0
-		timeout = time.NewTimer(willTimeoutAt.Sub(time.Now()))
 		for i < numberOldPods {
 			svc := svcs.Items[i]
 			select {
 			case <-timeout.C:
+				err = errors.New("timeout during room deletion")
 				return maestroErrors.NewKubernetesError("error when deleting old rooms. Maestro will scale up, if necessary, with previous room configuration.", err)
 			default:
 				err := deleteServiceAndPod(logger, mr, clientset, schedulerName, svc.GetName())
@@ -478,14 +488,18 @@ func UpdateSchedulerConfig(
 
 		pods := make([]string, numberOldPods)
 		numberNewPods := 0
-		timeout = time.NewTimer(willTimeoutAt.Sub(time.Now()))
+		timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
 		ticker = time.NewTicker(1 * time.Second)
 
 		// Creates pods as they are deleted
 		for numberNewPods < numberOldPods {
 			select {
 			case <-timeout.C:
-				return errors.New("timeout while updating scheduler")
+				for _, podToDelete := range pods {
+					deleteServiceAndPod(logger, mr, clientset, schedulerName, podToDelete)
+				}
+				err = errors.New("timeout during new room creation")
+				return maestroErrors.NewKubernetesError("error when creating new rooms. Maestro will scale up, if necessary, with previous room configuration.", err)
 			case <-ticker.C:
 				svcs, err := clientset.CoreV1().Services(schedulerName).List(listOptions)
 				if err != nil {
@@ -507,19 +521,21 @@ func UpdateSchedulerConfig(
 				}
 			}
 		}
+
 		ticker.Stop()
-		if willTimeoutAt.Sub(time.Now()) < 0 {
+		if willTimeoutAt.Sub(clock.Now()) < 0 {
 			return errors.New("timeout scaling up scheduler")
 		}
 
 		// Wait for pods to be created
 		err = waitForPods(
-			willTimeoutAt.Sub(time.Now()),
+			willTimeoutAt.Sub(clock.Now()),
 			clientset,
 			numberNewPods,
 			configYAML.Name,
 			pods,
 			l,
+			mr,
 		)
 		if err != nil {
 			logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")

@@ -19,6 +19,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/Sirupsen/logrus/hooks/test"
+	clockmocks "github.com/topfreegames/extensions/clock/mocks"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/models"
@@ -34,6 +35,7 @@ var (
 	mockDb          *pgmocks.MockDB
 	mockPipeline    *redismocks.MockPipeliner
 	mockRedisClient *redismocks.MockRedisClient
+	mockClock       *clockmocks.MockClock
 	redisClient     *redis.Client
 	mr              *models.MixedMetricsReporter
 	allStatus       = []string{
@@ -75,6 +77,8 @@ var _ = BeforeEach(func() {
 	mockRedisClient.EXPECT().Ping()
 	redisClient, err = redis.NewClient("extensions.redis", config, mockRedisClient)
 	Expect(err).NotTo(HaveOccurred())
+
+	mockClock = clockmocks.NewMockClock(mockCtrl)
 })
 
 var _ = AfterEach(func() {

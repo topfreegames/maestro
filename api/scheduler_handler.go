@@ -13,6 +13,7 @@ import (
 	"net/http"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/topfreegames/extensions/clock"
 	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/controller"
 	maestroErrors "github.com/topfreegames/maestro/errors"
@@ -151,6 +152,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			payload,
 			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"),
 			g.App.Config.GetString("watcher.lockKey"),
+			&clock.Clock{},
 		)
 	})
 

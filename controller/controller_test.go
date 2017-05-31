@@ -17,8 +17,10 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	uuid "github.com/satori/go.uuid"
+	"github.com/topfreegames/extensions/clock"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
+	mt "github.com/topfreegames/maestro/testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -1174,7 +1176,8 @@ env:
   - name: MY_ENV_VAR
     value: myvalue
 cmd:
-  - "./room exec"
+  - "./room"
+  - "exec"
 `
 			var configYaml2 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml2), &configYaml2)
@@ -1401,6 +1404,7 @@ cmd:
 				&configYaml2,
 				timeoutSec, lockTimeoutMS,
 				lockKey,
+				&clock.Clock{},
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -1454,6 +1458,7 @@ cmd:
 				&configYaml2,
 				timeoutSec, lockTimeoutMS,
 				lockKey,
+				&clock.Clock{},
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("scheduler another-name not found, create it first"))
@@ -1522,6 +1527,7 @@ cmd:
 				&configYaml2,
 				timeoutSec, lockTimeoutMS,
 				lockKey,
+				&clock.Clock{},
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -1560,8 +1566,7 @@ cmd:
 		})
 
 		It("should return error if db fails to select scheduler", func() {
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
 				Return(&types.Result{}, errors.New("error on select"))
 
 			err := controller.UpdateSchedulerConfig(
@@ -1573,6 +1578,7 @@ cmd:
 				&configYaml2,
 				timeoutSec, lockTimeoutMS,
 				lockKey,
+				&clock.Clock{},
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error on select"))
@@ -1600,6 +1606,7 @@ cmd:
 				&configYaml2,
 				timeoutSec, lockTimeoutMS,
 				lockKey,
+				&clock.Clock{},
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timeout while wating for redis lock"))
@@ -1636,6 +1643,7 @@ cmd:
 				&configYaml2,
 				timeoutSec, lockTimeoutMS,
 				lockKey,
+				&clock.Clock{},
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timeout while wating for redis lock"))
@@ -1661,9 +1669,431 @@ cmd:
 				&configYaml2,
 				timeoutSec, lockTimeoutMS,
 				lockKey,
+				&clock.Clock{},
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error getting lock"))
+		})
+
+		It("should return error if timeout when deleting rooms", func() {
+			svcs, err := clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(svcs.Items).To(HaveLen(3))
+
+			// Update scheduler
+			calls := mt.NewCalls()
+			calls.Add(
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+					}))
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(0, 0)))
+			calls.Add(
+				mockRedisClient.EXPECT().
+					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					Return(redis.NewBoolResult(true, nil)))
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec), 0)))
+			calls.Add(
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
+					Return(redis.NewCmdResult(nil, nil)))
+			calls.Finish()
+
+			err = controller.UpdateSchedulerConfig(
+				logger,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				&configYaml2,
+				timeoutSec, lockTimeoutMS,
+				lockKey,
+				mockClock,
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("timeout during room deletion"))
+		})
+
+		It("should return error if timeout when creating rooms", func() {
+			svcs, err := clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(svcs.Items).To(HaveLen(3))
+
+			calls := mt.NewCalls()
+
+			// Update scheduler
+			calls.Add(
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+					}))
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(0, 0)))
+
+			calls.Add(
+				mockRedisClient.EXPECT().
+					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					Return(redis.NewBoolResult(true, nil)))
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec-100), 0)))
+
+			for _, svc := range svcs.Items {
+				calls.Add(
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
+
+				room := models.NewRoom(svc.GetName(), svc.GetNamespace())
+				for _, status := range allStatus {
+					calls.Add(
+						mockPipeline.EXPECT().
+							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey()))
+				}
+				calls.Add(mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(svc.GetNamespace()), room.ID))
+				calls.Add(mockPipeline.EXPECT().Del(room.GetRoomRedisKey()))
+				calls.Add(mockPipeline.EXPECT().Exec())
+			}
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec), 0)))
+
+			calls.Add(
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
+					Return(redis.NewCmdResult(nil, nil)))
+
+			calls.Finish()
+
+			err = controller.UpdateSchedulerConfig(
+				logger,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				&configYaml2,
+				timeoutSec, lockTimeoutMS,
+				lockKey,
+				mockClock,
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("timeout during new room creation"))
+
+			svcs, err = clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(svcs.Items).To(BeEmpty())
+		})
+
+		It("should return error if timeout after creating rooms", func() {
+			svcs, err := clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(svcs.Items).To(HaveLen(3))
+
+			calls := mt.NewCalls()
+
+			// Update scheduler
+			calls.Add(
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+					}))
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(0, 0)))
+
+			calls.Add(
+				mockRedisClient.EXPECT().
+					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					Return(redis.NewBoolResult(true, nil)))
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec-100), 0)))
+
+			for _, svc := range svcs.Items {
+				calls.Add(
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
+
+				room := models.NewRoom(svc.GetName(), svc.GetNamespace())
+				for _, status := range allStatus {
+					calls.Add(
+						mockPipeline.EXPECT().
+							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey()))
+				}
+				calls.Add(mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(svc.GetNamespace()), room.ID))
+				calls.Add(mockPipeline.EXPECT().Del(room.GetRoomRedisKey()))
+				calls.Add(mockPipeline.EXPECT().Exec())
+			}
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec-100), 0)))
+
+			for range svcs.Items {
+				calls.Add(
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
+				calls.Add(
+					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+						func(schedulerName string, statusInfo map[string]interface{}) {
+							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+						},
+					))
+				calls.Add(
+					mockPipeline.EXPECT().
+						SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()))
+				calls.Add(
+					mockPipeline.EXPECT().
+						ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()))
+				calls.Add(
+					mockPipeline.EXPECT().Exec())
+			}
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec+100), 0)))
+
+			calls.Add(
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
+					Return(redis.NewCmdResult(nil, nil)))
+
+			calls.Finish()
+
+			err = controller.UpdateSchedulerConfig(
+				logger,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				&configYaml2,
+				timeoutSec, lockTimeoutMS,
+				lockKey,
+				mockClock,
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("timeout scaling up scheduler"))
+		})
+
+		It("should return error if timeout while waiting for pods", func() {
+			svcs, err := clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(svcs.Items).To(HaveLen(3))
+
+			calls := mt.NewCalls()
+
+			// Update scheduler
+			calls.Add(
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+					}))
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(0, 0)))
+
+			calls.Add(
+				mockRedisClient.EXPECT().
+					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					Return(redis.NewBoolResult(true, nil)))
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec-100), 0)))
+
+			for _, svc := range svcs.Items {
+				calls.Add(
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
+
+				room := models.NewRoom(svc.GetName(), svc.GetNamespace())
+				for _, status := range allStatus {
+					calls.Add(
+						mockPipeline.EXPECT().
+							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey()))
+				}
+				calls.Add(mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(svc.GetNamespace()), room.ID))
+				calls.Add(mockPipeline.EXPECT().Del(room.GetRoomRedisKey()))
+				calls.Add(mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("redis error")))
+			}
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec-100), 0)))
+
+			for range svcs.Items {
+				calls.Add(
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
+				calls.Add(
+					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+						func(schedulerName string, statusInfo map[string]interface{}) {
+							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+						},
+					))
+				calls.Add(
+					mockPipeline.EXPECT().
+						SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()))
+				calls.Add(
+					mockPipeline.EXPECT().
+						ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()))
+				calls.Add(
+					mockPipeline.EXPECT().Exec())
+			}
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec), 0)))
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec+100), 0)))
+
+			calls.Add(
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
+					Return(redis.NewCmdResult(nil, nil)))
+
+			calls.Finish()
+
+			err = controller.UpdateSchedulerConfig(
+				logger,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				&configYaml2,
+				timeoutSec, lockTimeoutMS,
+				lockKey,
+				mockClock,
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("timeout waiting for rooms to be created"))
+
+			svcs, err = clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(svcs.Items).To(BeEmpty())
+		})
+
+		It("should not return error if ClearAll fails in deleting old rooms", func() {
+			svcs, err := clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(svcs.Items).To(HaveLen(3))
+
+			calls := mt.NewCalls()
+
+			// Update scheduler
+			calls.Add(
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+					}))
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(0, 0)))
+
+			calls.Add(
+				mockRedisClient.EXPECT().
+					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					Return(redis.NewBoolResult(true, nil)))
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec-100), 0)))
+
+			for _, svc := range svcs.Items {
+				calls.Add(
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
+
+				room := models.NewRoom(svc.GetName(), svc.GetNamespace())
+				for _, status := range allStatus {
+					calls.Add(
+						mockPipeline.EXPECT().
+							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey()))
+				}
+				calls.Add(mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(svc.GetNamespace()), room.ID))
+				calls.Add(mockPipeline.EXPECT().Del(room.GetRoomRedisKey()))
+				calls.Add(mockPipeline.EXPECT().Exec())
+			}
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec-100), 0)))
+
+			for range svcs.Items {
+				calls.Add(
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
+				calls.Add(
+					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+						func(schedulerName string, statusInfo map[string]interface{}) {
+							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+						},
+					))
+				calls.Add(
+					mockPipeline.EXPECT().
+						SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()))
+				calls.Add(
+					mockPipeline.EXPECT().
+						ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()))
+				calls.Add(
+					mockPipeline.EXPECT().Exec())
+			}
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec-100), 0)))
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(int64(timeoutSec-100), 0)))
+			calls.Add(
+				mockDb.EXPECT().
+					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any()))
+			calls.Add(
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
+					Return(redis.NewCmdResult(nil, nil)))
+			calls.Finish()
+
+			err = controller.UpdateSchedulerConfig(
+				logger,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				&configYaml2,
+				timeoutSec, lockTimeoutMS,
+				lockKey,
+				mockClock,
+			)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })
