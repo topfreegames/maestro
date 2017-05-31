@@ -46,8 +46,8 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
     {
-      timestamp: <seconds since epoch>,
-      status: <room-status>
+      timestamp: [int]<seconds since epoch>,
+      status:    [string]<room-status>
     }
     ```
 
@@ -70,10 +70,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -84,10 +84,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -103,9 +103,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
       ```
         {
-          "success": true,
-          "host": <host ip>,
-          "port": <int>
+          "success": [bool]true,
+          "host":    [string]<host ip>,
+          "port":    [int]<port number>
         }
       ```
 
@@ -118,10 +118,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        "error-code",
-        "error":       "error-message",
-        "description": "error-description",
-        "success":     false
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -135,8 +135,8 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
     {
-      timestamp: <seconds since epoch>,
-      status: "ready"
+      timestamp: [int]<seconds since epoch>,
+      status:    [string]"ready"
     }
     ```
 
@@ -159,10 +159,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -173,10 +173,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -190,8 +190,8 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
     {
-      timestamp: <seconds since epoch>,
-      status: "occupied"
+      timestamp: [int]<seconds since epoch>,
+      status:    [string]"occupied"
     }
     ```
 
@@ -214,10 +214,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -228,10 +228,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -245,8 +245,8 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
     {
-      timestamp: <seconds since epoch>,
-      status: "ready"
+      timestamp: [int]<seconds since epoch>,
+      status:    [string]"ready"
     }
     ```
 
@@ -269,10 +269,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -283,10 +283,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -378,10 +378,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -392,12 +392,13 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
+
 
   ### Delete
 
@@ -424,10 +425,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -517,10 +518,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -531,10 +532,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```
 
@@ -545,9 +546,76 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
     ```
       {
-        "code":        <error-code>,
-    		"error":       <error-message>,
-    		"description": <error-description>,
-    		"success":     false
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
+      }
+    ```
+
+  ### Status
+
+  `GET /scheduler/:schedulerName`
+
+  Returns scheduler status and the room count for each status.
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "game":               [string]<game-name>,
+          "state":              [string]<scheduler-state>,
+          "stateLastChangedAt": [int]<timestamp when last change happened>,
+          "lastScaleOpAt":      [int]<timestamp when last scale happened>,
+          "roomsAtCreating":    [int]<number of rooms with creating status>,
+          "roomsAtOccupied":    [int]<number of rooms with occupied status>,
+          "roomsAtReady":       [int]<number of rooms with ready status>,
+          "roomsAtTerminating": [int]<number of rooms with terminating status>
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if scheduler to update is not found on DB
+
+    * Code: `404`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
+      }
+    ```
+
+    It will return an error if `:schedulerName` doesn't match name on config
+
+    * Code: `400`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+    		"error":       [string]<error-message>,
+    		"description": [string]<error-description>,
+    		"success":     [bool]false
       }
     ```

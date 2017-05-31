@@ -172,24 +172,24 @@ A JSON file equivalent to the yaml above can also be used.
     - Monitor scheduler rooms metrics.
 
   Tasks:
-  - [ ] maestro-controller
+  - [x] maestro-controller
     - [x] scheduler
         - [x] update running scheduler config
           - [x] update config in database
           - [x] update GRUs
             - [x] launch new GRUs with the updates config
             - [x] gracefully terminate GRUs running with old config
-    - [ ] scheduler state
-      - [ ] report room occupation metrics
+    - [x] scheduler state
+      - [x] report room occupation metrics
     - [x] scaling
       - [x] remove GRUs
   - [x] maestro-watcher
     - [x] scale cluster
       - [x] down
-  - [ ] maestro-api
+  - [x] maestro-api
     - [x] scheduler
       - [x] update running scheduler config
-    - [ ] get rooms metrics
+    - [x] get rooms metrics
   - [ ] maestro-cli
     - [ ] scheduler
       - [ ] create new scheduler with given config
