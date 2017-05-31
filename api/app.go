@@ -102,6 +102,16 @@ func (a *App) getRouter() *mux.Router {
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("DELETE").Name("schedulerDelete")
 
+	r.HandleFunc("/scheduler/{schedulerName}", Chain(
+		NewSchedulerStatusHandler(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewLoggingMiddleware(a),
+		NewVersionMiddleware(),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+	).ServeHTTP).Methods("GET").Name("schedulerStatus")
+
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),
 		NewMetricsReporterMiddleware(a),

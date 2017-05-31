@@ -145,7 +145,9 @@ func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsR
 	if err != nil {
 		return nil, nil, nil, err
 	} else if scheduler.YAML == "" {
-		return nil, nil, nil, fmt.Errorf("scheduler \"%s\" not found", schedulerName)
+		return nil, nil, nil, maestroErrors.NewValidationFailedError(
+			fmt.Errorf("scheduler \"%s\" not found", schedulerName),
+		)
 	}
 	scalingPolicy := scheduler.GetAutoScalingPolicy()
 	var roomCountByStatus *models.RoomsStatusCount

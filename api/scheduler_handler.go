@@ -8,6 +8,7 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -171,4 +172,68 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return nil
 	})
 	logger.Debug("Update scheduler succeeded.")
+}
+
+// SchedulerStatusHandler handler
+type SchedulerStatusHandler struct {
+	App *App
+}
+
+// NewSchedulerStatusHandler get scheduler and its rooms status
+func NewSchedulerStatusHandler(a *App) *SchedulerStatusHandler {
+	m := &SchedulerStatusHandler{App: a}
+	return m
+}
+
+// ServeHTTP method
+func (g *SchedulerStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	l := loggerFromContext(r.Context())
+	mr := metricsReporterFromCtx(r.Context())
+	params := schedulerParamsFromContext(r.Context())
+	logger := l.WithFields(logrus.Fields{
+		"source":    "schedulerHandler",
+		"operation": "status",
+	})
+
+	logger.Debugf("Getting scheduler %s status", params.SchedulerName)
+
+	scheduler, _, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
+		l,
+		mr,
+		g.App.DB,
+		g.App.RedisClient,
+		params.SchedulerName,
+	)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if _, ok := err.(*maestroErrors.ValidationFailedError); ok {
+			status = http.StatusNotFound
+		}
+		logger.WithError(err).Error("Status scheduler failed.")
+		g.App.HandleError(w, status, "Status scheduler failed", err)
+		return
+	}
+
+	resp := map[string]interface{}{
+		"game":               scheduler.Game,
+		"state":              scheduler.State,
+		"stateLastChangedAt": scheduler.StateLastChangedAt,
+		"lastScaleOpAt":      scheduler.LastScaleOpAt,
+		"roomsAtCreating":    roomCountByStatus.Creating,
+		"roomsAtOccupied":    roomCountByStatus.Occupied,
+		"roomsAtReady":       roomCountByStatus.Ready,
+		"roomsAtTerminating": roomCountByStatus.Terminating,
+	}
+	bts, err := json.Marshal(resp)
+	if err != nil {
+		logger.WithError(err).Error("Status scheduler failed.")
+		g.App.HandleError(w, http.StatusInternalServerError, "Status scheduler failed", err)
+		return
+	}
+
+	mr.WithSegment(models.SegmentSerialization, func() error {
+		WriteBytes(w, http.StatusOK, bts)
+		return nil
+	})
+	logger.Debug("Status scheduler succeeded.")
 }

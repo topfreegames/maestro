@@ -432,6 +432,29 @@ var _ = Describe("Scheduler Handler", func() {
 				Expect(obj["description"]).To(Equal("scheduler scheduler-name not found, create it first"))
 				Expect(obj["success"]).To(Equal(false))
 			})
+
+			It("should return 400 if names doesn't match", func() {
+
+				var configYaml1 models.ConfigYAML
+				err := yaml.Unmarshal([]byte(jsonString), &configYaml1)
+				Expect(err).NotTo(HaveOccurred())
+
+				reader := strings.NewReader(newJsonString)
+				url := "/scheduler/some-other-name"
+				request, err = http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				var obj map[string]interface{}
+				err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(obj["code"]).To(Equal("MAE-004"))
+				Expect(obj["error"]).To(Equal("ValidationFailedError"))
+				Expect(obj["description"]).To(Equal("url name some-other-name doesn't match payload name scheduler-name"))
+				Expect(obj["success"]).To(Equal(false))
+			})
 		})
 
 		Context("when postgres is down", func() {
@@ -462,6 +485,110 @@ var _ = Describe("Scheduler Handler", func() {
 				Expect(obj["description"]).To(Equal("sql: database is closed"))
 				Expect(obj["success"]).To(Equal(false))
 			})
+		})
+	})
+
+	Describe("GET /scheduler/{schedulerName}", func() {
+		It("should return infos about scheduler and room", func() {
+			var configYaml models.ConfigYAML
+			err := json.Unmarshal([]byte(jsonString), &configYaml)
+			Expect(err).NotTo(HaveOccurred())
+
+			schedulerName := configYaml.Name
+
+			for i := 0; i < configYaml.AutoScaling.Min; i++ {
+				room := models.NewRoom(fmt.Sprintf("room-%d", i), schedulerName)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any())
+				mockPipeline.EXPECT().SAdd(gomock.Any(), gomock.Any())
+				mockPipeline.EXPECT().ZAdd(gomock.Any(), gomock.Any())
+				mockPipeline.EXPECT().Exec()
+
+				room.Create(mockRedisClient)
+			}
+			url := fmt.Sprintf("http://%s/scheduler/scheduler-name", app.Address)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, jsonString)
+				})
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().
+				SCard(models.GetRoomStatusSetRedisKey(schedulerName, models.StatusCreating)).
+				Return(redis.NewIntResult(int64(0), nil))
+			mockPipeline.EXPECT().
+				SCard(models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)).
+				Return(redis.NewIntResult(int64(configYaml.AutoScaling.Min), nil))
+			mockPipeline.EXPECT().
+				SCard(models.GetRoomStatusSetRedisKey(schedulerName, models.StatusOccupied)).
+				Return(redis.NewIntResult(int64(0), nil))
+			mockPipeline.EXPECT().
+				SCard(models.GetRoomStatusSetRedisKey(schedulerName, models.StatusTerminating)).
+				Return(redis.NewIntResult(int64(0), nil))
+			mockPipeline.EXPECT().Exec()
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			resp := make(map[string]interface{})
+			err = json.Unmarshal(recorder.Body.Bytes(), &resp)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(HaveKeyWithValue("game", configYaml.Game))
+			Expect(resp).To(HaveKeyWithValue("state", models.StatusCreating))
+			Expect(resp).To(HaveKeyWithValue("lastScaleOpAt", float64(0)))
+			Expect(resp).To(HaveKeyWithValue("roomsAtCreating", float64(0)))
+			Expect(resp).To(HaveKeyWithValue("roomsAtOccupied", float64(0)))
+			Expect(resp).To(HaveKeyWithValue("roomsAtReady", float64(configYaml.AutoScaling.Min)))
+			Expect(resp).To(HaveKeyWithValue("roomsAtTerminating", float64(0)))
+			Expect(resp["stateLastChangedAt"]).To(BeNumerically("~", time.Now().Unix(), 3))
+		})
+
+		It("should return error if scheduler doesn't exist", func() {
+			name := "other-scheduler-name"
+			url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, name)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					scheduler.YAML = ""
+				})
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusNotFound))
+			var obj map[string]interface{}
+			err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj["code"]).To(Equal("MAE-004"))
+			Expect(obj["error"]).To(Equal("ValidationFailedError"))
+			Expect(obj["description"]).To(Equal("scheduler \"other-scheduler-name\" not found"))
+			Expect(obj["success"]).To(Equal(false))
+		})
+
+		It("should return error if db fails", func() {
+			name := "other-scheduler-name"
+			url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, name)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+				Return(nil, errors.New("some db error"))
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+			var obj map[string]interface{}
+			err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj["code"]).To(Equal("MAE-000"))
+			Expect(obj["error"]).To(Equal("Status scheduler failed"))
+			Expect(obj["description"]).To(Equal("some db error"))
+			Expect(obj["success"]).To(Equal(false))
 		})
 	})
 })
