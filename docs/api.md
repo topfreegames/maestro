@@ -71,9 +71,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -85,9 +85,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -160,9 +160,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -174,9 +174,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -215,9 +215,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -229,9 +229,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -270,9 +270,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -284,9 +284,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -379,9 +379,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -393,9 +393,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -426,9 +426,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -519,9 +519,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -533,9 +533,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -547,9 +547,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -586,9 +586,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -600,9 +600,9 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```
 
@@ -614,8 +614,8 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     ```
       {
         "code":        [string]<error-code>,
-    		"error":       [string]<error-message>,
-    		"description": [string]<error-description>,
-    		"success":     [bool]false
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
       }
     ```

@@ -570,6 +570,19 @@ var _ = Describe("Controller", func() {
 				pKey,
 				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
 			).Return(redis.NewStringSliceResult(expectedRooms, nil))
+
+			for _, name := range expectedRooms {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				room := models.NewRoom(name, scheduler)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().
+						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler), room.ID)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+			}
+
 			err = controller.DeleteRoomsNoPingSince(logger, mr, mockRedisClient, clientset, scheduler, since)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -593,6 +606,19 @@ var _ = Describe("Controller", func() {
 				pKey,
 				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
 			).Return(redis.NewStringSliceResult(expectedRooms, nil))
+
+			for _, name := range expectedRooms {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				room := models.NewRoom(name, scheduler)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().
+						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler), room.ID)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+			}
+
 			err = controller.DeleteRoomsNoPingSince(logger, mr, mockRedisClient, clientset, scheduler, since)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -911,6 +937,18 @@ var _ = Describe("Controller", func() {
 			mockRedisClient.EXPECT().
 				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
 				Return(redis.NewStringSliceResult(names, nil))
+
+			for _, name := range names {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				room := models.NewRoom(name, scheduler.Name)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().
+						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+			}
 
 			timeoutSec = 300
 			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)

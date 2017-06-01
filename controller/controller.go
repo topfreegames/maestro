@@ -195,12 +195,11 @@ func DeleteRoomsNoPingSince(logger logrus.FieldLogger, mr *models.MixedMetricsRe
 		err := deleteServiceAndPod(logger, mr, clientset, schedulerName, roomName)
 		if err != nil {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
-		} else {
-			room := models.NewRoom(roomName, schedulerName)
-			err := room.ClearAll(redisClient)
-			if err != nil {
-				logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
-			}
+		}
+		room := models.NewRoom(roomName, schedulerName)
+		err = room.ClearAll(redisClient)
+		if err != nil {
+			logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
 		}
 	}
 
@@ -336,14 +335,14 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 		if err != nil {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
 			deletionErr = err
-		} else {
-			room := models.NewRoom(roomName, scheduler.Name)
-			err := room.ClearAll(redisClient)
-			if err != nil {
-				logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
-				return err
-			}
 		}
+		room := models.NewRoom(roomName, scheduler.Name)
+		err = room.ClearAll(redisClient)
+		if err != nil {
+			logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
+			return err
+		}
+
 	}
 
 	if willTimeoutAt.Sub(time.Now()) < 0 {

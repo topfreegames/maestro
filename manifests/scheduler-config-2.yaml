@@ -1,7 +1,7 @@
 {
    "name": "scheduler-name",
    "game": "game-name",
-   "image": "nginx:alpine",
+   "image": "nginx:latest",
    "ports": [
       {
          "containerPort": 8080,
