@@ -21,6 +21,8 @@ import (
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/extensions"
+	"github.com/topfreegames/maestro/login"
+	logininterfaces "github.com/topfreegames/maestro/login/interfaces"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
@@ -42,16 +44,29 @@ type App struct {
 	Server           *http.Server
 	InCluster        bool
 	KubeconfigPath   string
+	Login            logininterfaces.Login
+	EmailDomains     []string
 }
 
 //NewApp ctor
-func NewApp(host string, port int, config *viper.Viper, logger logrus.FieldLogger, incluster bool, kubeconfigPath string, dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface) (*App, error) {
+func NewApp(
+	host string,
+	port int,
+	config *viper.Viper,
+	logger logrus.FieldLogger,
+	incluster bool,
+	kubeconfigPath string,
+	dbOrNil pginterfaces.DB,
+	redisClientOrNil redisinterfaces.RedisClient,
+	kubernetesClientOrNil kubernetes.Interface,
+) (*App, error) {
 	a := &App{
 		Config:         config,
 		Address:        fmt.Sprintf("%s:%d", host, port),
 		Logger:         logger,
 		InCluster:      incluster,
 		KubeconfigPath: kubeconfigPath,
+		EmailDomains:   config.GetStringSlice("oauth.acceptedDomains"),
 	}
 	err := a.configureApp(dbOrNil, redisClientOrNil, kubernetesClientOrNil)
 	if err != nil {
@@ -71,22 +86,36 @@ func (a *App) getRouter() *mux.Router {
 		NewVersionMiddleware(),
 	)).Methods("GET").Name("healthcheck")
 
+	r.Handle("/login", Chain(
+		NewLoginUrlHandler(a),
+		NewLoggingMiddleware(a),
+		NewVersionMiddleware(),
+	)).Methods("GET").Name("oauth")
+
+	r.Handle("/access", Chain(
+		NewLoginAccessHandler(a),
+		NewLoggingMiddleware(a),
+		NewVersionMiddleware(),
+	)).Methods("GET").Name("oauth")
+
 	r.HandleFunc("/scheduler", Chain(
 		NewSchedulerCreateHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
-		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.ConfigYAML{} }),
 	).ServeHTTP).Methods("POST").Name("schedulerCreate")
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerUpdateHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
-		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.ConfigYAML{} }),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
@@ -94,20 +123,22 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerDeleteHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
-		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("DELETE").Name("schedulerDelete")
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerStatusHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
-		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerStatus")
@@ -172,6 +203,8 @@ func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 	}
 
 	a.configureSentry()
+
+	a.configureLogin()
 
 	a.configureServer()
 	return nil
@@ -273,6 +306,11 @@ func (a *App) configureNewRelic() error {
 func (a *App) configureServer() {
 	a.Router = a.getRouter()
 	a.Server = &http.Server{Addr: a.Address, Handler: wrapHandlerWithResponseWriter(a.Router)}
+}
+
+func (a *App) configureLogin() {
+	a.Login = login.NewLogin()
+	a.Login.Setup()
 }
 
 //HandleError writes an error response with message and status

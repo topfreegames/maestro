@@ -22,6 +22,7 @@ import (
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/api"
+	"github.com/topfreegames/maestro/login/mocks"
 	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
 )
@@ -36,6 +37,7 @@ var (
 	mockDb          *pgmocks.MockDB
 	mockPipeline    *redismocks.MockPipeliner
 	mockRedisClient *redismocks.MockRedisClient
+	mockLogin       *mocks.MockLogin
 	allStatus       = []string{
 		models.StatusCreating,
 		models.StatusReady,
@@ -69,6 +71,9 @@ var _ = BeforeEach(func() {
 
 	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
 	Expect(err).NotTo(HaveOccurred())
+
+	mockLogin = mocks.NewMockLogin(mockCtrl)
+	app.Login = mockLogin
 })
 
 var _ = AfterEach(func() {

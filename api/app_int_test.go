@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/api"
@@ -47,6 +48,8 @@ var _ = Describe("App", func() {
 
 		jsonStr, err = mt.NextJsonStr()
 		Expect(err).NotTo(HaveOccurred())
+
+		mockLogin.EXPECT().Authenticate(gomock.Any(), app.DB).Return("user@example.com", http.StatusOK, nil).AnyTimes()
 	})
 
 	AfterEach(func() {
@@ -79,6 +82,7 @@ var _ = Describe("App", func() {
 
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -136,6 +140,7 @@ var _ = Describe("App", func() {
 
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
 
 			app.Router.ServeHTTP(recorder, request)
 			resp := make(map[string]interface{})
@@ -170,14 +175,15 @@ var _ = Describe("App", func() {
 
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
 
 			app.Router.ServeHTTP(recorder, request)
 			resp := make(map[string]interface{})
 			err = json.Unmarshal(recorder.Body.Bytes(), &resp)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(HaveKeyWithValue("code", "MAE-000"))
+			Expect(resp).To(HaveKeyWithValue("code", "MAE-001"))
 			Expect(resp).To(HaveKeyWithValue("description", "pg: database is closed"))
-			Expect(resp).To(HaveKeyWithValue("error", "Create scheduler failed"))
+			Expect(resp).To(HaveKeyWithValue("error", "DatabaseError"))
 			Expect(resp).To(HaveKeyWithValue("success", false))
 			Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
 		})
@@ -199,6 +205,7 @@ var _ = Describe("App", func() {
 
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -212,6 +219,7 @@ var _ = Describe("App", func() {
 			url := fmt.Sprintf("%s/%s", url, configYaml.Name)
 			request, err = http.NewRequest("DELETE", url, body)
 			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -245,6 +253,7 @@ var _ = Describe("App", func() {
 					"status":    models.StatusTerminated,
 				}))
 				Expect(err).NotTo(HaveOccurred())
+				request.Header.Add("Authorization", "Bearer token")
 				recorder = httptest.NewRecorder()
 
 				app.Router.ServeHTTP(recorder, request)
@@ -291,6 +300,7 @@ var _ = Describe("App", func() {
 			url := fmt.Sprintf("http://%s/scheduler", app.Address)
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -306,6 +316,7 @@ var _ = Describe("App", func() {
 			url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, configYaml.Name)
 			request, err = http.NewRequest("PUT", url, bodyRdr)
 			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
 
 			recorder = httptest.NewRecorder()
 			app.Router.ServeHTTP(recorder, request)
@@ -332,6 +343,7 @@ var _ = Describe("App", func() {
 			url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, configYaml.Name)
 			request, err := http.NewRequest("PUT", url, body)
 			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
 
 			recorder = httptest.NewRecorder()
 			app.Router.ServeHTTP(recorder, request)

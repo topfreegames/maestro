@@ -54,7 +54,7 @@ start-deps:
 
 start-deps-test:
 	@echo "Starting dependencies using HOST IP of ${MY_IP}..."
-	@env MY_IP=${MY_IP} docker-compose -f docker-compose-test.yaml --project-name maestro up -d
+	@env MY_IP=${MY_IP} docker-compose -f docker-compose-test.yaml --project-name maestro_test up -d
 	@sleep 10
 	@echo "Dependencies started successfully."
 
@@ -68,7 +68,11 @@ wait-for-pg:
 	@until docker exec maestro_postgres_1 pg_isready; do echo 'Waiting for Postgres...' && sleep 1; done
 	@sleep 2
 
-deps-test: start-deps-test wait-for-pg drop-test migrate-test minikube
+wait-for-test-pg:
+	@until docker exec maestrotest_postgres_1 pg_isready; do echo 'Waiting for Postgres...' && sleep 1; done
+	@sleep 2
+
+deps-test: start-deps-test wait-for-test-pg drop-test migrate-test minikube
 
 deps-test-ci: deps drop-test migrate-test minikube-ci
 
@@ -112,7 +116,7 @@ integration-board:
 integration-run:
 	@MAESTRO_EXTENSIONS_PG_HOST=${MY_IP} \
 		MAESTRO_EXTENSIONS_REDIS_URL=redis://${MY_IP}:6333 \
-		ginkgo -tags integration -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements worker api models 
+		ginkgo -tags integration -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements worker api models;
 
 int-ci: integration-board clear-coverage-profiles deps-test-ci integration-run gather-integration-profiles
 

@@ -29,3 +29,7 @@ sentry:
 newrelic:
   app: "maestro"
   key: ""
+oauth:
+  acceptedDomains: 
+  - "example.com"
+  - "other.com"

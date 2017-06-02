@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/models"
@@ -46,6 +47,8 @@ var _ = Describe("Worker", func() {
 
 		jsonStr, err = mt.NextJsonStr()
 		Expect(err).NotTo(HaveOccurred())
+
+		mockLogin.EXPECT().Authenticate(gomock.Any(), app.DB).Return("user@example.com", http.StatusOK, nil).AnyTimes()
 	})
 
 	AfterEach(func() {
@@ -76,6 +79,7 @@ var _ = Describe("Worker", func() {
 
 		It("should create a watcher when new scheduler is created", func() {
 			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			request.Header.Add("Authorization", "Bearer token")
 			Expect(err).NotTo(HaveOccurred())
 
 			app.Router.ServeHTTP(recorder, request)
@@ -102,6 +106,7 @@ var _ = Describe("Worker", func() {
 		It("should remove dead watchers", func() {
 			url = fmt.Sprintf("http://%s/scheduler", app.Address)
 			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			request.Header.Add("Authorization", "Bearer token")
 			Expect(err).NotTo(HaveOccurred())
 
 			app.Router.ServeHTTP(recorder, request)
@@ -145,6 +150,7 @@ var _ = Describe("Worker", func() {
 		It("should have two schedulers", func() {
 			url = fmt.Sprintf("http://%s/scheduler", app.Address)
 			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			request.Header.Add("Authorization", "Bearer token")
 			Expect(err).NotTo(HaveOccurred())
 
 			app.Router.ServeHTTP(recorder, request)
@@ -158,6 +164,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 			recorder = httptest.NewRecorder()
 			request, err = http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			request.Header.Add("Authorization", "Bearer token")
 			Expect(err).NotTo(HaveOccurred())
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusCreated))
@@ -180,6 +187,7 @@ var _ = Describe("Worker", func() {
 		It("should scale up", func() {
 			url = fmt.Sprintf("http://%s/scheduler", app.Address)
 			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			request.Header.Add("Authorization", "Bearer token")
 			Expect(err).NotTo(HaveOccurred())
 
 			app.Router.ServeHTTP(recorder, request)
@@ -215,6 +223,7 @@ var _ = Describe("Worker", func() {
 		It("should scale down", func() {
 			url = fmt.Sprintf("http://%s/scheduler", app.Address)
 			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			request.Header.Add("Authorization", "Bearer token")
 			Expect(err).NotTo(HaveOccurred())
 
 			app.Router.ServeHTTP(recorder, request)
@@ -295,6 +304,7 @@ var _ = Describe("Worker", func() {
 		It("should delete scheduler", func() {
 			url = fmt.Sprintf("http://%s/scheduler", app.Address)
 			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			request.Header.Add("Authorization", "Bearer token")
 			Expect(err).NotTo(HaveOccurred())
 
 			app.Router.ServeHTTP(recorder, request)
@@ -309,6 +319,7 @@ var _ = Describe("Worker", func() {
 
 			url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, yaml.Name)
 			request, err = http.NewRequest("DELETE", url, nil)
+			request.Header.Add("Authorization", "Bearer token")
 			Expect(err).NotTo(HaveOccurred())
 
 			recorder = httptest.NewRecorder()
@@ -331,6 +342,7 @@ var _ = Describe("Worker", func() {
 		It("should update running scheduler", func() {
 			url = fmt.Sprintf("http://%s/scheduler", app.Address)
 			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			request.Header.Add("Authorization", "Bearer token")
 			Expect(err).NotTo(HaveOccurred())
 
 			app.Router.ServeHTTP(recorder, request)
@@ -357,6 +369,7 @@ var _ = Describe("Worker", func() {
 
 			url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, yaml.Name)
 			request, err = http.NewRequest("PUT", url, body)
+			request.Header.Add("Authorization", "Bearer token")
 			Expect(err).NotTo(HaveOccurred())
 
 			recorder = httptest.NewRecorder()

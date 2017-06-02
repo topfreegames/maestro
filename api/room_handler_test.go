@@ -20,6 +20,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/topfreegames/maestro/models"
 	. "github.com/topfreegames/maestro/testing"
 )
 
@@ -313,6 +314,64 @@ var _ = Describe("Room Handler", func() {
 				Expect(obj["description"]).To(Equal("some error in redis"))
 				Expect(obj["success"]).To(Equal(false))
 			})
+		})
+	})
+
+	Describe("GET /scheduler/{schedulerName}/rooms/{roomName}/address", func() {
+		var (
+			game      = "pong"
+			image     = "pong/pong:v123"
+			name      = "roomName"
+			namespace = "schedulerName"
+			ports     = []*models.Port{
+				{
+					ContainerPort: 5050,
+				},
+			}
+			resourcesLimitsCPU      = "2"
+			resourcesLimitsMemory   = "128974848"
+			resourcesRequestsCPU    = "1"
+			resourcesRequestsMemory = "64487424"
+			shutdownTimeout         = 180
+		)
+		It("should return addresses", func() {
+			ns := models.NewNamespace(namespace)
+			err := ns.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			pod := models.NewPod(
+				game,
+				image,
+				name,
+				namespace,
+				resourcesLimitsCPU,
+				resourcesLimitsMemory,
+				resourcesRequestsCPU,
+				resourcesRequestsMemory,
+				shutdownTimeout,
+				ports,
+				nil,
+				nil,
+			)
+			_, err = pod.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			url := fmt.Sprintf(
+				"/scheduler/%s/rooms/%s/address",
+				namespace,
+				name,
+			)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var obj map[string]interface{}
+			err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj["address"]).To(BeNil())
+			Expect(obj["success"]).To(Equal(true))
 		})
 	})
 })
