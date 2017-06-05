@@ -52,7 +52,7 @@ func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if token.RefreshToken == "" {
 		m.App.HandleError(
 			w,
-			http.StatusUnprocessableEntity,
+			http.StatusUnauthorized,
 			"",
 			errors.NewAccessError("access token was not found on db", fmt.Errorf("access token error")),
 		)

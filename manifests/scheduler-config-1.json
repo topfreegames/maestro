@@ -20,17 +20,17 @@
          "delta": 1,
          "trigger": {
             "usage": 70,
-            "time": 1
+            "time": 10
          },
-         "cooldown": 1
+         "cooldown": 30
       },
       "down": {
          "delta": 1,
          "trigger": {
             "usage": 50,
-            "time": 1
+            "time": 10
          },
-         "cooldown": 1
+         "cooldown": 30
       }
    }
 }

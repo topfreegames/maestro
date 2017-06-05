@@ -144,6 +144,22 @@ var _ = Describe("Scheduler Handler", func() {
 					Expect(recorder.Code).To(Equal(http.StatusCreated))
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 				})
+
+				It("should return 409 if namespace already exists", func() {
+					ns := models.NewNamespace("scheduler-name")
+					err := ns.Create(clientset)
+					Expect(err).NotTo(HaveOccurred())
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(http.StatusConflict))
+					var obj map[string]interface{}
+					err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(obj["code"]).To(Equal("MAE-000"))
+					Expect(obj["error"]).To(Equal("Create scheduler failed"))
+					Expect(strings.ToLower(obj["description"].(string))).To(Equal("namespace \"scheduler-name\" already exists"))
+					Expect(obj["success"]).To(Equal(false))
+				})
 			})
 
 			Context("missing payload argument", func() {
@@ -736,7 +752,7 @@ var _ = Describe("Scheduler Handler", func() {
 			Expect(body).To(HaveKeyWithValue("error", "authorization access error"))
 		})
 
-		It("should return status code 422 if token is not found on DB", func() {
+		It("should return status code 401 if token is not found on DB", func() {
 			mockDb.EXPECT().Query(gomock.Any(), `SELECT access_token, refresh_token, expiry, token_type
 						FROM users
 						WHERE key_access_token = ?`, gomock.Any())
@@ -746,7 +762,7 @@ var _ = Describe("Scheduler Handler", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			app.Router.ServeHTTP(recorder, request)
-			Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
 			body := make(map[string]interface{})
 			err = json.Unmarshal(recorder.Body.Bytes(), &body)
 			Expect(err).NotTo(HaveOccurred())

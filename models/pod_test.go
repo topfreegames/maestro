@@ -139,6 +139,9 @@ var _ = Describe("Pod", func() {
 			Expect(podv1.Spec.Tolerations[0].Operator).To(Equal(v1.TolerationOpEqual))
 			Expect(podv1.Spec.Tolerations[0].Value).To(Equal(game))
 			Expect(podv1.Spec.Tolerations[0].Effect).To(Equal(v1.TaintEffectNoSchedule))
+			Expect(podv1.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Key).To(Equal("game"))
+			Expect(podv1.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Operator).To(Equal(v1.NodeSelectorOpIn))
+			Expect(podv1.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values).To(ConsistOf(game))
 
 			Expect(podv1.Spec.Containers).To(HaveLen(1))
 			Expect(podv1.Spec.Containers[0].Name).To(Equal(name))

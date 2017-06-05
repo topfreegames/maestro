@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -52,8 +53,14 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	})
 
 	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "already exists") {
+			status = http.StatusConflict
+		} else if err.Error() == "timeout waiting for rooms to be created" {
+			status = http.StatusUnprocessableEntity
+		}
 		logger.WithError(err).Error("Create scheduler failed.")
-		g.App.HandleError(w, http.StatusInternalServerError, "Create scheduler failed", err)
+		g.App.HandleError(w, status, "Create scheduler failed", err)
 		return
 	}
 

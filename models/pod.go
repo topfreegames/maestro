@@ -35,6 +35,15 @@ spec:
     operator: "Equal"
     value: {{.Game}}
     effect: "NoSchedule"
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: "game"
+            operator: In
+            values:
+            - {{.Game}}
   containers:
   - name: {{.Name}}
     image: {{.Image}}

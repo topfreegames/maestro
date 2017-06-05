@@ -141,7 +141,7 @@ var _ = Describe("Controller", func() {
 			}
 		})
 
-		It("should rollback if error creating namespace", func() {
+		It("should return error if namespace already exists", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
@@ -152,11 +152,11 @@ var _ = Describe("Controller", func() {
 
 			err = controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(fmt.Sprintf("Namespace \"%s\" already exists", configYaml1.Name)))
+			Expect(err.Error()).To(Equal(fmt.Sprintf("namespace \"%s\" already exists", configYaml1.Name)))
 
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ns.Items).To(HaveLen(0))
+			Expect(ns.Items).To(HaveLen(1))
 
 			svcs, err := clientset.CoreV1().Services("controller-name").List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())

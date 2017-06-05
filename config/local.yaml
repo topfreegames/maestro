@@ -12,17 +12,17 @@ extensions:
     url: redis://localhost:6363
     connectionTimeout: 200
 watcher:
-  autoScalingPeriod: 5
+  autoScalingPeriod: 30
   lockKey: "maestro-lock-key"
   lockTimeoutMs: 180000
   gracefulShutdownTimeout: 300
 worker:
-  syncPeriod: 5
+  syncPeriod: 30
   gracefulShutdownTimeout: 300
 scaleUpTimeoutSeconds: 300
 scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 150
-pingTimeout: 30
+pingTimeout: 10
 updateTimeoutSeconds: 600
 sentry:
   url: ""

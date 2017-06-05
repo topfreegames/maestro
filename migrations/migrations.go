@@ -104,7 +104,7 @@ func migrations0002CreateusertableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0002-CreateUserTable.sql", size: 658, mode: os.FileMode(420), modTime: time.Unix(1496664588, 0)}
+	info := bindataFileInfo{name: "migrations/0002-CreateUserTable.sql", size: 658, mode: os.FileMode(420), modTime: time.Unix(1496674916, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

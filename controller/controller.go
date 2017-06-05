@@ -41,6 +41,20 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 
 	// by creating the namespace first we ensure it is available in kubernetes
 	namespace := models.NewNamespace(configYAML.Name)
+
+	var exists bool
+	err = mr.WithSegment(models.SegmentNamespace, func() error {
+		exists, err = namespace.Exists(clientset)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		return fmt.Errorf(`namespace "%s" already exists`, namespace.Name)
+	}
+
 	err = mr.WithSegment(models.SegmentNamespace, func() error {
 		return namespace.Create(clientset)
 	})
@@ -70,6 +84,10 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 
 	err = ScaleUp(logger, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true)
 	if err != nil {
+		if scheduler.LastScaleOpAt == int64(0) {
+			// this prevents error: null value in column \"last_scale_op_at\" violates not-null constraint
+			scheduler.LastScaleOpAt = int64(1)
+		}
 		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace, timeoutSec)
 		if deleteErr != nil {
 			return deleteErr
@@ -222,27 +240,27 @@ func waitForPods(
 		exit := true
 		select {
 		case <-timeoutChan:
-			for _, podToDelete := range pods {
-				deleteServiceAndPod(l, mr, clientset, namespace, podToDelete)
-			}
 			return errors.New("timeout waiting for rooms to be created")
 		case <-tickerChan:
 			for i := 0; i < numberOfPods; i++ {
-				pod, err := clientset.CoreV1().Pods(namespace).Get(pods[i], metav1.GetOptions{})
-				if err != nil {
-					l.WithError(err).Error("scale up pod error")
-				} else {
-					if len(pod.Status.Phase) == 0 {
-						break // TODO: HACK!!!  Trying to detect if we are running unit tests
-					}
-					if pod.Status.Phase != v1.PodRunning {
+				if pods[i] != "" {
+					pod, err := clientset.CoreV1().Pods(namespace).Get(pods[i], metav1.GetOptions{})
+					if err != nil {
+						l.WithError(err).Error("scale up pod error")
 						exit = false
-						break
-					}
-					for _, containerStatus := range pod.Status.ContainerStatuses {
-						if !containerStatus.Ready {
+					} else {
+						if len(pod.Status.Phase) == 0 {
+							break // TODO: HACK!!!  Trying to detect if we are running unit tests
+						}
+						if pod.Status.Phase != v1.PodRunning {
 							exit = false
 							break
+						}
+						for _, containerStatus := range pod.Status.ContainerStatuses {
+							if !containerStatus.Ready {
+								exit = false
+								break
+							}
 						}
 					}
 				}
@@ -547,6 +565,9 @@ func UpdateSchedulerConfig(
 		)
 		if err != nil {
 			logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
+			for _, podToDelete := range pods {
+				deleteServiceAndPod(l, mr, clientset, configYAML.Name, podToDelete)
+			}
 			return err
 		}
 	}
