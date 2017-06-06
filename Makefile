@@ -125,6 +125,7 @@ integration-run:
 		echo "Node affinity called 'game' is already set." 		\
 			"It must be temporarily unset to run" 							\
 			"integration tests";																\
+		exit 1; 																							\
 	fi
 
 int-ci: integration-board clear-coverage-profiles deps-test-ci integration-run gather-integration-profiles

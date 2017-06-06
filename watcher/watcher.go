@@ -215,6 +215,13 @@ func (w *Watcher) AutoScale() {
 	if shouldScaleUp {
 		l.Info("scheduler is subdimensioned, scaling up")
 		timeoutSec := w.Config.GetInt("scaleUpTimeoutSeconds")
+
+		delta := autoScalingInfo.Up.Delta
+		currentRooms := roomCountByStatus.Creating + roomCountByStatus.Occupied + roomCountByStatus.Ready
+		if currentRooms+delta < autoScalingInfo.Min {
+			delta = autoScalingInfo.Min - currentRooms
+		}
+
 		err = controller.ScaleUp(
 			logger,
 			w.MetricsReporter,
@@ -222,7 +229,7 @@ func (w *Watcher) AutoScale() {
 			w.RedisClient.Client,
 			w.KubernetesClient,
 			scheduler,
-			autoScalingInfo.Up.Delta,
+			delta,
 			timeoutSec,
 			false,
 		)
