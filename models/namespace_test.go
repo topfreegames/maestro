@@ -105,30 +105,6 @@ var _ = Describe("Namespace", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should succeed if namespace exists and has pods", func() {
-			Skip("has to be an integration test since mock does not implement DeleteCollection correctly")
-
-			namespace := models.NewNamespace(name)
-			err := namespace.Create(clientset)
-			Expect(err).NotTo(HaveOccurred())
-
-			pod := models.NewPod(
-				"game", "image", "name", namespace.Name, "1", "1", "1", "1", 0,
-				[]*models.Port{{ContainerPort: 5050}},
-				[]string{"command"},
-				[]*models.EnvVar{},
-			)
-			_, err = pod.Create(clientset)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = namespace.DeletePods(clientset)
-			Expect(err).NotTo(HaveOccurred())
-
-			pods, err := clientset.CoreV1().Pods(namespace.Name).List(metav1.ListOptions{})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pods.Items).To(HaveLen(0))
-		})
-
 		It("should succeed if namespace exists and has no pods", func() {
 			namespace := models.NewNamespace(name)
 			err := namespace.Create(clientset)
