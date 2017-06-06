@@ -923,7 +923,7 @@ var _ = Describe("Controller", func() {
 			Expect(err.Error()).To(Equal("some error in redis"))
 		})
 
-		It("should return error if delete non existing service and pod", func() {
+		It("should not return error if delete non existing service and pod", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
@@ -952,8 +952,7 @@ var _ = Describe("Controller", func() {
 
 			timeoutSec = 300
 			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Service \"non-existing-service\" not found"))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return timeout error", func() {
