@@ -373,5 +373,48 @@ var _ = Describe("Room Handler", func() {
 			Expect(obj["address"]).To(BeNil())
 			Expect(obj["success"]).To(Equal(true))
 		})
+
+		It("should return error if name doesn't exist", func() {
+			ns := models.NewNamespace(namespace)
+			err := ns.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			pod := models.NewPod(
+				game,
+				image,
+				name,
+				namespace,
+				resourcesLimitsCPU,
+				resourcesLimitsMemory,
+				resourcesRequestsCPU,
+				resourcesRequestsMemory,
+				shutdownTimeout,
+				ports,
+				nil,
+				nil,
+			)
+			_, err = pod.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			namespace := "unexisting-name"
+			url := fmt.Sprintf(
+				"/scheduler/%s/rooms/%s/address",
+				namespace,
+				name,
+			)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
+
+			var obj map[string]interface{}
+			err = json.Unmarshal(recorder.Body.Bytes(), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj).To(HaveKeyWithValue("code", "MAE-000"))
+			Expect(obj).To(HaveKeyWithValue("description", "Pod \"roomName\" not found"))
+			Expect(obj).To(HaveKeyWithValue("error", "Address handler error"))
+			Expect(obj).To(HaveKeyWithValue("success", false))
+		})
 	})
 })

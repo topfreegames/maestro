@@ -39,7 +39,7 @@ var _ = Describe("Namespace", func() {
 	})
 
 	Describe("DeletePods", func() {
-		FIt("should succeed if namespace exists and has pods", func() {
+		It("should succeed if namespace exists and has pods", func() {
 			namespace = models.NewNamespace(name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
@@ -132,8 +133,12 @@ func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	roomAddresses, err := room.GetAddresses(h.App.KubernetesClient)
 
 	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "not found") {
+			status = http.StatusUnprocessableEntity
+		}
 		logger.WithError(err).Error("Address handler failed.")
-		h.App.HandleError(w, http.StatusInternalServerError, "Address handler error", err)
+		h.App.HandleError(w, status, "Address handler error", err)
 		return
 	}
 

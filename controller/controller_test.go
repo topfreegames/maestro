@@ -244,40 +244,6 @@ var _ = Describe("Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(0))
 		})
-
-		It("should rollback if error updating scheduler state", func() {
-			Skip("has to be an integration test since mock does not implement DeleteCollection correctly")
-
-			var configYaml1 models.ConfigYAML
-			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
-			Expect(err).NotTo(HaveOccurred())
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-				func(schedulerName string, statusInfo map[string]interface{}) {
-					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-				},
-			).Times(configYaml1.AutoScaling.Min)
-			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Min)
-			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Min)
-			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
-			mockDb.EXPECT().Query(gomock.Any(), "INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id", gomock.Any())
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Return(&types.Result{}, errors.New("error updating state"))
-			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
-
-			err = controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("error updating state"))
-
-			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ns.Items).To(HaveLen(0))
-		})
 	})
 
 	Describe("CreateNamespaceIfNecessary", func() {
@@ -639,36 +605,6 @@ var _ = Describe("Controller", func() {
 	})
 
 	Describe("ScaleUp", func() {
-		It("should succeed", func() {
-			Skip("has to be an integration test")
-			amount := 5
-			var configYaml1 models.ConfigYAML
-			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
-			Expect(err).NotTo(HaveOccurred())
-			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(amount)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-				func(schedulerName string, statusInfo map[string]interface{}) {
-					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-				},
-			).Times(amount)
-			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(amount)
-			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(amount)
-			mockPipeline.EXPECT().Exec().Times(amount)
-
-			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true)
-			Expect(err).NotTo(HaveOccurred())
-
-			svcs, err := clientset.CoreV1().Services(configYaml1.Name).List(metav1.ListOptions{})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(svcs.Items).To(HaveLen(amount))
-			pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pods.Items).To(HaveLen(amount))
-		})
-
 		It("should fail and return error if error creating service and pods and initial op", func() {
 			amount := 5
 			var configYaml1 models.ConfigYAML
