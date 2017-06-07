@@ -104,8 +104,12 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
       ```
         {
           "success": [bool]true,
-          "host":    [string]<host ip>,
-          "port":    [int]<port number>
+          "addresses": [
+            {
+              "address": [string]<room ip and port>,
+              "name": [string]<room name>
+            },...
+          ]
         }
       ```
 
