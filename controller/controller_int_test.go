@@ -12,8 +12,6 @@ import (
 	"errors"
 	"time"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -22,10 +20,13 @@ import (
 	mtesting "github.com/topfreegames/maestro/testing"
 	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 var _ = Describe("Controller", func() {
 	var timeoutSec int
+	var configYaml1 models.ConfigYAML
 	var jsonStr string
 
 	BeforeEach(func() {
@@ -33,14 +34,21 @@ var _ = Describe("Controller", func() {
 		timeoutSec = 300
 		jsonStr, err = mtesting.NextJsonStr()
 		Expect(err).NotTo(HaveOccurred())
+
+		err = yaml.Unmarshal([]byte(jsonStr), &configYaml1)
+		Expect(err).NotTo(HaveOccurred())
+		node := &v1.Node{}
+		node.SetName(configYaml1.Name)
+		node.SetLabels(map[string]string{
+			"game": "game-name",
+		})
+
+		_, err = clientset.CoreV1().Nodes().Create(node)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Describe("CreateScheduler", func() {
 		It("should rollback if error updating scheduler state", func() {
-			var configYaml1 models.ConfigYAML
-			err := yaml.Unmarshal([]byte(jsonStr), &configYaml1)
-			Expect(err).NotTo(HaveOccurred())
-
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 				func(schedulerName string, statusInfo map[string]interface{}) {
@@ -59,12 +67,12 @@ var _ = Describe("Controller", func() {
 			).Return(&types.Result{}, errors.New("error updating state"))
 			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
 
-			err = controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err := controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error updating state"))
 
 			Eventually(func() error {
-				_, err := clientset.CoreV1().Namespaces().Get(configYaml1.Name, v1.GetOptions{})
+				_, err := clientset.CoreV1().Namespaces().Get(configYaml1.Name, metav1.GetOptions{})
 				return err
 			}).Should(HaveOccurred())
 		})

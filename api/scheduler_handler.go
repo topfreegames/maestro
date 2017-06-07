@@ -56,7 +56,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		status := http.StatusInternalServerError
 		if strings.Contains(err.Error(), "already exists") {
 			status = http.StatusConflict
-		} else if err.Error() == "timeout waiting for rooms to be created" {
+		} else if err.Error() == "node without label error" {
 			status = http.StatusUnprocessableEntity
 		}
 		logger.WithError(err).Error("Create scheduler failed.")
@@ -171,6 +171,8 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		status := http.StatusInternalServerError
 		if _, ok := err.(*maestroErrors.ValidationFailedError); ok {
 			status = http.StatusNotFound
+		} else if err.Error() == "node without label error" {
+			status = http.StatusUnprocessableEntity
 		}
 		logger.WithError(err).Error("Update scheduler failed.")
 		g.App.HandleError(w, status, "Update scheduler failed", err)

@@ -10,10 +10,12 @@ package models_test
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/v1"
 
 	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
@@ -244,6 +246,98 @@ var _ = Describe("Room", func() {
 			addresses, err := room.GetAddresses(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(addresses.Addresses)).To(Equal(0))
+		})
+
+		It("should return room address", func() {
+			var err error
+			name := "pong-free-for-all-0"
+			schedulerName := "pong-free-for-all"
+			nodeName := "node-name"
+			room := models.NewRoom(name, schedulerName)
+			ip := "192.168.10.11"
+			var port int32 = 1234
+
+			node := &v1.Node{}
+			node.SetName(nodeName)
+			node.Status.Addresses = []v1.NodeAddress{
+				v1.NodeAddress{
+					Type:    v1.NodeExternalIP,
+					Address: ip,
+				},
+			}
+			_, err = clientset.CoreV1().Nodes().Create(node)
+			Expect(err).NotTo(HaveOccurred())
+
+			pod := &v1.Pod{}
+			pod.Spec.NodeName = nodeName
+			pod.SetName(name)
+			_, err = clientset.CoreV1().Pods(schedulerName).Create(pod)
+			Expect(err).NotTo(HaveOccurred())
+
+			svc := &v1.Service{}
+			svc.SetName(name)
+			svc.Spec.Ports = []v1.ServicePort{
+				v1.ServicePort{
+					Name:     "TCP",
+					NodePort: port,
+				},
+			}
+			_, err = clientset.CoreV1().Services(schedulerName).Create(svc)
+			Expect(err).NotTo(HaveOccurred())
+
+			roomAddresses, err := room.GetAddresses(clientset)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(roomAddresses.Addresses).To(HaveLen(1))
+			Expect(roomAddresses.Addresses[0]).To(Equal(&models.RoomAddress{
+				Name:    "TCP",
+				Address: fmt.Sprintf("%s:%d", ip, port),
+			}))
+		})
+
+		It("should return error if there is no node", func() {
+			name := "pong-free-for-all-0"
+			schedulerName := "pong-free-for-all"
+			nodeName := "node-name"
+			room := models.NewRoom(name, schedulerName)
+
+			pod := &v1.Pod{}
+			pod.SetName(name)
+			pod.Spec.NodeName = nodeName
+			_, err := clientset.CoreV1().Pods(schedulerName).Create(pod)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = room.GetAddresses(clientset)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Node \"node-name\" not found"))
+		})
+
+		It("should return error if there is no service", func() {
+			name := "pong-free-for-all-0"
+			schedulerName := "pong-free-for-all"
+			nodeName := "node-name"
+			room := models.NewRoom(name, schedulerName)
+			ip := "192.168.10.11"
+
+			node := &v1.Node{}
+			node.SetName(nodeName)
+			node.Status.Addresses = []v1.NodeAddress{
+				v1.NodeAddress{
+					Type:    v1.NodeExternalIP,
+					Address: ip,
+				},
+			}
+			_, err := clientset.CoreV1().Nodes().Create(node)
+			Expect(err).NotTo(HaveOccurred())
+
+			pod := &v1.Pod{}
+			pod.SetName(name)
+			pod.Spec.NodeName = nodeName
+			_, err = clientset.CoreV1().Pods(schedulerName).Create(pod)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = room.GetAddresses(clientset)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Service \"pong-free-for-all-0\" not found"))
 		})
 	})
 

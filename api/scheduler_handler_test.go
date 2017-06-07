@@ -21,6 +21,7 @@ import (
 	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/pkg/api/v1"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -95,6 +96,13 @@ var _ = Describe("Scheduler Handler", func() {
 	BeforeEach(func() {
 		// Record HTTP responses.
 		recorder = httptest.NewRecorder()
+		node := &v1.Node{}
+		node.SetName("node-name")
+		node.SetLabels(map[string]string{
+			"game": "controller",
+		})
+		_, err := clientset.CoreV1().Nodes().Create(node)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Context("When authentication is ok", func() {
@@ -197,6 +205,24 @@ var _ = Describe("Scheduler Handler", func() {
 					Expect(obj["code"]).To(Equal("MAE-004"))
 					Expect(obj["error"]).To(Equal("ValidationFailedError"))
 					Expect(obj["description"]).To(ContainSubstring("ConfigYAML.shutdownTimeout"))
+					Expect(obj["success"]).To(Equal(false))
+				})
+			})
+
+			Context("where there is no node with affinity label", func() {
+				It("should return 422", func() {
+					err := clientset.CoreV1().Nodes().Delete("node-name", &metav1.DeleteOptions{})
+					Expect(err).NotTo(HaveOccurred())
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
+
+					var obj map[string]interface{}
+					err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(obj["code"]).To(Equal("MAE-003"))
+					Expect(obj["error"]).To(Equal("cluster has no nodes with label game and value game-name"))
+					Expect(obj["description"]).To(Equal("node without label error"))
 					Expect(obj["success"]).To(Equal(false))
 				})
 			})
@@ -461,7 +487,6 @@ var _ = Describe("Scheduler Handler", func() {
 				})
 
 				It("should return 400 if names doesn't match", func() {
-
 					var configYaml1 models.ConfigYAML
 					err := yaml.Unmarshal([]byte(jsonString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
@@ -480,6 +505,31 @@ var _ = Describe("Scheduler Handler", func() {
 					Expect(obj["code"]).To(Equal("MAE-004"))
 					Expect(obj["error"]).To(Equal("ValidationFailedError"))
 					Expect(obj["description"]).To(Equal("url name some-other-name doesn't match payload name scheduler-name"))
+					Expect(obj["success"]).To(Equal(false))
+				})
+
+				It("should return 422 if no nodes has affinity label", func() {
+					url := "/scheduler/scheduler-name"
+					err := json.Unmarshal([]byte(jsonString), &payload)
+					Expect(err).NotTo(HaveOccurred())
+
+					reader := JSONFor(payload)
+					request, err := http.NewRequest("PUT", url, reader)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = clientset.CoreV1().Nodes().Delete("node-name", &metav1.DeleteOptions{})
+					Expect(err).NotTo(HaveOccurred())
+
+					mockRedisClient.EXPECT().Ping().AnyTimes()
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
+					var obj map[string]interface{}
+					err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(obj["code"]).To(Equal("MAE-003"))
+					Expect(obj["error"]).To(Equal("cluster doesn't have cluster with label game and value game-name"))
+					Expect(obj["description"]).To(Equal("node without label error"))
 					Expect(obj["success"]).To(Equal(false))
 				})
 			})

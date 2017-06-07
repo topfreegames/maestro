@@ -64,8 +64,7 @@ var _ = Describe("App", func() {
 		exists, err := models.NewNamespace(configYaml.Name).Exists(clientset)
 		Expect(err).NotTo(HaveOccurred())
 		if exists {
-			err := clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
-			Expect(err).NotTo(HaveOccurred())
+			clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
 		}
 	})
 
@@ -186,6 +185,32 @@ var _ = Describe("App", func() {
 			Expect(resp).To(HaveKeyWithValue("error", "DatabaseError"))
 			Expect(resp).To(HaveKeyWithValue("success", false))
 			Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+		})
+
+		It("should return 500 if timeout during creation", func() {
+			body := strings.NewReader(jsonStr)
+			configYaml, err = models.NewConfigYAML(jsonStr)
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest("POST", url, body)
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
+
+			timeoutSec := app.Config.GetInt("scaleUpTimeoutSeconds")
+			app.Config.Set("scaleUpTimeoutSeconds", 0)
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+
+			resp := make(map[string]interface{})
+			err = json.Unmarshal(recorder.Body.Bytes(), &resp)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp).To(HaveKeyWithValue("code", "MAE-000"))
+			Expect(resp).To(HaveKeyWithValue("description", "timeout deleting namespace"))
+			Expect(resp).To(HaveKeyWithValue("error", "Create scheduler failed"))
+			Expect(resp).To(HaveKeyWithValue("success", false))
+
+			app.Config.Set("scaleUpTimeoutSeconds", timeoutSec)
 		})
 	})
 

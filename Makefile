@@ -119,7 +119,7 @@ integration-run:
     MAESTRO_EXTENSIONS_REDIS_URL=redis://${MY_IP}:6333    \
     ginkgo -tags integration -cover -r                    \
       -randomizeAllSpecs -randomizeSuites                 \
-      -skipMeasurements worker api models;                \
+      -skipMeasurements worker api models controller;     \
       kubectl label nodes minikube game-;                 \
   else                                                    \
     echo "Node affinity called 'game' is already set."    \

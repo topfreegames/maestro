@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
@@ -74,18 +75,26 @@ var _ = Describe("Controller", func() {
 	var timeoutSec int
 	var lockTimeoutMS int = 600
 	var lockKey string = "maestro-test-lock-key"
+	var configYaml1 models.ConfigYAML
 
 	BeforeEach(func() {
 		clientset = fake.NewSimpleClientset()
 		timeoutSec = 300
+		err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+		Expect(err).NotTo(HaveOccurred())
+
+		node := &v1.Node{}
+		node.SetName(configYaml1.Name)
+		node.SetLabels(map[string]string{
+			"game": "controller",
+		})
+
+		_, err = clientset.CoreV1().Nodes().Create(node)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Describe("CreateScheduler", func() {
 		It("should succeed", func() {
-			var configYaml1 models.ConfigYAML
-			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
-			Expect(err).NotTo(HaveOccurred())
-
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 				func(schedulerName string, statusInfo map[string]interface{}) {
@@ -107,7 +116,7 @@ var _ = Describe("Controller", func() {
 				gomock.Any(),
 			)
 
-			err = controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err := controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).NotTo(HaveOccurred())
 
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
@@ -244,6 +253,17 @@ var _ = Describe("Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(0))
 		})
+
+		It("should return error if there is no node with label", func() {
+			_, err := clientset.CoreV1().Nodes().Get(configYaml1.Name, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			err = clientset.CoreV1().Nodes().Delete(configYaml1.Name, &metav1.DeleteOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			err = controller.CreateScheduler(nil, nil, nil, nil, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("node without label error"))
+		})
 	})
 
 	Describe("CreateNamespaceIfNecessary", func() {
@@ -327,6 +347,90 @@ var _ = Describe("Controller", func() {
 			err = controller.DeleteScheduler(logger, mr, mockDb, clientset, configYaml1.Name, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error deleting in db"))
+		})
+
+		It("should fail if update on existing scheduler fails", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.YAML = yaml1
+				scheduler.ID = "random-id"
+			})
+			mockDb.EXPECT().
+				Query(
+					gomock.Any(),
+					"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+					gomock.Any(),
+				).Return(nil, errors.New("error on updating"))
+
+			err = controller.DeleteScheduler(logger, mr, mockDb, clientset, configYaml1.Name, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("error on updating"))
+		})
+
+		It("should return error if timeout waiting for pods after delete", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.YAML = yaml1
+			})
+
+			timeoutSec := 0
+			err = controller.DeleteScheduler(logger, mr, mockDb, clientset, configYaml1.Name, timeoutSec)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error if timeout with 'shutdownTimeout'", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			yaml1 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 0
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+`
+
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.YAML = yaml1
+			})
+
+			err = controller.DeleteScheduler(logger, mr, mockDb, clientset, configYaml1.Name, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("timeout deleting scheduler pods"))
 		})
 	})
 

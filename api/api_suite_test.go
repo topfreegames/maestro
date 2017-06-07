@@ -19,6 +19,7 @@ import (
 
 	"testing"
 
+	clockmocks "github.com/topfreegames/extensions/clock/mocks"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/api"
@@ -38,6 +39,7 @@ var (
 	mockPipeline    *redismocks.MockPipeliner
 	mockRedisClient *redismocks.MockRedisClient
 	mockLogin       *mocks.MockLogin
+	mockClock       *clockmocks.MockClock
 	allStatus       = []string{
 		models.StatusCreating,
 		models.StatusReady,
