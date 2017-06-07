@@ -370,8 +370,8 @@ var _ = Describe("Room Handler", func() {
 			var obj map[string]interface{}
 			err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(obj["address"]).To(BeNil())
-			Expect(obj["success"]).To(Equal(true))
+			Expect(obj["ports"]).To(BeNil())
+			Expect(obj["host"]).To(BeEmpty())
 		})
 
 		It("should return error if name doesn't exist", func() {

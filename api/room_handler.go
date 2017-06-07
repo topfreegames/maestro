@@ -9,7 +9,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -142,17 +141,14 @@ func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bytes, err := json.Marshal(&roomAddresses.Addresses)
+	bytes, err := json.Marshal(roomAddresses)
 	if err != nil {
 		logger.WithError(err).Error("Address handler failed.")
 		h.App.HandleError(w, http.StatusInternalServerError, "Address handler error", err)
 		return
 	}
 	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusOK, fmt.Sprintf(
-			`{"success": true, "addresses": %s}`,
-			string(bytes),
-		))
+		WriteBytes(w, http.StatusOK, bytes)
 		return nil
 	})
 	logger.Debug("Performed address handler.")

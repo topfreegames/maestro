@@ -10,7 +10,6 @@ package models_test
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -245,7 +244,7 @@ var _ = Describe("Room", func() {
 			room := models.NewRoom(name, namespace)
 			addresses, err := room.GetAddresses(clientset)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(addresses.Addresses)).To(Equal(0))
+			Expect(len(addresses.Ports)).To(Equal(0))
 		})
 
 		It("should return room address", func() {
@@ -287,11 +286,13 @@ var _ = Describe("Room", func() {
 
 			roomAddresses, err := room.GetAddresses(clientset)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(roomAddresses.Addresses).To(HaveLen(1))
-			Expect(roomAddresses.Addresses[0]).To(Equal(&models.RoomAddress{
-				Name:    "TCP",
-				Address: fmt.Sprintf("%s:%d", ip, port),
-			}))
+			Expect(roomAddresses.Host).To(Equal(ip))
+			Expect(roomAddresses.Ports).To(HaveLen(1))
+			Expect(roomAddresses.Ports[0]).To(Equal(
+				&models.RoomPort{
+					Name: "TCP",
+					Port: port,
+				}))
 		})
 
 		It("should return error if there is no node", func() {

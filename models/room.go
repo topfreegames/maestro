@@ -29,13 +29,14 @@ type Room struct {
 
 // RoomAddresses struct
 type RoomAddresses struct {
-	Addresses []*RoomAddress `json:"addresses"`
+	Ports []*RoomPort `json:"ports"`
+	Host  string      `json:"host"`
 }
 
 // RoomAddress struct
-type RoomAddress struct {
-	Name    string `json:"name"`
-	Address string `json:"address"`
+type RoomPort struct {
+	Name string `json:"name"`
+	Port int32  `json:"port"`
 }
 
 // NewRoom is the room constructor
@@ -133,10 +134,10 @@ func (r *Room) GetAddresses(kubernetesClient kubernetes.Interface) (*RoomAddress
 	if err != nil {
 		return nil, err
 	}
-	var podNodeIP string
 	for _, address := range node.Status.Addresses {
 		if address.Type == v1.NodeExternalIP {
-			podNodeIP = address.Address
+			rAddresses.Host = address.Address
+			break
 		}
 	}
 	svc, err := kubernetesClient.CoreV1().Services(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
@@ -144,9 +145,9 @@ func (r *Room) GetAddresses(kubernetesClient kubernetes.Interface) (*RoomAddress
 		return nil, err
 	}
 	for _, port := range svc.Spec.Ports {
-		rAddresses.Addresses = append(rAddresses.Addresses, &RoomAddress{
-			Name:    port.Name,
-			Address: fmt.Sprintf("%s:%d", podNodeIP, port.NodePort),
+		rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
+			Name: port.Name,
+			Port: port.NodePort,
 		})
 	}
 	return rAddresses, nil
