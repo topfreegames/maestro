@@ -12,18 +12,18 @@ extensions:
     url: redis://localhost:6363
     connectionTimeout: 200
 watcher:
-  autoScalingPeriod: 30
+  autoScalingPeriod: 10
   lockKey: "maestro-lock-key"
   lockTimeoutMs: 180000
   gracefulShutdownTimeout: 300
 worker:
-  syncPeriod: 30
+  syncPeriod: 10
   gracefulShutdownTimeout: 300
-scaleUpTimeoutSeconds: 300
-scaleDownTimeoutSeconds: 300
-deleteTimeoutSeconds: 150
-pingTimeout: 10
-updateTimeoutSeconds: 600
+scaleUpTimeoutSeconds: 60
+scaleDownTimeoutSeconds: 60
+deleteTimeoutSeconds: 60
+pingTimeout: 60
+updateTimeoutSeconds: 60
 sentry:
   url: ""
 newrelic:
