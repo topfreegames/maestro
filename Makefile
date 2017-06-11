@@ -30,6 +30,7 @@ build:
 
 build-docker: cross-build-linux-amd64
 	@docker build -t maestro .
+	@docker build -t maestro-config -f Dockerfile.db-config .
 
 cross-build-linux-amd64:
 	@env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ./bin/maestro-linux-amd64
