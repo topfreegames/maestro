@@ -1,0 +1,8 @@
+postgres_host: maestro-postgres
+postgres_port: "5432"
+postgres_user: maestro
+postgres_database: maestro
+redis_url: redis://:@maestro-redis:6379
+google_clientid: ""
+google_clientsecret: ""
+oauth_domains: "example.com other.com"

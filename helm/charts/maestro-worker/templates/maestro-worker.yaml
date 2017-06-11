@@ -1,0 +1,35 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: maestro-worker
+  labels:
+    heritage: maestro-worker
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: maestro-worker
+    spec:
+      containers:
+        - name: maestro-worker
+          command:
+            - "/bin/sh"
+            - "-c"
+            - "/app/maestro worker -v3 --incluster"
+          image: quay.io/tfgco/maestro:v{{ .Chart.Version }}
+          imagePullPolicy: Always
+          env:
+            - name: MAESTRO_EXTENSIONS_PG_HOST
+              value: {{ .Values.postgres_host }}
+            - name: MAESTRO_EXTENSIONS_PG_PORT
+              value: "{{ .Values.postgres_port }}"
+            - name: MAESTRO_EXTENSIONS_PG_USER
+              value: {{ .Values.postgres_user }}
+            - name: MAESTRO_EXTENSIONS_PG_PASS
+              value: {{ .Values.postgres_password }}
+            - name: MAESTRO_EXTENSIONS_PG_DATABASE
+              value: {{ .Values.postgres_database }}
+            - name: MAESTRO_EXTENSIONS_REDIS_URL
+              value: {{ .Values.redis_url }}

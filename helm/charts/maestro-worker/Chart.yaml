@@ -1,0 +1,7 @@
+name: maestro-worker
+home: https://github.com/topfreegames/maestro
+description: Maestro
+version: 2.2.0
+maintainers:
+  - name: TFGCo
+    email: backend@tfgco.com

@@ -1,0 +1,7 @@
+name: maestro-redis
+home: https://github.com/topfreegames/maestro
+description: Redis for maestro
+version: 0.1.0
+maintainers:
+  - name: TFGCo
+    email: backend@tfgco.com

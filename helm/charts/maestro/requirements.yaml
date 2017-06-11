@@ -1,0 +1,13 @@
+dependencies:
+  - name: maestro-redis
+    version: 0.1.0
+    repository: http://helm.tfgco.com
+  - name: maestro-postgres
+    version: 0.1.0
+    repository: http://helm.tfgco.com
+  - name: maestro-api
+    version: 2.2.0
+    repository: http://helm.tfgco.com
+  - name: maestro-worker
+    version: 2.2.0
+    repository: http://helm.tfgco.com

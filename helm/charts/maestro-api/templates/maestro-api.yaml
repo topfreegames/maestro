@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: maestro-api
+spec:
+  selector:
+    app: maestro-api
+  ports:
+    - protocol: TCP
+      port: 80
+  type: LoadBalancer
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: maestro-api
+  labels:
+    heritage: maestro-api
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: maestro-api
+    spec:
+      containers:
+        - name: maestro-api
+          command:
+            - "/bin/sh"
+            - "-c"
+            - "/app/maestro start -v3 -p 80 --incluster"
+          image: quay.io/tfgco/maestro:v{{ .Chart.Version }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          env:
+            - name: MAESTRO_EXTENSIONS_PG_HOST
+              value: {{ .Values.postgres_host }}
+            - name: MAESTRO_EXTENSIONS_PG_PORT
+              value: "{{ .Values.postgres_port }}"
+            - name: MAESTRO_EXTENSIONS_PG_USER
+              value: {{ .Values.postgres_user }}
+            - name: MAESTRO_EXTENSIONS_PG_PASS
+              value: {{ .Values.postgres_password }}
+            - name: MAESTRO_EXTENSIONS_PG_DATABASE
+              value: {{ .Values.postgres_dbname }}
+            - name: MAESTRO_GOOGLE_CLIENT_ID
+              value: {{ .Values.google_clientid }}
+            - name: MAESTRO_GOOGLE_CLIENT_SECRET
+              value: {{ .Values.google_clientsecret }}
+            - name: MAESTRO_OAUTH_ACCEPTEDDOMAINS
+              value: {{ .Values.oauth_domains }}
+            - name: MAESTRO_EXTENSIONS_REDIS_URL
+              value: {{ .Values.redis_url }}

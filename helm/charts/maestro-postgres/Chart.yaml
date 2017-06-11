@@ -1,0 +1,7 @@
+name: maestro-postgres
+home: https://github.com/topfreegames/maestro
+description: Postgres for keeping maestro cluster state
+version: 0.1.0
+maintainers:
+  - name: TFGCo
+    email: backend@tfgco.com

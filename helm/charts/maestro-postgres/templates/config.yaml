@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pg-config
+  labels:
+    name: pg-config
+  annotations:
+    "helm.sh/hook": post-install
+spec:
+  template:
+    metadata:
+      name: pg-config
+      labels:
+        name: pg-config
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: pg-config
+        image: quay.io/tfgco/maestro-config:v{{ .Chart.Version }}
+        env:
+          - name: MAESTRO_EXTENSIONS_PG_HOST
+            value: {{ .Values.postgres_host }}
+          - name: MAESTRO_EXTENSIONS_PG_PORT
+            value: "{{ .Values.postgres_port }}"
+          - name: MAESTRO_EXTENSIONS_PG_USER
+            value: {{ .Values.postgres_user }}
+          - name: MAESTRO_EXTENSIONS_PG_PASS
+            value: {{ .Values.postgres_password }}
+          - name: MAESTRO_EXTENSIONS_PG_DATABASE
+            value: {{ .Values.postgres_dbname }}
