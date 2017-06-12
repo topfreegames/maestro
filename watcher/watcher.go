@@ -249,7 +249,7 @@ func (w *Watcher) AutoScale() {
 			w.RedisClient.Client,
 			w.KubernetesClient,
 			scheduler,
-			autoScalingInfo.Up.Delta,
+			autoScalingInfo.Down.Delta,
 			timeoutSec,
 		)
 		scheduler.State = models.StateInSync

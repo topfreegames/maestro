@@ -513,7 +513,7 @@ var _ = Describe("Watcher", func() {
 			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
 
 			// ScaleDown
-			scaleDownAmount := 2
+			scaleDownAmount := configYaml1.AutoScaling.Down.Delta
 			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
 			mockRedisClient.EXPECT().
