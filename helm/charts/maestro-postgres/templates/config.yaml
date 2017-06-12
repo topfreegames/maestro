@@ -4,8 +4,10 @@ metadata:
   name: pg-config
   labels:
     name: pg-config
+    heritage: pg-config
   annotations:
     "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "2"
 spec:
   template:
     metadata:
@@ -27,4 +29,6 @@ spec:
           - name: MAESTRO_EXTENSIONS_PG_PASS
             value: {{ .Values.postgres_password }}
           - name: MAESTRO_EXTENSIONS_PG_DATABASE
-            value: {{ .Values.postgres_dbname }}
+            value: {{ .Values.postgres_database }}
+          - name: MAESTRO_RUN_SETUP
+            value: "true"

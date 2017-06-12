@@ -25,11 +25,23 @@ MAINTAINER TFG Co <backend@tfgco.com>
 
 RUN mkdir /app
 
+RUN apk update
+RUN apk add postgresql git make
+RUN go get -u github.com/jteeuwen/go-bindata/...
+
 COPY ./bin/maestro-linux-amd64 /app/maestro
 COPY ./config/local.yaml /app/config/local.yaml
+COPY ./Makefile /app/Makefile
+COPY ./scripts/drop.sql /app/scripts/drop.sql
+COPY ./migrations /app/migrations
 
 WORKDIR /app
 
 EXPOSE 8080
 
-CMD /app/maestro start
+ENV MAESTRO_RUN_SETUP ""
+ENV MAESTRO_EXTENSIONS_PG_HOST "maestro-postgres"
+ENV MAESTRO_EXTENSIONS_PG_PORT "5432"
+ENV MAESTRO_EXTENSIONS_PG_USER "maestro"
+
+CMD if [ "$MAESTRO_RUN_SETUP" != "true" ]; then /app/maestro start; else psql -U $MAESTRO_EXTENSIONS_PG_USER -h $MAESTRO_EXTENSIONS_PG_HOST -p $MAESTRO_EXTENSIONS_PG_PORT -f /app/scripts/drop.sql && make assets && /app/maestro migrate -c /app/config/local.yaml; fi
