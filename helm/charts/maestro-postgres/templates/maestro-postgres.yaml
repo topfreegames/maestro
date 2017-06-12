@@ -6,6 +6,8 @@ metadata:
   labels:
     name: maestro-postgres
   name: maestro-postgres
+  annotations:
+    "helm.sh/hook": pre-install
 spec:
   ports:
     - port: 5432
@@ -20,8 +22,7 @@ metadata:
   labels:
     heritage: maestro-postgres
   annotations:
-    "helm.sh/hook": post-install
-    "helm.sh/hook-weight": "1"
+    "helm.sh/hook": pre-install
 spec:
   replicas: 1
   template:

@@ -44,4 +44,4 @@ ENV MAESTRO_EXTENSIONS_PG_HOST "maestro-postgres"
 ENV MAESTRO_EXTENSIONS_PG_PORT "5432"
 ENV MAESTRO_EXTENSIONS_PG_USER "maestro"
 
-CMD if [ "$MAESTRO_RUN_SETUP" != "true" ]; then /app/maestro start; else psql -U $MAESTRO_EXTENSIONS_PG_USER -h $MAESTRO_EXTENSIONS_PG_HOST -p $MAESTRO_EXTENSIONS_PG_PORT -f /app/scripts/drop.sql && make assets && /app/maestro migrate -c /app/config/local.yaml; fi
+CMD if [ "$MAESTRO_RUN_SETUP" != "true" ]; then /app/maestro start; else sleep 10 && psql -U $MAESTRO_EXTENSIONS_PG_USER -h $MAESTRO_EXTENSIONS_PG_HOST -p $MAESTRO_EXTENSIONS_PG_PORT -f /app/scripts/drop.sql && make assets && /app/maestro migrate -c /app/config/local.yaml; fi
