@@ -1,3 +1,4 @@
+{{- if eq .Values.global.redis_location "on-cluster" }}
 ---
 apiVersion: v1
 kind: Service
@@ -30,3 +31,4 @@ spec:
           - redis-server 
         ports:
           - containerPort: 6379
+{{- end}}

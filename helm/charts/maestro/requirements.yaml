@@ -6,11 +6,11 @@ dependencies:
     version: 0.1.0
     repository: http://helm.tfgco.com
   - name: maestro-api
-    version: 2.3.2
+    version: 2.4.0
     repository: http://helm.tfgco.com
   - name: maestro-worker
-    version: 2.3.2
+    version: 2.4.0
     repository: http://helm.tfgco.com
   - name: maestro-db-config
-    version: 2.3.2
+    version: 2.4.0
     repository: http://helm.tfgco.com
