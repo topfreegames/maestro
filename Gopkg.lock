@@ -1,4 +1,10 @@
-memo = "d92fc2e936be3aae1e68fa4f4c59c4c6a50250487213f6f0b9d43bea893af373"
+memo = "e726a2c916b5d0ddb0a1f98c2d7fbc704debe6ce10e1d9356036109b06485d5a"
+
+[[projects]]
+  name = "cloud.google.com/go"
+  packages = ["compute/metadata","internal"]
+  revision = "2e6a95edb1071d750f6d7db777bf66cd2997af6c"
+  version = "v0.7.0"
 
 [[projects]]
   branch = "master"
@@ -128,9 +134,21 @@ memo = "d92fc2e936be3aae1e68fa4f4c59c4c6a50250487213f6f0b9d43bea893af373"
 
 [[projects]]
   branch = "master"
+  name = "github.com/golang/protobuf"
+  packages = ["proto","ptypes/any"]
+  revision = "4f95b0d3eab845462f9b0ca5ad21dea8093be211"
+
+[[projects]]
+  branch = "master"
   name = "github.com/google/gofuzz"
   packages = ["."]
   revision = "44d81051d367757e1c7c6a5a86423ece9afcf63c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/googleapis/gax-go"
+  packages = ["."]
+  revision = "84ed26760e7f6f80887a2fbfb50db3cc415d2cea"
 
 [[projects]]
   name = "github.com/gorilla/context"
@@ -283,10 +301,10 @@ memo = "d92fc2e936be3aae1e68fa4f4c59c4c6a50250487213f6f0b9d43bea893af373"
   revision = "5d46e70da8c0b6f812e0b170b7a985753b5c63cb"
 
 [[projects]]
-  branch = "master"
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
-  revision = "137b1597df43a30f7c073c5f2f7e268b10189e60"
+  revision = "79ad572a7e1b2252d40f2f9a6de42162c38aca86"
+  version = "v2.6.4"
 
 [[projects]]
   branch = "master"
@@ -303,8 +321,14 @@ memo = "d92fc2e936be3aae1e68fa4f4c59c4c6a50250487213f6f0b9d43bea893af373"
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["http2","http2/hpack","idna","lex/httplex"]
+  packages = ["context","context/ctxhttp","http2","http2/hpack","idna","internal/timeseries","lex/httplex","trace"]
   revision = "5602c733f70afc6dcec6766be0d5034d4c4f14de"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/oauth2"
+  packages = [".","google","internal","jws","jwt"]
+  revision = "f047394b6d14284165300fd82dad67edb3a4d7f6"
 
 [[projects]]
   branch = "master"
@@ -317,6 +341,24 @@ memo = "d92fc2e936be3aae1e68fa4f4c59c4c6a50250487213f6f0b9d43bea893af373"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","secure/bidirule","transform","unicode/bidi","unicode/cldr","unicode/norm","unicode/rangetable","width"]
   revision = "f4b4367115ec2de254587813edaa901bc1c723a8"
+
+[[projects]]
+  name = "google.golang.org/appengine"
+  packages = [".","internal","internal/app_identity","internal/base","internal/datastore","internal/log","internal/modules","internal/remote_api","internal/urlfetch","urlfetch"]
+  revision = "150dc57a1b433e64154302bdc40b6bb8aefa313a"
+  version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "google.golang.org/genproto"
+  packages = ["googleapis/rpc/status"]
+  revision = "aa2eb687b4d3e17154372564ad8d6bf11c3cf21f"
+
+[[projects]]
+  name = "google.golang.org/grpc"
+  packages = [".","codes","credentials","grpclb/grpc_lb_v1","grpclog","internal","keepalive","metadata","naming","peer","stats","status","tap","transport"]
+  revision = "d8960bd63c6743defa6d54926e5edfa8e4a28e43"
+  version = "v1.4.0"
 
 [[projects]]
   name = "gopkg.in/inf.v0"
