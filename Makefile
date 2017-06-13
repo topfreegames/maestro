@@ -114,19 +114,11 @@ integration-board:
 	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
 
 integration-run:
-	@if kubectl label nodes minikube game=game-name; then   \
-    MAESTRO_EXTENSIONS_PG_HOST=${MY_IP}                   \
+	@ MAESTRO_EXTENSIONS_PG_HOST=${MY_IP}                   \
     MAESTRO_EXTENSIONS_REDIS_URL=redis://${MY_IP}:6333    \
     ginkgo -tags integration -cover -r                    \
       -randomizeAllSpecs -randomizeSuites                 \
-      -skipMeasurements worker api models controller;     \
-      kubectl label nodes minikube game-;                 \
-  else                                                    \
-    echo "Node affinity called 'game' is already set."    \
-      "It must be temporarily unset to run"               \
-      "integration tests";                                \
-    exit 1;                                               \
-  fi
+      -skipMeasurements worker api models controller;     
 
 int-ci: integration-board clear-coverage-profiles deps-test-ci integration-run gather-integration-profiles
 

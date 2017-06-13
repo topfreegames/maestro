@@ -16,6 +16,7 @@ spec:
       containers:
       - name: pg-config
         image: quay.io/tfgco/maestro:v{{ .Chart.Version }}
+        imagePullPolicy: Always
         env:
           - name: MAESTRO_EXTENSIONS_PG_HOST
             value: {{ .Values.postgres_host }}
