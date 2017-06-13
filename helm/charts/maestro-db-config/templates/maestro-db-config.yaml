@@ -18,14 +18,14 @@ spec:
         image: quay.io/tfgco/maestro:v{{ .Chart.Version }}
         env:
           - name: MAESTRO_EXTENSIONS_PG_HOST
-            value: {{ .Values.postgres_host }}
+            value: {{ .Values.maestro.postgres_host }}
           - name: MAESTRO_EXTENSIONS_PG_PORT
-            value: "{{ .Values.postgres_port }}"
+            value: "{{ .Values.maestro.postgres_port }}"
           - name: MAESTRO_EXTENSIONS_PG_USER
-            value: {{ .Values.postgres_user }}
+            value: {{ .Values.maestro.postgres_user }}
           - name: MAESTRO_EXTENSIONS_PG_PASS
-            value: {{ .Values.postgres_password }}
+            value: {{ .Values.maestro.postgres_password }}
           - name: MAESTRO_EXTENSIONS_PG_DATABASE
-            value: {{ .Values.postgres_database }}
+            value: {{ .Values.maestro.postgres_database }}
           - name: MAESTRO_RUN_SETUP
             value: "true"

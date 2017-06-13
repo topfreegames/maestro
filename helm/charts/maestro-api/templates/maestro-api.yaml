@@ -35,20 +35,20 @@ spec:
             - containerPort: 80
           env:
             - name: MAESTRO_EXTENSIONS_PG_HOST
-              value: {{ .Values.postgres_host }}
+              value: {{ .Values.maestro.postgres_host }}
             - name: MAESTRO_EXTENSIONS_PG_PORT
-              value: "{{ .Values.postgres_port }}"
+              value: "{{ .Values.maestro.postgres_port }}"
             - name: MAESTRO_EXTENSIONS_PG_USER
-              value: {{ .Values.postgres_user }}
+              value: {{ .Values.maestro.postgres_user }}
             - name: MAESTRO_EXTENSIONS_PG_PASS
-              value: {{ .Values.postgres_password }}
+              value: {{ .Values.maestro.postgres_password }}
             - name: MAESTRO_EXTENSIONS_PG_DATABASE
-              value: {{ .Values.postgres_dbname }}
+              value: {{ .Values.maestro.postgres_database }}
             - name: MAESTRO_GOOGLE_CLIENT_ID
-              value: {{ .Values.google_clientid }}
+              value: {{ .Values.maestro.google_clientid }}
             - name: MAESTRO_GOOGLE_CLIENT_SECRET
-              value: {{ .Values.google_clientsecret }}
+              value: {{ .Values.maestro.google_clientsecret }}
             - name: MAESTRO_OAUTH_ACCEPTEDDOMAINS
-              value: {{ .Values.oauth_domains }}
+              value: {{ .Values.maestro.oauth_domains }}
             - name: MAESTRO_EXTENSIONS_REDIS_URL
-              value: {{ .Values.redis_url }}
+              value: {{ .Values.maestro.redis_url }}

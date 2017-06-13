@@ -1,4 +1,0 @@
-postgres_host: maestro-postgres
-postgres_port: "5432"
-postgres_user: maestro
-postgres_database: maestro
