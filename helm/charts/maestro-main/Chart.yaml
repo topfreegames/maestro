@@ -1,7 +1,7 @@
-name: maestro-api
+name: maestro-main
 home: https://github.com/topfreegames/maestro
-description: Maestro
-version: 2.4.1
+description: Maestro api and worker
+version: 2.5.0
 maintainers:
   - name: TFGCo
     email: backend@tfgco.com

@@ -22,14 +22,14 @@ spec:
           imagePullPolicy: Always
           env:
             - name: MAESTRO_EXTENSIONS_PG_HOST
-              value: {{ .Values.maestro.postgres_host }}
+              value: {{ .Values.postgres_host }}
             - name: MAESTRO_EXTENSIONS_PG_PORT
-              value: "{{ .Values.maestro.postgres_port }}"
+              value: "{{ .Values.postgres_port }}"
             - name: MAESTRO_EXTENSIONS_PG_USER
-              value: {{ .Values.maestro.postgres_user }}
+              value: {{ .Values.postgres_user }}
             - name: MAESTRO_EXTENSIONS_PG_PASS
-              value: {{ .Values.maestro.postgres_password }}
+              value: {{ .Values.postgres_password }}
             - name: MAESTRO_EXTENSIONS_PG_DATABASE
-              value: {{ .Values.maestro.postgres_database }}
+              value: {{ .Values.postgres_database }}
             - name: MAESTRO_EXTENSIONS_REDIS_URL
-              value: {{ .Values.maestro.redis_url }}
+              value: {{ .Values.redis_url }}

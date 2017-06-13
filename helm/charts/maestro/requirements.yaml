@@ -5,12 +5,6 @@ dependencies:
   - name: maestro-postgres
     version: 0.1.0
     repository: http://helm.tfgco.com
-  - name: maestro-api
-    version: 2.4.1
-    repository: http://helm.tfgco.com
-  - name: maestro-worker
-    version: 2.4.1
-    repository: http://helm.tfgco.com
-  - name: maestro-db-config
-    version: 2.4.1
+  - name: maestro-main
+    version: 2.5.0
     repository: http://helm.tfgco.com

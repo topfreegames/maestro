@@ -1,6 +1,6 @@
 global:
   database_location: "on-cluster"
-maestro:
+maestro-main:
   postgres_host: maestro-postgres
   postgres_port: "5432"
   postgres_user: maestro

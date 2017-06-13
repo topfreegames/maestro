@@ -1,7 +1,0 @@
-name: maestro-db-config
-home: https://github.com/topfreegames/maestro
-description: Configre Maestro databse
-version: 2.4.1
-maintainers:
-  - name: TFGCo
-    email: backend@tfgco.com
