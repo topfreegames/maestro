@@ -253,17 +253,6 @@ var _ = Describe("Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(0))
 		})
-
-		It("should return error if there is no node with label", func() {
-			_, err := clientset.CoreV1().Nodes().Get(configYaml1.Name, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
-			err = clientset.CoreV1().Nodes().Delete(configYaml1.Name, &metav1.DeleteOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			err = controller.CreateScheduler(nil, nil, nil, nil, clientset, &configYaml1, timeoutSec)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("node without label error"))
-		})
 	})
 
 	Describe("CreateNamespaceIfNecessary", func() {

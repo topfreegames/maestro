@@ -33,16 +33,6 @@ import (
 
 // CreateScheduler creates a new scheduler from a yaml configuration
 func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configYAML *models.ConfigYAML, timeoutSec int) error {
-	contains, err := clusterHasNodesWithAffinityLabels(clientset, configYAML.Game)
-	if err != nil {
-		return err
-	} else if !contains {
-		return maestroErrors.NewKubernetesError(
-			fmt.Sprintf("cluster has no nodes with label game and value %s", configYAML.Game),
-			fmt.Errorf("node without label error"),
-		)
-	}
-
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
 		return err
@@ -368,16 +358,6 @@ func UpdateSchedulerConfig(
 	lockKey string,
 	clock clockinterfaces.Clock,
 ) error {
-	contains, err := clusterHasNodesWithAffinityLabels(clientset, configYAML.Game)
-	if err != nil {
-		return err
-	} else if !contains {
-		return maestroErrors.NewKubernetesError(
-			fmt.Sprintf("cluster doesn't have cluster with label game and value %s", configYAML.Game),
-			fmt.Errorf("node without label error"),
-		)
-	}
-
 	schedulerName := configYAML.Name
 	l := logger.WithFields(logrus.Fields{
 		"source":    "updateSchedulerConfig",
@@ -386,7 +366,7 @@ func UpdateSchedulerConfig(
 
 	// Check if scheduler to Update exists indeed
 	scheduler := models.NewScheduler(schedulerName, "", "")
-	err = mr.WithSegment(models.SegmentSelect, func() error {
+	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return scheduler.Load(db)
 	})
 	if err != nil {
@@ -845,25 +825,4 @@ func waitForPods(
 	}
 
 	return nil
-}
-
-func clusterHasNodesWithAffinityLabels(
-	clientset kubernetes.Interface,
-	game string,
-) (bool, error) {
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.Set{}.AsSelector().String(),
-		FieldSelector: fields.Everything().String(),
-	}
-	nodes, nodesErr := clientset.CoreV1().Nodes().List(listOptions)
-	if nodesErr != nil {
-		return false, nodesErr
-	}
-	for _, node := range nodes.Items {
-		game, ok := node.GetLabels()["game"]
-		if ok && game == game {
-			return true, nil
-		}
-	}
-	return false, nil
 }

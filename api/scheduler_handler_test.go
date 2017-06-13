@@ -209,24 +209,6 @@ var _ = Describe("Scheduler Handler", func() {
 				})
 			})
 
-			Context("where there is no node with affinity label", func() {
-				It("should return 422", func() {
-					err := clientset.CoreV1().Nodes().Delete("node-name", &metav1.DeleteOptions{})
-					Expect(err).NotTo(HaveOccurred())
-
-					app.Router.ServeHTTP(recorder, request)
-					Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
-
-					var obj map[string]interface{}
-					err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(obj["code"]).To(Equal("MAE-003"))
-					Expect(obj["error"]).To(Equal("cluster has no nodes with label game and value game-name"))
-					Expect(obj["description"]).To(Equal("node without label error"))
-					Expect(obj["success"]).To(Equal(false))
-				})
-			})
-
 			Context("when postgres is down", func() {
 				It("returns status code of 500 if database is unavailable", func() {
 					mockDb.EXPECT().Query(
@@ -505,31 +487,6 @@ var _ = Describe("Scheduler Handler", func() {
 					Expect(obj["code"]).To(Equal("MAE-004"))
 					Expect(obj["error"]).To(Equal("ValidationFailedError"))
 					Expect(obj["description"]).To(Equal("url name some-other-name doesn't match payload name scheduler-name"))
-					Expect(obj["success"]).To(Equal(false))
-				})
-
-				It("should return 422 if no nodes has affinity label", func() {
-					url := "/scheduler/scheduler-name"
-					err := json.Unmarshal([]byte(jsonString), &payload)
-					Expect(err).NotTo(HaveOccurred())
-
-					reader := JSONFor(payload)
-					request, err := http.NewRequest("PUT", url, reader)
-					Expect(err).NotTo(HaveOccurred())
-
-					err = clientset.CoreV1().Nodes().Delete("node-name", &metav1.DeleteOptions{})
-					Expect(err).NotTo(HaveOccurred())
-
-					mockRedisClient.EXPECT().Ping().AnyTimes()
-
-					app.Router.ServeHTTP(recorder, request)
-					Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
-					var obj map[string]interface{}
-					err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(obj["code"]).To(Equal("MAE-003"))
-					Expect(obj["error"]).To(Equal("cluster doesn't have cluster with label game and value game-name"))
-					Expect(obj["description"]).To(Equal("node without label error"))
 					Expect(obj["success"]).To(Equal(false))
 				})
 			})

@@ -37,9 +37,10 @@ spec:
     effect: "NoSchedule"
   affinity:
     nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
           - key: "game"
             operator: In
             values:
@@ -90,7 +91,8 @@ func NewPod(
 	shutdownTimeout int,
 	ports []*Port,
 	command []string,
-	env []*EnvVar) *Pod {
+	env []*EnvVar,
+) *Pod {
 	return &Pod{
 		Command:                 command,
 		Env:                     env,
