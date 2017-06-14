@@ -17,7 +17,7 @@ spec:
           command:
             - "/bin/sh"
             - "-c"
-            - "/app/maestro worker -v3 --incluster"
+            - "/app/maestro worker --incluster"
           image: quay.io/tfgco/maestro:v{{ .Chart.Version }}
           imagePullPolicy: Always
           env:

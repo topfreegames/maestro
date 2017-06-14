@@ -28,7 +28,7 @@ spec:
           command:
             - "/bin/sh"
             - "-c"
-            - "/app/maestro start -v3 -p 80 --incluster"
+            - "/app/maestro migrate && /app/maestro start -p 80 --incluster"
           image: quay.io/tfgco/maestro:v{{ .Chart.Version }}
           imagePullPolicy: Always
           ports:

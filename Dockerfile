@@ -36,17 +36,14 @@ COPY ./scripts/drop.sql /app/scripts/drop.sql
 COPY ./migrations /app/migrations
 
 WORKDIR /app
+RUN make assets
 
 EXPOSE 8080
 
-ENV MAESTRO_RUN_SETUP ""
 ENV MAESTRO_EXTENSIONS_PG_HOST "maestro-postgres"
 ENV MAESTRO_EXTENSIONS_PG_PORT "5432"
 ENV MAESTRO_EXTENSIONS_PG_USER "maestro"
 ENV MAESTRO_EXTENSIONS_PG_PASS "pass"
 ENV PGPASSWORD "pass"
 
-CMD if [ "$MAESTRO_RUN_SETUP" == "true" ]; then \
-    make assets && /app/maestro migrate -c /app/config/local.yaml; \
-  fi && \
-  /app/maestro start;
+CMD /app/maestro start
