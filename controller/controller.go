@@ -541,6 +541,9 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 	if scheduler.ID != "" {
 		scheduler.State = models.StateTerminating
 		scheduler.StateLastChangedAt = time.Now().Unix()
+		if scheduler.LastScaleOpAt == 0 {
+			scheduler.LastScaleOpAt = 1
+		}
 		err = mr.WithSegment(models.SegmentUpdate, func() error {
 			return scheduler.Update(db)
 		})

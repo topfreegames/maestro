@@ -7,3 +7,6 @@ redis_url: redis://:@maestro-redis:6379
 google_clientid: ""
 google_clientsecret: ""
 oauth_domains: "example.com other.com"
+tls_crt: ""
+tls_key: ""
+maestro_url: "maestro.example.com"

@@ -6,5 +6,5 @@ dependencies:
     version: 0.1.0
     repository: http://helm.tfgco.com
   - name: maestro-main
-    version: 2.6.2
+    version: 2.7.0
     repository: http://helm.tfgco.com
