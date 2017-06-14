@@ -46,4 +46,7 @@ ENV MAESTRO_EXTENSIONS_PG_USER "maestro"
 ENV MAESTRO_EXTENSIONS_PG_PASS "pass"
 ENV PGPASSWORD "pass"
 
-CMD if [ "$MAESTRO_RUN_SETUP" != "true" ]; then /app/maestro start; else sleep 10 && make assets && /app/maestro migrate -c /app/config/local.yaml; fi
+CMD if [ "$MAESTRO_RUN_SETUP" == "true" ]; then \
+    make assets && /app/maestro migrate -c /app/config/local.yaml; \
+  fi && \
+  /app/maestro start;
