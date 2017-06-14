@@ -42,8 +42,8 @@ spec:
               value: {{ .Values.postgres_user }}
             - name: MAESTRO_EXTENSIONS_PG_PASS
               value: {{ .Values.postgres_password }}
-            - name: PGPASSWORD
-              value: {{ .Values.postgres_password }}
+            - name: MAESTRO_RUN_SETUP
+              value: "true"
             - name: MAESTRO_EXTENSIONS_PG_DATABASE
               value: {{ .Values.postgres_database }}
             - name: MAESTRO_GOOGLE_CLIENT_ID
