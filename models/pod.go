@@ -30,22 +30,22 @@ metadata:
     app: {{.Name}}
 spec:
   terminationGracePeriodSeconds: {{.ShutdownTimeout}}
+{{- if ne .NodeToleration ""}}
   tolerations:
-  - key: "game"
+  - key: "dedicated"
     operator: "Equal"
-    value: {{.Game}}
+    value: {{.NodeToleration}}
     effect: "NoSchedule"
+{{- end}}
 {{- if ne .NodeAffinity ""}}
   affinity:
     nodeAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 1
-        preference:
-          matchExpressions:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
           - key: {{.NodeAffinity}}
             operator: In
-            values:
-            - "true"
+            values: ["true"]
 {{- end}}
   containers:
   - name: {{.Name}}
@@ -84,6 +84,7 @@ type Pod struct {
 	ResourcesRequestsMemory string
 	ShutdownTimeout         int
 	NodeAffinity            string
+	NodeToleration          string
 }
 
 // NewPod is the pod constructor
@@ -114,6 +115,10 @@ func NewPod(
 
 func (p *Pod) SetAffinity(affinity string) {
 	p.NodeAffinity = affinity
+}
+
+func (p *Pod) SetToleration(toleration string) {
+	p.NodeToleration = toleration
 }
 
 // Create creates a pod in Kubernetes

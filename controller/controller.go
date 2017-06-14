@@ -689,6 +689,9 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 	if configYAML.NodeAffinity != "" {
 		pod.SetAffinity(configYAML.NodeAffinity)
 	}
+	if configYAML.NodeToleration != "" {
+		pod.SetToleration(configYAML.NodeToleration)
+	}
 	var kubePod *v1.Pod
 	err = mr.WithSegment(models.SegmentPod, func() error {
 		kubePod, err = pod.Create(clientset)

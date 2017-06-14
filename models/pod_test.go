@@ -121,6 +121,7 @@ var _ = Describe("Pod", func() {
 				command,
 				env,
 			)
+			pod.SetToleration(game)
 			podv1, err := pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -135,7 +136,7 @@ var _ = Describe("Pod", func() {
 			Expect(podv1.ObjectMeta.Labels["app"]).To(Equal(name))
 			Expect(*podv1.Spec.TerminationGracePeriodSeconds).To(BeEquivalentTo(shutdownTimeout))
 			Expect(podv1.Spec.Tolerations).To(HaveLen(1))
-			Expect(podv1.Spec.Tolerations[0].Key).To(Equal("game"))
+			Expect(podv1.Spec.Tolerations[0].Key).To(Equal("dedicated"))
 			Expect(podv1.Spec.Tolerations[0].Operator).To(Equal(v1.TolerationOpEqual))
 			Expect(podv1.Spec.Tolerations[0].Value).To(Equal(game))
 			Expect(podv1.Spec.Tolerations[0].Effect).To(Equal(v1.TaintEffectNoSchedule))
@@ -183,9 +184,9 @@ var _ = Describe("Pod", func() {
 			podv1, err := pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(podv1.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Key).To(Equal(game))
-			Expect(podv1.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Operator).To(Equal(v1.NodeSelectorOpIn))
-			Expect(podv1.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values).To(ConsistOf("true"))
+			Expect(podv1.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Key).To(Equal(game))
+			Expect(podv1.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Operator).To(Equal(v1.NodeSelectorOpIn))
+			Expect(podv1.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values).To(ConsistOf("true"))
 		})
 
 		It("should return error when creating existing pod", func() {
