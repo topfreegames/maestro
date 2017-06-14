@@ -71,6 +71,7 @@ Example yaml config:
 name: pong-free-for-all    # this will be the name of the kubernetes namespace (it must be unique)
 game: pong                 # several configs can refer to the same game
 image: pong/pong:v123
+affinity: node-affinity    # optional field: if set, rooms will be allocated preferentially to nodes with label "node-affinity": "true"
 ports:
   - containerPort: 5050    # port exposed in the container
     protocol: UDP          # supported protocols are TCP and UDP

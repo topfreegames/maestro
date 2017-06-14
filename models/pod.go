@@ -35,16 +35,18 @@ spec:
     operator: "Equal"
     value: {{.Game}}
     effect: "NoSchedule"
+{{- if ne .NodeAffinity ""}}
   affinity:
     nodeAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 1
         preference:
           matchExpressions:
-          - key: "game"
+          - key: {{.NodeAffinity}}
             operator: In
             values:
-            - {{.Game}}
+            - "true"
+{{- end}}
   containers:
   - name: {{.Name}}
     image: {{.Image}}
@@ -81,6 +83,7 @@ type Pod struct {
 	ResourcesRequestsCPU    string
 	ResourcesRequestsMemory string
 	ShutdownTimeout         int
+	NodeAffinity            string
 }
 
 // NewPod is the pod constructor
@@ -107,6 +110,10 @@ func NewPod(
 		ResourcesRequestsMemory: resourcesRequestsMemory,
 		ShutdownTimeout:         shutdownTimeout,
 	}
+}
+
+func (p *Pod) SetAffinity(affinity string) {
+	p.NodeAffinity = affinity
 }
 
 // Create creates a pod in Kubernetes

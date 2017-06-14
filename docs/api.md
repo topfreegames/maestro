@@ -309,6 +309,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
       "name": "room-name",
       "game": "game-name",
       "image": "somens/someimage:v123",
+      "affinity": "node-affinity",
       "ports": [
         {
           "containerPort": 5050,

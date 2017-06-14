@@ -139,9 +139,6 @@ var _ = Describe("Pod", func() {
 			Expect(podv1.Spec.Tolerations[0].Operator).To(Equal(v1.TolerationOpEqual))
 			Expect(podv1.Spec.Tolerations[0].Value).To(Equal(game))
 			Expect(podv1.Spec.Tolerations[0].Effect).To(Equal(v1.TaintEffectNoSchedule))
-			Expect(podv1.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Key).To(Equal("game"))
-			Expect(podv1.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Operator).To(Equal(v1.NodeSelectorOpIn))
-			Expect(podv1.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values).To(ConsistOf(game))
 
 			Expect(podv1.Spec.Containers).To(HaveLen(1))
 			Expect(podv1.Spec.Containers[0].Name).To(Equal(name))
@@ -165,6 +162,30 @@ var _ = Describe("Pod", func() {
 			}
 			Expect(podv1.Spec.Containers[0].Command).To(HaveLen(1))
 			Expect(podv1.Spec.Containers[0].Command[0]).To(Equal(strings.Join(command, " ")))
+		})
+
+		It("should create pod with node affinity", func() {
+			pod := models.NewPod(
+				game,
+				image,
+				name,
+				namespace,
+				resourcesLimitsCPU,
+				resourcesLimitsMemory,
+				resourcesRequestsCPU,
+				resourcesRequestsMemory,
+				shutdownTimeout,
+				ports,
+				command,
+				env,
+			)
+			pod.SetAffinity(game)
+			podv1, err := pod.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(podv1.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Key).To(Equal(game))
+			Expect(podv1.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Operator).To(Equal(v1.NodeSelectorOpIn))
+			Expect(podv1.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values).To(ConsistOf("true"))
 		})
 
 		It("should return error when creating existing pod", func() {

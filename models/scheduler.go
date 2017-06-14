@@ -79,6 +79,7 @@ type ConfigYAML struct {
 	AutoScaling     *AutoScaling `yaml:"autoscaling" json:"autoscaling" valid:"required"`
 	Env             []*EnvVar    `yaml:"env" json:"env"`
 	Cmd             []string     `yaml:"cmd" json:"cmd"`
+	NodeAffinity    string       `yaml:"nodeAffinity" json:"nodeAffinity"`
 }
 
 // NewScheduler is the scheduler constructor
