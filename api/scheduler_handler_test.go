@@ -116,6 +116,57 @@ var _ = Describe("Scheduler Handler", func() {
 			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DB).Return("user@example.com", http.StatusOK, nil).AnyTimes()
 		})
 
+		Describe("GET /scheduler", func() {
+			It("should list schedulers", func() {
+				var configYaml models.ConfigYAML
+				expectedNames := []string{"scheduler1", "scheduler2", "scheduler3"}
+				err := json.Unmarshal([]byte(jsonString), &configYaml)
+				Expect(err).NotTo(HaveOccurred())
+
+				url := fmt.Sprintf("http://%s/scheduler", app.Address)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT name FROM schedulers").Do(
+					func(schedulers *[]models.Scheduler, query string) {
+						expectedSchedulers := make([]models.Scheduler, len(expectedNames))
+						for idx, name := range expectedNames {
+							expectedSchedulers[idx] = models.Scheduler{Name: name}
+						}
+						*schedulers = expectedSchedulers
+					})
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"schedulers":["scheduler1","scheduler2","scheduler3"]}`))
+			})
+
+			It("should list none if no schedulers", func() {
+				var configYaml models.ConfigYAML
+				expectedNames := []string{}
+				err := json.Unmarshal([]byte(jsonString), &configYaml)
+				Expect(err).NotTo(HaveOccurred())
+
+				url := fmt.Sprintf("http://%s/scheduler", app.Address)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT name FROM schedulers").Do(
+					func(schedulers *[]models.Scheduler, query string) {
+						expectedSchedulers := make([]models.Scheduler, len(expectedNames))
+						for idx, name := range expectedNames {
+							expectedSchedulers[idx] = models.Scheduler{Name: name}
+						}
+						*schedulers = expectedSchedulers
+					})
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"schedulers":[]}`))
+			})
+
+		})
+
 		Describe("POST /scheduler", func() {
 			url := "/scheduler"
 			BeforeEach(func() {
@@ -272,7 +323,7 @@ var _ = Describe("Scheduler Handler", func() {
 		})
 
 		Describe("PUT /scheduler/{schedulerName}", func() {
-			newJsonString := `{
+			newJSONString := `{
 		    "name": "scheduler-name",
 		    "game": "game-name",
 		    "image": "somens/someimage:v123",
@@ -381,10 +432,10 @@ var _ = Describe("Scheduler Handler", func() {
 
 					// Update scheduler
 					var configYaml2 models.ConfigYAML
-					err = yaml.Unmarshal([]byte(newJsonString), &configYaml2)
+					err = yaml.Unmarshal([]byte(newJSONString), &configYaml2)
 					Expect(err).NotTo(HaveOccurred())
 
-					reader = strings.NewReader(newJsonString)
+					reader = strings.NewReader(newJSONString)
 					url = fmt.Sprintf("/scheduler/%s", configYaml1.Name)
 					request, err = http.NewRequest("PUT", url, reader)
 					Expect(err).NotTo(HaveOccurred())
@@ -446,7 +497,7 @@ var _ = Describe("Scheduler Handler", func() {
 					err := yaml.Unmarshal([]byte(jsonString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					reader := strings.NewReader(newJsonString)
+					reader := strings.NewReader(newJSONString)
 					url := fmt.Sprintf("/scheduler/%s", configYaml1.Name)
 					request, err = http.NewRequest("PUT", url, reader)
 					Expect(err).NotTo(HaveOccurred())
@@ -473,7 +524,7 @@ var _ = Describe("Scheduler Handler", func() {
 					err := yaml.Unmarshal([]byte(jsonString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					reader := strings.NewReader(newJsonString)
+					reader := strings.NewReader(newJSONString)
 					url := "/scheduler/some-other-name"
 					request, err = http.NewRequest("PUT", url, reader)
 					Expect(err).NotTo(HaveOccurred())
@@ -497,7 +548,7 @@ var _ = Describe("Scheduler Handler", func() {
 					err := yaml.Unmarshal([]byte(jsonString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					reader := strings.NewReader(newJsonString)
+					reader := strings.NewReader(newJSONString)
 					url := fmt.Sprintf("/scheduler/%s", configYaml1.Name)
 					request, err = http.NewRequest("PUT", url, reader)
 					Expect(err).NotTo(HaveOccurred())

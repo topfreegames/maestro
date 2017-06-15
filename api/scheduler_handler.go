@@ -186,6 +186,49 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger.Debug("Update scheduler succeeded.")
 }
 
+// SchedulerListHandler handler
+type SchedulerListHandler struct {
+	App *App
+}
+
+// NewSchedulerListHandler lists schedulers
+func NewSchedulerListHandler(a *App) *SchedulerListHandler {
+	m := &SchedulerListHandler{App: a}
+	return m
+}
+
+// ServeHTTP method
+func (g *SchedulerListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	l := loggerFromContext(r.Context())
+	mr := metricsReporterFromCtx(r.Context())
+	logger := l.WithFields(logrus.Fields{
+		"source":    "schedulerHandler",
+		"operation": "list",
+	})
+	names, err := controller.ListSchedulersNames(l, mr, g.App.DB)
+	if err != nil {
+		status := http.StatusInternalServerError
+		logger.WithError(err).Error("List scheduler failed.")
+		g.App.HandleError(w, status, "List scheduler failed", err)
+		return
+	}
+	resp := map[string]interface{}{
+		"schedulers": names,
+	}
+	bts, err := json.Marshal(resp)
+	if err != nil {
+		logger.WithError(err).Error("List scheduler failed.")
+		g.App.HandleError(w, http.StatusInternalServerError, "List scheduler failed", err)
+		return
+	}
+
+	mr.WithSegment(models.SegmentSerialization, func() error {
+		WriteBytes(w, http.StatusOK, bts)
+		return nil
+	})
+	logger.Debug("List scheduler succeeded.")
+}
+
 // SchedulerStatusHandler handler
 type SchedulerStatusHandler struct {
 	App *App

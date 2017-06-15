@@ -99,6 +99,16 @@ func (a *App) getRouter() *mux.Router {
 	)).Methods("GET").Name("oauth")
 
 	r.HandleFunc("/scheduler", Chain(
+		NewSchedulerListHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewVersionMiddleware(),
+	).ServeHTTP).Methods("GET").Name("schedulerList")
+
+	r.HandleFunc("/scheduler", Chain(
 		NewSchedulerCreateHandler(a),
 		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
