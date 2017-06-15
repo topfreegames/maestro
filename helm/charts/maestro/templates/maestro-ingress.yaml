@@ -1,4 +1,4 @@
-{{- if eq .Values.global.use_ingress "true" }}
+{{- if eq .Values.use_ingress "true" }}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
