@@ -677,10 +677,8 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 		configYAML.Image,
 		name,
 		configYAML.Name,
-		configYAML.Limits.CPU,
-		configYAML.Limits.Memory,
-		configYAML.Limits.CPU,    // TODO: requests should be <= limits calculate it
-		configYAML.Limits.Memory, // TODO: requests should be <= limits calculate it
+		configYAML.Limits,
+		configYAML.Requests, // TODO: requests should be <= limits calculate it
 		configYAML.ShutdownTimeout,
 		configYAML.Ports,
 		configYAML.Cmd,
@@ -716,7 +714,7 @@ func deleteServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 	if err != nil {
 		return err
 	}
-	pod := models.NewPod("", "", name, schedulerName, "", "", "", "", 0, []*models.Port{}, []string{}, []*models.EnvVar{})
+	pod := models.NewPod("", "", name, schedulerName, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{})
 	err = mr.WithSegment(models.SegmentPod, func() error {
 		return pod.Delete(clientset)
 	})
@@ -773,7 +771,9 @@ func MustUpdatePods(old, new *models.ConfigYAML) bool {
 		return true
 	case !samePorts(old.Ports, new.Ports):
 		return true
-	case *old.Limits != *new.Limits:
+	case old.Limits != nil && new.Limits != nil && *old.Limits != *new.Limits:
+		return true
+	case old.Requests != nil && new.Requests != nil && *old.Requests != *new.Requests:
 		return true
 	case !sameCmd(old.Cmd, new.Cmd):
 		return true

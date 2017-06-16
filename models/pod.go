@@ -30,14 +30,14 @@ metadata:
     app: {{.Name}}
 spec:
   terminationGracePeriodSeconds: {{.ShutdownTimeout}}
-{{- if ne .NodeToleration ""}}
+{{- if .NodeToleration }}
   tolerations:
   - key: "dedicated"
     operator: "Equal"
     value: {{.NodeToleration}}
     effect: "NoSchedule"
 {{- end}}
-{{- if ne .NodeAffinity ""}}
+{{- if .NodeAffinity }}
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
@@ -53,14 +53,24 @@ spec:
     ports:
       {{range .Ports}}
       - containerPort: {{.ContainerPort}}
+        protocol: {{.Protocol}}
+        name: "{{.Name}}"
       {{end}}
     resources:
       requests:
+        {{- if .ResourcesRequestsCPU}}
         cpu: {{.ResourcesRequestsCPU}}
+        {{- end}}
+        {{- if .ResourcesRequestsMemory}}
         memory: {{.ResourcesRequestsMemory}}
+        {{- end}}
       limits:
+        {{- if .ResourcesLimitsCPU}}
         cpu: {{.ResourcesLimitsCPU}}
+        {{- end}}
+        {{- if .ResourcesLimitsMemory}}
         memory: {{.ResourcesLimitsMemory}}
+        {{- end}}
     env:
       {{range .Env}}
       - name: {{.Name}}
@@ -89,28 +99,32 @@ type Pod struct {
 
 // NewPod is the pod constructor
 func NewPod(
-	game, image, name, namespace,
-	resourcesLimitsCPU, resourcesLimitsMemory,
-	resourcesRequestsCPU, resourcesRequestsMemory string,
+	game, image, name, namespace string,
+	limits, requests *Resources,
 	shutdownTimeout int,
 	ports []*Port,
 	command []string,
 	env []*EnvVar,
 ) *Pod {
-	return &Pod{
-		Command:                 command,
-		Env:                     env,
-		Game:                    game,
-		Image:                   image,
-		Name:                    name,
-		Namespace:               namespace,
-		Ports:                   ports,
-		ResourcesLimitsCPU:      resourcesLimitsCPU,
-		ResourcesLimitsMemory:   resourcesLimitsMemory,
-		ResourcesRequestsCPU:    resourcesRequestsCPU,
-		ResourcesRequestsMemory: resourcesRequestsMemory,
-		ShutdownTimeout:         shutdownTimeout,
+	pod := &Pod{
+		Command:         command,
+		Env:             env,
+		Game:            game,
+		Image:           image,
+		Name:            name,
+		Namespace:       namespace,
+		Ports:           ports,
+		ShutdownTimeout: shutdownTimeout,
 	}
+	if limits != nil {
+		pod.ResourcesLimitsCPU = limits.CPU
+		pod.ResourcesLimitsMemory = limits.Memory
+	}
+	if requests != nil {
+		pod.ResourcesRequestsCPU = requests.CPU
+		pod.ResourcesRequestsMemory = requests.Memory
+	}
+	return pod
 }
 
 func (p *Pod) SetAffinity(affinity string) {

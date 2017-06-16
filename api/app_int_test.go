@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -21,6 +22,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/models"
 	mt "github.com/topfreegames/maestro/testing"
@@ -74,6 +76,114 @@ var _ = Describe("App", func() {
 		})
 
 		It("should POST a scheduler", func() {
+			body := strings.NewReader(jsonStr)
+
+			configYaml, err = models.NewConfigYAML(jsonStr)
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest("POST", url, body)
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusCreated))
+
+			pods, err := clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
+
+			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min))
+
+			ns := configYaml.Name
+			sch := &models.Scheduler{Name: ns}
+			err = sch.Load(app.DB)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sch.YAML).NotTo(HaveLen(0))
+
+			for _, svc := range svcs.Items {
+				Expect(svc.Spec.Ports[0].Port).To(Equal(int32(8080)))
+
+				room := models.NewRoom(svc.GetName(), ns)
+				err := room.Create(app.RedisClient)
+				Expect(err).NotTo(HaveOccurred())
+
+				pipe := app.RedisClient.TxPipeline()
+				roomStatuses := pipe.HMGet(room.GetRoomRedisKey(), "status", "lastPing")
+				roomIsCreating := pipe.SIsMember(models.GetRoomStatusSetRedisKey(ns, room.Status), room.GetRoomRedisKey())
+				roomLastPing := pipe.ZScore(models.GetRoomPingRedisKey(ns), room.ID)
+
+				_, err = pipe.Exec()
+				Expect(err).NotTo(HaveOccurred())
+
+				stat, err := roomStatuses.Result()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(stat[0].(string)).To(Equal(models.StatusCreating))
+				Expect(stat[1].(string)).To(Equal(strconv.FormatInt(room.LastPingAt, 10)))
+
+				isCreating, err := roomIsCreating.Result()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(isCreating).To(BeTrue())
+
+				lastPing, err := roomLastPing.Result()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(lastPing).To(Equal(float64(room.LastPingAt)))
+			}
+		})
+
+		It("should POST a scheduler without requests and limits", func() {
+			jsonTempl := `
+{
+  "name": "{{.Name}}",
+  "game": "game-name",
+	"image": "nginx:alpine",
+	"toleration": "game-name",
+  "ports": [
+    {
+      "containerPort": 8080,
+      "protocol": "TCP",
+      "name": "tcp"
+    }
+  ],
+  "shutdownTimeout": 10,
+  "autoscaling": {
+    "min": 2,
+    "up": {
+      "delta": 1,
+      "trigger": {
+        "usage": 70,
+        "time": 1
+      },
+      "cooldown": 1
+    },
+    "down": {
+      "delta": 1,
+      "trigger": {
+        "usage": 50,
+        "time": 1
+      },
+      "cooldown": 1
+    }
+  }
+}`
+
+			var jsonStr string
+			index := struct {
+				Name string
+			}{}
+
+			tmpl, err := template.New("json").Parse(jsonTempl)
+			Expect(err).NotTo(HaveOccurred())
+
+			index.Name = fmt.Sprintf("maestro-test-%s", uuid.NewV4())
+
+			buf := new(bytes.Buffer)
+			err = tmpl.Execute(buf, index)
+			Expect(err).NotTo(HaveOccurred())
+
+			jsonStr = buf.String()
 			body := strings.NewReader(jsonStr)
 
 			configYaml, err = models.NewConfigYAML(jsonStr)

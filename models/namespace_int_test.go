@@ -45,7 +45,10 @@ var _ = Describe("Namespace", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			pod := models.NewPod(
-				"game", "image", "name", namespace.Name, "1", "1", "1", "1", 0,
+				"game", "image", "name", namespace.Name,
+				&models.Resources{CPU: "1", Memory: "1"},
+				&models.Resources{CPU: "1", Memory: "1"},
+				0,
 				[]*models.Port{{ContainerPort: 5050}},
 				[]string{"command"},
 				[]*models.EnvVar{},

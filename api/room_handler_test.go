@@ -328,11 +328,15 @@ var _ = Describe("Room Handler", func() {
 					ContainerPort: 5050,
 				},
 			}
-			resourcesLimitsCPU      = "2"
-			resourcesLimitsMemory   = "128974848"
-			resourcesRequestsCPU    = "1"
-			resourcesRequestsMemory = "64487424"
-			shutdownTimeout         = 180
+			limits = &models.Resources{
+				CPU:    "2",
+				Memory: "128974848",
+			}
+			requests = &models.Resources{
+				CPU:    "1",
+				Memory: "64487424",
+			}
+			shutdownTimeout = 180
 		)
 		It("should return addresses", func() {
 			ns := models.NewNamespace(namespace)
@@ -344,10 +348,8 @@ var _ = Describe("Room Handler", func() {
 				image,
 				name,
 				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
+				limits,
+				requests,
 				shutdownTimeout,
 				ports,
 				nil,
@@ -384,10 +386,8 @@ var _ = Describe("Room Handler", func() {
 				image,
 				name,
 				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
+				limits,
+				requests,
 				shutdownTimeout,
 				ports,
 				nil,

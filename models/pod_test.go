@@ -23,19 +23,17 @@ import (
 
 var _ = Describe("Pod", func() {
 	var (
-		clientset               *fake.Clientset
-		command                 []string
-		env                     []*models.EnvVar
-		game                    string
-		image                   string
-		name                    string
-		namespace               string
-		ports                   []*models.Port
-		resourcesLimitsCPU      string
-		resourcesLimitsMemory   string
-		resourcesRequestsCPU    string
-		resourcesRequestsMemory string
-		shutdownTimeout         int
+		clientset       *fake.Clientset
+		command         []string
+		env             []*models.EnvVar
+		game            string
+		image           string
+		name            string
+		namespace       string
+		ports           []*models.Port
+		requests        *models.Resources
+		limits          *models.Resources
+		shutdownTimeout int
 	)
 
 	BeforeEach(func() {
@@ -67,10 +65,14 @@ var _ = Describe("Pod", func() {
 				ContainerPort: 8888,
 			},
 		}
-		resourcesLimitsCPU = "2"
-		resourcesLimitsMemory = "128974848"
-		resourcesRequestsCPU = "1"
-		resourcesRequestsMemory = "64487424"
+		limits = &models.Resources{
+			CPU:    "2",
+			Memory: "128974848",
+		}
+		requests = &models.Resources{
+			CPU:    "1",
+			Memory: "64487424",
+		}
 		shutdownTimeout = 180
 	})
 
@@ -81,10 +83,8 @@ var _ = Describe("Pod", func() {
 				image,
 				name,
 				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
+				limits,
+				requests,
 				shutdownTimeout,
 				ports,
 				command,
@@ -94,10 +94,10 @@ var _ = Describe("Pod", func() {
 			Expect(pod.Image).To(Equal(image))
 			Expect(pod.Name).To(Equal(name))
 			Expect(pod.Namespace).To(Equal(namespace))
-			Expect(pod.ResourcesLimitsCPU).To(Equal(resourcesLimitsCPU))
-			Expect(pod.ResourcesLimitsMemory).To(Equal(resourcesLimitsMemory))
-			Expect(pod.ResourcesRequestsCPU).To(Equal(resourcesRequestsCPU))
-			Expect(pod.ResourcesRequestsMemory).To(Equal(resourcesRequestsMemory))
+			Expect(pod.ResourcesLimitsCPU).To(Equal(limits.CPU))
+			Expect(pod.ResourcesLimitsMemory).To(Equal(limits.Memory))
+			Expect(pod.ResourcesRequestsCPU).To(Equal(requests.CPU))
+			Expect(pod.ResourcesRequestsMemory).To(Equal(requests.Memory))
 			Expect(pod.ShutdownTimeout).To(Equal(shutdownTimeout))
 			Expect(pod.Ports).To(Equal(ports))
 			Expect(pod.Command).To(Equal(command))
@@ -112,10 +112,8 @@ var _ = Describe("Pod", func() {
 				image,
 				name,
 				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
+				limits,
+				requests,
 				shutdownTimeout,
 				ports,
 				command,
@@ -149,13 +147,64 @@ var _ = Describe("Pod", func() {
 				Expect(port.ContainerPort).To(BeEquivalentTo(ports[idx].ContainerPort))
 			}
 			quantity := podv1.Spec.Containers[0].Resources.Limits["memory"]
-			Expect((&quantity).String()).To(Equal(resourcesLimitsMemory))
+			Expect((&quantity).String()).To(Equal(limits.Memory))
 			quantity = podv1.Spec.Containers[0].Resources.Limits["cpu"]
-			Expect((&quantity).String()).To(Equal(resourcesLimitsCPU))
+			Expect((&quantity).String()).To(Equal(limits.CPU))
 			quantity = podv1.Spec.Containers[0].Resources.Requests["memory"]
-			Expect((&quantity).String()).To(Equal(resourcesRequestsMemory))
+			Expect((&quantity).String()).To(Equal(requests.Memory))
 			quantity = podv1.Spec.Containers[0].Resources.Requests["cpu"]
-			Expect((&quantity).String()).To(Equal(resourcesRequestsCPU))
+			Expect((&quantity).String()).To(Equal(requests.CPU))
+			Expect(podv1.Spec.Containers[0].Env).To(HaveLen(len(env)))
+			for idx, envVar := range podv1.Spec.Containers[0].Env {
+				Expect(envVar.Name).To(Equal(env[idx].Name))
+				Expect(envVar.Value).To(Equal(env[idx].Value))
+			}
+			Expect(podv1.Spec.Containers[0].Command).To(HaveLen(1))
+			Expect(podv1.Spec.Containers[0].Command[0]).To(Equal(strings.Join(command, " ")))
+		})
+
+		It("should create pod without requests and limits", func() {
+			pod := models.NewPod(
+				game,
+				image,
+				name,
+				namespace,
+				nil,
+				nil,
+				shutdownTimeout,
+				ports,
+				command,
+				env,
+			)
+			podv1, err := pod.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(podv1.GetNamespace()).To(Equal(namespace))
+			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(1))
+			Expect(pods.Items[0].GetName()).To(Equal(name))
+			Expect(podv1.ObjectMeta.Name).To(Equal(name))
+			Expect(podv1.ObjectMeta.Namespace).To(Equal(namespace))
+			Expect(podv1.ObjectMeta.Labels).To(HaveLen(1))
+			Expect(podv1.ObjectMeta.Labels["app"]).To(Equal(name))
+			Expect(*podv1.Spec.TerminationGracePeriodSeconds).To(BeEquivalentTo(shutdownTimeout))
+
+			Expect(podv1.Spec.Containers).To(HaveLen(1))
+			Expect(podv1.Spec.Containers[0].Name).To(Equal(name))
+			Expect(podv1.Spec.Containers[0].Image).To(Equal(image))
+			Expect(podv1.Spec.Containers[0].Ports).To(HaveLen(len(ports)))
+			for idx, port := range podv1.Spec.Containers[0].Ports {
+				Expect(port.ContainerPort).To(BeEquivalentTo(ports[idx].ContainerPort))
+			}
+			quantity := podv1.Spec.Containers[0].Resources.Limits["memory"]
+			Expect((&quantity).String()).To(Equal("0"))
+			quantity = podv1.Spec.Containers[0].Resources.Limits["cpu"]
+			Expect((&quantity).String()).To(Equal("0"))
+			quantity = podv1.Spec.Containers[0].Resources.Requests["memory"]
+			Expect((&quantity).String()).To(Equal("0"))
+			quantity = podv1.Spec.Containers[0].Resources.Requests["cpu"]
+			Expect((&quantity).String()).To(Equal("0"))
 			Expect(podv1.Spec.Containers[0].Env).To(HaveLen(len(env)))
 			for idx, envVar := range podv1.Spec.Containers[0].Env {
 				Expect(envVar.Name).To(Equal(env[idx].Name))
@@ -171,10 +220,8 @@ var _ = Describe("Pod", func() {
 				image,
 				name,
 				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
+				limits,
+				requests,
 				shutdownTimeout,
 				ports,
 				command,
@@ -195,10 +242,8 @@ var _ = Describe("Pod", func() {
 				image,
 				name,
 				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
+				limits,
+				requests,
 				shutdownTimeout,
 				ports,
 				command,
@@ -220,10 +265,8 @@ var _ = Describe("Pod", func() {
 				image,
 				name,
 				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
+				limits,
+				requests,
 				shutdownTimeout,
 				ports,
 				command,
@@ -242,10 +285,8 @@ var _ = Describe("Pod", func() {
 				image,
 				name,
 				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
+				limits,
+				requests,
 				shutdownTimeout,
 				ports,
 				command,

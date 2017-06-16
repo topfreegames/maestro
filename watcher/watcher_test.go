@@ -44,6 +44,9 @@ ports:
 limits:
   memory: "66Mi"
   cpu: "2"
+limits:
+  memory: "66Mi"
+  cpu: "2"
 shutdownTimeout: 20
 autoscaling:
   min: 3

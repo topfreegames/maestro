@@ -36,8 +36,8 @@ type Port struct {
 	Name          string `yaml:"name" json:"name" valid:"required"`
 }
 
-// Limits has the CPU and memory resources limits
-type Limits struct {
+// Resources the CPU and memory resources limits
+type Resources struct {
 	CPU    string `yaml:"cpu" json:"cpu" valid:"int64"`
 	Memory string `yaml:"memory" json:"memory" valid:"int64"`
 }
@@ -74,7 +74,8 @@ type ConfigYAML struct {
 	Game            string       `yaml:"game" json:"game" valid:"required"`
 	Image           string       `yaml:"image" json:"image" valid:"required"`
 	Ports           []*Port      `yaml:"ports" json:"ports"`
-	Limits          *Limits      `yaml:"limits" json:"limits"`
+	Limits          *Resources   `yaml:"limits" json:"limits"`
+	Requests        *Resources   `yaml:"requests" json:"requests"`
 	ShutdownTimeout int          `yaml:"shutdownTimeout" json:"shutdownTimeout" valid:"int64"`
 	AutoScaling     *AutoScaling `yaml:"autoscaling" json:"autoscaling" valid:"required"`
 	Env             []*EnvVar    `yaml:"env" json:"env"`

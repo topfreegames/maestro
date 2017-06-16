@@ -219,10 +219,15 @@ var _ = Describe("Room", func() {
 					ContainerPort: 8888,
 				},
 			}
-			resourcesLimitsCPU := "2"
-			resourcesLimitsMemory := "128974848"
-			resourcesRequestsCPU := "1"
-			resourcesRequestsMemory := "64487424"
+
+			requests := &models.Resources{
+				CPU:    "2",
+				Memory: "128974848",
+			}
+			limits := &models.Resources{
+				CPU:    "1",
+				Memory: "64487424",
+			}
 			shutdownTimeout := 180
 
 			pod := models.NewPod(
@@ -230,10 +235,8 @@ var _ = Describe("Room", func() {
 				image,
 				name,
 				namespace,
-				resourcesLimitsCPU,
-				resourcesLimitsMemory,
-				resourcesRequestsCPU,
-				resourcesRequestsMemory,
+				limits,
+				requests,
 				shutdownTimeout,
 				ports,
 				command,

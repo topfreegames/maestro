@@ -2,7 +2,6 @@
    "name": "scheduler-name",
    "game": "game-name",
    "image": "nginx:alpine",
-   "affinity": "node-affinity",
    "ports": [
       {
          "containerPort": 8080,
@@ -10,10 +9,6 @@
          "name": "tcp"
       }
    ],
-   "limits": {
-      "memory": "128Mi",
-      "cpu": "20m"
-   },
    "shutdownTimeout": 10,
    "autoscaling": {
       "min": 2,
