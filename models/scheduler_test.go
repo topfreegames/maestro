@@ -275,4 +275,19 @@ var _ = Describe("Scheduler", func() {
 			Expect(err.Error()).To(Equal("some error in pg"))
 		})
 	})
+
+	Describe("LoadConfig", func() {
+		It("should get schedulers yaml from the database", func() {
+			yamlStr := "scheduler: example"
+			name := "scheduler-name"
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT yaml FROM schedulers WHERE name = ?", name).Do(
+				func(scheduler *models.Scheduler, query string, name string) {
+					scheduler.YAML = yamlStr
+				},
+			)
+			yamlRes, err := models.LoadConfig(mockDb, name)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(yamlRes).To(Equal(yamlStr))
+		})
+	})
 })

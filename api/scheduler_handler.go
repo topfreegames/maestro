@@ -245,6 +245,13 @@ func (g *SchedulerStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	l := loggerFromContext(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
+
+	_, getConfig := r.URL.Query()["config"]
+	if getConfig {
+		g.returnConfig(w, r, l, mr, params.SchedulerName)
+		return
+	}
+
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "status",
@@ -291,4 +298,52 @@ func (g *SchedulerStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return nil
 	})
 	logger.Debug("Status scheduler succeeded.")
+}
+
+func (g *SchedulerStatusHandler) returnConfig(
+	w http.ResponseWriter,
+	r *http.Request,
+	l logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	schedulerName string,
+) {
+	logger := l.WithFields(logrus.Fields{
+		"source":    "schedulerHandler",
+		"operation": "get config",
+	})
+
+	logger.Debugf("Getting scheduler %s config", schedulerName)
+
+	var yamlStr string
+	err := mr.WithSegment(models.SegmentSelect, func() error {
+		var err error
+		yamlStr, err = models.LoadConfig(g.App.DB, schedulerName)
+		return err
+	})
+	if err != nil {
+		logger.WithError(err).Error("config scheduler failed.")
+		g.App.HandleError(w, http.StatusInternalServerError, "config scheduler failed", err)
+		return
+	}
+	if len(yamlStr) == 0 {
+		logger.Error("config scheduler not found.")
+		g.App.HandleError(w, http.StatusNotFound, "get config error", errors.New("config scheduler not found"))
+		return
+	}
+	resp := map[string]interface{}{
+		"yaml": yamlStr,
+	}
+
+	bts, err := json.Marshal(resp)
+	if err != nil {
+		logger.WithError(err).Error("config scheduler failed.")
+		g.App.HandleError(w, http.StatusInternalServerError, "config scheduler failed", err)
+		return
+	}
+
+	mr.WithSegment(models.SegmentSerialization, func() error {
+		WriteBytes(w, http.StatusOK, bts)
+		return nil
+	})
+	logger.Debug("config scheduler succeeded.")
 }

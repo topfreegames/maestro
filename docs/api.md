@@ -583,7 +583,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
   * Error Response
 
-    It will return an error if scheduler to update is not found on DB
+    It will return an error if scheduler is not found on DB
 
     * Code: `404`
     * Content:
@@ -600,6 +600,52 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
     It will return an error if `:schedulerName` doesn't match name on config
 
     * Code: `400`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+  ### Scheduler Config
+
+  `GET /scheduler/:schedulerName?config`
+
+  Returns scheduler config.
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "yaml": [string]<yaml-config>,
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if scheduler is not found on DB
+
+    * Code: `404`
     * Content:
 
     ```

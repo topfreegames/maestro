@@ -150,3 +150,9 @@ func ListSchedulersNames(db interfaces.DB) ([]string, error) {
 	}
 	return names, nil
 }
+
+func LoadConfig(db interfaces.DB, schedulerName string) (string, error) {
+	c := new(Scheduler)
+	_, err := db.Query(c, "SELECT yaml FROM schedulers WHERE name = ?", schedulerName)
+	return c.YAML, err
+}

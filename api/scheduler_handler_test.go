@@ -676,6 +676,78 @@ var _ = Describe("Scheduler Handler", func() {
 				Expect(obj["success"]).To(Equal(false))
 			})
 		})
+
+		Describe("GET /scheduler/{schedulerName}?config", func() {
+			yamlStr := `
+name: scheduler-name
+game: game-name
+`
+			schedulerName := "scheduler-name"
+
+			It("should return yaml config", func() {
+				url := fmt.Sprintf("http://%s/scheduler/%s?config", app.Address, schedulerName)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT yaml FROM schedulers WHERE name = ?", schedulerName).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+					})
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+
+				resp := make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &resp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp).To(HaveKeyWithValue("yaml", yamlStr))
+			})
+
+			It("should return 500 if db fails", func() {
+				url := fmt.Sprintf("http://%s/scheduler/%s?config", app.Address, schedulerName)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT yaml FROM schedulers WHERE name = ?", schedulerName).
+					Return(nil, errors.New("db error"))
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+
+				resp := make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &resp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp).To(HaveKeyWithValue("code", "MAE-000"))
+				Expect(resp).To(HaveKeyWithValue("description", "db error"))
+				Expect(resp).To(HaveKeyWithValue("error", "config scheduler failed"))
+				Expect(resp).To(HaveKeyWithValue("success", false))
+			})
+
+			It("should return 404 if scheduler doesn't exists", func() {
+				url := fmt.Sprintf("http://%s/scheduler/%s?config", app.Address, schedulerName)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT yaml FROM schedulers WHERE name = ?", schedulerName).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = ""
+					})
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusNotFound))
+
+				resp := make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &resp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp).To(HaveKeyWithValue("code", "MAE-000"))
+				Expect(resp).To(HaveKeyWithValue("description", "config scheduler not found"))
+				Expect(resp).To(HaveKeyWithValue("error", "get config error"))
+				Expect(resp).To(HaveKeyWithValue("success", false))
+			})
+		})
 	})
 
 	Context("When authentication fails", func() {

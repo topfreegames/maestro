@@ -97,6 +97,7 @@ var _ = Describe("Pod", func() {
 				command,
 				env,
 			)
+			pod.SetToleration(game)
 			podv1, err := pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -111,7 +112,7 @@ var _ = Describe("Pod", func() {
 			Expect(podv1.ObjectMeta.Labels["app"]).To(Equal(name))
 			Expect(*podv1.Spec.TerminationGracePeriodSeconds).To(BeEquivalentTo(shutdownTimeout))
 			Expect(podv1.Spec.Tolerations).To(HaveLen(1))
-			Expect(podv1.Spec.Tolerations[0].Key).To(Equal("game"))
+			Expect(podv1.Spec.Tolerations[0].Key).To(Equal("dedicated"))
 			Expect(podv1.Spec.Tolerations[0].Operator).To(Equal(v1.TolerationOpEqual))
 			Expect(podv1.Spec.Tolerations[0].Value).To(Equal(game))
 			Expect(podv1.Spec.Tolerations[0].Effect).To(Equal(v1.TaintEffectNoSchedule))
