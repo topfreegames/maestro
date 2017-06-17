@@ -36,8 +36,7 @@ func SaveToken(token *oauth2.Token, email, keyAccessToken string, db interfaces.
 	if token.RefreshToken == "" {
 		query = `UPDATE users 
 		SET access_token = ?access_token,
-				expiry = ?expiry,
-				key_access_token = ?key_access_token
+				expiry = ?expiry
 		WHERE email = ?email`
 	}
 	user := &User{

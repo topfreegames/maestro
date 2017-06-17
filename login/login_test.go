@@ -223,8 +223,7 @@ var _ = Describe("Login", func() {
 
 			mockDb.EXPECT().Query(gomock.Any(), `UPDATE users 
 		SET access_token = ?access_token,
-				expiry = ?expiry,
-				key_access_token = ?key_access_token
+				expiry = ?expiry
 		WHERE email = ?email`, gomock.Any())
 
 			_, _, err := login.Authenticate(token, mockDb)
@@ -263,8 +262,7 @@ var _ = Describe("Login", func() {
 
 			mockDb.EXPECT().Query(gomock.Any(), `UPDATE users 
 		SET access_token = ?access_token,
-				expiry = ?expiry,
-				key_access_token = ?key_access_token
+				expiry = ?expiry
 		WHERE email = ?email`, gomock.Any()).Return(nil, errors.New("error"))
 
 			_, _, err := login.Authenticate(token, mockDb)

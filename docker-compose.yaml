@@ -6,6 +6,9 @@ services:
     image: postgres:9.5
     ports:
       - "8765:5432"
+    environment:
+      - POSTGRES_DB=maestro
+      - POSTGRES_USER=maestro
   redis:
     image: redis:3.2-alpine
     ports:

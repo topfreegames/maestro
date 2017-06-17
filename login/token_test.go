@@ -70,8 +70,7 @@ var _ = Describe("Token", func() {
 		It("should update user if refresh token is empty", func() {
 			mockDb.EXPECT().Query(gomock.Any(), `UPDATE users 
 		SET access_token = ?access_token,
-				expiry = ?expiry,
-				key_access_token = ?key_access_token
+				expiry = ?expiry
 		WHERE email = ?email`, gomock.Any())
 
 			token := &oauth2.Token{

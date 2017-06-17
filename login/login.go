@@ -97,7 +97,6 @@ func (l *Login) Authenticate(token *oauth2.Token, db interfaces.DB) (string, int
 		return email, status, errors.NewAccessError("error getting access token", err)
 	}
 	newToken := new(oauth2.Token)
-	*newToken = *token
 	expired := time.Now().UTC().After(token.Expiry)
 	if expired {
 		var err error
@@ -105,6 +104,9 @@ func (l *Login) Authenticate(token *oauth2.Token, db interfaces.DB) (string, int
 		if err != nil {
 			return email, status, errors.NewAccessError("error getting access token", err)
 		}
+		newToken.RefreshToken = ""
+	} else {
+		*newToken = *token
 	}
 	client := l.GoogleOauthConfig.Client(oauth2.NoContext, newToken)
 	url := fmt.Sprintf("https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s", newToken.AccessToken)
