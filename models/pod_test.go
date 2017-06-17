@@ -10,7 +10,6 @@ package models_test
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/topfreegames/maestro/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -159,8 +158,8 @@ var _ = Describe("Pod", func() {
 				Expect(envVar.Name).To(Equal(env[idx].Name))
 				Expect(envVar.Value).To(Equal(env[idx].Value))
 			}
-			Expect(podv1.Spec.Containers[0].Command).To(HaveLen(1))
-			Expect(podv1.Spec.Containers[0].Command[0]).To(Equal(strings.Join(command, " ")))
+			Expect(podv1.Spec.Containers[0].Command).To(HaveLen(3))
+			Expect(podv1.Spec.Containers[0].Command).To(Equal(command))
 		})
 
 		It("should create pod without requests and limits", func() {
@@ -210,8 +209,8 @@ var _ = Describe("Pod", func() {
 				Expect(envVar.Name).To(Equal(env[idx].Name))
 				Expect(envVar.Value).To(Equal(env[idx].Value))
 			}
-			Expect(podv1.Spec.Containers[0].Command).To(HaveLen(1))
-			Expect(podv1.Spec.Containers[0].Command[0]).To(Equal(strings.Join(command, " ")))
+			Expect(podv1.Spec.Containers[0].Command).To(HaveLen(3))
+			Expect(podv1.Spec.Containers[0].Command).To(Equal(command))
 		})
 
 		It("should create pod with node affinity", func() {

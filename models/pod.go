@@ -76,7 +76,12 @@ spec:
       - name: {{.Name}}
         value: "{{.Value}}"
       {{end}}
-    command: {{.Command}}
+    {{- if .Command }}
+    command:
+      {{range .Command}}
+      - {{.}}
+			{{- end}}
+    {{- end}}
 `
 
 // Pod represents a pod
