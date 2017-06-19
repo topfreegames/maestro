@@ -38,6 +38,8 @@ var _ = Describe("Room Handler", func() {
 		rKey := "scheduler:schedulerName:rooms:roomName"
 		pKey := "scheduler:schedulerName:ping"
 		sKey := "scheduler:schedulerName:status:ready"
+		lKey := "scheduler:schedulerName:last:status:occupied"
+		roomName := "roomName"
 		status := "ready"
 		allStatusKeys := []string{
 			"scheduler:schedulerName:status:creating",
@@ -60,6 +62,7 @@ var _ = Describe("Room Handler", func() {
 					"status":   status,
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+				mockPipeline.EXPECT().ZRem(lKey, roomName)
 				mockPipeline.EXPECT().SAdd(sKey, rKey)
 				for _, key := range allStatusKeys {
 					mockPipeline.EXPECT().SRem(key, rKey)
@@ -156,6 +159,7 @@ var _ = Describe("Room Handler", func() {
 					"status":   status,
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+				mockPipeline.EXPECT().ZRem(lKey, roomName)
 				mockPipeline.EXPECT().SAdd(sKey, rKey)
 				for _, key := range allStatusKeys {
 					mockPipeline.EXPECT().SRem(key, rKey)
@@ -179,6 +183,8 @@ var _ = Describe("Room Handler", func() {
 		url := "/scheduler/schedulerName/rooms/roomName/status"
 		rKey := "scheduler:schedulerName:rooms:roomName"
 		pKey := "scheduler:schedulerName:ping"
+		lKey := "scheduler:schedulerName:last:status:occupied"
+		roomName := "roomName"
 		status := "ready"
 		newSKey := fmt.Sprintf("scheduler:schedulerName:status:%s", status)
 		allStatusKeys := []string{
@@ -202,6 +208,7 @@ var _ = Describe("Room Handler", func() {
 					"status":   status,
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+				mockPipeline.EXPECT().ZRem(lKey, roomName)
 				mockPipeline.EXPECT().SAdd(newSKey, rKey)
 				for _, key := range allStatusKeys {
 					mockPipeline.EXPECT().SRem(key, rKey)
@@ -298,6 +305,7 @@ var _ = Describe("Room Handler", func() {
 					"status":   status,
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+				mockPipeline.EXPECT().ZRem(lKey, roomName)
 				for _, key := range allStatusKeys {
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}

@@ -458,8 +458,10 @@ var _ = Describe("Scheduler Handler", func() {
 						for _, status := range allStatus {
 							mockPipeline.EXPECT().
 								SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+							mockPipeline.EXPECT().
+								ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 						}
-						mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(svc.GetNamespace()), room.ID)
+						mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(room.SchedulerName), room.ID)
 						mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 						mockPipeline.EXPECT().Exec()
 					}

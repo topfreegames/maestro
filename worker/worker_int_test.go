@@ -220,6 +220,60 @@ var _ = Describe("Worker", func() {
 			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.AutoScaling.Min + yaml.AutoScaling.Up.Delta))
 		})
 
+		It("should delete rooms that timed out with occupied status", func() {
+			url = fmt.Sprintf("http://%s/scheduler", app.Address)
+			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			request.Header.Add("Authorization", "Bearer token")
+			Expect(err).NotTo(HaveOccurred())
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusCreated))
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+			yaml, err = models.NewConfigYAML(jsonStr)
+			Expect(err).NotTo(HaveOccurred())
+
+			svcs, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+
+			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, svc := range svcs.Items {
+				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, svc.GetNamespace(), svc.GetName())
+				request, err := http.NewRequest("PUT", url, mt.JSONFor(mt.JSON{
+					"timestamp": 1000,
+					"status":    models.StatusOccupied,
+				}))
+				Expect(err).NotTo(HaveOccurred())
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			}
+
+			Eventually(func() bool {
+				for _, pod := range pods.Items {
+					_, err := clientset.CoreV1().Pods(yaml.Name).Get(pod.GetName(), metav1.GetOptions{})
+					if err == nil || !strings.Contains(err.Error(), "not found") {
+						return false
+					}
+				}
+				return true
+			}, 120*time.Second, 1*time.Second).Should(BeTrue())
+
+			Eventually(func() bool {
+				for _, svc := range svcs.Items {
+					_, err := clientset.CoreV1().Services(yaml.Name).Get(svc.GetName(), metav1.GetOptions{})
+					if err == nil || !strings.Contains(err.Error(), "not found") {
+						return false
+					}
+				}
+				return true
+			}, 120*time.Second, 1*time.Second).Should(BeTrue())
+		})
+
 		It("should scale down", func() {
 			url = fmt.Sprintf("http://%s/scheduler", app.Address)
 			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))

@@ -203,7 +203,7 @@ func DeleteRoomsNoPingSince(logger logrus.FieldLogger, mr *models.MixedMetricsRe
 		return err
 	})
 	if err != nil {
-		logger.WithError(err).Error("error listing rooms")
+		logger.WithError(err).Error("error listing rooms no ping since")
 		return err
 	}
 	if len(roomNames) == 0 {
@@ -213,7 +213,7 @@ func DeleteRoomsNoPingSince(logger logrus.FieldLogger, mr *models.MixedMetricsRe
 	for _, roomName := range roomNames {
 		err := deleteServiceAndPod(logger, mr, clientset, schedulerName, roomName)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
-			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
+			logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteRoomsNoPingSince"}).WithError(err).Error("error deleting room")
 		} else {
 			room := models.NewRoom(roomName, schedulerName)
 			err = room.ClearAll(redisClient)
@@ -223,6 +223,43 @@ func DeleteRoomsNoPingSince(logger logrus.FieldLogger, mr *models.MixedMetricsRe
 		}
 	}
 
+	return nil
+}
+
+// DeleteRoomsOccupiedTimeout delete rooms that have occupied status for more than timeout time
+func DeleteRoomsOccupiedTimeout(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	redisClient redisinterfaces.RedisClient,
+	clientset kubernetes.Interface,
+	schedulerName string,
+	since int64,
+) error {
+	var roomNames []string
+	var err error
+	err = mr.WithSegment(models.SegmentZRangeBy, func() error {
+		roomNames, err = models.GetRoomsOccupiedTimeout(redisClient, schedulerName, since)
+		return err
+	})
+	if err != nil {
+		logger.WithError(err).Error("error listing rooms occupied timeout")
+		return err
+	}
+	if len(roomNames) == 0 {
+		return nil
+	}
+	for _, roomName := range roomNames {
+		err := deleteServiceAndPod(logger, mr, clientset, schedulerName, roomName)
+		if err != nil && !strings.Contains(err.Error(), "not found") {
+			logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteRoomsOccupiedTimeout"}).WithError(err).Error("error deleting room")
+		} else {
+			room := models.NewRoom(roomName, schedulerName)
+			err = room.ClearAll(redisClient)
+			if err != nil {
+				logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteRoomsOccupiedTimeout"}).WithError(err).Error("error removing room info from redis")
+			}
+		}
+	}
 	return nil
 }
 
@@ -477,13 +514,13 @@ func UpdateSchedulerConfig(
 				err = errors.New("timeout during new room creation")
 				return maestroErrors.NewKubernetesError("error when creating new rooms. Maestro will scale up, if necessary, with previous room configuration.", err)
 			case <-ticker.C:
-				svcs, err := clientset.CoreV1().Services(schedulerName).List(listOptions)
+				k8sPods, err := clientset.CoreV1().Pods(schedulerName).List(listOptions)
 				if err != nil {
 					logger.WithError(err).Error("error when getting services")
 					continue
 				}
 
-				numberCurrentPods := len(svcs.Items)
+				numberCurrentPods := len(k8sPods.Items)
 				numberPodsToCreate := numberOldPods - numberCurrentPods
 
 				for i := 0; i < numberPodsToCreate; i++ {

@@ -23,6 +23,7 @@ scaleUpTimeoutSeconds: 300
 scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 600
 pingTimeout: 60
+occupiedTimeout: 180
 updateTimeoutSeconds: 300
 sentry:
   url: ""

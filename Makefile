@@ -118,7 +118,7 @@ integration-run:
     MAESTRO_EXTENSIONS_REDIS_URL=redis://${MY_IP}:6333    \
     ginkgo -tags integration -cover -r                    \
       -randomizeAllSpecs -randomizeSuites                 \
-      -skipMeasurements worker api models controller;     
+      -skipMeasurements worker api models controller; 		
 
 int-ci: integration-board clear-coverage-profiles deps-test-ci integration-run gather-integration-profiles
 
@@ -158,3 +158,11 @@ minikube-ci:
 
 work:
 	@go run main.go worker
+
+clean-int-tests:
+	@echo 'deleting maestro-test-* namespaces'
+	@kubectl --context minikube get namespace | grep maestro-test- | awk '{print $$1}' | xargs kubectl --context minikube delete namespace
+	@echo 'done'
+	@echo 'deleting maestro-test-* nodes'
+	@kubectl --context minikube get nodes | grep maestro-test- | awk '{print $$1}' | xargs kubectl --context minikube delete nodes
+	@echo 'done'

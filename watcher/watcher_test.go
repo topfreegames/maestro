@@ -126,6 +126,13 @@ var _ = Describe("Watcher", func() {
 				pKey, gomock.Any(),
 			).Return(redis.NewStringSliceResult([]string{}, nil))
 
+			//DeleteRoomsOccupiedTimeout
+			lKey := models.GetLastStatusRedisKey(configYaml1.Name, models.StatusOccupied)
+			mockRedisClient.EXPECT().ZRangeByScore(
+				lKey,
+				gomock.Any(),
+			).Return(redis.NewStringSliceResult([]string{}, nil))
+
 			// GetSchedulerScalingInfo
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yaml1
@@ -528,6 +535,8 @@ var _ = Describe("Watcher", func() {
 				for _, status := range allStatus {
 					mockPipeline.EXPECT().
 						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+					mockPipeline.EXPECT().
+						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
@@ -683,8 +692,10 @@ var _ = Describe("Watcher", func() {
 			Expect(w).NotTo(BeNil())
 		})
 
-		It("should call controller DeleteRoomsNoPingSince", func() {
-			pKey := models.GetRoomPingRedisKey(configYaml1.Name)
+		It("should call controller DeleteRoomsNoPingSince and DeleteRoomsOccupiedTimeout", func() {
+			schedulerName := configYaml1.Name
+			pKey := models.GetRoomPingRedisKey(schedulerName)
+			lKey := models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied)
 			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
 			// DeleteRoomsNoPingSince
 			mockRedisClient.EXPECT().ZRangeByScore(
@@ -694,14 +705,41 @@ var _ = Describe("Watcher", func() {
 				Expect(zrangeby.Min).To(Equal("-inf"))
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(max).To(BeNumerically("~", ts, 1))
+				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
 			}).Return(redis.NewStringSliceResult([]string{}, nil))
+
+			// DeleteRoomsOccupiedTimeout
+			ts = time.Now().Unix() - w.Config.GetInt64("occupiedTimeout")
+			expectedRooms := []string{"room1", "room2", "room3"}
+			mockRedisClient.EXPECT().ZRangeByScore(
+				lKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
+			).Do(func(key string, zrangeby redis.ZRangeBy) {
+				Expect(zrangeby.Min).To(Equal("-inf"))
+				max, err := strconv.Atoi(zrangeby.Max)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
+			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
+
+			for _, roomName := range expectedRooms {
+				room := models.NewRoom(roomName, schedulerName)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey())
+					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, status), roomName)
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+			}
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 		})
 
-		It("should log and not panic in case of error", func() {
-			pKey := models.GetRoomPingRedisKey(configYaml1.Name)
+		It("should log and not panic in case of no ping since error", func() {
+			schedulerName := configYaml1.Name
+			pKey := models.GetRoomPingRedisKey(schedulerName)
+			lKey := models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied)
 			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
 			// DeleteRoomsNoPingSince
 			mockRedisClient.EXPECT().ZRangeByScore(
@@ -711,11 +749,69 @@ var _ = Describe("Watcher", func() {
 				Expect(zrangeby.Min).To(Equal("-inf"))
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(max).To(BeNumerically("~", ts, 1))
+				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
 			}).Return(redis.NewStringSliceResult([]string{}, errors.New("some error")))
+
+			// DeleteRoomsOccupiedTimeout
+			ts = time.Now().Unix() - w.Config.GetInt64("occupiedTimeout")
+			expectedRooms := []string{"room1", "room2", "room3"}
+			mockRedisClient.EXPECT().ZRangeByScore(
+				lKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
+			).Do(func(key string, zrangeby redis.ZRangeBy) {
+				Expect(zrangeby.Min).To(Equal("-inf"))
+				max, err := strconv.Atoi(zrangeby.Max)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
+			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
+
+			for _, roomName := range expectedRooms {
+				room := models.NewRoom(roomName, schedulerName)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey())
+					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, status), roomName)
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+			}
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("error removing dead rooms"))
+		})
+
+		It("should log and not panic in case of occupied error", func() {
+			schedulerName := configYaml1.Name
+			pKey := models.GetRoomPingRedisKey(schedulerName)
+			lKey := models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied)
+			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
+			// DeleteRoomsNoPingSince
+			mockRedisClient.EXPECT().ZRangeByScore(
+				pKey,
+				gomock.Any(),
+			).Do(func(key string, zrangeby redis.ZRangeBy) {
+				Expect(zrangeby.Min).To(Equal("-inf"))
+				max, err := strconv.Atoi(zrangeby.Max)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
+			}).Return(redis.NewStringSliceResult([]string{}, nil))
+
+			// DeleteRoomsOccupiedTimeout
+			ts = time.Now().Unix() - w.Config.GetInt64("occupiedTimeout")
+			expectedRooms := []string{"room1", "room2", "room3"}
+			mockRedisClient.EXPECT().ZRangeByScore(
+				lKey,
+				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
+			).Do(func(key string, zrangeby redis.ZRangeBy) {
+				Expect(zrangeby.Min).To(Equal("-inf"))
+				max, err := strconv.Atoi(zrangeby.Max)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
+			}).Return(redis.NewStringSliceResult(expectedRooms, errors.New("redis error")))
+
+			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
+			Expect(hook.Entries).To(testing.ContainLogMessage("error removing old occupied rooms"))
 		})
 	})
 })

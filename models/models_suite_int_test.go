@@ -11,14 +11,24 @@ package models_test
 import (
 	"testing"
 
+	"github.com/topfreegames/extensions/redis"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus/hooks/test"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	mTest "github.com/topfreegames/maestro/testing"
+	"github.com/topfreegames/maestro/extensions"
+	mtesting "github.com/topfreegames/maestro/testing"
 	"k8s.io/client-go/kubernetes"
 )
 
-var clientset kubernetes.Interface
+var (
+	redisClient *redis.Client
+	logger      *logrus.Logger
+	hook        *test.Hook
+	clientset   kubernetes.Interface
+)
 
 func TestIntModels(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -26,9 +36,15 @@ func TestIntModels(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	config, err := mTest.MinikubeConfig()
+	config, err := mtesting.GetDefaultConfig()
 	Expect(err).NotTo(HaveOccurred())
 
-	clientset, err = kubernetes.NewForConfig(config)
+	logger, hook = test.NewNullLogger()
+	logger.Level = logrus.DebugLevel
+
+	redisClient, err = extensions.GetRedisClient(logger, config)
 	Expect(err).NotTo(HaveOccurred())
+
+	kubeConfig, err := mtesting.MinikubeConfig()
+	clientset, err = kubernetes.NewForConfig(kubeConfig)
 })

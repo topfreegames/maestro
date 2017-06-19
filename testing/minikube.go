@@ -74,12 +74,12 @@ func NextJsonStr() (string, error) {
     }
   ],
   "limits": {
-    "memory": "128Mi",
-    "cpu": "20m"
+    "memory": "10Mi",
+    "cpu": "10m"
   },
  "requests": {
-    "memory": "128Mi",
-    "cpu": "20m"
+    "memory": "10Mi",
+    "cpu": "10m"
   },
   "shutdownTimeout": 10,
   "autoscaling": {

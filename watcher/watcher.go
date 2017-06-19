@@ -80,6 +80,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
 	w.Config.SetDefault("watcher.gracefulShutdownTimeout", 300)
 	w.Config.SetDefault("pingTimeout", 30)
+	w.Config.SetDefault("occupiedTimeout", 60*60)
 }
 
 func (w *Watcher) configure() {
@@ -156,6 +157,24 @@ func (w *Watcher) RemoveDeadRooms() {
 	)
 	if err != nil {
 		logger.WithError(err).Error("error removing dead rooms")
+	}
+
+	since = time.Now().Unix() - w.Config.GetInt64("occupiedTimeout")
+	logger = w.Logger.WithFields(logrus.Fields{
+		"executionID": uuid.NewV4().String(),
+		"operation":   "removeDeadOccupiedRooms",
+		"since":       since,
+	})
+	err = controller.DeleteRoomsOccupiedTimeout(
+		logger,
+		w.MetricsReporter,
+		w.RedisClient.Client,
+		w.KubernetesClient,
+		w.SchedulerName,
+		since,
+	)
+	if err != nil {
+		logger.WithError(err).Error("error removing old occupied rooms")
 	}
 }
 

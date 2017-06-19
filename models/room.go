@@ -71,6 +71,14 @@ func (r *Room) Create(redisClient interfaces.RedisClient) error {
 	return err
 }
 
+const ZaddIfNotExists = `
+local c = redis.call('zscore', KEYS[1], ARGV[1])
+if not c then
+	redis.call('zadd', KEYS[1], KEYS[2], ARGV[1])
+end
+return 'OK'
+`
+
 // SetStatus updates the status of a given room in the database
 func (r *Room) SetStatus(redisClient interfaces.RedisClient, status string) error {
 	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
@@ -89,6 +97,18 @@ func (r *Room) SetStatus(redisClient interfaces.RedisClient, status string) erro
 		Member: r.ID,
 	})
 
+	lastStatusChangedKey := GetLastStatusRedisKey(r.SchedulerName, StatusOccupied)
+	lastPingAtStr := strconv.FormatInt(r.LastPingAt, 10)
+	if status == StatusOccupied {
+		pipe.Eval(
+			ZaddIfNotExists,
+			[]string{lastStatusChangedKey, lastPingAtStr},
+			r.ID,
+		)
+	} else {
+		pipe.ZRem(lastStatusChangedKey, r.ID)
+	}
+
 	// remove from other statuses to be safe
 	for _, st := range allStatus {
 		if st != status {
@@ -106,6 +126,7 @@ func (r *Room) ClearAll(redisClient interfaces.RedisClient) error {
 	pipe := redisClient.TxPipeline()
 	for _, st := range allStatus {
 		pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
+		pipe.ZRem(GetLastStatusRedisKey(r.SchedulerName, st), r.ID)
 	}
 	pipe.ZRem(GetRoomPingRedisKey(r.SchedulerName), r.ID)
 	pipe.Del(r.GetRoomRedisKey())
@@ -116,6 +137,11 @@ func (r *Room) ClearAll(redisClient interfaces.RedisClient) error {
 // GetRoomPingRedisKey gets the key for the sortedset that keeps the rooms ping timestamp in redis
 func GetRoomPingRedisKey(schedulerName string) string {
 	return fmt.Sprintf("scheduler:%s:ping", schedulerName)
+}
+
+// GetLastStatusRedisKey gets the key for the sortedset that keeps the last timestamp a room changed its status
+func GetLastStatusRedisKey(schedulerName, status string) string {
+	return fmt.Sprintf("scheduler:%s:last:status:%s", schedulerName, status)
 }
 
 // GetAddresses gets room public addresses
@@ -157,6 +183,14 @@ func (r *Room) GetAddresses(kubernetesClient kubernetes.Interface) (*RoomAddress
 func GetRoomsNoPingSince(redisClient interfaces.RedisClient, schedulerName string, since int64) ([]string, error) {
 	return redisClient.ZRangeByScore(
 		GetRoomPingRedisKey(schedulerName),
+		redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+	).Result()
+}
+
+// GetRoomsOccupiedTimeout return a list of rooms ids that have been occupied since 'since'
+func GetRoomsOccupiedTimeout(redisClient interfaces.RedisClient, schedulerName string, since int64) ([]string, error) {
+	return redisClient.ZRangeByScore(
+		GetLastStatusRedisKey(schedulerName, StatusOccupied),
 		redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
 	).Result()
 }
