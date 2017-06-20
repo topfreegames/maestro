@@ -131,6 +131,12 @@ cmd:
 					scheduler.YAML = yaml1
 				},
 			)
+			for _, name := range schedulerNames {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yaml1
+					})
+			}
 			w.EnsureRunningWatchers(schedulerNames)
 			Expect(w.Watchers).To(HaveKey(schedulerNames[0]))
 			Expect(w.Watchers[schedulerNames[0]].SchedulerName).To(Equal(schedulerNames[0]))
@@ -139,6 +145,12 @@ cmd:
 
 		It("should set watcher.Run to true", func() {
 			schedulerNames := []string{"scheduler-1"}
+			for _, name := range schedulerNames {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yaml1
+					})
+			}
 			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0], occupiedTimeout)
 			w.Watchers[watcher1.SchedulerName] = watcher1
 			Expect(w.Watchers[schedulerNames[0]].Run).To(BeFalse())
@@ -161,6 +173,12 @@ cmd:
 
 		It("should remove watcher if it should not be running", func() {
 			schedulerNames := []string{"scheduler-1", "scheduler-2"}
+			for _, name := range schedulerNames {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yaml1
+					})
+			}
 			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0], occupiedTimeout)
 			w.Watchers[watcher1.SchedulerName] = watcher1
 			Expect(w.Watchers[schedulerNames[0]].Run).To(BeFalse())

@@ -2,6 +2,7 @@
    "name": "scheduler-name",
    "game": "game-name",
    "image": "nginx:latest",
+   "occupiedTimeout": 180,
    "ports": [
       {
          "containerPort": 8080,
