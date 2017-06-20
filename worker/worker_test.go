@@ -1,4 +1,3 @@
-// maestro
 // +build unit
 // https://github.com/topfreegames/maestro
 //
@@ -21,6 +20,7 @@ import (
 )
 
 var _ = Describe("Worker", func() {
+	var occupiedTimeout int64 = 300
 	yaml1 := `
 name: controller-name
 game: controller
@@ -126,9 +126,8 @@ cmd:
 
 		It("should add watcher to watchers map and run it in a goroutine", func() {
 			schedulerNames := []string{"scheduler-1"}
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerNames[0]).Do(
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT yaml FROM schedulers WHERE name = ?", schedulerNames[0]).Do(
 				func(scheduler *models.Scheduler, query, name string) {
-					scheduler.Name = name
 					scheduler.YAML = yaml1
 				},
 			)
@@ -140,13 +139,7 @@ cmd:
 
 		It("should set watcher.Run to true", func() {
 			schedulerNames := []string{"scheduler-1"}
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerNames[0]).Do(
-				func(scheduler *models.Scheduler, query, name string) {
-					scheduler.Name = name
-					scheduler.YAML = yaml1
-				},
-			)
-			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0])
+			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0], occupiedTimeout)
 			w.Watchers[watcher1.SchedulerName] = watcher1
 			Expect(w.Watchers[schedulerNames[0]].Run).To(BeFalse())
 
@@ -168,18 +161,10 @@ cmd:
 
 		It("should remove watcher if it should not be running", func() {
 			schedulerNames := []string{"scheduler-1", "scheduler-2"}
-			for _, name := range schedulerNames {
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).Do(
-					func(scheduler *models.Scheduler, query, name string) {
-						scheduler.Name = name
-						scheduler.YAML = yaml1
-					},
-				)
-			}
-			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0])
+			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0], occupiedTimeout)
 			w.Watchers[watcher1.SchedulerName] = watcher1
 			Expect(w.Watchers[schedulerNames[0]].Run).To(BeFalse())
-			watcher2 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[1])
+			watcher2 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[1], occupiedTimeout)
 			watcher2.Run = true
 			w.Watchers[watcher2.SchedulerName] = watcher2
 			Expect(w.Watchers[schedulerNames[1]].Run).To(BeTrue())

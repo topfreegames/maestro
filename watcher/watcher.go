@@ -58,6 +58,7 @@ func NewWatcher(
 	redisClient *redis.Client,
 	clientset kubernetes.Interface,
 	schedulerName string,
+	occupiedTimeout int64,
 ) *Watcher {
 	w := &Watcher{
 		Config:           config,
@@ -67,6 +68,7 @@ func NewWatcher(
 		KubernetesClient: clientset,
 		MetricsReporter:  mr,
 		SchedulerName:    schedulerName,
+		OccupiedTimeout:  occupiedTimeout,
 	}
 	w.loadConfigurationDefaults()
 	w.configure()
@@ -198,6 +200,15 @@ func (w *Watcher) RemoveDeadRooms() {
 	}
 }
 
+func (w *Watcher) updateOccupiedTimeout(scheduler *models.Scheduler) error {
+	configYaml, err := models.NewConfigYAML(scheduler.YAML)
+	if err != nil {
+		return err
+	}
+	w.OccupiedTimeout = configYaml.OccupiedTimeout
+	return nil
+}
+
 // AutoScale checks if the GRUs state is as expected and scale up or down if necessary
 func (w *Watcher) AutoScale() {
 	w.gracefulShutdown.wg.Add(1)
@@ -221,6 +232,12 @@ func (w *Watcher) AutoScale() {
 	}
 	if err != nil {
 		logger.WithError(err).Error("failed to get scheduler scaling info")
+		return
+	}
+
+	err = w.updateOccupiedTimeout(scheduler)
+	if err != nil {
+		logger.WithError(err).Error("failed to update scheduler occupied timeout")
 		return
 	}
 

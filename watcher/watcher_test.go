@@ -69,6 +69,7 @@ env:
 cmd:
   - "./room"
 `
+	occupiedTimeout = 300
 )
 
 var _ = Describe("Watcher", func() {
@@ -82,14 +83,7 @@ var _ = Describe("Watcher", func() {
 			config.Set("watcher.lockKey", lockKey)
 			config.Set("watcher.lockTimeoutMs", lockTimeoutMs)
 
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).Do(
-				func(scheduler *models.Scheduler, query, name string) {
-					scheduler.Name = name
-					scheduler.YAML = yaml1
-				},
-			)
-
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name)
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout)
 			Expect(w.AutoScalingPeriod).To(Equal(autoScalingPeriod))
 			Expect(w.Config).To(Equal(config))
 			Expect(w.DB).To(Equal(mockDb))
@@ -104,15 +98,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should return configured new watcher using configuration defaults", func() {
 			name := "my-scheduler"
-
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).Do(
-				func(scheduler *models.Scheduler, query, name string) {
-					scheduler.Name = name
-					scheduler.YAML = yaml1
-				},
-			)
-
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name)
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout)
 			Expect(w.AutoScalingPeriod).To(Equal(10))
 			Expect(w.LockKey).To(Equal("maestro-lock-key"))
 			Expect(w.LockTimeoutMS).To(Equal(180000))
@@ -130,14 +116,7 @@ var _ = Describe("Watcher", func() {
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(
-				func(scheduler *models.Scheduler, query, name string) {
-					scheduler.Name = name
-					scheduler.YAML = yaml1
-				},
-			)
-
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name)
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout)
 			Expect(w).NotTo(BeNil())
 
 			// EnterCriticalSection (lock done by redis-lock)
@@ -190,15 +169,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should not panic if error acquiring lock", func() {
 			name := "my-scheduler"
-
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).Do(
-				func(scheduler *models.Scheduler, query, name string) {
-					scheduler.Name = name
-					scheduler.YAML = yaml1
-				},
-			)
-
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name)
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout)
 			Expect(w).NotTo(BeNil())
 			defer func() { w.Run = false }()
 
@@ -213,15 +184,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should not panic if lock is being used", func() {
 			name := "my-scheduler"
-
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).Do(
-				func(scheduler *models.Scheduler, query, name string) {
-					scheduler.Name = name
-					scheduler.YAML = yaml1
-				},
-			)
-
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name)
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout)
 			Expect(w).NotTo(BeNil())
 			defer func() { w.Run = false }()
 
@@ -242,15 +205,7 @@ var _ = Describe("Watcher", func() {
 		BeforeEach(func() {
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
-
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(
-				func(scheduler *models.Scheduler, query, name string) {
-					scheduler.Name = name
-					scheduler.YAML = yaml1
-				},
-			)
-
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name)
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout)
 			Expect(w).NotTo(BeNil())
 		})
 
@@ -736,15 +691,7 @@ var _ = Describe("Watcher", func() {
 		BeforeEach(func() {
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
-
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(
-				func(scheduler *models.Scheduler, query, name string) {
-					scheduler.Name = name
-					scheduler.YAML = yaml1
-				},
-			)
-
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name)
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout)
 			Expect(w).NotTo(BeNil())
 		})
 
