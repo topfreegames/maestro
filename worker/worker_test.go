@@ -21,6 +21,42 @@ import (
 )
 
 var _ = Describe("Worker", func() {
+	yaml1 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+occupiedTimeout: 300
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+`
 	Describe("NewWorker", func() {
 		It("should return configured new worker", func() {
 			mockRedisClient.EXPECT().Ping()
@@ -90,6 +126,12 @@ var _ = Describe("Worker", func() {
 
 		It("should add watcher to watchers map and run it in a goroutine", func() {
 			schedulerNames := []string{"scheduler-1"}
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerNames[0]).Do(
+				func(scheduler *models.Scheduler, query, name string) {
+					scheduler.Name = name
+					scheduler.YAML = yaml1
+				},
+			)
 			w.EnsureRunningWatchers(schedulerNames)
 			Expect(w.Watchers).To(HaveKey(schedulerNames[0]))
 			Expect(w.Watchers[schedulerNames[0]].SchedulerName).To(Equal(schedulerNames[0]))
@@ -98,6 +140,12 @@ var _ = Describe("Worker", func() {
 
 		It("should set watcher.Run to true", func() {
 			schedulerNames := []string{"scheduler-1"}
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerNames[0]).Do(
+				func(scheduler *models.Scheduler, query, name string) {
+					scheduler.Name = name
+					scheduler.YAML = yaml1
+				},
+			)
 			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0])
 			w.Watchers[watcher1.SchedulerName] = watcher1
 			Expect(w.Watchers[schedulerNames[0]].Run).To(BeFalse())
@@ -120,6 +168,14 @@ var _ = Describe("Worker", func() {
 
 		It("should remove watcher if it should not be running", func() {
 			schedulerNames := []string{"scheduler-1", "scheduler-2"}
+			for _, name := range schedulerNames {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).Do(
+					func(scheduler *models.Scheduler, query, name string) {
+						scheduler.Name = name
+						scheduler.YAML = yaml1
+					},
+				)
+			}
 			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0])
 			w.Watchers[watcher1.SchedulerName] = watcher1
 			Expect(w.Watchers[schedulerNames[0]].Run).To(BeFalse())

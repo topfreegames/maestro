@@ -48,6 +48,9 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger.Debug("Creating scheduler...")
 
 	timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
+	if payload.OccupiedTimeout == 0 {
+		payload.OccupiedTimeout = g.App.Config.GetInt64("occupiedTimeout")
+	}
 	err := mr.WithSegment(models.SegmentController, func() error {
 		return controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, payload, timeoutSec)
 	})
@@ -151,6 +154,9 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 
 	timeoutSec := g.App.Config.GetInt("updateTimeoutSeconds")
+	if payload.OccupiedTimeout == 0 {
+		payload.OccupiedTimeout = g.App.Config.GetInt64("occupiedTimeout")
+	}
 	logger.WithField("time", time.Now()).Info("Starting update")
 	err = mr.WithSegment(models.SegmentController, func() error {
 		return controller.UpdateSchedulerConfig(

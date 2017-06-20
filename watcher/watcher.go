@@ -46,6 +46,7 @@ type Watcher struct {
 	Run               bool
 	SchedulerName     string
 	gracefulShutdown  *gracefulShutdown
+	OccupiedTimeout   int64
 }
 
 // NewWatcher is the watcher constructor
@@ -70,6 +71,7 @@ func NewWatcher(
 	w.loadConfigurationDefaults()
 	w.configure()
 	w.configureLogger()
+	w.configureTimeout()
 	return w
 }
 
@@ -99,6 +101,22 @@ func (w *Watcher) configureLogger() {
 		"source":  "maestro-watcher",
 		"version": metadata.Version,
 	})
+}
+
+func (w *Watcher) configureTimeout() error {
+	scheduler := models.NewScheduler(w.SchedulerName, "", "")
+	err := w.MetricsReporter.WithSegment(models.SegmentSelect, func() error {
+		return scheduler.Load(w.DB)
+	})
+	if err != nil {
+		return err
+	}
+	configYaml, err := models.NewConfigYAML(scheduler.YAML)
+	if err != nil {
+		return err
+	}
+	w.OccupiedTimeout = configYaml.OccupiedTimeout
+	return nil
 }
 
 // Start starts the watcher
@@ -159,22 +177,24 @@ func (w *Watcher) RemoveDeadRooms() {
 		logger.WithError(err).Error("error removing dead rooms")
 	}
 
-	since = time.Now().Unix() - w.Config.GetInt64("occupiedTimeout")
-	logger = w.Logger.WithFields(logrus.Fields{
-		"executionID": uuid.NewV4().String(),
-		"operation":   "removeDeadOccupiedRooms",
-		"since":       since,
-	})
-	err = controller.DeleteRoomsOccupiedTimeout(
-		logger,
-		w.MetricsReporter,
-		w.RedisClient.Client,
-		w.KubernetesClient,
-		w.SchedulerName,
-		since,
-	)
-	if err != nil {
-		logger.WithError(err).Error("error removing old occupied rooms")
+	if w.OccupiedTimeout > 0 {
+		since = time.Now().Unix() - w.OccupiedTimeout
+		logger = w.Logger.WithFields(logrus.Fields{
+			"executionID": uuid.NewV4().String(),
+			"operation":   "removeDeadOccupiedRooms",
+			"since":       since,
+		})
+		err = controller.DeleteRoomsOccupiedTimeout(
+			logger,
+			w.MetricsReporter,
+			w.RedisClient.Client,
+			w.KubernetesClient,
+			w.SchedulerName,
+			since,
+		)
+		if err != nil {
+			logger.WithError(err).Error("error removing old occupied rooms")
+		}
 	}
 }
 

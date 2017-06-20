@@ -82,6 +82,7 @@ type ConfigYAML struct {
 	Cmd             []string     `yaml:"cmd" json:"cmd"`
 	NodeAffinity    string       `yaml:"affinity" json:"affinity"`
 	NodeToleration  string       `yaml:"toleration" json:"toleration"`
+	OccupiedTimeout int64        `yaml:"occupiedTimeout" json:"occupiedTimeout"`
 }
 
 // NewScheduler is the scheduler constructor
