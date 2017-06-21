@@ -158,6 +158,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		payload.OccupiedTimeout = g.App.Config.GetInt64("occupiedTimeout")
 	}
 	logger.WithField("time", time.Now()).Info("Starting update")
+	lockKey := fmt.Sprintf("%s-%s", g.App.Config.GetString("watcher.lockKey"), payload.Name)
 	err = mr.WithSegment(models.SegmentController, func() error {
 		return controller.UpdateSchedulerConfig(
 			l,
@@ -167,7 +168,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			g.App.KubernetesClient,
 			payload,
 			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"),
-			g.App.Config.GetString("watcher.lockKey"),
+			lockKey,
 			&clock.Clock{},
 		)
 	})

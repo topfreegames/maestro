@@ -8,6 +8,7 @@
 package watcher
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"strings"
@@ -89,7 +90,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 
 func (w *Watcher) configure() {
 	w.AutoScalingPeriod = w.Config.GetInt("watcher.autoScalingPeriod")
-	w.LockKey = w.Config.GetString("watcher.lockKey")
+	w.LockKey = fmt.Sprintf("%s-%s", w.Config.GetString("watcher.lockKey"), w.SchedulerName)
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
 	var wg sync.WaitGroup
 	w.gracefulShutdown = &gracefulShutdown{
@@ -141,7 +142,7 @@ func (w *Watcher) Start() {
 				if err != nil {
 					l.WithError(err).Error("error getting watcher lock")
 				} else if lock == nil {
-					l.Warn("unable to get watcher lock, maybe some other process has it...")
+					l.Warnf("unable to get watcher %s lock, maybe some other process has it...", w.SchedulerName)
 				}
 			} else if lock.IsLocked() {
 				w.RemoveDeadRooms()

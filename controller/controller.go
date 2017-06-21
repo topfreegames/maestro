@@ -442,7 +442,7 @@ func UpdateSchedulerConfig(
 						l.WithError(err).Error("error getting watcher lock")
 						return err
 					} else if lock == nil {
-						l.Warn("unable to get watcher lock, maybe some other process has it...")
+						l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
 					}
 				} else if lock.IsLocked() {
 					break waitForLock

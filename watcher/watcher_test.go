@@ -95,7 +95,7 @@ var _ = Describe("Watcher", func() {
 			Expect(w.Logger).NotTo(BeNil())
 			Expect(w.MetricsReporter).To(Equal(mr))
 			Expect(w.RedisClient).To(Equal(redisClient))
-			Expect(w.LockKey).To(Equal(lockKey))
+			Expect(w.LockKey).To(Equal(fmt.Sprintf("%s-%s", lockKey, name)))
 			Expect(w.LockTimeoutMS).To(Equal(lockTimeoutMs))
 			Expect(w.SchedulerName).To(Equal(name))
 		})
@@ -108,7 +108,7 @@ var _ = Describe("Watcher", func() {
 				})
 			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout)
 			Expect(w.AutoScalingPeriod).To(Equal(10))
-			Expect(w.LockKey).To(Equal("maestro-lock-key"))
+			Expect(w.LockKey).To(Equal("maestro-lock-key-my-scheduler"))
 			Expect(w.LockTimeoutMS).To(Equal(180000))
 		})
 	})
@@ -133,7 +133,8 @@ var _ = Describe("Watcher", func() {
 			Expect(w).NotTo(BeNil())
 
 			// EnterCriticalSection (lock done by redis-lock)
-			mockRedisClient.EXPECT().SetNX("maestro-lock-key", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).AnyTimes()
+			lockKey := fmt.Sprintf("maestro-lock-key-%s", configYaml1.Name)
+			mockRedisClient.EXPECT().SetNX(lockKey, gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).AnyTimes()
 
 			// DeleteRoomsNoPingSince
 			pKey := models.GetRoomPingRedisKey(configYaml1.Name)
@@ -176,7 +177,7 @@ var _ = Describe("Watcher", func() {
 			}).Return(&types.Result{}, nil)
 
 			// LeaveCriticalSection (unlock done by redis-lock)
-			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{"maestro-lock-key"}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
+			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{lockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
 			w.Start()
 		})
 
@@ -191,7 +192,7 @@ var _ = Describe("Watcher", func() {
 			defer func() { w.Run = false }()
 
 			// EnterCriticalSection (lock done by redis-lock)
-			mockRedisClient.EXPECT().SetNX("maestro-lock-key", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, errors.New("some error in lock"))).AnyTimes()
+			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, errors.New("some error in lock"))).AnyTimes()
 
 			Expect(func() { go w.Start() }).ShouldNot(Panic())
 			Eventually(func() bool { return w.Run }).Should(BeTrue())
@@ -210,12 +211,12 @@ var _ = Describe("Watcher", func() {
 			defer func() { w.Run = false }()
 
 			// EnterCriticalSection (lock done by redis-lock)
-			mockRedisClient.EXPECT().SetNX("maestro-lock-key", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, nil)).AnyTimes()
+			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, nil)).AnyTimes()
 
 			Expect(func() { go w.Start() }).ShouldNot(Panic())
 			Eventually(func() bool { return w.Run }).Should(BeTrue())
 			Eventually(func() bool { return hook.LastEntry() != nil }, 1500*time.Millisecond).Should(BeTrue())
-			Expect(hook.LastEntry().Message).To(Equal("unable to get watcher lock, maybe some other process has it..."))
+			Expect(hook.LastEntry().Message).To(Equal("unable to get watcher my-scheduler lock, maybe some other process has it..."))
 		})
 	})
 

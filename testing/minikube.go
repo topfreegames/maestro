@@ -64,8 +64,8 @@ func NextJsonStr() (string, error) {
 {
   "name": "{{.Name}}",
   "game": "game-name",
-	"image": "nginx:alpine",
-	"toleration": "game-name",
+  "image": "nginx:alpine",
+  "toleration": "game-name",
   "ports": [
     {
       "containerPort": 8080,
@@ -81,6 +81,7 @@ func NextJsonStr() (string, error) {
     "memory": "10Mi",
     "cpu": "10m"
   },
+  "occupiedTimeout": 300,
   "shutdownTimeout": 10,
   "autoscaling": {
     "min": 2,

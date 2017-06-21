@@ -448,8 +448,10 @@ var _ = Describe("Scheduler Handler", func() {
 							*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
 						})
 
+					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+
 					mockRedisClient.EXPECT().
-						SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
 
 					for _, svc := range svcs.Items {
@@ -485,7 +487,7 @@ var _ = Describe("Scheduler Handler", func() {
 						Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
 
 					mockRedisClient.EXPECT().
-						Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
+						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
 						Return(redis.NewCmdResult(nil, nil))
 
 					recorder = httptest.NewRecorder()

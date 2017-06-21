@@ -20,6 +20,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/maestro/models"
 	mt "github.com/topfreegames/maestro/testing"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -221,6 +222,48 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("should delete rooms that timed out with occupied status", func() {
+			jsonStr := fmt.Sprintf(`{
+  "name": "%s",
+  "game": "game-name",
+	"image": "nginx:alpine",
+	"toleration": "game-name",
+  "ports": [
+    {
+      "containerPort": 8080,
+      "protocol": "TCP",
+      "name": "tcp"
+    }
+  ],
+  "limits": {
+    "memory": "10Mi",
+    "cpu": "10m"
+  },
+ "requests": {
+    "memory": "10Mi",
+    "cpu": "10m"
+  },
+	"occupiedTimeout": 1,
+  "shutdownTimeout": 10,
+  "autoscaling": {
+    "min": 2,
+    "up": {
+      "delta": 1,
+      "trigger": {
+        "usage": 70,
+        "time": 1
+      },
+      "cooldown": 1
+    },
+    "down": {
+      "delta": 1,
+      "trigger": {
+        "usage": 50,
+        "time": 1
+      },
+      "cooldown": 1
+    }
+  }
+}`, fmt.Sprintf("maestro-test-%s", uuid.NewV4()))
 			url = fmt.Sprintf("http://%s/scheduler", app.Address)
 			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
 			request.Header.Add("Authorization", "Bearer token")

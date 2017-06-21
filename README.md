@@ -73,6 +73,7 @@ game: pong                  # several configs can refer to the same game
 image: pong/pong:v123
 affinity: node-affinity     # optional field: if set, rooms will be allocated preferentially to nodes with label "node-affinity": "true"
 toleration: node-toleration # optional field: if set, rooms will also be allocated in nodes with this taint
+occupiedTimeout: match-time # how much time a match has. If room stays with occupied status for longer than occupiedTimeout seconds, the room is deleted
 ports:
   - containerPort: 5050     # port exposed in the container
     protocol: UDP           # supported protocols are TCP and UDP
