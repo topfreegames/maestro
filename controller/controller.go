@@ -380,10 +380,11 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 		default:
 			for _, name := range idleRooms {
 				_, err := clientset.CoreV1().Pods(scheduler.Name).Get(name, metav1.GetOptions{})
-				if err == nil || !strings.Contains(err.Error(), "not found") {
+				if err == nil {
 					exit = false
-				} else {
+				} else if !strings.Contains(err.Error(), "not found") {
 					l.WithError(err).Error("scale down pod error")
+					exit = false
 				}
 			}
 			l.Debug("scaling down scheduler...")
