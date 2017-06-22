@@ -8,12 +8,14 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/go-redis/redis"
 	"github.com/topfreegames/extensions/redis/interfaces"
+	maestroErrors "github.com/topfreegames/maestro/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
@@ -166,15 +168,23 @@ func (r *Room) GetAddresses(kubernetesClient kubernetes.Interface) (*RoomAddress
 			break
 		}
 	}
+	if rAddresses.Host == "" {
+		return nil, maestroErrors.NewKubernetesError("no host found", errors.New("no node found to host room"))
+	}
 	svc, err := kubernetesClient.CoreV1().Services(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 	for _, port := range svc.Spec.Ports {
-		rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
-			Name: port.Name,
-			Port: port.NodePort,
-		})
+		if port.NodePort != 0 {
+			rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
+				Name: port.Name,
+				Port: port.NodePort,
+			})
+		}
+	}
+	if len(rAddresses.Ports) == 0 {
+		return nil, maestroErrors.NewKubernetesError("no ports found", errors.New("no node port found to host room"))
 	}
 	return rAddresses, nil
 }

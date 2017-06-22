@@ -323,7 +323,10 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 
 	idleRooms, err := sReady.Result()
 	if err != nil {
-		l.WithError(err).Error("scale down error, failed to retrieve ready rooms from redis")
+		l.WithError(err).WithFields(logrus.Fields{
+			"amount": int64(amount),
+			"key":    models.GetRoomStatusSetRedisKey(scheduler.Name, models.StatusReady),
+		}).Error("scale down error, failed to retrieve ready rooms from redis")
 		return err
 	}
 
