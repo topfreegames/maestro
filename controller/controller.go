@@ -16,6 +16,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	redisLock "github.com/bsm/redis-lock"
+	goredis "github.com/go-redis/redis"
 	uuid "github.com/satori/go.uuid"
 	clockinterfaces "github.com/topfreegames/extensions/clock/interfaces"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
@@ -319,15 +320,28 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
 
 	l.Debug("accessing redis")
-	sReady := redisClient.SPopN(models.GetRoomStatusSetRedisKey(scheduler.Name, models.StatusReady), int64(amount))
-
-	idleRooms, err := sReady.Result()
+	//TODO: check redis version and use SPopN if version is >= 3.2, since SPopN is O(1)
+	roomSet := make(map[*goredis.StringCmd]bool)
+	readyKey := models.GetRoomStatusSetRedisKey(scheduler.Name, models.StatusReady)
+	pipe := redisClient.TxPipeline()
+	for i := 0; i < amount; i++ {
+		// It is not guaranteed that maestro will delete 'amount' rooms
+		// SPop returns a random room name that can already selected
+		roomSet[pipe.SPop(readyKey)] = true
+	}
+	_, err := pipe.Exec()
 	if err != nil {
 		l.WithError(err).WithFields(logrus.Fields{
 			"amount": int64(amount),
 			"key":    models.GetRoomStatusSetRedisKey(scheduler.Name, models.StatusReady),
 		}).Error("scale down error, failed to retrieve ready rooms from redis")
 		return err
+	}
+	idleRooms := []string{}
+	i := 0
+	for strCmd := range roomSet {
+		idleRooms = append(idleRooms, strCmd.Val())
+		i = i + 1
 	}
 
 	for i, key := range idleRooms {

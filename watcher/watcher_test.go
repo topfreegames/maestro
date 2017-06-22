@@ -555,9 +555,14 @@ var _ = Describe("Watcher", func() {
 			scaleDownAmount := configYaml1.AutoScaling.Down.Delta
 			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
-			mockRedisClient.EXPECT().
-				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
-				Return(redis.NewStringSliceResult(names, nil))
+
+			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for _, name := range names {
+				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+			}
+			mockPipeline.EXPECT().Exec()
+
 			for _, name := range names {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				room := models.NewRoom(name, scheduler.Name)

@@ -952,9 +952,13 @@ cmd:
 			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockRedisClient.EXPECT().
-				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
-				Return(redis.NewStringSliceResult(names, nil))
+			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for _, name := range names {
+				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+
+			}
+			mockPipeline.EXPECT().Exec()
 
 			for _, name := range names {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -1005,9 +1009,13 @@ cmd:
 			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockRedisClient.EXPECT().
-				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
-				Return(redis.NewStringSliceResult(names, nil))
+			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for _, name := range names {
+				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+
+			}
+			mockPipeline.EXPECT().Exec()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			room := models.NewRoom(names[0], scheduler.Name)
@@ -1056,9 +1064,12 @@ cmd:
 			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockRedisClient.EXPECT().
-				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
-				Return(redis.NewStringSliceResult(names, errors.New("some error in redis")))
+			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for _, name := range names {
+				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+			}
+			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
 			timeoutSec = 0
 			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
@@ -1089,9 +1100,12 @@ cmd:
 			// ScaleDown
 			scaleDownAmount := 2
 
-			mockRedisClient.EXPECT().
-				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
-				Return(redis.NewStringSliceResult(nil, errors.New("some error in redis")))
+			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for i := 0; i < scaleDownAmount; i++ {
+				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult("", nil))
+			}
+			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
 			timeoutSec = 0
 			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
@@ -1110,9 +1124,12 @@ cmd:
 			names := []string{"non-existing-service"}
 			Expect(err).NotTo(HaveOccurred())
 
-			mockRedisClient.EXPECT().
-				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
-				Return(redis.NewStringSliceResult(names, nil))
+			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for _, name := range names {
+				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+			}
+			mockPipeline.EXPECT().Exec()
 
 			for _, name := range names {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -1158,9 +1175,12 @@ cmd:
 			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockRedisClient.EXPECT().
-				SPopN(models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady), int64(scaleDownAmount)).
-				Return(redis.NewStringSliceResult(names, nil))
+			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for _, name := range names {
+				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+			}
+			mockPipeline.EXPECT().Exec()
 
 			for _, name := range names {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
