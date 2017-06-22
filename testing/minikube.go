@@ -82,7 +82,7 @@ func NextJsonStr() (string, error) {
     "cpu": "10m"
   },
   "occupiedTimeout": 300,
-  "shutdownTimeout": 10,
+  "shutdownTimeout": 100,
   "autoscaling": {
     "min": 2,
     "up": {

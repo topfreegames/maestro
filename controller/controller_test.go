@@ -37,6 +37,8 @@ const (
 name: controller-name
 game: controller
 image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
 ports:
   - containerPort: 1234
     protocol: UDP
@@ -45,6 +47,9 @@ ports:
     protocol: TCP
     name: port2
 limits:
+  memory: "66Mi"
+  cpu: "2"
+requests:
   memory: "66Mi"
   cpu: "2"
 shutdownTimeout: 20
@@ -1013,23 +1018,20 @@ cmd:
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
 				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
-
 			}
 			mockPipeline.EXPECT().Exec()
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			room := models.NewRoom(names[0], scheduler.Name)
-			for _, status := range allStatus {
+			for range allStatus {
 				mockPipeline.EXPECT().
-					SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+					SRem(gomock.Any(), gomock.Any())
 				mockPipeline.EXPECT().
-					ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+					ZRem(gomock.Any(), gomock.Any())
 			}
-			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
-			mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), gomock.Any())
+			mockPipeline.EXPECT().Del(gomock.Any())
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
-			timeoutSec = 0
 			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			services, err := clientset.CoreV1().Services(scheduler.Name).List(metav1.ListOptions{

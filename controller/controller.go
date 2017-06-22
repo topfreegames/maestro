@@ -290,7 +290,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 		pods[i] = podName
 	}
 
-	if willTimeoutAt.Sub(time.Now()) < 0 {
+	if willTimeoutAt.Sub(time.Now()) <= 0 {
 		return errors.New("timeout scaling up scheduler")
 	}
 

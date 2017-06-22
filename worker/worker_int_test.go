@@ -292,8 +292,8 @@ var _ = Describe("Worker", func() {
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(http.StatusOK))
 			}
 
 			Eventually(func() bool {
@@ -355,7 +355,7 @@ var _ = Describe("Worker", func() {
 				case <-ticker:
 					svcs, err = clientset.CoreV1().Services(yaml.Name).List(listOptions)
 					Expect(err).NotTo(HaveOccurred())
-					if len(svcs.Items) == yaml.AutoScaling.Min+yaml.AutoScaling.Up.Delta {
+					if len(svcs.Items) >= yaml.AutoScaling.Min+yaml.AutoScaling.Up.Delta {
 						break waitForUp
 					}
 				}

@@ -165,6 +165,29 @@ var _ = Describe("Scheduler Handler", func() {
 				Expect(recorder.Body.String()).To(Equal(`{"schedulers":[]}`))
 			})
 
+			It("should return error if db fails to list schedulers", func() {
+				var configYaml models.ConfigYAML
+				err := json.Unmarshal([]byte(jsonString), &configYaml)
+				Expect(err).NotTo(HaveOccurred())
+
+				url := fmt.Sprintf("http://%s/scheduler", app.Address)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT name FROM schedulers").
+					Return(nil, errors.New("db error"))
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				var obj map[string]interface{}
+				err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(obj["code"]).To(Equal("MAE-000"))
+				Expect(obj["error"]).To(Equal("List scheduler failed"))
+				Expect(strings.ToLower(obj["description"].(string))).To(Equal("db error"))
+				Expect(obj["success"]).To(Equal(false))
+			})
 		})
 
 		Describe("POST /scheduler", func() {
@@ -277,6 +300,28 @@ var _ = Describe("Scheduler Handler", func() {
 					Expect(obj["code"]).To(Equal("MAE-000"))
 					Expect(obj["error"]).To(Equal("Create scheduler failed"))
 					Expect(obj["description"]).To(Equal("sql: database is closed"))
+					Expect(obj["success"]).To(Equal(false))
+				})
+			})
+
+			Context("when there is no nodes with affinity label", func() {
+				It("should return error code 422", func() {
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
+						gomock.Any(),
+					//HACK!!! DB won't return this information, but Kubernetes will
+					).Return(&types.Result{}, errors.New("node without label error"))
+					mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", gomock.Any())
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
+					var obj map[string]interface{}
+					err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(obj["code"]).To(Equal("MAE-000"))
+					Expect(obj["error"]).To(Equal("Create scheduler failed"))
+					Expect(obj["description"]).To(Equal("node without label error"))
 					Expect(obj["success"]).To(Equal(false))
 				})
 			})
@@ -542,6 +587,33 @@ var _ = Describe("Scheduler Handler", func() {
 					Expect(obj["code"]).To(Equal("MAE-004"))
 					Expect(obj["error"]).To(Equal("ValidationFailedError"))
 					Expect(obj["description"]).To(Equal("url name some-other-name doesn't match payload name scheduler-name"))
+					Expect(obj["success"]).To(Equal(false))
+				})
+
+				It("should return 422 if there is no nodes with affinity label", func() {
+					var configYaml1 models.ConfigYAML
+					err := yaml.Unmarshal([]byte(jsonString), &configYaml1)
+					Expect(err).NotTo(HaveOccurred())
+
+					reader := strings.NewReader(newJSONString)
+					url := fmt.Sprintf("/scheduler/%s", configYaml1.Name)
+					request, err = http.NewRequest("PUT", url, reader)
+					Expect(err).NotTo(HaveOccurred())
+
+					mockRedisClient.EXPECT().Ping().AnyTimes()
+
+					mockDb.EXPECT().
+						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+						//HACK!!! DB won't return this error, Kubernetes will
+						Return(nil, errors.New("node without label error"))
+
+					recorder = httptest.NewRecorder()
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
+					var obj map[string]interface{}
+					err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(obj["description"]).To(Equal("node without label error"))
 					Expect(obj["success"]).To(Equal(false))
 				})
 			})
