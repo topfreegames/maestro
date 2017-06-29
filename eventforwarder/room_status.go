@@ -13,11 +13,13 @@ import (
 	"google.golang.org/grpc"
 )
 
+//RoomStatusClient implements EventForwarder interface
 type RoomStatusClient struct {
 	RoomStatus    *pb.Room
 	ServerAddress string
 }
 
+//NewRoomStatus is the RoomStatusClient constructor
 func NewRoomStatus(game, roomId, roomType, status, serverAddress string) *RoomStatusClient {
 	return &RoomStatusClient{
 		RoomStatus: &pb.Room{
@@ -39,7 +41,7 @@ func (roomStatus *RoomStatusClient) Forward() (*pb.Response, error) {
 	defer conn.Close()
 
 	client := pb.NewStatusServiceClient(conn)
-	response, err := client.SendRoomStatus(context.Background(), roomStatus.RoomStatus)
+	response, err := client.SendStatus(context.Background(), roomStatus.RoomStatus)
 
 	return response, err
 }

@@ -20,6 +20,7 @@ import (
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/login"
 	logininterfaces "github.com/topfreegames/maestro/login/interfaces"
@@ -46,6 +47,7 @@ type App struct {
 	KubeconfigPath   string
 	Login            logininterfaces.Login
 	EmailDomains     []string
+	Forwarders       []eventforwarder.EventForwarder
 }
 
 //NewApp ctor
@@ -217,6 +219,9 @@ func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 	a.configureLogin()
 
 	a.configureServer()
+
+	a.configureForwarders()
+
 	return nil
 }
 
@@ -224,6 +229,13 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("scaleUpTimeoutSeconds", 300)
 	a.Config.SetDefault("scaleDownTimeoutSeconds", 300)
 	a.Config.SetDefault("deleteTimeoutSeconds", 150)
+}
+
+func (a *App) configureForwarders() {
+	//TODO: make generic forwarders that can be added as Plugins via config/local.yaml file
+	a.EventForwarder = []eventforwarder.EventForwarder{
+		eventforwarder.NewRoomStatus(
+	}
 }
 
 func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interface) error {
