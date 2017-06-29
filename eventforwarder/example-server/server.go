@@ -1,3 +1,10 @@
+// maestro
+// https://github.com/topfreegames/maestro
+//
+// Licensed under the MIT license:
+// http://www.opensource.org/licenses/mit-license
+// Copyright © 2017 Top Free Games <backend@tfgco.com>
+
 package main
 
 import (
@@ -11,13 +18,13 @@ import (
 
 type server struct{}
 
-func (*server) SendRoomStatus(ctx context.Context, status *pb.RoomStatus) (*pb.Response, error) {
-	fmt.Println("Received msg", status.GetGame(), status.GetType(), status.GetRoomId())
+func (*server) SendRoomStatus(ctx context.Context, room *pb.Room) (*pb.Response, error) {
+	fmt.Println("Received msg", room.GetGame(), room.GetRoomType(), room.GetRoomId())
 	return &pb.Response{"Hi!"}, nil
 }
 
-func (*server) SendPlayerStatus(ctx context.Context, status *pb.PlayerStatus) (*pb.Response, error) {
-	fmt.Println("Received msg", status.GetGame(), status.GetType(), status.GetRoomId(), status.GetUserId())
+func (*server) SendPlayerStatus(ctx context.Context, player *pb.Player) (*pb.Response, error) {
+	fmt.Println("Received msg", player.GetGame(), player.GetRoomType(), player.GetRoomId(), player.GetUserId())
 	return &pb.Response{"Hi!"}, nil
 }
 
@@ -28,7 +35,7 @@ func main() {
 	}
 	fmt.Println("Server listening at :10000")
 	grpcServer := grpc.NewServer()
-	pb.RegisterStatusServer(grpcServer, &server{})
+	pb.RegisterStatusServiceServer(grpcServer, &server{})
 
 	grpcServer.Serve(lis)
 }

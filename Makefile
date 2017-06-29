@@ -168,7 +168,7 @@ clean-int-tests:
 	@echo 'done'
 
 generate-proto:
+	@if [ -f eventforwarder/generated ]; then rm -r eventforwarder/generated; fi
 	@mkdir -p eventforwarder/generated
 	@protoc -I eventforwarder/protobuf/ eventforwarder/protobuf/*.proto --go_out=plugins=grpc:eventforwarder/generated
 	@echo 'proto files created at eventforwarder/generated'
-

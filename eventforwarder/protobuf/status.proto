@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package eventforwarder;
+
+service StatusService {
+  rpc SendRoomStatus(Room) returns (Response) {}
+  rpc SendPlayerStatus(Player) returns (Response) {}
+}
+
+message Status {
+  string status = 1;
+}
+
+message Room {
+  string game = 1;
+  string roomId = 2;
+  string roomType = 3;
+  Status status = 4;
+}
+
+message Player {
+  string game = 1;
+  string roomId = 2;
+  string roomType = 3;
+  string userId = 4;
+  Status status = 5;
+}
+
+message Response {
+  string message = 1;
+}

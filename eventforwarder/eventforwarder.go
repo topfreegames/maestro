@@ -7,6 +7,10 @@
 
 package eventforwarder
 
+import (
+	pb "github.com/topfreegames/maestro/eventforwarder/generated"
+)
+
 type EventForwarder interface {
-	Forward() error
+	Forward() (*pb.Response, error)
 }

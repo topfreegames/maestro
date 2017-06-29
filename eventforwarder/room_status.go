@@ -5,40 +5,41 @@
 // http://www.opensource.org/licenses/mit-license
 // Copyright © 2017 Top Free Games <backend@tfgco.com>
 
-package main
+package eventforwarder
 
 import (
-	"fmt"
 	pb "github.com/topfreegames/maestro/eventforwarder/generated"
 	context "golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 type RoomStatusClient struct {
-	roomStatus *pb.RoomStatus
+	RoomStatus    *pb.Room
+	ServerAddress string
 }
 
-func NewRoomStatus(game, roomId, roomType string) *RoomStatusClient {
+func NewRoomStatus(game, roomId, roomType, status, serverAddress string) *RoomStatusClient {
 	return &RoomStatusClient{
-		&pb.RoomStatus{
-			Game:   game,
-			RoomId: roomId,
-			Type:   roomType,
+		RoomStatus: &pb.Room{
+			Game:     game,
+			RoomId:   roomId,
+			RoomType: roomType,
+			Status:   &pb.Status{status},
 		},
+		ServerAddress: serverAddress,
 	}
 }
 
 //Forward send room or player status to specified server
-func (roomStatus *RoomStatusClient) Forward() error {
-	conn, err := grpc.Dial("127.0.0.1:10000", grpc.WithInsecure())
+func (roomStatus *RoomStatusClient) Forward() (*pb.Response, error) {
+	conn, err := grpc.Dial(roomStatus.ServerAddress, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer conn.Close()
 
-	client := pb.NewStatusClient(conn)
-	response, err := client.SendRoomStatus(context.Background(), roomStatus.roomStatus)
-	fmt.Println(response.Message)
+	client := pb.NewStatusServiceClient(conn)
+	response, err := client.SendRoomStatus(context.Background(), roomStatus.RoomStatus)
 
-	return nil
+	return response, err
 }
