@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package eventforwarder;
 
-service Sender {
+service Status {
   rpc SendRoomStatus(RoomStatus) returns (Response) {}
   rpc SendPlayerStatus(PlayerStatus) returns (Response) {}
 }

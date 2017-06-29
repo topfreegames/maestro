@@ -166,3 +166,9 @@ clean-int-tests:
 	@echo 'deleting maestro-test-* nodes'
 	@kubectl --context minikube get nodes | grep maestro-test- | awk '{print $$1}' | xargs kubectl --context minikube delete nodes
 	@echo 'done'
+
+generate-proto:
+	@mkdir -p eventforwarder/generated
+	@protoc -I eventforwarder/protobuf/ eventforwarder/protobuf/*.proto --go_out=plugins=grpc:eventforwarder/generated
+	@echo 'proto files created at eventforwarder/generated'
+
