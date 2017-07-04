@@ -7,6 +7,8 @@
 
 package eventforwarder
 
+import "C"
+
 import (
 	pb "github.com/topfreegames/maestro/eventforwarder/generated"
 	context "golang.org/x/net/context"
@@ -20,20 +22,25 @@ type RoomStatusClient struct {
 }
 
 //NewRoomStatus is the RoomStatusClient constructor
-func NewRoomStatus(game, roomId, roomType, status, serverAddress string) *RoomStatusClient {
+func NewRoomStatus(serverAddress string) *RoomStatusClient {
 	return &RoomStatusClient{
-		RoomStatus: &pb.Room{
-			Game:     game,
-			RoomId:   roomId,
-			RoomType: roomType,
-			Status:   &pb.Status{status},
-		},
 		ServerAddress: serverAddress,
 	}
 }
 
+func (roomStatus *RoomStatusClient) setup(infos map[string]interface{}) {
+	roomStatus.RoomStatus = &pb.Room{
+		Game:     infos["game"].(string),
+		RoomId:   infos["roomId"].(string),
+		RoomType: infos["roomType"].(string),
+		Status: &pb.Status{
+			infos["status"].(string),
+		},
+	}
+}
+
 //Forward send room or player status to specified server
-func (roomStatus *RoomStatusClient) Forward() (*pb.Response, error) {
+func (roomStatus *RoomStatusClient) Forward(infos map[string]interface{}) (*pb.Response, error) {
 	conn, err := grpc.Dial(roomStatus.ServerAddress, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
@@ -41,6 +48,7 @@ func (roomStatus *RoomStatusClient) Forward() (*pb.Response, error) {
 	defer conn.Close()
 
 	client := pb.NewStatusServiceClient(conn)
+	roomStatus.setup(infos)
 	response, err := client.SendStatus(context.Background(), roomStatus.RoomStatus)
 
 	return response, err

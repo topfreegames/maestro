@@ -12,5 +12,5 @@ import (
 )
 
 type EventForwarder interface {
-	Forward() (*pb.Response, error)
+	Forward(map[string]interface{}) (*pb.Response, error)
 }

@@ -233,9 +233,7 @@ func (a *App) loadConfigurationDefaults() {
 
 func (a *App) configureForwarders() {
 	//TODO: make generic forwarders that can be added as Plugins via config/local.yaml file
-	a.EventForwarder = []eventforwarder.EventForwarder{
-		eventforwarder.NewRoomStatus(
-	}
+	a.Forwarders = []eventforwarder.EventForwarder{}
 }
 
 func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interface) error {
