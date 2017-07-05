@@ -34,7 +34,6 @@ var RootCmd = &cobra.Command{
 
 // Execute runs RootCmd to initialize maestro CLI application
 func Execute(cmd *cobra.Command) {
-	InitConfig()
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
@@ -42,6 +41,7 @@ func Execute(cmd *cobra.Command) {
 }
 
 func init() {
+	cobra.OnInitialize(InitConfig)
 	RootCmd.PersistentFlags().BoolVarP(
 		&json, "json", "j",
 		false, "json output mode")
@@ -53,7 +53,7 @@ func init() {
 
 	RootCmd.PersistentFlags().StringVarP(
 		&ConfigFile, "config", "c", "./config/local.yaml",
-		"config file (default is ./config/local.yaml)",
+		"config file",
 	)
 }
 

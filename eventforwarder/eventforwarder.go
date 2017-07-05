@@ -7,10 +7,9 @@
 
 package eventforwarder
 
-import (
-	pb "github.com/topfreegames/maestro/eventforwarder/generated"
-)
+import "github.com/spf13/viper"
 
+// EventForwarder interface
 type EventForwarder interface {
-	Forward(map[string]interface{}) (*pb.Response, error)
+	Forward(config *viper.Viper, event string, infos map[string]interface{}) (int32, error)
 }

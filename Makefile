@@ -169,9 +169,9 @@ clean-int-tests:
 
 generate-proto:
 	@if [ -f eventforwarder/generated ]; then rm -r eventforwarder/generated; fi
-	@mkdir -p eventforwarder/generated
-	@protoc -I eventforwarder/protobuf/ eventforwarder/protobuf/*.proto --go_out=plugins=grpc:eventforwarder/generated
-	@echo 'proto files created at eventforwarder/generated'
+	@mkdir -p plugins/grpc/generated
+	@protoc -I plugins/grpc/protobuf/ plugins/grpc/protobuf/*.proto --go_out=plugins=grpc:plugins/grpc/generated
+	@echo 'proto files created at plugins/grpc/generated'
 
 plugins:
 	@docker run -v $$(pwd)/eventforwarder:/go/src/github.com/topfreegames/maestro/eventforwarder -ti golang bash -c "cd /go/src/github.com/topfreegames/maestro/eventforwarder && go get github.com/golang/protobuf/protoc-gen-go google.golang.org/grpc golang.org/x/net/context && go build -buildmode=plugin"

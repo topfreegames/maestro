@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package eventforwarder;
+
+service GRPCForwarder {
+  rpc SendRoomStatus(RoomStatus) returns (Response) {}
+  rpc SendPlayerEvent(PlayerEvent) returns (Response) {}
+}
+
+message RoomStatus {
+  Room room = 1;
+  RoomStatusType statusType = 2;
+  enum RoomStatusType {
+    ROOM_READY = 0;
+    ROOM_OCCUPIED = 1;
+    ROOM_TERMINATING = 2;
+    ROOM_TERMINATED = 3;
+  }
+}
+
+message Room {
+  string game = 1;
+  string roomId = 2;
+  string roomType = 3;
+  string host = 4;
+  int32 port = 5;
+}
+
+message PlayerEvent {
+  string playerId = 1;
+  Room room = 2;
+  PlayerEventType eventType = 3;
+  enum PlayerEventType {
+    PLAYER_JOINED = 0;
+    PLAYER_LEFT = 1;
+  }
+}
+
+message Response {
+  int32 code = 1;
+  string message = 2;
+}

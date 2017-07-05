@@ -1,0 +1,39 @@
+extensions:
+  pg:
+    host: "localhost"
+    port: 8765
+    user: "maestro"
+    pass: ""
+    poolSize: 20
+    maxRetries: 3
+    database: "maestro"
+    connectionTimeout: 100
+  redis:
+    url: redis://localhost:6363
+    connectionTimeout: 200
+forwarders:
+  grpc:
+    address: 10.0.23.57:10000
+watcher:
+  autoScalingPeriod: 30
+  lockKey: "maestro-lock-key"
+  lockTimeoutMs: 180000
+  gracefulShutdownTimeout: 300
+worker:
+  syncPeriod: 30
+  gracefulShutdownTimeout: 300
+scaleUpTimeoutSeconds: 300
+scaleDownTimeoutSeconds: 300
+deleteTimeoutSeconds: 600
+pingTimeout: 60
+occupiedTimeout: 180
+updateTimeoutSeconds: 300
+sentry:
+  url: ""
+newrelic:
+  app: "maestro"
+  key: ""
+oauth:
+  acceptedDomains: 
+  - "example.com"
+  - "other.com"
