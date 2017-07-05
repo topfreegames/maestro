@@ -19,12 +19,12 @@ watcher:
 worker:
   syncPeriod: 30
   gracefulShutdownTimeout: 300
-scaleUpTimeoutSeconds: 300
-scaleDownTimeoutSeconds: 300
+scaleUpTimeoutSeconds: 600
+scaleDownTimeoutSeconds: 600
 deleteTimeoutSeconds: 600
-pingTimeout: 60
-occupiedTimeout: 180
-updateTimeoutSeconds: 300
+pingTimeout: 90
+occupiedTimeout: 200
+updateTimeoutSeconds: 600
 sentry:
   url: ""
 newrelic:
