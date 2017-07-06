@@ -38,40 +38,42 @@ func NewSchedulerCreateHandler(a *App) *SchedulerCreateHandler {
 func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
-	payload := configYamlFromCtx(r.Context())
+	configs := configYamlFromCtx(r.Context())
 
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "create",
 	})
 
-	logger.Debug("Creating scheduler...")
+	for _, payload := range configs {
+		logger.Debug("Creating scheduler...")
 
-	timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
-	if payload.OccupiedTimeout == 0 {
-		payload.OccupiedTimeout = g.App.Config.GetInt64("occupiedTimeout")
-	}
-	err := mr.WithSegment(models.SegmentController, func() error {
-		return controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, payload, timeoutSec)
-	})
-
-	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "already exists") {
-			status = http.StatusConflict
-		} else if err.Error() == "node without label error" {
-			status = http.StatusUnprocessableEntity
+		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
+		if payload.OccupiedTimeout == 0 {
+			payload.OccupiedTimeout = g.App.Config.GetInt64("occupiedTimeout")
 		}
-		logger.WithError(err).Error("Create scheduler failed.")
-		g.App.HandleError(w, status, "Create scheduler failed", err)
-		return
-	}
+		err := mr.WithSegment(models.SegmentController, func() error {
+			return controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, payload, timeoutSec)
+		})
 
+		if err != nil {
+			status := http.StatusInternalServerError
+			if strings.Contains(err.Error(), "already exists") {
+				status = http.StatusConflict
+			} else if err.Error() == "node without label error" {
+				status = http.StatusUnprocessableEntity
+			}
+			logger.WithError(err).Error("Create scheduler failed.")
+			g.App.HandleError(w, status, "Create scheduler failed", err)
+			return
+		}
+
+		logger.Debug("Create scheduler succeeded.")
+	}
 	mr.WithSegment(models.SegmentSerialization, func() error {
 		Write(w, http.StatusCreated, `{"success": true}`)
 		return nil
 	})
-	logger.Debug("Create scheduler succeeded.")
 }
 
 // SchedulerDeleteHandler handler
@@ -131,7 +133,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	l := loggerFromContext(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
-	payload := configYamlFromCtx(r.Context())
+	payload := configYamlFromCtx(r.Context())[0]
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "update",

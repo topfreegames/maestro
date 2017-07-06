@@ -8,9 +8,13 @@
 package api
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
+	"io/ioutil"
 	"net/http"
+	"strings"
+
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/topfreegames/maestro/errors"
@@ -43,45 +47,60 @@ func statusPayloadFromCtx(ctx context.Context) *models.RoomStatusPayload {
 	if payload == nil {
 		return nil
 	}
-	return payload.(*models.RoomStatusPayload)
+	return payload.([]interface{})[0].(*models.RoomStatusPayload)
 }
 
-func configYamlFromCtx(ctx context.Context) *models.ConfigYAML {
+func configYamlFromCtx(ctx context.Context) []*models.ConfigYAML {
 	payload := ctx.Value(payloadString)
 	if payload == nil {
 		return nil
 	}
-	return payload.(*models.ConfigYAML)
+	listParam := []*models.ConfigYAML{}
+	for _, param := range payload.([]interface{}) {
+		listParam = append(listParam, param.(*models.ConfigYAML))
+	}
+	return listParam
 }
 
 //ServeHTTP method
 func (m *ValidationMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	payload := m.GetPayload()
 	l := loggerFromContext(r.Context())
 
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(payload)
-
+	btsBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		l.WithError(err).Error("Payload could not be decoded.")
 		vErr := errors.NewValidationFailedError(err)
 		WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
 		return
 	}
+	listBytes := bytes.Split(btsBody, []byte("---"))
+	listParams := []interface{}{}
 
-	_, err = govalidator.ValidateStruct(payload)
+	for _, bts := range listBytes {
+		if strings.TrimSpace(string(bts)) == "" {
+			continue
+		}
 
-	if err != nil {
-		l.WithError(err).Error("Payload is invalid.")
-		vErr := errors.NewValidationFailedError(err)
-		WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
-		return
+		payload := m.GetPayload()
+		err = yaml.Unmarshal(bts, payload)
+		if err != nil {
+			l.WithError(err).Error("Payload could not be decoded.")
+			vErr := errors.NewValidationFailedError(err)
+			WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
+			return
+		}
+		_, err = govalidator.ValidateStruct(payload)
+		if err != nil {
+			l.WithError(err).Error("Payload is invalid.")
+			vErr := errors.NewValidationFailedError(err)
+			WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
+			return
+		}
+		listParams = append(listParams, payload)
 	}
-
-	c := newContextWithPayload(r.Context(), payload, r)
-
+	c := newContextWithPayload(r.Context(), listParams, r)
 	m.next.ServeHTTP(w, r.WithContext(c))
 }
 

@@ -37,61 +37,61 @@ var _ = Describe("Scheduler Handler", func() {
 	var payload JSON
 	var jsonString string
 	jsonString = `{
-		    "name": "scheduler-name",
-		    "game": "game-name",
-		    "image": "somens/someimage:v123",
-		    "ports": [
-		      {
-		        "containerPort": 5050,
-		        "protocol": "UDP",
-		        "name": "port1"
-		      },
-		      {
-		        "containerPort": 8888,
-		        "protocol": "TCP",
-		        "name": "port2"
-		      }
-		    ],
-		    "limits": {
-		      "memory": "128Mi",
-		      "cpu": "1"
-		    },
-		    "shutdownTimeout": 180,
-		    "autoscaling": {
-		      "min": 100,
-		      "up": {
-		        "delta": 10,
-		        "trigger": {
-		          "usage": 70,
-		          "time": 600
-		        },
-		        "cooldown": 300
-		      },
-		      "down": {
-		        "delta": 2,
-		        "trigger": {
-		          "usage": 50,
-		          "time": 900
-		        },
-		        "cooldown": 300
-		      }
-		    },
-		    "env": [
-		      {
-		        "name": "EXAMPLE_ENV_VAR",
-		        "value": "examplevalue"
-		      },
-		      {
-		        "name": "ANOTHER_ENV_VAR",
-		        "value": "anothervalue"
-		      }
-		    ],
-		    "cmd": [
-		      "./room-binary",
-		      "-serverType",
-		      "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
-		    ]
-		  }`
+  "name": "scheduler-name",
+  "game": "game-name",
+  "image": "somens/someimage:v123",
+  "ports": [
+    {
+      "containerPort": 5050,
+      "protocol": "UDP",
+      "name": "port1"
+    },
+    {
+      "containerPort": 8888,
+      "protocol": "TCP",
+      "name": "port2"
+    }
+  ],
+  "limits": {
+    "memory": "128Mi",
+    "cpu": "1"
+  },
+  "shutdownTimeout": 180,
+  "autoscaling": {
+    "min": 100,
+    "up": {
+      "delta": 10,
+      "trigger": {
+        "usage": 70,
+        "time": 600
+      },
+      "cooldown": 300
+    },
+    "down": {
+      "delta": 2,
+      "trigger": {
+        "usage": 50,
+        "time": 900
+      },
+      "cooldown": 300
+    }
+  },
+  "env": [
+    {
+      "name": "EXAMPLE_ENV_VAR",
+      "value": "examplevalue"
+    },
+    {
+      "name": "ANOTHER_ENV_VAR",
+      "value": "anothervalue"
+    }
+  ],
+  "cmd": [
+    "./room-binary",
+    "-serverType",
+    "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
+  ]
+}`
 
 	BeforeEach(func() {
 		// Record HTTP responses.
@@ -227,6 +227,87 @@ var _ = Describe("Scheduler Handler", func() {
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 				})
 
+				It("creates multiple schedulers", func() {
+					jsonString := `
+---
+name: scheduler-name-1
+game: game-name
+image: somens/someimage:v123
+ports:
+- containerPort: 5050
+  protocol: UDP
+  name: port1
+shutdownTimeout: 180
+autoscaling:
+  min: 1
+  up:
+    delta: 10
+    trigger:
+      usage: 70
+      time: 600
+    cooldown: 300
+  down:
+    delta: 2
+    trigger:
+      usage: 50
+      time: 900
+    cooldown: 300
+---
+name: scheduler-name-2
+game: game-name
+image: somens/someimage:v123
+ports:
+- containerPort: 5050
+  protocol: UDP
+  name: port1
+shutdownTimeout: 180
+autoscaling:
+  min: 1
+  up:
+    delta: 10
+    trigger:
+      usage: 70
+      time: 600
+    cooldown: 300
+  down:
+    delta: 2
+    trigger:
+      usage: 50
+      time: 900
+    cooldown: 300
+`
+					reader := strings.NewReader(jsonString)
+					request, err := http.NewRequest("POST", url, reader)
+					Expect(err).NotTo(HaveOccurred())
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
+					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+						func(schedulerName string, statusInfo map[string]interface{}) {
+							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+						},
+					).Times(2)
+					mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name-1"), gomock.Any())
+					mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name-2"), gomock.Any())
+					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name-1", "creating"), gomock.Any())
+					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name-2", "creating"), gomock.Any())
+					mockPipeline.EXPECT().Exec().Times(2)
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
+						gomock.Any(),
+					).Times(2)
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+						gomock.Any(),
+					).Times(2)
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+					Expect(recorder.Code).To(Equal(http.StatusCreated))
+				})
+
 				It("should return 409 if namespace already exists", func() {
 					ns := models.NewNamespace("scheduler-name")
 					err := ns.Create(clientset)
@@ -278,7 +359,7 @@ var _ = Describe("Scheduler Handler", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(obj["code"]).To(Equal("MAE-004"))
 					Expect(obj["error"]).To(Equal("ValidationFailedError"))
-					Expect(obj["description"]).To(ContainSubstring("ConfigYAML.shutdownTimeout"))
+					Expect(obj["description"]).To(ContainSubstring(`cannot unmarshal`))
 					Expect(obj["success"]).To(Equal(false))
 				})
 			})

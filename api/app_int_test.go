@@ -241,35 +241,6 @@ var _ = Describe("App", func() {
 			}
 		})
 
-		It("should return 422 if missing body parameter", func() {
-			body := strings.NewReader("")
-
-			configYaml, err = models.NewConfigYAML(jsonStr)
-			Expect(err).NotTo(HaveOccurred())
-
-			request, err := http.NewRequest("POST", url, body)
-			Expect(err).NotTo(HaveOccurred())
-			request.Header.Add("Authorization", "Bearer token")
-
-			app.Router.ServeHTTP(recorder, request)
-			resp := make(map[string]interface{})
-			err = json.Unmarshal(recorder.Body.Bytes(), &resp)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp).To(HaveKeyWithValue("code", "MAE-004"))
-			Expect(resp).To(HaveKeyWithValue("description", "EOF"))
-			Expect(resp).To(HaveKeyWithValue("error", "ValidationFailedError"))
-			Expect(resp).To(HaveKeyWithValue("success", false))
-			Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
-
-			pods, err := clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pods.Items).To(BeEmpty())
-
-			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(svcs.Items).To(BeEmpty())
-		})
-
 		It("should return code 500 if postgres is down", func() {
 			app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", nil, nil, clientset)
 			Expect(err).NotTo(HaveOccurred())

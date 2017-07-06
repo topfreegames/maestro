@@ -105,7 +105,7 @@ var _ = Describe("Room Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(obj["code"]).To(Equal("MAE-004"))
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("RoomStatusPayload.timestamp"))
+				Expect(obj["description"]).To(ContainSubstring(`cannot unmarshal`))
 				Expect(obj["success"]).To(Equal(false))
 			})
 
@@ -251,7 +251,7 @@ var _ = Describe("Room Handler", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(obj["code"]).To(Equal("MAE-004"))
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("RoomStatusPayload.timestamp"))
+				Expect(obj["description"]).To(ContainSubstring(`cannot unmarshal`))
 				Expect(obj["success"]).To(Equal(false))
 			})
 
