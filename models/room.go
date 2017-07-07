@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis"
+	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +36,7 @@ type RoomAddresses struct {
 	Host  string      `json:"host"`
 }
 
-// RoomAddress struct
+// RoomPort struct
 type RoomPort struct {
 	Name string `json:"name"`
 	Port int32  `json:"port"`
@@ -144,6 +145,33 @@ func GetRoomPingRedisKey(schedulerName string) string {
 // GetLastStatusRedisKey gets the key for the sortedset that keeps the last timestamp a room changed its status
 func GetLastStatusRedisKey(schedulerName, status string) string {
 	return fmt.Sprintf("scheduler:%s:last:status:%s", schedulerName, status)
+}
+
+// GetRoomInfos returns a map with room informations
+func (r *Room) GetRoomInfos(db pginterfaces.DB, kubernetesClient kubernetes.Interface) (map[string]interface{}, error) {
+	scheduler := &Scheduler{
+		Name: r.SchedulerName,
+	}
+	err := scheduler.Load(db)
+	if err != nil {
+		return nil, err
+	}
+	address, err := r.GetAddresses(kubernetesClient)
+	if err != nil {
+		return nil, err
+	}
+	selectedPort := address.Ports[0].Port
+	for _, p := range address.Ports {
+		if p.Name == "clientPort" {
+			selectedPort = p.Port
+		}
+	}
+	return map[string]interface{}{
+		"game":   scheduler.Game,
+		"roomId": r.ID,
+		"host":   address.Host,
+		"port":   selectedPort,
+	}, nil
 }
 
 // GetAddresses gets room public addresses

@@ -168,16 +168,31 @@ func (w *Watcher) RemoveDeadRooms() {
 		"operation":   "removeDeadRooms",
 		"since":       since,
 	})
-	err := controller.DeleteRoomsNoPingSince(
-		logger,
-		w.MetricsReporter,
-		w.RedisClient.Client,
-		w.KubernetesClient,
-		w.SchedulerName,
-		since,
-	)
+
+	var roomsNoPingSince []string
+	err := w.MetricsReporter.WithSegment(models.SegmentZRangeBy, func() error {
+		var err error
+		roomsNoPingSince, err = models.GetRoomsNoPingSince(w.RedisClient.Client, w.SchedulerName, since)
+		return err
+	})
+
 	if err != nil {
-		logger.WithError(err).Error("error removing dead rooms")
+		logger.WithError(err).Error("error listing rooms with no ping since")
+	}
+
+	if roomsNoPingSince != nil && len(roomsNoPingSince) > 0 {
+		err := controller.DeleteUnavailableRooms(
+			logger,
+			w.MetricsReporter,
+			w.RedisClient.Client,
+			w.KubernetesClient,
+			w.SchedulerName,
+			roomsNoPingSince,
+		)
+		if err != nil {
+			logger.WithError(err).Error("error removing dead rooms")
+		}
+
 	}
 
 	if w.OccupiedTimeout > 0 {
@@ -187,13 +202,25 @@ func (w *Watcher) RemoveDeadRooms() {
 			"operation":   "removeDeadOccupiedRooms",
 			"since":       since,
 		})
-		err = controller.DeleteRoomsOccupiedTimeout(
+
+		var roomsOnOccupiedTimeout []string
+		err := w.MetricsReporter.WithSegment(models.SegmentZRangeBy, func() error {
+			var err error
+			roomsOnOccupiedTimeout, err = models.GetRoomsOccupiedTimeout(w.RedisClient.Client, w.SchedulerName, since)
+			return err
+		})
+
+		if err != nil {
+			logger.WithError(err).Error("error listing rooms with no occupied timeout")
+		}
+
+		err = controller.DeleteUnavailableRooms(
 			logger,
 			w.MetricsReporter,
 			w.RedisClient.Client,
 			w.KubernetesClient,
 			w.SchedulerName,
-			since,
+			roomsOnOccupiedTimeout,
 		)
 		if err != nil {
 			logger.WithError(err).Error("error removing old occupied rooms")

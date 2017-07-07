@@ -1,3 +1,9 @@
+forwarders:
+  grpc:
+    matchmaking: 
+      address: "10.0.23.57:10000"
+    local:
+      address: "localhost:10000"
 extensions:
   pg:
     host: "localhost"
@@ -11,9 +17,6 @@ extensions:
   redis:
     url: redis://localhost:6363
     connectionTimeout: 200
-forwarders:
-  grpc:
-    address: 10.0.23.57:10000
 watcher:
   autoScalingPeriod: 30
   lockKey: "maestro-lock-key"

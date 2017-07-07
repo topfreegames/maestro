@@ -7,9 +7,7 @@
 
 package eventforwarder
 
-import "github.com/spf13/viper"
-
 // EventForwarder interface
 type EventForwarder interface {
-	Forward(config *viper.Viper, event string, infos map[string]interface{}) (int32, error)
+	Forward(event string, infos map[string]interface{}) (int32, error)
 }

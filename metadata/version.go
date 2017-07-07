@@ -11,4 +11,4 @@ package metadata
 var Version = "2.16.0"
 
 //KubeVersion is the desired Kubernetes version
-var KubeVersion = "v1.6.4"
+var KubeVersion = "v1.7.0"

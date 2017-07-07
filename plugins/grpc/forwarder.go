@@ -11,6 +11,7 @@ import "C"
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/eventforwarder"
@@ -21,7 +22,9 @@ import (
 
 // GRPCForwarder struct
 type GRPCForwarder struct {
-	methodMap map[string]ForwarderFunc
+	config        *viper.Viper
+	client        pb.GRPCForwarderClient
+	serverAddress string
 }
 
 // ForwarderFunc is the type of functions in GRPCForwarder
@@ -36,59 +39,74 @@ func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status p
 			Host:     infos["host"].(string),
 			Port:     int32(infos["port"].(int)),
 		},
+		Metadata:   infos["metadata"].(map[string]string),
 		StatusType: status,
 	}
 }
 
-func (g *GRPCForwarder) roomStatus(client pb.GRPCForwarderClient, infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, err error) {
+func (g *GRPCForwarder) roomStatus(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, err error) {
 	req := g.roomStatusRequest(infos, roomStatus)
-	response, err := client.SendRoomStatus(context.Background(), req)
+	response, err := g.client.SendRoomStatus(context.Background(), req)
 	if err != nil {
 		return 500, err
 	}
 	return response.Code, err
 }
 
-func (g *GRPCForwarder) roomReady(client pb.GRPCForwarderClient, infos map[string]interface{}) (status int32, err error) {
-	return g.roomStatus(client, infos, pb.RoomStatus_ROOM_READY)
+// RoomReady status
+func (g *GRPCForwarder) RoomReady(infos map[string]interface{}) (status int32, err error) {
+	return g.roomStatus(infos, pb.RoomStatus_ROOM_READY)
 }
 
-func (g *GRPCForwarder) roomOccupied(client pb.GRPCForwarderClient, infos map[string]interface{}) (status int32, err error) {
-	return g.roomStatus(client, infos, pb.RoomStatus_ROOM_OCCUPIED)
+// RoomOccupied status
+func (g *GRPCForwarder) RoomOccupied(infos map[string]interface{}) (status int32, err error) {
+	return g.roomStatus(infos, pb.RoomStatus_ROOM_OCCUPIED)
 }
 
-func (g *GRPCForwarder) roomTerminating(client pb.GRPCForwarderClient, infos map[string]interface{}) (status int32, err error) {
-	return g.roomStatus(client, infos, pb.RoomStatus_ROOM_TERMINATING)
+// RoomTerminating status
+func (g *GRPCForwarder) RoomTerminating(infos map[string]interface{}) (status int32, err error) {
+	return g.roomStatus(infos, pb.RoomStatus_ROOM_TERMINATING)
 }
 
-func (g *GRPCForwarder) roomTerminated(client pb.GRPCForwarderClient, infos map[string]interface{}) (status int32, err error) {
-	return g.roomStatus(client, infos, pb.RoomStatus_ROOM_TERMINATED)
+// RoomTerminated status
+func (g *GRPCForwarder) RoomTerminated(infos map[string]interface{}) (status int32, err error) {
+	return g.roomStatus(infos, pb.RoomStatus_ROOM_TERMINATED)
 }
 
 //Forward send room or player status to specified server
-func (g *GRPCForwarder) Forward(config *viper.Viper, event string, infos map[string]interface{}) (status int32, err error) {
-	conn, err := grpc.Dial(config.GetString("forwarders.grpc.address"), grpc.WithInsecure())
-	if err != nil {
-		return -1, err
+func (g *GRPCForwarder) Forward(event string, infos map[string]interface{}) (status int32, err error) {
+	f := reflect.ValueOf(g).MethodByName(event)
+	if !f.IsValid() {
+		return 500, fmt.Errorf("error calling method %s in plugin", event)
 	}
-	defer conn.Close()
+	ret := f.Call([]reflect.Value{reflect.ValueOf(infos)})
+	if _, ok := ret[1].Interface().(error); !ok {
+		return ret[0].Interface().(int32), nil
+	}
+	return ret[0].Interface().(int32), ret[1].Interface().(error)
+}
 
-	client := pb.NewGRPCForwarderClient(conn)
-	method, ok := g.methodMap[event]
-	if !ok {
-		return 404, fmt.Errorf("method %s not found", event)
+func (g *GRPCForwarder) configure() error {
+	g.serverAddress = g.config.GetString("address")
+	if g.serverAddress == "" {
+		return fmt.Errorf("no grpc server address informed")
 	}
-	return method(client, infos)
+	conn, err := grpc.Dial(g.serverAddress, grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+	g.client = pb.NewGRPCForwarderClient(conn)
+	return nil
 }
 
 // NewForwarder returns a new GRPCForwarder
-func NewForwarder() eventforwarder.EventForwarder {
-	g := &GRPCForwarder{}
-	g.methodMap = map[string]ForwarderFunc{
-		"roomReady":       g.roomReady,
-		"roomOccupied":    g.roomOccupied,
-		"roomTerminating": g.roomTerminating,
-		"roomTerminated":  g.roomTerminated,
+func NewForwarder(config *viper.Viper) (eventforwarder.EventForwarder, error) {
+	g := &GRPCForwarder{
+		config: config,
 	}
-	return g
+	err := g.configure()
+	if err != nil {
+		return nil, err
+	}
+	return g, nil
 }

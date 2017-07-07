@@ -195,18 +195,8 @@ func ListSchedulersNames(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 	return names, nil
 }
 
-// DeleteRoomsNoPingSince delete rooms where lastPing < since
-func DeleteRoomsNoPingSince(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, schedulerName string, since int64) error {
-	var roomNames []string
-	err := mr.WithSegment(models.SegmentZRangeBy, func() error {
-		var err error
-		roomNames, err = models.GetRoomsNoPingSince(redisClient, schedulerName, since)
-		return err
-	})
-	if err != nil {
-		logger.WithError(err).Error("error listing rooms no ping since")
-		return err
-	}
+// DeleteUnavailableRooms delete rooms that are not available
+func DeleteUnavailableRooms(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, schedulerName string, roomNames []string) error {
 	if len(roomNames) == 0 {
 		logger.Debug("no rooms need to be deleted")
 		return nil
@@ -214,7 +204,7 @@ func DeleteRoomsNoPingSince(logger logrus.FieldLogger, mr *models.MixedMetricsRe
 	for _, roomName := range roomNames {
 		err := deleteServiceAndPod(logger, mr, clientset, schedulerName, roomName)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
-			logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteRoomsNoPingSince"}).WithError(err).Error("error deleting room")
+			logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteUnavailableRooms"}).WithError(err).Error("error deleting room")
 		} else {
 			room := models.NewRoom(roomName, schedulerName)
 			err = room.ClearAll(redisClient)
@@ -224,43 +214,6 @@ func DeleteRoomsNoPingSince(logger logrus.FieldLogger, mr *models.MixedMetricsRe
 		}
 	}
 
-	return nil
-}
-
-// DeleteRoomsOccupiedTimeout delete rooms that have occupied status for more than timeout time
-func DeleteRoomsOccupiedTimeout(
-	logger logrus.FieldLogger,
-	mr *models.MixedMetricsReporter,
-	redisClient redisinterfaces.RedisClient,
-	clientset kubernetes.Interface,
-	schedulerName string,
-	since int64,
-) error {
-	var roomNames []string
-	var err error
-	err = mr.WithSegment(models.SegmentZRangeBy, func() error {
-		roomNames, err = models.GetRoomsOccupiedTimeout(redisClient, schedulerName, since)
-		return err
-	})
-	if err != nil {
-		logger.WithError(err).Error("error listing rooms occupied timeout")
-		return err
-	}
-	if len(roomNames) == 0 {
-		return nil
-	}
-	for _, roomName := range roomNames {
-		err := deleteServiceAndPod(logger, mr, clientset, schedulerName, roomName)
-		if err != nil && !strings.Contains(err.Error(), "not found") {
-			logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteRoomsOccupiedTimeout"}).WithError(err).Error("error deleting room")
-		} else {
-			room := models.NewRoom(roomName, schedulerName)
-			err = room.ClearAll(redisClient)
-			if err != nil {
-				logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteRoomsOccupiedTimeout"}).WithError(err).Error("error removing room info from redis")
-			}
-		}
-	}
 	return nil
 }
 
@@ -310,6 +263,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 	return creationErr
 }
 
+// ScaleDown scales down the number of rooms
 func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, scheduler *models.Scheduler, amount, timeoutSec int) error {
 	l := logger.WithFields(logrus.Fields{
 		"source":    "scaleDown",

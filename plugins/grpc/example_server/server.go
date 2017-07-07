@@ -19,7 +19,7 @@ import (
 type server struct{}
 
 func (*server) SendRoomStatus(ctx context.Context, roomStatus *pb.RoomStatus) (*pb.Response, error) {
-	fmt.Println("Received msg", roomStatus.GetRoom(), roomStatus.GetStatusType)
+	fmt.Println("Received msg", roomStatus.GetRoom(), roomStatus.GetStatusType(), roomStatus.GetMetadata())
 	return &pb.Response{
 		Message: "Hi!",
 		Code:    200,

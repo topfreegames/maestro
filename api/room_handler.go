@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -96,7 +97,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.HandleError(w, http.StatusInternalServerError, "Status update failed", err)
 		return
 	}
-
+	eventforwarder.ForwardRoomEvent(g.App.Forwarders, g.App.DB, g.App.KubernetesClient, room, payload.Status, payload.Metadata)
 	mr.WithSegment(models.SegmentSerialization, func() error {
 		Write(w, http.StatusOK, `{"success": true}`)
 		return nil

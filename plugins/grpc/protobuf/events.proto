@@ -10,6 +10,7 @@ service GRPCForwarder {
 message RoomStatus {
   Room room = 1;
   RoomStatusType statusType = 2;
+  map<string, string> metadata =3;
   enum RoomStatusType {
     ROOM_READY = 0;
     ROOM_OCCUPIED = 1;
@@ -30,6 +31,7 @@ message PlayerEvent {
   string playerId = 1;
   Room room = 2;
   PlayerEventType eventType = 3;
+  map<string, string> metadata =4;
   enum PlayerEventType {
     PLAYER_JOINED = 0;
     PLAYER_LEFT = 1;

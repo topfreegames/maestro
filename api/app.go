@@ -13,6 +13,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"runtime"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -22,6 +24,7 @@ import (
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/extensions"
+	ex "github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/login"
 	logininterfaces "github.com/topfreegames/maestro/login/interfaces"
 	"github.com/topfreegames/maestro/metadata"
@@ -69,6 +72,7 @@ func NewApp(
 		InCluster:      incluster,
 		KubeconfigPath: kubeconfigPath,
 		EmailDomains:   config.GetStringSlice("oauth.acceptedDomains"),
+		Forwarders:     []eventforwarder.EventForwarder{},
 	}
 	err := a.configureApp(dbOrNil, redisClientOrNil, kubernetesClientOrNil)
 	if err != nil {
@@ -194,6 +198,12 @@ func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 	a.loadConfigurationDefaults()
 	a.configureLogger()
 
+	if runtime.GOOS == "linux" {
+		a.configureForwarders()
+	} else {
+		a.Logger.Warn("not loading any forwarder plugin because not running on linux")
+	}
+
 	err := a.configureDatabase(dbOrNil)
 	if err != nil {
 		return err
@@ -220,8 +230,6 @@ func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 
 	a.configureServer()
 
-	a.configureForwarders()
-
 	return nil
 }
 
@@ -232,8 +240,42 @@ func (a *App) loadConfigurationDefaults() {
 }
 
 func (a *App) configureForwarders() {
-	//TODO: make generic forwarders that can be added as Plugins via config/local.yaml file
-	a.Forwarders = []eventforwarder.EventForwarder{}
+	forwardersConfig := a.Config.GetStringMap("forwarders")
+	for k, v := range forwardersConfig {
+		a.Logger.Infof("loading plugin: %s", k)
+		p, err := ex.LoadPlugin(k, "./bin")
+		if err != nil {
+			a.Logger.Errorf("error loading plugin %s: %s", k, err.Error())
+			continue
+		}
+		forwarderConfigMap, ok := v.(map[string]interface{})
+		if ok {
+			for kk := range forwarderConfigMap {
+				a.Logger.Infof("loading forwarder %s.%s", k, kk)
+				cfg := a.Config.Sub(fmt.Sprintf("forwarders.%s.%s", k, kk))
+				forwarder, err := ex.LoadForwarder(p, cfg)
+				if err != nil {
+					a.Logger.Error(err)
+					continue
+				}
+				a.Forwarders = append(a.Forwarders, forwarder)
+			}
+		}
+	}
+	for {
+		eventforwarder.ForwardEventToForwarders(a.Forwarders, "RoomReady", map[string]interface{}{
+			"game":     "somegame",
+			"roomId":   "rid",
+			"roomType": "sometype",
+			"host":     "somehost",
+			"port":     100,
+			"metadata": map[string]string{
+				"aeah": "pieah",
+			},
+		})
+		time.Sleep(1000 * time.Millisecond)
+
+	}
 }
 
 func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interface) error {

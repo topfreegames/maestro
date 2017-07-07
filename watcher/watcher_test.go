@@ -816,7 +816,7 @@ var _ = Describe("Watcher", func() {
 			}
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("error removing dead rooms"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("error listing rooms with no ping since"))
 		})
 
 		It("should log and not panic in case of occupied error", func() {
@@ -837,7 +837,6 @@ var _ = Describe("Watcher", func() {
 
 			// DeleteRoomsOccupiedTimeout
 			ts = time.Now().Unix() - w.OccupiedTimeout
-			expectedRooms := []string{"room1", "room2", "room3"}
 			mockRedisClient.EXPECT().ZRangeByScore(
 				lKey,
 				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
@@ -846,10 +845,11 @@ var _ = Describe("Watcher", func() {
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
-			}).Return(redis.NewStringSliceResult(expectedRooms, errors.New("redis error")))
+			}).Return(redis.NewStringSliceResult(nil, errors.New("redis error")))
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("error removing old occupied rooms"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("error listing rooms with no occupied timeout"))
 		})
 	})
 })
