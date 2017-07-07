@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 	redis "github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/controller"
+	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
@@ -47,6 +48,7 @@ type Worker struct {
 	SyncPeriod       int
 	Watchers         map[string]*watcher.Watcher
 	gracefulShutdown *gracefulShutdown
+	EventForwarders  []eventforwarder.EventForwarder
 }
 
 // NewWorker is the worker constructor
@@ -59,6 +61,7 @@ func NewWorker(
 	dbOrNil pginterfaces.DB,
 	redisClientOrNil redisinterfaces.RedisClient,
 	kubernetesClientOrNil kubernetes.Interface,
+	eventForwarders []eventforwarder.EventForwarder,
 ) (*Worker, error) {
 	w := &Worker{
 		Config:          config,
@@ -66,6 +69,7 @@ func NewWorker(
 		MetricsReporter: mr,
 		InCluster:       incluster,
 		KubeconfigPath:  kubeconfigPath,
+		EventForwarders: eventForwarders,
 	}
 
 	err := w.configure(dbOrNil, redisClientOrNil, kubernetesClientOrNil)
@@ -229,6 +233,7 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 				w.KubernetesClient,
 				schedulerName,
 				occupiedTimeout,
+				w.EventForwarders,
 			)
 			w.Watchers[schedulerName].Run = true // Avoids race condition
 			go w.Watchers[schedulerName].Start()

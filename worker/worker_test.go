@@ -13,6 +13,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/watcher"
 	"github.com/topfreegames/maestro/worker"
@@ -60,7 +61,7 @@ cmd:
 	Describe("NewWorker", func() {
 		It("should return configured new worker", func() {
 			mockRedisClient.EXPECT().Ping()
-			w, err := worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
+			w, err := worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset, []eventforwarder.EventForwarder{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(w).NotTo(BeNil())
 			Expect(w.Config).To(Equal(config))
@@ -85,7 +86,7 @@ cmd:
 			config.Set("worker.syncPeriod", 1)
 			var err error
 			mockRedisClient.EXPECT().Ping()
-			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
+			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset, []eventforwarder.EventForwarder{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(w.Watchers).To(HaveLen(0))
 		})
@@ -119,7 +120,7 @@ cmd:
 		BeforeEach(func() {
 			var err error
 			mockRedisClient.EXPECT().Ping()
-			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
+			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset, []eventforwarder.EventForwarder{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(w.Watchers).To(HaveLen(0))
 		})
@@ -151,7 +152,7 @@ cmd:
 						scheduler.YAML = yaml1
 					})
 			}
-			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0], occupiedTimeout)
+			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0], occupiedTimeout, []eventforwarder.EventForwarder{})
 			w.Watchers[watcher1.SchedulerName] = watcher1
 			Expect(w.Watchers[schedulerNames[0]].Run).To(BeFalse())
 
@@ -166,7 +167,7 @@ cmd:
 		BeforeEach(func() {
 			var err error
 			mockRedisClient.EXPECT().Ping()
-			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
+			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset, []eventforwarder.EventForwarder{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(w.Watchers).To(HaveLen(0))
 		})
@@ -179,10 +180,10 @@ cmd:
 						scheduler.YAML = yaml1
 					})
 			}
-			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0], occupiedTimeout)
+			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0], occupiedTimeout, []eventforwarder.EventForwarder{})
 			w.Watchers[watcher1.SchedulerName] = watcher1
 			Expect(w.Watchers[schedulerNames[0]].Run).To(BeFalse())
-			watcher2 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[1], occupiedTimeout)
+			watcher2 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[1], occupiedTimeout, []eventforwarder.EventForwarder{})
 			watcher2.Run = true
 			w.Watchers[watcher2.SchedulerName] = watcher2
 			Expect(w.Watchers[schedulerNames[1]].Run).To(BeTrue())

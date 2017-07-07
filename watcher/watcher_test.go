@@ -18,12 +18,14 @@ import (
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/controller"
+	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/watcher"
@@ -87,7 +89,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout)
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w.AutoScalingPeriod).To(Equal(autoScalingPeriod))
 			Expect(w.Config).To(Equal(config))
 			Expect(w.DB).To(Equal(mockDb))
@@ -106,7 +108,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout)
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w.AutoScalingPeriod).To(Equal(10))
 			Expect(w.LockKey).To(Equal("maestro-lock-key-my-scheduler"))
 			Expect(w.LockTimeoutMS).To(Equal(180000))
@@ -129,7 +131,7 @@ var _ = Describe("Watcher", func() {
 					scheduler.YAML = yaml1
 				})
 
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout)
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w).NotTo(BeNil())
 
 			// EnterCriticalSection (lock done by redis-lock)
@@ -187,7 +189,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout)
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w).NotTo(BeNil())
 			defer func() { w.Run = false }()
 
@@ -206,7 +208,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout)
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w).NotTo(BeNil())
 			defer func() { w.Run = false }()
 
@@ -231,7 +233,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout)
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w).NotTo(BeNil())
 		})
 
@@ -718,7 +720,29 @@ var _ = Describe("Watcher", func() {
 	Describe("RemoveDeadRooms", func() {
 		var configYaml1 models.ConfigYAML
 		var w *watcher.Watcher
-
+		createNamespace := func(name string, clientset kubernetes.Interface) error {
+			return models.NewNamespace(name).Create(clientset)
+		}
+		createPod := func(name, namespace string, clientset kubernetes.Interface) error {
+			_, err := models.NewPod(
+				"game",
+				"img",
+				name,
+				namespace,
+				nil,
+				nil,
+				0,
+				[]*models.Port{
+					&models.Port{
+						ContainerPort: 1234,
+						Name:          "port1",
+						Protocol:      "UDP",
+					}},
+				nil,
+				nil,
+			).Create(clientset)
+			return err
+		}
 		BeforeEach(func() {
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
@@ -726,7 +750,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout)
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout, []eventforwarder.EventForwarder{mockEventForwarder})
 			Expect(w).NotTo(BeNil())
 		})
 
@@ -735,7 +759,9 @@ var _ = Describe("Watcher", func() {
 			pKey := models.GetRoomPingRedisKey(schedulerName)
 			lKey := models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied)
 			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
+			createNamespace(schedulerName, clientset)
 			// DeleteRoomsNoPingSince
+			expectedRooms := []string{"room1", "room2", "room3"}
 			mockRedisClient.EXPECT().ZRangeByScore(
 				pKey,
 				gomock.Any(),
@@ -744,11 +770,10 @@ var _ = Describe("Watcher", func() {
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
-			}).Return(redis.NewStringSliceResult([]string{}, nil))
+			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
 
 			// DeleteRoomsOccupiedTimeout
 			ts = time.Now().Unix() - w.OccupiedTimeout
-			expectedRooms := []string{"room1", "room2", "room3"}
 			mockRedisClient.EXPECT().ZRangeByScore(
 				lKey,
 				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
@@ -760,16 +785,25 @@ var _ = Describe("Watcher", func() {
 			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
 
 			for _, roomName := range expectedRooms {
+				err := createPod(roomName, schedulerName, clientset)
+				Expect(err).NotTo(HaveOccurred())
+
 				room := models.NewRoom(roomName, schedulerName)
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
 				for _, status := range allStatus {
-					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey())
-					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, status), roomName)
+					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey()).Times(2)
+					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, status), roomName).Times(2)
 				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName)
-				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
-				mockPipeline.EXPECT().Exec()
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName).Times(2)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).Times(2)
+				mockPipeline.EXPECT().Exec().Times(2)
 			}
+
+			mockEventForwarder.EXPECT().Forward("ROOM_TERMINATED", gomock.Any()).Times(6)
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					scheduler.YAML = yaml1
+				}).Times(6)
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 		})
@@ -802,6 +836,11 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
 			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
+
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					scheduler.YAML = yaml1
+				}).Times(3)
 
 			for _, roomName := range expectedRooms {
 				room := models.NewRoom(roomName, schedulerName)

@@ -22,6 +22,7 @@ import (
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/controller"
+	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
@@ -48,6 +49,7 @@ type Watcher struct {
 	SchedulerName     string
 	gracefulShutdown  *gracefulShutdown
 	OccupiedTimeout   int64
+	EventForwarders   []eventforwarder.EventForwarder
 }
 
 // NewWatcher is the watcher constructor
@@ -60,6 +62,7 @@ func NewWatcher(
 	clientset kubernetes.Interface,
 	schedulerName string,
 	occupiedTimeout int64,
+	eventForwarders []eventforwarder.EventForwarder,
 ) *Watcher {
 	w := &Watcher{
 		Config:           config,
@@ -70,6 +73,7 @@ func NewWatcher(
 		MetricsReporter:  mr,
 		SchedulerName:    schedulerName,
 		OccupiedTimeout:  occupiedTimeout,
+		EventForwarders:  eventForwarders,
 	}
 	w.loadConfigurationDefaults()
 	w.configure()
@@ -181,6 +185,14 @@ func (w *Watcher) RemoveDeadRooms() {
 	}
 
 	if roomsNoPingSince != nil && len(roomsNoPingSince) > 0 {
+		for _, roomName := range roomsNoPingSince {
+			room := &models.Room{
+				ID:            roomName,
+				SchedulerName: w.SchedulerName,
+			}
+			eventforwarder.ForwardRoomEvent(w.EventForwarders, w.DB, w.KubernetesClient, room, "ROOM_TERMINATED", map[string]string{})
+		}
+
 		err := controller.DeleteUnavailableRooms(
 			logger,
 			w.MetricsReporter,
@@ -192,7 +204,6 @@ func (w *Watcher) RemoveDeadRooms() {
 		if err != nil {
 			logger.WithError(err).Error("error removing dead rooms")
 		}
-
 	}
 
 	if w.OccupiedTimeout > 0 {
@@ -214,16 +225,26 @@ func (w *Watcher) RemoveDeadRooms() {
 			logger.WithError(err).Error("error listing rooms with no occupied timeout")
 		}
 
-		err = controller.DeleteUnavailableRooms(
-			logger,
-			w.MetricsReporter,
-			w.RedisClient.Client,
-			w.KubernetesClient,
-			w.SchedulerName,
-			roomsOnOccupiedTimeout,
-		)
-		if err != nil {
-			logger.WithError(err).Error("error removing old occupied rooms")
+		if roomsOnOccupiedTimeout != nil && len(roomsOnOccupiedTimeout) > 0 {
+			for _, roomName := range roomsOnOccupiedTimeout {
+				room := &models.Room{
+					ID:            roomName,
+					SchedulerName: w.SchedulerName,
+				}
+				eventforwarder.ForwardRoomEvent(w.EventForwarders, w.DB, w.KubernetesClient, room, "ROOM_TERMINATED", map[string]string{})
+			}
+
+			err = controller.DeleteUnavailableRooms(
+				logger,
+				w.MetricsReporter,
+				w.RedisClient.Client,
+				w.KubernetesClient,
+				w.SchedulerName,
+				roomsOnOccupiedTimeout,
+			)
+			if err != nil {
+				logger.WithError(err).Error("error removing old occupied rooms")
+			}
 		}
 	}
 }

@@ -160,7 +160,10 @@ func (r *Room) GetRoomInfos(db pginterfaces.DB, kubernetesClient kubernetes.Inte
 	if err != nil {
 		return nil, err
 	}
-	selectedPort := address.Ports[0].Port
+	var selectedPort int32
+	if len(address.Ports) > 0 {
+		selectedPort = address.Ports[0].Port
+	}
 	for _, p := range address.Ports {
 		if p.Name == "clientPort" {
 			selectedPort = p.Port

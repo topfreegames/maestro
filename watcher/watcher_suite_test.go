@@ -22,22 +22,24 @@ import (
 
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
 	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
 )
 
 var (
-	clientset       *fake.Clientset
-	config          *viper.Viper
-	hook            *test.Hook
-	logger          *logrus.Logger
-	mockCtrl        *gomock.Controller
-	mockDb          *pgmocks.MockDB
-	mockPipeline    *redismocks.MockPipeliner
-	mockRedisClient *redismocks.MockRedisClient
-	mr              *models.MixedMetricsReporter
-	redisClient     *redis.Client
-	allStatus       = []string{models.StatusCreating, models.StatusReady, models.StatusOccupied, models.StatusTerminating, models.StatusTerminated}
+	clientset          *fake.Clientset
+	config             *viper.Viper
+	hook               *test.Hook
+	logger             *logrus.Logger
+	mockCtrl           *gomock.Controller
+	mockDb             *pgmocks.MockDB
+	mockPipeline       *redismocks.MockPipeliner
+	mockRedisClient    *redismocks.MockRedisClient
+	mockEventForwarder *eventforwardermock.MockEventForwarder
+	mr                 *models.MixedMetricsReporter
+	redisClient        *redis.Client
+	allStatus          = []string{models.StatusCreating, models.StatusReady, models.StatusOccupied, models.StatusTerminating, models.StatusTerminated}
 )
 
 func TestWatcher(t *testing.T) {
@@ -57,6 +59,7 @@ var _ = BeforeEach(func() {
 	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
+	mockEventForwarder = eventforwardermock.NewMockEventForwarder(mockCtrl)
 	config, err = mtesting.GetDefaultConfig()
 	Expect(err).NotTo(HaveOccurred())
 	mockRedisClient.EXPECT().Ping()

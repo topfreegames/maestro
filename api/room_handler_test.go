@@ -194,6 +194,7 @@ var _ = Describe("Room Handler", func() {
 			"scheduler:schedulerName:status:terminated",
 		}
 
+		//TODO ver se envia forward
 		Context("when all services are healthy", func() {
 			It("returns a status code of 200 and success body", func() {
 				reader := JSONFor(JSON{
