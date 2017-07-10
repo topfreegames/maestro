@@ -23,24 +23,27 @@ import (
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/api"
+	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
 	"github.com/topfreegames/maestro/login/mocks"
 	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
 )
 
 var (
-	app             *api.App
-	clientset       *fake.Clientset
-	config          *viper.Viper
-	hook            *test.Hook
-	logger          *logrus.Logger
-	mockCtrl        *gomock.Controller
-	mockDb          *pgmocks.MockDB
-	mockPipeline    *redismocks.MockPipeliner
-	mockRedisClient *redismocks.MockRedisClient
-	mockLogin       *mocks.MockLogin
-	mockClock       *clockmocks.MockClock
-	allStatus       = []string{
+	app                 *api.App
+	clientset           *fake.Clientset
+	config              *viper.Viper
+	hook                *test.Hook
+	logger              *logrus.Logger
+	mockCtrl            *gomock.Controller
+	mockDb              *pgmocks.MockDB
+	mockPipeline        *redismocks.MockPipeliner
+	mockRedisClient     *redismocks.MockRedisClient
+	mockEventForwarder1 *eventforwardermock.MockEventForwarder
+	mockEventForwarder2 *eventforwardermock.MockEventForwarder
+	mockLogin           *mocks.MockLogin
+	mockClock           *clockmocks.MockClock
+	allStatus           = []string{
 		models.StatusCreating,
 		models.StatusReady,
 		models.StatusOccupied,
@@ -64,6 +67,8 @@ var _ = BeforeEach(func() {
 	mockCtrl = gomock.NewController(GinkgoT())
 	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
+	mockEventForwarder1 = eventforwardermock.NewMockEventForwarder(mockCtrl)
+	mockEventForwarder2 = eventforwardermock.NewMockEventForwarder(mockCtrl)
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 
 	config, err = mtesting.GetDefaultConfig()

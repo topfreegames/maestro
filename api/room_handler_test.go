@@ -16,10 +16,14 @@ import (
 	"net/http/httptest"
 	"time"
 
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/topfreegames/maestro/api"
+	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	. "github.com/topfreegames/maestro/testing"
 )
@@ -28,8 +32,7 @@ var _ = Describe("Room Handler", func() {
 	var request *http.Request
 	var recorder *httptest.ResponseRecorder
 
-	BeforeEach(func() {
-		// Record HTTP responses.
+	BeforeEach(func() { // Record HTTP responses.
 		recorder = httptest.NewRecorder()
 	})
 
@@ -185,6 +188,7 @@ var _ = Describe("Room Handler", func() {
 		pKey := "scheduler:schedulerName:ping"
 		lKey := "scheduler:schedulerName:last:status:occupied"
 		roomName := "roomName"
+		namespace := "schedulerName"
 		status := "ready"
 		newSKey := fmt.Sprintf("scheduler:schedulerName:status:%s", status)
 		allStatusKeys := []string{
@@ -289,6 +293,123 @@ var _ = Describe("Room Handler", func() {
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
 				Expect(obj["description"]).To(ContainSubstring("does not validate as matches"))
 				Expect(obj["success"]).To(Equal(false))
+			})
+
+			Context("with eventforwarders", func() {
+				// TODO map status from api to something standard
+				createNamespace := func(name string, clientset kubernetes.Interface) error {
+					return models.NewNamespace(name).Create(clientset)
+				}
+				createPod := func(name, namespace string, clientset kubernetes.Interface) error {
+					_, err := models.NewPod(
+						"game",
+						"img",
+						name,
+						namespace,
+						nil,
+						nil,
+						0,
+						[]*models.Port{
+							&models.Port{
+								ContainerPort: 1234,
+								Name:          "port1",
+								Protocol:      "UDP",
+							}},
+						nil,
+						nil,
+					).Create(clientset)
+					return err
+				}
+
+				var app *api.App
+				game := "somegame"
+				BeforeEach(func() {
+					createNamespace(namespace, clientset)
+					err := createPod(roomName, namespace, clientset)
+					Expect(err).NotTo(HaveOccurred())
+					app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
+					Expect(err).NotTo(HaveOccurred())
+					app.Forwarders = []eventforwarder.EventForwarder{mockEventForwarder1, mockEventForwarder2}
+				})
+				It("should forward event to eventforwarders", func() {
+					reader := JSONFor(JSON{
+						"status":    status,
+						"timestamp": time.Now().Unix(),
+					})
+					request, _ = http.NewRequest("PUT", url, reader)
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+						"lastPing": time.Now().Unix(),
+						"status":   status,
+					})
+					mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+					mockPipeline.EXPECT().ZRem(lKey, roomName)
+					mockPipeline.EXPECT().SAdd(newSKey, rKey)
+					for _, key := range allStatusKeys {
+						mockPipeline.EXPECT().SRem(key, rKey)
+					}
+					mockPipeline.EXPECT().Exec()
+					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+						Do(func(scheduler *models.Scheduler, query string, modifier string) {
+							scheduler.YAML = ""
+							scheduler.Game = game
+						})
+					mockEventForwarder1.EXPECT().Forward(status, gomock.Any())
+					mockEventForwarder2.EXPECT().Forward(status, gomock.Any())
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(200))
+					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				})
+				It("should forward event to eventforwarders with metadata", func() {
+					reader := JSONFor(JSON{
+						"status":    status,
+						"timestamp": time.Now().Unix(),
+						"metadata": map[string]string{
+							"type": "sometype",
+						},
+					})
+					request, _ = http.NewRequest("PUT", url, reader)
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+						"lastPing": time.Now().Unix(),
+						"status":   status,
+					})
+					mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+					mockPipeline.EXPECT().ZRem(lKey, roomName)
+					mockPipeline.EXPECT().SAdd(newSKey, rKey)
+					for _, key := range allStatusKeys {
+						mockPipeline.EXPECT().SRem(key, rKey)
+					}
+					mockPipeline.EXPECT().Exec()
+					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+						Do(func(scheduler *models.Scheduler, query string, modifier string) {
+							scheduler.YAML = ""
+							scheduler.Game = game
+						})
+					mockEventForwarder1.EXPECT().Forward(status, gomock.Any()).Do(
+						func(status string, infos map[string]interface{}) {
+							Expect(infos["game"]).To(Equal(game))
+							Expect(infos["roomId"]).To(Equal(roomName))
+							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]string{
+								"type": "sometype",
+							}))
+						})
+					mockEventForwarder2.EXPECT().Forward(status, gomock.Any()).Do(
+						func(status string, infos map[string]interface{}) {
+							Expect(infos["game"]).To(Equal(game))
+							Expect(infos["roomId"]).To(Equal(roomName))
+							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]string{
+								"type": "sometype",
+							}))
+						})
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(200))
+					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				})
 			})
 		})
 

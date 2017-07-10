@@ -799,10 +799,16 @@ var _ = Describe("Watcher", func() {
 				mockPipeline.EXPECT().Exec().Times(2)
 			}
 
-			mockEventForwarder.EXPECT().Forward("ROOM_TERMINATED", gomock.Any()).Times(6)
+			mockEventForwarder.EXPECT().Forward(models.RoomTerminated, gomock.Any()).Do(
+				func(status string, infos map[string]interface{}) {
+					Expect(status).To(Equal(models.RoomTerminated))
+					Expect(infos["game"]).To(Equal(schedulerName))
+					Expect(expectedRooms).To(ContainElement(infos["roomId"]))
+				}).Times(len(expectedRooms) * 2)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
+					scheduler.Game = schedulerName
 				}).Times(6)
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())

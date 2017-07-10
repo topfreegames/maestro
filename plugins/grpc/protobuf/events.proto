@@ -10,21 +10,20 @@ service GRPCForwarder {
 message RoomStatus {
   Room room = 1;
   RoomStatusType statusType = 2;
-  map<string, string> metadata =3;
   enum RoomStatusType {
-    ROOM_READY = 0;
-    ROOM_OCCUPIED = 1;
-    ROOM_TERMINATING = 2;
-    ROOM_TERMINATED = 3;
+    ready = 0;
+    occupied = 1;
+    terminating = 2;
+    terminated = 3;
   }
 }
 
 message Room {
   string game = 1;
   string roomId = 2;
-  string roomType = 3;
   string host = 4;
   int32 port = 5;
+  map<string, string> metadata = 6;
 }
 
 message PlayerEvent {

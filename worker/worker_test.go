@@ -61,7 +61,7 @@ cmd:
 	Describe("NewWorker", func() {
 		It("should return configured new worker", func() {
 			mockRedisClient.EXPECT().Ping()
-			w, err := worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset, []eventforwarder.EventForwarder{})
+			w, err := worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(w).NotTo(BeNil())
 			Expect(w.Config).To(Equal(config))
@@ -86,7 +86,7 @@ cmd:
 			config.Set("worker.syncPeriod", 1)
 			var err error
 			mockRedisClient.EXPECT().Ping()
-			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset, []eventforwarder.EventForwarder{})
+			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(w.Watchers).To(HaveLen(0))
 		})
@@ -120,7 +120,7 @@ cmd:
 		BeforeEach(func() {
 			var err error
 			mockRedisClient.EXPECT().Ping()
-			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset, []eventforwarder.EventForwarder{})
+			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(w.Watchers).To(HaveLen(0))
 		})
@@ -167,7 +167,7 @@ cmd:
 		BeforeEach(func() {
 			var err error
 			mockRedisClient.EXPECT().Ping()
-			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset, []eventforwarder.EventForwarder{})
+			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(w.Watchers).To(HaveLen(0))
 		})

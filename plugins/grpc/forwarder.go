@@ -12,6 +12,7 @@ import "C"
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/eventforwarder"
@@ -31,17 +32,19 @@ type GRPCForwarder struct {
 type ForwarderFunc func(client pb.GRPCForwarderClient, infos map[string]interface{}) (int32, error)
 
 func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status pb.RoomStatus_RoomStatusType) *pb.RoomStatus {
-	return &pb.RoomStatus{
+	req := &pb.RoomStatus{
 		Room: &pb.Room{
-			Game:     infos["game"].(string),
-			RoomId:   infos["roomId"].(string),
-			RoomType: infos["roomType"].(string),
-			Host:     infos["host"].(string),
-			Port:     int32(infos["port"].(int)),
+			Game:   infos["game"].(string),
+			RoomId: infos["roomId"].(string),
+			Host:   infos["host"].(string),
+			Port:   int32(infos["port"].(int)),
 		},
-		Metadata:   infos["metadata"].(map[string]string),
 		StatusType: status,
 	}
+	if meta, ok := infos["metadata"].(map[string]string); ok {
+		req.Room.Metadata = meta
+	}
+	return req
 }
 
 func (g *GRPCForwarder) roomStatus(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, err error) {
@@ -53,29 +56,29 @@ func (g *GRPCForwarder) roomStatus(infos map[string]interface{}, roomStatus pb.R
 	return response.Code, err
 }
 
-// RoomReady status
-func (g *GRPCForwarder) RoomReady(infos map[string]interface{}) (status int32, err error) {
-	return g.roomStatus(infos, pb.RoomStatus_ROOM_READY)
+// Ready status
+func (g *GRPCForwarder) Ready(infos map[string]interface{}) (status int32, err error) {
+	return g.roomStatus(infos, pb.RoomStatus_ready)
 }
 
-// RoomOccupied status
-func (g *GRPCForwarder) RoomOccupied(infos map[string]interface{}) (status int32, err error) {
-	return g.roomStatus(infos, pb.RoomStatus_ROOM_OCCUPIED)
+// Occupied status
+func (g *GRPCForwarder) Occupied(infos map[string]interface{}) (status int32, err error) {
+	return g.roomStatus(infos, pb.RoomStatus_occupied)
 }
 
-// RoomTerminating status
-func (g *GRPCForwarder) RoomTerminating(infos map[string]interface{}) (status int32, err error) {
-	return g.roomStatus(infos, pb.RoomStatus_ROOM_TERMINATING)
+// Terminating status
+func (g *GRPCForwarder) Terminating(infos map[string]interface{}) (status int32, err error) {
+	return g.roomStatus(infos, pb.RoomStatus_terminating)
 }
 
-// RoomTerminated status
-func (g *GRPCForwarder) RoomTerminated(infos map[string]interface{}) (status int32, err error) {
-	return g.roomStatus(infos, pb.RoomStatus_ROOM_TERMINATED)
+// Terminated status
+func (g *GRPCForwarder) Terminated(infos map[string]interface{}) (status int32, err error) {
+	return g.roomStatus(infos, pb.RoomStatus_terminated)
 }
 
 //Forward send room or player status to specified server
 func (g *GRPCForwarder) Forward(event string, infos map[string]interface{}) (status int32, err error) {
-	f := reflect.ValueOf(g).MethodByName(event)
+	f := reflect.ValueOf(g).MethodByName(strings.Title(event))
 	if !f.IsValid() {
 		return 500, fmt.Errorf("error calling method %s in plugin", event)
 	}

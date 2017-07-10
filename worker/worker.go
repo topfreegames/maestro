@@ -48,7 +48,7 @@ type Worker struct {
 	SyncPeriod       int
 	Watchers         map[string]*watcher.Watcher
 	gracefulShutdown *gracefulShutdown
-	EventForwarders  []eventforwarder.EventForwarder
+	Forwarders       []eventforwarder.EventForwarder
 }
 
 // NewWorker is the worker constructor
@@ -61,7 +61,6 @@ func NewWorker(
 	dbOrNil pginterfaces.DB,
 	redisClientOrNil redisinterfaces.RedisClient,
 	kubernetesClientOrNil kubernetes.Interface,
-	eventForwarders []eventforwarder.EventForwarder,
 ) (*Worker, error) {
 	w := &Worker{
 		Config:          config,
@@ -69,7 +68,6 @@ func NewWorker(
 		MetricsReporter: mr,
 		InCluster:       incluster,
 		KubeconfigPath:  kubeconfigPath,
-		EventForwarders: eventForwarders,
 	}
 
 	err := w.configure(dbOrNil, redisClientOrNil, kubernetesClientOrNil)
@@ -87,6 +85,7 @@ func (w *Worker) loadConfigurationDefaults() {
 func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface) error {
 	w.loadConfigurationDefaults()
 	w.configureLogger()
+	w.configureForwarders()
 
 	w.SyncPeriod = w.Config.GetInt("worker.syncPeriod")
 	w.Watchers = make(map[string]*watcher.Watcher)
@@ -112,6 +111,10 @@ func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 	}
 
 	return nil
+}
+
+func (w *Worker) configureForwarders() {
+	w.Forwarders = eventforwarder.LoadEventForwardersFromConfig(w.Config, w.Logger)
 }
 
 func (w *Worker) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interface) error {
@@ -233,7 +236,7 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 				w.KubernetesClient,
 				schedulerName,
 				occupiedTimeout,
-				w.EventForwarders,
+				w.Forwarders,
 			)
 			w.Watchers[schedulerName].Run = true // Avoids race condition
 			go w.Watchers[schedulerName].Start()

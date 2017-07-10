@@ -22,6 +22,17 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+const (
+	// RoomReady string representation
+	RoomReady = "ready"
+	// RoomOccupied string representation
+	RoomOccupied = "occupied"
+	// RoomTerminating string representation
+	RoomTerminating = "terminating"
+	// RoomTerminated string representation
+	RoomTerminated = "terminated"
+)
+
 // Room is the struct that defines a room in maestro
 type Room struct {
 	ID            string
