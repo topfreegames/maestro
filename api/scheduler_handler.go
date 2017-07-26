@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -355,4 +356,148 @@ func (g *SchedulerStatusHandler) returnConfig(
 		return nil
 	})
 	logger.Debug("config scheduler succeeded.")
+}
+
+// SchedulerScaleHandler handler
+type SchedulerScaleHandler struct {
+	App *App
+}
+
+// NewSchedulerScaleHandler get scheduler and its rooms status
+func NewSchedulerScaleHandler(a *App) *SchedulerScaleHandler {
+	m := &SchedulerScaleHandler{App: a}
+	return m
+}
+
+// ServeHTTP method
+func (g *SchedulerScaleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	l := loggerFromContext(r.Context())
+	mr := metricsReporterFromCtx(r.Context())
+	params := schedulerParamsFromContext(r.Context())
+
+	amountUpStr := r.URL.Query().Get("scaleup")
+	amountDownStr := r.URL.Query().Get("scaledown")
+	logger := l.WithFields(logrus.Fields{
+		"source":    "schedulerScaleHandler",
+		"operation": "scale",
+	})
+
+	var amountUp, amountDown int
+	var err error
+
+	if amountUpStr == "" && amountDownStr == "" {
+		logger.Error("invalid scale parameter: scaleup and scaledown are empty")
+		g.App.HandleError(
+			w,
+			http.StatusUnprocessableEntity,
+			"invalid scale parameter",
+			errors.New("scaleup and scaledown are empty"),
+		)
+		return
+	} else if amountUpStr != "" && amountDownStr != "" {
+		logger.Error("invalid scale parameter: can't scale up and down")
+		g.App.HandleError(
+			w,
+			http.StatusUnprocessableEntity,
+			"invalid scale parameter",
+			errors.New("cannot scale up and down at once"),
+		)
+		return
+	} else if amountUpStr != "" {
+		amountUp, err = strconv.Atoi(amountUpStr)
+		if err != nil {
+			logger.WithError(err).Errorf("invalid scale up parameter: %s", amountUpStr)
+			g.App.HandleError(
+				w,
+				http.StatusBadRequest,
+				"invalid scale up parameter",
+				err,
+			)
+			return
+		} else if amountUp <= 0 {
+			logger.WithError(err).Errorf("invalid scale up parameter: %s", amountUpStr)
+			g.App.HandleError(
+				w,
+				http.StatusUnprocessableEntity,
+				"invalid scale up parameter",
+				errors.New("scaleup amount should be greater than zero"),
+			)
+			return
+		}
+	} else {
+		amountDown, err = strconv.Atoi(amountDownStr)
+		if err != nil {
+			logger.WithError(err).Errorf("invalid scale down parameter: %s", amountDownStr)
+			g.App.HandleError(
+				w,
+				http.StatusBadRequest,
+				"invalid scale down parameter",
+				err,
+			)
+			return
+		} else if amountDown <= 0 {
+			logger.WithError(err).Errorf("invalid scale down parameter: %s", amountDownStr)
+			g.App.HandleError(
+				w,
+				http.StatusUnprocessableEntity,
+				"invalid scale down parameter",
+				errors.New("scaledown amount should be greater than zero"),
+			)
+			return
+		}
+	}
+
+	scheduler := models.NewScheduler(params.SchedulerName, "", "")
+	err = scheduler.Load(g.App.DB)
+	if err != nil {
+		logger.WithError(err).Errorf("error loading scheduler %s from db", params.SchedulerName)
+		g.App.HandleError(w, http.StatusInternalServerError, "scheduler scale failed", err)
+		return
+	} else if scheduler.YAML == "" {
+		logger.WithError(err).Errorf("scheduler %s not found", params.SchedulerName)
+		g.App.HandleError(
+			w, http.StatusNotFound, "scheduler scale failed",
+			fmt.Errorf("scheduler %s not found", params.SchedulerName),
+		)
+		return
+	}
+
+	if amountUpStr != "" {
+		logger.Infof("manually scaling up scheduler %s in %d GRUs", params.SchedulerName, amountUp)
+		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
+		err = controller.ScaleUp(
+			l,
+			mr,
+			g.App.DB,
+			g.App.RedisClient,
+			g.App.KubernetesClient,
+			scheduler,
+			amountUp,
+			timeoutSec,
+			false,
+		)
+	} else if amountDownStr != "" {
+		logger.Infof("manually scaling down scheduler %s in %d GRUs", params.SchedulerName, amountDown)
+		timeoutSec := g.App.Config.GetInt("scaleDownTimeoutSeconds")
+		err = controller.ScaleDown(
+			l,
+			mr,
+			g.App.DB,
+			g.App.RedisClient,
+			g.App.KubernetesClient,
+			scheduler,
+			amountDown,
+			timeoutSec,
+		)
+	}
+	if err != nil {
+		logger.WithError(err).Error("scheduler scale failed")
+		g.App.HandleError(w, http.StatusInternalServerError, "status scheduler failed", err)
+		return
+	}
+	mr.WithSegment(models.SegmentSerialization, func() error {
+		Write(w, http.StatusOK, `{"success": true}`)
+		return nil
+	})
+	logger.Debug("scheduler successfully scaled")
 }

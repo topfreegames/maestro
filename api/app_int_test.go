@@ -463,4 +463,96 @@ var _ = Describe("App", func() {
 			Expect(recorder.Code).To(Equal(http.StatusNotFound))
 		})
 	})
+
+	Describe("POST /scheduler/{schedulerName}", func() {
+		BeforeEach(func() {
+			url = fmt.Sprintf("http://%s/scheduler", app.Address)
+		})
+
+		It("should manually scale up a scheduler", func() {
+			body := strings.NewReader(jsonStr)
+
+			configYaml, err = models.NewConfigYAML(jsonStr)
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest("POST", url, body)
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusCreated))
+
+			pods, err := clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
+
+			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min))
+
+			urlScale := fmt.Sprintf("http://%s/scheduler/%s?scaleup=1", app.Address, configYaml.Name)
+			request, err = http.NewRequest("POST", urlScale, nil)
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
+
+			recorder = httptest.NewRecorder()
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			pods, err = clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min + 1))
+
+			svcs, err = clientset.CoreV1().Services(configYaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min + 1))
+		})
+
+		It("should manually scale down a scheduler", func() {
+			body := strings.NewReader(jsonStr)
+
+			configYaml, err = models.NewConfigYAML(jsonStr)
+			Expect(err).NotTo(HaveOccurred())
+
+			request, err := http.NewRequest("POST", url, body)
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusCreated))
+
+			pods, err := clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
+
+			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min))
+
+			tx := app.RedisClient.TxPipeline()
+			tx.SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady), pods.Items[0].GetName())
+			tx.Exec()
+
+			urlScale := fmt.Sprintf("http://%s/scheduler/%s?scaledown=1", app.Address, configYaml.Name)
+			request, err = http.NewRequest("POST", urlScale, nil)
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Add("Authorization", "Bearer token")
+
+			recorder = httptest.NewRecorder()
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			pods, err = clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min - 1))
+
+			svcs, err = clientset.CoreV1().Services(configYaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min - 1))
+		})
+	})
 })

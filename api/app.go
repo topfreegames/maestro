@@ -156,6 +156,17 @@ func (a *App) getRouter() *mux.Router {
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerStatus")
 
+	r.HandleFunc("/scheduler/{schedulerName}", Chain(
+		NewSchedulerScaleHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewVersionMiddleware(),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+	).ServeHTTP).Methods("POST").Name("schedulerScale")
+
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),
 		NewMetricsReporterMiddleware(a),

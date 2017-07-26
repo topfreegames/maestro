@@ -193,13 +193,13 @@ A JSON file equivalent to the yaml above can also be used.
     - [x] scheduler
       - [x] update running scheduler config
     - [x] get rooms metrics
-  - [ ] maestro-cli
+  - [x] maestro-cli
     - [x] scheduler
       - [x] create new scheduler with given config
       - [x] update running scheduler config
       - [x] delete scheduler
       - [x] scheduler status
-    - [ ] docs
+    - [x] docs
   - [ ] maestro-client
     - [ ] cocos2dx support
   - [ ] UI

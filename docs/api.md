@@ -670,3 +670,108 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
         "success":     [bool]false
       }
     ```
+
+  ### Scale Up
+
+  `POST /scheduler/:schedulerName?scaleup=amount`
+
+  Manually scales up the number of rooms of schedulerName.
+
+  * Request
+
+    ```
+    {}
+    ```
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "success": true
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if the request is invalid or the sent parameters are incorrect.
+
+    * Code: `422`|`400`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+  ### Scale Down
+
+  `POST /scheduler/:schedulerName?scaledown=amount`
+
+  Manually scales down the number of rooms of schedulerName.
+
+  * Request
+
+    ```
+    {}
+    ```
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "success": true
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if the request is invalid or the sent parameters are incorrect.
+
+    * Code: `422`|`400`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
