@@ -8,7 +8,6 @@
 package main
 
 import (
-	"C"
 	"github.com/topfreegames/maestro/cmd"
 )
 
