@@ -12,13 +12,13 @@ extensions:
     url: redis://localhost:6363
     connectionTimeout: 200
 watcher:
-  autoScalingPeriod: 30
+  autoScalingPeriod: 10
   lockKey: "maestro-lock-key"
   lockTimeoutMs: 180000
   gracefulShutdownTimeout: 300
   maxSurge: 25
 worker:
-  syncPeriod: 30
+  syncPeriod: 5
   gracefulShutdownTimeout: 300
   retrieveFreePortsPeriod: 3600
   getLocksTimeout: 300

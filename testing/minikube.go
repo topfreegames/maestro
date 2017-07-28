@@ -89,7 +89,8 @@ func NextJsonStr() (string, error) {
       "delta": 1,
       "trigger": {
         "usage": 70,
-        "time": 1
+        "window": 3,
+        "threshold": 80
       },
       "cooldown": 1
     },
@@ -97,7 +98,8 @@ func NextJsonStr() (string, error) {
       "delta": 1,
       "trigger": {
         "usage": 50,
-        "time": 1
+        "window": 3,
+        "threshold": 80
       },
       "cooldown": 1
     }

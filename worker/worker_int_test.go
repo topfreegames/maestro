@@ -230,6 +230,8 @@ var _ = Describe("Worker", func() {
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
+
+				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 			}

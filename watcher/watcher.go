@@ -50,6 +50,8 @@ type Watcher struct {
 	gracefulShutdown  *gracefulShutdown
 	OccupiedTimeout   int64
 	EventForwarders   []eventforwarder.EventForwarder
+	ScaleUpInfo       *models.ScaleInfo
+	ScaleDownInfo     *models.ScaleInfo
 }
 
 // NewWatcher is the watcher constructor
@@ -77,8 +79,6 @@ func NewWatcher(
 	}
 	w.loadConfigurationDefaults()
 	w.configure()
-	w.configureLogger()
-	w.configureTimeout()
 	return w
 }
 
@@ -96,7 +96,7 @@ func GetLockKey(prefix, schedulerName string) string {
 	return fmt.Sprintf("%s-%s", prefix, schedulerName)
 }
 
-func (w *Watcher) configure() {
+func (w *Watcher) configure() error {
 	w.AutoScalingPeriod = w.Config.GetInt("watcher.autoScalingPeriod")
 	w.LockKey = GetLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
@@ -105,17 +105,7 @@ func (w *Watcher) configure() {
 		wg:      &wg,
 		timeout: time.Duration(w.Config.GetInt("watcher.gracefulShutdownTimeout")) * time.Second,
 	}
-}
 
-func (w *Watcher) configureLogger() {
-	w.Logger = w.Logger.WithFields(logrus.Fields{
-		"source":    "maestro-watcher",
-		"version":   metadata.Version,
-		"scheduler": w.SchedulerName,
-	})
-}
-
-func (w *Watcher) configureTimeout() error {
 	scheduler := models.NewScheduler(w.SchedulerName, "", "")
 	err := w.MetricsReporter.WithSegment(models.SegmentSelect, func() error {
 		return scheduler.Load(w.DB)
@@ -127,8 +117,41 @@ func (w *Watcher) configureTimeout() error {
 	if err != nil {
 		return err
 	}
-	w.OccupiedTimeout = configYaml.OccupiedTimeout
+	w.configureLogger()
+	w.configureTimeout(configYaml)
+	w.configureAutoScale(configYaml)
 	return nil
+}
+
+func (w *Watcher) configureLogger() {
+	w.Logger = w.Logger.WithFields(logrus.Fields{
+		"source":  "maestro-watcher",
+		"version": metadata.Version,
+	})
+}
+
+func (w *Watcher) configureTimeout(configYaml *models.ConfigYAML) {
+	w.OccupiedTimeout = configYaml.OccupiedTimeout
+}
+
+func (w *Watcher) configureAutoScale(configYaml *models.ConfigYAML) {
+	var capacity, usage, threshold int
+
+	capacity = configYaml.AutoScaling.Up.Trigger.Window / w.AutoScalingPeriod
+	if capacity <= 0 {
+		capacity = 1
+	}
+	threshold = configYaml.AutoScaling.Up.Trigger.Threshold
+	usage = configYaml.AutoScaling.Up.Trigger.Usage
+	w.ScaleUpInfo = models.NewScaleInfo(capacity, threshold, usage)
+
+	capacity = configYaml.AutoScaling.Down.Trigger.Window / w.AutoScalingPeriod
+	if capacity <= 0 {
+		capacity = 1
+	}
+	threshold = configYaml.AutoScaling.Down.Trigger.Threshold
+	usage = 100 - configYaml.AutoScaling.Down.Trigger.Usage
+	w.ScaleDownInfo = models.NewScaleInfo(capacity, threshold, usage)
 }
 
 // Start starts the watcher
@@ -394,49 +417,46 @@ func (w *Watcher) checkState(
 	roomCount *models.RoomsStatusCount,
 	scheduler *models.Scheduler,
 	nowTimestamp int64,
-) (bool, bool, bool) {
-	inCooldownPeriod := false
+) (bool, bool, bool) { //shouldScaleUp, shouldScaleDown, changedState
+	var shouldScaleUp, shouldScaleDown, changedState bool
+	inSync := true
 
 	if scheduler.State == models.StateCreating || scheduler.State == models.StateTerminating {
-		return false, false, false
+		return false, false, changedState
 	}
-
 	if roomCount.Total() < autoScalingInfo.Min {
-		return true, false, false
+		return true, false, changedState
 	}
 
-	if 100*roomCount.Ready < (100-autoScalingInfo.Up.Trigger.Usage)*roomCount.Total() {
+	w.ScaleUpInfo.AddPoint(roomCount.Occupied, roomCount.Total())
+	if w.ScaleUpInfo.IsAboveThreshold() {
+		inSync = false
 		if scheduler.State != models.StateSubdimensioned {
 			scheduler.State = models.StateSubdimensioned
 			scheduler.StateLastChangedAt = nowTimestamp
-			return false, false, true
+			changedState = true
+		} else if nowTimestamp-scheduler.LastScaleOpAt > int64(autoScalingInfo.Up.Cooldown) {
+			shouldScaleUp = true
 		}
-		if nowTimestamp-scheduler.LastScaleOpAt > int64(autoScalingInfo.Up.Cooldown) &&
-			nowTimestamp-scheduler.StateLastChangedAt > int64(autoScalingInfo.Up.Trigger.Time) {
-			return true, false, false
-		}
-		inCooldownPeriod = true
 	}
 
-	if 100*roomCount.Ready > (100-autoScalingInfo.Down.Trigger.Usage)*roomCount.Total() &&
-		roomCount.Total()-autoScalingInfo.Down.Delta >= autoScalingInfo.Min {
+	w.ScaleDownInfo.AddPoint(roomCount.Ready, roomCount.Total())
+	if w.ScaleDownInfo.IsAboveThreshold() && roomCount.Total()-autoScalingInfo.Down.Delta >= autoScalingInfo.Min {
+		inSync = false
 		if scheduler.State != models.StateOverdimensioned {
 			scheduler.State = models.StateOverdimensioned
 			scheduler.StateLastChangedAt = nowTimestamp
-			return false, false, true
+			changedState = true
+		} else if nowTimestamp-scheduler.LastScaleOpAt > int64(autoScalingInfo.Down.Cooldown) {
+			shouldScaleDown = true
 		}
-		if nowTimestamp-scheduler.LastScaleOpAt > int64(autoScalingInfo.Down.Cooldown) &&
-			nowTimestamp-scheduler.StateLastChangedAt > int64(autoScalingInfo.Down.Trigger.Time) {
-			return false, true, false
-		}
-		inCooldownPeriod = true
 	}
 
-	if !inCooldownPeriod && scheduler.State != models.StateInSync {
+	if inSync && scheduler.State != models.StateInSync {
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
-		return false, false, true
+		changedState = true
 	}
 
-	return false, false, false
+	return shouldScaleUp, shouldScaleDown, changedState
 }

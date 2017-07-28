@@ -333,7 +333,8 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
           "delta": 10,
           "trigger": {
             "usage": 70,
-            "time": 600
+            "window": 600,
+            "threshold": 80
           },
           "cooldown": 300
         },
@@ -341,7 +342,8 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
           "delta": 2,
           "trigger": {
             "usage": 50,
-            "time": 900
+            "window": 900,
+            "threshold": 80
           },
           "cooldown": 300
         }
@@ -473,7 +475,8 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
           "delta": 10,
           "trigger": {
             "usage": 70,
-            "time": 600
+            "window": 600,
+            "threshold": 80
           },
           "cooldown": 300
         },
@@ -481,7 +484,8 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
           "delta": 2,
           "trigger": {
             "usage": 50,
-            "time": 900
+            "window": 900,
+            "threshold": 80
           },
           "cooldown": 300
         }
