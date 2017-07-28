@@ -42,9 +42,13 @@ type EnvVar struct {
 }
 
 // ScalingPolicyTrigger has the configuration for a scaling policy trigger
+// During 'Window' seconds with n measures, 'Usage'% of the machines needs
+// to be occupied on 'Threshold'% of these n points.
+// This will trigger a scale up or scale down.
 type ScalingPolicyTrigger struct {
-	Time  int `yaml:"time" json:"time" valid:"int64"`
-	Usage int `yaml:"usage" json:"usage" valid:"int64"`
+	Window    int `yaml:"window" json:"window" valid:"int64"`
+	Usage     int `yaml:"usage" json:"usage" valid:"int64"`
+	Threshold int `yaml:"threshold" json:"threshold" valid:"int64"`
 }
 
 // ScalingPolicy has the configuration for a scaling policy

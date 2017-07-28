@@ -25,7 +25,8 @@
          "delta": 1,
          "trigger": {
             "usage": 70,
-            "time": 1
+            "window": 1,
+            "threshold": 80
          },
          "cooldown": 1
       },
@@ -33,7 +34,8 @@
          "delta": 1,
          "trigger": {
             "usage": 50,
-            "time": 1
+            "window": 1,
+            "threshold": 80
          },
          "cooldown": 1
       }

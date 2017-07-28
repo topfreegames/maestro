@@ -119,10 +119,11 @@ cmd:
 				Eval(gomock.Any(), gomock.Any(), startPortRange, endPortRange).
 				Return(goredis.NewCmdResult(nil, nil))
 
-			w.Start(startPortRange, endPortRange)
+			err := w.Start(startPortRange, endPortRange)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error in pg"))
 			Expect(hook.LastEntry().Message).To(Equal("error listing schedulers"))
 		})
-
 	})
 
 	Describe("EnsureRunningWatchers", func() {
