@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis"
+	goredis "github.com/go-redis/redis"
 	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -222,6 +223,11 @@ var _ = Describe("Scheduler Handler", func() {
 						gomock.Any(),
 					)
 
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+						Return(goredis.NewStringResult("5000", nil)).Times(200)
+					mockPipeline.EXPECT().Exec().Times(100)
+
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(http.StatusCreated))
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -302,6 +308,16 @@ autoscaling:
 						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
 						gomock.Any(),
 					).Times(2)
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+						Return(goredis.NewStringResult("5000", nil))
+					mockPipeline.EXPECT().Exec()
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+						Return(goredis.NewStringResult("5001", nil))
+					mockPipeline.EXPECT().Exec()
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -548,13 +564,19 @@ autoscaling:
 						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
 						gomock.Any(),
 					)
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+						Return(goredis.NewStringResult("5000", nil)).Times(200)
+					mockPipeline.EXPECT().Exec().Times(100)
+
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(http.StatusCreated))
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 
-					svcs, err := clientset.CoreV1().Services(configYaml1.Name).List(metav1.ListOptions{})
+					pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 					Expect(err).NotTo(HaveOccurred())
-					Expect(svcs.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+					Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
 
 					// Update scheduler
 					var configYaml2 models.ConfigYAML
@@ -580,9 +602,9 @@ autoscaling:
 						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
 
-					for _, svc := range svcs.Items {
+					for _, pod := range pods.Items {
 						mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-						room := models.NewRoom(svc.GetName(), svc.GetNamespace())
+						room := models.NewRoom(pod.GetName(), pod.GetNamespace())
 						for _, status := range allStatus {
 							mockPipeline.EXPECT().
 								SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
@@ -615,6 +637,15 @@ autoscaling:
 					mockRedisClient.EXPECT().
 						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
 						Return(redis.NewCmdResult(nil, nil))
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+					mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(200)
+					mockPipeline.EXPECT().Exec().Times(100)
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+						Return(goredis.NewStringResult("5000", nil)).Times(200)
+					mockPipeline.EXPECT().Exec().Times(100)
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)
@@ -910,6 +941,10 @@ game: game-name
 			yamlStr := `
 name: scheduler-name
 game: game-name
+ports:
+- containerPort: 8080
+  protocol: TCP
+  name: tcp
 `
 			schedulerName := "scheduler-name"
 
@@ -934,6 +969,11 @@ game: game-name
 					ZAdd(models.GetRoomPingRedisKey(schedulerName), gomock.Any())
 				mockPipeline.EXPECT().
 					SAdd(models.GetRoomStatusSetRedisKey(schedulerName, "creating"), gomock.Any())
+				mockPipeline.EXPECT().Exec()
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SPop(gomock.Any()).
+					Return(goredis.NewStringResult("5000", nil))
 				mockPipeline.EXPECT().Exec()
 
 				app.Router.ServeHTTP(recorder, request)
@@ -967,6 +1007,20 @@ game: game-name
 				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(room.SchedulerName), gomock.Any())
 				mockPipeline.EXPECT().Del(gomock.Any())
+				mockPipeline.EXPECT().Exec()
+
+				port := 5000
+				pod := &v1.Pod{}
+				pod.Spec.Containers = []v1.Container{
+					{Ports: []v1.ContainerPort{
+						{HostPort: int32(port), Name: "TCP"},
+					}},
+				}
+				_, err = clientset.CoreV1().Pods(schedulerName).Create(pod)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), port).AnyTimes()
 				mockPipeline.EXPECT().Exec()
 
 				app.Router.ServeHTTP(recorder, request)

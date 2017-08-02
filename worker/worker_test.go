@@ -10,6 +10,7 @@ package worker_test
 import (
 	"errors"
 
+	goredis "github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -22,6 +23,7 @@ import (
 
 var _ = Describe("Worker", func() {
 	var occupiedTimeout int64 = 300
+	var startPortRange, endPortRange = 40000, 50000
 	yaml1 := `
 name: controller-name
 game: controller
@@ -98,7 +100,11 @@ cmd:
 					w.Run = false
 				},
 			)
-			w.Start()
+			mockRedisClient.EXPECT().
+				Eval(gomock.Any(), gomock.Any(), startPortRange, endPortRange).
+				Return(goredis.NewCmdResult(nil, nil))
+
+			w.Start(startPortRange, endPortRange)
 		})
 
 		It("should log error and not panic if failed to list scheduler names", func() {
@@ -108,7 +114,12 @@ cmd:
 					w.Run = false
 				},
 			).Return(&types.Result{}, errors.New("some error in pg"))
-			w.Start()
+
+			mockRedisClient.EXPECT().
+				Eval(gomock.Any(), gomock.Any(), startPortRange, endPortRange).
+				Return(goredis.NewCmdResult(nil, nil))
+
+			w.Start(startPortRange, endPortRange)
 			Expect(hook.LastEntry().Message).To(Equal("error listing schedulers"))
 		})
 

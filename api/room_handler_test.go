@@ -19,6 +19,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/go-redis/redis"
+	goredis "github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -301,7 +302,7 @@ var _ = Describe("Room Handler", func() {
 					return models.NewNamespace(name).Create(clientset)
 				}
 				createPod := func(name, namespace string, clientset kubernetes.Interface) error {
-					_, err := models.NewPod(
+					pod, err := models.NewPod(
 						"game",
 						"img",
 						name,
@@ -317,13 +318,24 @@ var _ = Describe("Room Handler", func() {
 							}},
 						nil,
 						nil,
-					).Create(clientset)
+						mockClientset,
+						mockRedisClient,
+					)
+					if err != nil {
+						return err
+					}
+					_, err = pod.Create(clientset)
 					return err
 				}
 
 				var app *api.App
 				game := "somegame"
 				BeforeEach(func() {
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+						Return(goredis.NewStringResult("5000", nil))
+					mockPipeline.EXPECT().Exec()
+
 					createNamespace(namespace, clientset)
 					err := createPod(roomName, namespace, clientset)
 					Expect(err).NotTo(HaveOccurred())
@@ -473,7 +485,12 @@ var _ = Describe("Room Handler", func() {
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod := models.NewPod(
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5000", nil))
+			mockPipeline.EXPECT().Exec()
+
+			pod, err := models.NewPod(
 				game,
 				image,
 				name,
@@ -484,7 +501,10 @@ var _ = Describe("Room Handler", func() {
 				ports,
 				nil,
 				nil,
+				mockClientset,
+				mockRedisClient,
 			)
+			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -511,7 +531,12 @@ var _ = Describe("Room Handler", func() {
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod := models.NewPod(
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5000", nil))
+			mockPipeline.EXPECT().Exec()
+
+			pod, err := models.NewPod(
 				game,
 				image,
 				name,
@@ -522,7 +547,10 @@ var _ = Describe("Room Handler", func() {
 				ports,
 				nil,
 				nil,
+				mockClientset,
+				mockRedisClient,
 			)
+			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 

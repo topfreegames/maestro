@@ -101,7 +101,7 @@ var _ = Describe("Namespace", func() {
 	Describe("DeletePods", func() {
 		It("should fail if namespace does not exist", func() {
 			namespace := models.NewNamespace(name)
-			err := namespace.DeletePods(clientset)
+			err := namespace.DeletePods(clientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -110,7 +110,7 @@ var _ = Describe("Namespace", func() {
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = namespace.DeletePods(clientset)
+			err = namespace.DeletePods(clientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
 
 			pods, err := clientset.CoreV1().Pods(namespace.Name).List(metav1.ListOptions{})

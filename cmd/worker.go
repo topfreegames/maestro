@@ -9,6 +9,8 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/mitchellh/go-homedir"
@@ -17,11 +19,7 @@ import (
 	"github.com/topfreegames/maestro/worker"
 )
 
-// var bind string
-// var port int
-// var incluster bool
-// var context string
-// var kubeconfig string
+var hostPortRange string
 
 // workerCmd represents the worker command
 var workerCmd = &cobra.Command{
@@ -61,9 +59,29 @@ var workerCmd = &cobra.Command{
 			cmdL.Fatal(err)
 		}
 
-		w.Start()
+		startHostPortRange, endHostPortRange, err := getRange(hostPortRange)
+		if err != nil {
+			cmdL.Fatal("invalid port range", hostPortRange, err)
+		}
 
+		err = w.Start(startHostPortRange, endHostPortRange)
+		if err != nil {
+			cmdL.Fatal(err)
+		}
 	},
+}
+
+func getRange(hostPortRange string) (int, int, error) {
+	ports := strings.Split(hostPortRange, "-")
+	startHostPortRange, err := strconv.Atoi(ports[0])
+	if err != nil {
+		return 0, 0, err
+	}
+	endHostPortRange, err := strconv.Atoi(ports[1])
+	if err != nil {
+		return 0, 0, err
+	}
+	return startHostPortRange, endHostPortRange, nil
 }
 
 func init() {
@@ -74,5 +92,6 @@ func init() {
 		panic(err)
 	}
 	workerCmd.Flags().StringVar(&kubeconfig, "kubeconfig", fmt.Sprintf("%s/.kube/config", home), "path to the kubeconfig file (not needed if using --incluster)")
+	workerCmd.Flags().StringVar(&hostPortRange, "host-port-range", "40000-60000", "range of ports to use on host machine")
 	RootCmd.AddCommand(workerCmd)
 }

@@ -55,10 +55,10 @@ var _ = Describe("App", func() {
 	})
 
 	AfterEach(func() {
-		svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
+		pods, err := clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
 		Expect(err).NotTo(HaveOccurred())
-		for _, svc := range svcs.Items {
-			room := models.NewRoom(svc.GetName(), svc.GetNamespace())
+		for _, pod := range pods.Items {
+			room := models.NewRoom(pod.GetName(), pod.GetNamespace())
 			err = room.ClearAll(app.RedisClient)
 			Expect(err).NotTo(HaveOccurred())
 		}
@@ -93,20 +93,17 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
 
-			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min))
-
 			ns := configYaml.Name
 			sch := &models.Scheduler{Name: ns}
 			err = sch.Load(app.DB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sch.YAML).NotTo(HaveLen(0))
 
-			for _, svc := range svcs.Items {
-				Expect(svc.Spec.Ports[0].Port).To(Equal(int32(8080)))
+			for _, pod := range pods.Items {
+				Expect(pod.Spec.Containers[0].Ports).To(HaveLen(1))
+				Expect(pod.Spec.Containers[0].Ports[0].HostPort).NotTo(BeZero())
 
-				room := models.NewRoom(svc.GetName(), ns)
+				room := models.NewRoom(pod.GetName(), ns)
 				err := room.Create(app.RedisClient)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -201,20 +198,17 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
 
-			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min))
-
 			ns := configYaml.Name
 			sch := &models.Scheduler{Name: ns}
 			err = sch.Load(app.DB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sch.YAML).NotTo(HaveLen(0))
 
-			for _, svc := range svcs.Items {
-				Expect(svc.Spec.Ports[0].Port).To(Equal(int32(8080)))
+			for _, pod := range pods.Items {
+				Expect(pod.Spec.Containers[0].Ports).To(HaveLen(1))
+				Expect(pod.Spec.Containers[0].Ports[0].HostPort).NotTo(BeZero())
 
-				room := models.NewRoom(svc.GetName(), ns)
+				room := models.NewRoom(pod.GetName(), ns)
 				err := room.Create(app.RedisClient)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -317,7 +311,7 @@ var _ = Describe("App", func() {
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 			Expect(recorder.Code).To(Equal(http.StatusCreated))
 
-			svcsBefore, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
+			podsBefore, err := clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Delete the scheduler
@@ -335,10 +329,6 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(BeEmpty())
 
-			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(svcs.Items).To(BeEmpty())
-
 			ns := configYaml.Name
 			nameSpace := models.NewNamespace(ns)
 			exists, err := nameSpace.Exists(clientset)
@@ -350,8 +340,8 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sch.YAML).To(HaveLen(0))
 
-			for _, svc := range svcsBefore.Items {
-				room := models.NewRoom(svc.GetName(), ns)
+			for _, pod := range podsBefore.Items {
+				room := models.NewRoom(pod.GetName(), ns)
 
 				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, sch.Name, room.ID)
 				request, err := http.NewRequest("PUT", url, mt.JSONFor(mt.JSON{
@@ -436,6 +426,7 @@ var _ = Describe("App", func() {
 			newConfigYaml, err := models.NewConfigYAML(scheduler.YAML)
 			newConfigYaml.Env = nil
 			newConfigYaml.Cmd = nil
+			configYaml.Ports[0].HostPort = newConfigYaml.Ports[0].HostPort
 			Expect(err).NotTo(HaveOccurred())
 			Expect(newConfigYaml).To(Equal(configYaml))
 		})
@@ -487,10 +478,6 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
 
-			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min))
-
 			urlScale := fmt.Sprintf("http://%s/scheduler/%s?scaleup=1", app.Address, configYaml.Name)
 			request, err = http.NewRequest("POST", urlScale, nil)
 			Expect(err).NotTo(HaveOccurred())
@@ -504,10 +491,6 @@ var _ = Describe("App", func() {
 			pods, err = clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min + 1))
-
-			svcs, err = clientset.CoreV1().Services(configYaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min + 1))
 		})
 
 		It("should manually scale down a scheduler", func() {
@@ -528,10 +511,6 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
 
-			svcs, err := clientset.CoreV1().Services(configYaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min))
-
 			tx := app.RedisClient.TxPipeline()
 			tx.SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady), pods.Items[0].GetName())
 			tx.Exec()
@@ -549,10 +528,6 @@ var _ = Describe("App", func() {
 			pods, err = clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min - 1))
-
-			svcs, err = clientset.CoreV1().Services(configYaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(len(svcs.Items)).To(Equal(configYaml.AutoScaling.Min - 1))
 		})
 	})
 })

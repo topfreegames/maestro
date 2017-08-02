@@ -10,6 +10,7 @@ package models
 import (
 	"strings"
 
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -70,10 +71,20 @@ func (n *Namespace) Delete(clientset kubernetes.Interface) error {
 }
 
 // DeletePods deletes all pods from a kubernetes namespace
-func (n *Namespace) DeletePods(clientset kubernetes.Interface) error {
-	err := clientset.CoreV1().Pods(n.Name).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{})
+func (n *Namespace) DeletePods(clientset kubernetes.Interface, redisClient redisinterfaces.RedisClient) error {
+	pods, err := clientset.CoreV1().Pods(n.Name).List(metav1.ListOptions{})
 	if err != nil {
 		return errors.NewKubernetesError("delete namespace pods error", err)
+	}
+	err = clientset.CoreV1().Pods(n.Name).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{})
+	if err != nil {
+		return errors.NewKubernetesError("delete namespace pods error", err)
+	}
+	for _, pod := range pods.Items {
+		err := RetrieveV1Ports(redisClient, pod.Spec.Containers[0].Ports)
+		if err != nil {
+			//TODO: try again?
+		}
 	}
 	return nil
 }

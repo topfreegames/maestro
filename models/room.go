@@ -213,15 +213,12 @@ func (r *Room) GetAddresses(kubernetesClient kubernetes.Interface) (*RoomAddress
 	if rAddresses.Host == "" {
 		return nil, maestroErrors.NewKubernetesError("no host found", errors.New("no node found to host room"))
 	}
-	svc, err := kubernetesClient.CoreV1().Services(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	for _, port := range svc.Spec.Ports {
-		if port.NodePort != 0 {
+	for _, port := range roomPod.Spec.Containers[0].Ports {
+		//TODO: check if port.HostPort is available (another process not using it)
+		if port.HostPort != 0 {
 			rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
 				Name: port.Name,
-				Port: port.NodePort,
+				Port: port.HostPort,
 			})
 		}
 	}

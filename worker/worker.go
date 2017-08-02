@@ -169,7 +169,7 @@ func (w *Worker) configureLogger() {
 }
 
 // Start starts the worker
-func (w *Worker) Start() {
+func (w *Worker) Start(startHostPortRange, endHostPortRange int) error {
 	l := w.Logger.WithFields(logrus.Fields{
 		"operation": "start",
 	})
@@ -179,13 +179,18 @@ func (w *Worker) Start() {
 
 	ticker := time.NewTicker(time.Duration(w.SyncPeriod) * time.Second)
 
+	err := models.InitAvailablePorts(w.RedisClient.Client, startHostPortRange, endHostPortRange)
+	if err != nil {
+		return err
+	}
+
 	for w.Run == true {
 		select {
 		case <-ticker.C:
 			schedulerNames, err := controller.ListSchedulersNames(l, w.MetricsReporter, w.DB)
 			if err != nil {
 				l.WithError(err).Error("error listing schedulers")
-				return
+				return err
 			}
 			w.EnsureRunningWatchers(schedulerNames)
 			w.RemoveDeadWatchers()
@@ -196,6 +201,7 @@ func (w *Worker) Start() {
 	}
 
 	extensions.GracefulShutdown(l, w.gracefulShutdown.wg, w.gracefulShutdown.timeout)
+	return nil
 }
 
 // EnsureRunningWatchers ensures all schedulers have running watchers

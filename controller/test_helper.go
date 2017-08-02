@@ -13,17 +13,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// GetServiceNames return n services that are currently running
-func GetServiceNames(n int, namespace string, clientset kubernetes.Interface) ([]string, error) {
-	services, err := clientset.CoreV1().Services(namespace).List(metav1.ListOptions{
+// GetPodNames return n pods that are currently running
+func GetPodNames(n int, namespace string, clientset kubernetes.Interface) ([]string, error) {
+	pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
 		FieldSelector: fields.Everything().String(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	serviceNames := []string{}
-	for _, service := range services.Items {
-		serviceNames = append(serviceNames, service.Name)
+	podNames := []string{}
+	for _, pod := range pods.Items {
+		podNames = append(podNames, pod.GetName())
 	}
-	return serviceNames[:n], nil
+	return podNames[:n], nil
 }

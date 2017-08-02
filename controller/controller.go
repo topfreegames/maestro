@@ -10,7 +10,6 @@ package controller
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -33,7 +32,15 @@ import (
 )
 
 // CreateScheduler creates a new scheduler from a yaml configuration
-func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configYAML *models.ConfigYAML, timeoutSec int) error {
+func CreateScheduler(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	clientset kubernetes.Interface,
+	configYAML *models.ConfigYAML,
+	timeoutSec int,
+) error {
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
 		return err
@@ -76,7 +83,7 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 	})
 
 	if err != nil {
-		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace, timeoutSec)
+		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
 		if deleteErr != nil {
 			err = deleteErr
 		}
@@ -89,7 +96,7 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 			// this prevents error: null value in column \"last_scale_op_at\" violates not-null constraint
 			scheduler.LastScaleOpAt = int64(1)
 		}
-		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace, timeoutSec)
+		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
 		if deleteErr != nil {
 			return deleteErr
 		}
@@ -104,7 +111,7 @@ func CreateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 		return scheduler.Update(db)
 	})
 	if err != nil {
-		deleteErr := deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace, timeoutSec)
+		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
 		if deleteErr != nil {
 			err = deleteErr
 		}
@@ -143,7 +150,15 @@ func UpdateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 }
 
 // DeleteScheduler deletes a scheduler from a yaml configuration
-func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, schedulerName string, timeoutSec int) error {
+func DeleteScheduler(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	clientset kubernetes.Interface,
+	schedulerName string,
+	timeoutSec int,
+) error {
 	scheduler := models.NewScheduler(schedulerName, "", "")
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return scheduler.Load(db)
@@ -152,7 +167,7 @@ func DeleteScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 		return err
 	}
 	namespace := models.NewNamespace(scheduler.Name)
-	return deleteSchedulerHelper(logger, mr, db, clientset, scheduler, namespace, timeoutSec)
+	return deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
 }
 
 // GetSchedulerScalingInfo returns the scheduler scaling policies and room count by status
@@ -196,13 +211,20 @@ func ListSchedulersNames(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 }
 
 // DeleteUnavailableRooms delete rooms that are not available
-func DeleteUnavailableRooms(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, schedulerName string, roomNames []string) error {
+func DeleteUnavailableRooms(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	redisClient redisinterfaces.RedisClient,
+	clientset kubernetes.Interface,
+	schedulerName string,
+	roomNames []string,
+) error {
 	if len(roomNames) == 0 {
 		logger.Debug("no rooms need to be deleted")
 		return nil
 	}
 	for _, roomName := range roomNames {
-		err := deleteServiceAndPod(logger, mr, clientset, schedulerName, roomName)
+		err := deletePod(logger, mr, clientset, redisClient, schedulerName, roomName)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteUnavailableRooms"}).WithError(err).Error("error deleting room")
 		} else {
@@ -232,7 +254,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
 
 	for i := 0; i < amount; i++ {
-		podName, err := createServiceAndPod(l, mr, redisClient, clientset, configYAML, scheduler.Name)
+		podName, err := createPod(l, mr, redisClient, clientset, configYAML, scheduler.Name)
 		if err != nil {
 			l.WithError(err).Error("scale up error")
 			if initalOp {
@@ -307,7 +329,7 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 	var deletionErr error
 
 	for _, roomName := range idleRooms {
-		err := deleteServiceAndPod(logger, mr, clientset, scheduler.Name, roomName)
+		err := deletePod(logger, mr, clientset, redisClient, scheduler.Name, roomName)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
 			deletionErr = err
@@ -354,7 +376,7 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 }
 
 // UpdateSchedulerConfig updates a Scheduler with new image, scale info, etc
-// Old pods and services are deleted and recreated with new config
+// Old pods are deleted and recreated with new config
 // Scale up and down are locked
 func UpdateSchedulerConfig(
 	logger logrus.FieldLogger,
@@ -433,34 +455,34 @@ func UpdateSchedulerConfig(
 			LabelSelector: labels.Set{}.AsSelector().String(),
 			FieldSelector: fields.Everything().String(),
 		}
-		svcs, err := clientset.CoreV1().Services(schedulerName).List(listOptions)
+		kubePods, err := clientset.CoreV1().Pods(schedulerName).List(listOptions)
 		if err != nil {
-			return maestroErrors.NewKubernetesError("error when listing  services", err)
+			return maestroErrors.NewKubernetesError("error when listing pods", err)
 		}
 
 		timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
 		time.Sleep(1 * time.Millisecond) // This sleep avoids race condition between select goroutine and timer goroutine
-		numberOldPods := len(svcs.Items)
+		numberOldPods := len(kubePods.Items)
 		logger.WithField("numberOfRooms", numberOldPods).Info("deleting old rooms")
 		i := 0
 		for i < numberOldPods {
-			svc := svcs.Items[i]
+			pod := kubePods.Items[i]
 			select {
 			case <-timeout.C:
 				err = errors.New("timeout during room deletion")
 				return maestroErrors.NewKubernetesError("error when deleting old rooms. Maestro will scale up, if necessary, with previous room configuration.", err)
 			default:
-				err := deleteServiceAndPod(logger, mr, clientset, schedulerName, svc.GetName())
+				err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, pod.GetName())
 				if err != nil {
-					logger.WithField("roomName", svc.GetName()).WithError(err).Error("error deleting room")
+					logger.WithField("roomName", pod.GetName()).WithError(err).Error("error deleting room")
 					time.Sleep(1 * time.Second)
 				} else {
 					i = i + 1
-					room := models.NewRoom(svc.GetName(), schedulerName)
+					room := models.NewRoom(pod.GetName(), schedulerName)
 					err := room.ClearAll(redisClient.Client)
 					if err != nil {
 						//TODO: try again so Redis doesn't hold trash data
-						logger.WithField("roomName", svc.GetName()).WithError(err).Error("error removing room info from redis")
+						logger.WithField("roomName", pod.GetName()).WithError(err).Error("error removing room info from redis")
 					}
 				}
 			}
@@ -471,7 +493,7 @@ func UpdateSchedulerConfig(
 		}
 		logger.WithField("numberOfRooms", numberOldPods).Info("recreating rooms")
 
-		pods := make([]string, numberOldPods)
+		pods := []string{}
 		numberNewPods := 0
 		timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
 		ticker = time.NewTicker(1 * time.Second)
@@ -481,14 +503,21 @@ func UpdateSchedulerConfig(
 			select {
 			case <-timeout.C:
 				for _, podToDelete := range pods {
-					deleteServiceAndPod(logger, mr, clientset, schedulerName, podToDelete)
+					deletePod(logger, mr, clientset, redisClient.Client, schedulerName, podToDelete)
+					room := models.NewRoom(podToDelete, schedulerName)
+					err := room.ClearAll(redisClient.Client)
+					if err != nil {
+						//TODO: try again so Redis doesn't hold trash data
+						logger.WithField("roomName", podToDelete).WithError(err).Error("error removing room info from redis")
+					}
 				}
 				err = errors.New("timeout during new room creation")
 				return maestroErrors.NewKubernetesError("error when creating new rooms. Maestro will scale up, if necessary, with previous room configuration.", err)
+
 			case <-ticker.C:
 				k8sPods, err := clientset.CoreV1().Pods(schedulerName).List(listOptions)
 				if err != nil {
-					logger.WithError(err).Error("error when getting services")
+					logger.WithError(err).Error("error when getting pods")
 					continue
 				}
 
@@ -496,12 +525,12 @@ func UpdateSchedulerConfig(
 				numberPodsToCreate := numberOldPods - numberCurrentPods
 
 				for i := 0; i < numberPodsToCreate; i++ {
-					name, err := createServiceAndPod(l, mr, redisClient.Client, clientset, configYAML, schedulerName)
+					name, err := createPod(l, mr, redisClient.Client, clientset, configYAML, schedulerName)
 					if err != nil {
-						logger.WithError(err).Error("error when creating pod and service")
+						logger.WithError(err).Error("error when creating pod")
 						continue
 					}
-					pods[numberNewPods] = name
+					pods = append(pods, name)
 					numberNewPods = numberNewPods + 1
 				}
 			}
@@ -525,7 +554,13 @@ func UpdateSchedulerConfig(
 		if err != nil {
 			logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
 			for _, podToDelete := range pods {
-				deleteServiceAndPod(l, mr, clientset, configYAML.Name, podToDelete)
+				deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, podToDelete)
+				room := models.NewRoom(podToDelete, schedulerName)
+				err := room.ClearAll(redisClient.Client)
+				if err != nil {
+					//TODO: try again so Redis doesn't hold trash data
+					logger.WithField("roomName", podToDelete).WithError(err).Error("error removing room info from redis")
+				}
 			}
 			return err
 		}
@@ -545,7 +580,16 @@ func UpdateSchedulerConfig(
 	return err
 }
 
-func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, clientset kubernetes.Interface, scheduler *models.Scheduler, namespace *models.Namespace, timeoutSec int) error {
+func deleteSchedulerHelper(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	clientset kubernetes.Interface,
+	scheduler *models.Scheduler,
+	namespace *models.Namespace,
+	timeoutSec int,
+) error {
 	var err error
 	if scheduler.ID != "" {
 		scheduler.State = models.StateTerminating
@@ -565,7 +609,7 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 	// Delete pods and wait for graceful termination before deleting the namespace
 	err = mr.WithSegment(models.SegmentNamespace, func() error {
-		return namespace.DeletePods(clientset)
+		return namespace.DeletePods(clientset, redisClient)
 	})
 	if err != nil {
 		logger.WithError(err).Error("failed to delete namespace pods")
@@ -625,7 +669,7 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 	}
 
 	// Delete from DB must be the last operation because
-	// if kubernetes failed to delete service and pods, watcher will recreate
+	// if kubernetes failed to delete pods, watcher will recreate
 	// and keep the last state
 	err = mr.WithSegment(models.SegmentDelete, func() error {
 		return scheduler.Delete(db)
@@ -638,32 +682,19 @@ func deleteSchedulerHelper(logger logrus.FieldLogger, mr *models.MixedMetricsRep
 	return nil
 }
 
-func buildNodePortEnvVars(ports []v1.ServicePort) []*models.EnvVar {
-	nodePortEnvVars := make([]*models.EnvVar, len(ports))
-	for idx, port := range ports {
-		nodePortEnvVars[idx] = &models.EnvVar{
-			Name:  fmt.Sprintf("MAESTRO_NODE_PORT_%d_%s", port.Port, port.Protocol),
-			Value: strconv.FormatInt(int64(port.NodePort), 10),
-		}
-	}
-	return nodePortEnvVars
-}
-
-func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, configYAML *models.ConfigYAML, schedulerName string) (string, error) {
+func createPod(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	redisClient redisinterfaces.RedisClient,
+	clientset kubernetes.Interface,
+	configYAML *models.ConfigYAML,
+	schedulerName string,
+) (string, error) {
 	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
 	room := models.NewRoom(name, schedulerName)
 	err := mr.WithSegment(models.SegmentInsert, func() error {
 		return room.Create(redisClient)
-	})
-	if err != nil {
-		return "", err
-	}
-	service := models.NewService(name, configYAML.Name, configYAML.Ports)
-	var kubeService *v1.Service
-	err = mr.WithSegment(models.SegmentService, func() error {
-		kubeService, err = service.Create(clientset)
-		return err
 	})
 	if err != nil {
 		return "", err
@@ -679,9 +710,7 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 		},
 	}
 	env := append(configYAML.Env, namesEnvVars...)
-	nodePortEnvVars := buildNodePortEnvVars(kubeService.Spec.Ports)
-	env = append(env, nodePortEnvVars...)
-	pod := models.NewPod(
+	pod, err := models.NewPod(
 		configYAML.Game,
 		configYAML.Image,
 		name,
@@ -692,7 +721,12 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 		configYAML.Ports,
 		configYAML.Cmd,
 		env,
+		clientset,
+		redisClient,
 	)
+	if err != nil {
+		return "", err
+	}
 	if configYAML.NodeAffinity != "" {
 		pod.SetAffinity(configYAML.NodeAffinity)
 	}
@@ -711,21 +745,21 @@ func createServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 	logger.WithFields(logrus.Fields{
 		"node": nodeName,
 		"name": name,
-	}).Info("Created GRU (service and pod) successfully.")
+	}).Info("Created GRU (pod) successfully.")
 	return name, nil
 }
 
-func deleteServiceAndPod(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, clientset kubernetes.Interface, schedulerName, name string) error {
-	service := models.NewService(name, schedulerName, []*models.Port{})
-	err := mr.WithSegment(models.SegmentService, func() error {
-		return service.Delete(clientset)
-	})
-	if err != nil {
-		return err
-	}
-	pod := models.NewPod("", "", name, schedulerName, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{})
+func deletePod(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+	schedulerName,
+	name string,
+) error {
+	pod, err := models.NewPod("", "", name, schedulerName, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{}, clientset, redisClient)
 	err = mr.WithSegment(models.SegmentPod, func() error {
-		return pod.Delete(clientset)
+		return pod.Delete(clientset, redisClient)
 	})
 	if err != nil {
 		return err
@@ -787,6 +821,10 @@ func MustUpdatePods(old, new *models.ConfigYAML) bool {
 	case !sameCmd(old.Cmd, new.Cmd):
 		return true
 	case !sameEnv(old.Env, new.Env):
+		return true
+	case old.NodeAffinity != new.NodeAffinity:
+		return true
+	case old.NodeToleration != new.NodeToleration:
 		return true
 	default:
 		return false

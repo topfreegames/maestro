@@ -102,7 +102,7 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	timeoutSec := g.App.Config.GetInt("deleteTimeoutSeconds")
 	err := mr.WithSegment(models.SegmentController, func() error {
-		return controller.DeleteScheduler(l, mr, g.App.DB, g.App.KubernetesClient, params.SchedulerName, timeoutSec)
+		return controller.DeleteScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, params.SchedulerName, timeoutSec)
 	})
 
 	if err != nil {

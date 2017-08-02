@@ -44,7 +44,7 @@ var _ = Describe("Namespace", func() {
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod := models.NewPod(
+			pod, err := models.NewPod(
 				"game", "image", "name", namespace.Name,
 				&models.Resources{CPU: "1", Memory: "1"},
 				&models.Resources{CPU: "1", Memory: "1"},
@@ -52,7 +52,10 @@ var _ = Describe("Namespace", func() {
 				[]*models.Port{{ContainerPort: 5050}},
 				[]string{"command"},
 				[]*models.EnvVar{},
+				clientset,
+				redisClient.Client,
 			)
+			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -62,7 +65,7 @@ var _ = Describe("Namespace", func() {
 				return len(pods.Items)
 			}).Should(Equal(1))
 
-			err = namespace.DeletePods(clientset)
+			err = namespace.DeletePods(clientset, redisClient.Client)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() int {

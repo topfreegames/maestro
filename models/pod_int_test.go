@@ -84,7 +84,7 @@ var _ = Describe("Pod", func() {
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod := models.NewPod(
+			pod, err := models.NewPod(
 				game,
 				image,
 				name,
@@ -95,7 +95,10 @@ var _ = Describe("Pod", func() {
 				ports,
 				command,
 				env,
+				clientset,
+				redisClient.Client,
 			)
+			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
 			podv1, err := pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())

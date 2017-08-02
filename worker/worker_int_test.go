@@ -57,10 +57,10 @@ var _ = Describe("Worker", func() {
 			watcher.Run = false
 		}
 
-		svcs, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+		pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
 		Expect(err).NotTo(HaveOccurred())
-		for _, svc := range svcs.Items {
-			room := models.NewRoom(svc.GetName(), svc.GetNamespace())
+		for _, pod := range pods.Items {
+			room := models.NewRoom(pod.GetName(), pod.GetNamespace())
 			err = room.ClearAll(app.RedisClient)
 			Expect(err).NotTo(HaveOccurred())
 		}
@@ -99,7 +99,20 @@ var _ = Describe("Worker", func() {
 			Eventually(func() int {
 				list, _ := clientset.CoreV1().Pods(schedulerNames[0]).List(listOptions)
 				return len(list.Items)
-			}).Should(Equal(yaml.AutoScaling.Min))
+			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.AutoScaling.Min))
+
+			totalPorts := endPortRange - startPortRange + 1
+			takenPorts := yaml.AutoScaling.Min * len(yaml.Ports)
+			Eventually(func() (int, error) {
+				cmd := app.RedisClient.Eval(`return redis.call("SCARD", KEYS[1])`, []string{models.FreePortsRedisKey()})
+				amountInterface, err := cmd.Result()
+				var amount int64 = 0
+				if amountInterface != nil {
+					amount, _ = amountInterface.(int64)
+				}
+				return int(amount), err
+			}, 120*time.Second, 1*time.Second).
+				Should(BeNumerically("<=", totalPorts-takenPorts))
 		})
 	})
 
@@ -131,13 +144,6 @@ var _ = Describe("Worker", func() {
 		var yaml1 *models.ConfigYAML
 
 		AfterEach(func() {
-			pipe := app.RedisClient.TxPipeline()
-			cmd := pipe.FlushAll()
-			_, err := pipe.Exec()
-			Expect(err).NotTo(HaveOccurred())
-
-			err = cmd.Err()
-			Expect(err).NotTo(HaveOccurred())
 
 			if yaml1 != nil {
 				exists, err := models.NewNamespace(yaml1.Name).Exists(clientset)
@@ -175,14 +181,27 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() int {
-				svcs, _ := clientset.CoreV1().Services(yaml.Name).List(listOptions)
-				return len(svcs.Items)
+				pods, _ := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+				return len(pods.Items)
 			}, 120*time.Second, 1*time.Second).Should(BeNumerically(">=", yaml.AutoScaling.Min))
 
 			Eventually(func() int {
-				svcs1, _ := clientset.CoreV1().Services(yaml1.Name).List(listOptions)
-				return len(svcs1.Items)
+				pods1, _ := clientset.CoreV1().Pods(yaml1.Name).List(listOptions)
+				return len(pods1.Items)
 			}, 120*time.Second, 1*time.Second).Should(BeNumerically(">=", yaml1.AutoScaling.Min))
+
+			totalPorts := endPortRange - startPortRange + 1
+			takenPorts := yaml.AutoScaling.Min*len(yaml.Ports) + yaml1.AutoScaling.Min*len(yaml1.Ports)
+			Eventually(func() (int, error) {
+				cmd := app.RedisClient.Eval(`return redis.call("SCARD", KEYS[1])`, []string{models.FreePortsRedisKey()})
+				amountInterface, err := cmd.Result()
+				var amount int64 = 0
+				if amountInterface != nil {
+					amount, _ = amountInterface.(int64)
+				}
+				return int(amount), err
+			}, 120*time.Second, 1*time.Second).
+				Should(BeNumerically("<=", totalPorts-takenPorts))
 		})
 
 		It("should scale up", func() {
@@ -192,17 +211,17 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			app.Router.ServeHTTP(recorder, request)
-			Expect(recorder.Code).To(Equal(http.StatusCreated))
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusCreated))
 
 			yaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
-			svcs, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 
-			for _, svc := range svcs.Items {
-				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, svc.GetNamespace(), svc.GetName())
+			for _, pod := range pods.Items {
+				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, pod.GetNamespace(), pod.GetName())
 				request, err := http.NewRequest("PUT", url, mt.JSONFor(mt.JSON{
 					"timestamp": 1000,
 					"status":    models.StatusOccupied,
@@ -211,14 +230,27 @@ var _ = Describe("Worker", func() {
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(http.StatusOK))
 			}
 
 			Eventually(func() int {
-				svcs, _ = clientset.CoreV1().Services(yaml.Name).List(listOptions)
-				return len(svcs.Items)
+				pods, _ = clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+				return len(pods.Items)
 			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.AutoScaling.Min + yaml.AutoScaling.Up.Delta))
+
+			totalPorts := endPortRange - startPortRange + 1
+			takenPorts := (yaml.AutoScaling.Min + yaml.AutoScaling.Up.Delta) * len(yaml.Ports)
+			Eventually(func() (int, error) {
+				cmd := app.RedisClient.Eval(`return redis.call("SCARD", KEYS[1])`, []string{models.FreePortsRedisKey()})
+				amountInterface, err := cmd.Result()
+				var amount int64 = 0
+				if amountInterface != nil {
+					amount, _ = amountInterface.(int64)
+				}
+				return int(amount), err
+			}, 120*time.Second, 1*time.Second).
+				Should(BeNumerically("<=", totalPorts-takenPorts))
 		})
 
 		It("should delete rooms that timed out with occupied status", func() {
@@ -276,14 +308,11 @@ var _ = Describe("Worker", func() {
 			yaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
-			svcs, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
-
 			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 
-			for _, svc := range svcs.Items {
-				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, svc.GetNamespace(), svc.GetName())
+			for _, pod := range pods.Items {
+				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, pod.GetNamespace(), pod.GetName())
 				request, err := http.NewRequest("PUT", url, mt.JSONFor(mt.JSON{
 					"timestamp": 1000,
 					"status":    models.StatusOccupied,
@@ -305,16 +334,6 @@ var _ = Describe("Worker", func() {
 				}
 				return true
 			}, 120*time.Second, 1*time.Second).Should(BeTrue())
-
-			Eventually(func() bool {
-				for _, svc := range svcs.Items {
-					_, err := clientset.CoreV1().Services(yaml.Name).Get(svc.GetName(), metav1.GetOptions{})
-					if err == nil || !strings.Contains(err.Error(), "not found") {
-						return false
-					}
-				}
-				return true
-			}, 120*time.Second, 1*time.Second).Should(BeTrue())
 		})
 
 		It("should scale down", func() {
@@ -330,11 +349,11 @@ var _ = Describe("Worker", func() {
 			yaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
-			svcs, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 
-			for _, svc := range svcs.Items {
-				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, svc.GetNamespace(), svc.GetName())
+			for _, pod := range pods.Items {
+				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, pod.GetNamespace(), pod.GetName())
 				request, err := http.NewRequest("PUT", url, mt.JSONFor(mt.JSON{
 					"timestamp": 1000,
 					"status":    models.StatusOccupied,
@@ -353,16 +372,16 @@ var _ = Describe("Worker", func() {
 			for {
 				select {
 				case <-ticker:
-					svcs, err = clientset.CoreV1().Services(yaml.Name).List(listOptions)
+					pods, err = clientset.CoreV1().Pods(yaml.Name).List(listOptions)
 					Expect(err).NotTo(HaveOccurred())
-					if len(svcs.Items) >= yaml.AutoScaling.Min+yaml.AutoScaling.Up.Delta {
+					if len(pods.Items) >= yaml.AutoScaling.Min+yaml.AutoScaling.Up.Delta {
 						break waitForUp
 					}
 				}
 			}
 
-			for _, svc := range svcs.Items {
-				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, svc.GetNamespace(), svc.GetName())
+			for _, pod := range pods.Items {
+				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, pod.GetNamespace(), pod.GetName())
 				request, err := http.NewRequest("PUT", url, mt.JSONFor(mt.JSON{
 					"timestamp": 1000,
 					"status":    models.StatusReady,
@@ -371,8 +390,8 @@ var _ = Describe("Worker", func() {
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(http.StatusOK))
 			}
 
 			time.Sleep(time.Duration(yaml.AutoScaling.Up.Cooldown) * time.Second)
@@ -383,8 +402,8 @@ var _ = Describe("Worker", func() {
 			}
 
 			Eventually(func() int {
-				svcs, _ = clientset.CoreV1().Services(yaml.Name).List(listOptions)
-				return len(svcs.Items)
+				pods, _ = clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+				return len(pods.Items)
 			}, 120*time.Second, 1*time.Second).Should(Equal(newRoomNumber))
 
 			Eventually(func() int {
@@ -396,6 +415,19 @@ var _ = Describe("Worker", func() {
 				Expect(err).NotTo(HaveOccurred())
 				return len(keys)
 			}, 120*time.Second, 1*time.Second).Should(Equal(newRoomNumber))
+
+			totalPorts := endPortRange - startPortRange + 1
+			takenPorts := yaml.AutoScaling.Min * len(yaml.Ports)
+			Eventually(func() (int, error) {
+				cmd := app.RedisClient.Eval(`return redis.call("SCARD", KEYS[1])`, []string{models.FreePortsRedisKey()})
+				amountInterface, err := cmd.Result()
+				var amount int64 = 0
+				if amountInterface != nil {
+					amount, _ = amountInterface.(int64)
+				}
+				return int(amount), err
+			}, 120*time.Second, 1*time.Second).
+				Should(BeNumerically("<=", totalPorts-takenPorts))
 		})
 
 		It("should delete scheduler", func() {
@@ -411,7 +443,7 @@ var _ = Describe("Worker", func() {
 			yaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
-			svcsBefore, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+			podsBefore, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 
 			url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, yaml.Name)
@@ -425,12 +457,12 @@ var _ = Describe("Worker", func() {
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 
 			Eventually(func() int {
-				svcs, _ := clientset.CoreV1().Services(yaml.Name).List(listOptions)
-				return len(svcs.Items)
+				pods, _ := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+				return len(pods.Items)
 			}, 120*time.Second, 1*time.Second).Should(BeZero())
 
-			for _, svc := range svcsBefore.Items {
-				room := models.NewRoom(svc.GetName(), svc.GetNamespace())
+			for _, pod := range podsBefore.Items {
+				room := models.NewRoom(pod.GetName(), pod.GetNamespace())
 				err = room.ClearAll(app.RedisClient)
 				Expect(err).NotTo(HaveOccurred())
 			}
@@ -449,7 +481,7 @@ var _ = Describe("Worker", func() {
 			yaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
-			svcsBefore, err := clientset.CoreV1().Services(yaml.Name).List(listOptions)
+			podsBefore, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
 			Expect(err).NotTo(HaveOccurred())
 
 			newEnvVar := &models.EnvVar{
@@ -474,15 +506,15 @@ var _ = Describe("Worker", func() {
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 
-			nRoomsBefore := len(svcsBefore.Items)
+			nRoomsBefore := len(podsBefore.Items)
 			newPodEnvVar := v1.EnvVar{
 				Name:  newEnvVar.Name,
 				Value: newEnvVar.Value,
 			}
 
 			Eventually(func() int {
-				svcs, _ := clientset.CoreV1().Services(yaml.Name).List(listOptions)
-				return len(svcs.Items)
+				pods, _ := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+				return len(pods.Items)
 			}, 120*time.Second, 1*time.Second).Should(Equal(nRoomsBefore + 1))
 
 			Eventually(func() []v1.EnvVar {
@@ -495,8 +527,8 @@ var _ = Describe("Worker", func() {
 				return pods.Items[0].Spec.Containers[0].Image
 			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.Image))
 
-			for _, svc := range svcsBefore.Items {
-				room := models.NewRoom(svc.GetName(), svc.GetNamespace())
+			for _, pod := range podsBefore.Items {
+				room := models.NewRoom(pod.GetName(), pod.GetNamespace())
 				err = room.ClearAll(app.RedisClient)
 				Expect(err).NotTo(HaveOccurred())
 			}

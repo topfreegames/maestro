@@ -29,13 +29,6 @@ type Scheduler struct {
 	UpdatedAt          pg.NullTime `db:"updated_at"`
 }
 
-// Port has the port container port and protocol
-type Port struct {
-	ContainerPort int    `yaml:"containerPort" json:"containerPort" valid:"int64,required"`
-	Protocol      string `yaml:"protocol" json:"protocol" valid:"required"`
-	Name          string `yaml:"name" json:"name" valid:"required"`
-}
-
 // Resources the CPU and memory resources limits
 type Resources struct {
 	CPU    string `yaml:"cpu" json:"cpu" valid:"int64"`

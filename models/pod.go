@@ -9,10 +9,12 @@ package models
 
 import (
 	"bytes"
+	"strings"
 	"text/template"
 
 	"github.com/topfreegames/maestro/errors"
 
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
@@ -50,9 +52,11 @@ spec:
   containers:
   - name: {{.Name}}
     image: {{.Image}}
+    hostNetwork: "true"
     ports:
       {{range .Ports}}
       - containerPort: {{.ContainerPort}}
+        hostPort: {{.HostPort}}
         protocol: {{.Protocol}}
         name: "{{.Name}}"
       {{end}}
@@ -80,7 +84,7 @@ spec:
     command:
       {{range .Command}}
       - {{.}}
-			{{- end}}
+      {{- end}}
     {{- end}}
 `
 
@@ -110,7 +114,9 @@ func NewPod(
 	ports []*Port,
 	command []string,
 	env []*EnvVar,
-) *Pod {
+	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+) (*Pod, error) {
 	pod := &Pod{
 		Command:         command,
 		Env:             env,
@@ -129,7 +135,8 @@ func NewPod(
 		pod.ResourcesRequestsCPU = requests.CPU
 		pod.ResourcesRequestsMemory = requests.Memory
 	}
-	return pod
+	err := pod.configureHostPorts(clientset, redisClient)
+	return pod, err
 }
 
 func (p *Pod) SetAffinity(affinity string) {
@@ -175,11 +182,42 @@ func (p *Pod) Create(clientset kubernetes.Interface) (*v1.Pod, error) {
 }
 
 // Delete deletes a pod from kubernetes
-func (p *Pod) Delete(clientset kubernetes.Interface) error {
+func (p *Pod) Delete(clientset kubernetes.Interface, redisClient redisinterfaces.RedisClient) error {
 	err := clientset.CoreV1().Pods(p.Namespace).Delete(p.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		return errors.NewKubernetesError("delete pod error", err)
 	}
+	err = RetrievePorts(redisClient, p.Ports)
+	if err != nil {
+		//TODO: try again?
+	}
+	return nil
+}
 
+func (p *Pod) configureHostPorts(clientset kubernetes.Interface, redisClient redisinterfaces.RedisClient) error {
+	pod, err := clientset.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
+	if err != nil && !strings.Contains(err.Error(), "not found") {
+		return errors.NewKubernetesError("could not access kubernetes", err)
+	} else if err == nil {
+		//pod exists, so just retrieve ports
+		p.Ports = make([]*Port, len(pod.Spec.Containers[0].Ports))
+		for i, port := range pod.Spec.Containers[0].Ports {
+			p.Ports[i] = &Port{
+				ContainerPort: int(port.ContainerPort),
+				Name:          port.Name,
+				HostPort:      int(port.HostPort),
+			}
+		}
+		return nil
+	}
+
+	//pod not found, so give new ports
+	ports, err := GetFreePorts(redisClient, len(p.Ports))
+	if err != nil {
+		return err
+	}
+	for i, port := range ports {
+		p.Ports[i].HostPort = port
+	}
 	return nil
 }

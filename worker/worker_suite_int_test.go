@@ -28,16 +28,18 @@ import (
 )
 
 var (
-	clientset kubernetes.Interface
-	config    *viper.Viper
-	hook      *test.Hook
-	logger    *logrus.Logger
-	mr        *models.MixedMetricsReporter
-	app       *api.App
-	w         *worker.Worker
-	mockLogin *mocks.MockLogin
-	mockCtrl  *gomock.Controller
-	token     string = "token"
+	clientset      kubernetes.Interface
+	config         *viper.Viper
+	hook           *test.Hook
+	logger         *logrus.Logger
+	mr             *models.MixedMetricsReporter
+	app            *api.App
+	w              *worker.Worker
+	mockLogin      *mocks.MockLogin
+	mockCtrl       *gomock.Controller
+	token          string = "token"
+	startPortRange        = 40000
+	endPortRange          = 40099
 )
 
 func TestIntWorker(t *testing.T) {
@@ -88,12 +90,21 @@ var _ = BeforeSuite(func() {
 
 	w, err = worker.NewWorker(config, logger, mr, false, "", app.DB, app.RedisClient, clientset)
 	Expect(err).NotTo(HaveOccurred())
-	go w.Start()
+	go w.Start(startPortRange, endPortRange)
 })
 
 var _ = AfterEach(func() {
 	_, err := app.DB.Exec("DELETE FROM schedulers")
 	Expect(err).NotTo(HaveOccurred())
+
+	pipe := app.RedisClient.TxPipeline()
+	cmd := pipe.FlushAll()
+	_, err = pipe.Exec()
+	Expect(err).NotTo(HaveOccurred())
+	err = cmd.Err()
+	Expect(err).NotTo(HaveOccurred())
+
+	err = models.InitAvailablePorts(app.RedisClient, startPortRange, endPortRange)
 })
 
 var _ = AfterSuite(func() {

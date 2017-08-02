@@ -19,6 +19,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/topfreegames/maestro/extensions"
+	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
 	"k8s.io/client-go/kubernetes"
 )
@@ -47,4 +48,6 @@ var _ = BeforeSuite(func() {
 
 	kubeConfig, err := mtesting.MinikubeConfig()
 	clientset, err = kubernetes.NewForConfig(kubeConfig)
+
+	models.InitAvailablePorts(redisClient.Client, 40000, 60000)
 })

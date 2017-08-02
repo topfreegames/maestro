@@ -10,8 +10,11 @@ package controller_test
 
 import (
 	"errors"
+	"math/rand"
+	"strconv"
 	"time"
 
+	goredis "github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -28,6 +31,10 @@ var _ = Describe("Controller", func() {
 	var timeoutSec int
 	var configYaml1 models.ConfigYAML
 	var jsonStr string
+	randomPort := func(min, max int) string {
+		rand.Seed(time.Now().UnixNano())
+		return strconv.Itoa(rand.Intn(max-min) + min)
+	}
 
 	BeforeEach(func() {
 		var err error
@@ -66,6 +73,23 @@ var _ = Describe("Controller", func() {
 				gomock.Any(),
 			).Return(&types.Result{}, errors.New("error updating state"))
 			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().
+				SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult(randomPort(40000, 60000), nil))
+			mockPipeline.EXPECT().Exec()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().
+				SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult(randomPort(40000, 60000), nil))
+			mockPipeline.EXPECT().Exec()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
+			mockPipeline.EXPECT().
+				SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(2)
+			mockPipeline.EXPECT().Exec().Times(2)
 
 			err := controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())

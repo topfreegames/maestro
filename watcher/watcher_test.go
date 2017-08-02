@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/go-redis/redis"
+	goredis "github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -284,6 +285,10 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil)).Times(configYaml1.AutoScaling.Up.Delta * len(configYaml1.Ports))
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
 			// UpdateScheduler
 			mockDb.EXPECT().Query(
 				gomock.Any(),
@@ -332,6 +337,10 @@ var _ = Describe("Watcher", func() {
 			).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil)).Times(configYaml1.AutoScaling.Up.Delta * len(configYaml1.Ports))
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
 			// UpdateScheduler
@@ -535,7 +544,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec()
 
 			// Create rooms (ScaleUp)
-			timeoutSec := 0
+			timeoutSec := 1000
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
@@ -551,11 +560,17 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(scaleUpAmount)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
 			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil)).AnyTimes()
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+
 			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+			Expect(err).NotTo(HaveOccurred())
 
 			// ScaleDown
 			scaleDownAmount := configYaml1.AutoScaling.Down.Delta
-			names, err := controller.GetServiceNames(scaleDownAmount, scheduler.Name, clientset)
+			names, err := controller.GetPodNames(scaleDownAmount, scheduler.Name, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
@@ -577,6 +592,10 @@ var _ = Describe("Watcher", func() {
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(len(configYaml1.Ports))
+				mockPipeline.EXPECT().Exec()
 			}
 
 			// UpdateScheduler
@@ -592,11 +611,11 @@ var _ = Describe("Watcher", func() {
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is overdimensioned, should scale down"))
-			services, err := clientset.CoreV1().Services(scheduler.Name).List(metav1.ListOptions{
+			pods, err := clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{
 				FieldSelector: fields.Everything().String(),
 			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(services.Items).To(HaveLen(scaleUpAmount - scaleDownAmount))
+			Expect(pods.Items).To(HaveLen(scaleUpAmount - scaleDownAmount))
 		})
 
 		It("should do nothing if state is expected", func() {
@@ -724,7 +743,7 @@ var _ = Describe("Watcher", func() {
 			return models.NewNamespace(name).Create(clientset)
 		}
 		createPod := func(name, namespace string, clientset kubernetes.Interface) error {
-			_, err := models.NewPod(
+			pod, err := models.NewPod(
 				"game",
 				"img",
 				name,
@@ -740,7 +759,13 @@ var _ = Describe("Watcher", func() {
 					}},
 				nil,
 				nil,
-			).Create(clientset)
+				clientset,
+				mockRedisClient,
+			)
+			if err != nil {
+				return err
+			}
+			_, err = pod.Create(clientset)
 			return err
 		}
 		BeforeEach(func() {
@@ -785,6 +810,10 @@ var _ = Describe("Watcher", func() {
 			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
 
 			for _, roomName := range expectedRooms {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil))
+				mockPipeline.EXPECT().Exec()
+
 				err := createPod(roomName, schedulerName, clientset)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -797,6 +826,10 @@ var _ = Describe("Watcher", func() {
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName).Times(2)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).Times(2)
 				mockPipeline.EXPECT().Exec().Times(2)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any())
+				mockPipeline.EXPECT().Exec()
 			}
 
 			mockEventForwarder.EXPECT().Forward(models.RoomTerminated, gomock.Any()).Do(
@@ -804,7 +837,7 @@ var _ = Describe("Watcher", func() {
 					Expect(status).To(Equal(models.RoomTerminated))
 					Expect(infos["game"]).To(Equal(schedulerName))
 					Expect(expectedRooms).To(ContainElement(infos["roomId"]))
-				}).Times(len(expectedRooms) * 2)
+				}).Times(len(expectedRooms))
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1

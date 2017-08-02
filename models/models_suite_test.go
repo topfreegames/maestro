@@ -12,6 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"testing"
 
@@ -22,8 +23,9 @@ import (
 var (
 	mockCtrl        *gomock.Controller
 	mockDb          *pgmocks.MockDB
-	mockPipeline    *redismocks.MockPipeliner
 	mockRedisClient *redismocks.MockRedisClient
+	mockClientset   *fake.Clientset
+	mockPipeline    *redismocks.MockPipeliner
 )
 
 func TestModels(t *testing.T) {
@@ -35,6 +37,7 @@ var _ = BeforeEach(func() {
 	mockCtrl = gomock.NewController(GinkgoT())
 	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
+	mockClientset = fake.NewSimpleClientset()
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 })
 

@@ -39,6 +39,7 @@ var (
 	mockDb              *pgmocks.MockDB
 	mockPipeline        *redismocks.MockPipeliner
 	mockRedisClient     *redismocks.MockRedisClient
+	mockClientset       *fake.Clientset
 	mockEventForwarder1 *eventforwardermock.MockEventForwarder
 	mockEventForwarder2 *eventforwardermock.MockEventForwarder
 	mockLogin           *mocks.MockLogin
@@ -70,6 +71,7 @@ var _ = BeforeEach(func() {
 	mockEventForwarder1 = eventforwardermock.NewMockEventForwarder(mockCtrl)
 	mockEventForwarder2 = eventforwardermock.NewMockEventForwarder(mockCtrl)
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
+	mockClientset = fake.NewSimpleClientset()
 
 	config, err = mtesting.GetDefaultConfig()
 
