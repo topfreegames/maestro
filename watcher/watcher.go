@@ -364,7 +364,7 @@ func (w *Watcher) AutoScale() {
 			scheduler.LastScaleOpAt = nowTimestamp
 		}
 	} else {
-		l.Info("scheduler state is as expected")
+		l.Infof("scheduler '%s': state is as expected", scheduler.Name)
 	}
 
 	if changedState {

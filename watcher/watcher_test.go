@@ -392,7 +392,7 @@ var _ = Describe("Watcher", func() {
 			}).Return(&types.Result{}, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
 		})
 
 		It("should change state and not scale if first state change - overdimensioned", func() {
@@ -429,7 +429,7 @@ var _ = Describe("Watcher", func() {
 			}).Return(&types.Result{}, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
 		})
 
 		It("should change state and not scale if in-sync but wrong state reported", func() {
@@ -466,7 +466,7 @@ var _ = Describe("Watcher", func() {
 			}).Return(&types.Result{}, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
 		})
 
 		It("should do nothing if in cooldown - subdimensioned", func() {
@@ -492,7 +492,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec()
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
 		})
 
 		It("should do nothing if in cooldown - overdimensioned", func() {
@@ -518,7 +518,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec()
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
 		})
 
 		It("should warn if scale down is required", func() {
@@ -641,7 +641,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec()
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
 		})
 
 		It("should do nothing if state is creating", func() {
@@ -663,7 +663,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec()
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
 		})
 
 		It("should do nothing if state is terminating", func() {
@@ -685,7 +685,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec()
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler state is as expected"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
 		})
 
 		It("should not panic and exit if error retrieving scheduler scaling info", func() {
