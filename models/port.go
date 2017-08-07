@@ -19,7 +19,7 @@ type Port struct {
 	ContainerPort int    `yaml:"containerPort" json:"containerPort" valid:"int64,required"`
 	Protocol      string `yaml:"protocol" json:"protocol" valid:"required"`
 	Name          string `yaml:"name" json:"name" valid:"required"`
-	HostPort      int
+	HostPort      int    `yaml:"-" json:"-"`
 }
 
 func FreePortsRedisKey() string {

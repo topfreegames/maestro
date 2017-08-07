@@ -64,7 +64,7 @@ var _ = Describe("Pod", func() {
 			},
 			{
 				ContainerPort: 8888,
-				HostPort:      5000,
+				HostPort:      5001,
 			},
 		}
 		limits = &models.Resources{

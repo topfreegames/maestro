@@ -216,8 +216,14 @@ func (p *Pod) configureHostPorts(clientset kubernetes.Interface, redisClient red
 	if err != nil {
 		return err
 	}
+	podPorts := make([]*Port, len(ports))
 	for i, port := range ports {
-		p.Ports[i].HostPort = port
+		podPorts[i] = &Port{
+			ContainerPort: p.Ports[i].ContainerPort,
+			Name:          p.Ports[i].Name,
+			HostPort:      port,
+		}
 	}
+	p.Ports = podPorts
 	return nil
 }

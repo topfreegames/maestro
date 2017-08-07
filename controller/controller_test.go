@@ -1672,6 +1672,50 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 			Expect(controller.MustUpdatePods(configYaml1, &configYaml2)).To(BeFalse())
 		})
+
+		It("should return false if delta is different", func() {
+			yaml2 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 4
+  up:
+    delta: 3
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 2
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+`
+			var configYaml2 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml2), &configYaml2)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(controller.MustUpdatePods(configYaml1, &configYaml2)).To(BeFalse())
+		})
 	})
 
 	Describe("UpdateSchedulerConfig", func() {
