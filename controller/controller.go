@@ -253,6 +253,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 
 	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
 
+	j := 0
 	for i := 0; i < amount; i++ {
 		podName, err := createPod(l, mr, redisClient, clientset, configYAML, scheduler.Name)
 		if err != nil {
@@ -263,6 +264,11 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 			creationErr = err
 		}
 		pods[i] = podName
+		j = j + 1
+		if j >= amount/10 && j >= 10 {
+			j = 0
+			time.Sleep(100 * time.Millisecond)
+		}
 	}
 
 	if willTimeoutAt.Sub(time.Now()) <= 0 {
@@ -771,6 +777,9 @@ func deletePod(
 //  so this have the new configuration.
 func MustUpdatePods(old, new *models.ConfigYAML) bool {
 	samePorts := func(ps1, ps2 []*models.Port) bool {
+		if len(ps1) != len(ps2) {
+			return false
+		}
 		set := make(map[models.Port]bool)
 		for _, p1 := range ps1 {
 			set[*p1] = true
@@ -785,6 +794,9 @@ func MustUpdatePods(old, new *models.ConfigYAML) bool {
 	}
 
 	sameEnv := func(envs1, envs2 []*models.EnvVar) bool {
+		if len(envs1) != len(envs2) {
+			return false
+		}
 		set := make(map[models.EnvVar]bool)
 		for _, env1 := range envs1 {
 			set[*env1] = true
