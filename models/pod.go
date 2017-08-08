@@ -206,6 +206,7 @@ func (p *Pod) configureHostPorts(clientset kubernetes.Interface, redisClient red
 				ContainerPort: int(port.ContainerPort),
 				Name:          port.Name,
 				HostPort:      int(port.HostPort),
+				Protocol:      string(port.Protocol),
 			}
 		}
 		return nil
@@ -222,6 +223,7 @@ func (p *Pod) configureHostPorts(clientset kubernetes.Interface, redisClient red
 			ContainerPort: p.Ports[i].ContainerPort,
 			Name:          p.Ports[i].Name,
 			HostPort:      port,
+			Protocol:      p.Ports[i].Protocol,
 		}
 	}
 	p.Ports = podPorts

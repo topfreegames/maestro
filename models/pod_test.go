@@ -61,10 +61,12 @@ var _ = Describe("Pod", func() {
 			{
 				ContainerPort: 5050,
 				HostPort:      5000,
+				Protocol:      "TCP",
 			},
 			{
 				ContainerPort: 8888,
 				HostPort:      5001,
+				Protocol:      "UDP",
 			},
 		}
 		limits = &models.Resources{
@@ -161,6 +163,7 @@ var _ = Describe("Pod", func() {
 			for idx, port := range podv1.Spec.Containers[0].Ports {
 				Expect(port.ContainerPort).To(BeEquivalentTo(ports[idx].ContainerPort))
 				Expect(port.HostPort).To(BeEquivalentTo(ports[idx].HostPort))
+				Expect(string(port.Protocol)).To(Equal(ports[idx].Protocol))
 			}
 			quantity := podv1.Spec.Containers[0].Resources.Limits["memory"]
 			Expect((&quantity).String()).To(Equal(limits.Memory))

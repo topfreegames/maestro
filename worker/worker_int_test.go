@@ -84,8 +84,8 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			app.Router.ServeHTTP(recorder, request)
-			Expect(recorder.Code).To(Equal(http.StatusCreated))
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusCreated))
 
 			yaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
