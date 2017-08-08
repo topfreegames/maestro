@@ -23,7 +23,6 @@ scaleUpTimeoutSeconds: 300
 scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 150
 pingTimeout: 300
-occupiedTimeout: 180
 updateTimeoutSeconds: 600
 newrelic:
   app: maestro
