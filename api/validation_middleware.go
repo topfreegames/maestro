@@ -62,6 +62,22 @@ func configYamlFromCtx(ctx context.Context) []*models.ConfigYAML {
 	return listParam
 }
 
+func schedulerImageParamsFromCtx(ctx context.Context) *models.SchedulerImageParams {
+	payload := ctx.Value(payloadString)
+	if payload == nil {
+		return nil
+	}
+	return payload.([]interface{})[0].(*models.SchedulerImageParams)
+}
+
+func schedulerMinParamsFromCtx(ctx context.Context) *models.SchedulerMinParams {
+	payload := ctx.Value(payloadString)
+	if payload == nil {
+		return nil
+	}
+	return payload.([]interface{})[0].(*models.SchedulerMinParams)
+}
+
 //ServeHTTP method
 func (m *ValidationMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
@@ -75,6 +91,7 @@ func (m *ValidationMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
 		return
 	}
+
 	listBytes := bytes.Split(btsBody, []byte("---"))
 	listParams := []interface{}{}
 

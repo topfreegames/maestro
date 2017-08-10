@@ -167,6 +167,30 @@ func (a *App) getRouter() *mux.Router {
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("POST").Name("schedulerScale")
 
+	r.HandleFunc("/scheduler/{schedulerName}/image", Chain(
+		NewSchedulerImageHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewVersionMiddleware(),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+		NewValidationMiddleware(func() interface{} { return &models.SchedulerImageParams{} }),
+	).ServeHTTP).Methods("PUT").Name("schedulerImage")
+
+	r.HandleFunc("/scheduler/{schedulerName}/min", Chain(
+		NewSchedulerUpdateMinHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewVersionMiddleware(),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+		NewValidationMiddleware(func() interface{} { return &models.SchedulerMinParams{} }),
+	).ServeHTTP).Methods("PUT").Name("schedulerMin")
+
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),
 		NewMetricsReporterMiddleware(a),

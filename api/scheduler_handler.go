@@ -167,6 +167,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"),
 			lockKey,
 			&clock.Clock{},
+			nil,
 		)
 	})
 	logger.WithField("time", time.Now()).Info("Finished update")
@@ -494,4 +495,118 @@ func (g *SchedulerScaleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return nil
 	})
 	logger.Debug("scheduler successfully scaled")
+}
+
+// SchedulerImageHandler handler
+type SchedulerImageHandler struct {
+	App *App
+}
+
+// NewSchedulerImageHandler creates a new scheduler create handler
+func NewSchedulerImageHandler(a *App) *SchedulerImageHandler {
+	m := &SchedulerImageHandler{App: a}
+	return m
+}
+
+// ServeHTTP method
+func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	l := loggerFromContext(r.Context())
+	mr := metricsReporterFromCtx(r.Context())
+
+	logger := l.WithFields(logrus.Fields{
+		"source":    "schedulerHandler",
+		"operation": "setSchedulerImage",
+	})
+
+	schedulerImage := schedulerImageParamsFromCtx(r.Context())
+	params := schedulerParamsFromContext(r.Context())
+
+	logger.Debug("Updating scheduler's image")
+
+	redisClient, err := redis.NewClient("extensions.redis", g.App.Config, g.App.RedisClient)
+	if err != nil {
+		logger.WithError(err).Error("error getting redisClient")
+		g.App.HandleError(w, http.StatusInternalServerError, "Update scheduler failed", err)
+		return
+	}
+
+	timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
+	lockKey := fmt.Sprintf("%s-%s", g.App.Config.GetString("watcher.lockKey"), params.SchedulerName)
+	err = mr.WithSegment(models.SegmentController, func() error {
+		return controller.UpdateSchedulerImage(
+			l,
+			mr,
+			g.App.DB,
+			redisClient,
+			g.App.KubernetesClient,
+			params.SchedulerName, schedulerImage.Image, lockKey,
+			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"),
+			&clock.Clock{},
+		)
+	})
+
+	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "not found") {
+			status = http.StatusNotFound
+		}
+		logger.WithError(err).Error("failed to update scheduler image")
+		g.App.HandleError(w, status, "failed to update scheduler image", err)
+		return
+	}
+
+	logger.Debug("successfully updated scheduler image")
+
+	mr.WithSegment(models.SegmentSerialization, func() error {
+		Write(w, http.StatusOK, `{"success": true}`)
+		return nil
+	})
+}
+
+// SchedulerUpdateMinHandler handler
+type SchedulerUpdateMinHandler struct {
+	App *App
+}
+
+// NewSchedulerUpdateMinHandler creates a new scheduler create handler
+func NewSchedulerUpdateMinHandler(a *App) *SchedulerUpdateMinHandler {
+	m := &SchedulerUpdateMinHandler{App: a}
+	return m
+}
+
+// ServeHTTP method
+func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	l := loggerFromContext(r.Context())
+	mr := metricsReporterFromCtx(r.Context())
+
+	logger := l.WithFields(logrus.Fields{
+		"source":    "schedulerHandler",
+		"operation": "updateSchedulerMin",
+	})
+
+	schedulerMin := schedulerMinParamsFromCtx(r.Context())
+	params := schedulerParamsFromContext(r.Context())
+
+	logger.Debug("Updating scheduler's min")
+
+	err := mr.WithSegment(models.SegmentController, func() error {
+		return controller.UpdateSchedulerMin(l, mr, g.App.DB, params.SchedulerName, schedulerMin.Min)
+	})
+
+	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "not found") {
+			status = http.StatusNotFound
+		}
+		logger.WithError(err).Error("failed to update scheduler min")
+		g.App.HandleError(w, status, "failed to update scheduler min", err)
+		return
+	}
+
+	logger.Debug("successfully updated scheduler min")
+
+	mr.WithSegment(models.SegmentSerialization, func() error {
+		Write(w, http.StatusOK, `{"success": true}`)
+		return nil
+	})
 }

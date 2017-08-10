@@ -17,3 +17,13 @@ type RoomParams struct {
 type SchedulerParams struct {
 	SchedulerName string `json:"schedulerName" valid:"required"`
 }
+
+// SchedulerImageParams holds the new image name to be updated
+type SchedulerImageParams struct {
+	Image string `json:"image" yaml:"image" valid:"required"`
+}
+
+// SchedulerMinParams holds the new image name to be updated
+type SchedulerMinParams struct {
+	Min int `json:"min" yaml:"min" valid:"required"`
+}

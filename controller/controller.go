@@ -394,6 +394,7 @@ func UpdateSchedulerConfig(
 	timeoutSec, lockTimeoutMS int,
 	lockKey string,
 	clock clockinterfaces.Clock,
+	schedulerOrNil *models.Scheduler,
 ) error {
 	schedulerName := configYAML.Name
 	l := logger.WithFields(logrus.Fields{
@@ -401,26 +402,20 @@ func UpdateSchedulerConfig(
 		"scheduler": schedulerName,
 	})
 
-	// Check if scheduler to Update exists indeed
-	scheduler := models.NewScheduler(schedulerName, "", "")
-	err := mr.WithSegment(models.SegmentSelect, func() error {
-		return scheduler.Load(db)
-	})
-	if err != nil {
-		l.Debug("update error", err)
-		return maestroErrors.NewDatabaseError(err)
-	}
-	if scheduler.YAML == "" {
-		l.Debug("scheduler not found")
-		msg := fmt.Sprintf("scheduler %s not found, create it first", schedulerName)
-		return maestroErrors.NewValidationFailedError(errors.New(msg))
-	}
-
+	var scheduler *models.Scheduler
 	var oldConfig models.ConfigYAML
-	err = yaml.Unmarshal([]byte(scheduler.YAML), &oldConfig)
-	if err != nil {
-		l.Debug("invalid config saved on db", err)
-		return err
+	var err error
+	if schedulerOrNil != nil {
+		scheduler = schedulerOrNil
+		err = yaml.Unmarshal([]byte(scheduler.YAML), &oldConfig)
+		if err != nil {
+			return err
+		}
+	} else {
+		scheduler, oldConfig, err = schedulerAndConfigFromName(mr, db, schedulerName)
+		if err != nil {
+			return err
+		}
 	}
 
 	var lock *redisLock.Lock
@@ -893,4 +888,96 @@ func waitForPods(
 	}
 
 	return nil
+}
+
+// UpdateSchedulerImage is a UpdateSchedulerConfig sugar that updates only the image
+func UpdateSchedulerImage(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	redisClient *redis.Client,
+	clientset kubernetes.Interface,
+	schedulerName, image, lockKey string,
+	timeoutSec, lockTimeoutMS int,
+	clock clockinterfaces.Clock,
+) error {
+	scheduler, configYaml, err := schedulerAndConfigFromName(mr, db, schedulerName)
+	if err != nil {
+		return err
+	}
+	if configYaml.Image == image {
+		return nil
+	}
+	configYaml.Image = image
+	return UpdateSchedulerConfig(
+		logger,
+		mr,
+		db,
+		redisClient,
+		clientset,
+		&configYaml,
+		timeoutSec, lockTimeoutMS,
+		lockKey,
+		clock,
+		scheduler,
+	)
+}
+
+// UpdateSchedulerMin is a UpdateSchedulerConfig sugar that updates only the image
+func UpdateSchedulerMin(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	schedulerName string,
+	schedulerMin int,
+) error {
+	scheduler, configYaml, err := schedulerAndConfigFromName(mr, db, schedulerName)
+	if err != nil {
+		return err
+	}
+	if configYaml.AutoScaling.Min == schedulerMin {
+		return nil
+	}
+	configYaml.AutoScaling.Min = schedulerMin
+	return UpdateSchedulerConfig(
+		logger,
+		mr,
+		db,
+		nil,
+		nil,
+		&configYaml,
+		0, 0,
+		"",
+		nil,
+		scheduler,
+	)
+}
+
+func schedulerAndConfigFromName(
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	schedulerName string,
+) (
+	*models.Scheduler,
+	models.ConfigYAML,
+	error,
+) {
+	var configYaml models.ConfigYAML
+	scheduler := models.NewScheduler(schedulerName, "", "")
+	err := mr.WithSegment(models.SegmentSelect, func() error {
+		return scheduler.Load(db)
+	})
+	if err != nil {
+		return nil, configYaml, maestroErrors.NewDatabaseError(err)
+	}
+	// Check if scheduler to Update exists indeed
+	if scheduler.YAML == "" {
+		msg := fmt.Sprintf("scheduler %s not found, create it first", schedulerName)
+		return nil, configYaml, maestroErrors.NewValidationFailedError(errors.New(msg))
+	}
+	err = yaml.Unmarshal([]byte(scheduler.YAML), &configYaml)
+	if err != nil {
+		return nil, configYaml, err
+	}
+	return scheduler, configYaml, nil
 }

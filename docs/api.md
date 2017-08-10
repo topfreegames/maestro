@@ -558,6 +558,143 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
       }
     ```
 
+  ### Update Image
+
+  `PUT /scheduler/:schedulerName/image`
+
+  This route updates a scheduler's image in Maestro using a provided image name. If scheduler already has the image, nothing is done.
+
+  * Request
+
+    ```
+    {
+      "image": "new-image",
+    }
+    ```
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "success": true
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if scheduler to update is not found on DB
+
+    * Code: `404`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if image was not sent on body 
+
+    * Code: `422`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+  ### Update Min
+
+  `PUT /scheduler/:schedulerName/min`
+
+  This route updates a scheduler's minimum number of GRUs. If scheduler already has this min, nothing is done.
+
+  * Request
+
+    ```
+    {
+      "min": [int],
+    }
+    ```
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "success": true
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if scheduler to update is not found on DB
+
+    * Code: `404`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if min was not sent on body 
+
+    * Code: `422`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+
   ### Status
 
   `GET /scheduler/:schedulerName`
