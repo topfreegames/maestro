@@ -14,11 +14,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/go-redis/redis"
 	goredis "github.com/go-redis/redis"
+	"github.com/topfreegames/maestro/api"
 	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1174,6 +1176,7 @@ ports:
 
 		Describe("PUT /scheduler/{schedulerName}/image", func() {
 			var configYaml1 models.ConfigYAML
+			var user, pass string
 
 			BeforeEach(func() {
 				// Create scheduler
@@ -1222,6 +1225,9 @@ ports:
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusCreated))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+				user = app.Config.GetString("basicauth.username")
+				pass = app.Config.GetString("basicauth.password")
 			})
 
 			It("should update image", func() {
@@ -1237,6 +1243,7 @@ ports:
 				url := fmt.Sprintf("/scheduler/%s/image", configYaml1.Name)
 				request, err = http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
@@ -1314,6 +1321,7 @@ ports:
 				url := fmt.Sprintf("/scheduler/%s/image", configYaml1.Name)
 				request, err = http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
@@ -1346,6 +1354,7 @@ ports:
 				url := fmt.Sprintf("/scheduler/%s/image", newSchedulerName)
 				request, err = http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", newSchedulerName).
@@ -1379,6 +1388,7 @@ ports:
 				url := fmt.Sprintf("/scheduler/%s/image", newSchedulerName)
 				request, err = http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -1392,10 +1402,150 @@ ports:
 				Expect(body["error"]).To(Equal("ValidationFailedError"))
 				Expect(body["success"]).To(BeFalse())
 			})
+
+			It("should not set image if basicauth is wrong", func() {
+				newSchedulerName := "new-scheduler"
+				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				// Update scheduler
+				body := map[string]interface{}{"image": "new-image"}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/image", newSchedulerName)
+				request, err = http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth("wrong user", "wrong pass")
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+
+				body = make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(body["code"]).To(Equal("MAE-000"))
+				Expect(body["description"]).To(Equal("invalid basic auth"))
+				Expect(body["error"]).To(Equal("authentication failed"))
+				Expect(body["success"]).To(BeFalse())
+			})
+
+			It("should not set image if basicauth is not sent and tryOauthIfUnset is false", func() {
+				newSchedulerName := "new-scheduler"
+				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				// Update scheduler
+				body := map[string]interface{}{"image": "new-image"}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/image", newSchedulerName)
+				request, err = http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+
+				body = make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(body["code"]).To(Equal("MAE-000"))
+				Expect(body["description"]).To(Equal("no basic auth sent"))
+				Expect(body["error"]).To(Equal("authentication failed"))
+				Expect(body["success"]).To(BeFalse())
+			})
+
+			It("should set image if basicauth is not sent and tryOauthIfUnset is true", func() {
+				os.Setenv("basicauth.tryOauthIfUnset", "true")
+				config, err := GetDefaultConfig()
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				app.Login = mockLogin
+				newImageName := "new-image"
+
+				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				// Update scheduler
+				body := map[string]interface{}{"image": newImageName}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/image", configYaml1.Name)
+				request, err = http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+					})
+
+				lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+
+				mockRedisClient.EXPECT().
+					SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					Return(redis.NewBoolResult(true, nil))
+
+				for _, pod := range pods.Items {
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					room := models.NewRoom(pod.GetName(), pod.GetNamespace())
+					for _, status := range allStatus {
+						mockPipeline.EXPECT().
+							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+						mockPipeline.EXPECT().
+							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+					}
+					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(room.SchedulerName), room.ID)
+					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+					mockPipeline.EXPECT().Exec()
+				}
+				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+					func(schedulerName string, statusInfo map[string]interface{}) {
+						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+					},
+				).Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().
+					ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).
+					Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().
+					SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).
+					Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
+					Return(redis.NewCmdResult(nil, nil))
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(200)
+				mockPipeline.EXPECT().Exec().Times(100)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+					Return(goredis.NewStringResult("5000", nil)).Times(200)
+				mockPipeline.EXPECT().Exec().Times(100)
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+			})
 		})
 
 		Describe("PUT /scheduler/{schedulerName}/min", func() {
 			var configYaml1 models.ConfigYAML
+			var user, pass string
 
 			BeforeEach(func() {
 				// Create scheduler
@@ -1444,9 +1594,12 @@ ports:
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusCreated))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+				user = app.Config.GetString("basicauth.username")
+				pass = app.Config.GetString("basicauth.password")
 			})
 
-			It("should update image", func() {
+			It("should update min", func() {
 				newMin := configYaml1.AutoScaling.Min + 1
 
 				// Update scheduler
@@ -1456,6 +1609,7 @@ ports:
 				url := fmt.Sprintf("/scheduler/%s/min", configYaml1.Name)
 				request, err := http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
@@ -1482,6 +1636,7 @@ ports:
 				url := fmt.Sprintf("/scheduler/%s/min", configYaml1.Name)
 				request, err := http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
@@ -1511,6 +1666,7 @@ ports:
 				url := fmt.Sprintf("/scheduler/%s/min", newSchedulerName)
 				request, err := http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", newSchedulerName).
@@ -1531,7 +1687,7 @@ ports:
 				Expect(body["success"]).To(BeFalse())
 			})
 
-			It("should return 422 if image is not sent in body", func() {
+			It("should return 422 if min is not sent in body", func() {
 				newSchedulerName := "new-scheduler"
 
 				// Update scheduler
@@ -1541,6 +1697,7 @@ ports:
 				url := fmt.Sprintf("/scheduler/%s/min", newSchedulerName)
 				request, err := http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -1553,6 +1710,96 @@ ports:
 				Expect(body["description"]).To(Equal("Min: non zero value required;"))
 				Expect(body["error"]).To(Equal("ValidationFailedError"))
 				Expect(body["success"]).To(BeFalse())
+			})
+
+			It("should not set min if basicauth is wrong", func() {
+				newSchedulerName := "new-scheduler"
+				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				// Update scheduler
+				body := map[string]interface{}{"min": configYaml1.AutoScaling.Min + 1}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/image", newSchedulerName)
+				request, err = http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth("wrong user", "wrong pass")
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+
+				body = make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(body["code"]).To(Equal("MAE-000"))
+				Expect(body["description"]).To(Equal("invalid basic auth"))
+				Expect(body["error"]).To(Equal("authentication failed"))
+				Expect(body["success"]).To(BeFalse())
+			})
+
+			It("should not set min if basicauth is not sent and tryOauthIfUnset is false", func() {
+				newSchedulerName := "new-scheduler"
+				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				// Update scheduler
+				body := map[string]interface{}{"min": configYaml1.AutoScaling.Min + 1}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/image", newSchedulerName)
+				request, err = http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+
+				body = make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(body["code"]).To(Equal("MAE-000"))
+				Expect(body["description"]).To(Equal("no basic auth sent"))
+				Expect(body["error"]).To(Equal("authentication failed"))
+				Expect(body["success"]).To(BeFalse())
+			})
+
+			It("should set min if basicauth is not sent and tryOauthIfUnset is true", func() {
+				os.Setenv("basicauth.tryOauthIfUnset", "true")
+				config, err := GetDefaultConfig()
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				app.Login = mockLogin
+
+				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				// Update scheduler
+				body := map[string]interface{}{"min": configYaml1.AutoScaling.Min + 1}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/min", configYaml1.Name)
+				request, err = http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+					})
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 			})
 		})
 	})

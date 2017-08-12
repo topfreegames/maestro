@@ -33,3 +33,7 @@ oauth:
   acceptedDomains: 
   - "example.com"
   - "other.com"
+basicauth:
+  username: user
+  password: pass
+  tryOauthIfUnset: true

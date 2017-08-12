@@ -170,7 +170,7 @@ func (a *App) getRouter() *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}/image", Chain(
 		NewSchedulerImageHandler(a),
 		NewLoggingMiddleware(a),
-		NewAccessMiddleware(a),
+		NewBasicAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -182,7 +182,7 @@ func (a *App) getRouter() *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}/min", Chain(
 		NewSchedulerUpdateMinHandler(a),
 		NewLoggingMiddleware(a),
-		NewAccessMiddleware(a),
+		NewBasicAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
