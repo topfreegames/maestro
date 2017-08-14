@@ -58,3 +58,9 @@ spec:
               value: {{ .Values.oauth_domains }}
             - name: MAESTRO_EXTENSIONS_REDIS_URL
               value: {{ .Values.redis_url }}
+            - name: MAESTRO_BASICAUTH_USERNAME
+              value: {{ .Values.basicauth_user }}
+            - name: MAESTRO_BASICAUTH_PASSWORD
+              value: {{ .Values.basicauth_pass }}
+            - name: MAESTRO_BASICAUTH_TRYOAUTHIFUNSET
+              value: "true"

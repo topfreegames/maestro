@@ -13,3 +13,5 @@ oauth_domains: "example.com other.com"
 tls_crt: ""
 tls_key: ""
 maestro_url: "maestro.example.com"
+basicauth_user: user
+basicauth_pass: pass
