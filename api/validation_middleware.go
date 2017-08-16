@@ -47,7 +47,11 @@ func statusPayloadFromCtx(ctx context.Context) *models.RoomStatusPayload {
 	if payload == nil {
 		return nil
 	}
-	return payload.([]interface{})[0].(*models.RoomStatusPayload)
+	arr := payload.([]interface{})
+	if len(arr) == 0 || arr[0] == nil {
+		return nil
+	}
+	return arr[0].(*models.RoomStatusPayload)
 }
 
 func configYamlFromCtx(ctx context.Context) []*models.ConfigYAML {
@@ -67,7 +71,11 @@ func schedulerImageParamsFromCtx(ctx context.Context) *models.SchedulerImagePara
 	if payload == nil {
 		return nil
 	}
-	return payload.([]interface{})[0].(*models.SchedulerImageParams)
+	arr := payload.([]interface{})
+	if len(arr) == 0 || arr[0] == nil {
+		return nil
+	}
+	return arr[0].(*models.SchedulerImageParams)
 }
 
 func schedulerMinParamsFromCtx(ctx context.Context) *models.SchedulerMinParams {
@@ -75,48 +83,55 @@ func schedulerMinParamsFromCtx(ctx context.Context) *models.SchedulerMinParams {
 	if payload == nil {
 		return nil
 	}
-	return payload.([]interface{})[0].(*models.SchedulerMinParams)
+	arr := payload.([]interface{})
+	if len(arr) == 0 || arr[0] == nil {
+		return nil
+	}
+	return arr[0].(*models.SchedulerMinParams)
 }
 
 //ServeHTTP method
 func (m *ValidationMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	l := loggerFromContext(r.Context())
-
-	btsBody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		l.WithError(err).Error("Payload could not be decoded.")
-		vErr := errors.NewValidationFailedError(err)
-		WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
-		return
-	}
-
-	listBytes := bytes.Split(btsBody, []byte("---"))
 	listParams := []interface{}{}
 
-	for _, bts := range listBytes {
-		if strings.TrimSpace(string(bts)) == "" {
-			continue
-		}
+	if r.Body != nil {
+		defer r.Body.Close()
 
-		payload := m.GetPayload()
-		err = yaml.Unmarshal(bts, payload)
+		btsBody, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			l.WithError(err).Error("Payload could not be decoded.")
 			vErr := errors.NewValidationFailedError(err)
 			WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
 			return
 		}
-		_, err = govalidator.ValidateStruct(payload)
-		if err != nil {
-			l.WithError(err).Error("Payload is invalid.")
-			vErr := errors.NewValidationFailedError(err)
-			WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
-			return
+
+		listBytes := bytes.Split(btsBody, []byte("---"))
+
+		for _, bts := range listBytes {
+			if strings.TrimSpace(string(bts)) == "" {
+				continue
+			}
+
+			payload := m.GetPayload()
+			err = yaml.Unmarshal(bts, payload)
+			if err != nil {
+				l.WithError(err).Error("Payload could not be decoded.")
+				vErr := errors.NewValidationFailedError(err)
+				WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
+				return
+			}
+			_, err = govalidator.ValidateStruct(payload)
+			if err != nil {
+				l.WithError(err).Error("Payload is invalid.")
+				vErr := errors.NewValidationFailedError(err)
+				WriteBytes(w, http.StatusUnprocessableEntity, vErr.Serialize())
+				return
+			}
+			listParams = append(listParams, payload)
 		}
-		listParams = append(listParams, payload)
 	}
+
 	c := newContextWithPayload(r.Context(), listParams, r)
 	m.next.ServeHTTP(w, r.WithContext(c))
 }

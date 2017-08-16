@@ -519,6 +519,10 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	})
 
 	schedulerImage := schedulerImageParamsFromCtx(r.Context())
+	if schedulerImage == nil {
+		g.App.HandleError(w, http.StatusBadRequest, "image name not sent on body", errors.New("image name not sent on body"))
+		return
+	}
 	params := schedulerParamsFromContext(r.Context())
 
 	logger.Debug("Updating scheduler's image")
@@ -585,6 +589,10 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	})
 
 	schedulerMin := schedulerMinParamsFromCtx(r.Context())
+	if schedulerMin == nil {
+		g.App.HandleError(w, http.StatusBadRequest, "min not sent on body", errors.New("min not sent on body"))
+		return
+	}
 	params := schedulerParamsFromContext(r.Context())
 
 	logger.Debug("Updating scheduler's min")

@@ -25,5 +25,5 @@ type SchedulerImageParams struct {
 
 // SchedulerMinParams holds the new image name to be updated
 type SchedulerMinParams struct {
-	Min int `json:"min" yaml:"min" valid:"required"`
+	Min int `json:"min" yaml:"min"`
 }
