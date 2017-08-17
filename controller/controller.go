@@ -248,14 +248,14 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 	})
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 
-	pods := make([]string, amount)
+	pods := make([]*v1.Pod, amount)
 	var creationErr error
 
 	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
 
 	j := 0
 	for i := 0; i < amount; i++ {
-		podName, err := createPod(l, mr, redisClient, clientset, configYAML, scheduler.Name)
+		pod, err := createPod(l, mr, redisClient, clientset, configYAML, scheduler.Name)
 		if err != nil {
 			l.WithError(err).Error("scale up error")
 			if initalOp {
@@ -263,7 +263,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 			}
 			creationErr = err
 		}
-		pods[i] = podName
+		pods[i] = pod
 		j = j + 1
 		if j >= amount/10 && j >= 10 {
 			j = 0
@@ -494,7 +494,7 @@ func UpdateSchedulerConfig(
 		}
 		logger.WithField("numberOfRooms", numberOldPods).Info("recreating rooms")
 
-		pods := []string{}
+		pods := []*v1.Pod{}
 		numberNewPods := 0
 		timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
 		ticker = time.NewTicker(1 * time.Second)
@@ -504,9 +504,12 @@ func UpdateSchedulerConfig(
 			select {
 			case <-timeout.C:
 				for _, podToDelete := range pods {
-					deletePod(logger, mr, clientset, redisClient.Client, schedulerName, podToDelete)
-					room := models.NewRoom(podToDelete, schedulerName)
-					err := room.ClearAll(redisClient.Client)
+					err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, podToDelete.GetName())
+					if err != nil {
+						logger.WithField("roomName", podToDelete.GetName()).WithError(err).Error("update scheduler timed out and room deletion failed")
+					}
+					room := models.NewRoom(podToDelete.GetName(), schedulerName)
+					err = room.ClearAll(redisClient.Client)
 					if err != nil {
 						//TODO: try again so Redis doesn't hold trash data
 						logger.WithField("roomName", podToDelete).WithError(err).Error("error removing room info from redis")
@@ -526,12 +529,12 @@ func UpdateSchedulerConfig(
 				numberPodsToCreate := numberOldPods - numberCurrentPods
 
 				for i := 0; i < numberPodsToCreate; i++ {
-					name, err := createPod(l, mr, redisClient.Client, clientset, configYAML, schedulerName)
+					pod, err := createPod(l, mr, redisClient.Client, clientset, configYAML, schedulerName)
 					if err != nil {
 						logger.WithError(err).Error("error when creating pod")
 						continue
 					}
-					pods = append(pods, name)
+					pods = append(pods, pod)
 					numberNewPods = numberNewPods + 1
 				}
 			}
@@ -555,8 +558,8 @@ func UpdateSchedulerConfig(
 		if err != nil {
 			logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
 			for _, podToDelete := range pods {
-				deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, podToDelete)
-				room := models.NewRoom(podToDelete, schedulerName)
+				deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, podToDelete.GetName())
+				room := models.NewRoom(podToDelete.GetName(), schedulerName)
 				err := room.ClearAll(redisClient.Client)
 				if err != nil {
 					//TODO: try again so Redis doesn't hold trash data
@@ -690,7 +693,7 @@ func createPod(
 	clientset kubernetes.Interface,
 	configYAML *models.ConfigYAML,
 	schedulerName string,
-) (string, error) {
+) (*v1.Pod, error) {
 	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
 	room := models.NewRoom(name, schedulerName)
@@ -698,7 +701,7 @@ func createPod(
 		return room.Create(redisClient)
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	namesEnvVars := []*models.EnvVar{
 		{
@@ -726,7 +729,7 @@ func createPod(
 		redisClient,
 	)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if configYAML.NodeAffinity != "" {
 		pod.SetAffinity(configYAML.NodeAffinity)
@@ -740,14 +743,14 @@ func createPod(
 		return err
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	nodeName := kubePod.Spec.NodeName
 	logger.WithFields(logrus.Fields{
 		"node": nodeName,
 		"name": name,
 	}).Info("Created GRU (pod) successfully.")
-	return name, nil
+	return kubePod, nil
 }
 
 func deletePod(
@@ -843,7 +846,7 @@ func waitForPods(
 	clientset kubernetes.Interface,
 	numberOfPods int,
 	namespace string,
-	pods []string,
+	pods []*v1.Pod,
 	l logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 ) error {
@@ -857,11 +860,17 @@ func waitForPods(
 			return errors.New("timeout waiting for rooms to be created")
 		case <-tickerChan:
 			for i := 0; i < numberOfPods; i++ {
-				if pods[i] != "" {
-					pod, err := clientset.CoreV1().Pods(namespace).Get(pods[i], metav1.GetOptions{})
+				if pods[i] != nil {
+					pod, err := clientset.CoreV1().Pods(namespace).Get(pods[i].GetName(), metav1.GetOptions{})
 					if err != nil {
-						l.WithError(err).Error("scale up pod error")
+						// The pod does not exist (not even on Pending or ContainerCreating state), so create again
 						exit = false
+						l.WithError(err).Infof("error creating pod %s, recreating...", pod.GetName())
+						pods[i].ResourceVersion = ""
+						_, err = clientset.CoreV1().Pods(namespace).Create(pods[i])
+						if err != nil {
+							l.WithError(err).Errorf("error recreating pod %s")
+						}
 					} else {
 						if len(pod.Status.Phase) == 0 {
 							break // TODO: HACK!!!  Trying to detect if we are running unit tests

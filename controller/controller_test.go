@@ -797,6 +797,40 @@ cmd:
 			Expect(pods.Items).To(HaveLen(0))
 		})
 
+		It("should wait 100ms to create 11th pod", func() {
+			amount := 20
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(amount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(amount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(amount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(amount)
+			mockPipeline.EXPECT().Exec().Times(amount)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
+			mockPipeline.EXPECT().
+				SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil)).Times(amount * len(configYaml1.Ports))
+			mockPipeline.EXPECT().Exec().Times(amount)
+
+			start := time.Now().Unix()
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true)
+			elapsed := time.Now().Unix() - start
+			Expect(err).NotTo(HaveOccurred())
+			Expect(elapsed).To(BeNumerically(">=", 0.1))
+
+			pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(amount))
+		})
+
 		It("should not fail and return error if error creating pods and not initial op", func() {
 			amount := 5
 			var configYaml1 models.ConfigYAML
@@ -1542,7 +1576,7 @@ cmd:
 name: controller-name
 game: controller
 image: controller/controller:v123
-affinity: maestro-dedicated-new
+affinity: maestro-other
 toleration: maestro
 ports:
   - containerPort: 1234
@@ -1552,6 +1586,9 @@ ports:
     protocol: TCP
     name: port2
 limits:
+  memory: "66Mi"
+  cpu: "2"
+requests:
   memory: "66Mi"
   cpu: "2"
 shutdownTimeout: 20
@@ -1572,8 +1609,6 @@ autoscaling:
 env:
   - name: MY_ENV_VAR
     value: myvalue
-  - name: MY_ENV_VAR_2
-    value: myvalue2
 cmd:
   - "./room"
 `
@@ -1589,7 +1624,7 @@ name: controller-name
 game: controller
 image: controller/controller:v123
 affinity: maestro-dedicated
-toleration: maestro-new
+toleration: maestro-other
 ports:
   - containerPort: 1234
     protocol: UDP
@@ -1598,6 +1633,9 @@ ports:
     protocol: TCP
     name: port2
 limits:
+  memory: "66Mi"
+  cpu: "2"
+requests:
   memory: "66Mi"
   cpu: "2"
 shutdownTimeout: 20
@@ -1618,8 +1656,6 @@ autoscaling:
 env:
   - name: MY_ENV_VAR
     value: myvalue
-  - name: MY_ENV_VAR_2
-    value: myvalue2
 cmd:
   - "./room"
 `
