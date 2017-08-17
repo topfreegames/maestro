@@ -810,14 +810,16 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
   ### Scale Up
 
-  `POST /scheduler/:schedulerName?scaleup=amount`
+  `POST /scheduler/:schedulerName`
 
   Manually scales up the number of rooms of schedulerName.
 
   * Request
 
     ```
-    {}
+    {
+      "scaleup": [int]amount
+    }
     ```
 
   * Success Response
@@ -862,14 +864,70 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
   ### Scale Down
 
-  `POST /scheduler/:schedulerName?scaledown=amount`
+  `POST /scheduler/:schedulerName`
 
   Manually scales down the number of rooms of schedulerName.
 
   * Request
 
     ```
-    {}
+    {
+      "scaledown": [int]amount
+    }
+    ```
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "success": true
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if the request is invalid or the sent parameters are incorrect.
+
+    * Code: `422`|`400`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+  ### Scale 
+
+  `POST /scheduler/:schedulerName`
+
+  Manually scales the number of rooms to match the number of replicas specified. If there are more rooms than the 'replicas' parameter, there will be a scale down and the number of rooms will be equal 'replicas'. If there are less rooms than the 'replicas' parameter, there will be a scale up and the number of rooms will be equal 'replicas'. Otherwise, nothing is done.
+
+  * Request
+
+    ```
+    {
+      "replicas": [int]replicas
+    }
     ```
 
   * Success Response
