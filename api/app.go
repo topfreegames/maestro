@@ -159,12 +159,13 @@ func (a *App) getRouter() *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerScaleHandler(a),
 		NewLoggingMiddleware(a),
-		NewAccessMiddleware(a),
+		NewBasicAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+		NewValidationMiddleware(func() interface{} { return &models.SchedulerScaleParams{} }),
 	).ServeHTTP).Methods("POST").Name("schedulerScale")
 
 	r.HandleFunc("/scheduler/{schedulerName}/image", Chain(

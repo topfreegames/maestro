@@ -21,6 +21,7 @@ import (
 	"github.com/go-redis/redis"
 	goredis "github.com/go-redis/redis"
 	"github.com/topfreegames/maestro/api"
+	"github.com/topfreegames/maestro/controller"
 	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +33,7 @@ import (
 	"github.com/topfreegames/maestro/login"
 	"github.com/topfreegames/maestro/models"
 	. "github.com/topfreegames/maestro/testing"
+	mtesting "github.com/topfreegames/maestro/testing"
 )
 
 var _ = Describe("Scheduler Handler", func() {
@@ -940,6 +942,16 @@ game: game-name
 		})
 
 		Describe("POST /scheduler/{schedulerName}", func() {
+			var app *api.App
+			BeforeEach(func() {
+				config, err := mtesting.GetDefaultConfig()
+				Expect(err).NotTo(HaveOccurred())
+				config.Set("basicauth.tryOauthIfUnset", true)
+				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				app.Login = mockLogin
+			})
+
 			yamlStr := `
 name: scheduler-name
 game: game-name
@@ -951,8 +963,12 @@ ports:
 			schedulerName := "scheduler-name"
 
 			It("should manually scale up", func() {
-				url := fmt.Sprintf("http://%s/scheduler/%s?scaleup=1", app.Address, schedulerName)
-				request, err := http.NewRequest("POST", url, nil)
+				body := map[string]interface{}{"scaleup": 1}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
 				mockDb.EXPECT().
@@ -979,13 +995,34 @@ ports:
 				mockPipeline.EXPECT().Exec()
 
 				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+			})
+
+			It("should return error if empty body on scale up", func() {
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+
+				response := make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &response)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response["error"]).To(Equal("ValidationFailedError"))
+				Expect(response["description"]).To(Equal("empty body sent"))
+				Expect(response["code"]).To(Equal("MAE-000"))
+				Expect(response["success"]).To(Equal(false))
 			})
 
 			It("should manually scale down", func() {
-				url := fmt.Sprintf("http://%s/scheduler/%s?scaledown=1", app.Address, schedulerName)
-				request, err := http.NewRequest("POST", url, nil)
+				body := map[string]interface{}{"scaledown": 1}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
 				mockDb.EXPECT().
@@ -1030,43 +1067,288 @@ ports:
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 			})
 
-			It("should return 422 if scaleup and scaledown are not specified", func() {
+			It("should manually choose the number of replicas and scale up", func() {
+				replicas := 5
+				body := map[string]interface{}{"replicas": replicas}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
 				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
-				request, err := http.NewRequest("POST", url, nil)
+				request, err := http.NewRequest("POST", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerName).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+					})
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(replicas)
+				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+					func(schedulerName string, statusInfo map[string]interface{}) {
+						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+					},
+				).Times(replicas)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(replicas)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(replicas)
+				mockPipeline.EXPECT().Exec().Times(replicas)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(replicas)
+				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+					Return(goredis.NewStringResult("5000", nil)).Times(replicas)
+				mockPipeline.EXPECT().Exec().Times(replicas)
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+				pods, err := clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(replicas))
+			})
+
+			It("should return error if replicas is negative", func() {
+				replicas := -1
+				body := map[string]interface{}{"replicas": replicas}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
-
 				response := make(map[string]interface{})
 				err = json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(response["error"]).To(Equal("invalid scale parameter"))
-				Expect(response["description"]).To(Equal("scaleup and scaledown are empty"))
-				Expect(response["code"]).To(Equal("MAE-000"))
+				Expect(response["error"]).To(Equal("ValidationFailedError"))
+				Expect(response["description"]).To(ContainSubstring("yaml: unmarshal errors:"))
+				Expect(response["code"]).To(Equal("MAE-004"))
 				Expect(response["success"]).To(Equal(false))
 			})
 
-			It("should return 422 if scaleup and scaledown are both specified", func() {
-				url := fmt.Sprintf("http://%s/scheduler/%s?scaleup=1&scaledown=1", app.Address, schedulerName)
-				request, err := http.NewRequest("POST", url, nil)
+			It("should manually choose the number of replicas and scale down", func() {
+				//scale up
+				replicasBefore := 5
+				body := map[string]interface{}{"replicas": replicasBefore}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerName).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+					})
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(replicasBefore)
+				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+					func(schedulerName string, statusInfo map[string]interface{}) {
+						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+					},
+				).Times(replicasBefore)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(replicasBefore)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(replicasBefore)
+				mockPipeline.EXPECT().Exec().Times(replicasBefore)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(replicasBefore)
+				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+					Return(goredis.NewStringResult("5000", nil)).Times(replicasBefore)
+				mockPipeline.EXPECT().Exec().Times(replicasBefore)
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+				pods, err := clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(replicasBefore))
+
+				//scale down
+				replicasAfter := 2
+				body = map[string]interface{}{"replicas": replicasAfter}
+				bts, _ = json.Marshal(body)
+				reader = strings.NewReader(string(bts))
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerName).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+					})
+
+				names, err := controller.GetPodNames(replicasBefore-replicasAfter, schedulerName, clientset)
+				Expect(err).NotTo(HaveOccurred())
+
+				readyKey := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				for _, name := range names {
+					mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+
+				}
+				mockPipeline.EXPECT().Exec()
+
+				for _, name := range names {
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					room := models.NewRoom(name, schedulerName)
+					for _, status := range allStatus {
+						mockPipeline.EXPECT().
+							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+						mockPipeline.EXPECT().
+							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+					}
+					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), room.ID)
+					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+					mockPipeline.EXPECT().Exec()
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any())
+					mockPipeline.EXPECT().Exec()
+				}
+
+				url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err = http.NewRequest("POST", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+				pods, err = clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(replicasAfter))
+			})
+
+			It("should set to 0 replicas", func() {
+				//scale up
+				replicasBefore := 5
+				body := map[string]interface{}{"replicas": replicasBefore}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerName).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+					})
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(replicasBefore)
+				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+					func(schedulerName string, statusInfo map[string]interface{}) {
+						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+					},
+				).Times(replicasBefore)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(replicasBefore)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(replicasBefore)
+				mockPipeline.EXPECT().Exec().Times(replicasBefore)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(replicasBefore)
+				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+					Return(goredis.NewStringResult("5000", nil)).Times(replicasBefore)
+				mockPipeline.EXPECT().Exec().Times(replicasBefore)
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+				pods, err := clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(replicasBefore))
+
+				//scale down
+				replicasAfter := 0
+				body = map[string]interface{}{"replicas": replicasAfter}
+				bts, _ = json.Marshal(body)
+				reader = strings.NewReader(string(bts))
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerName).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+					})
+
+				names, err := controller.GetPodNames(replicasBefore-replicasAfter, schedulerName, clientset)
+				Expect(err).NotTo(HaveOccurred())
+
+				readyKey := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				for _, name := range names {
+					mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+
+				}
+				mockPipeline.EXPECT().Exec()
+
+				for _, name := range names {
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					room := models.NewRoom(name, schedulerName)
+					for _, status := range allStatus {
+						mockPipeline.EXPECT().
+							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+						mockPipeline.EXPECT().
+							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+					}
+					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), room.ID)
+					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+					mockPipeline.EXPECT().Exec()
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any())
+					mockPipeline.EXPECT().Exec()
+				}
+
+				url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err = http.NewRequest("POST", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+				pods, err = clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(replicasAfter))
+			})
+
+			It("should return 400 if scaleup and scaledown are both specified", func() {
+				body := map[string]interface{}{"scaledown": 1, "scaleup": 1}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
 				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 
 				response := make(map[string]interface{})
 				err = json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(response["error"]).To(Equal("invalid scale parameter"))
-				Expect(response["description"]).To(Equal("cannot scale up and down at once"))
+				Expect(response["error"]).To(Equal("scale scheduler failed"))
+				Expect(response["description"]).To(Equal("invalid scale parameter: can't handle more than one parameter"))
 				Expect(response["code"]).To(Equal("MAE-000"))
 				Expect(response["success"]).To(Equal(false))
 			})
 
 			It("should return 422 if scaleup is negative", func() {
-				url := fmt.Sprintf("http://%s/scheduler/%s?scaleup=-1", app.Address, schedulerName)
-				request, err := http.NewRequest("POST", url, nil)
+				body := map[string]interface{}{"scaleup": -1}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
 				app.Router.ServeHTTP(recorder, request)
@@ -1075,32 +1357,40 @@ ports:
 				response := make(map[string]interface{})
 				err = json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(response["error"]).To(Equal("invalid scale up parameter"))
-				Expect(response["description"]).To(Equal("scaleup amount should be greater than zero"))
-				Expect(response["code"]).To(Equal("MAE-000"))
+				Expect(response["error"]).To(Equal("ValidationFailedError"))
+				Expect(response["description"]).To(ContainSubstring("yaml: unmarshal errors:"))
+				Expect(response["code"]).To(Equal("MAE-004"))
 				Expect(response["success"]).To(Equal(false))
 			})
 
-			It("should return 400 if scaleup is not a number", func() {
-				url := fmt.Sprintf("http://%s/scheduler/%s?scaleup=qwe", app.Address, schedulerName)
-				request, err := http.NewRequest("POST", url, nil)
+			It("should return 422 if scaleup is not a number", func() {
+				body := map[string]interface{}{"scaleup": "qwe"}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
 				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
 
 				response := make(map[string]interface{})
 				err = json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(response["error"]).To(Equal("invalid scale up parameter"))
-				Expect(response["description"]).To(Equal("strconv.Atoi: parsing \"qwe\": invalid syntax"))
-				Expect(response["code"]).To(Equal("MAE-000"))
+				Expect(response["error"]).To(Equal("ValidationFailedError"))
+				Expect(response["description"]).To(ContainSubstring("yaml: unmarshal errors:"))
+				Expect(response["code"]).To(Equal("MAE-004"))
 				Expect(response["success"]).To(Equal(false))
 			})
 
 			It("should return 422 if scaledown is negative", func() {
-				url := fmt.Sprintf("http://%s/scheduler/%s?scaledown=-1", app.Address, schedulerName)
-				request, err := http.NewRequest("POST", url, nil)
+				body := map[string]interface{}{"scaledown": -1}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
 				app.Router.ServeHTTP(recorder, request)
@@ -1109,32 +1399,40 @@ ports:
 				response := make(map[string]interface{})
 				err = json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(response["error"]).To(Equal("invalid scale down parameter"))
-				Expect(response["description"]).To(Equal("scaledown amount should be greater than zero"))
-				Expect(response["code"]).To(Equal("MAE-000"))
+				Expect(response["error"]).To(Equal("ValidationFailedError"))
+				Expect(response["description"]).To(ContainSubstring("yaml: unmarshal errors:"))
+				Expect(response["code"]).To(Equal("MAE-004"))
 				Expect(response["success"]).To(Equal(false))
 			})
 
-			It("should return 400 if scaledown is not a number", func() {
-				url := fmt.Sprintf("http://%s/scheduler/%s?scaledown=qwe", app.Address, schedulerName)
-				request, err := http.NewRequest("POST", url, nil)
+			It("should return 422 if scaledown is not a number", func() {
+				body := map[string]interface{}{"scaledown": "qwe"}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
 				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Code).To(Equal(http.StatusUnprocessableEntity))
 
 				response := make(map[string]interface{})
 				err = json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(response["error"]).To(Equal("invalid scale down parameter"))
-				Expect(response["description"]).To(Equal("strconv.Atoi: parsing \"qwe\": invalid syntax"))
-				Expect(response["code"]).To(Equal("MAE-000"))
+				Expect(response["error"]).To(Equal("ValidationFailedError"))
+				Expect(response["description"]).To(ContainSubstring("yaml: unmarshal errors:"))
+				Expect(response["code"]).To(Equal("MAE-004"))
 				Expect(response["success"]).To(Equal(false))
 			})
 
 			It("should return 500 if DB fails", func() {
-				url := fmt.Sprintf("http://%s/scheduler/%s?scaledown=1", app.Address, schedulerName)
-				request, err := http.NewRequest("POST", url, nil)
+				body := map[string]interface{}{"scaledown": 1}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
 				mockDb.EXPECT().
@@ -1147,15 +1445,19 @@ ports:
 				response := make(map[string]interface{})
 				err = json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(response["error"]).To(Equal("scheduler scale failed"))
+				Expect(response["error"]).To(Equal("DatabaseError"))
 				Expect(response["description"]).To(Equal("database error"))
-				Expect(response["code"]).To(Equal("MAE-000"))
+				Expect(response["code"]).To(Equal("MAE-001"))
 				Expect(response["success"]).To(Equal(false))
 			})
 
 			It("should return 404 if scheduler does not exist", func() {
-				url := fmt.Sprintf("http://%s/scheduler/%s?scaledown=1", app.Address, schedulerName)
-				request, err := http.NewRequest("POST", url, nil)
+				body := map[string]interface{}{"scaledown": 1}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+
+				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
+				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
 				mockDb.EXPECT().
@@ -1167,8 +1469,8 @@ ports:
 				response := make(map[string]interface{})
 				err = json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(response["error"]).To(Equal("scheduler scale failed"))
-				Expect(response["description"]).To(Equal("scheduler scheduler-name not found"))
+				Expect(response["error"]).To(Equal("scale scheduler failed"))
+				Expect(response["description"]).To(Equal("scheduler 'scheduler-name' not found"))
 				Expect(response["code"]).To(Equal("MAE-000"))
 				Expect(response["success"]).To(Equal(false))
 			})

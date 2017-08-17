@@ -90,6 +90,18 @@ func schedulerMinParamsFromCtx(ctx context.Context) *models.SchedulerMinParams {
 	return arr[0].(*models.SchedulerMinParams)
 }
 
+func schedulerScaleParamsFromCtx(ctx context.Context) *models.SchedulerScaleParams {
+	payload := ctx.Value(payloadString)
+	if payload == nil {
+		return nil
+	}
+	arr := payload.([]interface{})
+	if len(arr) == 0 || arr[0] == nil {
+		return nil
+	}
+	return arr[0].(*models.SchedulerScaleParams)
+}
+
 //ServeHTTP method
 func (m *ValidationMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())

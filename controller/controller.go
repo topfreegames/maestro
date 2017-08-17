@@ -990,3 +990,96 @@ func schedulerAndConfigFromName(
 	}
 	return scheduler, configYaml, nil
 }
+
+// ScaleScheduler scale up or down, depending on what parameters are passed
+func ScaleScheduler(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	clientset kubernetes.Interface,
+	timeoutScaleup, timeoutScaledown int,
+	amountUp, amountDown, replicas uint,
+	schedulerName string,
+) error {
+	var err error
+
+	if amountUp > 0 && amountDown > 0 || replicas > 0 && amountUp > 0 || replicas > 0 && amountDown > 0 {
+		return errors.New("invalid scale parameter: can't handle more than one parameter")
+	}
+
+	scheduler := models.NewScheduler(schedulerName, "", "")
+	err = scheduler.Load(db)
+	if err != nil {
+		logger.WithError(err).Errorf("error loading scheduler %s from db", schedulerName)
+		return maestroErrors.NewDatabaseError(err)
+	} else if scheduler.YAML == "" {
+		msg := fmt.Sprintf("scheduler '%s' not found", schedulerName)
+		logger.Errorf(msg)
+		return errors.New(msg)
+	}
+
+	if amountUp > 0 {
+		logger.Infof("manually scaling up scheduler %s in %d GRUs", schedulerName, amountUp)
+		err = ScaleUp(
+			logger,
+			mr,
+			db,
+			redisClient,
+			clientset,
+			scheduler,
+			int(amountUp),
+			timeoutScaleup,
+			false,
+		)
+	} else if amountDown > 0 {
+		logger.Infof("manually scaling down scheduler %s in %d GRUs", schedulerName, amountDown)
+		err = ScaleDown(
+			logger,
+			mr,
+			db,
+			redisClient,
+			clientset,
+			scheduler,
+			int(amountDown),
+			timeoutScaledown,
+		)
+	} else {
+		logger.Infof("manually scaling scheduler %s to  %d GRUs", schedulerName, replicas)
+		pods, err := clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
+			LabelSelector: labels.Set{}.AsSelector().String(),
+			FieldSelector: fields.Everything().String(),
+		})
+		if err != nil {
+			msg := fmt.Sprintf("error listing pods for scheduler %s", schedulerName)
+			return maestroErrors.NewKubernetesError(msg, err)
+		}
+
+		nPods := uint(len(pods.Items))
+		if replicas > nPods {
+			err = ScaleUp(
+				logger,
+				mr,
+				db,
+				redisClient,
+				clientset,
+				scheduler,
+				int(replicas-nPods),
+				timeoutScaleup,
+				false,
+			)
+		} else if replicas < nPods {
+			err = ScaleDown(
+				logger,
+				mr,
+				db,
+				redisClient,
+				clientset,
+				scheduler,
+				int(nPods-replicas),
+				timeoutScaledown,
+			)
+		}
+	}
+	return nil
+}

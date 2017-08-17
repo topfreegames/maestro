@@ -478,10 +478,14 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
 
-			urlScale := fmt.Sprintf("http://%s/scheduler/%s?scaleup=1", app.Address, configYaml.Name)
-			request, err = http.NewRequest("POST", urlScale, nil)
+			bodyJson := map[string]interface{}{"scaleup": 1}
+			bts, _ := json.Marshal(bodyJson)
+			reader := strings.NewReader(string(bts))
+
+			urlScale := fmt.Sprintf("http://%s/scheduler/%s", app.Address, configYaml.Name)
+			request, err = http.NewRequest("POST", urlScale, reader)
 			Expect(err).NotTo(HaveOccurred())
-			request.Header.Add("Authorization", "Bearer token")
+			request.SetBasicAuth("user", "pass")
 
 			recorder = httptest.NewRecorder()
 			app.Router.ServeHTTP(recorder, request)
@@ -515,10 +519,14 @@ var _ = Describe("App", func() {
 			tx.SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady), pods.Items[0].GetName())
 			tx.Exec()
 
-			urlScale := fmt.Sprintf("http://%s/scheduler/%s?scaledown=1", app.Address, configYaml.Name)
-			request, err = http.NewRequest("POST", urlScale, nil)
+			bodyJson := map[string]interface{}{"scaledown": 1}
+			bts, _ := json.Marshal(bodyJson)
+			reader := strings.NewReader(string(bts))
+
+			urlScale := fmt.Sprintf("http://%s/scheduler/%s", app.Address, configYaml.Name)
+			request, err = http.NewRequest("POST", urlScale, reader)
 			Expect(err).NotTo(HaveOccurred())
-			request.Header.Add("Authorization", "Bearer token")
+			request.SetBasicAuth("user", "pass")
 
 			recorder = httptest.NewRecorder()
 			app.Router.ServeHTTP(recorder, request)
