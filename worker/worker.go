@@ -217,6 +217,7 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 			// ensure schedulers in the database have running watchers
 			if !schedulerWatcher.Run {
 				schedulerWatcher.Run = true
+				go schedulerWatcher.Start()
 			}
 		} else {
 			var occupiedTimeout int64

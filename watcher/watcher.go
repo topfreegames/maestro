@@ -275,11 +275,11 @@ func (w *Watcher) AutoScale() {
 		w.RedisClient.Client,
 		w.SchedulerName,
 	)
-	if err != nil && strings.Contains(err.Error(), "not found") {
-		w.Run = false
-		return
-	}
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			w.Run = false
+			return
+		}
 		logger.WithError(err).Error("failed to get scheduler scaling info")
 		return
 	}
