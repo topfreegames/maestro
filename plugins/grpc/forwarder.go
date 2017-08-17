@@ -10,6 +10,7 @@ package main
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -56,6 +57,40 @@ func (g *GRPCForwarder) roomStatus(infos map[string]interface{}, roomStatus pb.R
 	return response.Code, err
 }
 
+func (g *GRPCForwarder) playerEventRequest(infos map[string]interface{}, event pb.PlayerEvent_PlayerEventType) *pb.PlayerEvent {
+	m := make(map[string]string)
+	for key, value := range infos {
+		m[key] = value.(string)
+	}
+	req := &pb.PlayerEvent{
+		PlayerId: infos["playerId"].(string),
+		Room: &pb.Room{
+			RoomId: infos["roomId"].(string),
+		},
+		EventType: event,
+		Metadata:  m,
+	}
+
+	return req
+}
+
+func (g *GRPCForwarder) playerEvent(infos map[string]interface{}, playerEvent pb.PlayerEvent_PlayerEventType) (status int32, err error) {
+	_, ok := infos["playerId"].(string)
+	if !ok {
+		return 500, errors.New("no playerId specified in metadata")
+	}
+	_, ok = infos["roomId"].(string)
+	if !ok {
+		return 500, errors.New("no roomId specified in metadata")
+	}
+	req := g.playerEventRequest(infos, playerEvent)
+	response, err := g.client.SendPlayerEvent(context.Background(), req)
+	if err != nil {
+		return 500, err
+	}
+	return response.Code, err
+}
+
 // Ready status
 func (g *GRPCForwarder) Ready(infos map[string]interface{}) (status int32, err error) {
 	return g.roomStatus(infos, pb.RoomStatus_ready)
@@ -74,6 +109,16 @@ func (g *GRPCForwarder) Terminating(infos map[string]interface{}) (status int32,
 // Terminated status
 func (g *GRPCForwarder) Terminated(infos map[string]interface{}) (status int32, err error) {
 	return g.roomStatus(infos, pb.RoomStatus_terminated)
+}
+
+// PlayerJoin status
+func (g *GRPCForwarder) PlayerJoin(infos map[string]interface{}) (status int32, err error) {
+	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_JOINED)
+}
+
+// PlayerLeft status
+func (g *GRPCForwarder) PlayerLeft(infos map[string]interface{}) (status int32, err error) {
+	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_LEFT)
 }
 
 //Forward send room or player status to specified server

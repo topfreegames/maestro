@@ -459,6 +459,74 @@ var _ = Describe("Room Handler", func() {
 		})
 	})
 
+	Describe("POST /scheduler/{schedulerName}/rooms/{roomName}/playerevent", func() {
+		url := "/scheduler/schedulerName/rooms/roomName/playerevent"
+		var app *api.App
+		BeforeEach(func() {
+			var err error
+			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
+			Expect(err).NotTo(HaveOccurred())
+			app.Forwarders = []eventforwarder.EventForwarder{mockEventForwarder1, mockEventForwarder2}
+		})
+		It("should error if event is nil", func() {
+			reader := JSONFor(JSON{
+				"roomId":    "somerid",
+				"timestamp": 23412342134,
+			})
+			request, _ = http.NewRequest("POST", url, reader)
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(422))
+			var obj map[string]interface{}
+			err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj["code"]).To(Equal("MAE-004"))
+			Expect(obj["error"]).To(Equal("ValidationFailedError"))
+			Expect(obj["description"]).To(ContainSubstring(`non zero value required`))
+			Expect(obj["success"]).To(Equal(false))
+		})
+
+		It("should error if EventForwarder returns error", func() {
+			event := "playerJoined"
+			reader := JSONFor(JSON{
+				"event":     event,
+				"timestamp": 23412342134,
+				"metadata":  make(map[string]interface{}),
+			})
+			request, _ = http.NewRequest("POST", url, reader)
+			mockEventForwarder1.EXPECT().Forward(event, gomock.Any()).Return(int32(500), errors.New("no playerId specified"))
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(500))
+			var obj map[string]interface{}
+			err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj["code"]).To(Equal("MAE-000"))
+			Expect(obj["error"]).To(Equal("Player event forward failed"))
+			Expect(obj["description"]).To(ContainSubstring(`no playerId specified`))
+			Expect(obj["success"]).To(Equal(false))
+		})
+
+		It("should call all forwarders and return 200 if ok", func() {
+			event := "playerJoined"
+			reader := JSONFor(JSON{
+				"event":     event,
+				"timestamp": 23412342134,
+				"metadata":  make(map[string]interface{}),
+			})
+			request, _ = http.NewRequest("POST", url, reader)
+			mockEventForwarder1.EXPECT().Forward(event, gomock.Any()).Return(int32(200), nil)
+			mockEventForwarder2.EXPECT().Forward(event, gomock.Any()).Return(int32(200), nil)
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(200))
+			var obj map[string]interface{}
+			err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj["success"]).To(Equal(true))
+		})
+
+	})
 	Describe("GET /scheduler/{schedulerName}/rooms/{roomName}/address", func() {
 		var (
 			game      = "pong"

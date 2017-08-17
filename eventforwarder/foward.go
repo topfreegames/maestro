@@ -21,7 +21,22 @@ func ForwardRoomEvent(
 			return err
 		}
 		infos["metadata"] = metadata
-		ForwardEventToForwarders(forwarders, status, infos)
+		return ForwardEventToForwarders(forwarders, status, infos)
+	}
+	return nil
+}
+
+// ForwardPlayerEvent forwards player event to app eventforwarders
+func ForwardPlayerEvent(
+	forwarders []EventForwarder,
+	db interfaces.DB,
+	roomID string,
+	event string,
+	metadata map[string]interface{},
+) error {
+	if len(forwarders) > 0 {
+		metadata["roomId"] = roomID
+		return ForwardEventToForwarders(forwarders, event, metadata)
 	}
 	return nil
 }

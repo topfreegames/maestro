@@ -27,7 +27,7 @@ func (*server) SendRoomStatus(ctx context.Context, roomStatus *pb.RoomStatus) (*
 }
 
 func (*server) SendPlayerEvent(ctx context.Context, playerEvent *pb.PlayerEvent) (*pb.Response, error) {
-	fmt.Println("Received msg", playerEvent.GetRoom(), playerEvent.GetPlayerId())
+	fmt.Println("Received msg", playerEvent.GetRoom(), playerEvent.GetPlayerId(), playerEvent.GetEventType())
 	return &pb.Response{
 		Message: "Hi!",
 		Code:    200,

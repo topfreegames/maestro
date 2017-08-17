@@ -2,11 +2,9 @@ forwarders:
   grpc:
     matchmaking: 
       address: "10.0.23.57:10000"
-    local:
-      address: "localhost:10000"
 extensions:
   pg:
-    host: "localhost"
+    host: "10.0.23.57"
     port: 8765
     user: "maestro"
     pass: ""
@@ -15,7 +13,7 @@ extensions:
     database: "maestro"
     connectionTimeout: 100
   redis:
-    url: redis://localhost:6363
+    url: redis://10.0.23.57:6363
     connectionTimeout: 200
 watcher:
   autoScalingPeriod: 30
