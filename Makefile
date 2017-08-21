@@ -8,6 +8,8 @@
 MY_IP=`ifconfig | grep --color=none -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep --color=none -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' | head -n 1`
 TEST_PACKAGES=`find . -type f -name "*.go" ! \( -path "*vendor*" \) | sed -En "s/([^\.])\/.*/\1/p" | uniq`
 
+.PHONY: plugins
+
 setup: setup-hooks
 	@go get -u github.com/golang/dep...
 	@go get -u github.com/jteeuwen/go-bindata/...
@@ -28,7 +30,7 @@ setup-ci:
 build:
 	@mkdir -p bin && go build -o ./bin/maestro main.go
 
-build-docker: cross-build-linux-amd64
+build-docker: cross-build-linux-amd64 plugins
 	@docker build -t maestro .
 
 cross-build-linux-amd64:
@@ -173,5 +175,8 @@ generate-proto:
 	@protoc -I plugins/grpc/protobuf/ plugins/grpc/protobuf/*.proto --go_out=plugins=grpc:plugins/grpc/generated
 	@echo 'proto files created at plugins/grpc/generated'
 
+plugins-linux:
+	@go build -o grpc.so -buildmode=plugin plugins/grpc/forwarder.go
+
 plugins:
-	@docker run -v $$(pwd)/eventforwarder:/go/src/github.com/topfreegames/maestro/eventforwarder -ti golang bash -c "cd /go/src/github.com/topfreegames/maestro/eventforwarder && go get github.com/golang/protobuf/protoc-gen-go google.golang.org/grpc golang.org/x/net/context && go build -buildmode=plugin"
+	@docker run -v $$(pwd)/:/go/src/github.com/topfreegames/maestro -ti golang bash -c "cd /go/src/github.com/topfreegames/maestro && go get github.com/golang/protobuf/protoc-gen-go google.golang.org/grpc golang.org/x/net/context && go build -o bin/grpc.so -buildmode=plugin plugins/grpc/forwarder.go"

@@ -23,13 +23,14 @@ FROM golang:1.8-alpine
 
 MAINTAINER TFG Co <backend@tfgco.com>
 
-RUN mkdir /app
+RUN mkdir -p /app/bin
 
 RUN apk update
-RUN apk add postgresql git make
+RUN apk add postgresql git make musl-dev gcc
 RUN go get -u github.com/jteeuwen/go-bindata/...
 
 COPY ./bin/maestro-linux-amd64 /app/maestro
+COPY ./bin/grpc.so /app/bin/grpc.so
 COPY ./config/local.yaml /app/config/local.yaml
 COPY ./Makefile /app/Makefile
 COPY ./scripts/drop.sql /app/scripts/drop.sql
