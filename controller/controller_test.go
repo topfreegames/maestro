@@ -890,6 +890,31 @@ cmd:
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timeout scaling up scheduler"))
 		})
+
+		It("should return error and not scale up if there are Pending pods", func() {
+			amount := 5
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+
+			pod := &v1.Pod{}
+			pod.Name = "room-0"
+			pod.Status.Phase = v1.PodPending
+			_, err = clientset.CoreV1().Pods(scheduler.Name).Create(pod)
+			Expect(err).NotTo(HaveOccurred())
+
+			for i := 1; i < amount; i++ {
+				pod := &v1.Pod{}
+				pod.Name = fmt.Sprintf("room-%d", i)
+				_, err := clientset.CoreV1().Pods(scheduler.Name).Create(pod)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("there are pending pods, check if there are enough CPU and memory to allocate new rooms"))
+		})
 	})
 
 	Describe("ScaleDown", func() {

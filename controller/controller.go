@@ -239,6 +239,28 @@ func DeleteUnavailableRooms(
 	return nil
 }
 
+func pendingPods(
+	clientset kubernetes.Interface,
+	namespace string,
+) (bool, error) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.Set{}.AsSelector().String(),
+		FieldSelector: fields.Everything().String(),
+	}
+	pods, err := clientset.CoreV1().Pods(namespace).List(listOptions)
+	if err != nil {
+		return false, maestroErrors.NewKubernetesError("error when listing pods", err)
+	}
+
+	for _, pod := range pods.Items {
+		if pod.Status.Phase == v1.PodPending {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 // ScaleUp scales up a scheduler using its config
 func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, scheduler *models.Scheduler, amount, timeoutSec int, initalOp bool) error {
 	l := logger.WithFields(logrus.Fields{
@@ -247,6 +269,14 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 		"amount":    amount,
 	})
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
+
+	existPendingPods, err := pendingPods(clientset, scheduler.Name)
+	if err != nil {
+		return err
+	}
+	if existPendingPods {
+		return errors.New("there are pending pods, check if there are enough CPU and memory to allocate new rooms")
+	}
 
 	pods := make([]*v1.Pod, amount)
 	var creationErr error
@@ -275,7 +305,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 		return errors.New("timeout scaling up scheduler")
 	}
 
-	err := waitForPods(
+	err = waitForPods(
 		willTimeoutAt.Sub(time.Now()),
 		clientset,
 		amount,

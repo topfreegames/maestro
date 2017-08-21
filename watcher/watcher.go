@@ -266,6 +266,7 @@ func (w *Watcher) AutoScale() {
 	logger := w.Logger.WithFields(logrus.Fields{
 		"executionID": uuid.NewV4().String(),
 		"operation":   "autoScale",
+		"scheduler":   w.SchedulerName,
 	})
 
 	scheduler, autoScalingInfo, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
@@ -365,6 +366,10 @@ func (w *Watcher) AutoScale() {
 		}
 	} else {
 		l.Infof("scheduler '%s': state is as expected", scheduler.Name)
+	}
+
+	if err != nil {
+		logger.WithError(err).Error("error scaling scheduler")
 	}
 
 	if changedState {
