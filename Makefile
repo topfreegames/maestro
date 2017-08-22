@@ -176,7 +176,7 @@ generate-proto:
 	@echo 'proto files created at plugins/grpc/generated'
 
 plugins-linux:
-	@go build -o grpc.so -buildmode=plugin plugins/grpc/forwarder.go
+	@go build -o bin/grpc.so -buildmode=plugin plugins/grpc/forwarder.go
 
 plugins:
 	@docker run -v $$(pwd)/:/go/src/github.com/topfreegames/maestro -ti golang bash -c "cd /go/src/github.com/topfreegames/maestro && go get github.com/golang/protobuf/protoc-gen-go google.golang.org/grpc golang.org/x/net/context && go build -o bin/grpc.so -buildmode=plugin plugins/grpc/forwarder.go"

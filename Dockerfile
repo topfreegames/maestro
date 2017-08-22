@@ -29,8 +29,11 @@ RUN apk update
 RUN apk add postgresql git make musl-dev gcc
 RUN go get -u github.com/jteeuwen/go-bindata/...
 
+ADD . /go/src/github.com/topfreegames/maestro
+RUN cd /go/src/github.com/topfreegames/maestro && \
+  make plugins-linux && \
+  mv bin/grpc.so /app/bin/grpc.so
 COPY ./bin/maestro-linux-amd64 /app/maestro
-COPY ./bin/grpc.so /app/bin/grpc.so
 COPY ./config/local.yaml /app/config/local.yaml
 COPY ./Makefile /app/Makefile
 COPY ./scripts/drop.sql /app/scripts/drop.sql
