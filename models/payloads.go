@@ -9,9 +9,9 @@ package models
 
 // RoomStatusPayload is the struct that defines the payload for the status route
 type RoomStatusPayload struct {
-	Metadata  map[string]string `json:"metadata"`
-	Status    string            `json:"status" valid:"matches(ready|occupied|terminating|terminated),required"`
-	Timestamp int64             `json:"timestamp" valid:"int64,required"`
+	Metadata  map[string]interface{} `json:"metadata"`
+	Status    string                 `json:"status" valid:"matches(ready|occupied|terminating|terminated),required"`
+	Timestamp int64                  `json:"timestamp" valid:"int64,required"`
 }
 
 // PlayerEventPayload is the struct that defines the payload for the playerEvent route

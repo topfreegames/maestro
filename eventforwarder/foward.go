@@ -13,7 +13,7 @@ func ForwardRoomEvent(
 	kubernetesClient kubernetes.Interface,
 	room *models.Room,
 	status string,
-	metadata map[string]string,
+	metadata map[string]interface{},
 ) error {
 	if len(forwarders) > 0 {
 		infos, err := room.GetRoomInfos(db, kubernetesClient)

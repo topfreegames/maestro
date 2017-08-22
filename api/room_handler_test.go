@@ -405,7 +405,7 @@ var _ = Describe("Room Handler", func() {
 						func(status string, infos map[string]interface{}) {
 							Expect(infos["game"]).To(Equal(game))
 							Expect(infos["roomId"]).To(Equal(roomName))
-							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]string{
+							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]interface{}{
 								"type": "sometype",
 							}))
 						})
@@ -413,7 +413,7 @@ var _ = Describe("Room Handler", func() {
 						func(status string, infos map[string]interface{}) {
 							Expect(infos["game"]).To(Equal(game))
 							Expect(infos["roomId"]).To(Equal(roomName))
-							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]string{
+							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]interface{}{
 								"type": "sometype",
 							}))
 						})
