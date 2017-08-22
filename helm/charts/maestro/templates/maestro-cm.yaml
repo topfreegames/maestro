@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: maestro
+  name: maestro-cm
+data: 
+  local.yaml: |-
+    {{- if .Values.forwarders }}
+    forwarders:
+      {{- range $i, $v := .Values.forwarders}}
+      {{$i}}:
+      {{- range $ii, $vv := $v}}
+        {{$ii}}:
+      {{- range $iii, $vvv := $vv}}
+          {{$iii}}: {{$vvv}}
+      {{- end}}{{- end}}{{- end}}
+    {{- end}}
+    extensions:
+      pg:
+        host: "localhost"
+        port: 8765
+        user: "maestro"
+        pass: ""
+        poolSize: 20
+        maxRetries: 3
+        database: "maestro"
+        connectionTimeout: 100
+      redis:
+        url: redis://localhost:6363
+        connectionTimeout: 200
+    watcher:
+      autoScalingPeriod: 30
+      lockKey: "maestro-lock-key"
+      lockTimeoutMs: 180000
+      gracefulShutdownTimeout: 300
+    worker:
+      syncPeriod: 30
+      gracefulShutdownTimeout: 300
+    scaleUpTimeoutSeconds: 600
+    scaleDownTimeoutSeconds: 600
+    deleteTimeoutSeconds: 600
+    pingTimeout: 90
+    updateTimeoutSeconds: 600
+    sentry:
+      url: ""
+    newrelic:
+      app: "maestro"
+      key: ""
+    oauth:
+      acceptedDomains:
+      - "example.com"
+      - "other.com"
+    basicauth:
+      username: user
+      password: pass
+      tryOauthIfUnset: true

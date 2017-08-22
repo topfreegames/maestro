@@ -27,6 +27,10 @@ spec:
       labels:
         app: maestro-api
     spec:
+      volumes:
+        - name: config
+          configMap:
+            name: maestro-cm
       containers:
         - name: maestro-api
           command:
@@ -37,6 +41,10 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/local.yaml
+              subPath: local.yaml
           env:
             - name: MAESTRO_EXTENSIONS_PG_HOST
               value: {{ .Values.postgres_host }}
@@ -64,3 +72,4 @@ spec:
               value: {{ .Values.basicauth_pass }}
             - name: MAESTRO_BASICAUTH_TRYOAUTHIFUNSET
               value: "true"
+
