@@ -30,7 +30,7 @@ setup-ci:
 build:
 	@mkdir -p bin && go build -o ./bin/maestro main.go
 
-build-docker: cross-build-linux-amd64 plugins
+build-docker: cross-build-linux-amd64
 	@docker build -t maestro .
 
 cross-build-linux-amd64:
