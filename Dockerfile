@@ -31,14 +31,15 @@ RUN go get -u github.com/jteeuwen/go-bindata/...
 
 ADD . /go/src/github.com/topfreegames/maestro
 RUN cd /go/src/github.com/topfreegames/maestro && \
+  make build && \
   make plugins-linux && \
-  mv bin/grpc.so /app/bin/grpc.so
-COPY ./bin/maestro-linux-amd64 /app/maestro
-COPY ./config/local.yaml /app/config/local.yaml
-COPY ./Makefile /app/Makefile
-COPY ./scripts/drop.sql /app/scripts/drop.sql
-COPY ./migrations /app/migrations
-
+  mv bin/maestro /app/maestro && \
+  mv bin/grpc.so /app/bin/grpc.so && \
+  mv config /app/config && \
+  mv scripts /app/scripts && \
+  mv migrations /app/migrations && \
+  mv Makefile /app/Makefile
+  
 WORKDIR /app
 RUN make assets
 
