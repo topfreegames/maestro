@@ -40,7 +40,7 @@ func LoadEventForwardersFromConfig(config *viper.Viper, logger logrus.FieldLogge
 					for kk := range forwarderConfigMap {
 						logger.Infof("loading forwarder %s.%s", k, kk)
 						cfg := config.Sub(fmt.Sprintf("forwarders.%s.%s", k, kk))
-						forwarder, err := LoadForwarder(p, cfg)
+						forwarder, err := LoadForwarder(p, cfg, logger)
 						if err != nil {
 							logger.Error(err)
 							continue
@@ -57,14 +57,14 @@ func LoadEventForwardersFromConfig(config *viper.Viper, logger logrus.FieldLogge
 }
 
 // LoadForwarder loads a forwarder from a plugin
-func LoadForwarder(p *plugin.Plugin, config *viper.Viper) (EventForwarder, error) {
+func LoadForwarder(p *plugin.Plugin, config *viper.Viper, logger logrus.FieldLogger) (EventForwarder, error) {
 	f, err := p.Lookup("NewForwarder")
 	if err != nil {
 		return nil, err
 	}
-	ff, ok := f.(func(*viper.Viper) (EventForwarder, error))
+	ff, ok := f.(func(*viper.Viper, logrus.FieldLogger) (EventForwarder, error))
 	if !ok {
 		return nil, err
 	}
-	return ff(config)
+	return ff(config, logger)
 }
