@@ -57,8 +57,12 @@ func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status p
 		},
 		StatusType: status,
 	}
-	if meta, ok := infos["metadata"].(map[string]string); ok {
-		req.Room.Metadata = meta
+	if meta, ok := infos["metadata"].(map[string]interface{}); ok {
+		m := make(map[string]string)
+		for key, value := range meta {
+			m[key] = value.(string)
+		}
+		req.Room.Metadata = m
 	}
 	return req
 }
