@@ -38,7 +38,7 @@ func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status p
 			Game:   infos["game"].(string),
 			RoomId: infos["roomId"].(string),
 			Host:   infos["host"].(string),
-			Port:   int32(infos["port"].(int)),
+			Port:   int32(infos["port"].(int64)),
 		},
 		StatusType: status,
 	}
