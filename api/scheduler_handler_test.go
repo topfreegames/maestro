@@ -1606,8 +1606,167 @@ ports:
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+			})
+
+			It("should update image with max surge of 100%", func() {
+				newImageName := "new-image"
+				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				// Update scheduler
+				body := map[string]interface{}{"image": newImageName}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/image?maxsurge=100", configYaml1.Name)
+				request, err = http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+					})
+
+				lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+
+				mockRedisClient.EXPECT().
+					SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					Return(redis.NewBoolResult(true, nil))
+
+				for _, pod := range pods.Items {
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+					room := models.NewRoom(pod.GetName(), pod.GetNamespace())
+					for _, status := range allStatus {
+						mockPipeline.EXPECT().
+							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+						mockPipeline.EXPECT().
+							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+					}
+					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(room.SchedulerName), room.ID)
+					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+					mockPipeline.EXPECT().Exec()
+				}
+				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+					func(schedulerName string, statusInfo map[string]interface{}) {
+						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+					},
+				).Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().
+					ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).
+					Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().
+					SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).
+					Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
+					Return(redis.NewCmdResult(nil, nil))
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(200)
+				mockPipeline.EXPECT().Exec().Times(100)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+					Return(goredis.NewStringResult("5000", nil)).Times(200)
+				mockPipeline.EXPECT().Exec().Times(100)
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+			})
+
+			It("should fail with invalid max surge parameter", func() {
+				newImageName := "new-image"
+
+				body := map[string]interface{}{"image": newImageName}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/image?maxsurge=invalid", configYaml1.Name)
+				request, err := http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				body = make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(body["code"]).To(Equal("MAE-000"))
+				Expect(body["description"]).To(Equal("strconv.Atoi: parsing \"invalid\": invalid syntax"))
+				Expect(body["error"]).To(Equal("invalid maxsurge parameter"))
+				Expect(body["success"]).To(BeFalse())
+			})
+
+			It("should fail with negative max surge parameter", func() {
+				newImageName := "new-image"
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+					})
+
+				body := map[string]interface{}{"image": newImageName}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/image?maxsurge=-1", configYaml1.Name)
+				request, err := http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				body = make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(body["code"]).To(Equal("MAE-000"))
+				Expect(body["description"]).To(Equal("invalid parameter: maxsurge must be greater than 0"))
+				Expect(body["error"]).To(Equal("failed to update scheduler image"))
+				Expect(body["success"]).To(BeFalse())
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			})
+
+			It("should fail with zero max surge parameter", func() {
+				newImageName := "new-image"
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+					})
+
+				body := map[string]interface{}{"image": newImageName}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/image?maxsurge=0", configYaml1.Name)
+				request, err := http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				body = make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(body["code"]).To(Equal("MAE-000"))
+				Expect(body["description"]).To(Equal("invalid parameter: maxsurge must be greater than 0"))
+				Expect(body["error"]).To(Equal("failed to update scheduler image"))
+				Expect(body["success"]).To(BeFalse())
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 			})
 
 			It("should return 500 if DB fails", func() {
@@ -1621,7 +1780,7 @@ ports:
 				bts, _ := json.Marshal(body)
 				reader := strings.NewReader(string(bts))
 				url := fmt.Sprintf("/scheduler/%s/image", configYaml1.Name)
-				request, err = http.NewRequest("PUT", url, reader)
+				request, err := http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 

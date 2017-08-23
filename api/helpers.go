@@ -7,7 +7,10 @@
 
 package api
 
-import "net/http"
+import (
+	"net/http"
+	"strconv"
+)
 
 type responseWriter struct {
 	http.ResponseWriter
@@ -48,4 +51,16 @@ func getStatusFromResponseWriter(w http.ResponseWriter) int {
 		return rw.statusCode
 	}
 	return -1
+}
+
+func getMaxSurge(app *App, r *http.Request) (int, error) {
+	var maxSurge int
+	var err error
+	maxSurgeStr := r.URL.Query().Get("maxsurge")
+	if maxSurgeStr == "" {
+		maxSurge = app.Config.GetInt("watcher.maxSurge")
+	} else {
+		maxSurge, err = strconv.Atoi(maxSurgeStr)
+	}
+	return maxSurge, err
 }

@@ -78,16 +78,18 @@ var _ = Describe("Pod", func() {
 			Memory: "64487424",
 		}
 		shutdownTimeout = 180
-
-		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-		mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-			Return(goredis.NewStringResult("5000", nil))
-		mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-			Return(goredis.NewStringResult("5001", nil))
-		mockPipeline.EXPECT().Exec()
 	})
 
 	Describe("NewPod", func() {
+		BeforeEach(func() {
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5000", nil))
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5001", nil))
+			mockPipeline.EXPECT().Exec()
+		})
+
 		It("should build correct pod struct", func() {
 			pod, err := models.NewPod(
 				game,
@@ -120,6 +122,15 @@ var _ = Describe("Pod", func() {
 	})
 
 	Describe("Create", func() {
+		BeforeEach(func() {
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5000", nil))
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5001", nil))
+			mockPipeline.EXPECT().Exec()
+		})
+
 		It("should create a pod in kubernetes", func() {
 			pod, err := models.NewPod(
 				game,
@@ -287,6 +298,15 @@ var _ = Describe("Pod", func() {
 	})
 
 	Describe("Delete", func() {
+		BeforeEach(func() {
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5000", nil))
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5001", nil))
+			mockPipeline.EXPECT().Exec()
+		})
+
 		It("should delete a pod from kubernetes", func() {
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5000)
@@ -334,6 +354,30 @@ var _ = Describe("Pod", func() {
 			err = pod.Delete(clientset, mockRedisClient)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Pod \"pong-free-for-all-0\" not found"))
+		})
+	})
+
+	Describe("PodExists", func() {
+		It("should return true if pod exists", func() {
+			name := "pod-name"
+			namespace := "pod-ns"
+			pod := &v1.Pod{}
+			pod.SetName(name)
+			_, err := clientset.CoreV1().Pods(namespace).Create(pod)
+			Expect(err).NotTo(HaveOccurred())
+
+			exists, err := models.PodExists(name, namespace, clientset)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exists).To(BeTrue())
+		})
+
+		It("should return false if pod does not exist", func() {
+			name := "pod-name"
+			namespace := "pod-ns"
+
+			exists, err := models.PodExists(name, namespace, clientset)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exists).To(BeFalse())
 		})
 	})
 })

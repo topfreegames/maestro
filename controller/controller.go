@@ -308,7 +308,6 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 	err = waitForPods(
 		willTimeoutAt.Sub(time.Now()),
 		clientset,
-		amount,
 		configYAML.Name,
 		pods,
 		l,
@@ -421,7 +420,7 @@ func UpdateSchedulerConfig(
 	redisClient *redis.Client,
 	clientset kubernetes.Interface,
 	configYAML *models.ConfigYAML,
-	timeoutSec, lockTimeoutMS int,
+	timeoutSec, lockTimeoutMS, maxSurge int,
 	lockKey string,
 	clock clockinterfaces.Clock,
 	schedulerOrNil *models.Scheduler,
@@ -431,6 +430,10 @@ func UpdateSchedulerConfig(
 		"source":    "updateSchedulerConfig",
 		"scheduler": schedulerName,
 	})
+
+	if maxSurge <= 0 {
+		return errors.New("invalid parameter: maxsurge must be greater than 0")
+	}
 
 	var scheduler *models.Scheduler
 	var oldConfig models.ConfigYAML
@@ -448,16 +451,34 @@ func UpdateSchedulerConfig(
 		}
 	}
 
+	denominator := 100 / maxSurge
+	sum := func(start, total, denominator int) int {
+		delta := total / denominator
+		if delta == 0 {
+			delta = 1
+		}
+		start = start + delta
+		if start > total {
+			start = total
+		}
+		return start
+	}
+
 	var lock *redisLock.Lock
 	if MustUpdatePods(&oldConfig, configYAML) {
 		// Lock watchers so they don't scale up and down
 		timeoutDur := time.Duration(timeoutSec) * time.Second
 		willTimeoutAt := clock.Now().Add(timeoutDur)
-		lock, err = redisClient.EnterCriticalSection(redisClient.Client, lockKey, time.Duration(lockTimeoutMS)*time.Millisecond, 0, 0)
-		ticker := time.NewTicker(500 * time.Millisecond)
+		ticker := time.NewTicker(2 * time.Second)
 		timeout := time.NewTimer(timeoutDur)
 	waitForLock:
 		for {
+			lock, err = redisClient.EnterCriticalSection(
+				redisClient.Client,
+				lockKey,
+				time.Duration(lockTimeoutMS)*time.Millisecond,
+				0, 0,
+			)
 			select {
 			case <-timeout.C:
 				return errors.New("timeout while wating for redis lock")
@@ -481,122 +502,147 @@ func UpdateSchedulerConfig(
 			}
 		}()
 
-		// Delete old rooms
-		listOptions := metav1.ListOptions{
+		kubePods, err := clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
 			LabelSelector: labels.Set{}.AsSelector().String(),
 			FieldSelector: fields.Everything().String(),
-		}
-		kubePods, err := clientset.CoreV1().Pods(schedulerName).List(listOptions)
+		})
 		if err != nil {
 			return maestroErrors.NewKubernetesError("error when listing pods", err)
 		}
 
+		totalPodsToDelete := len(kubePods.Items)
+		logger.WithField("numberOfRooms", totalPodsToDelete).Info("recreating rooms")
+
+		totalPodsToCreate := totalPodsToDelete
+		if totalPodsToCreate < configYAML.AutoScaling.Min {
+			totalPodsToCreate = configYAML.AutoScaling.Min
+		}
+
+		startCreate := 0
+		startDelete := 0
+
+		endCreate := sum(startCreate, totalPodsToCreate, denominator)
+		endDelete := sum(startDelete, totalPodsToDelete, denominator)
+
+		newPods := []*v1.Pod{}
 		timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
-		time.Sleep(1 * time.Millisecond) // This sleep avoids race condition between select goroutine and timer goroutine
-		numberOldPods := len(kubePods.Items)
-		logger.WithField("numberOfRooms", numberOldPods).Info("deleting old rooms")
-		i := 0
-		for i < numberOldPods {
-			pod := kubePods.Items[i]
-			select {
-			case <-timeout.C:
-				err = errors.New("timeout during room deletion")
-				return maestroErrors.NewKubernetesError("error when deleting old rooms. Maestro will scale up, if necessary, with previous room configuration.", err)
-			default:
-				err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, pod.GetName())
-				if err != nil {
-					logger.WithField("roomName", pod.GetName()).WithError(err).Error("error deleting room")
-					time.Sleep(1 * time.Second)
-				} else {
-					i = i + 1
-					room := models.NewRoom(pod.GetName(), schedulerName)
-					err := room.ClearAll(redisClient.Client)
+
+		for startDelete < totalPodsToDelete {
+			// This sleep avoids race condition between select goroutine and timer goroutine
+			time.Sleep(1 * time.Millisecond)
+			podsToDelete := kubePods.Items[startDelete:endDelete]
+
+			logger.WithField("numberOfRooms", endDelete-startDelete).Info("deleting old rooms")
+			for _, pod := range podsToDelete {
+				select {
+				case <-timeout.C:
+					err = errors.New("timeout during room deletion")
+					msg := "error when deleting old rooms. Maestro will scale up, if necessary, with previous room configuration"
+					return maestroErrors.NewKubernetesError(msg, err)
+				default:
+					err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, pod.GetName())
 					if err != nil {
-						//TODO: try again so Redis doesn't hold trash data
-						logger.WithField("roomName", pod.GetName()).WithError(err).Error("error removing room info from redis")
+						logger.WithField("roomName", pod.GetName()).WithError(err).Error("error deleting room")
+						time.Sleep(1 * time.Second)
+					} else {
+						room := models.NewRoom(pod.GetName(), schedulerName)
+						err := room.ClearAll(redisClient.Client)
+						if err != nil {
+							//TODO: try again so Redis doesn't hold trash data
+							logger.WithField("roomName", pod.GetName()).WithError(err).Error("error removing room info from redis")
+						}
 					}
 				}
 			}
-		}
 
-		if numberOldPods < configYAML.AutoScaling.Min {
-			numberOldPods = configYAML.AutoScaling.Min
-		}
-		logger.WithField("numberOfRooms", numberOldPods).Info("recreating rooms")
+			createdPods := 0
+			numberOfPodsToCreate := endCreate - startCreate
+			timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
+			ticker = time.NewTicker(10 * time.Millisecond)
 
-		pods := []*v1.Pod{}
-		numberNewPods := 0
-		timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
-		ticker = time.NewTicker(1 * time.Second)
-
-		// Creates pods as they are deleted
-		for numberNewPods < numberOldPods {
-			select {
-			case <-timeout.C:
-				for _, podToDelete := range pods {
-					err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, podToDelete.GetName())
-					if err != nil {
-						logger.WithField("roomName", podToDelete.GetName()).WithError(err).Error("update scheduler timed out and room deletion failed")
+			// Creates pods as they are deleted
+			for createdPods < numberOfPodsToCreate {
+				select {
+				case <-timeout.C:
+					for _, podToDelete := range newPods {
+						err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, podToDelete.GetName())
+						if err != nil {
+							logger.
+								WithField("roomName", podToDelete.GetName()).
+								WithError(err).
+								Error("update scheduler timed out and room deletion failed")
+						}
+						room := models.NewRoom(podToDelete.GetName(), schedulerName)
+						err = room.ClearAll(redisClient.Client)
+						if err != nil {
+							//TODO: try again so Redis doesn't hold trash data
+							logger.WithField("roomName", podToDelete).WithError(err).Error("error removing room info from redis")
+						}
 					}
+					err = errors.New("timeout during new room creation")
+					return maestroErrors.
+						NewKubernetesError(
+							"error when creating new rooms. Maestro will scale up, if necessary, with previous room configuration.",
+							err,
+						)
+				case <-ticker.C:
+					for i := startCreate; i < endCreate; i++ {
+						var podExists bool
+						if i < len(podsToDelete) {
+							podToDelete := podsToDelete[i]
+							podExists, err = models.PodExists(podToDelete.GetName(), podToDelete.GetNamespace(), clientset)
+							if err != nil {
+								logger.WithError(err).Errorf("error getting pod %s", podToDelete.GetName())
+							}
+						}
+						if i >= len(podsToDelete) || !podExists {
+							pod, err := createPod(l, mr, redisClient.Client, clientset, configYAML, schedulerName)
+							if err != nil {
+								logger.WithError(err).Error("error when creating pod")
+								continue
+							}
+							newPods = append(newPods, pod)
+							createdPods = createdPods + 1
+						}
+					}
+				}
+			}
+
+			ticker.Stop()
+			if willTimeoutAt.Sub(clock.Now()) < 0 {
+				return errors.New("timeout scaling up scheduler")
+			}
+
+			// Wait for pods to be created
+			err = waitForPods(
+				willTimeoutAt.Sub(clock.Now()),
+				clientset,
+				configYAML.Name,
+				newPods[startCreate:endCreate],
+				l,
+				mr,
+			)
+			if err != nil {
+				logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
+				for _, podToDelete := range newPods {
+					deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, podToDelete.GetName())
 					room := models.NewRoom(podToDelete.GetName(), schedulerName)
-					err = room.ClearAll(redisClient.Client)
+					err := room.ClearAll(redisClient.Client)
 					if err != nil {
 						//TODO: try again so Redis doesn't hold trash data
 						logger.WithField("roomName", podToDelete).WithError(err).Error("error removing room info from redis")
 					}
 				}
-				err = errors.New("timeout during new room creation")
-				return maestroErrors.NewKubernetesError("error when creating new rooms. Maestro will scale up, if necessary, with previous room configuration.", err)
-
-			case <-ticker.C:
-				k8sPods, err := clientset.CoreV1().Pods(schedulerName).List(listOptions)
-				if err != nil {
-					logger.WithError(err).Error("error when getting pods")
-					continue
-				}
-
-				numberCurrentPods := len(k8sPods.Items)
-				numberPodsToCreate := numberOldPods - numberCurrentPods
-
-				for i := 0; i < numberPodsToCreate; i++ {
-					pod, err := createPod(l, mr, redisClient.Client, clientset, configYAML, schedulerName)
-					if err != nil {
-						logger.WithError(err).Error("error when creating pod")
-						continue
-					}
-					pods = append(pods, pod)
-					numberNewPods = numberNewPods + 1
-				}
+				return err
 			}
-		}
 
-		ticker.Stop()
-		if willTimeoutAt.Sub(clock.Now()) < 0 {
-			return errors.New("timeout scaling up scheduler")
-		}
-
-		// Wait for pods to be created
-		err = waitForPods(
-			willTimeoutAt.Sub(clock.Now()),
-			clientset,
-			numberNewPods,
-			configYAML.Name,
-			pods,
-			l,
-			mr,
-		)
-		if err != nil {
-			logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
-			for _, podToDelete := range pods {
-				deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, podToDelete.GetName())
-				room := models.NewRoom(podToDelete.GetName(), schedulerName)
-				err := room.ClearAll(redisClient.Client)
-				if err != nil {
-					//TODO: try again so Redis doesn't hold trash data
-					logger.WithField("roomName", podToDelete).WithError(err).Error("error removing room info from redis")
-				}
+			startDelete = endDelete
+			endDelete = sum(endDelete, totalPodsToDelete, denominator)
+			startCreate = endCreate
+			endCreate = sum(endCreate, totalPodsToCreate, denominator)
+			if endDelete == totalPodsToDelete {
+				endCreate = totalPodsToCreate
 			}
-			return err
 		}
 	}
 
@@ -874,14 +920,13 @@ func MustUpdatePods(old, new *models.ConfigYAML) bool {
 func waitForPods(
 	timeout time.Duration,
 	clientset kubernetes.Interface,
-	numberOfPods int,
 	namespace string,
 	pods []*v1.Pod,
 	l logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 ) error {
 	timeoutChan := time.NewTimer(timeout).C
-	tickerChan := time.NewTicker(1 * time.Second).C
+	tickerChan := time.NewTicker(10 * time.Millisecond).C
 
 	for {
 		exit := true
@@ -889,17 +934,17 @@ func waitForPods(
 		case <-timeoutChan:
 			return errors.New("timeout waiting for rooms to be created")
 		case <-tickerChan:
-			for i := 0; i < numberOfPods; i++ {
+			for i := range pods {
 				if pods[i] != nil {
 					pod, err := clientset.CoreV1().Pods(namespace).Get(pods[i].GetName(), metav1.GetOptions{})
 					if err != nil {
-						// The pod does not exist (not even on Pending or ContainerCreating state), so create again
+						//The pod does not exist (not even on Pending or ContainerCreating state), so create again
 						exit = false
-						l.WithError(err).Infof("error creating pod %s, recreating...", pod.GetName())
+						l.WithError(err).Infof("error creating pod %s, recreating...", pods[i].GetName())
 						pods[i].ResourceVersion = ""
 						_, err = clientset.CoreV1().Pods(namespace).Create(pods[i])
 						if err != nil {
-							l.WithError(err).Errorf("error recreating pod %s")
+							l.WithError(err).Errorf("error recreating pod %s", pods[i].GetName())
 						}
 					} else {
 						if len(pod.Status.Phase) == 0 {
@@ -937,7 +982,7 @@ func UpdateSchedulerImage(
 	redisClient *redis.Client,
 	clientset kubernetes.Interface,
 	schedulerName, image, lockKey string,
-	timeoutSec, lockTimeoutMS int,
+	timeoutSec, lockTimeoutMS, maxSurge int,
 	clock clockinterfaces.Clock,
 ) error {
 	scheduler, configYaml, err := schedulerAndConfigFromName(mr, db, schedulerName)
@@ -955,7 +1000,7 @@ func UpdateSchedulerImage(
 		redisClient,
 		clientset,
 		&configYaml,
-		timeoutSec, lockTimeoutMS,
+		timeoutSec, lockTimeoutMS, maxSurge,
 		lockKey,
 		clock,
 		scheduler,
@@ -985,7 +1030,7 @@ func UpdateSchedulerMin(
 		nil,
 		nil,
 		&configYaml,
-		0, 0,
+		0, 0, 100,
 		"",
 		nil,
 		scheduler,

@@ -229,3 +229,20 @@ func (p *Pod) configureHostPorts(clientset kubernetes.Interface, redisClient red
 	p.Ports = podPorts
 	return nil
 }
+
+//PodExists returns true if a pod exists on namespace
+// returns false if it doesn't
+// returns false and a error if an error occurs
+func PodExists(
+	name, namespace string,
+	clientset kubernetes.Interface,
+) (bool, error) {
+	_, err := clientset.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	if err == nil {
+		return true, nil
+	}
+	if strings.Contains(err.Error(), "not found") {
+		return false, nil
+	}
+	return false, err
+}
