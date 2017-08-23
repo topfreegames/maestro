@@ -11,14 +11,16 @@ shutdownTimeout: 10
 autoscaling:
   min: 2
   up:
+    cooldown: 30
     delta: 1
     trigger:
       usage: 70
-      time: 10
-    cooldown: 30
+      window: 60
+      threshold: 80
   down:
+    cooldown: 30
     delta: 1
     trigger:
       usage: 50
-      time: 10
-    cooldown: 30
+      window: 60
+      threshold: 80
