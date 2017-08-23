@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/eventforwarder"
 	pb "github.com/topfreegames/maestro/plugins/grpc/generated"
@@ -26,6 +27,7 @@ import (
 type GRPCForwarder struct {
 	config        *viper.Viper
 	client        pb.GRPCForwarderClient
+	logger        log.FieldLogger
 	serverAddress string
 }
 
@@ -33,6 +35,7 @@ type GRPCForwarder struct {
 type ForwarderFunc func(client pb.GRPCForwarderClient, infos map[string]interface{}) (int32, error)
 
 func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status pb.RoomStatus_RoomStatusType) *pb.RoomStatus {
+
 	req := &pb.RoomStatus{
 		Room: &pb.Room{
 			Game:   infos["game"].(string),
@@ -123,6 +126,13 @@ func (g *GRPCForwarder) PlayerLeft(infos map[string]interface{}) (status int32, 
 
 //Forward send room or player status to specified server
 func (g *GRPCForwarder) Forward(event string, infos map[string]interface{}) (status int32, err error) {
+	l := g.logger.WithFields(log.Fields{
+		"op":         "Forward",
+		"event":      event,
+		"infos":      infos,
+		"serverAddr": g.serverAddress,
+	})
+	l.Debug("forwarding event")
 	f := reflect.ValueOf(g).MethodByName(strings.Title(event))
 	if !f.IsValid() {
 		return 500, fmt.Errorf("error calling method %s in plugin", event)
@@ -131,14 +141,19 @@ func (g *GRPCForwarder) Forward(event string, infos map[string]interface{}) (sta
 	if _, ok := ret[1].Interface().(error); !ok {
 		return ret[0].Interface().(int32), nil
 	}
+	l.Debug("successfully forwarded event")
 	return ret[0].Interface().(int32), ret[1].Interface().(error)
 }
 
 func (g *GRPCForwarder) configure() error {
+	l := g.logger.WithFields(log.Fields{
+		"op": "configure",
+	})
 	g.serverAddress = g.config.GetString("address")
 	if g.serverAddress == "" {
 		return fmt.Errorf("no grpc server address informed")
 	}
+	l.Infof("connecting to grpc server at: %s", g.serverAddress)
 	conn, err := grpc.Dial(g.serverAddress, grpc.WithInsecure())
 	if err != nil {
 		return err
@@ -148,10 +163,11 @@ func (g *GRPCForwarder) configure() error {
 }
 
 // NewForwarder returns a new GRPCForwarder
-func NewForwarder(config *viper.Viper) (eventforwarder.EventForwarder, error) {
+func NewForwarder(config *viper.Viper, logger log.FieldLogger) (eventforwarder.EventForwarder, error) {
 	g := &GRPCForwarder{
 		config: config,
 	}
+	g.logger = logger
 	err := g.configure()
 	if err != nil {
 		return nil, err
