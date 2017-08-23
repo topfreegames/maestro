@@ -38,7 +38,7 @@ func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status p
 	game := infos["game"].(string)
 	roomID := infos["roomId"].(string)
 	host := infos["host"].(string)
-	port := int32(infos["port"].(int64))
+	port := infos["port"].(int32)
 
 	g.logger.WithFields(log.Fields{
 		"op":     "roomStatusRequest",
