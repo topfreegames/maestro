@@ -136,6 +136,12 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		"operation": "update",
 	})
 
+	maxSurge, err := getMaxSurge(g.App, r)
+	if err != nil {
+		g.App.HandleError(w, http.StatusBadRequest, "invalid maxsurge parameter", err)
+		return
+	}
+
 	logger.Debugf("Updating scheduler %s", params.SchedulerName)
 
 	if params.SchedulerName != payload.Name {
@@ -163,7 +169,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			redisClient,
 			g.App.KubernetesClient,
 			payload,
-			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"),
+			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"), maxSurge,
 			lockKey,
 			&clock.Clock{},
 			nil,
@@ -177,6 +183,8 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			status = http.StatusNotFound
 		} else if err.Error() == "node without label error" {
 			status = http.StatusUnprocessableEntity
+		} else if strings.Contains(err.Error(), "invalid parameter") {
+			status = http.StatusBadRequest
 		}
 		logger.WithError(err).Error("Update scheduler failed.")
 		g.App.HandleError(w, status, "Update scheduler failed", err)
@@ -434,6 +442,12 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		"operation": "setSchedulerImage",
 	})
 
+	maxSurge, err := getMaxSurge(g.App, r)
+	if err != nil {
+		g.App.HandleError(w, http.StatusBadRequest, "invalid maxsurge parameter", err)
+		return
+	}
+
 	schedulerImage := schedulerImageParamsFromCtx(r.Context())
 	if schedulerImage == nil {
 		g.App.HandleError(w, http.StatusBadRequest, "image name not sent on body", errors.New("image name not sent on body"))
@@ -460,7 +474,7 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 			redisClient,
 			g.App.KubernetesClient,
 			params.SchedulerName, schedulerImage.Image, lockKey,
-			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"),
+			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"), maxSurge,
 			&clock.Clock{},
 		)
 	})
@@ -469,6 +483,8 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		status := http.StatusInternalServerError
 		if strings.Contains(err.Error(), "not found") {
 			status = http.StatusNotFound
+		} else if strings.Contains(err.Error(), "invalid parameter") {
+			status = http.StatusBadRequest
 		}
 		logger.WithError(err).Error("failed to update scheduler image")
 		g.App.HandleError(w, status, "failed to update scheduler image", err)
