@@ -35,13 +35,25 @@ type GRPCForwarder struct {
 type ForwarderFunc func(client pb.GRPCForwarderClient, infos map[string]interface{}) (int32, error)
 
 func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status pb.RoomStatus_RoomStatusType) *pb.RoomStatus {
+	game := infos["game"].(string)
+	roomID := infos["roomId"].(string)
+	host := infos["host"].(string)
+	port := int32(infos["port"].(int64))
+
+	g.logger.WithFields(log.Fields{
+		"op":     "roomStatusRequest",
+		"game":   game,
+		"roomId": roomID,
+		"host":   host,
+		"port":   port,
+	}).Debug("getting room status request")
 
 	req := &pb.RoomStatus{
 		Room: &pb.Room{
-			Game:   infos["game"].(string),
-			RoomId: infos["roomId"].(string),
-			Host:   infos["host"].(string),
-			Port:   int32(infos["port"].(int64)),
+			Game:   game,
+			RoomId: roomID,
+			Host:   host,
+			Port:   port,
 		},
 		StatusType: status,
 	}
