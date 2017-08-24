@@ -20,9 +20,12 @@ watcher:
   lockKey: "maestro-lock-key"
   lockTimeoutMs: 180000
   gracefulShutdownTimeout: 300
+  maxSurge: 25
 worker:
   syncPeriod: 30
   gracefulShutdownTimeout: 300
+  retrieveFreePortsPeriod: 3600
+  getLocksTimeout: 300
 scaleUpTimeoutSeconds: 300
 scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 600

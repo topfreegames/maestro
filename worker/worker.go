@@ -8,6 +8,7 @@
 package worker
 
 import (
+	"errors"
 	"os"
 	"os/signal"
 	"sync"
@@ -27,6 +28,7 @@ import (
 
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type gracefulShutdown struct {
@@ -49,6 +51,8 @@ type Worker struct {
 	Watchers         map[string]*watcher.Watcher
 	gracefulShutdown *gracefulShutdown
 	Forwarders       []eventforwarder.EventForwarder
+	getLocksTimeout  int
+	lockTimeoutMS    int
 }
 
 // NewWorker is the worker constructor
@@ -80,6 +84,9 @@ func NewWorker(
 func (w *Worker) loadConfigurationDefaults() {
 	w.Config.SetDefault("worker.syncPeriod", 10)
 	w.Config.SetDefault("worker.gracefulShutdownTimeout", 300)
+	w.Config.SetDefault("worker.retrieveFreePortsPeriod", 3600)
+	w.Config.SetDefault("worker.getLocksTimeout", 300)
+	w.Config.SetDefault("worker.lockTimeoutMS", 180000)
 }
 
 func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface) error {
@@ -88,6 +95,8 @@ func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 	w.configureForwarders()
 
 	w.SyncPeriod = w.Config.GetInt("worker.syncPeriod")
+	w.getLocksTimeout = w.Config.GetInt("worker.getLocksTimeout")
+	w.lockTimeoutMS = w.Config.GetInt("worker.lockTimeoutMS")
 	w.Watchers = make(map[string]*watcher.Watcher)
 	var wg sync.WaitGroup
 	w.gracefulShutdown = &gracefulShutdown{
@@ -179,6 +188,9 @@ func (w *Worker) Start(startHostPortRange, endHostPortRange int) error {
 
 	ticker := time.NewTicker(time.Duration(w.SyncPeriod) * time.Second)
 
+	retrieveFreePortsPeriod := w.Config.GetInt("worker.retrieveFreePortsPeriod")
+	retrieveFreePortsTicker := time.NewTicker(time.Duration(retrieveFreePortsPeriod) * time.Second)
+
 	err := models.InitAvailablePorts(w.RedisClient.Client, startHostPortRange, endHostPortRange)
 	if err != nil {
 		return err
@@ -194,6 +206,17 @@ func (w *Worker) Start(startHostPortRange, endHostPortRange int) error {
 			}
 			w.EnsureRunningWatchers(schedulerNames)
 			w.RemoveDeadWatchers()
+		case <-retrieveFreePortsTicker.C:
+			l.Info("worker checking host port consistency on Redis")
+			schedulerNames, err := controller.ListSchedulersNames(l, w.MetricsReporter, w.DB)
+			if err != nil {
+				l.WithError(err).Error("error listing schedulers")
+				return err
+			}
+			err = w.RetrieveFreePorts(startHostPortRange, endHostPortRange, schedulerNames)
+			if err != nil {
+				l.WithError(err).Error("error retrieveing free host ports")
+			}
 		case sig := <-sigchan:
 			l.Warnf("caught signal %v: terminating\n", sig)
 			w.Run = false
@@ -267,4 +290,73 @@ func (w *Worker) RemoveDeadWatchers() {
 			delete(w.Watchers, schedulerName)
 		}
 	}
+}
+
+// RetrieveFreePorts walks through all pods of all schedulers and adds
+//  to Redis set all ports that should be free there but aren't
+func (w *Worker) RetrieveFreePorts(
+	start, end int,
+	schedulerNames []string,
+) error {
+	watcherLockPrefix := w.Config.GetString("watcher.lockKey")
+	timeout := time.NewTimer(time.Duration(w.getLocksTimeout) * time.Second)
+	sleepDurationIfError := 1 * time.Second
+
+	l := w.Logger.WithFields(logrus.Fields{
+		"operation": "RetrieveFreePorts",
+	})
+
+	for _, schedulerName := range schedulerNames {
+	schedulersLoop:
+		for {
+			select {
+			case <-timeout.C:
+				return errors.New("error getting locks, trying again next period...")
+			default:
+				lock, err := w.RedisClient.EnterCriticalSection(
+					w.RedisClient.Client,
+					watcher.GetLockKey(watcherLockPrefix, schedulerName),
+					time.Duration(w.lockTimeoutMS)*time.Millisecond,
+					0, 0,
+				)
+				if err != nil || lock == nil || !lock.IsLocked() {
+					if err != nil {
+						l.WithError(err).Errorf("error getting watcher %s lock", schedulerName)
+					}
+					if lock == nil || !lock.IsLocked() {
+						l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
+					}
+					time.Sleep(sleepDurationIfError)
+					continue
+				}
+				defer w.RedisClient.LeaveCriticalSection(lock)
+				break schedulersLoop
+			}
+		}
+	}
+
+	// Make all changes in another Set then Rename it. In case of error, redis does not rollback.
+	redisKey := "maestro:updated:free:ports"
+
+	pipe := w.RedisClient.Client.TxPipeline()
+	for i := start; i <= end; i++ {
+		pipe.SAdd(redisKey, i)
+	}
+
+	for _, namespace := range schedulerNames {
+		pods, err := w.KubernetesClient.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+
+		for _, pod := range pods.Items {
+			for _, port := range pod.Spec.Containers[0].Ports {
+				pipe.SRem(redisKey, port.HostPort)
+			}
+		}
+	}
+
+	pipe.Rename(redisKey, models.FreePortsRedisKey())
+	_, err := pipe.Exec()
+	return err
 }

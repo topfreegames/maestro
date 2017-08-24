@@ -20,6 +20,9 @@ watcher:
 worker:
   syncPeriod: 30
   gracefulShutdownTimeout: 300
+  retrieveFreePortsPeriod: 3600
+  getLocksTimeout: 300
+  lockTimeoutMs: 180000
 scaleUpTimeoutSeconds: 600
 scaleDownTimeoutSeconds: 600
 deleteTimeoutSeconds: 600

@@ -9,6 +9,9 @@ package worker_test
 
 import (
 	"errors"
+	"time"
+
+	"k8s.io/client-go/pkg/api/v1"
 
 	goredis "github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
@@ -16,6 +19,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
+	mtesting "github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/watcher"
 	"github.com/topfreegames/maestro/worker"
 	"gopkg.in/pg.v5/types"
@@ -202,6 +206,124 @@ cmd:
 			w.RemoveDeadWatchers()
 			Expect(w.Watchers).NotTo(HaveKey(schedulerNames[0]))
 			Expect(w.Watchers).To(HaveKey(schedulerNames[1]))
+		})
+	})
+
+	Describe("RetrieveFreePorts", func() {
+		var w *worker.Worker
+
+		BeforeEach(func() {
+			var err error
+			mockRedisClient.EXPECT().Ping()
+			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should remove two ports from set if there are two rooms with one hostPort each", func() {
+			var start, end int = 5000, 5010
+			redisKey := "maestro:updated:free:ports"
+			schedulerNames := []string{"room-0"}
+			pods := []struct {
+				Name string
+				Port int32
+			}{
+				{"room-0", int32(start)},
+				{"room-1", int32(start + 1)},
+			}
+
+			mockRedisClient.EXPECT().
+				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(goredis.NewBoolResult(true, nil))
+
+			for _, pod := range pods {
+				kubePod := &v1.Pod{}
+				kubePod.SetName(pod.Name)
+				kubePod.Spec.Containers = []v1.Container{
+					{
+						Ports: []v1.ContainerPort{
+							{HostPort: pod.Port, Name: "TCP"},
+						},
+					},
+				}
+				_, err := clientset.CoreV1().Pods(schedulerNames[0]).Create(kubePod)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for i := start; i <= end; i++ {
+				mockPipeline.EXPECT().SAdd(redisKey, i)
+			}
+
+			for _, pod := range pods {
+				mockPipeline.EXPECT().SRem(redisKey, pod.Port)
+			}
+
+			mockPipeline.EXPECT().Rename(redisKey, models.FreePortsRedisKey())
+			mockPipeline.EXPECT().Exec()
+			mockRedisClient.EXPECT().
+				Eval(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(goredis.NewCmdResult(nil, nil))
+
+			err := w.RetrieveFreePorts(start, end, schedulerNames)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should sleep and retry if can't get lock", func() {
+			var w *worker.Worker
+			timeout := 1
+			config, err := mtesting.GetDefaultConfig()
+			Expect(err).NotTo(HaveOccurred())
+			config.Set("worker.getLocksTimeout", timeout)
+			config.Set("worker.lockTimeoutMS", 0)
+			mockRedisClient.EXPECT().Ping()
+			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockRedisClient.EXPECT().
+				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(goredis.NewBoolResult(false, nil))
+
+			var start, end int = 5000, 5010
+			schedulerNames := []string{"room-0"}
+
+			startTime := time.Now()
+			err = w.RetrieveFreePorts(start, end, schedulerNames)
+			elapsedTime := time.Now().Sub(startTime)
+			Expect(elapsedTime).To(BeNumerically(">=", time.Duration(timeout)*time.Second))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("error getting locks, trying again next period..."))
+			Expect(hook.Entries).To(mtesting.ContainLogMessage(
+				"unable to get watcher room-0 lock, maybe some other process has it...",
+			))
+		})
+
+		It("should sleep and retry if error getting lock", func() {
+			var w *worker.Worker
+			timeout := 1
+			config, err := mtesting.GetDefaultConfig()
+			Expect(err).NotTo(HaveOccurred())
+			config.Set("worker.getLocksTimeout", timeout)
+			config.Set("worker.lockTimeoutMS", 0)
+			mockRedisClient.EXPECT().Ping()
+			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockRedisClient.EXPECT().
+				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(goredis.NewBoolResult(false, errors.New("error on redis")))
+
+			var start, end int = 5000, 5010
+			schedulerNames := []string{"room-0"}
+
+			startTime := time.Now()
+			err = w.RetrieveFreePorts(start, end, schedulerNames)
+			elapsedTime := time.Now().Sub(startTime)
+			Expect(elapsedTime).To(BeNumerically(">=", time.Duration(timeout)*time.Second))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("error getting locks, trying again next period..."))
+			Expect(hook.Entries).To(mtesting.ContainLogMessage(
+				"error getting watcher room-0 lock",
+			))
 		})
 	})
 })

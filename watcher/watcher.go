@@ -92,9 +92,13 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("occupiedTimeout", 60*60)
 }
 
+func GetLockKey(prefix, schedulerName string) string {
+	return fmt.Sprintf("%s-%s", prefix, schedulerName)
+}
+
 func (w *Watcher) configure() {
 	w.AutoScalingPeriod = w.Config.GetInt("watcher.autoScalingPeriod")
-	w.LockKey = fmt.Sprintf("%s-%s", w.Config.GetString("watcher.lockKey"), w.SchedulerName)
+	w.LockKey = GetLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
 	var wg sync.WaitGroup
 	w.gracefulShutdown = &gracefulShutdown{
