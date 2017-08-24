@@ -69,7 +69,7 @@ func (l *Login) GenerateLoginURL(oauthState string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	url := l.GoogleOauthConfig.AuthCodeURL(oauthState, oauth2.AccessTypeOffline)
+	url := l.GoogleOauthConfig.AuthCodeURL(oauthState, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 	return url, nil
 }
 

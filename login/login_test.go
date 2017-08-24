@@ -65,7 +65,9 @@ var _ = Describe("Login", func() {
 			login.GoogleOauthConfig = mockOauth
 			mockOauth.EXPECT().SetClientID(gomock.Any())
 			mockOauth.EXPECT().SetClientSecret(gomock.Any())
-			mockOauth.EXPECT().AuthCodeURL("state", oauth2.AccessTypeOffline).Return("oauth.com")
+			mockOauth.EXPECT().
+				AuthCodeURL("state", oauth2.AccessTypeOffline, oauth2.ApprovalForce).
+				Return("oauth.com")
 
 			url, err := login.GenerateLoginURL("state")
 			Expect(err).NotTo(HaveOccurred())
