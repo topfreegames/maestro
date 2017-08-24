@@ -121,8 +121,17 @@ func CreateScheduler(
 }
 
 // CreateNamespaceIfNecessary creates a namespace in kubernetes if it does not exist
-func CreateNamespaceIfNecessary(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, clientset kubernetes.Interface, schedulerName string) error {
-	namespace := models.NewNamespace(schedulerName)
+func CreateNamespaceIfNecessary(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	scheduler *models.Scheduler,
+) error {
+	if scheduler.State == models.StateTerminating {
+		return nil
+	}
+
+	namespace := models.NewNamespace(scheduler.Name)
 	var err error
 	var exists bool
 	err = mr.WithSegment(models.SegmentNamespace, func() error {
@@ -133,10 +142,10 @@ func CreateNamespaceIfNecessary(logger logrus.FieldLogger, mr *models.MixedMetri
 		return err
 	}
 	if exists {
-		logger.WithField("name", schedulerName).Debug("namespace already exists")
+		logger.WithField("name", scheduler.Name).Debug("namespace already exists")
 		return nil
 	}
-	logger.WithField("name", schedulerName).Info("creating namespace in kubernetes")
+	logger.WithField("name", scheduler.Name).Info("creating namespace in kubernetes")
 	return mr.WithSegment(models.SegmentNamespace, func() error {
 		return namespace.Create(clientset)
 	})

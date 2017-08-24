@@ -345,7 +345,8 @@ cmd:
 			Expect(ns.Items).To(HaveLen(1))
 			Expect(ns.Items[0].GetName()).To(Equal(name))
 
-			err = controller.CreateNamespaceIfNecessary(logger, mr, clientset, name)
+			scheduler := models.NewScheduler(name, "", "")
+			err = controller.CreateNamespaceIfNecessary(logger, mr, clientset, scheduler)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -355,13 +356,27 @@ cmd:
 			Expect(ns.Items).To(HaveLen(0))
 
 			name := "test-123"
-			err = controller.CreateNamespaceIfNecessary(logger, mr, clientset, name)
+			scheduler := models.NewScheduler(name, "", "")
+			err = controller.CreateNamespaceIfNecessary(logger, mr, clientset, scheduler)
 			Expect(err).NotTo(HaveOccurred())
 
 			ns, err = clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ns.Items).To(HaveLen(1))
 			Expect(ns.Items[0].GetName()).To(Equal(name))
+		})
+
+		It("should return nil and not create if scheduler is at Terminating state", func() {
+			name := "test-123"
+			scheduler := models.NewScheduler(name, "", "")
+			scheduler.State = models.StateTerminating
+			err := controller.CreateNamespaceIfNecessary(logger, mr, clientset, scheduler)
+			Expect(err).NotTo(HaveOccurred())
+
+			ns := models.NewNamespace(name)
+			exists, err := ns.Exists(clientset)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exists).To(BeFalse())
 		})
 	})
 

@@ -237,7 +237,7 @@ var _ = Describe("Worker", func() {
 			Eventually(func() int {
 				pods, _ = clientset.CoreV1().Pods(yaml.Name).List(listOptions)
 				return len(pods.Items)
-			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.AutoScaling.Min + yaml.AutoScaling.Up.Delta))
+			}, 120*time.Second, 1*time.Second).Should(BeNumerically(">=", yaml.AutoScaling.Min+yaml.AutoScaling.Up.Delta))
 
 			totalPorts := endPortRange - startPortRange + 1
 			takenPorts := (yaml.AutoScaling.Min + yaml.AutoScaling.Up.Delta) * len(yaml.Ports)

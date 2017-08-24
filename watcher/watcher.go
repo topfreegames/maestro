@@ -307,7 +307,7 @@ func (w *Watcher) AutoScale() {
 		logger,
 		w.MetricsReporter,
 		w.KubernetesClient,
-		w.SchedulerName,
+		scheduler,
 	)
 	if err != nil {
 		logger.WithError(err).Error("failed to create namespace")
