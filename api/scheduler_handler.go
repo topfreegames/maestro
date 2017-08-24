@@ -103,7 +103,11 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	if err != nil {
 		logger.WithError(err).Error("Delete scheduler failed.")
-		g.App.HandleError(w, http.StatusInternalServerError, "Delete scheduler failed", err)
+		status := http.StatusInternalServerError
+		if _, ok := err.(*maestroErrors.ValidationFailedError); ok {
+			status = http.StatusNotFound
+		}
+		g.App.HandleError(w, status, "Delete scheduler failed", err)
 		return
 	}
 

@@ -445,6 +445,24 @@ autoscaling:
 					Expect(recorder.Code).To(Equal(200))
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 				})
+
+				It("should return 404 if scheduler is not found", func() {
+					mockDb.EXPECT().
+						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", "schedulerName").
+						Do(func(scheduler *models.Scheduler, query string, modifier string) {
+							scheduler.YAML = ""
+						})
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(404))
+					var obj map[string]interface{}
+					err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(obj["code"]).To(Equal("MAE-004"))
+					Expect(obj["error"]).To(Equal("ValidationFailedError"))
+					Expect(obj["description"]).To(Equal("scheduler \"schedulerName\" not found"))
+					Expect(obj["success"]).To(Equal(false))
+				})
 			})
 
 			Context("when postgres is down", func() {

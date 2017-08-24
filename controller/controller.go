@@ -175,6 +175,11 @@ func DeleteScheduler(
 	if err != nil {
 		return err
 	}
+	if scheduler.YAML == "" {
+		return maestroErrors.NewValidationFailedError(
+			fmt.Errorf("scheduler \"%s\" not found", schedulerName),
+		)
+	}
 	namespace := models.NewNamespace(scheduler.Name)
 	return deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
 }

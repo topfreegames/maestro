@@ -398,6 +398,16 @@ cmd:
 			Expect(ns.Items).To(HaveLen(0))
 		})
 
+		It("should return error if scheduler doesn't exist", func() {
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.YAML = ""
+			})
+
+			err := controller.DeleteScheduler(logger, mr, mockDb, mockRedisClient, clientset, configYaml1.Name, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprintf(`scheduler "%s" not found`, configYaml1.Name)))
+		})
+
 		It("should fail if some error retrieving the scheduler", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
