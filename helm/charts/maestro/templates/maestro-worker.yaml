@@ -12,6 +12,10 @@ spec:
       labels:
         app: maestro-worker
     spec:
+      volumes:
+        - name: config
+          configMap:
+            name: maestro-cm
       containers:
         - name: maestro-worker
           command:
@@ -20,6 +24,10 @@ spec:
             - "/app/maestro worker --incluster"
           image: quay.io/tfgco/maestro:v{{ .Chart.Version }}
           imagePullPolicy: Always
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/local.yaml
+              subPath: local.yaml
           env:
             - name: MAESTRO_EXTENSIONS_PG_HOST
               value: {{ .Values.postgres_host }}
