@@ -37,8 +37,20 @@ type Resources struct {
 
 // EnvVar has name and value of an environment variable
 type EnvVar struct {
-	Name  string `yaml:"name" json:"name"`
-	Value string `yaml:"value" json:"value"`
+	Name      string     `yaml:"name" json:"name"`
+	Value     string     `yaml:"value" json:"value"`
+	ValueFrom *ValueFrom `yaml:"valueFrom" json:"valueFrom"`
+}
+
+// ValueFrom has environment variables from secrets
+type ValueFrom struct {
+	SecretKeyRef *SecretKeyRef `yaml:"secretKeyRef" json:"secretKeyRef"`
+}
+
+// ValueFrom has environment variables from secrets
+type SecretKeyRef struct {
+	Name string `yaml:"name" json:"name"`
+	Key  string `yaml:"key" json:"key"`
 }
 
 // ScalingPolicyTrigger has the configuration for a scaling policy trigger

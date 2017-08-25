@@ -272,6 +272,48 @@ var _ = Describe("Pod", func() {
 			Expect(podv1.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values).To(ConsistOf("true"))
 		})
 
+		It("should create a pod that uses secret", func() {
+			env = []*models.EnvVar{
+				{
+					Name:  "EXAMPLE_ENV_VAR",
+					Value: "examplevalue",
+				},
+				{
+					Name: "SECRET_ENV_VAR",
+					ValueFrom: &models.ValueFrom{
+						SecretKeyRef: &models.SecretKeyRef{
+							Name: "my-secret",
+							Key:  "secret-env-var",
+						},
+					},
+				},
+			}
+
+			pod, err := models.NewPod(
+				game,
+				image,
+				name,
+				namespace,
+				limits,
+				requests,
+				shutdownTimeout,
+				ports,
+				command,
+				env,
+				mockClientset,
+				mockRedisClient,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			podv1, err := pod.Create(clientset)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(podv1.Spec.Containers[0].Env).To(HaveLen(2))
+			Expect(podv1.Spec.Containers[0].Env[0].Name).To(Equal("EXAMPLE_ENV_VAR"))
+			Expect(podv1.Spec.Containers[0].Env[0].Value).To(Equal("examplevalue"))
+			Expect(podv1.Spec.Containers[0].Env[1].Name).To(Equal("SECRET_ENV_VAR"))
+			Expect(podv1.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Name).To(Equal("my-secret"))
+			Expect(podv1.Spec.Containers[0].Env[1].ValueFrom.SecretKeyRef.Key).To(Equal("secret-env-var"))
+		})
+
 		It("should return error when creating existing pod", func() {
 			pod, err := models.NewPod(
 				game,

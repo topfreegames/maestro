@@ -78,7 +78,16 @@ spec:
     env:
       {{range .Env}}
       - name: {{.Name}}
+        {{- if .Value}}
         value: "{{.Value}}"
+        {{- else}}
+        valueFrom:
+          {{- with .ValueFrom}}
+          secretKeyRef:
+            name: {{.SecretKeyRef.Name}}
+            key: {{.SecretKeyRef.Key}}
+          {{- end}}
+        {{- end}}
       {{end}}
     {{- if .Command }}
     command:

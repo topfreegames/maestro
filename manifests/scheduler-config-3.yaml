@@ -1,0 +1,30 @@
+---
+name: scheduler-name
+game: game-name
+image: nginx:alpine
+occupiedTimeout: 180
+ports:
+- containerPort: 8080
+  protocol: TCP
+  name: tcp
+shutdownTimeout: 10
+env:
+  - name: SECRET_ENV_VAR
+    valueFrom:
+      secretKeyRef:
+        name: secretname
+        key: secretkey
+autoscaling:
+  min: 2
+  up:
+    delta: 1
+    trigger:
+      usage: 70
+      time: 10
+    cooldown: 30
+  down:
+    delta: 1
+    trigger:
+      usage: 50
+      time: 10
+    cooldown: 30

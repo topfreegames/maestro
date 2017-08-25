@@ -55,6 +55,11 @@ env:
     value: examplevalue
   - name: ANOTHER_ENV_VAR
     value: anothervalue
+  - name: SECRET_ENV_VAR
+    valueFrom: 
+      secretKeyRef:
+        name: secretname
+        key: secretkey
 cmd:
   - "./room-binary"
   - "-serverType"
@@ -90,11 +95,14 @@ var _ = Describe("Scheduler", func() {
 			Expect(configYAML.AutoScaling.Down.Delta).To(Equal(2))
 			Expect(configYAML.AutoScaling.Down.Trigger.Time).To(Equal(900))
 			Expect(configYAML.AutoScaling.Down.Trigger.Usage).To(Equal(50))
-			Expect(configYAML.Env).To(HaveLen(2))
+			Expect(configYAML.Env).To(HaveLen(3))
 			Expect(configYAML.Env[0].Name).To(Equal("EXAMPLE_ENV_VAR"))
 			Expect(configYAML.Env[0].Value).To(Equal("examplevalue"))
 			Expect(configYAML.Env[1].Name).To(Equal("ANOTHER_ENV_VAR"))
 			Expect(configYAML.Env[1].Value).To(Equal("anothervalue"))
+			Expect(configYAML.Env[2].Name).To(Equal("SECRET_ENV_VAR"))
+			Expect(configYAML.Env[2].ValueFrom.SecretKeyRef.Name).To(Equal("secretname"))
+			Expect(configYAML.Env[2].ValueFrom.SecretKeyRef.Key).To(Equal("secretkey"))
 			Expect(configYAML.Cmd).To(HaveLen(3))
 			Expect(configYAML.Cmd[0]).To(Equal("./room-binary"))
 			Expect(configYAML.Cmd[1]).To(Equal("-serverType"))
