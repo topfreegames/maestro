@@ -92,9 +92,10 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "delete",
+		"scheduler": params.SchedulerName,
 	})
 
-	logger.Debug("Deleting scheduler...")
+	logger.Info("deleting scheduler")
 
 	timeoutSec := g.App.Config.GetInt("deleteTimeoutSeconds")
 	err := mr.WithSegment(models.SegmentController, func() error {
@@ -102,12 +103,12 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	})
 
 	if err != nil {
-		logger.WithError(err).Error("Delete scheduler failed.")
+		logger.WithError(err).Error("delete scheduler failed")
 		status := http.StatusInternalServerError
 		if _, ok := err.(*maestroErrors.ValidationFailedError); ok {
 			status = http.StatusNotFound
 		}
-		g.App.HandleError(w, status, "Delete scheduler failed", err)
+		g.App.HandleError(w, status, "delete scheduler failed", err)
 		return
 	}
 
@@ -115,7 +116,7 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		Write(w, http.StatusOK, `{"success": true}`)
 		return nil
 	})
-	logger.Debug("Delete scheduler succeeded.")
+	logger.Info("finished deleting scheduler")
 }
 
 // SchedulerUpdateHandler handler
@@ -138,6 +139,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "update",
+		"scheduler": params.SchedulerName,
 	})
 
 	maxSurge, err := getMaxSurge(g.App, r)
@@ -146,7 +148,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	logger.Debugf("Updating scheduler %s", params.SchedulerName)
+	logger.Info("updating scheduler")
 
 	if params.SchedulerName != payload.Name {
 		msg := fmt.Sprintf("url name %s doesn't match payload name %s", params.SchedulerName, payload.Name)
@@ -179,7 +181,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			nil,
 		)
 	})
-	logger.WithField("time", time.Now()).Info("Finished update")
+	logger.WithField("time", time.Now()).Info("finished update")
 
 	if err != nil {
 		status := http.StatusInternalServerError
@@ -199,7 +201,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		Write(w, http.StatusOK, `{"success": true}`)
 		return nil
 	})
-	logger.Debug("Update scheduler succeeded.")
+	logger.Info("update scheduler succeeded")
 }
 
 // SchedulerListHandler handler
@@ -271,6 +273,7 @@ func (g *SchedulerStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "status",
+		"scheduler": params.SchedulerName,
 	})
 
 	logger.Debugf("Getting scheduler %s status", params.SchedulerName)
@@ -389,8 +392,9 @@ func (g *SchedulerScaleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerScaleHandler",
 		"operation": "scale",
+		"scheduler": params.SchedulerName,
 	})
-	logger.Infof("scaling scheduler '%s'", params.SchedulerName)
+	logger.Info("scaling scheduler")
 
 	err := controller.ScaleScheduler(
 		logger,
@@ -422,7 +426,7 @@ func (g *SchedulerScaleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		Write(w, http.StatusOK, `{"success": true}`)
 		return nil
 	})
-	logger.Debug("scheduler successfully scaled")
+	logger.Info("scheduler successfully scaled")
 }
 
 // SchedulerImageHandler handler
@@ -440,10 +444,12 @@ func NewSchedulerImageHandler(a *App) *SchedulerImageHandler {
 func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
+	params := schedulerParamsFromContext(r.Context())
 
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "setSchedulerImage",
+		"scheduler": params.SchedulerName,
 	})
 
 	maxSurge, err := getMaxSurge(g.App, r)
@@ -457,9 +463,8 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		g.App.HandleError(w, http.StatusBadRequest, "image name not sent on body", errors.New("image name not sent on body"))
 		return
 	}
-	params := schedulerParamsFromContext(r.Context())
 
-	logger.Debug("Updating scheduler's image")
+	logger.Info("updating scheduler's image")
 
 	redisClient, err := redis.NewClient("extensions.redis", g.App.Config, g.App.RedisClient)
 	if err != nil {
@@ -495,7 +500,7 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	logger.Debug("successfully updated scheduler image")
+	logger.Info("successfully updated scheduler image")
 
 	mr.WithSegment(models.SegmentSerialization, func() error {
 		Write(w, http.StatusOK, `{"success": true}`)
@@ -518,10 +523,12 @@ func NewSchedulerUpdateMinHandler(a *App) *SchedulerUpdateMinHandler {
 func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
+	params := schedulerParamsFromContext(r.Context())
 
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "updateSchedulerMin",
+		"scheduler": params.SchedulerName,
 	})
 
 	schedulerMin := schedulerMinParamsFromCtx(r.Context())
@@ -529,7 +536,6 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		g.App.HandleError(w, http.StatusBadRequest, "min not sent on body", errors.New("min not sent on body"))
 		return
 	}
-	params := schedulerParamsFromContext(r.Context())
 
 	logger.Debug("Updating scheduler's min")
 
@@ -547,7 +553,7 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	logger.Debug("successfully updated scheduler min")
+	logger.Info("successfully updated scheduler min")
 
 	mr.WithSegment(models.SegmentSerialization, func() error {
 		Write(w, http.StatusOK, `{"success": true}`)

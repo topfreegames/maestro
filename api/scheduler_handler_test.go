@@ -479,7 +479,7 @@ autoscaling:
 					err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(obj["code"]).To(Equal("MAE-000"))
-					Expect(obj["error"]).To(Equal("Delete scheduler failed"))
+					Expect(obj["error"]).To(Equal("delete scheduler failed"))
 					Expect(obj["description"]).To(Equal("sql: database is closed"))
 					Expect(obj["success"]).To(Equal(false))
 				})
