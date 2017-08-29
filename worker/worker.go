@@ -52,7 +52,7 @@ type Worker struct {
 	gracefulShutdown *gracefulShutdown
 	Forwarders       []eventforwarder.EventForwarder
 	getLocksTimeout  int
-	lockTimeoutMS    int
+	lockTimeoutMs    int
 }
 
 // NewWorker is the worker constructor
@@ -86,7 +86,7 @@ func (w *Worker) loadConfigurationDefaults() {
 	w.Config.SetDefault("worker.gracefulShutdownTimeout", 300)
 	w.Config.SetDefault("worker.retrieveFreePortsPeriod", 3600)
 	w.Config.SetDefault("worker.getLocksTimeout", 300)
-	w.Config.SetDefault("worker.lockTimeoutMS", 180000)
+	w.Config.SetDefault("worker.lockTimeoutMs", 180000)
 }
 
 func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface) error {
@@ -96,7 +96,7 @@ func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 
 	w.SyncPeriod = w.Config.GetInt("worker.syncPeriod")
 	w.getLocksTimeout = w.Config.GetInt("worker.getLocksTimeout")
-	w.lockTimeoutMS = w.Config.GetInt("worker.lockTimeoutMS")
+	w.lockTimeoutMs = w.Config.GetInt("worker.lockTimeoutMs")
 	w.Watchers = make(map[string]*watcher.Watcher)
 	var wg sync.WaitGroup
 	w.gracefulShutdown = &gracefulShutdown{
@@ -316,7 +316,7 @@ func (w *Worker) RetrieveFreePorts(
 				lock, err := w.RedisClient.EnterCriticalSection(
 					w.RedisClient.Client,
 					watcher.GetLockKey(watcherLockPrefix, schedulerName),
-					time.Duration(w.lockTimeoutMS)*time.Millisecond,
+					time.Duration(w.lockTimeoutMs)*time.Millisecond,
 					0, 0,
 				)
 				if err != nil || lock == nil || !lock.IsLocked() {

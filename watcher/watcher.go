@@ -109,8 +109,9 @@ func (w *Watcher) configure() {
 
 func (w *Watcher) configureLogger() {
 	w.Logger = w.Logger.WithFields(logrus.Fields{
-		"source":  "maestro-watcher",
-		"version": metadata.Version,
+		"source":    "maestro-watcher",
+		"version":   metadata.Version,
+		"scheduler": w.SchedulerName,
 	})
 }
 
@@ -189,6 +190,8 @@ func (w *Watcher) RemoveDeadRooms() {
 	}
 
 	if roomsNoPingSince != nil && len(roomsNoPingSince) > 0 {
+		logger.Info("deleting rooms that are not pinging Maestro")
+
 		for _, roomName := range roomsNoPingSince {
 			room := &models.Room{
 				ID:            roomName,
@@ -211,6 +214,8 @@ func (w *Watcher) RemoveDeadRooms() {
 	}
 
 	if w.OccupiedTimeout > 0 {
+		logger.Info("deleting rooms that are stuck at occupied status")
+
 		since = time.Now().Unix() - w.OccupiedTimeout
 		logger = w.Logger.WithFields(logrus.Fields{
 			"executionID": uuid.NewV4().String(),
