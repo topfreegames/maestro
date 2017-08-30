@@ -36,15 +36,17 @@ type Resources struct {
 }
 
 // EnvVar has name and value of an environment variable
+// Obs.: ValueFrom must not be a pointer so it can compare at controller.go MustUpdate function
 type EnvVar struct {
-	Name      string     `yaml:"name" json:"name"`
-	Value     string     `yaml:"value" json:"value"`
-	ValueFrom *ValueFrom `yaml:"valueFrom" json:"valueFrom"`
+	Name      string    `yaml:"name" json:"name"`
+	Value     string    `yaml:"value" json:"value"`
+	ValueFrom ValueFrom `yaml:"valueFrom" json:"valueFrom"`
 }
 
 // ValueFrom has environment variables from secrets
+// Obs.: ValueFrom must not be a pointer so it can compare at controller.go MustUpdate function
 type ValueFrom struct {
-	SecretKeyRef *SecretKeyRef `yaml:"secretKeyRef" json:"secretKeyRef"`
+	SecretKeyRef SecretKeyRef `yaml:"secretKeyRef" json:"secretKeyRef"`
 }
 
 // ValueFrom has environment variables from secrets

@@ -1803,6 +1803,188 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 			Expect(controller.MustUpdatePods(configYaml1, &configYaml2)).To(BeFalse())
 		})
+
+		It("should return true if secret vars change", func() {
+			yaml1 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1235
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_SECRET_ENV_VAR
+    valueFrom:
+      secretKeyRef:
+        name: secretname
+        value: secretkey
+cmd:
+  - "./room"
+`
+			yaml2 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1235
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_SECRET_ENV_VAR
+    valueFrom:
+      secretKeyRef:
+        name: newsecretname
+        value: newsecretkey
+cmd:
+  - "./room"
+`
+
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			var configYaml2 models.ConfigYAML
+			err = yaml.Unmarshal([]byte(yaml2), &configYaml2)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(controller.MustUpdatePods(&configYaml1, &configYaml2)).To(BeTrue())
+		})
+
+		It("should return false if min changes with secret vars", func() {
+			yaml1 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1235
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_SECRET_ENV_VAR
+    valueFrom:
+      secretKeyRef:
+        name: secretname
+        value: secretkey
+cmd:
+  - "./room"
+`
+			yaml2 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1235
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 10
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_SECRET_ENV_VAR
+    valueFrom:
+      secretKeyRef:
+        name: secretname
+        value: secretkey
+cmd:
+  - "./room"
+`
+
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			var configYaml2 models.ConfigYAML
+			err = yaml.Unmarshal([]byte(yaml2), &configYaml2)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(controller.MustUpdatePods(&configYaml1, &configYaml2)).To(BeFalse())
+		})
 	})
 
 	Describe("UpdateSchedulerConfig", func() {

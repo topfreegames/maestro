@@ -280,8 +280,8 @@ var _ = Describe("Pod", func() {
 				},
 				{
 					Name: "SECRET_ENV_VAR",
-					ValueFrom: &models.ValueFrom{
-						SecretKeyRef: &models.SecretKeyRef{
+					ValueFrom: models.ValueFrom{
+						SecretKeyRef: models.SecretKeyRef{
 							Name: "my-secret",
 							Key:  "secret-env-var",
 						},
