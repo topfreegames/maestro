@@ -11,6 +11,7 @@ import (
 	"errors"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -206,6 +207,9 @@ func (w *Worker) Start(startHostPortRange, endHostPortRange int) error {
 			}
 			w.EnsureRunningWatchers(schedulerNames)
 			w.RemoveDeadWatchers()
+
+			l.Infof("number of goroutines: %d", runtime.NumGoroutine())
+			l.Infof("number of watchers: %d", len(w.Watchers))
 		case <-retrieveFreePortsTicker.C:
 			l.Info("worker checking host port consistency on Redis")
 			schedulerNames, err := controller.ListSchedulersNames(l, w.MetricsReporter, w.DB)
