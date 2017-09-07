@@ -81,6 +81,10 @@ var _ = Describe("App", func() {
 			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
+			defer func() {
+				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+			}()
+
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
 			request.Header.Add("Authorization", "Bearer token")
@@ -186,6 +190,10 @@ var _ = Describe("App", func() {
 			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
+			defer func() {
+				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+			}()
+
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
 			request.Header.Add("Authorization", "Bearer token")
@@ -247,6 +255,10 @@ var _ = Describe("App", func() {
 			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
+			defer func() {
+				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+			}()
+
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
 			request.Header.Add("Authorization", "Bearer token")
@@ -302,6 +314,10 @@ var _ = Describe("App", func() {
 
 			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
+
+			defer func() {
+				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+			}()
 
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
@@ -393,6 +409,10 @@ var _ = Describe("App", func() {
 			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
+			defer func() {
+				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+			}()
+
 			url := fmt.Sprintf("http://%s/scheduler", app.Address)
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
@@ -437,6 +457,10 @@ var _ = Describe("App", func() {
 			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
 
+			defer func() {
+				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+			}()
+
 			url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, configYaml.Name)
 			request, err := http.NewRequest("PUT", url, body)
 			Expect(err).NotTo(HaveOccurred())
@@ -465,6 +489,10 @@ var _ = Describe("App", func() {
 
 			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
+
+			defer func() {
+				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+			}()
 
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())
@@ -502,6 +530,10 @@ var _ = Describe("App", func() {
 
 			configYaml, err = models.NewConfigYAML(jsonStr)
 			Expect(err).NotTo(HaveOccurred())
+
+			defer func() {
+				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+			}()
 
 			request, err := http.NewRequest("POST", url, body)
 			Expect(err).NotTo(HaveOccurred())

@@ -64,7 +64,7 @@ func NextJsonStr() (string, error) {
 {
   "name": "{{.Name}}",
   "game": "game-name",
-  "image": "nginx:alpine",
+  "image": "redis:alpine",
   "toleration": "game-name",
   "ports": [
     {
