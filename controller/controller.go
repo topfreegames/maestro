@@ -709,11 +709,7 @@ func deleteSchedulerHelper(
 		logger.WithError(err).Error("failed to delete namespace pods")
 		return err
 	}
-	timeoutPods := make(chan bool, 1)
-	go func() {
-		time.Sleep(time.Duration(2*configYAML.ShutdownTimeout) * time.Second)
-		timeoutPods <- true
-	}()
+	timeoutPods := time.NewTimer(time.Duration(2*configYAML.ShutdownTimeout) * time.Second).C
 	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
 	exit := false
 	for !exit {
@@ -739,11 +735,7 @@ func deleteSchedulerHelper(
 		logger.WithError(err).Error("failed to delete namespace while deleting scheduler")
 		return err
 	}
-	timeoutNamespace := make(chan bool, 1)
-	go func() {
-		time.Sleep(time.Duration(timeoutSec) * time.Second)
-		timeoutNamespace <- true
-	}()
+	timeoutNamespace := time.NewTimer(time.Duration(timeoutSec) * time.Second).C
 	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
 	exit = false
 	for !exit {
