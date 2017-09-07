@@ -42,14 +42,14 @@ autoscaling:
     delta: 10
     trigger:
       usage: 70
-      window: 600
+      time: 600
       threshold: 80
     cooldown: 300
   down:
     delta: 2
     trigger:
       usage: 50
-      window: 900
+      time: 900
       threshold: 80
     cooldown: 300
 env:
@@ -91,11 +91,11 @@ var _ = Describe("Scheduler", func() {
 			Expect(configYAML.AutoScaling.Min).To(Equal(100))
 			Expect(configYAML.AutoScaling.Up.Cooldown).To(Equal(300))
 			Expect(configYAML.AutoScaling.Up.Delta).To(Equal(10))
-			Expect(configYAML.AutoScaling.Up.Trigger.Window).To(Equal(600))
+			Expect(configYAML.AutoScaling.Up.Trigger.Time).To(Equal(600))
 			Expect(configYAML.AutoScaling.Up.Trigger.Usage).To(Equal(70))
 			Expect(configYAML.AutoScaling.Down.Cooldown).To(Equal(300))
 			Expect(configYAML.AutoScaling.Down.Delta).To(Equal(2))
-			Expect(configYAML.AutoScaling.Down.Trigger.Window).To(Equal(900))
+			Expect(configYAML.AutoScaling.Down.Trigger.Time).To(Equal(900))
 			Expect(configYAML.AutoScaling.Down.Trigger.Usage).To(Equal(50))
 			Expect(configYAML.Env).To(HaveLen(3))
 			Expect(configYAML.Env[0].Name).To(Equal("EXAMPLE_ENV_VAR"))
@@ -242,12 +242,12 @@ var _ = Describe("Scheduler", func() {
 			Expect(autoScalingPolicy.Min).To(Equal(100))
 			Expect(autoScalingPolicy.Up.Cooldown).To(Equal(300))
 			Expect(autoScalingPolicy.Up.Delta).To(Equal(10))
-			Expect(autoScalingPolicy.Up.Trigger.Window).To(Equal(600))
+			Expect(autoScalingPolicy.Up.Trigger.Time).To(Equal(600))
 			Expect(autoScalingPolicy.Up.Trigger.Usage).To(Equal(70))
 			Expect(autoScalingPolicy.Up.Trigger.Threshold).To(Equal(80))
 			Expect(autoScalingPolicy.Down.Cooldown).To(Equal(300))
 			Expect(autoScalingPolicy.Down.Delta).To(Equal(2))
-			Expect(autoScalingPolicy.Down.Trigger.Window).To(Equal(900))
+			Expect(autoScalingPolicy.Down.Trigger.Time).To(Equal(900))
 			Expect(autoScalingPolicy.Down.Trigger.Usage).To(Equal(50))
 			Expect(autoScalingPolicy.Down.Trigger.Threshold).To(Equal(80))
 		})

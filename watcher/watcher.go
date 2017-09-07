@@ -137,7 +137,7 @@ func (w *Watcher) configureTimeout(configYaml *models.ConfigYAML) {
 func (w *Watcher) configureAutoScale(configYaml *models.ConfigYAML) {
 	var capacity, usage, threshold int
 
-	capacity = configYaml.AutoScaling.Up.Trigger.Window / w.AutoScalingPeriod
+	capacity = configYaml.AutoScaling.Up.Trigger.Time / w.AutoScalingPeriod
 	if capacity <= 0 {
 		capacity = 1
 	}
@@ -145,7 +145,7 @@ func (w *Watcher) configureAutoScale(configYaml *models.ConfigYAML) {
 	usage = configYaml.AutoScaling.Up.Trigger.Usage
 	w.ScaleUpInfo = models.NewScaleInfo(capacity, threshold, usage)
 
-	capacity = configYaml.AutoScaling.Down.Trigger.Window / w.AutoScalingPeriod
+	capacity = configYaml.AutoScaling.Down.Trigger.Time / w.AutoScalingPeriod
 	if capacity <= 0 {
 		capacity = 1
 	}

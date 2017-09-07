@@ -15,12 +15,12 @@ autoscaling:
     delta: 1
     trigger:
       usage: 70
-      window: 60
+      time: 60
       threshold: 80
   down:
     cooldown: 30
     delta: 1
     trigger:
       usage: 50
-      window: 60
+      time: 60
       threshold: 80

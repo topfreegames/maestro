@@ -91,14 +91,14 @@ autoscaling:
     delta: 10               # how many GRUs will be created every time the scaling policy is triggered
     trigger:
       usage: 70             # minimum usage (percentage) that can trigger the scaling policy
-      window: 600             # duration in seconds to wait before scaling policy takes place
+      time: 600             # duration in seconds to wait before scaling policy takes place
       threshold: 80        # percentage of the points that are above 'usage' needed to trigger scale up
     cooldown: 300           # duration in seconds to wait before consecutive scaling
   down:
     delta: 2                # how many GRUs will be terminated every time the scaling policy is triggered
     trigger:
       usage: 50             # maximum usage (percentage) the can trigger the scaling policy
-      window: 900            
+      time: 900            
       threshold: 80        # percentage of the points that are above 'usage' needed to trigger scale down
     cooldown: 300          
 env:                        # environment variable to be passed on to the container

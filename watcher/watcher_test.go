@@ -58,14 +58,14 @@ autoscaling:
     delta: 2
     trigger:
       usage: 60
-      window: 100
+      time: 100
       threshold: 80
     cooldown: 200
   down:
     delta: 1
     trigger:
       usage: 30
-      window: 500
+      time: 500
       threshold: 80
     cooldown: 500
 env:
@@ -255,7 +255,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should scale up and update scheduler state", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateSubdimensioned
@@ -309,7 +309,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should scale if roomCount is less than min", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateInSync
@@ -362,7 +362,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should change state and not scale if first state change - subdimensioned", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateInSync
@@ -399,7 +399,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should change state and not scale if first state change - overdimensioned", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateInSync
@@ -436,7 +436,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should change state and not scale if in-sync but wrong state reported", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateOverdimensioned
@@ -473,7 +473,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should do nothing if in cooldown - subdimensioned", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now()
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateSubdimensioned
@@ -499,7 +499,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should do nothing if in cooldown - overdimensioned", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now()
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateOverdimensioned
@@ -525,7 +525,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should warn if scale down is required", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateOverdimensioned
@@ -623,7 +623,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should do nothing if state is expected", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateInSync
@@ -703,7 +703,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should not panic and log error if failed to change state info", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateInSync
@@ -740,7 +740,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should not scale up if half of the points are below threshold", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateSubdimensioned
@@ -760,7 +760,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
-			total := configYaml1.AutoScaling.Up.Trigger.Window/w.AutoScalingPeriod - 1
+			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
 					w.ScaleUpInfo.AddPoint(0, 10)
@@ -768,7 +768,7 @@ var _ = Describe("Watcher", func() {
 					w.ScaleUpInfo.AddPoint(10, 10)
 				}
 			}
-			total = configYaml1.AutoScaling.Down.Trigger.Window/w.AutoScalingPeriod - 1
+			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
 					w.ScaleDownInfo.AddPoint(10, 10)
@@ -789,9 +789,9 @@ var _ = Describe("Watcher", func() {
 
 		It("should scale up if 90% of the points are above threshold", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-			w.AutoScalingPeriod = configYaml1.AutoScaling.Up.Trigger.Window / 10
+			w.AutoScalingPeriod = configYaml1.AutoScaling.Up.Trigger.Time / 10
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateSubdimensioned
 				scheduler.StateLastChangedAt = lastChangedAt.Unix()
@@ -822,7 +822,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
-			total := configYaml1.AutoScaling.Up.Trigger.Window/w.AutoScalingPeriod - 1
+			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
 					w.ScaleUpInfo.AddPoint(10, 10)
@@ -830,7 +830,7 @@ var _ = Describe("Watcher", func() {
 					w.ScaleUpInfo.AddPoint(0, 10)
 				}
 			}
-			total = configYaml1.AutoScaling.Down.Trigger.Window/w.AutoScalingPeriod - 1
+			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
 					w.ScaleDownInfo.AddPoint(0, 10)
@@ -863,7 +863,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should not scale down if half of the points are below threshold", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Cooldown+1) * time.Second)
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateSubdimensioned
@@ -889,7 +889,7 @@ var _ = Describe("Watcher", func() {
 				gomock.Any(),
 			)
 
-			total := configYaml1.AutoScaling.Up.Trigger.Window/w.AutoScalingPeriod - 1
+			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
 					w.ScaleUpInfo.AddPoint(0, 10)
@@ -897,7 +897,7 @@ var _ = Describe("Watcher", func() {
 					w.ScaleUpInfo.AddPoint(10, 10)
 				}
 			}
-			total = configYaml1.AutoScaling.Down.Trigger.Window/w.AutoScalingPeriod - 1
+			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
 					w.ScaleDownInfo.AddPoint(10, 10)
@@ -912,9 +912,9 @@ var _ = Describe("Watcher", func() {
 
 		It("should scale down if 90% of the points are above threshold", func() {
 			// GetSchedulerScalingInfo
-			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Window+1) * time.Second)
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Cooldown+1) * time.Second)
-			w.AutoScalingPeriod = configYaml1.AutoScaling.Down.Trigger.Window / 10
+			w.AutoScalingPeriod = configYaml1.AutoScaling.Down.Trigger.Time / 10
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.State = models.StateOverdimensioned
 				scheduler.StateLastChangedAt = lastChangedAt.Unix()
@@ -946,7 +946,7 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			total := configYaml1.AutoScaling.Up.Trigger.Window/w.AutoScalingPeriod - 1
+			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
 					w.ScaleUpInfo.AddPoint(0, 10)
@@ -954,7 +954,7 @@ var _ = Describe("Watcher", func() {
 					w.ScaleUpInfo.AddPoint(10, 10)
 				}
 			}
-			total = configYaml1.AutoScaling.Down.Trigger.Window/w.AutoScalingPeriod - 1
+			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
 					w.ScaleDownInfo.AddPoint(10, 10)
