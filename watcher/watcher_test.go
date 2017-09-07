@@ -201,8 +201,8 @@ var _ = Describe("Watcher", func() {
 
 			Expect(func() { go w.Start() }).ShouldNot(Panic())
 			Eventually(func() bool { return w.Run }).Should(BeTrue())
-			Eventually(func() bool { return hook.LastEntry() != nil }, 1500*time.Millisecond).Should(BeTrue())
-			Expect(hook.LastEntry().Message).To(Equal("error getting watcher lock"))
+			Eventually(func() bool { return hook.LastEntry() != nil }).Should(BeTrue())
+			Eventually(func() string { return hook.LastEntry().Message }, 1500*time.Millisecond).Should(Equal("error getting watcher lock"))
 		})
 
 		It("should not panic if lock is being used", func() {
@@ -220,8 +220,9 @@ var _ = Describe("Watcher", func() {
 
 			Expect(func() { go w.Start() }).ShouldNot(Panic())
 			Eventually(func() bool { return w.Run }).Should(BeTrue())
-			Eventually(func() bool { return hook.LastEntry() != nil }, 1500*time.Millisecond).Should(BeTrue())
-			Expect(hook.LastEntry().Message).To(Equal("unable to get watcher my-scheduler lock, maybe some other process has it..."))
+			Eventually(func() bool { return hook.LastEntry() != nil }).Should(BeTrue())
+			Eventually(func() string { return hook.LastEntry().Message }, 1500*time.Millisecond).
+				Should(Equal("unable to get watcher my-scheduler lock, maybe some other process has it..."))
 		})
 	})
 
@@ -761,19 +762,21 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec()
 
 			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
+			usage := float32(configYaml1.AutoScaling.Up.Trigger.Usage) / 100
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
-					w.ScaleUpInfo.AddPoint(0, 10)
+					w.ScaleUpInfo.AddPoint(0, 10, usage)
 				} else {
-					w.ScaleUpInfo.AddPoint(10, 10)
+					w.ScaleUpInfo.AddPoint(10, 10, usage)
 				}
 			}
 			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
+			usage = float32(configYaml1.AutoScaling.Down.Trigger.Usage) / 100
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
-					w.ScaleDownInfo.AddPoint(10, 10)
+					w.ScaleDownInfo.AddPoint(10, 10, usage)
 				} else {
-					w.ScaleDownInfo.AddPoint(0, 10)
+					w.ScaleDownInfo.AddPoint(0, 10, usage)
 				}
 			}
 
@@ -823,19 +826,21 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
 			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
+			usage := float32(configYaml1.AutoScaling.Up.Trigger.Usage) / 100
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
-					w.ScaleUpInfo.AddPoint(10, 10)
+					w.ScaleUpInfo.AddPoint(10, 10, usage)
 				} else {
-					w.ScaleUpInfo.AddPoint(0, 10)
+					w.ScaleUpInfo.AddPoint(0, 10, usage)
 				}
 			}
 			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
+			usage = float32(configYaml1.AutoScaling.Down.Trigger.Usage) / 100
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
-					w.ScaleDownInfo.AddPoint(0, 10)
+					w.ScaleDownInfo.AddPoint(0, 10, usage)
 				} else {
-					w.ScaleDownInfo.AddPoint(10, 10)
+					w.ScaleDownInfo.AddPoint(10, 10, usage)
 				}
 			}
 
@@ -890,19 +895,21 @@ var _ = Describe("Watcher", func() {
 			)
 
 			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
+			usage := float32(configYaml1.AutoScaling.Up.Trigger.Usage) / 100
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
-					w.ScaleUpInfo.AddPoint(0, 10)
+					w.ScaleUpInfo.AddPoint(0, 10, usage)
 				} else {
-					w.ScaleUpInfo.AddPoint(10, 10)
+					w.ScaleUpInfo.AddPoint(10, 10, usage)
 				}
 			}
 			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
+			usage = float32(configYaml1.AutoScaling.Down.Trigger.Usage) / 100
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
-					w.ScaleDownInfo.AddPoint(10, 10)
+					w.ScaleDownInfo.AddPoint(10, 10, usage)
 				} else {
-					w.ScaleDownInfo.AddPoint(0, 10)
+					w.ScaleDownInfo.AddPoint(0, 10, usage)
 				}
 			}
 
@@ -947,19 +954,21 @@ var _ = Describe("Watcher", func() {
 			}
 
 			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
+			usage := float32(configYaml1.AutoScaling.Up.Trigger.Usage) / 100
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
-					w.ScaleUpInfo.AddPoint(0, 10)
+					w.ScaleUpInfo.AddPoint(0, 10, usage)
 				} else {
-					w.ScaleUpInfo.AddPoint(10, 10)
+					w.ScaleUpInfo.AddPoint(10, 10, usage)
 				}
 			}
 			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
+			usage = float32(configYaml1.AutoScaling.Down.Trigger.Usage) / 100
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
-					w.ScaleDownInfo.AddPoint(10, 10)
+					w.ScaleDownInfo.AddPoint(10, 10, usage)
 				} else {
-					w.ScaleDownInfo.AddPoint(0, 10)
+					w.ScaleDownInfo.AddPoint(0, 10, usage)
 				}
 			}
 

@@ -125,8 +125,9 @@ func (w *Watcher) configure() error {
 
 func (w *Watcher) configureLogger() {
 	w.Logger = w.Logger.WithFields(logrus.Fields{
-		"source":  "maestro-watcher",
-		"version": metadata.Version,
+		"source":    "maestro-watcher",
+		"version":   metadata.Version,
+		"scheduler": w.SchedulerName,
 	})
 }
 
@@ -135,23 +136,19 @@ func (w *Watcher) configureTimeout(configYaml *models.ConfigYAML) {
 }
 
 func (w *Watcher) configureAutoScale(configYaml *models.ConfigYAML) {
-	var capacity, usage, threshold int
+	var capacity int
 
 	capacity = configYaml.AutoScaling.Up.Trigger.Time / w.AutoScalingPeriod
 	if capacity <= 0 {
 		capacity = 1
 	}
-	threshold = configYaml.AutoScaling.Up.Trigger.Threshold
-	usage = configYaml.AutoScaling.Up.Trigger.Usage
-	w.ScaleUpInfo = models.NewScaleInfo(capacity, threshold, usage)
+	w.ScaleUpInfo = models.NewScaleInfo(capacity)
 
 	capacity = configYaml.AutoScaling.Down.Trigger.Time / w.AutoScalingPeriod
 	if capacity <= 0 {
 		capacity = 1
 	}
-	threshold = configYaml.AutoScaling.Down.Trigger.Threshold
-	usage = 100 - configYaml.AutoScaling.Down.Trigger.Usage
-	w.ScaleDownInfo = models.NewScaleInfo(capacity, threshold, usage)
+	w.ScaleDownInfo = models.NewScaleInfo(capacity)
 }
 
 // Start starts the watcher
@@ -159,13 +156,13 @@ func (w *Watcher) Start() {
 	l := w.Logger.WithFields(logrus.Fields{
 		"operation": "start",
 	})
+	l.Info("starting watcher")
 	w.Run = true
 	sigchan := make(chan os.Signal)
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	ticker := time.NewTicker(time.Duration(w.AutoScalingPeriod) * time.Second)
 
-	// TODO better use that buckets algorithm?
 	for w.Run == true {
 		select {
 		case <-ticker.C:
@@ -428,8 +425,11 @@ func (w *Watcher) checkState(
 		return true, false, changedState
 	}
 
-	w.ScaleUpInfo.AddPoint(roomCount.Occupied, roomCount.Total())
-	if w.ScaleUpInfo.IsAboveThreshold() {
+	threshold := autoScalingInfo.Up.Trigger.Threshold
+	usage := float32(autoScalingInfo.Up.Trigger.Usage) / 100
+
+	w.ScaleUpInfo.AddPoint(roomCount.Occupied, roomCount.Total(), usage)
+	if w.ScaleUpInfo.IsAboveThreshold(threshold) {
 		inSync = false
 		if scheduler.State != models.StateSubdimensioned {
 			scheduler.State = models.StateSubdimensioned
@@ -440,8 +440,11 @@ func (w *Watcher) checkState(
 		}
 	}
 
-	w.ScaleDownInfo.AddPoint(roomCount.Ready, roomCount.Total())
-	if w.ScaleDownInfo.IsAboveThreshold() && roomCount.Total()-autoScalingInfo.Down.Delta >= autoScalingInfo.Min {
+	threshold = autoScalingInfo.Down.Trigger.Threshold
+	usage = float32(autoScalingInfo.Down.Trigger.Usage) / 100
+
+	w.ScaleDownInfo.AddPoint(roomCount.Ready, roomCount.Total(), 1-usage)
+	if w.ScaleDownInfo.IsAboveThreshold(threshold) && roomCount.Total()-autoScalingInfo.Down.Delta >= autoScalingInfo.Min {
 		inSync = false
 		if scheduler.State != models.StateOverdimensioned {
 			scheduler.State = models.StateOverdimensioned
