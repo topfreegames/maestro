@@ -20,6 +20,7 @@ import (
 )
 
 var hostPortRange string
+var showProfile bool
 
 // workerCmd represents the worker command
 var workerCmd = &cobra.Command{
@@ -64,7 +65,7 @@ var workerCmd = &cobra.Command{
 			cmdL.Fatal("invalid port range", hostPortRange, err)
 		}
 
-		err = w.Start(startHostPortRange, endHostPortRange)
+		err = w.Start(startHostPortRange, endHostPortRange, showProfile)
 		if err != nil {
 			cmdL.Fatal(err)
 		}
@@ -93,5 +94,6 @@ func init() {
 	}
 	workerCmd.Flags().StringVar(&kubeconfig, "kubeconfig", fmt.Sprintf("%s/.kube/config", home), "path to the kubeconfig file (not needed if using --incluster)")
 	workerCmd.Flags().StringVar(&hostPortRange, "host-port-range", "40000-60000", "range of ports to use on host machine")
+	workerCmd.Flags().BoolVar(&showProfile, "show-profile", false, "if true creates an endpoint to show collected metrics")
 	RootCmd.AddCommand(workerCmd)
 }

@@ -9,6 +9,7 @@ package main
 
 import (
 	"github.com/topfreegames/maestro/cmd"
+	_ "net/http/pprof"
 )
 
 func main() {

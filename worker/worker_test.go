@@ -108,7 +108,7 @@ cmd:
 				Eval(gomock.Any(), gomock.Any(), startPortRange, endPortRange).
 				Return(goredis.NewCmdResult(nil, nil))
 
-			w.Start(startPortRange, endPortRange)
+			w.Start(startPortRange, endPortRange, false)
 		})
 
 		It("should log error and not panic if failed to list scheduler names", func() {
@@ -123,7 +123,7 @@ cmd:
 				Eval(gomock.Any(), gomock.Any(), startPortRange, endPortRange).
 				Return(goredis.NewCmdResult(nil, nil))
 
-			err := w.Start(startPortRange, endPortRange)
+			err := w.Start(startPortRange, endPortRange, false)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
 			Expect(hook.LastEntry().Message).To(Equal("error listing schedulers"))
