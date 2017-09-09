@@ -44,7 +44,7 @@ func (s *ScaleInfo) AddPoint(point, total int, usage float32) {
 
 // IsAboveThreshold returns true if the percentage of points above usage is greater than threshold
 func (s *ScaleInfo) IsAboveThreshold(threshold int) bool {
-	return 100*s.pointsAboveUsage >= threshold*s.length
+	return 100*s.pointsAboveUsage > threshold*s.length
 }
 
 // GetPoints returns the array of points, where each point is the usage at that time

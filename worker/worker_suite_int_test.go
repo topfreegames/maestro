@@ -90,7 +90,7 @@ var _ = BeforeSuite(func() {
 
 	w, err = worker.NewWorker(config, logger, mr, false, "", app.DB, app.RedisClient, clientset)
 	Expect(err).NotTo(HaveOccurred())
-	go w.Start(startPortRange, endPortRange)
+	go w.Start(startPortRange, endPortRange, false)
 })
 
 var _ = AfterEach(func() {

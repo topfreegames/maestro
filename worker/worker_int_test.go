@@ -91,7 +91,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			defer func() {
-				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+				clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
 			}()
 
 			schedulerNames := []string{yaml.Name}
@@ -135,7 +135,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			defer func() {
-				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+				clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
 			}()
 
 			schedulerNames := []string{yaml.Name}
@@ -176,7 +176,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			defer func() {
-				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+				clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
 			}()
 
 			jsonStr, err = mt.NextJsonStr()
@@ -193,7 +193,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			defer func() {
-				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+				clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
 			}()
 
 			Eventually(func() int {
@@ -234,7 +234,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			defer func() {
-				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+				clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
 			}()
 
 			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
@@ -331,7 +331,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			defer func() {
-				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+				clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
 			}()
 
 			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
@@ -376,7 +376,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			defer func() {
-				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+				clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
 			}()
 
 			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
@@ -474,7 +474,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			defer func() {
-				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+				clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
 			}()
 
 			podsBefore, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
@@ -516,7 +516,7 @@ var _ = Describe("Worker", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			defer func() {
-				clientset.CoreV1().Namespaces().Delete(configYaml.Name, &metav1.DeleteOptions{})
+				clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
 			}()
 
 			podsBefore, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)

@@ -36,7 +36,7 @@ var _ = Describe("ScaleInfo", func() {
 		Expect(points).To(HaveCap(cap))
 		Expect(points[0]).To(BeNumerically("~", 0.6, 1e-6))
 		Expect(points[1]).To(BeNumerically("~", 0.4, 1e-6))
-		Expect(scaleInfo.IsAboveThreshold(threshold)).To(BeTrue())
+		Expect(scaleInfo.IsAboveThreshold(threshold)).To(BeFalse())
 	})
 
 	It("should add point at position 2", func() {
