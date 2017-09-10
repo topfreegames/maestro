@@ -2241,6 +2241,12 @@ cmd:
 				})
 			mockDb.EXPECT().
 				Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+			mockRedisClient.EXPECT().
+				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
+				Return(redis.NewCmdResult(nil, nil))
+			mockRedisClient.EXPECT().
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+				Return(redis.NewBoolResult(true, nil))
 
 			err = controller.UpdateSchedulerConfig(
 				logger,
@@ -3392,8 +3398,21 @@ cmd:
 				Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
 
 			mockRedisClient.EXPECT().Ping().AnyTimes()
+			mockRedisClient.EXPECT().
+				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
+				Return(redis.NewCmdResult(nil, nil))
+			mockRedisClient.EXPECT().
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+				Return(redis.NewBoolResult(true, nil))
 
-			err := controller.UpdateSchedulerMin(logger, mr, mockDb, configYaml1.Name, newMin)
+			err := controller.UpdateSchedulerMin(logger,
+				mr,
+				mockDb,
+				redisClient,
+				configYaml1.Name, lockKey,
+				timeoutSec, lockTimeoutMS, newMin,
+				&clock.Clock{},
+			)
 			Expect(err).NotTo(HaveOccurred())
 
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
@@ -3428,7 +3447,14 @@ cmd:
 					*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 				})
 
-			err := controller.UpdateSchedulerMin(logger, mr, mockDb, configYaml1.Name, newMin)
+			err := controller.UpdateSchedulerMin(logger,
+				mr,
+				mockDb,
+				redisClient,
+				configYaml1.Name, lockKey,
+				timeoutSec, lockTimeoutMS, newMin,
+				&clock.Clock{},
+			)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -3439,7 +3465,14 @@ cmd:
 				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 				Return(&types.Result{}, errors.New("some error in db"))
 
-			err := controller.UpdateSchedulerMin(logger, mr, mockDb, configYaml1.Name, newMin)
+			err := controller.UpdateSchedulerMin(logger,
+				mr,
+				mockDb,
+				redisClient,
+				configYaml1.Name, lockKey,
+				timeoutSec, lockTimeoutMS, newMin,
+				&clock.Clock{},
+			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in db"))
 		})

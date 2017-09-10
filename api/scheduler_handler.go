@@ -537,10 +537,27 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	logger.Debug("Updating scheduler's min")
+	logger.Info("updating scheduler's min")
 
-	err := mr.WithSegment(models.SegmentController, func() error {
-		return controller.UpdateSchedulerMin(l, mr, g.App.DB, params.SchedulerName, schedulerMin.Min)
+	redisClient, err := redis.NewClient("extensions.redis", g.App.Config, g.App.RedisClient)
+	if err != nil {
+		logger.WithError(err).Error("error getting redisClient")
+		g.App.HandleError(w, http.StatusInternalServerError, "Update scheduler failed", err)
+		return
+	}
+	lockKey := fmt.Sprintf("%s-%s", g.App.Config.GetString("watcher.lockKey"), params.SchedulerName)
+	timeoutSec := g.App.Config.GetInt("updateTimeoutSeconds")
+
+	err = mr.WithSegment(models.SegmentController, func() error {
+		return controller.UpdateSchedulerMin(
+			l,
+			mr,
+			g.App.DB,
+			redisClient,
+			params.SchedulerName, lockKey,
+			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"), schedulerMin.Min,
+			&clock.Clock{},
+		)
 	})
 
 	if err != nil {

@@ -478,44 +478,45 @@ func UpdateSchedulerConfig(
 		return start
 	}
 
+	// Lock watchers so they don't scale up or down and the scheduler is not
+	//  overwritten with older version on database
 	var lock *redisLock.Lock
-	if MustUpdatePods(&oldConfig, configYAML) {
-		// Lock watchers so they don't scale up and down
-		timeoutDur := time.Duration(timeoutSec) * time.Second
-		willTimeoutAt := clock.Now().Add(timeoutDur)
-		ticker := time.NewTicker(2 * time.Second)
-		timeout := time.NewTimer(timeoutDur)
-	waitForLock:
-		for {
-			lock, err = redisClient.EnterCriticalSection(
-				redisClient.Client,
-				lockKey,
-				time.Duration(lockTimeoutMS)*time.Millisecond,
-				0, 0,
-			)
-			select {
-			case <-timeout.C:
-				return errors.New("timeout while wating for redis lock")
-			case <-ticker.C:
-				if lock == nil || err != nil {
-					if err != nil {
-						l.WithError(err).Error("error getting watcher lock")
-						return err
-					} else if lock == nil {
-						l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
-					}
-				} else if lock.IsLocked() {
-					break waitForLock
+	timeoutDur := time.Duration(timeoutSec) * time.Second
+	willTimeoutAt := clock.Now().Add(timeoutDur)
+	ticker := time.NewTicker(2 * time.Second)
+	timeout := time.NewTimer(timeoutDur)
+waitForLock:
+	for {
+		lock, err = redisClient.EnterCriticalSection(
+			redisClient.Client,
+			lockKey,
+			time.Duration(lockTimeoutMS)*time.Millisecond,
+			0, 0,
+		)
+		select {
+		case <-timeout.C:
+			return errors.New("timeout while wating for redis lock")
+		case <-ticker.C:
+			if lock == nil || err != nil {
+				if err != nil {
+					l.WithError(err).Error("error getting watcher lock")
+					return err
+				} else if lock == nil {
+					l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
 				}
+			} else if lock.IsLocked() {
+				break waitForLock
 			}
 		}
-		ticker.Stop()
-		defer func() {
-			if lock != nil {
-				redisClient.LeaveCriticalSection(lock)
-			}
-		}()
+	}
+	ticker.Stop()
+	defer func() {
+		if lock != nil {
+			redisClient.LeaveCriticalSection(lock)
+		}
+	}()
 
+	if MustUpdatePods(&oldConfig, configYAML) {
 		kubePods, err := clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
 			LabelSelector: labels.Set{}.AsSelector().String(),
 			FieldSelector: fields.Everything().String(),
@@ -1018,8 +1019,10 @@ func UpdateSchedulerMin(
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
-	schedulerName string,
-	schedulerMin int,
+	redisClient *redis.Client,
+	schedulerName, lockKey string,
+	timeoutSec, lockTimeoutMS, schedulerMin int,
+	clock clockinterfaces.Clock,
 ) error {
 	scheduler, configYaml, err := schedulerAndConfigFromName(mr, db, schedulerName)
 	if err != nil {
@@ -1033,12 +1036,12 @@ func UpdateSchedulerMin(
 		logger,
 		mr,
 		db,
-		nil,
+		redisClient,
 		nil,
 		&configYaml,
-		0, 0, 100,
-		"",
-		nil,
+		timeoutSec, lockTimeoutMS, 100,
+		lockKey,
+		clock,
 		scheduler,
 	)
 }
@@ -1137,6 +1140,8 @@ func ScaleScheduler(
 		}
 
 		nPods := uint(len(pods.Items))
+		logger.Debugf("current number of pods: %d", nPods)
+
 		if replicas > nPods {
 			err = ScaleUp(
 				logger,

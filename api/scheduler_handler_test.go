@@ -2115,6 +2115,14 @@ ports:
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
+				schedulerLockKey := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
+					Return(redis.NewCmdResult(nil, nil))
+				mockRedisClient.EXPECT().
+					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					Return(redis.NewBoolResult(true, nil))
+
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -2229,6 +2237,14 @@ ports:
 						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
 					})
 
+				schedulerLockKey := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
+					Return(redis.NewCmdResult(nil, nil))
+				mockRedisClient.EXPECT().
+					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					Return(redis.NewBoolResult(true, nil))
+
 				mockDb.EXPECT().
 					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
 
@@ -2303,6 +2319,14 @@ ports:
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				schedulerLockKey := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
+					Return(redis.NewCmdResult(nil, nil))
+				mockRedisClient.EXPECT().
+					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					Return(redis.NewBoolResult(true, nil))
 
 				// Update scheduler
 				body := map[string]interface{}{"min": configYaml1.AutoScaling.Min + 1}
