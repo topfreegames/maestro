@@ -24,7 +24,7 @@ var (
 	mrs       []*mock_reporters.MockReporter
 )
 
-var _ = BeforeEach(func() {
+var _ = BeforeSuite(func() {
 	singleton = reporters.GetInstance()
 	mockCtrl = gomock.NewController(GinkgoT())
 
