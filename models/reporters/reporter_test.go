@@ -10,10 +10,10 @@ import (
 var _ = Describe("Reporters", func() {
 	It("Reporters.Report() must call Report on all children", func() {
 		for _, mr := range mrs {
-			mr.EXPECT().Report()
+			mr.EXPECT().Report("report")
 		}
 
-		singleton.Report()
+		singleton.Report("report")
 	})
 
 	It("Reporters must be Singleton", func() {

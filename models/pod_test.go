@@ -13,6 +13,8 @@ import (
 
 	goredis "github.com/go-redis/redis"
 	"github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/models/reporters"
+	"github.com/topfreegames/maestro/models/reporters/mocks"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
@@ -118,6 +120,29 @@ var _ = Describe("Pod", func() {
 			Expect(pod.Ports).To(Equal(ports))
 			Expect(pod.Command).To(Equal(command))
 			Expect(pod.Env).To(Equal(env))
+		})
+
+		FIt("should report NewPod event", func() {
+			mr := mocks.NewMockReporter(mockCtrl)
+			singleton := reporters.GetInstance()
+			singleton.SetReporter("mockReporter", mr)
+			mr.EXPECT().Report("NewPod")
+
+			_, err := models.NewPod(
+				game,
+				image,
+				name,
+				namespace,
+				limits,
+				requests,
+				shutdownTimeout,
+				ports,
+				command,
+				env,
+				mockClientset,
+				mockRedisClient,
+			)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 

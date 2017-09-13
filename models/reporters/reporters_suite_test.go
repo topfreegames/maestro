@@ -5,7 +5,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/topfreegames/maestro/models/reporters"
-	"github.com/topfreegames/maestro/models/reporters/mock_reporters"
+	"github.com/topfreegames/maestro/models/reporters/mocks"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -21,7 +21,7 @@ func TestReporters(t *testing.T) {
 var (
 	mockCtrl  *gomock.Controller
 	singleton *reporters.Reporters
-	mrs       []*mock_reporters.MockReporter
+	mrs       []*mocks.MockReporter
 )
 
 var _ = BeforeSuite(func() {
@@ -29,7 +29,7 @@ var _ = BeforeSuite(func() {
 	mockCtrl = gomock.NewController(GinkgoT())
 
 	for i := 0; i < 3; i++ {
-		mr := mock_reporters.NewMockReporter(mockCtrl)
+		mr := mocks.NewMockReporter(mockCtrl)
 		mrs = append(mrs, mr)
 		singleton.SetReporter(fmt.Sprintf("Reporter-%d", i), mr)
 	}

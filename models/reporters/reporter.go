@@ -5,7 +5,7 @@ import (
 )
 
 type Reporter interface {
-	Report() error
+	Report(str string) error
 }
 
 type Reporters struct {
@@ -16,9 +16,9 @@ func (r *Reporters) SetReporter(key string, value Reporter) {
 	r.reporters[key] = value
 }
 
-func (r *Reporters) Report() error {
+func (r *Reporters) Report(str string) error {
 	for _, reporter := range r.reporters {
-		reporter.Report()
+		reporter.Report(str)
 	}
 	return nil
 }

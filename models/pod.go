@@ -13,6 +13,7 @@ import (
 	"text/template"
 
 	"github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/models/reporters"
 
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -145,6 +146,11 @@ func NewPod(
 		pod.ResourcesRequestsMemory = requests.Memory
 	}
 	err := pod.configureHostPorts(clientset, redisClient)
+
+	if err == nil {
+		reporters.GetInstance().Report("NewPod")
+	}
+
 	return pod, err
 }
 
