@@ -11,16 +11,18 @@ package models_test
 import (
 	"fmt"
 
+	"github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus/hooks/test"
 	goredis "github.com/go-redis/redis"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/models/reporters"
 	"github.com/topfreegames/maestro/models/reporters/mocks"
+	mtesting "github.com/topfreegames/maestro/testing"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Pod", func() {
@@ -126,6 +128,12 @@ var _ = Describe("Pod", func() {
 			mr := mocks.NewMockReporter(mockCtrl)
 			singleton := reporters.GetInstance()
 			singleton.SetReporter("mockReporter", mr)
+
+			config, _ := mtesting.GetDefaultConfig()
+			logger, _ := test.NewNullLogger()
+			logger.Level = logrus.DebugLevel
+			statsdR, _ := reporters.NewStatsD(config, logger)
+			singleton.SetReporter("statsd", statsdR)
 			mr.EXPECT().Report("NewPod")
 
 			_, err := models.NewPod(

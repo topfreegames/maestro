@@ -11,6 +11,9 @@ extensions:
   redis:
     url: redis://localhost:6333
     connectionTimeout: 200
+  statsd:
+    host: "0.0.0.0:8125"
+    prefix: "test"
 watcher:
   autoScalingPeriod: 10
   lockKey: "maestro-lock-key"

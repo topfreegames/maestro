@@ -32,6 +32,12 @@
   version = "v0.11.5"
 
 [[projects]]
+  name = "github.com/alexcesaro/statsd"
+  packages = ["."]
+  revision = "7fea3f0d2fab1ad973e641e51dba45443a311a90"
+  version = "v2.0.0"
+
+[[projects]]
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
   revision = "7b3beb6df3c42abd3509abfc3bcacc0fbfb7c877"
@@ -302,10 +308,10 @@
   revision = "5d46e70da8c0b6f812e0b170b7a985753b5c63cb"
 
 [[projects]]
+  branch = "feature/statsd-flush"
   name = "github.com/topfreegames/extensions"
-  packages = ["clock","clock/interfaces","clock/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
-  revision = "79ad572a7e1b2252d40f2f9a6de42162c38aca86"
-  version = "v2.6.5"
+  packages = ["clock","clock/interfaces","clock/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks","statsd","statsd/interfaces"]
+  revision = "1722b31306022def312b3274b37123a38f03028d"
 
 [[projects]]
   branch = "master"
@@ -393,6 +399,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0fd1d556f0b6eea50313a2b679f29a617ef0878be1e551cc6b30728df4a1ea61"
+  inputs-digest = "df047a62620f539e63c99e931996ccdaa57a7232065d0ac84ec8841ec5a37183"
   solver-name = "gps-cdcl"
   solver-version = 1
