@@ -62,7 +62,6 @@ var startCmd = &cobra.Command{
 		reporters.MakeReporters(config, log)
 
 		app.ListenAndServe()
-
 	},
 }
 

@@ -72,7 +72,6 @@ var workerCmd = &cobra.Command{
 		if err != nil {
 			cmdL.Fatal(err)
 		}
-
 	},
 }
 
