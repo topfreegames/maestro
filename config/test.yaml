@@ -25,6 +25,9 @@ worker:
   gracefulShutdownTimeout: 300
   retrieveFreePortsPeriod: 3600
   getLocksTimeout: 300
+reporters:
+  statsd:
+    name: "datadog"
 scaleUpTimeoutSeconds: 300
 scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 150

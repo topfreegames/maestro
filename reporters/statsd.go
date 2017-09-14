@@ -11,10 +11,19 @@ type StatsD struct {
 }
 
 func (d *StatsD) Report(str string) error {
-	println(str)
 	d.client.Increment(str)
 	d.client.Flush()
 	return nil
+}
+
+func MakeStatsD(config *viper.Viper, logger *logrus.Logger) {
+	r := GetInstance()
+	statsdR, err := NewStatsD(config, logger)
+	name := config.GetString("reporters.statsd.name")
+
+	if err == nil {
+		r.SetReporter(name, statsdR)
+	}
 }
 
 func NewStatsD(config *viper.Viper, logger *logrus.Logger) (*StatsD, error) {

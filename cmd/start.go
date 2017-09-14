@@ -58,6 +58,8 @@ var startCmd = &cobra.Command{
 			cmdL.Fatal(err)
 		}
 
+		reporters.MakeReporters(config, log)
+
 		app.ListenAndServe()
 
 	},

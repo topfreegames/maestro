@@ -17,8 +17,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/models"
-	"github.com/topfreegames/maestro/models/reporters"
-	"github.com/topfreegames/maestro/models/reporters/mocks"
+	"github.com/topfreegames/maestro/reporters"
+	"github.com/topfreegames/maestro/reporters/mocks"
 	mtesting "github.com/topfreegames/maestro/testing"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -124,34 +124,65 @@ var _ = Describe("Pod", func() {
 			Expect(pod.Env).To(Equal(env))
 		})
 
-		FIt("should report NewPod event", func() {
-			mr := mocks.NewMockReporter(mockCtrl)
-			singleton := reporters.GetInstance()
-			singleton.SetReporter("mockReporter", mr)
+		Describe("Calling Reporters' singleton instance", func() {
+			var mr *mocks.MockReporter
+			var singleton *reporters.Reporters
 
-			config, _ := mtesting.GetDefaultConfig()
-			logger, _ := test.NewNullLogger()
-			logger.Level = logrus.DebugLevel
-			statsdR, _ := reporters.NewStatsD(config, logger)
-			singleton.SetReporter("statsd", statsdR)
-			mr.EXPECT().Report("NewPod")
+			BeforeEach(func() {
+				mr = mocks.NewMockReporter(mockCtrl)
+				singleton = reporters.GetInstance()
+				singleton.SetReporter("mockReporter", mr)
 
-			_, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
-			Expect(err).NotTo(HaveOccurred())
+				config, _ := mtesting.GetDefaultConfig()
+				logger, _ := test.NewNullLogger()
+				logger.Level = logrus.DebugLevel
+				statsdR, _ := reporters.NewStatsD(config, logger)
+				singleton.SetReporter("statsd", statsdR)
+			})
+
+			createPod := func() *models.Pod {
+				mr.EXPECT().Report("pod.new.pong-free-for-all")
+
+				pod, err := models.NewPod(
+					game,
+					image,
+					name,
+					namespace,
+					limits,
+					requests,
+					shutdownTimeout,
+					ports,
+					command,
+					env,
+					mockClientset,
+					mockRedisClient,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				return pod
+			}
+
+			FIt("should report pod.new on models.NewPod()", func() {
+				createPod()
+			})
+
+			FIt("should report pod.delete on pod.Delete()", func() {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5000)
+				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
+				mockPipeline.EXPECT().Exec()
+
+				pod := createPod()
+
+				_, err := pod.Create(clientset)
+				Expect(err).NotTo(HaveOccurred())
+
+				mr.EXPECT().Report("pod.delete.pong-free-for-all")
+				err = pod.Delete(clientset, mockRedisClient)
+				Expect(err).NotTo(HaveOccurred())
+			})
 		})
+
 	})
 
 	Describe("Create", func() {

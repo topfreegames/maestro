@@ -2,6 +2,9 @@ package reporters
 
 import (
 	"sync"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 type Reporter interface {
@@ -16,11 +19,22 @@ func (r *Reporters) SetReporter(key string, value Reporter) {
 	r.reporters[key] = value
 }
 
+func (r *Reporters) GetReporter(key string) (Reporter, bool) {
+	v, p := r.reporters[key]
+	return v, p
+}
+
 func (r *Reporters) Report(str string) error {
 	for _, reporter := range r.reporters {
 		reporter.Report(str)
 	}
 	return nil
+}
+
+func MakeReporters(config *viper.Viper, logger *logrus.Logger) {
+	if config.IsSet("reporters.statsd") {
+		MakeStatsD(config, logger)
+	}
 }
 
 var instance *Reporters
