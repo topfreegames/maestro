@@ -148,7 +148,7 @@ func NewPod(
 	err := pod.configureHostPorts(clientset, redisClient)
 
 	if err == nil {
-		reporters.GetInstance().Report("NewPod")
+		reporters.GetInstance().Report("pod.new")
 	}
 
 	return pod, err
@@ -206,6 +206,10 @@ func (p *Pod) Delete(clientset kubernetes.Interface, redisClient redisinterfaces
 	if err != nil {
 		//TODO: try again?
 	}
+	if err == nil {
+		reporters.GetInstance().Report("pod.delete")
+	}
+
 	return nil
 }
 
