@@ -11,15 +11,10 @@ package models_test
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	goredis "github.com/go-redis/redis"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/models"
-	"github.com/topfreegames/maestro/reporters"
-	"github.com/topfreegames/maestro/reporters/mocks"
-	mtesting "github.com/topfreegames/maestro/testing"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
@@ -39,6 +34,28 @@ var _ = Describe("Pod", func() {
 		limits          *models.Resources
 		shutdownTimeout int
 	)
+
+	createPod := func() (*models.Pod, error) {
+		mr.EXPECT().Report("pod.new.pong-free-for-all")
+
+		pod, err := models.NewPod(
+			game,
+			image,
+			name,
+			namespace,
+			limits,
+			requests,
+			shutdownTimeout,
+			ports,
+			command,
+			env,
+			mockClientset,
+			mockRedisClient,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		return pod, err
+	}
 
 	BeforeEach(func() {
 		clientset = fake.NewSimpleClientset()
@@ -95,20 +112,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should build correct pod struct", func() {
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Game).To(Equal(game))
 			Expect(pod.Image).To(Equal(image))
@@ -125,43 +129,6 @@ var _ = Describe("Pod", func() {
 		})
 
 		Describe("Calling Reporters' singleton instance", func() {
-			var mr *mocks.MockReporter
-			var singleton *reporters.Reporters
-
-			BeforeEach(func() {
-				mr = mocks.NewMockReporter(mockCtrl)
-				singleton = reporters.GetInstance()
-				singleton.SetReporter("mockReporter", mr)
-
-				config, _ := mtesting.GetDefaultConfig()
-				logger, _ := test.NewNullLogger()
-				logger.Level = logrus.DebugLevel
-				statsdR, _ := reporters.NewStatsD(config, logger)
-				singleton.SetReporter("statsd", statsdR)
-			})
-
-			createPod := func() *models.Pod {
-				mr.EXPECT().Report("pod.new.pong-free-for-all")
-
-				pod, err := models.NewPod(
-					game,
-					image,
-					name,
-					namespace,
-					limits,
-					requests,
-					shutdownTimeout,
-					ports,
-					command,
-					env,
-					mockClientset,
-					mockRedisClient,
-				)
-				Expect(err).NotTo(HaveOccurred())
-
-				return pod
-			}
-
 			It("should report pod.new on models.NewPod()", func() {
 				createPod()
 			})
@@ -172,9 +139,9 @@ var _ = Describe("Pod", func() {
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
 				mockPipeline.EXPECT().Exec()
 
-				pod := createPod()
+				pod, err := createPod()
 
-				_, err := pod.Create(clientset)
+				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
 
 				mr.EXPECT().Report("pod.delete.pong-free-for-all")
@@ -196,20 +163,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should create a pod in kubernetes", func() {
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
 			podv1, err := pod.Create(clientset)
@@ -258,6 +212,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should create pod without requests and limits", func() {
+			mr.EXPECT().Report("pod.new.pong-free-for-all")
 			pod, err := models.NewPod(
 				game,
 				image,
@@ -312,20 +267,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should create pod with node affinity", func() {
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetAffinity(game)
 			podv1, err := pod.Create(clientset)
@@ -353,20 +295,7 @@ var _ = Describe("Pod", func() {
 				},
 			}
 
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			podv1, err := pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -379,20 +308,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should return error when creating existing pod", func() {
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -419,43 +335,18 @@ var _ = Describe("Pod", func() {
 			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
 			mockPipeline.EXPECT().Exec()
 
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
+			mr.EXPECT().Report("pod.delete.pong-free-for-all")
 			err = pod.Delete(clientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return error when deleting non existent pod", func() {
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			err = pod.Delete(clientset, mockRedisClient)
 			Expect(err).To(HaveOccurred())
