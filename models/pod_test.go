@@ -162,11 +162,11 @@ var _ = Describe("Pod", func() {
 				return pod
 			}
 
-			FIt("should report pod.new on models.NewPod()", func() {
+			It("should report pod.new on models.NewPod()", func() {
 				createPod()
 			})
 
-			FIt("should report pod.delete on pod.Delete()", func() {
+			It("should report pod.delete on pod.Delete()", func() {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5000)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
