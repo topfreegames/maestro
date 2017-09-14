@@ -12,13 +12,12 @@ import (
 	"fmt"
 
 	goredis "github.com/go-redis/redis"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Pod", func() {
@@ -35,6 +34,28 @@ var _ = Describe("Pod", func() {
 		limits          *models.Resources
 		shutdownTimeout int
 	)
+
+	createPod := func() (*models.Pod, error) {
+		mr.EXPECT().Report("pod.new.pong-free-for-all")
+
+		pod, err := models.NewPod(
+			game,
+			image,
+			name,
+			namespace,
+			limits,
+			requests,
+			shutdownTimeout,
+			ports,
+			command,
+			env,
+			mockClientset,
+			mockRedisClient,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		return pod, err
+	}
 
 	BeforeEach(func() {
 		clientset = fake.NewSimpleClientset()
@@ -91,20 +112,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should build correct pod struct", func() {
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Game).To(Equal(game))
 			Expect(pod.Image).To(Equal(image))
@@ -119,6 +127,29 @@ var _ = Describe("Pod", func() {
 			Expect(pod.Command).To(Equal(command))
 			Expect(pod.Env).To(Equal(env))
 		})
+
+		Describe("Calling Reporters' singleton instance", func() {
+			It("should report pod.new on models.NewPod()", func() {
+				createPod()
+			})
+
+			It("should report pod.delete on pod.Delete()", func() {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5000)
+				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
+				mockPipeline.EXPECT().Exec()
+
+				pod, err := createPod()
+
+				_, err = pod.Create(clientset)
+				Expect(err).NotTo(HaveOccurred())
+
+				mr.EXPECT().Report("pod.delete.pong-free-for-all")
+				err = pod.Delete(clientset, mockRedisClient)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
 	})
 
 	Describe("Create", func() {
@@ -132,20 +163,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should create a pod in kubernetes", func() {
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
 			podv1, err := pod.Create(clientset)
@@ -194,6 +212,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should create pod without requests and limits", func() {
+			mr.EXPECT().Report("pod.new.pong-free-for-all")
 			pod, err := models.NewPod(
 				game,
 				image,
@@ -248,20 +267,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should create pod with node affinity", func() {
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetAffinity(game)
 			podv1, err := pod.Create(clientset)
@@ -289,20 +295,7 @@ var _ = Describe("Pod", func() {
 				},
 			}
 
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			podv1, err := pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -315,20 +308,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should return error when creating existing pod", func() {
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -355,43 +335,18 @@ var _ = Describe("Pod", func() {
 			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
 			mockPipeline.EXPECT().Exec()
 
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
+			mr.EXPECT().Report("pod.delete.pong-free-for-all")
 			err = pod.Delete(clientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return error when deleting non existent pod", func() {
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			err = pod.Delete(clientset, mockRedisClient)
 			Expect(err).To(HaveOccurred())

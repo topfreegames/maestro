@@ -14,6 +14,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/api"
+	"github.com/topfreegames/maestro/reporters"
 )
 
 var bind string
@@ -58,8 +59,9 @@ var startCmd = &cobra.Command{
 			cmdL.Fatal(err)
 		}
 
-		app.ListenAndServe()
+		reporters.MakeReporters(config, log)
 
+		app.ListenAndServe()
 	},
 }
 

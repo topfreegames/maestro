@@ -9,10 +9,12 @@ package models
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"text/template"
 
 	"github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/reporters"
 
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -145,6 +147,11 @@ func NewPod(
 		pod.ResourcesRequestsMemory = requests.Memory
 	}
 	err := pod.configureHostPorts(clientset, redisClient)
+
+	if err == nil {
+		reporters.GetInstance().Report(fmt.Sprintf("pod.new.%s", namespace))
+	}
+
 	return pod, err
 }
 
@@ -200,6 +207,10 @@ func (p *Pod) Delete(clientset kubernetes.Interface, redisClient redisinterfaces
 	if err != nil {
 		//TODO: try again?
 	}
+	if err == nil {
+		reporters.GetInstance().Report(fmt.Sprintf("pod.delete.%s", p.Namespace))
+	}
+
 	return nil
 }
 
