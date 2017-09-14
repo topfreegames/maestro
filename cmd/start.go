@@ -14,6 +14,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/api"
+	"github.com/topfreegames/maestro/reporters"
 )
 
 var bind string
