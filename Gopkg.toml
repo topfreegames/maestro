@@ -84,9 +84,8 @@
   version = "v3.0.0-beta.0"
 
 [[dependencies]]
-  name = "github.com/topfreegames/extensions@feature/statsd-flush"
-  # version = "feature/statsd-flush"
-  # version = "v2.6.5"
+  name = "github.com/topfreegames/extensions"
+  version = "v2.7.0"
 
 [[dependencies]]
   name = "github.com/go-redis/redis"
