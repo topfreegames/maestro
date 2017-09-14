@@ -1,4 +1,4 @@
-memo = "72fd4f90cd88273ac32df0da72f07a5b17b89022483df14db6369e205199cc37"
+memo = "b4edfca61c326c32e8ed836a25cf49f534fac7aca4962a604eecd052d6e16242"
 
 [[projects]]
   name = "cloud.google.com/go"
@@ -303,8 +303,8 @@ memo = "72fd4f90cd88273ac32df0da72f07a5b17b89022483df14db6369e205199cc37"
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
-  revision = "79ad572a7e1b2252d40f2f9a6de42162c38aca86"
-  version = "v2.6.5"
+  revision = "c8c938c1bd9b033b4ec18c83e660bbb5d0cca7c5"
+  version = "v2.6.8"
 
 [[projects]]
   branch = "master"
