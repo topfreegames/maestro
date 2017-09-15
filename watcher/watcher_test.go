@@ -81,6 +81,7 @@ var _ = Describe("Watcher", func() {
 	Describe("NewWatcher", func() {
 		It("should return configured new watcher", func() {
 			name := "my-scheduler"
+			gameName := "game-name"
 			autoScalingPeriod := 1234
 			lockKey := "myLockKey"
 			lockTimeoutMs := 1000
@@ -92,7 +93,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout, []eventforwarder.EventForwarder{})
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, gameName, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w.AutoScalingPeriod).To(Equal(autoScalingPeriod))
 			Expect(w.Config).To(Equal(config))
 			Expect(w.DB).To(Equal(mockDb))
@@ -107,11 +108,12 @@ var _ = Describe("Watcher", func() {
 
 		It("should return configured new watcher using configuration defaults", func() {
 			name := "my-scheduler"
+			gameName := "game-name"
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout, []eventforwarder.EventForwarder{})
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, gameName, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w.AutoScalingPeriod).To(Equal(10))
 			Expect(w.LockKey).To(Equal("maestro-lock-key-my-scheduler"))
 			Expect(w.LockTimeoutMS).To(Equal(180000))
@@ -134,7 +136,7 @@ var _ = Describe("Watcher", func() {
 					scheduler.YAML = yaml1
 				})
 
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout, []eventforwarder.EventForwarder{})
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, configYaml1.Game, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w).NotTo(BeNil())
 
 			// EnterCriticalSection (lock done by redis-lock)
@@ -188,11 +190,12 @@ var _ = Describe("Watcher", func() {
 
 		It("should not panic if error acquiring lock", func() {
 			name := "my-scheduler"
+			gameName := "game-name"
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout, []eventforwarder.EventForwarder{})
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, gameName, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w).NotTo(BeNil())
 			defer func() { w.Run = false }()
 
@@ -207,11 +210,12 @@ var _ = Describe("Watcher", func() {
 
 		It("should not panic if lock is being used", func() {
 			name := "my-scheduler"
+			gameName := "game-name"
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, occupiedTimeout, []eventforwarder.EventForwarder{})
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, name, gameName, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w).NotTo(BeNil())
 			defer func() { w.Run = false }()
 
@@ -237,7 +241,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout, []eventforwarder.EventForwarder{})
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, configYaml1.Game, occupiedTimeout, []eventforwarder.EventForwarder{})
 			Expect(w).NotTo(BeNil())
 		})
 
@@ -1046,7 +1050,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, occupiedTimeout, []eventforwarder.EventForwarder{mockEventForwarder})
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, configYaml1.Game, occupiedTimeout, []eventforwarder.EventForwarder{mockEventForwarder})
 			Expect(w).NotTo(BeNil())
 		})
 

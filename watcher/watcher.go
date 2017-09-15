@@ -47,6 +47,7 @@ type Watcher struct {
 	LockTimeoutMS     int
 	Run               bool
 	SchedulerName     string
+	GameName          string
 	gracefulShutdown  *gracefulShutdown
 	OccupiedTimeout   int64
 	EventForwarders   []eventforwarder.EventForwarder
@@ -62,7 +63,7 @@ func NewWatcher(
 	db pginterfaces.DB,
 	redisClient *redis.Client,
 	clientset kubernetes.Interface,
-	schedulerName string,
+	schedulerName, gameName string,
 	occupiedTimeout int64,
 	eventForwarders []eventforwarder.EventForwarder,
 ) *Watcher {
@@ -74,6 +75,7 @@ func NewWatcher(
 		KubernetesClient: clientset,
 		MetricsReporter:  mr,
 		SchedulerName:    schedulerName,
+		GameName:         gameName,
 		OccupiedTimeout:  occupiedTimeout,
 		EventForwarders:  eventForwarders,
 	}
@@ -226,6 +228,7 @@ func (w *Watcher) RemoveDeadRooms() {
 			w.RedisClient.Client,
 			w.KubernetesClient,
 			w.SchedulerName,
+			w.GameName,
 			roomsNoPingSince,
 			"ping_timeout",
 		)
@@ -270,6 +273,7 @@ func (w *Watcher) RemoveDeadRooms() {
 				w.RedisClient.Client,
 				w.KubernetesClient,
 				w.SchedulerName,
+				w.GameName,
 				roomsOnOccupiedTimeout,
 				"occupied_timeout",
 			)

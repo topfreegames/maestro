@@ -258,16 +258,20 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 		} else {
 			var occupiedTimeout int64
 			var configYaml *models.ConfigYAML
+			var gameName string
+
 			configYamlStr, err := models.LoadConfig(w.DB, schedulerName)
 			if err == nil {
 				configYaml, err = models.NewConfigYAML(configYamlStr)
 				if err == nil {
 					occupiedTimeout = configYaml.OccupiedTimeout
+					gameName = configYaml.Game
 				}
 			}
 			if err != nil {
 				l.Warnf("error loading scheduler %s: %s", schedulerName, err.Error())
 				occupiedTimeout = w.Config.GetInt64("occupiedTimeout")
+				gameName = w.Config.GetString("game")
 			}
 			// create and start a watcher if necessary
 			w.Watchers[schedulerName] = watcher.NewWatcher(
@@ -278,6 +282,7 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 				w.RedisClient,
 				w.KubernetesClient,
 				schedulerName,
+				gameName,
 				occupiedTimeout,
 				w.Forwarders,
 			)
