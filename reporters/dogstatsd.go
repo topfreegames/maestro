@@ -8,6 +8,8 @@
 package reporters
 
 import (
+	"fmt"
+
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -19,8 +21,8 @@ type DogStatsD struct {
 
 func createTags(opts map[string]string) []string {
 	var tags []string
-	for _, value := range opts {
-		tags = append(tags, value)
+	for key, value := range opts {
+		tags = append(tags, fmt.Sprintf("%s:%s", key, value))
 	}
 	return tags
 }
