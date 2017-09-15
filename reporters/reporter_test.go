@@ -21,7 +21,6 @@ var _ = Describe("Reporters", func() {
 		for _, mr := range mrs {
 			mr.EXPECT().Report("report", opts)
 		}
-		reporters.MakeDogStatsD(config, logger)
 
 		singleton.Report("report", opts)
 	})
@@ -36,6 +35,16 @@ var _ = Describe("Reporters", func() {
 			singleton := reporters.GetInstance()
 			_, prs := singleton.GetReporter("dogstatsd")
 			Expect(prs).To(Equal(true))
+		})
+
+		It("must delete an existing reporter from singleton with UnsetReporter", func() {
+			reporters.MakeReporters(config, logger)
+			singleton := reporters.GetInstance()
+			_, prs := singleton.GetReporter("dogstatsd")
+			Expect(prs).To(Equal(true))
+			singleton.UnsetReporter("dogstatsd")
+			_, prs = singleton.GetReporter("dogstatsd")
+			Expect(prs).To(Equal(false))
 		})
 	})
 })

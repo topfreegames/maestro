@@ -26,6 +26,10 @@ func (r *Reporters) SetReporter(key string, value Reporter) {
 	r.reporters[key] = value
 }
 
+func (r *Reporters) UnsetReporter(key string) {
+	delete(r.reporters, key)
+}
+
 func (r *Reporters) GetReporter(key string) (Reporter, bool) {
 	v, p := r.reporters[key]
 	return v, p
