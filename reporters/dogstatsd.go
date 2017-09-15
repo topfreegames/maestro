@@ -31,7 +31,7 @@ func (d *DogStatsD) Report(event string, opts map[string]string) error {
 	if prs == false {
 		return fmt.Errorf("reportHandler for %s doesn't exist", event)
 	}
-	handler := handlerI.(func(*godogstatsd.Client, string, map[string]string) error)
+	handler := handlerI.(func(*statsd.Client, string, map[string]string) error)
 	return handler(d.client, event, opts)
 }
 

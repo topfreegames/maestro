@@ -8,7 +8,7 @@
 package dogstatsd
 
 import (
-	godogstatsd "github.com/ooyala/go-dogstatsd"
+	"github.com/DataDog/datadog-go/statsd"
 )
 
 func createTags(opts map[string]string) []string {
@@ -19,7 +19,7 @@ func createTags(opts map[string]string) []string {
 	return tags
 }
 
-func GruIncrementHandler(c *godogstatsd.Client, event string,
+func GruIncrementHandler(c *statsd.Client, event string,
 	opts map[string]string) error {
 	tags := createTags(opts)
 	c.Count(event, 1, tags, 1)
