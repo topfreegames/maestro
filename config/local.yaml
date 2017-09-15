@@ -26,7 +26,7 @@ worker:
 reporters:
   dogstatsd:
     host: "0.0.0.0:8125"
-    prefix: "maestro"
+    prefix: "maestro."
 scaleUpTimeoutSeconds: 600
 scaleDownTimeoutSeconds: 600
 deleteTimeoutSeconds: 600
