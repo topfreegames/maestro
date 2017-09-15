@@ -90,3 +90,10 @@ const StatusTerminating = "terminating"
 
 //StatusTerminated represents a room status
 const StatusTerminated = "terminated"
+
+//Reason{...} represents reasons for a pod/gru being deleted
+const ReasonScaleDown = "scale_down"
+const ReasonPingTimeout = "ping_timeout"
+const ReasonOccupiedTimeout = "occupied_timeout"
+const ReasonUpdate = "update"
+const ReasonUpdateError = "update_error"

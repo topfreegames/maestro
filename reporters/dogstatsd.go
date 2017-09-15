@@ -8,13 +8,13 @@
 package reporters
 
 import (
+	"github.com/DataDog/datadog-go/statsd"
 	"github.com/Sirupsen/logrus"
-	"github.com/ooyala/go-dogstatsd"
 	"github.com/spf13/viper"
 )
 
 type DogStatsD struct {
-	client *dogstatsd.Client
+	client *statsd.Client
 }
 
 func createTags(opts map[string]string) []string {
@@ -43,7 +43,7 @@ func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
 func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error) {
 	// handle non-existent host
 	host := config.GetString("reporters.dogstatsd.host")
-	c, err := dogstatsd.New(host)
+	c, err := statsd.New(host)
 	if err != nil {
 		return nil, err
 	}

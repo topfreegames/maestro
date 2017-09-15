@@ -379,7 +379,7 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 	var deletionErr error
 
 	for _, roomName := range idleRooms {
-		err := deletePod(logger, mr, clientset, redisClient, scheduler.Name, scheduler.Game, roomName, "scale_down")
+		err := deletePod(logger, mr, clientset, redisClient, scheduler.Name, scheduler.Game, roomName, models.ReasonScaleDown)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
 			deletionErr = err
@@ -557,7 +557,7 @@ waitForLock:
 					msg := "error when deleting old rooms. Maestro will scale up, if necessary, with previous room configuration"
 					return maestroErrors.NewKubernetesError(msg, err)
 				default:
-					err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, pod.GetName(), "update")
+					err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, pod.GetName(), models.ReasonUpdate)
 					if err != nil {
 						logger.WithField("roomName", pod.GetName()).WithError(err).Error("error deleting room")
 						time.Sleep(1 * time.Second)
@@ -582,7 +582,7 @@ waitForLock:
 				select {
 				case <-timeout.C:
 					for _, podToDelete := range newPods {
-						err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, podToDelete.GetName(), "update")
+						err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, podToDelete.GetName(), models.UpdateError)
 						if err != nil {
 							logger.
 								WithField("roomName", podToDelete.GetName()).
@@ -642,7 +642,7 @@ waitForLock:
 			if err != nil {
 				logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
 				for _, podToDelete := range newPods {
-					deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, configYAML.Game, podToDelete.GetName(), "update")
+					deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, configYAML.Game, podToDelete.GetName(), models.ReasonUpdateError)
 					room := models.NewRoom(podToDelete.GetName(), schedulerName)
 					err := room.ClearAll(redisClient.Client)
 					if err != nil {

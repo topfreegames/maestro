@@ -8,6 +8,12 @@
   version = "v0.7.0"
 
 [[projects]]
+  name = "github.com/DataDog/datadog-go"
+  packages = ["statsd"]
+  revision = "0ddda6bee21174ef6c4873647cb0d6ec9cba996f"
+  version = "1.1.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/GuiaBolso/darwin"
   packages = ["."]
@@ -30,12 +36,6 @@
   packages = [".","hooks/test"]
   revision = "ba1b36c82c5e05c4f912a88eab0dcd91a171688f"
   version = "v0.11.5"
-
-[[projects]]
-  name = "github.com/alexcesaro/statsd"
-  packages = ["."]
-  revision = "7fea3f0d2fab1ad973e641e51dba45443a311a90"
-  version = "v2.0.0"
 
 [[projects]]
   name = "github.com/asaskevich/govalidator"
@@ -254,12 +254,6 @@
   revision = "9b8c753e8dfb382618ba8fa19b4197b5dcb0434c"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/ooyala/go-dogstatsd"
-  packages = ["."]
-  revision = "23f2a1659b0203cd76910e56cd4e6394f14a5cbb"
-
-[[projects]]
   name = "github.com/pelletier/go-buffruneio"
   packages = ["."]
   revision = "c37440a7cf42ac63b919c752ca73a85067e05992"
@@ -315,7 +309,7 @@
 
 [[projects]]
   name = "github.com/topfreegames/extensions"
-  packages = ["clock","clock/interfaces","clock/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks","statsd","statsd/interfaces"]
+  packages = ["clock","clock/interfaces","clock/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
   revision = "1722b31306022def312b3274b37123a38f03028d"
   version = "v2.7.0"
 
@@ -405,6 +399,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "38f4820182ca762f973e90104b507b1d683b8215f60ca041e5e2e596d9c3567b"
+  inputs-digest = "af1ffe752d957b8cc4e06ed8593c1ca9224aae7276b6b97dd4e53ea82617d1cd"
   solver-name = "gps-cdcl"
   solver-version = 1
