@@ -15,7 +15,7 @@ import (
 )
 
 type Reporter interface {
-	Report(str string) error
+	Report(event string, opts map[string]string) error
 }
 
 type Reporters struct {
@@ -31,9 +31,9 @@ func (r *Reporters) GetReporter(key string) (Reporter, bool) {
 	return v, p
 }
 
-func (r *Reporters) Report(str string) error {
+func (r *Reporters) Report(event string, opts map[string]string) error {
 	for _, reporter := range r.reporters {
-		reporter.Report(str)
+		reporter.Report(event, opts)
 	}
 	return nil
 }

@@ -17,8 +17,8 @@ type DogStatsD struct {
 	client *dogstatsd.Client
 }
 
-func (d *DogStatsD) Report(str string) error {
-	d.client.Count(str, 1, []string{}, 1)
+func (d *DogStatsD) Report(event string, opts map[string]string) error {
+	d.client.Count(event, 1, []string{}, 1)
 	return nil
 }
 
