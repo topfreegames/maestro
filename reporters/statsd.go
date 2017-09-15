@@ -17,18 +17,16 @@ type DogStatsD struct {
 	client *dogstatsd.Client
 }
 
-func appendTag(key string, tags []string, opts map[string]string) []string {
-	tag, prs := opts[key]
-	if prs {
-		return append(tags, tag)
+func createTags(opts map[string]string) []string {
+	var tags []string
+	for _, value := range opts {
+		tags = append(tags, value)
 	}
 	return tags
 }
 
 func (d *DogStatsD) Report(event string, opts map[string]string) error {
-	var tags []string
-	tags = appendTag("game", tags, opts)
-	tags = appendTag("scheduler", tags, opts)
+	tags := createTags(opts)
 	d.client.Count(event, 1, tags, 1)
 	return nil
 }

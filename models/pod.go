@@ -200,7 +200,9 @@ func (p *Pod) Create(clientset kubernetes.Interface) (*v1.Pod, error) {
 }
 
 // Delete deletes a pod from kubernetes
-func (p *Pod) Delete(clientset kubernetes.Interface, redisClient redisinterfaces.RedisClient) error {
+func (p *Pod) Delete(clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+	reason string) error {
 	err := clientset.CoreV1().Pods(p.Namespace).Delete(p.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		return errors.NewKubernetesError("delete pod error", err)
@@ -213,6 +215,7 @@ func (p *Pod) Delete(clientset kubernetes.Interface, redisClient redisinterfaces
 		reporters.GetInstance().Report("gru.delete", map[string]string{
 			"name":      p.Game,
 			"scheduler": p.Namespace,
+			"reason":    reason,
 		})
 	}
 

@@ -693,14 +693,14 @@ cmd:
 			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler), gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().Del(gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().Exec().Times(len(expectedRooms))
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms)
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should call redis successfully and exit if no rooms should be deleted", func() {
 			scheduler := "pong-free-for-all"
 
-			err := controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, []string{})
+			err := controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, []string{}, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -732,7 +732,7 @@ cmd:
 				mockPipeline.EXPECT().Exec()
 			}
 
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms)
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -758,7 +758,7 @@ cmd:
 				mockPipeline.EXPECT().Exec()
 			}
 
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms)
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -790,7 +790,7 @@ cmd:
 			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler), gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().Del(gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis error")).Times(len(expectedRooms))
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms)
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -3034,7 +3034,7 @@ cmd:
 				mockPipeline.EXPECT().Exec()
 			}
 
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, expectedRooms)
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -3051,7 +3051,7 @@ cmd:
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
 			}
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, []string{})
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, []string{}, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -3081,7 +3081,7 @@ cmd:
 				mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis error"))
 			}
 
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, expectedRooms)
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -3101,7 +3101,7 @@ cmd:
 				mockPipeline.EXPECT().Exec()
 			}
 
-			err := controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, expectedRooms)
+			err := controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

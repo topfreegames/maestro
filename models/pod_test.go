@@ -150,8 +150,9 @@ var _ = Describe("Pod", func() {
 				mr.EXPECT().Report("gru.delete", map[string]string{
 					"name":      "pong",
 					"scheduler": "pong-free-for-all",
+					"reason":    "deletion_reason",
 				})
-				err = pod.Delete(clientset, mockRedisClient)
+				err = pod.Delete(clientset, mockRedisClient, "deletion_reason")
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -352,15 +353,16 @@ var _ = Describe("Pod", func() {
 			mr.EXPECT().Report("gru.delete", map[string]string{
 				"name":      "pong",
 				"scheduler": "pong-free-for-all",
+				"reason":    "deletion_reason",
 			})
-			err = pod.Delete(clientset, mockRedisClient)
+			err = pod.Delete(clientset, mockRedisClient, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return error when deleting non existent pod", func() {
 			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
-			err = pod.Delete(clientset, mockRedisClient)
+			err = pod.Delete(clientset, mockRedisClient, "deletion_reason")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Pod \"pong-free-for-all-0\" not found"))
 		})

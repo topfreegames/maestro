@@ -227,6 +227,7 @@ func (w *Watcher) RemoveDeadRooms() {
 			w.KubernetesClient,
 			w.SchedulerName,
 			roomsNoPingSince,
+			"ping_timeout",
 		)
 		if err != nil {
 			logger.WithError(err).Error("error removing dead rooms")
@@ -270,6 +271,7 @@ func (w *Watcher) RemoveDeadRooms() {
 				w.KubernetesClient,
 				w.SchedulerName,
 				roomsOnOccupiedTimeout,
+				"occupied_timeout",
 			)
 			if err != nil {
 				logger.WithError(err).Error("error removing old occupied rooms")
