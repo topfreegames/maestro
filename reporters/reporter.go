@@ -39,8 +39,8 @@ func (r *Reporters) Report(str string) error {
 }
 
 func MakeReporters(config *viper.Viper, logger *logrus.Logger) {
-	if config.IsSet("reporters.statsd") {
-		MakeStatsD(config, logger)
+	if config.IsSet("reporters.dogstatsd") {
+		MakeDogStatsD(config, logger)
 	}
 }
 

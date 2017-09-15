@@ -11,9 +11,6 @@ extensions:
   redis:
     url: redis://localhost:6333
     connectionTimeout: 200
-  statsd:
-    host: "0.0.0.0:8125"
-    prefix: "test"
 watcher:
   autoScalingPeriod: 10
   lockKey: "maestro-lock-key"
@@ -26,8 +23,9 @@ worker:
   retrieveFreePortsPeriod: 3600
   getLocksTimeout: 300
 reporters:
-  statsd:
-    name: "datadog"
+  dogstatsd:
+    host: "0.0.0.0:8125"
+    prefix: "test"
 scaleUpTimeoutSeconds: 300
 scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 150

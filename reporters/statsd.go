@@ -9,35 +9,35 @@ package reporters
 
 import (
 	"github.com/Sirupsen/logrus"
+	"github.com/ooyala/go-dogstatsd"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/statsd"
 )
 
-type StatsD struct {
-	client *statsd.StatsD
+type DogStatsD struct {
+	client *dogstatsd.Client
 }
 
-func (d *StatsD) Report(str string) error {
-	d.client.Increment(str)
-	d.client.Flush()
+func (d *DogStatsD) Report(str string) error {
+	d.client.Count(str, 1, []string{}, 1)
 	return nil
 }
 
-func MakeStatsD(config *viper.Viper, logger *logrus.Logger) {
+func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
 	r := GetInstance()
-	statsdR, err := NewStatsD(config, logger)
-	name := config.GetString("reporters.statsd.name")
+	dogstatsdR, err := NewDogStatsD(config, logger)
 
 	if err == nil {
-		r.SetReporter(name, statsdR)
+		r.SetReporter("dogstatsd", dogstatsdR)
 	}
 }
 
-func NewStatsD(config *viper.Viper, logger *logrus.Logger) (*StatsD, error) {
-	client, err := statsd.NewStatsD(config, logger)
+func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error) {
+	// handle non-existent host
+	host := config.GetString("reporters.dogstatsd.host")
+	c, err := dogstatsd.New(host)
 	if err != nil {
 		return nil, err
 	}
-	statsdR := &StatsD{client: client}
-	return statsdR, nil
+	dogstatsdR := &DogStatsD{client: c}
+	return dogstatsdR, nil
 }

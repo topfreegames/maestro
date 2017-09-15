@@ -19,6 +19,7 @@ var _ = Describe("Reporters", func() {
 		for _, mr := range mrs {
 			mr.EXPECT().Report("report")
 		}
+		reporters.MakeDogStatsD(config, logger)
 
 		singleton.Report("report")
 	})
@@ -31,7 +32,7 @@ var _ = Describe("Reporters", func() {
 		It("must create a reporter for every key in config.reporters", func() {
 			reporters.MakeReporters(config, logger)
 			singleton := reporters.GetInstance()
-			_, prs := singleton.GetReporter("datadog")
+			_, prs := singleton.GetReporter("dogstatsd")
 			Expect(prs).To(Equal(true))
 		})
 	})
