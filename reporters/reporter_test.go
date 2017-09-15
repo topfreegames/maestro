@@ -16,12 +16,14 @@ import (
 
 var _ = Describe("Reporters", func() {
 	It("Reporters.Report() must call Report on all children", func() {
+		opts := map[string]string{"game": "pong"}
+
 		for _, mr := range mrs {
-			mr.EXPECT().Report("report", map[string]string{})
+			mr.EXPECT().Report("report", opts)
 		}
 		reporters.MakeDogStatsD(config, logger)
 
-		singleton.Report("report", map[string]string{})
+		singleton.Report("report", opts)
 	})
 
 	It("Reporters must be Singleton", func() {

@@ -36,7 +36,10 @@ var _ = Describe("Pod", func() {
 	)
 
 	createPod := func() (*models.Pod, error) {
-		mr.EXPECT().Report("pod.new.pong-free-for-all")
+		mr.EXPECT().Report("gru.new", map[string]string{
+			"name":      "pong",
+			"scheduler": "pong-free-for-all",
+		})
 
 		pod, err := models.NewPod(
 			game,
@@ -129,11 +132,11 @@ var _ = Describe("Pod", func() {
 		})
 
 		Describe("Calling Reporters' singleton instance", func() {
-			It("should report pod.new on models.NewPod()", func() {
+			It("should report gru.new on models.NewPod()", func() {
 				createPod()
 			})
 
-			It("should report pod.delete on pod.Delete()", func() {
+			It("should report gru.delete on pod.Delete()", func() {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5000)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
@@ -144,7 +147,10 @@ var _ = Describe("Pod", func() {
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
 
-				mr.EXPECT().Report("pod.delete.pong-free-for-all")
+				mr.EXPECT().Report("gru.delete", map[string]string{
+					"name":      "pong",
+					"scheduler": "pong-free-for-all",
+				})
 				err = pod.Delete(clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -212,7 +218,10 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should create pod without requests and limits", func() {
-			mr.EXPECT().Report("pod.new.pong-free-for-all")
+			mr.EXPECT().Report("gru.new", map[string]string{
+				"name":      "pong",
+				"scheduler": "pong-free-for-all",
+			})
 			pod, err := models.NewPod(
 				game,
 				image,
@@ -340,7 +349,10 @@ var _ = Describe("Pod", func() {
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			mr.EXPECT().Report("pod.delete.pong-free-for-all")
+			mr.EXPECT().Report("gru.delete", map[string]string{
+				"name":      "pong",
+				"scheduler": "pong-free-for-all",
+			})
 			err = pod.Delete(clientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
 		})

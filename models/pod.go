@@ -9,7 +9,6 @@ package models
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"text/template"
 
@@ -149,7 +148,10 @@ func NewPod(
 	err := pod.configureHostPorts(clientset, redisClient)
 
 	if err == nil {
-		reporters.GetInstance().Report(fmt.Sprintf("pod.new.%s", namespace))
+		reporters.GetInstance().Report("gru.new", map[string]string{
+			"name":      game,
+			"scheduler": namespace,
+		})
 	}
 
 	return pod, err
@@ -208,7 +210,10 @@ func (p *Pod) Delete(clientset kubernetes.Interface, redisClient redisinterfaces
 		//TODO: try again?
 	}
 	if err == nil {
-		reporters.GetInstance().Report(fmt.Sprintf("pod.delete.%s", p.Namespace))
+		reporters.GetInstance().Report("gru.delete", map[string]string{
+			"name":      p.Game,
+			"scheduler": p.Namespace,
+		})
 	}
 
 	return nil

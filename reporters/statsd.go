@@ -17,8 +17,19 @@ type DogStatsD struct {
 	client *dogstatsd.Client
 }
 
+func appendTag(key string, tags []string, opts map[string]string) []string {
+	tag, prs := opts[key]
+	if prs {
+		return append(tags, tag)
+	}
+	return tags
+}
+
 func (d *DogStatsD) Report(event string, opts map[string]string) error {
-	d.client.Count(event, 1, []string{}, 1)
+	var tags []string
+	tags = appendTag("game", tags, opts)
+	tags = appendTag("scheduler", tags, opts)
+	d.client.Count(event, 1, tags, 1)
 	return nil
 }
 
@@ -38,6 +49,8 @@ func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error
 	if err != nil {
 		return nil, err
 	}
+	prefix := config.GetString("reporters.dogstatsd.prefix")
+	c.Namespace = prefix
 	dogstatsdR := &DogStatsD{client: c}
 	return dogstatsdR, nil
 }

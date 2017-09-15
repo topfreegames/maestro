@@ -272,7 +272,10 @@ var _ = Describe("Room", func() {
 				Return(goredis.NewStringResult("5001", nil))
 			mockPipeline.EXPECT().Exec()
 
-			mr.EXPECT().Report("pod.new.pong-free-for-all")
+			mr.EXPECT().Report("gru.new", map[string]string{
+				"name":      "pong",
+				"scheduler": "pong-free-for-all",
+			})
 			pod, err := models.NewPod(
 				game,
 				image,
