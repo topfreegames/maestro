@@ -582,7 +582,7 @@ waitForLock:
 				select {
 				case <-timeout.C:
 					for _, podToDelete := range newPods {
-						err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, podToDelete.GetName(), models.UpdateError)
+						err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, podToDelete.GetName(), models.ReasonUpdateError)
 						if err != nil {
 							logger.
 								WithField("roomName", podToDelete.GetName()).
