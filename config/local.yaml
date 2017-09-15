@@ -11,9 +11,6 @@ extensions:
   redis:
     url: redis://localhost:6363
     connectionTimeout: 200
-  statsd:
-    host: "0.0.0.0:8125"
-    prefix: "maestro"
 watcher:
   autoScalingPeriod: 10
   lockKey: "maestro-lock-key"
@@ -27,8 +24,9 @@ worker:
   getLocksTimeout: 300
   lockTimeoutMs: 180000
 reporters:
-  statsd:
-    name: "datadog"
+  dogstatsd:
+    host: "0.0.0.0:8125"
+    prefix: "maestro"
 scaleUpTimeoutSeconds: 600
 scaleDownTimeoutSeconds: 600
 deleteTimeoutSeconds: 600
