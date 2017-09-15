@@ -8,27 +8,32 @@
 package reporters
 
 import (
+	"fmt"
+
 	"github.com/Sirupsen/logrus"
-	"github.com/ooyala/go-dogstatsd"
 	"github.com/spf13/viper"
+	"github.com/topfreegames/maestro/reporters/dogstatsd"
+
+	godogstatsd "github.com/ooyala/go-dogstatsd"
 )
 
-type DogStatsD struct {
-	client *dogstatsd.Client
+var reportHandlers = map[string]interface{}{
+	"gru.new":    dogstatsd.GruIncrementHandler,
+	"gru.delete": dogstatsd.GruIncrementHandler,
 }
 
-func createTags(opts map[string]string) []string {
-	var tags []string
-	for _, value := range opts {
-		tags = append(tags, value)
-	}
-	return tags
+type DogStatsD struct {
+	client *godogstatsd.Client
 }
 
 func (d *DogStatsD) Report(event string, opts map[string]string) error {
-	tags := createTags(opts)
-	d.client.Count(event, 1, tags, 1)
-	return nil
+	handlerI, prs := reportHandlers[event]
+
+	if prs == false {
+		return fmt.Errorf("reportHandler for %s doesn't exist", event)
+	}
+	handler := handlerI.(func(*godogstatsd.Client, string, map[string]string) error)
+	return handler(d.client, event, opts)
 }
 
 func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
@@ -43,7 +48,7 @@ func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
 func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error) {
 	// handle non-existent host
 	host := config.GetString("reporters.dogstatsd.host")
-	c, err := dogstatsd.New(host)
+	c, err := godogstatsd.New(host)
 	if err != nil {
 		return nil, err
 	}
