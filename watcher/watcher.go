@@ -230,7 +230,7 @@ func (w *Watcher) RemoveDeadRooms() {
 			w.SchedulerName,
 			w.GameName,
 			roomsNoPingSince,
-			"ping_timeout",
+			models.ReasonPingTimeout,
 		)
 		if err != nil {
 			logger.WithError(err).Error("error removing dead rooms")
@@ -275,7 +275,7 @@ func (w *Watcher) RemoveDeadRooms() {
 				w.SchedulerName,
 				w.GameName,
 				roomsOnOccupiedTimeout,
-				"occupied_timeout",
+				models.ReasonOccupiedTimeout,
 			)
 			if err != nil {
 				logger.WithError(err).Error("error removing old occupied rooms")

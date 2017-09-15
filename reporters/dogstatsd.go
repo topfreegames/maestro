@@ -10,11 +10,10 @@ package reporters
 import (
 	"fmt"
 
+	"github.com/DataDog/datadog-go/statsd"
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/reporters/dogstatsd"
-
-	godogstatsd "github.com/ooyala/go-dogstatsd"
 )
 
 var reportHandlers = map[string]interface{}{
@@ -23,7 +22,7 @@ var reportHandlers = map[string]interface{}{
 }
 
 type DogStatsD struct {
-	client *godogstatsd.Client
+	client *statsd.Client
 }
 
 func (d *DogStatsD) Report(event string, opts map[string]string) error {
@@ -48,7 +47,7 @@ func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
 func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error) {
 	// handle non-existent host
 	host := config.GetString("reporters.dogstatsd.host")
-	c, err := godogstatsd.New(host)
+	c, err := statsd.New(host)
 	if err != nil {
 		return nil, err
 	}
