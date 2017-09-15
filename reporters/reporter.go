@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Reporter implementations are responsible for reporting
+// events to any sink that wants to consume them
 type Reporter interface {
 	Report(event string, opts map[string]string) error
 }
