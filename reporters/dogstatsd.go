@@ -10,7 +10,6 @@ package reporters
 import (
 	"fmt"
 
-	"github.com/DataDog/datadog-go/statsd"
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/dogstatsd"
@@ -48,12 +47,11 @@ func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
 func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error) {
 	// handle non-existent host
 	host := config.GetString("reporters.dogstatsd.host")
-	c, err := statsd.New(host)
+	prefix := config.GetString("reporters.dogstatsd.prefix")
+	c, err := dogstatsd.New(host, prefix)
 	if err != nil {
 		return nil, err
 	}
-	prefix := config.GetString("reporters.dogstatsd.prefix")
-	c.Namespace = prefix
 	dogstatsdR := &DogStatsD{client: c}
 	return dogstatsdR, nil
 }

@@ -309,8 +309,8 @@
 
 [[projects]]
   name = "github.com/topfreegames/extensions"
-  packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
-  revision = "7274535a50fc9ef71d9c65b71cbc05d5fa1775c7"
+  packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","dogstatsd/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
+  revision = "16aee783e94988f4de6251b096d17f19d26e6d23"
   version = "v2.7.0"
 
 [[projects]]
@@ -399,6 +399,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f7a615c1dbffebeeef1026a00d263ed7c201b0ca0340c5912cbde74b5f94f349"
+  inputs-digest = "486bf249a29df5a1bb81bb6b1d0ebb4da1190ca994b8b3ccc062ca04690d9fbe"
   solver-name = "gps-cdcl"
   solver-version = 1
