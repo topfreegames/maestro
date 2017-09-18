@@ -13,6 +13,7 @@ import (
 	"text/template"
 
 	"github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/reporters"
 
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -145,6 +146,14 @@ func NewPod(
 		pod.ResourcesRequestsMemory = requests.Memory
 	}
 	err := pod.configureHostPorts(clientset, redisClient)
+
+	if err == nil {
+		reporters.GetInstance().Report("gru.new", map[string]string{
+			"name":      game,
+			"scheduler": namespace,
+		})
+	}
+
 	return pod, err
 }
 
@@ -191,7 +200,9 @@ func (p *Pod) Create(clientset kubernetes.Interface) (*v1.Pod, error) {
 }
 
 // Delete deletes a pod from kubernetes
-func (p *Pod) Delete(clientset kubernetes.Interface, redisClient redisinterfaces.RedisClient) error {
+func (p *Pod) Delete(clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+	reason string) error {
 	err := clientset.CoreV1().Pods(p.Namespace).Delete(p.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		return errors.NewKubernetesError("delete pod error", err)
@@ -200,6 +211,14 @@ func (p *Pod) Delete(clientset kubernetes.Interface, redisClient redisinterfaces
 	if err != nil {
 		//TODO: try again?
 	}
+	if err == nil {
+		reporters.GetInstance().Report("gru.delete", map[string]string{
+			"name":      p.Game,
+			"scheduler": p.Namespace,
+			"reason":    reason,
+		})
+	}
+
 	return nil
 }
 

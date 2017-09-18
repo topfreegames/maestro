@@ -230,15 +230,16 @@ func DeleteUnavailableRooms(
 	mr *models.MixedMetricsReporter,
 	redisClient redisinterfaces.RedisClient,
 	clientset kubernetes.Interface,
-	schedulerName string,
+	schedulerName, gameName string,
 	roomNames []string,
+	reason string,
 ) error {
 	if len(roomNames) == 0 {
 		logger.Debug("no rooms need to be deleted")
 		return nil
 	}
 	for _, roomName := range roomNames {
-		err := deletePod(logger, mr, clientset, redisClient, schedulerName, roomName)
+		err := deletePod(logger, mr, clientset, redisClient, schedulerName, gameName, roomName, reason)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteUnavailableRooms"}).WithError(err).Error("error deleting room")
 		} else {
@@ -378,7 +379,7 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 	var deletionErr error
 
 	for _, roomName := range idleRooms {
-		err := deletePod(logger, mr, clientset, redisClient, scheduler.Name, roomName)
+		err := deletePod(logger, mr, clientset, redisClient, scheduler.Name, scheduler.Game, roomName, models.ReasonScaleDown)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
 			deletionErr = err
@@ -440,6 +441,7 @@ func UpdateSchedulerConfig(
 	schedulerOrNil *models.Scheduler,
 ) error {
 	schedulerName := configYAML.Name
+	gameName := configYAML.Game
 	l := logger.WithFields(logrus.Fields{
 		"source":    "updateSchedulerConfig",
 		"scheduler": schedulerName,
@@ -555,7 +557,7 @@ waitForLock:
 					msg := "error when deleting old rooms. Maestro will scale up, if necessary, with previous room configuration"
 					return maestroErrors.NewKubernetesError(msg, err)
 				default:
-					err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, pod.GetName())
+					err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, pod.GetName(), models.ReasonUpdate)
 					if err != nil {
 						logger.WithField("roomName", pod.GetName()).WithError(err).Error("error deleting room")
 						time.Sleep(1 * time.Second)
@@ -580,7 +582,7 @@ waitForLock:
 				select {
 				case <-timeout.C:
 					for _, podToDelete := range newPods {
-						err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, podToDelete.GetName())
+						err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, podToDelete.GetName(), models.ReasonUpdateError)
 						if err != nil {
 							logger.
 								WithField("roomName", podToDelete.GetName()).
@@ -640,7 +642,7 @@ waitForLock:
 			if err != nil {
 				logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
 				for _, podToDelete := range newPods {
-					deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, podToDelete.GetName())
+					deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, configYAML.Game, podToDelete.GetName(), models.ReasonUpdateError)
 					room := models.NewRoom(podToDelete.GetName(), schedulerName)
 					err := room.ClearAll(redisClient.Client)
 					if err != nil {
@@ -841,12 +843,11 @@ func deletePod(
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
-	schedulerName,
-	name string,
+	schedulerName, gameName, name, reason string,
 ) error {
-	pod, err := models.NewPod("", "", name, schedulerName, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{}, clientset, redisClient)
+	pod, err := models.NewPod(gameName, "", name, schedulerName, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{}, clientset, redisClient)
 	err = mr.WithSegment(models.SegmentPod, func() error {
-		return pod.Delete(clientset, redisClient)
+		return pod.Delete(clientset, redisClient, reason)
 	})
 	if err != nil {
 		return err

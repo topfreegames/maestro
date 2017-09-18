@@ -18,6 +18,8 @@ import (
 
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	"github.com/topfreegames/maestro/reporters"
+	reportersmocks "github.com/topfreegames/maestro/reporters/mocks"
 )
 
 var (
@@ -26,6 +28,8 @@ var (
 	mockRedisClient *redismocks.MockRedisClient
 	mockClientset   *fake.Clientset
 	mockPipeline    *redismocks.MockPipeliner
+	mr              *reportersmocks.MockReporter
+	singleton       *reporters.Reporters
 )
 
 func TestModels(t *testing.T) {
@@ -39,6 +43,9 @@ var _ = BeforeEach(func() {
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
 	mockClientset = fake.NewSimpleClientset()
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
+	mr = reportersmocks.NewMockReporter(mockCtrl)
+	singleton = reporters.GetInstance()
+	singleton.SetReporter("mockReporter", mr)
 })
 
 var _ = AfterEach(func() {
