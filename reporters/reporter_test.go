@@ -21,7 +21,6 @@ var _ = Describe("Reporters", func() {
 		for _, mr := range mrs {
 			mr.EXPECT().Report("gru.new", opts)
 		}
-		reporters.MakeDogStatsD(config, logger)
 
 		singleton.Report("gru.new", opts)
 	})
