@@ -151,7 +151,7 @@ func (r *Room) reportStatus(redisClient interfaces.RedisClient, status string) e
 		"game":      "",
 		"scheduler": r.SchedulerName,
 		"status":    status,
-		"gauge":     fmt.Sprint(int64(nStatus.Val())),
+		"gauge":     fmt.Sprint(float64(nStatus.Val())),
 	})
 }
 
