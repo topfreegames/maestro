@@ -17,17 +17,15 @@ import (
 	handlers "github.com/topfreegames/maestro/reporters/dogstatsd"
 )
 
-var reportHandlers = map[string]interface{}{
-	"gru.new":    handlers.GruIncrHandler,
-	"gru.delete": handlers.GruIncrHandler,
-}
-
+// DogStatsD reports metrics to a dogstatsd.Client
 type DogStatsD struct {
 	client dogstatsd.Client
 }
 
+// Report finds a matching handler to some 'event' metric and delegates
+// further actions to it
 func (d *DogStatsD) Report(event string, opts map[string]string) error {
-	handlerI, prs := reportHandlers[event]
+	handlerI, prs := handlers.Find(event)
 
 	if prs == false {
 		return fmt.Errorf("reportHandler for %s doesn't exist", event)
@@ -36,6 +34,7 @@ func (d *DogStatsD) Report(event string, opts map[string]string) error {
 	return handler(d.client, event, opts)
 }
 
+// MakeDogStatsD adds a DogStatsD struct to the Reporters' singleton
 func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
 	r := GetInstance()
 	dogstatsdR, err := NewDogStatsD(config, logger)
@@ -45,6 +44,7 @@ func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
 	}
 }
 
+// NewDogStatsD creates a DogStatsD struct using host and prefix from config
 func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error) {
 	// handle non-existent host
 	host := config.GetString("reporters.dogstatsd.host")
@@ -58,6 +58,8 @@ func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error
 	return dogstatsdR, nil
 }
 
+// NewDogStatsDFromClient creates a DogStatsD struct with an already configured
+// dogstatsd.Client -- or a mock client
 func NewDogStatsDFromClient(client dogstatsd.Client) *DogStatsD {
 	return &DogStatsD{client: client}
 }

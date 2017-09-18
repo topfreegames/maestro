@@ -11,7 +11,19 @@ import (
 	"fmt"
 
 	"github.com/topfreegames/extensions/dogstatsd"
+	"github.com/topfreegames/maestro/reporters/constants"
 )
+
+var handlers = map[string]interface{}{
+	constants.EventGruNew:    GruIncrHandler,
+	constants.EventGruDelete: GruIncrHandler,
+}
+
+// Find looks for a matching handler to a given event
+func Find(event string) (interface{}, bool) {
+	handlerI, prs := handlers[event]
+	return handlerI, prs
+}
 
 func createTags(opts map[string]string) []string {
 	var tags []string

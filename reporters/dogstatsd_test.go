@@ -10,16 +10,31 @@ package reporters_test
 import (
 	"github.com/topfreegames/extensions/dogstatsd/mocks"
 	"github.com/topfreegames/maestro/reporters"
+	handlers "github.com/topfreegames/maestro/reporters/dogstatsd"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("DogStatsD", func() {
-	It("Reporters.Report() must call Report on all children", func() {
-		c := mocks.NewClientMock()
+	var (
+		c    *mocks.ClientMock
+		opts map[string]string
+	)
+
+	BeforeEach(func() {
+		c = mocks.NewClientMock()
+		opts = map[string]string{"game": "pong"}
+	})
+
+	It("GruIncrHandler should Incr event metric by 1", func() {
+		Expect(c.Counts["gru.new"]).To(Equal(int64(0)))
+		handlers.GruIncrHandler(c, "gru.new", opts)
+		Expect(c.Counts["gru.new"]).To(Equal(int64(1)))
+	})
+
+	It("Report(gru.new, opts) should Incr gru.new", func() {
 		d := reporters.NewDogStatsDFromClient(c)
-		opts := map[string]string{"game": "pong"}
 		Expect(c.Counts["gru.new"]).To(Equal(int64(0)))
 		err := d.Report("gru.new", opts)
 		Expect(err).NotTo(HaveOccurred())
