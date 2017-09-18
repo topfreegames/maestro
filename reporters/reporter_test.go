@@ -15,7 +15,7 @@ import (
 )
 
 var _ = Describe("Reporters", func() {
-	FIt("Reporters.Report() must call Report on all children", func() {
+	It("Reporters.Report() must call Report on all children", func() {
 		opts := map[string]string{"game": "pong"}
 
 		for _, mr := range mrs {

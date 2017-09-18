@@ -57,3 +57,7 @@ func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error
 	dogstatsdR := &DogStatsD{client: c}
 	return dogstatsdR, nil
 }
+
+func NewDogStatsDFromClient(client dogstatsd.Client) *DogStatsD {
+	return &DogStatsD{client: client}
+}
