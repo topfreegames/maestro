@@ -310,8 +310,7 @@
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","dogstatsd/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
-  revision = "16aee783e94988f4de6251b096d17f19d26e6d23"
-  version = "v2.7.0"
+  version = "v2.8.0"
 
 [[projects]]
   branch = "master"
