@@ -31,6 +31,18 @@ var _ = Describe("Room", func() {
 	schedulerName := uuid.NewV4().String()
 	name := uuid.NewV4().String()
 
+	reportStatus := func(scheduler, status, statusKey string) {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().SCard(statusKey).Return(redis.NewIntResult(int64(5), nil))
+		mockPipeline.EXPECT().Exec()
+		mr.EXPECT().Report("gru.status", map[string]string{
+			"game":      "",
+			"scheduler": scheduler,
+			"status":    status,
+			"gauge":     "5",
+		})
+	}
+
 	BeforeEach(func() {
 		clientset = fake.NewSimpleClientset()
 	})
@@ -72,6 +84,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().SAdd(sKey, rKey)
 			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			mockPipeline.EXPECT().Exec()
+			reportStatus(room.SchedulerName, room.Status, sKey)
 
 			err := room.Create(mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
@@ -131,6 +144,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied), name)
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
 			mockPipeline.EXPECT().Exec()
+			reportStatus(room.SchedulerName, status, newSKey)
 
 			err := room.SetStatus(mockRedisClient, status)
 			Expect(err).NotTo(HaveOccurred())
@@ -208,6 +222,7 @@ var _ = Describe("Room", func() {
 			}
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
 			mockPipeline.EXPECT().Exec()
+			reportStatus(room.SchedulerName, status, newSKey)
 
 			err := room.SetStatus(mockRedisClient, status)
 			Expect(err).ToNot(HaveOccurred())
@@ -273,7 +288,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Exec()
 
 			mr.EXPECT().Report("gru.new", map[string]string{
-				"name":      "pong",
+				"game":      "pong",
 				"scheduler": "pong-free-for-all",
 			})
 			pod, err := models.NewPod(
