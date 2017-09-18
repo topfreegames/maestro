@@ -12,11 +12,10 @@ import (
 	"strings"
 	"text/template"
 
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
-
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
