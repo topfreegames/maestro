@@ -8,20 +8,23 @@
 package dogstatsd
 
 import (
-	"github.com/DataDog/datadog-go/statsd"
+	"fmt"
+
+	"github.com/topfreegames/extensions/dogstatsd"
 )
 
 func createTags(opts map[string]string) []string {
 	var tags []string
-	for _, value := range opts {
-		tags = append(tags, value)
+	for key, value := range opts {
+		tags = append(tags, fmt.Sprintf("%s:%s", key, value))
 	}
 	return tags
 }
 
-func GruIncrementHandler(c *statsd.Client, event string,
+// GruIncrHandler calls dogstatsd.Client.Incr with tags formatted as key:value
+func GruIncrHandler(c dogstatsd.Client, event string,
 	opts map[string]string) error {
 	tags := createTags(opts)
-	c.Count(event, 1, tags, 1)
+	c.Incr(event, tags, 1)
 	return nil
 }

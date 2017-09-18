@@ -86,6 +86,7 @@
 [[dependencies]]
   name = "github.com/topfreegames/extensions"
   version = "v2.7.0"
+  revision = "7274535a50fc9ef71d9c65b71cbc05d5fa1775c7"
 
 [[dependencies]]
   name = "github.com/go-redis/redis"

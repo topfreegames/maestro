@@ -13,16 +13,17 @@ import (
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/maestro/reporters/dogstatsd"
+	"github.com/topfreegames/extensions/dogstatsd"
+	handlers "github.com/topfreegames/maestro/reporters/dogstatsd"
 )
 
 var reportHandlers = map[string]interface{}{
-	"gru.new":    dogstatsd.GruIncrementHandler,
-	"gru.delete": dogstatsd.GruIncrementHandler,
+	"gru.new":    handlers.GruIncrHandler,
+	"gru.delete": handlers.GruIncrHandler,
 }
 
 type DogStatsD struct {
-	client *statsd.Client
+	client dogstatsd.Client
 }
 
 func (d *DogStatsD) Report(event string, opts map[string]string) error {
@@ -31,7 +32,7 @@ func (d *DogStatsD) Report(event string, opts map[string]string) error {
 	if prs == false {
 		return fmt.Errorf("reportHandler for %s doesn't exist", event)
 	}
-	handler := handlerI.(func(*statsd.Client, string, map[string]string) error)
+	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
 	return handler(d.client, event, opts)
 }
 
