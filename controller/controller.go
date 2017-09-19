@@ -23,6 +23,7 @@ import (
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/models"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -379,7 +380,7 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 	var deletionErr error
 
 	for _, roomName := range idleRooms {
-		err := deletePod(logger, mr, clientset, redisClient, scheduler.Name, scheduler.Game, roomName, models.ReasonScaleDown)
+		err := deletePod(logger, mr, clientset, redisClient, scheduler.Name, scheduler.Game, roomName, reportersConstants.ReasonScaleDown)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
 			deletionErr = err
@@ -557,7 +558,7 @@ waitForLock:
 					msg := "error when deleting old rooms. Maestro will scale up, if necessary, with previous room configuration"
 					return maestroErrors.NewKubernetesError(msg, err)
 				default:
-					err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, pod.GetName(), models.ReasonUpdate)
+					err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, pod.GetName(), reportersConstants.ReasonUpdate)
 					if err != nil {
 						logger.WithField("roomName", pod.GetName()).WithError(err).Error("error deleting room")
 						time.Sleep(1 * time.Second)
@@ -582,7 +583,7 @@ waitForLock:
 				select {
 				case <-timeout.C:
 					for _, podToDelete := range newPods {
-						err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, podToDelete.GetName(), models.ReasonUpdateError)
+						err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, podToDelete.GetName(), reportersConstants.ReasonUpdateError)
 						if err != nil {
 							logger.
 								WithField("roomName", podToDelete.GetName()).
@@ -642,7 +643,7 @@ waitForLock:
 			if err != nil {
 				logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
 				for _, podToDelete := range newPods {
-					deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, configYAML.Game, podToDelete.GetName(), models.ReasonUpdateError)
+					deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, configYAML.Game, podToDelete.GetName(), reportersConstants.ReasonUpdateError)
 					room := models.NewRoom(podToDelete.GetName(), schedulerName)
 					err := room.ClearAll(redisClient.Client)
 					if err != nil {
@@ -706,7 +707,7 @@ func deleteSchedulerHelper(
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 	// Delete pods and wait for graceful termination before deleting the namespace
 	err = mr.WithSegment(models.SegmentNamespace, func() error {
-		return namespace.DeletePods(clientset, redisClient)
+		return namespace.DeletePods(clientset, redisClient, scheduler)
 	})
 	if err != nil {
 		logger.WithError(err).Error("failed to delete namespace pods")

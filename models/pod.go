@@ -148,7 +148,7 @@ func NewPod(
 	err := pod.configureHostPorts(clientset, redisClient)
 
 	if err == nil {
-		reporters.GetInstance().Report(reportersConstants.EventGruNew, map[string]string{
+		reporters.Report(reportersConstants.EventGruNew, map[string]string{
 			"game":      game,
 			"scheduler": namespace,
 		})
@@ -212,7 +212,7 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 		//TODO: try again?
 	}
 	if err == nil {
-		reporters.GetInstance().Report(reportersConstants.EventGruDelete, map[string]string{
+		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
 			"game":      p.Game,
 			"scheduler": p.Namespace,
 			"reason":    reason,

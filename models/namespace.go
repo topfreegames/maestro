@@ -12,6 +12,8 @@ import (
 
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/reporters"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
@@ -71,7 +73,8 @@ func (n *Namespace) Delete(clientset kubernetes.Interface) error {
 }
 
 // DeletePods deletes all pods from a kubernetes namespace
-func (n *Namespace) DeletePods(clientset kubernetes.Interface, redisClient redisinterfaces.RedisClient) error {
+func (n *Namespace) DeletePods(clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient, s *Scheduler) error {
 	pods, err := clientset.CoreV1().Pods(n.Name).List(metav1.ListOptions{})
 	if err != nil {
 		return errors.NewKubernetesError("delete namespace pods error", err)
@@ -81,6 +84,11 @@ func (n *Namespace) DeletePods(clientset kubernetes.Interface, redisClient redis
 		return errors.NewKubernetesError("delete namespace pods error", err)
 	}
 	for _, pod := range pods.Items {
+		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
+			"game":      s.Game,
+			"scheduler": s.Name,
+			"reason":    reportersConstants.ReasonNamespaceDeletion,
+		})
 		err := RetrieveV1Ports(redisClient, pod.Spec.Containers[0].Ports)
 		if err != nil {
 			//TODO: try again?
