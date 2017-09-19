@@ -300,7 +300,7 @@ func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pgin
 
 	j := 0
 	for i := 0; i < amount; i++ {
-		pod, err := createPod(l, mr, redisClient, clientset, configYAML, scheduler.Name)
+		pod, err := createPod(l, mr, redisClient, db, clientset, configYAML, scheduler.Name)
 		if err != nil {
 			l.WithError(err).Error("scale up error")
 			if initalOp {
@@ -613,7 +613,7 @@ waitForLock:
 							}
 						}
 						if i >= len(podsToDelete) || !podExists {
-							pod, err := createPod(l, mr, redisClient.Client, clientset, configYAML, schedulerName)
+							pod, err := createPod(l, mr, redisClient.Client, db, clientset, configYAML, schedulerName)
 							if err != nil {
 								logger.WithError(err).Error("error when creating pod")
 								continue
@@ -775,6 +775,7 @@ func createPod(
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 	redisClient redisinterfaces.RedisClient,
+	db pginterfaces.DB,
 	clientset kubernetes.Interface,
 	configYAML *models.ConfigYAML,
 	schedulerName string,
@@ -783,7 +784,7 @@ func createPod(
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
 	room := models.NewRoom(name, schedulerName)
 	err := mr.WithSegment(models.SegmentInsert, func() error {
-		return room.Create(redisClient)
+		return room.Create(redisClient, db, mr)
 	})
 	if err != nil {
 		return nil, err

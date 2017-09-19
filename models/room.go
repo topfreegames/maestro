@@ -71,10 +71,11 @@ func (r *Room) GetRoomRedisKey() string {
 }
 
 // Create creates a room in and update redis
-func (r *Room) Create(redisClient interfaces.RedisClient) error {
+func (r *Room) Create(redisClient interfaces.RedisClient, db pginterfaces.DB,
+	mr *MixedMetricsReporter) error {
 	r.LastPingAt = time.Now().Unix()
 	pipe := redisClient.TxPipeline()
-	return r.addStatusToRedisPipeAndExec(redisClient, pipe)
+	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe)
 }
 
 const ZaddIfNotExists = `
@@ -86,7 +87,8 @@ return 'OK'
 `
 
 // SetStatus updates the status of a given room in the database
-func (r *Room) SetStatus(redisClient interfaces.RedisClient, status string) error {
+func (r *Room) SetStatus(redisClient interfaces.RedisClient, db pginterfaces.DB,
+	mr *MixedMetricsReporter, status string) error {
 	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
 	r.Status = status
 	r.LastPingAt = time.Now().Unix()
@@ -114,11 +116,11 @@ func (r *Room) SetStatus(redisClient interfaces.RedisClient, status string) erro
 			pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
 		}
 	}
-	return r.addStatusToRedisPipeAndExec(redisClient, pipe)
+	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe)
 }
 
 func (r *Room) addStatusToRedisPipeAndExec(redisClient interfaces.RedisClient,
-	p redis.Pipeliner) error {
+	db pginterfaces.DB, mr *MixedMetricsReporter, p redis.Pipeliner) error {
 	p.HMSet(r.GetRoomRedisKey(), map[string]interface{}{
 		"status":   r.Status,
 		"lastPing": r.LastPingAt,
@@ -132,10 +134,11 @@ func (r *Room) addStatusToRedisPipeAndExec(redisClient interfaces.RedisClient,
 	if err != nil {
 		return err
 	}
-	return r.reportStatus(redisClient, r.Status)
+	return r.reportStatus(redisClient, db, mr, r.Status)
 }
 
-func (r *Room) reportStatus(redisClient interfaces.RedisClient, status string) error {
+func (r *Room) reportStatus(redisClient interfaces.RedisClient,
+	db pginterfaces.DB, mr *MixedMetricsReporter, status string) error {
 	if !reporters.HasReporters() {
 		return nil
 	}
@@ -147,8 +150,13 @@ func (r *Room) reportStatus(redisClient interfaces.RedisClient, status string) e
 		return err
 	}
 
+	scheduler := NewScheduler(r.SchedulerName, "", "")
+	err = mr.WithSegment(SegmentSelect, func() error {
+		return scheduler.Load(db)
+	})
+
 	return reporters.Report(reportersConstants.EventRoomStatus, map[string]string{
-		"game":      "",
+		"game":      scheduler.Game,
 		"scheduler": r.SchedulerName,
 		"status":    status,
 		"gauge":     fmt.Sprint(float64(nStatus.Val())),

@@ -35,8 +35,15 @@ var _ = Describe("Room", func() {
 		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 		mockPipeline.EXPECT().SCard(statusKey).Return(redis.NewIntResult(int64(5), nil))
 		mockPipeline.EXPECT().Exec()
+
+		mockDb.EXPECT().
+			Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerName).Do(
+			func(s *models.Scheduler, query string, modifier string) {
+				s.Game = "game-name"
+			})
+
 		mr.EXPECT().Report("gru.status", map[string]string{
-			"game":      "",
+			"game":      "game-name",
 			"scheduler": scheduler,
 			"status":    status,
 			"gauge":     "5",
@@ -86,7 +93,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Exec()
 			reportStatus(room.SchedulerName, room.Status, sKey)
 
-			err := room.Create(mockRedisClient)
+			err := room.Create(mockRedisClient, mockDb, mmr)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -108,7 +115,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
-			err := room.Create(mockRedisClient)
+			err := room.Create(mockRedisClient, mockDb, mmr)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 		})
@@ -146,7 +153,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Exec()
 			reportStatus(room.SchedulerName, status, newSKey)
 
-			err := room.SetStatus(mockRedisClient, status)
+			err := room.SetStatus(mockRedisClient, mockDb, mmr, status)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -167,7 +174,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Del(rKey)
 			mockPipeline.EXPECT().Exec()
 
-			err := room.SetStatus(mockRedisClient, status)
+			err := room.SetStatus(mockRedisClient, mockDb, mmr, status)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -194,7 +201,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
-			err := room.SetStatus(mockRedisClient, status)
+			err := room.SetStatus(mockRedisClient, mockDb, mmr, status)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 		})
@@ -224,7 +231,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Exec()
 			reportStatus(room.SchedulerName, status, newSKey)
 
-			err := room.SetStatus(mockRedisClient, status)
+			err := room.SetStatus(mockRedisClient, mockDb, mmr, status)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
