@@ -72,8 +72,8 @@ spec:
               value: {{ .Values.basicauth_pass }}
             - name: MAESTRO_BASICAUTH_TRYOAUTHIFUNSET
               value: "true"
-            {{- if ne .Values.newrelic_app }}
-            {{- if ne .Values.newrelic_key }}
+            {{- if ne .Values.newrelic_app "" }}
+            {{- if ne .Values.newrelic_key "" }}
             - name: MAESTRO_NEWRELIC_APP
               valueFrom:
                 secretKeyRef:
