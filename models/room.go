@@ -17,6 +17,8 @@ import (
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/reporters"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
@@ -69,20 +71,11 @@ func (r *Room) GetRoomRedisKey() string {
 }
 
 // Create creates a room in and update redis
-func (r *Room) Create(redisClient interfaces.RedisClient) error {
+func (r *Room) Create(redisClient interfaces.RedisClient, db pginterfaces.DB,
+	mr *MixedMetricsReporter) error {
 	r.LastPingAt = time.Now().Unix()
 	pipe := redisClient.TxPipeline()
-	pipe.HMSet(r.GetRoomRedisKey(), map[string]interface{}{
-		"status":   r.Status,
-		"lastPing": r.LastPingAt,
-	})
-	pipe.SAdd(GetRoomStatusSetRedisKey(r.SchedulerName, r.Status), r.GetRoomRedisKey())
-	pipe.ZAdd(GetRoomPingRedisKey(r.SchedulerName), redis.Z{
-		Score:  float64(r.LastPingAt),
-		Member: r.ID,
-	})
-	_, err := pipe.Exec()
-	return err
+	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe)
 }
 
 const ZaddIfNotExists = `
@@ -94,25 +87,19 @@ return 'OK'
 `
 
 // SetStatus updates the status of a given room in the database
-func (r *Room) SetStatus(redisClient interfaces.RedisClient, status string) error {
+func (r *Room) SetStatus(redisClient interfaces.RedisClient, db pginterfaces.DB,
+	mr *MixedMetricsReporter, status string) error {
 	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
 	r.Status = status
 	r.LastPingAt = time.Now().Unix()
+
 	if status == StatusTerminated {
 		return r.ClearAll(redisClient)
 	}
-	pipe := redisClient.TxPipeline()
-	pipe.HMSet(r.GetRoomRedisKey(), map[string]interface{}{
-		"status":   r.Status,
-		"lastPing": r.LastPingAt,
-	})
-	pipe.ZAdd(GetRoomPingRedisKey(r.SchedulerName), redis.Z{
-		Score:  float64(r.LastPingAt),
-		Member: r.ID,
-	})
 
 	lastStatusChangedKey := GetLastStatusRedisKey(r.SchedulerName, StatusOccupied)
 	lastPingAtStr := strconv.FormatInt(r.LastPingAt, 10)
+	pipe := redisClient.TxPipeline()
 	if status == StatusOccupied {
 		pipe.Eval(
 			ZaddIfNotExists,
@@ -129,9 +116,77 @@ func (r *Room) SetStatus(redisClient interfaces.RedisClient, status string) erro
 			pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
 		}
 	}
-	pipe.SAdd(GetRoomStatusSetRedisKey(r.SchedulerName, r.Status), r.GetRoomRedisKey())
+	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe)
+}
+
+func (r *Room) addStatusToRedisPipeAndExec(redisClient interfaces.RedisClient,
+	db pginterfaces.DB, mr *MixedMetricsReporter, p redis.Pipeliner) error {
+	prevStatus := "nil"
+
+	if reporters.HasReporters() {
+		rFields := redisClient.HGetAll(r.GetRoomRedisKey())
+		val, prs := rFields.Val()["status"]
+		if prs {
+			prevStatus = val
+		}
+	}
+
+	p.HMSet(r.GetRoomRedisKey(), map[string]interface{}{
+		"status":   r.Status,
+		"lastPing": r.LastPingAt,
+	})
+	p.SAdd(GetRoomStatusSetRedisKey(r.SchedulerName, r.Status), r.GetRoomRedisKey())
+	p.ZAdd(GetRoomPingRedisKey(r.SchedulerName), redis.Z{
+		Score:  float64(r.LastPingAt),
+		Member: r.ID,
+	})
+	_, err := p.Exec()
+	if err != nil {
+		return err
+	}
+	return r.reportStatus(redisClient, db, mr, r.Status, prevStatus != r.Status)
+}
+
+func (r *Room) reportStatus(redisClient interfaces.RedisClient,
+	db pginterfaces.DB, mr *MixedMetricsReporter, status string, statusChanged bool) error {
+	if !reporters.HasReporters() {
+		return nil
+	}
+	pipe := redisClient.TxPipeline()
+	nStatus := pipe.SCard(GetRoomStatusSetRedisKey(r.SchedulerName, status))
 	_, err := pipe.Exec()
+	if err != nil {
+		return err
+	}
+
+	scheduler := NewScheduler(r.SchedulerName, "", "")
+	err = mr.WithSegment(SegmentSelect, func() error {
+		return scheduler.Load(db)
+	})
+
+	if statusChanged {
+		err = reportStatus(scheduler.Game, r.SchedulerName, status,
+			fmt.Sprint(float64(nStatus.Val())))
+	} else {
+		err = reportPing(scheduler.Game, r.SchedulerName)
+	}
 	return err
+}
+
+func reportPing(game, scheduler string) error {
+	return reporters.Report(reportersConstants.EventGruPing, map[string]string{
+		"game":      game,
+		"scheduler": scheduler,
+	})
+}
+
+func reportStatus(game, scheduler, status, gauge string) error {
+	return reporters.Report(reportersConstants.EventRoomStatus, map[string]string{
+		"game":      game,
+		"scheduler": scheduler,
+		"status":    status,
+		"gauge":     gauge,
+	})
 }
 
 // ClearAll removes all room keys from redis

@@ -26,6 +26,7 @@ import (
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -230,7 +231,7 @@ func (w *Watcher) RemoveDeadRooms() {
 			w.SchedulerName,
 			w.GameName,
 			roomsNoPingSince,
-			models.ReasonPingTimeout,
+			reportersConstants.ReasonPingTimeout,
 		)
 		if err != nil {
 			logger.WithError(err).Error("error removing dead rooms")
@@ -275,7 +276,7 @@ func (w *Watcher) RemoveDeadRooms() {
 				w.SchedulerName,
 				w.GameName,
 				roomsOnOccupiedTimeout,
-				models.ReasonOccupiedTimeout,
+				reportersConstants.ReasonOccupiedTimeout,
 			)
 			if err != nil {
 				logger.WithError(err).Error("error removing old occupied rooms")

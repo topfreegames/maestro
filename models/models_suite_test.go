@@ -18,8 +18,10 @@ import (
 
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	reportersmocks "github.com/topfreegames/maestro/reporters/mocks"
+	mtesting "github.com/topfreegames/maestro/testing"
 )
 
 var (
@@ -28,6 +30,7 @@ var (
 	mockRedisClient *redismocks.MockRedisClient
 	mockClientset   *fake.Clientset
 	mockPipeline    *redismocks.MockPipeliner
+	mmr             *models.MixedMetricsReporter
 	mr              *reportersmocks.MockReporter
 	singleton       *reporters.Reporters
 )
@@ -46,6 +49,9 @@ var _ = BeforeEach(func() {
 	mr = reportersmocks.NewMockReporter(mockCtrl)
 	singleton = reporters.GetInstance()
 	singleton.SetReporter("mockReporter", mr)
+	fakeReporter := mtesting.FakeMetricsReporter{}
+	mmr = models.NewMixedMetricsReporter()
+	mmr.AddReporter(fakeReporter)
 })
 
 var _ = AfterEach(func() {

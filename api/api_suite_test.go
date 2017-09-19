@@ -44,6 +44,7 @@ var (
 	mockEventForwarder2 *eventforwardermock.MockEventForwarder
 	mockLogin           *mocks.MockLogin
 	mockClock           *clockmocks.MockClock
+	mmr                 *models.MixedMetricsReporter
 	allStatus           = []string{
 		models.StatusCreating,
 		models.StatusReady,
@@ -72,6 +73,10 @@ var _ = BeforeEach(func() {
 	mockEventForwarder2 = eventforwardermock.NewMockEventForwarder(mockCtrl)
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 	mockClientset = fake.NewSimpleClientset()
+
+	fakeReporter := mtesting.FakeMetricsReporter{}
+	mmr = models.NewMixedMetricsReporter()
+	mmr.AddReporter(fakeReporter)
 
 	config, err = mtesting.GetDefaultConfig()
 

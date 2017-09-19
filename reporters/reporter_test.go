@@ -12,6 +12,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/topfreegames/maestro/reporters/constants"
 )
 
 var _ = Describe("Reporters", func() {
@@ -19,10 +20,10 @@ var _ = Describe("Reporters", func() {
 		opts := map[string]string{"game": "pong"}
 
 		for _, mr := range mrs {
-			mr.EXPECT().Report("report", opts)
+			mr.EXPECT().Report(EventGruNew, opts)
 		}
 
-		singleton.Report("report", opts)
+		singleton.Report(EventGruNew, opts)
 	})
 
 	It("Reporters must be Singleton", func() {

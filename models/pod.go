@@ -12,10 +12,10 @@ import (
 	"strings"
 	"text/template"
 
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/reporters"
-
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
@@ -148,8 +148,8 @@ func NewPod(
 	err := pod.configureHostPorts(clientset, redisClient)
 
 	if err == nil {
-		reporters.GetInstance().Report("gru.new", map[string]string{
-			"name":      game,
+		reporters.Report(reportersConstants.EventGruNew, map[string]string{
+			"game":      game,
 			"scheduler": namespace,
 		})
 	}
@@ -212,8 +212,8 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 		//TODO: try again?
 	}
 	if err == nil {
-		reporters.GetInstance().Report("gru.delete", map[string]string{
-			"name":      p.Game,
+		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
+			"game":      p.Game,
 			"scheduler": p.Namespace,
 			"reason":    reason,
 		})

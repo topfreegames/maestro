@@ -45,7 +45,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := mr.WithSegment(models.SegmentUpdate, func() error {
-		return room.SetStatus(g.App.RedisClient, payload.Status)
+		return room.SetStatus(g.App.RedisClient, g.App.DB, mr, payload.Status)
 	})
 
 	if err != nil {
@@ -133,7 +133,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := mr.WithSegment(models.SegmentUpdate, func() error {
-		return room.SetStatus(g.App.RedisClient, payload.Status)
+		return room.SetStatus(g.App.RedisClient, g.App.DB, mr, payload.Status)
 	})
 
 	if err != nil {

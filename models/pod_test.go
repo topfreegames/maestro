@@ -37,7 +37,7 @@ var _ = Describe("Pod", func() {
 
 	createPod := func() (*models.Pod, error) {
 		mr.EXPECT().Report("gru.new", map[string]string{
-			"name":      "pong",
+			"game":      "pong",
 			"scheduler": "pong-free-for-all",
 		})
 
@@ -148,7 +148,7 @@ var _ = Describe("Pod", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				mr.EXPECT().Report("gru.delete", map[string]string{
-					"name":      "pong",
+					"game":      "pong",
 					"scheduler": "pong-free-for-all",
 					"reason":    "deletion_reason",
 				})
@@ -220,7 +220,7 @@ var _ = Describe("Pod", func() {
 
 		It("should create pod without requests and limits", func() {
 			mr.EXPECT().Report("gru.new", map[string]string{
-				"name":      "pong",
+				"game":      "pong",
 				"scheduler": "pong-free-for-all",
 			})
 			pod, err := models.NewPod(
@@ -351,7 +351,7 @@ var _ = Describe("Pod", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			mr.EXPECT().Report("gru.delete", map[string]string{
-				"name":      "pong",
+				"game":      "pong",
 				"scheduler": "pong-free-for-all",
 				"reason":    "deletion_reason",
 			})
