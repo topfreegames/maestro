@@ -18,6 +18,7 @@ import (
 var handlers = map[string]interface{}{
 	constants.EventGruNew:     GruIncrHandler,
 	constants.EventGruDelete:  GruIncrHandler,
+	constants.EventGruPing:    GruIncrHandler,
 	constants.EventRoomStatus: GruStatusHandler,
 }
 

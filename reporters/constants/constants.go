@@ -3,6 +3,7 @@ package constants
 // Constants for event metrics possible of being reported
 const (
 	EventGruNew     = "gru.new"
+	EventGruPing    = "gru.ping"
 	EventGruDelete  = "gru.delete"
 	EventRoomStatus = "gru.status"
 )

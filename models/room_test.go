@@ -31,7 +31,12 @@ var _ = Describe("Room", func() {
 	schedulerName := uuid.NewV4().String()
 	name := uuid.NewV4().String()
 
-	reportStatus := func(scheduler, status, statusKey string) {
+	reportStatus := func(scheduler, status, roomKey, statusKey string) {
+		mockRedisClient.EXPECT().HGetAll(roomKey).
+			Return(redis.NewStringStringMapResult(map[string]string{
+				"status": "diff",
+			}, nil))
+
 		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 		mockPipeline.EXPECT().SCard(statusKey).Return(redis.NewIntResult(int64(5), nil))
 		mockPipeline.EXPECT().Exec()
@@ -91,7 +96,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().SAdd(sKey, rKey)
 			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
 			mockPipeline.EXPECT().Exec()
-			reportStatus(room.SchedulerName, room.Status, sKey)
+			reportStatus(room.SchedulerName, room.Status, rKey, sKey)
 
 			err := room.Create(mockRedisClient, mockDb, mmr)
 			Expect(err).NotTo(HaveOccurred())
@@ -103,6 +108,11 @@ var _ = Describe("Room", func() {
 			sKey := models.GetRoomStatusSetRedisKey(schedulerName, room.Status)
 			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
 			now := time.Now().Unix()
+
+			mockRedisClient.EXPECT().HGetAll(rKey).
+				Return(redis.NewStringStringMapResult(map[string]string{
+					"status": "diff",
+				}, nil))
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(rKey, gomock.Any()).Do(
@@ -151,7 +161,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied), name)
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
 			mockPipeline.EXPECT().Exec()
-			reportStatus(room.SchedulerName, status, newSKey)
+			reportStatus(room.SchedulerName, status, rKey, newSKey)
 
 			err := room.SetStatus(mockRedisClient, mockDb, mmr, status)
 			Expect(err).NotTo(HaveOccurred())
@@ -185,6 +195,11 @@ var _ = Describe("Room", func() {
 			newSKey := models.GetRoomStatusSetRedisKey(schedulerName, status)
 			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
 			now := time.Now().Unix()
+
+			mockRedisClient.EXPECT().HGetAll(rKey).
+				Return(redis.NewStringStringMapResult(map[string]string{
+					"status": "diff",
+				}, nil))
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(rKey, gomock.Any()).Do(
@@ -229,7 +244,7 @@ var _ = Describe("Room", func() {
 			}
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
 			mockPipeline.EXPECT().Exec()
-			reportStatus(room.SchedulerName, status, newSKey)
+			reportStatus(room.SchedulerName, status, rKey, newSKey)
 
 			err := room.SetStatus(mockRedisClient, mockDb, mmr, status)
 			Expect(err).ToNot(HaveOccurred())

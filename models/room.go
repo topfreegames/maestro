@@ -121,6 +121,16 @@ func (r *Room) SetStatus(redisClient interfaces.RedisClient, db pginterfaces.DB,
 
 func (r *Room) addStatusToRedisPipeAndExec(redisClient interfaces.RedisClient,
 	db pginterfaces.DB, mr *MixedMetricsReporter, p redis.Pipeliner) error {
+	prevStatus := "nil"
+
+	if reporters.HasReporters() {
+		rFields := redisClient.HGetAll(r.GetRoomRedisKey())
+		val, prs := rFields.Val()["status"]
+		if prs {
+			prevStatus = val
+		}
+	}
+
 	p.HMSet(r.GetRoomRedisKey(), map[string]interface{}{
 		"status":   r.Status,
 		"lastPing": r.LastPingAt,
@@ -134,15 +144,14 @@ func (r *Room) addStatusToRedisPipeAndExec(redisClient interfaces.RedisClient,
 	if err != nil {
 		return err
 	}
-	return r.reportStatus(redisClient, db, mr, r.Status)
+	return r.reportStatus(redisClient, db, mr, r.Status, prevStatus != r.Status)
 }
 
 func (r *Room) reportStatus(redisClient interfaces.RedisClient,
-	db pginterfaces.DB, mr *MixedMetricsReporter, status string) error {
+	db pginterfaces.DB, mr *MixedMetricsReporter, status string, statusChanged bool) error {
 	if !reporters.HasReporters() {
 		return nil
 	}
-
 	pipe := redisClient.TxPipeline()
 	nStatus := pipe.SCard(GetRoomStatusSetRedisKey(r.SchedulerName, status))
 	_, err := pipe.Exec()
@@ -155,11 +164,28 @@ func (r *Room) reportStatus(redisClient interfaces.RedisClient,
 		return scheduler.Load(db)
 	})
 
+	if statusChanged {
+		err = reportStatus(scheduler.Game, r.SchedulerName, status,
+			fmt.Sprint(float64(nStatus.Val())))
+	} else {
+		err = reportPing(scheduler.Game, r.SchedulerName)
+	}
+	return err
+}
+
+func reportPing(game, scheduler string) error {
+	return reporters.Report(reportersConstants.EventGruPing, map[string]string{
+		"game":      game,
+		"scheduler": scheduler,
+	})
+}
+
+func reportStatus(game, scheduler, status, gauge string) error {
 	return reporters.Report(reportersConstants.EventRoomStatus, map[string]string{
-		"game":      scheduler.Game,
-		"scheduler": r.SchedulerName,
+		"game":      game,
+		"scheduler": scheduler,
 		"status":    status,
-		"gauge":     fmt.Sprint(float64(nStatus.Val())),
+		"gauge":     gauge,
 	})
 }
 
