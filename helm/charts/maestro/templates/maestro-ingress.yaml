@@ -12,7 +12,7 @@ spec:
   tls:
   - hosts:
     - {{ .Values.maestro_url }}
-    secretName: maestro-ssl
+    secretName: maestro-secret
 {{- end}}
 {{- end}}
   rules:
