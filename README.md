@@ -45,7 +45,7 @@ The API is the connection of Maestro to the external world and with the game roo
 
 ### maestro-cli:
 
-The CLI is a wrapper for the maestro-api endpoints.
+The [CLI](https://github.com/topfreegames/maestro-cli) is a wrapper for the maestro-api endpoints.
 
 ### maestro-client:
 
