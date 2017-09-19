@@ -43,9 +43,14 @@ func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
 	}
 }
 
+func loadDefaultConfigs(c *viper.Viper) {
+	c.SetDefault("reporters.dogstatsd.host", "localhost:8125")
+	c.SetDefault("reporters.dogstatsd.prefix", "test.")
+}
+
 // NewDogStatsD creates a DogStatsD struct using host and prefix from config
 func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error) {
-	// handle non-existent host
+	loadDefaultConfigs(config)
 	host := config.GetString("reporters.dogstatsd.host")
 	prefix := config.GetString("reporters.dogstatsd.prefix")
 	c, err := dogstatsd.New(host, prefix)
