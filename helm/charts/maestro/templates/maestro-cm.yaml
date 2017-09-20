@@ -42,10 +42,12 @@ data:
       lockTimeoutMs: 180000
     {{- if ne .Values.reporters.dogstatsd.host "" }}
     {{- if ne .Values.reporters.dogstatsd.prefix "" }}
+    {{- if ne .Values.reporters.dogstatsd.region "" }}
     reporters:
       dogstatsd:
         host: {{ .Values.reporters.dogstatsd.host }}
         prefix: {{ .Values.reporters.dogstatsd.prefix }}
+        region: {{ .Values.reporters.dogstatsd.region }}
     {{- end}}
     {{- end}}
     scaleUpTimeoutSeconds: 600

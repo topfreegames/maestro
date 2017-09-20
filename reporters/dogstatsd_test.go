@@ -27,6 +27,15 @@ var _ = Describe("DogStatsD", func() {
 		opts = map[string]string{"game": "pong"}
 	})
 
+	It(`MakeDogStatsD should create a new DogStatsD
+	instance and add it to the singleton reporters.Reporters`, func() {
+		_, prs := singleton.GetReporter("dogstatsd")
+		Expect(prs).To(BeFalse())
+		reporters.MakeDogStatsD(config, logger)
+		_, prs = singleton.GetReporter("dogstatsd")
+		Expect(prs).To(BeTrue())
+	})
+
 	It("GruIncrHandler should Incr event metric by 1", func() {
 		Expect(c.Counts["gru.new"]).To(Equal(int64(0)))
 		handlers.GruIncrHandler(c, "gru.new", opts)
@@ -42,7 +51,7 @@ var _ = Describe("DogStatsD", func() {
 	})
 
 	It("Report(gru.new, opts) should Incr gru.new", func() {
-		d := reporters.NewDogStatsDFromClient(c)
+		d := reporters.NewDogStatsDFromClient(c, "test")
 		Expect(c.Counts["gru.new"]).To(Equal(int64(0)))
 		err := d.Report("gru.new", opts)
 		Expect(err).NotTo(HaveOccurred())
@@ -50,7 +59,7 @@ var _ = Describe("DogStatsD", func() {
 	})
 
 	It("Report(gru.status, opts) should send Gauge of given status", func() {
-		d := reporters.NewDogStatsDFromClient(c)
+		d := reporters.NewDogStatsDFromClient(c, "test")
 		Expect(c.Gauges["gru.creating"]).To(Equal(float64(0)))
 		opts["status"] = "creating"
 		opts["gauge"] = "5"

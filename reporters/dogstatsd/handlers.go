@@ -39,7 +39,10 @@ func createTags(opts map[string]string) []string {
 func createAllowedTags(opts map[string]string, allowed []string) []string {
 	var tags []string
 	for _, tag := range allowed {
-		tags = append(tags, fmt.Sprintf("%s:%s", tag, opts[tag]))
+		val, prs := opts[tag]
+		if prs {
+			tags = append(tags, fmt.Sprintf("%s:%s", tag, val))
+		}
 	}
 	return tags
 }
@@ -55,7 +58,7 @@ func GruIncrHandler(c dogstatsd.Client, event string,
 // GruStatusHandler calls dogstatsd.Client.Incr with tags formatted as key:value
 func GruStatusHandler(c dogstatsd.Client, event string,
 	opts map[string]string) error {
-	tags := createAllowedTags(opts, []string{"game", "scheduler"})
+	tags := createAllowedTags(opts, []string{"game", "scheduler", "region"})
 	gauge, err := strconv.ParseFloat(opts["gauge"], 64)
 	if err != nil {
 		return err
