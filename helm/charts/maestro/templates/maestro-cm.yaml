@@ -50,6 +50,7 @@ data:
         region: {{ .Values.reporters.dogstatsd.region }}
     {{- end}}
     {{- end}}
+    {{- end}}
     scaleUpTimeoutSeconds: 600
     scaleDownTimeoutSeconds: 600
     deleteTimeoutSeconds: 600
