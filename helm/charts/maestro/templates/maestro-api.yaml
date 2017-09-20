@@ -78,11 +78,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: maestro-secret
-                  value: newrelicapp
+                  key: newrelicapp
             - name: MAESTRO_NEWRELIC_KEY
               valueFrom:
                 secretKeyRef:
                   name: maestro-secret
-                  value: newrelickey
+                  key: newrelickey
             {{- end}}
             {{- end}}

@@ -40,6 +40,14 @@ data:
       retrieveFreePortsPeriod: 3600
       getLocksTimeout: 300
       lockTimeoutMs: 180000
+    {{- if ne .Values.reporters.dogstatsd.host "" }}
+    {{- if ne .Values.reporters.dogstatsd.prefix "" }}
+    reporters:
+      dogstatsd:
+        host: {{ .Values.reporters.dogstatsd.host }}
+        prefix: {{ .Values.reporters.dogstatsd.prefix }}
+    {{- end}}
+    {{- end}}
     scaleUpTimeoutSeconds: 600
     scaleDownTimeoutSeconds: 600
     deleteTimeoutSeconds: 600
