@@ -19,6 +19,7 @@ import (
 // DogStatsD reports metrics to a dogstatsd.Client
 type DogStatsD struct {
 	client dogstatsd.Client
+	region string
 }
 
 // Report finds a matching handler to some 'event' metric and delegates
@@ -30,6 +31,8 @@ func (d *DogStatsD) Report(event string, opts map[string]string) error {
 		return fmt.Errorf("reportHandler for %s doesn't exist", event)
 	}
 	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
+
+	opts["region"] = d.region
 	return handler(d.client, event, opts)
 }
 
@@ -46,6 +49,7 @@ func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
 func loadDefaultConfigs(c *viper.Viper) {
 	c.SetDefault("reporters.dogstatsd.host", "localhost:8125")
 	c.SetDefault("reporters.dogstatsd.prefix", "test.")
+	c.SetDefault("reporters.dogstatsd.region", "test")
 }
 
 // NewDogStatsD creates a DogStatsD struct using host and prefix from config
@@ -57,12 +61,13 @@ func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error
 	if err != nil {
 		return nil, err
 	}
-	dogstatsdR := &DogStatsD{client: c}
+	r := config.GetString("reporters.dogstatsd.region")
+	dogstatsdR := &DogStatsD{client: c, region: r}
 	return dogstatsdR, nil
 }
 
 // NewDogStatsDFromClient creates a DogStatsD struct with an already configured
 // dogstatsd.Client -- or a mock client
-func NewDogStatsDFromClient(client dogstatsd.Client) *DogStatsD {
-	return &DogStatsD{client: client}
+func NewDogStatsDFromClient(c dogstatsd.Client, r string) *DogStatsD {
+	return &DogStatsD{client: c, region: r}
 }
