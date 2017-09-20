@@ -17,3 +17,7 @@ basicauth_user: user
 basicauth_pass: pass
 newrelic_app: ""
 newrelic_key: ""
+reporters:
+  dogstatsd:
+    host: ""
+    prefix: ""
