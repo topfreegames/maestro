@@ -74,8 +74,8 @@ func (l *Login) GenerateLoginURL(oauthState string) (string, error) {
 }
 
 //GetAccessToken exchange authorization code with access token
-func (l *Login) GetAccessToken(code string) (*oauth2.Token, error) {
-	token, err := l.GoogleOauthConfig.Exchange(oauth2.NoContext, code)
+func (l *Login) GetAccessToken(code, redirectURI string) (*oauth2.Token, error) {
+	token, err := l.GoogleOauthConfig.Exchange(oauth2.NoContext, code, redirectURI)
 	if err != nil {
 		err := errors.NewAccessError("GoogleCallback: Code exchange failed", err)
 		return nil, err

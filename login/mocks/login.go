@@ -49,15 +49,15 @@ func (_mr *_MockLoginRecorder) GenerateLoginURL(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GenerateLoginURL", arg0)
 }
 
-func (_m *MockLogin) GetAccessToken(_param0 string) (*oauth2.Token, error) {
-	ret := _m.ctrl.Call(_m, "GetAccessToken", _param0)
+func (_m *MockLogin) GetAccessToken(_param0, _param1 string) (*oauth2.Token, error) {
+	ret := _m.ctrl.Call(_m, "GetAccessToken", _param0, _param1)
 	ret0, _ := ret[0].(*oauth2.Token)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockLoginRecorder) GetAccessToken(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetAccessToken", arg0)
+func (_mr *_MockLoginRecorder) GetAccessToken(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetAccessToken", arg0, arg1)
 }
 
 func (_m *MockLogin) Authenticate(_param0 *oauth2.Token, _param1 interfaces.DB) (string, int, error) {

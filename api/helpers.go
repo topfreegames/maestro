@@ -10,6 +10,8 @@ package api
 import (
 	"net/http"
 	"strconv"
+
+	"github.com/rs/cors"
 )
 
 type responseWriter struct {
@@ -39,10 +41,14 @@ func (rw *responseWriter) WriteHeader(code int) {
 }
 
 func wrapHandlerWithResponseWriter(wrappedHandler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+	})
+
+	return c.Handler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		rw := newResponseWriter(w)
 		wrappedHandler.ServeHTTP(rw, req)
-	})
+	}))
 }
 
 func getStatusFromResponseWriter(w http.ResponseWriter) int {
