@@ -15,9 +15,11 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/Sirupsen/logrus/hooks/test"
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
@@ -26,6 +28,9 @@ import (
 
 var (
 	redisClient *redis.Client
+	mockDb      *pgmocks.MockDB
+	mockCtrl    *gomock.Controller
+	mmr         *models.MixedMetricsReporter
 	logger      *logrus.Logger
 	hook        *test.Hook
 	clientset   kubernetes.Interface
@@ -45,6 +50,10 @@ var _ = BeforeSuite(func() {
 
 	redisClient, err = extensions.GetRedisClient(logger, config)
 	Expect(err).NotTo(HaveOccurred())
+
+	mockCtrl = gomock.NewController(GinkgoT())
+	mockDb = pgmocks.NewMockDB(mockCtrl)
+	mmr = models.NewMixedMetricsReporter()
 
 	kubeConfig, err := mtesting.MinikubeConfig()
 	clientset, err = kubernetes.NewForConfig(kubeConfig)

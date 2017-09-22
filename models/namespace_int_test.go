@@ -65,7 +65,8 @@ var _ = Describe("Namespace", func() {
 				return len(pods.Items)
 			}).Should(Equal(1))
 
-			err = namespace.DeletePods(clientset, redisClient.Client)
+			s := &models.Scheduler{Name: "name", Game: "game"}
+			err = namespace.DeletePods(clientset, redisClient.Client, s)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() int {
