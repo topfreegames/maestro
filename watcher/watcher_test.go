@@ -74,6 +74,48 @@ env:
 cmd:
   - "./room"
 `
+	yamlWithUpLimit = `
+name: controller-name
+game: controller
+image: controller/controller:v123
+occupiedTimeout: 300
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+      threshold: 80
+      limit: 70
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+      threshold: 80
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+`
 	occupiedTimeout = 300
 )
 
@@ -536,7 +578,7 @@ var _ = Describe("Watcher", func() {
 				scheduler.State = models.StateOverdimensioned
 				scheduler.StateLastChangedAt = lastChangedAt.Unix()
 				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
-				scheduler.YAML = yaml1
+				scheduler.YAML = yamlWithUpLimit
 			})
 
 			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
@@ -1008,6 +1050,112 @@ var _ = Describe("Watcher", func() {
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is overdimensioned, should scale down"))
+		})
+
+		It("should scale up, even if lastScaleOpAt is now, if usage is above 90% (default)", func() {
+			lastChangedAt := time.Now()
+			lastScaleOpAt := time.Now()
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = models.StateSubdimensioned
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
+				scheduler.YAML = yaml1
+			})
+			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			expC := &models.RoomsStatusCount{0, 9, 1, 0} // creating,occupied,ready,terminating
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().Exec()
+
+			// ScaleUp
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal("creating"))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(redis.NewStringResult("5000", nil)).Times(configYaml1.AutoScaling.Up.Delta * len(configYaml1.Ports))
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
+			// UpdateScheduler
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("in-sync"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
+				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
+			}).Return(&types.Result{}, nil)
+
+			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+			fmt.Sprintf("%v \n", hook.Entries)
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
+		})
+
+		It("should scale up, even if lastScaleOpAt is now, if usage is above 70% (from scheduler)", func() {
+			lastChangedAt := time.Now()
+			lastScaleOpAt := time.Now()
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = models.StateSubdimensioned
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
+				scheduler.YAML = yamlWithUpLimit
+			})
+			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			expC := &models.RoomsStatusCount{0, 7, 3, 0} // creating,occupied,ready,terminating
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().Exec()
+
+			// ScaleUp
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal("creating"))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(redis.NewStringResult("5000", nil)).Times(configYaml1.AutoScaling.Up.Delta * len(configYaml1.Ports))
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
+			// UpdateScheduler
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("in-sync"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
+				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
+			}).Return(&types.Result{}, nil)
+
+			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+			fmt.Sprintf("%v \n", hook.Entries)
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
 		})
 	})
 

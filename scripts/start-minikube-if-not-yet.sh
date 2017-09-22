@@ -53,18 +53,18 @@ if [ ! $(which minikube) ]; then
   fi
 fi 
  
-localKubeVersion=$(kubectl version --short=true --client=true | awk '{print $3}')
+localKubeVersion=$(kubectl version --short=true | awk '/Server/{print $3}')
 desiredKubeVersion=$(cat ./metadata/version.go | grep "KubeVersion" | egrep -oh "v(\d+\.?)+")
 if [ "$localKubeVersion" != "$desiredKubeVersion" ]; then
   echo "Your kubernetes version is $localKubeVersion, please update to the latest version before running Integration Tests"
-  exit 1
+  #exit 1
 fi
 
 echo Starting minikube
 if [ $(minikube ip) ]; then
   echo Minikube already started
 elif [ "$(uname)" = "Darwin" ]; then
-  minikube start --vm-driver=xhyve
+  minikube start --vm-driver=xhyve --kubernetes-version $desiredKubeVersion
 elif [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
   sudo minikube start --vm-driver=kvm
 else

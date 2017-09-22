@@ -63,6 +63,7 @@ type ScalingPolicyTrigger struct {
 	Time      int `yaml:"time" json:"time" valid:"int64"`
 	Usage     int `yaml:"usage" json:"usage" valid:"int64"`
 	Threshold int `yaml:"threshold" json:"threshold" valid:"int64"`
+	Limit     int `yaml:"limit" json:"limit" valid:"int64"`
 }
 
 // ScalingPolicy has the configuration for a scaling policy
@@ -147,6 +148,9 @@ func (c *Scheduler) Delete(db interfaces.DB) error {
 // GetAutoScalingPolicy returns the scheduler auto scaling policy
 func (c *Scheduler) GetAutoScalingPolicy() *AutoScaling {
 	configYAML, _ := NewConfigYAML(c.YAML)
+	if configYAML.AutoScaling.Up.Trigger.Limit <= 0 {
+		configYAML.AutoScaling.Up.Trigger.Limit = 90
+	}
 	return configYAML.AutoScaling
 }
 

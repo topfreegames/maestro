@@ -554,6 +554,7 @@ cmd:
 			scheduler, autoScalingPolicy, countByStatus, err := controller.GetSchedulerScalingInfo(logger, mr, mockDb, mockRedisClient, configYaml1.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(scheduler.YAML).To(Equal(yaml1))
+			configYaml1.AutoScaling.Up.Trigger.Limit = 90
 			Expect(autoScalingPolicy).To(Equal(configYaml1.AutoScaling))
 			Expect(countByStatus).To(Equal(expC))
 		})
