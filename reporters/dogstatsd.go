@@ -37,8 +37,7 @@ func (d *DogStatsD) Report(event string, opts map[string]string) error {
 }
 
 // MakeDogStatsD adds a DogStatsD struct to the Reporters' singleton
-func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger) {
-	r := GetInstance()
+func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger, r *Reporters) {
 	dogstatsdR, err := NewDogStatsD(config, logger)
 
 	if err == nil {

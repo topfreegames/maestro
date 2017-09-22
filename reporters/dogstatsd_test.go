@@ -18,21 +18,23 @@ import (
 
 var _ = Describe("DogStatsD", func() {
 	var (
+		r    *reporters.Reporters
 		c    *mocks.ClientMock
 		opts map[string]string
 	)
 
 	BeforeEach(func() {
+		r = reporters.NewReporters()
 		c = mocks.NewClientMock()
 		opts = map[string]string{"game": "pong"}
 	})
 
 	It(`MakeDogStatsD should create a new DogStatsD
 	instance and add it to the singleton reporters.Reporters`, func() {
-		_, prs := singleton.GetReporter("dogstatsd")
+		_, prs := r.GetReporter("dogstatsd")
 		Expect(prs).To(BeFalse())
-		reporters.MakeDogStatsD(config, logger)
-		_, prs = singleton.GetReporter("dogstatsd")
+		reporters.MakeDogStatsD(config, logger, r)
+		_, prs = r.GetReporter("dogstatsd")
 		Expect(prs).To(BeTrue())
 	})
 

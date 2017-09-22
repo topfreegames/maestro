@@ -62,7 +62,14 @@ func Report(event string, opts map[string]string) error {
 // MakeReporters creates Reporters' singleton from config/{}.yaml
 func MakeReporters(config *viper.Viper, logger *logrus.Logger) {
 	if config.IsSet("reporters.dogstatsd") {
-		MakeDogStatsD(config, logger)
+		MakeDogStatsD(config, logger, GetInstance())
+	}
+}
+
+// NewReporters ctor
+func NewReporters() *Reporters {
+	return &Reporters{
+		reporters: make(map[string]Reporter),
 	}
 }
 
@@ -72,9 +79,7 @@ var once sync.Once
 // GetInstance returns Reporters' singleton
 func GetInstance() *Reporters {
 	once.Do(func() {
-		instance = &Reporters{
-			reporters: make(map[string]Reporter),
-		}
+		instance = NewReporters()
 	})
 	return instance
 }
