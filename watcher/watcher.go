@@ -431,7 +431,7 @@ func (w *Watcher) checkState(
 	if roomCount.Total() < autoScalingInfo.Min {
 		return true, false, changedState
 	}
-	if 100*roomCount.Occupied >= roomCount.Total()*autoScalingInfo.Up.Trigger.Limit {
+	if autoScalingInfo.Min > 0 && 100*roomCount.Occupied >= roomCount.Total()*autoScalingInfo.Up.Trigger.Limit {
 		return true, false, changedState
 	}
 
