@@ -25,7 +25,18 @@ func NewScaleInfo(cap int) *ScaleInfo {
 }
 
 // AddPoint inserts a new point on a circular list and updates pointsAboveUsage
-func (s *ScaleInfo) AddPoint(point, total int, usage float32) {
+func (s *ScaleInfo) AddPoint(size, point, total int, usage float32) {
+	if size <= 0 {
+		size = 1
+	}
+
+	if size != len(s.points) {
+		s.points = make([]float32, size)
+		s.pointer = 0
+		s.length = 0
+		s.pointsAboveUsage = 0
+	}
+
 	if s.length >= len(s.points) {
 		s.length = len(s.points) - 1
 		if s.points[s.pointer] >= usage {
@@ -36,7 +47,7 @@ func (s *ScaleInfo) AddPoint(point, total int, usage float32) {
 	currentUsage := float32(point) / float32(total)
 	s.points[s.pointer] = currentUsage
 	s.length = s.length + 1
-	s.pointer = (s.pointer + 1) % cap(s.points)
+	s.pointer = (s.pointer + 1) % len(s.points)
 	if currentUsage >= usage {
 		s.pointsAboveUsage = s.pointsAboveUsage + 1
 	}
@@ -55,4 +66,9 @@ func (s *ScaleInfo) GetPoints() []float32 {
 // GetPointsAboveUsage returns the total number of points that were above usage
 func (s *ScaleInfo) GetPointsAboveUsage() int {
 	return s.pointsAboveUsage
+}
+
+// GetPointer returns where is the current position on points
+func (s *ScaleInfo) GetPointer() int {
+	return s.pointer
 }

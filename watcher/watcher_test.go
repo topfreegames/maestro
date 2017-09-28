@@ -11,6 +11,7 @@ package watcher_test
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -397,6 +398,8 @@ var _ = Describe("Watcher", func() {
 		})
 
 		It("should scale if roomCount is less than min", func() {
+			os.Setenv("CONTROLLER_NAME_ENABLE_INFO", "true")
+
 			// GetSchedulerScalingInfo
 			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
@@ -447,6 +450,8 @@ var _ = Describe("Watcher", func() {
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
+
+			os.Unsetenv("CONTROLLER_NAME_ENABLE_INFO")
 		})
 
 		It("should change state and not scale if first state change - subdimensioned", func() {
@@ -780,6 +785,311 @@ var _ = Describe("Watcher", func() {
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
 		})
 
+		It("should reset scaleInfo when time is updated to half and become subdimensioned because there is one point of all s.length = 1 above usage", func() {
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
+			yamlString1 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+occupiedTimeout: 300
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+      threshold: 60
+      limit: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 100
+      threshold: 80
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+`
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yamlString1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+
+			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			expC := &models.RoomsStatusCount{0, 9, 1, 0} // creating,occupied,ready,terminating
+
+			for i := 0; i < 9; i++ {
+				w.ScaleUpInfo.AddPoint(10, 10, 10, 0.6)
+			}
+			for i := 0; i < 1; i++ {
+				w.ScaleUpInfo.AddPoint(10, 0, 10, 0.6)
+			}
+
+			Expect(w.ScaleUpInfo.IsAboveThreshold(50)).To(BeTrue())
+			yamlWithNewTime := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+occupiedTimeout: 300
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 50
+      threshold: 60
+      limit: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 200
+      threshold: 80
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+`
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().Exec()
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = models.StateSubdimensioned
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
+				scheduler.YAML = yamlWithNewTime
+			})
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal("creating"))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(redis.NewStringResult("5000", nil)).Times(configYaml1.AutoScaling.Up.Delta * len(configYaml1.Ports))
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("in-sync"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+			}).Return(&types.Result{}, nil)
+			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+			fmt.Sprintf("%v \n", hook.Entries)
+			Expect(w.ScaleUpInfo.IsAboveThreshold(60)).To(BeTrue())
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
+
+			Expect(w.ScaleUpInfo.GetPointer()).To(Equal(1))
+			Expect(w.ScaleUpInfo.GetPoints()).To(HaveLen(5))
+			Expect(w.ScaleUpInfo.GetPointsAboveUsage()).To(Equal(1))
+		})
+
+		It("should reset scaleInfo when time is updated to double and become insync", func() {
+			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
+			yamlString1 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+occupiedTimeout: 300
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+      threshold: 60
+      limit: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 100
+      threshold: 80
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+`
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yamlString1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+
+			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			expC := &models.RoomsStatusCount{0, 9, 1, 0} // creating,occupied,ready,terminating
+
+			for i := 0; i < 9; i++ {
+				w.ScaleUpInfo.AddPoint(10, 10, 10, 0.6)
+			}
+			for i := 0; i < 1; i++ {
+				w.ScaleUpInfo.AddPoint(10, 0, 10, 0.6)
+			}
+
+			Expect(w.ScaleUpInfo.IsAboveThreshold(50)).To(BeTrue())
+			yamlWithNewTime := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+occupiedTimeout: 300
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 200
+      threshold: 60
+      limit: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 100
+      threshold: 80
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+`
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().Exec()
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.State = models.StateSubdimensioned
+				scheduler.StateLastChangedAt = lastChangedAt.Unix()
+				scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
+				scheduler.YAML = yamlWithNewTime
+			})
+
+			// ScaleUp
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal("creating"))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(redis.NewStringResult("5000", nil)).Times(configYaml1.AutoScaling.Up.Delta * len(configYaml1.Ports))
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+				gomock.Any(),
+			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+				Expect(scheduler.State).To(Equal("in-sync"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+			}).Return(&types.Result{}, nil)
+			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+			fmt.Sprintf("%v \n", hook.Entries)
+			Expect(w.ScaleUpInfo.IsAboveThreshold(60)).To(BeTrue())
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
+
+			Expect(w.ScaleUpInfo.GetPointer()).To(Equal(1))
+			Expect(w.ScaleUpInfo.GetPoints()).To(HaveLen(20))
+			Expect(w.ScaleUpInfo.GetPointsAboveUsage()).To(Equal(1))
+		})
+
 		It("should not panic and exit if error retrieving scheduler scaling info", func() {
 			// GetSchedulerScalingInfo
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -851,20 +1161,22 @@ var _ = Describe("Watcher", func() {
 
 			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
 			usage := float32(configYaml1.AutoScaling.Up.Trigger.Usage) / 100
+			capac := configYaml1.AutoScaling.Up.Trigger.Time / w.AutoScalingPeriod
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
-					w.ScaleUpInfo.AddPoint(0, 10, usage)
+					w.ScaleUpInfo.AddPoint(capac, 0, 10, usage)
 				} else {
-					w.ScaleUpInfo.AddPoint(10, 10, usage)
+					w.ScaleUpInfo.AddPoint(capac, 10, 10, usage)
 				}
 			}
 			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
 			usage = float32(configYaml1.AutoScaling.Down.Trigger.Usage) / 100
+			capac = configYaml1.AutoScaling.Down.Trigger.Time / w.AutoScalingPeriod
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
-					w.ScaleDownInfo.AddPoint(10, 10, usage)
+					w.ScaleDownInfo.AddPoint(capac, 10, 10, usage)
 				} else {
-					w.ScaleDownInfo.AddPoint(0, 10, usage)
+					w.ScaleDownInfo.AddPoint(capac, 0, 10, usage)
 				}
 			}
 
@@ -915,20 +1227,22 @@ var _ = Describe("Watcher", func() {
 
 			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
 			usage := float32(configYaml1.AutoScaling.Up.Trigger.Usage) / 100
+			capac := configYaml1.AutoScaling.Up.Trigger.Time / w.AutoScalingPeriod
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
-					w.ScaleUpInfo.AddPoint(10, 10, usage)
+					w.ScaleUpInfo.AddPoint(capac, 10, 10, usage)
 				} else {
-					w.ScaleUpInfo.AddPoint(0, 10, usage)
+					w.ScaleUpInfo.AddPoint(capac, 0, 10, usage)
 				}
 			}
 			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
 			usage = float32(configYaml1.AutoScaling.Down.Trigger.Usage) / 100
+			capac = configYaml1.AutoScaling.Down.Trigger.Time / w.AutoScalingPeriod
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
-					w.ScaleDownInfo.AddPoint(0, 10, usage)
+					w.ScaleDownInfo.AddPoint(capac, 0, 10, usage)
 				} else {
-					w.ScaleDownInfo.AddPoint(10, 10, usage)
+					w.ScaleDownInfo.AddPoint(capac, 10, 10, usage)
 				}
 			}
 
@@ -984,20 +1298,22 @@ var _ = Describe("Watcher", func() {
 
 			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
 			usage := float32(configYaml1.AutoScaling.Up.Trigger.Usage) / 100
+			capac := configYaml1.AutoScaling.Up.Trigger.Time / w.AutoScalingPeriod
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
-					w.ScaleUpInfo.AddPoint(0, 10, usage)
+					w.ScaleUpInfo.AddPoint(capac, 0, 10, usage)
 				} else {
-					w.ScaleUpInfo.AddPoint(10, 10, usage)
+					w.ScaleUpInfo.AddPoint(capac, 10, 10, usage)
 				}
 			}
 			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
 			usage = float32(configYaml1.AutoScaling.Down.Trigger.Usage) / 100
+			capac = configYaml1.AutoScaling.Down.Trigger.Time / w.AutoScalingPeriod
 			for i := 0; i < total; i++ {
 				if 100*i <= 50*total {
-					w.ScaleDownInfo.AddPoint(10, 10, usage)
+					w.ScaleDownInfo.AddPoint(capac, 10, 10, usage)
 				} else {
-					w.ScaleDownInfo.AddPoint(0, 10, usage)
+					w.ScaleDownInfo.AddPoint(capac, 0, 10, usage)
 				}
 			}
 
@@ -1043,20 +1359,22 @@ var _ = Describe("Watcher", func() {
 
 			total := configYaml1.AutoScaling.Up.Trigger.Time/w.AutoScalingPeriod - 1
 			usage := float32(configYaml1.AutoScaling.Up.Trigger.Usage) / 100
+			capac := configYaml1.AutoScaling.Up.Trigger.Time / w.AutoScalingPeriod
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
-					w.ScaleUpInfo.AddPoint(0, 10, usage)
+					w.ScaleUpInfo.AddPoint(capac, 0, 10, usage)
 				} else {
-					w.ScaleUpInfo.AddPoint(10, 10, usage)
+					w.ScaleUpInfo.AddPoint(capac, 10, 10, usage)
 				}
 			}
 			total = configYaml1.AutoScaling.Down.Trigger.Time/w.AutoScalingPeriod - 1
 			usage = float32(configYaml1.AutoScaling.Down.Trigger.Usage) / 100
+			capac = configYaml1.AutoScaling.Down.Trigger.Time / w.AutoScalingPeriod
 			for i := 0; i < total; i++ {
 				if 100*i <= 90*total {
-					w.ScaleDownInfo.AddPoint(10, 10, usage)
+					w.ScaleDownInfo.AddPoint(capac, 10, 10, usage)
 				} else {
-					w.ScaleDownInfo.AddPoint(0, 10, usage)
+					w.ScaleDownInfo.AddPoint(capac, 0, 10, usage)
 				}
 			}
 

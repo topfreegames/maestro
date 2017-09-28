@@ -437,8 +437,9 @@ func (w *Watcher) checkState(
 
 	threshold := autoScalingInfo.Up.Trigger.Threshold
 	usage := float32(autoScalingInfo.Up.Trigger.Usage) / 100
+	capacity := autoScalingInfo.Up.Trigger.Time / w.AutoScalingPeriod
 
-	w.ScaleUpInfo.AddPoint(roomCount.Occupied, roomCount.Total(), usage)
+	w.ScaleUpInfo.AddPoint(capacity, roomCount.Occupied, roomCount.Total(), usage)
 	if w.ScaleUpInfo.IsAboveThreshold(threshold) {
 		inSync = false
 		if scheduler.State != models.StateSubdimensioned {
@@ -452,8 +453,9 @@ func (w *Watcher) checkState(
 
 	threshold = autoScalingInfo.Down.Trigger.Threshold
 	usage = float32(autoScalingInfo.Down.Trigger.Usage) / 100
+	capacity = autoScalingInfo.Down.Trigger.Time / w.AutoScalingPeriod
 
-	w.ScaleDownInfo.AddPoint(roomCount.Ready, roomCount.Total(), 1-usage)
+	w.ScaleDownInfo.AddPoint(capacity, roomCount.Ready, roomCount.Total(), 1-usage)
 	if w.ScaleDownInfo.IsAboveThreshold(threshold) && roomCount.Total()-autoScalingInfo.Down.Delta >= autoScalingInfo.Min {
 		inSync = false
 		if scheduler.State != models.StateOverdimensioned {
@@ -465,6 +467,8 @@ func (w *Watcher) checkState(
 		}
 	}
 
+	w.printScaleInfos()
+
 	if inSync && scheduler.State != models.StateInSync {
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
@@ -472,4 +476,45 @@ func (w *Watcher) checkState(
 	}
 
 	return shouldScaleUp, shouldScaleDown, changedState
+}
+
+func (w *Watcher) printScaleInfos() {
+	envName := fmt.Sprintf(
+		"%s_ENABLE_INFO",
+		strings.ToUpper(
+			strings.Replace(
+				w.SchedulerName, "-", "_", -1,
+			),
+		),
+	)
+
+	if os.Getenv(envName) == "true" {
+		upPoints := ""
+		for i, point := range w.ScaleUpInfo.GetPoints() {
+			if i == w.ScaleUpInfo.GetPointer() {
+				upPoints = fmt.Sprintf("%s _%f_", upPoints, point)
+			} else {
+				upPoints = fmt.Sprintf("%s %f", upPoints, point)
+			}
+		}
+		upPoints = fmt.Sprintf("%s\n", upPoints)
+
+		downPoints := ""
+		for i, point := range w.ScaleDownInfo.GetPoints() {
+			if i == w.ScaleDownInfo.GetPointer() {
+				downPoints = fmt.Sprintf("%s _%f_", downPoints, point)
+			} else {
+				downPoints = fmt.Sprintf("%s %f", downPoints, point)
+			}
+		}
+		downPoints = fmt.Sprintf("%s\n", downPoints)
+
+		w.Logger.WithFields(logrus.Fields{
+			"operation":            "checkState",
+			"occupiedPercentages":  upPoints,
+			"pointsAboveUpUsage":   w.ScaleUpInfo.GetPointsAboveUsage(),
+			"pointsAboveDownUsage": w.ScaleDownInfo.GetPointsAboveUsage(),
+			"readyPercentages":     downPoints,
+		}).Info("points above usage")
+	}
 }

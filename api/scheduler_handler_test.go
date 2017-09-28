@@ -40,8 +40,8 @@ var _ = Describe("Scheduler Handler", func() {
 	var request *http.Request
 	var recorder *httptest.ResponseRecorder
 	var payload JSON
-	var jsonString string
-	jsonString = `{
+	var yamlString string
+	yamlString = `{
   "name": "scheduler-name",
   "game": "game-name",
   "image": "somens/someimage:v123",
@@ -125,7 +125,7 @@ var _ = Describe("Scheduler Handler", func() {
 			It("should list schedulers", func() {
 				var configYaml models.ConfigYAML
 				expectedNames := []string{"scheduler1", "scheduler2", "scheduler3"}
-				err := json.Unmarshal([]byte(jsonString), &configYaml)
+				err := json.Unmarshal([]byte(yamlString), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
 
 				url := fmt.Sprintf("http://%s/scheduler", app.Address)
@@ -149,7 +149,7 @@ var _ = Describe("Scheduler Handler", func() {
 			It("should list none if no schedulers", func() {
 				var configYaml models.ConfigYAML
 				expectedNames := []string{}
-				err := json.Unmarshal([]byte(jsonString), &configYaml)
+				err := json.Unmarshal([]byte(yamlString), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
 
 				url := fmt.Sprintf("http://%s/scheduler", app.Address)
@@ -172,7 +172,7 @@ var _ = Describe("Scheduler Handler", func() {
 
 			It("should return error if db fails to list schedulers", func() {
 				var configYaml models.ConfigYAML
-				err := json.Unmarshal([]byte(jsonString), &configYaml)
+				err := json.Unmarshal([]byte(yamlString), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
 
 				url := fmt.Sprintf("http://%s/scheduler", app.Address)
@@ -198,7 +198,7 @@ var _ = Describe("Scheduler Handler", func() {
 		Describe("POST /scheduler", func() {
 			url := "/scheduler"
 			BeforeEach(func() {
-				err := json.Unmarshal([]byte(jsonString), &payload)
+				err := json.Unmarshal([]byte(yamlString), &payload)
 				Expect(err).NotTo(HaveOccurred())
 				reader := JSONFor(payload)
 				request, _ = http.NewRequest("POST", url, reader)
@@ -238,7 +238,7 @@ var _ = Describe("Scheduler Handler", func() {
 				})
 
 				It("creates multiple schedulers", func() {
-					jsonString := `
+					yamlString := `
 ---
 name: scheduler-name-1
 game: game-name
@@ -286,7 +286,7 @@ autoscaling:
       time: 900
     cooldown: 300
 `
-					reader := strings.NewReader(jsonString)
+					reader := strings.NewReader(yamlString)
 					request, err := http.NewRequest("POST", url, reader)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -437,7 +437,7 @@ autoscaling:
 			Context("when all services are healthy", func() {
 				It("returns a status code of 200 and success body", func() {
 					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", "schedulerName").Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						scheduler.YAML = jsonString
+						scheduler.YAML = yamlString
 					})
 					mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", "schedulerName")
 
@@ -551,13 +551,13 @@ autoscaling:
 			Context("when all services are healthy", func() {
 				It("returns a status code of 200 and success body", func() {
 					// Create scheduler
-					reader := strings.NewReader(jsonString)
+					reader := strings.NewReader(yamlString)
 					url := "/scheduler"
 					request, err := http.NewRequest("POST", url, reader)
 					Expect(err).NotTo(HaveOccurred())
 
 					var configYaml1 models.ConfigYAML
-					err = yaml.Unmarshal([]byte(jsonString), &configYaml1)
+					err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
@@ -615,7 +615,7 @@ autoscaling:
 					mockDb.EXPECT().
 						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
 						Do(func(scheduler *models.Scheduler, query string, modifier string) {
-							*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+							*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 						})
 
 					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
@@ -675,9 +675,130 @@ autoscaling:
 					Expect(recorder.Code).To(Equal(http.StatusOK))
 				})
 
+				It("should return 200 and update up time and not delete pods", func() {
+					// Create scheduler
+					yamlString1 := `
+name: scheduler-name
+game: game
+image: image:v1
+autoscaling:
+  min: 1
+  up:
+    delta: 10
+    trigger:
+      usage: 70
+      time: 600
+    cooldown: 300
+  down:
+    delta: 2
+    trigger:
+      usage: 50
+      time: 900
+    cooldown: 300
+`
+					reader := strings.NewReader(yamlString1)
+					url := "/scheduler"
+					request, err := http.NewRequest("POST", url, reader)
+					Expect(err).NotTo(HaveOccurred())
+
+					var configYaml1 models.ConfigYAML
+					err = yaml.Unmarshal([]byte(yamlString1), &configYaml1)
+					Expect(err).NotTo(HaveOccurred())
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
+					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+						func(schedulerName string, statusInfo map[string]interface{}) {
+							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+						},
+					).Times(configYaml1.AutoScaling.Min)
+					mockPipeline.EXPECT().
+						ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).
+						Times(configYaml1.AutoScaling.Min)
+					mockPipeline.EXPECT().
+						SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).
+						Times(configYaml1.AutoScaling.Min)
+					mockPipeline.EXPECT().
+						Exec().
+						Times(configYaml1.AutoScaling.Min)
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
+						gomock.Any(),
+					)
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+						gomock.Any(),
+					)
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(http.StatusCreated))
+					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+					pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+					Expect(err).NotTo(HaveOccurred())
+					Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+					// Update scheduler
+					yamlString2 := `
+name: scheduler-name
+game: game
+image: image:v1
+autoscaling:
+  min: 1
+  up:
+    delta: 10
+    trigger:
+      usage: 70
+      time: 300
+    cooldown: 300
+  down:
+    delta: 2
+    trigger:
+      usage: 50
+      time: 900
+    cooldown: 300
+`
+					var configYaml2 models.ConfigYAML
+					err = yaml.Unmarshal([]byte(yamlString2), &configYaml2)
+					Expect(err).NotTo(HaveOccurred())
+
+					reader = strings.NewReader(yamlString2)
+					url = fmt.Sprintf("/scheduler/%s", configYaml2.Name)
+					request, err = http.NewRequest("PUT", url, reader)
+					Expect(err).NotTo(HaveOccurred())
+
+					mockRedisClient.EXPECT().Ping().AnyTimes()
+
+					mockDb.EXPECT().
+						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
+						Do(func(scheduler *models.Scheduler, query string, modifier string) {
+							*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString1)
+						})
+
+					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+
+					mockRedisClient.EXPECT().
+						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						Return(redis.NewBoolResult(true, nil))
+
+					mockDb.EXPECT().
+						Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+
+					mockRedisClient.EXPECT().
+						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
+						Return(redis.NewCmdResult(nil, nil))
+
+					recorder = httptest.NewRecorder()
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+					Expect(recorder.Code).To(Equal(http.StatusOK))
+				})
+
 				It("should return 400 if updating nonexisting scheduler", func() {
 					var configYaml1 models.ConfigYAML
-					err := yaml.Unmarshal([]byte(jsonString), &configYaml1)
+					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
 					reader := strings.NewReader(newJSONString)
@@ -704,7 +825,7 @@ autoscaling:
 
 				It("should return 400 if names doesn't match", func() {
 					var configYaml1 models.ConfigYAML
-					err := yaml.Unmarshal([]byte(jsonString), &configYaml1)
+					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
 					reader := strings.NewReader(newJSONString)
@@ -726,7 +847,7 @@ autoscaling:
 
 				It("should return 422 if there is no nodes with affinity label", func() {
 					var configYaml1 models.ConfigYAML
-					err := yaml.Unmarshal([]byte(jsonString), &configYaml1)
+					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
 					reader := strings.NewReader(newJSONString)
@@ -755,7 +876,7 @@ autoscaling:
 			Context("when postgres is down", func() {
 				It("returns status code of 500 if database is unavailable", func() {
 					var configYaml1 models.ConfigYAML
-					err := yaml.Unmarshal([]byte(jsonString), &configYaml1)
+					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
 					reader := strings.NewReader(newJSONString)
@@ -786,7 +907,7 @@ autoscaling:
 		Describe("GET /scheduler/{schedulerName}", func() {
 			It("should return infos about scheduler and room", func() {
 				var configYaml models.ConfigYAML
-				err := json.Unmarshal([]byte(jsonString), &configYaml)
+				err := json.Unmarshal([]byte(yamlString), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
 
 				schedulerName := configYaml.Name
@@ -809,7 +930,7 @@ autoscaling:
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, jsonString)
+						*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, yamlString)
 					})
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().
@@ -1500,12 +1621,12 @@ ports:
 
 			BeforeEach(func() {
 				// Create scheduler
-				reader := strings.NewReader(jsonString)
+				reader := strings.NewReader(yamlString)
 				url := "/scheduler"
 				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = yaml.Unmarshal([]byte(jsonString), &configYaml1)
+				err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
@@ -1568,7 +1689,7 @@ ports:
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					})
 
 				lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
@@ -1646,7 +1767,7 @@ ports:
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					})
 
 				lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
@@ -1735,7 +1856,7 @@ ports:
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					})
 
 				body := map[string]interface{}{"image": newImageName}
@@ -1764,7 +1885,7 @@ ports:
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					})
 
 				body := map[string]interface{}{"image": newImageName}
@@ -1986,7 +2107,7 @@ ports:
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					})
 
 				lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
@@ -2053,12 +2174,12 @@ ports:
 
 			BeforeEach(func() {
 				// Create scheduler
-				reader := strings.NewReader(jsonString)
+				reader := strings.NewReader(yamlString)
 				url := "/scheduler"
 				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = yaml.Unmarshal([]byte(jsonString), &configYaml1)
+				err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
@@ -2126,7 +2247,7 @@ ports:
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					})
 
 				mockDb.EXPECT().
@@ -2234,7 +2355,7 @@ ports:
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					})
 
 				schedulerLockKey := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
@@ -2340,7 +2461,7 @@ ports:
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					})
 
 				mockDb.EXPECT().
