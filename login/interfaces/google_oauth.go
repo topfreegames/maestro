@@ -17,7 +17,7 @@ type GoogleOauthConfig interface {
 	SetClientID(clientID string)
 	SetClientSecret(clientSecret string)
 	AuthCodeURL(state string, opts ...oauth2.AuthCodeOption) string
-	Exchange(ctx context.Context, code string) (*oauth2.Token, error)
+	Exchange(ctx context.Context, code, redirectURI string) (*oauth2.Token, error)
 	TokenSource(ctx context.Context, t *oauth2.Token) oauth2.TokenSource
 	Client(ctx context.Context, t *oauth2.Token) Client
 }

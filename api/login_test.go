@@ -101,7 +101,7 @@ var _ = Describe("Login", func() {
 				RefreshToken: "refresh-token",
 				AccessToken:  "access-token",
 			}
-			mockLogin.EXPECT().GetAccessToken(code).Return(token, nil)
+			mockLogin.EXPECT().GetAccessToken(code, "").Return(token, nil)
 			mockLogin.EXPECT().Authenticate(token, app.DB).Return("user@example.com", 0, nil)
 			mockDb.EXPECT().Query(
 				gomock.Any(),
@@ -141,7 +141,7 @@ var _ = Describe("Login", func() {
 		})
 
 		It("should return status code 400 if access token failed with error", func() {
-			mockLogin.EXPECT().GetAccessToken(code).Return(nil, errors.New("token error"))
+			mockLogin.EXPECT().GetAccessToken(code, "").Return(nil, errors.New("token error"))
 
 			url := fmt.Sprintf("http://%s/access?code=%s", app.Address, code)
 			request, err := http.NewRequest("GET", url, nil)
@@ -165,7 +165,7 @@ var _ = Describe("Login", func() {
 				RefreshToken: "refresh-token",
 				AccessToken:  "access-token",
 			}
-			mockLogin.EXPECT().GetAccessToken(code).Return(token, nil)
+			mockLogin.EXPECT().GetAccessToken(code, "").Return(token, nil)
 			mockLogin.EXPECT().Authenticate(token, app.DB).Return("user@invalidemail.com", 0, nil)
 
 			app.Router.ServeHTTP(recorder, request)
@@ -185,7 +185,7 @@ var _ = Describe("Login", func() {
 				RefreshToken: "refresh-token",
 				AccessToken:  "access-token",
 			}
-			mockLogin.EXPECT().GetAccessToken(code).Return(token, nil)
+			mockLogin.EXPECT().GetAccessToken(code, "").Return(token, nil)
 			mockLogin.EXPECT().Authenticate(token, app.DB).Return("user@example.com", 0, nil)
 			mockDb.EXPECT().Query(
 				gomock.Any(),
@@ -210,6 +210,40 @@ var _ = Describe("Login", func() {
 			Expect(body).To(HaveKeyWithValue("description", "get access token error"))
 			Expect(body).To(HaveKeyWithValue("error", "DatabaseError"))
 			Expect(body).To(HaveKeyWithValue("success", false))
+		})
+	})
+
+	Context("LoginAccessHandler with redirect_uri", func() {
+		It("asdf", func() {
+			code := "some-code"
+			redirectURI := "redirect.uri.com"
+			url := fmt.Sprintf("http://%s/access?code=%s&redirect_uri=%s", app.Address, code, redirectURI)
+			request, err = http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			token := &oauth2.Token{
+				RefreshToken: "refresh-token",
+				AccessToken:  "access-token",
+			}
+			mockLogin.EXPECT().GetAccessToken(code, redirectURI).Return(token, nil)
+			mockLogin.EXPECT().Authenticate(token, app.DB).Return("user@example.com", 0, nil)
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				`INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email) 
+	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
+	ON CONFLICT(email) DO UPDATE
+		SET access_token = excluded.access_token,
+				key_access_token = excluded.access_token,
+				refresh_token = excluded.refresh_token,
+				expiry = excluded.expiry`,
+				gomock.Any(),
+			)
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			body := fmt.Sprintf(`{"token": "%s"}`, token.AccessToken)
+			Expect(recorder.Body.String()).To(Equal(body))
 		})
 	})
 })

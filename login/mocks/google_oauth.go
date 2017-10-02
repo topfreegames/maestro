@@ -62,15 +62,15 @@ func (_mr *_MockGoogleOauthConfigRecorder) AuthCodeURL(arg0 interface{}, arg1 ..
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AuthCodeURL", _s...)
 }
 
-func (_m *MockGoogleOauthConfig) Exchange(ctx context.Context, code string) (*oauth2.Token, error) {
-	ret := _m.ctrl.Call(_m, "Exchange", ctx, code)
+func (_m *MockGoogleOauthConfig) Exchange(ctx context.Context, code, redirectURI string) (*oauth2.Token, error) {
+	ret := _m.ctrl.Call(_m, "Exchange", ctx, code, redirectURI)
 	ret0, _ := ret[0].(*oauth2.Token)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockGoogleOauthConfigRecorder) Exchange(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Exchange", arg0, arg1)
+func (_mr *_MockGoogleOauthConfigRecorder) Exchange(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Exchange", arg0, arg1, arg2)
 }
 
 func (_m *MockGoogleOauthConfig) TokenSource(ctx context.Context, t *oauth2.Token) oauth2.TokenSource {

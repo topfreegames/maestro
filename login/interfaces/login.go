@@ -15,6 +15,6 @@ import (
 type Login interface {
 	Setup()
 	GenerateLoginURL(string) (string, error)
-	GetAccessToken(string) (*oauth2.Token, error)
+	GetAccessToken(string, string) (*oauth2.Token, error)
 	Authenticate(*oauth2.Token, interfaces.DB) (string, int, error)
 }

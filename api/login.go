@@ -82,8 +82,9 @@ func (l *LoginAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		l.App.HandleError(w, http.StatusBadRequest, "code must not be empty", fmt.Errorf("code must not be empty"))
 		return
 	}
+	redirectURI := r.FormValue("redirect_uri")
 
-	token, err := l.App.Login.GetAccessToken(authCode)
+	token, err := l.App.Login.GetAccessToken(authCode, redirectURI)
 	if err != nil {
 		l.App.HandleError(w, http.StatusBadRequest, "failed to get access token", fmt.Errorf("failed to get access token"))
 		return

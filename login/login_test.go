@@ -84,18 +84,18 @@ var _ = Describe("Login", func() {
 				AccessToken:  "access-token",
 				TokenType:    "Bearer",
 			}
-			mockOauth.EXPECT().Exchange(oauth2.NoContext, "code").Return(token, nil)
+			mockOauth.EXPECT().Exchange(oauth2.NoContext, "code", "").Return(token, nil)
 
-			newToken, err := login.GetAccessToken("code")
+			newToken, err := login.GetAccessToken("code", "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(newToken).To(Equal(token))
 		})
 
 		It("should return error if exchange fails", func() {
 			login.GoogleOauthConfig = mockOauth
-			mockOauth.EXPECT().Exchange(oauth2.NoContext, "code").Return(nil, errors.New("exchange error"))
+			mockOauth.EXPECT().Exchange(oauth2.NoContext, "code", "").Return(nil, errors.New("exchange error"))
 
-			_, err := login.GetAccessToken("code")
+			_, err := login.GetAccessToken("code", "")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("exchange error"))
 		})
@@ -103,9 +103,9 @@ var _ = Describe("Login", func() {
 		It("should return error if token is invalid", func() {
 			login.GoogleOauthConfig = mockOauth
 			token := &oauth2.Token{}
-			mockOauth.EXPECT().Exchange(oauth2.NoContext, "code").Return(token, nil)
+			mockOauth.EXPECT().Exchange(oauth2.NoContext, "code", "").Return(token, nil)
 
-			_, err := login.GetAccessToken("code")
+			_, err := login.GetAccessToken("code", "")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Invalid token received from Authorization Server"))
 		})

@@ -9,6 +9,7 @@ package login
 
 import (
 	"context"
+	"os"
 
 	"github.com/topfreegames/maestro/login/interfaces"
 
@@ -47,8 +48,26 @@ func (g *GoogleOauthConfig) AuthCodeURL(state string, opts ...oauth2.AuthCodeOpt
 	return g.googleOauthConfig.AuthCodeURL(state, opts...)
 }
 
-func (g *GoogleOauthConfig) Exchange(ctx context.Context, code string) (*oauth2.Token, error) {
-	return g.googleOauthConfig.Exchange(ctx, code)
+func (g *GoogleOauthConfig) Exchange(ctx context.Context, code, redirectURI string) (*oauth2.Token, error) {
+	var token *oauth2.Token
+	var err error
+
+	if redirectURI == "" {
+		token, err = g.googleOauthConfig.Exchange(ctx, code)
+	} else {
+		c := &oauth2.Config{
+			ClientID:     os.Getenv(clientIDEnvVar),
+			ClientSecret: os.Getenv(clientSecretEnvVar),
+			RedirectURL:  redirectURI,
+			Endpoint:     google.Endpoint,
+			Scopes: []string{
+				"https://www.googleapis.com/auth/userinfo.profile",
+				"https://www.googleapis.com/auth/userinfo.email",
+			},
+		}
+		token, err = c.Exchange(ctx, code)
+	}
+	return token, err
 }
 
 func (g *GoogleOauthConfig) TokenSource(ctx context.Context, t *oauth2.Token) oauth2.TokenSource {
