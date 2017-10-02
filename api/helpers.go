@@ -42,11 +42,31 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+func corsAllowedFallback(envvar, fallback string) []string {
+	val, prs := os.LookupEnv(envvar)
+	if prs == false {
+		val = fallback
+	}
+	return strings.Split(val, " ")
+}
+
+func corsAllowedOrigins() []string {
+	return corsAllowedFallback("CORS_ALLOWED_ORIGINS", "*")
+}
+
+func corsAllowedMethods() []string {
+	return corsAllowedFallback("CORS_ALLOWED_METHODS", "GET PUT POST DELETE")
+}
+
+func corsAllowedHeaders() []string {
+	return corsAllowedFallback("CORS_ALLOWED_HEADERS", "authorization")
+}
+
 func wrapHandlerWithResponseWriter(wrappedHandler http.Handler) http.Handler {
 	c := cors.New(cors.Options{
-		AllowedOrigins: strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), " "),
-		AllowedMethods: strings.Split(os.Getenv("CORS_ALLOWED_METHODS"), " "),
-		AllowedHeaders: strings.Split(os.Getenv("CORS_ALLOWED_HEADERS"), " "),
+		AllowedOrigins: corsAllowedOrigins(),
+		AllowedMethods: corsAllowedMethods(),
+		AllowedHeaders: corsAllowedHeaders(),
 	})
 
 	return c.Handler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
