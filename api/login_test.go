@@ -190,9 +190,9 @@ var _ = Describe("Login", func() {
 			mockDb.EXPECT().Query(
 				gomock.Any(),
 				`INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email) 
-				VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
-				ON CONFLICT(email) DO UPDATE
-				SET access_token = excluded.access_token,
+	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
+	ON CONFLICT(email) DO UPDATE
+		SET access_token = excluded.access_token,
 				key_access_token = excluded.access_token,
 				refresh_token = excluded.refresh_token,
 				expiry = excluded.expiry`,
