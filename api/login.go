@@ -105,12 +105,10 @@ func (l *LoginAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = login.SaveToken(token, email, token.AccessToken, l.App.DB)
 	if err != nil {
 		l.App.HandleError(w, http.StatusBadRequest, "", err)
-		println("err: ", err)
 		return
 	}
 
 	body := fmt.Sprintf(`{"token": "%s"}`, token.AccessToken)
-	println("body: ", body)
 
 	Write(w, http.StatusOK, body)
 	logger.Debug("Returning access token")

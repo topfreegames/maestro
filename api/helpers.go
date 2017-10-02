@@ -43,6 +43,8 @@ func (rw *responseWriter) WriteHeader(code int) {
 func wrapHandlerWithResponseWriter(wrappedHandler http.Handler) http.Handler {
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT"},
+		AllowedHeaders: []string{"authorization"},
 	})
 
 	return c.Handler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
