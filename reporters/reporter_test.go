@@ -39,12 +39,12 @@ var _ = Describe("Reporters", func() {
 		})
 
 		It("must delete an existing reporter from singleton with UnsetReporter", func() {
-			reporters.MakeReporters(config, logger)
-			singleton := reporters.GetInstance()
-			_, prs := singleton.GetReporter("dogstatsd")
+			r := reporters.NewReporters()
+			reporters.MakeDogStatsD(config, logger, r)
+			_, prs := r.GetReporter("dogstatsd")
 			Expect(prs).To(Equal(true))
-			singleton.UnsetReporter("dogstatsd")
-			_, prs = singleton.GetReporter("dogstatsd")
+			r.UnsetReporter("dogstatsd")
+			_, prs = r.GetReporter("dogstatsd")
 			Expect(prs).To(Equal(false))
 		})
 	})

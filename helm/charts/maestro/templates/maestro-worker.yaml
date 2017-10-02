@@ -21,7 +21,7 @@ spec:
           command:
             - "/bin/sh"
             - "-c"
-            - "/app/maestro worker --incluster"
+            - "/app/maestro worker --incluster --json"
           image: quay.io/tfgco/maestro:v{{ .Chart.Version }}
           imagePullPolicy: Always
           volumeMounts:

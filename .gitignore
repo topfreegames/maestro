@@ -33,3 +33,5 @@ _testmain.go
 *.swo
 .*.swp
 .*.swo
+
+.DS_Store

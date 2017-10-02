@@ -108,7 +108,7 @@ var _ = Describe("App", func() {
 				Expect(pod.Spec.Containers[0].Ports[0].HostPort).NotTo(BeZero())
 
 				room := models.NewRoom(pod.GetName(), ns)
-				err := room.Create(app.RedisClient)
+				err := room.Create(app.RedisClient, mockDb, mmr)
 				Expect(err).NotTo(HaveOccurred())
 
 				pipe := app.RedisClient.TxPipeline()
@@ -217,7 +217,7 @@ var _ = Describe("App", func() {
 				Expect(pod.Spec.Containers[0].Ports[0].HostPort).NotTo(BeZero())
 
 				room := models.NewRoom(pod.GetName(), ns)
-				err := room.Create(app.RedisClient)
+				err := room.Create(app.RedisClient, mockDb, mmr)
 				Expect(err).NotTo(HaveOccurred())
 
 				pipe := app.RedisClient.TxPipeline()

@@ -18,9 +18,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
+	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/login"
 	"github.com/topfreegames/maestro/login/mocks"
+	"github.com/topfreegames/maestro/models"
 
 	mTest "github.com/topfreegames/maestro/testing"
 	"k8s.io/client-go/kubernetes"
@@ -32,8 +34,10 @@ var (
 	hook      *test.Hook
 	logger    *logrus.Logger
 	config    *viper.Viper
+	mockDb    *pgmocks.MockDB
 	mockLogin *mocks.MockLogin
 	mockCtrl  *gomock.Controller
+	mmr       *models.MixedMetricsReporter
 	token     string = "token"
 )
 

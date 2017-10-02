@@ -239,8 +239,6 @@ func (w *Watcher) RemoveDeadRooms() {
 	}
 
 	if w.OccupiedTimeout > 0 {
-		logger.Info("deleting rooms that are stuck at occupied status")
-
 		since = time.Now().Unix() - w.OccupiedTimeout
 		logger = w.Logger.WithFields(logrus.Fields{
 			"executionID": uuid.NewV4().String(),
@@ -260,6 +258,8 @@ func (w *Watcher) RemoveDeadRooms() {
 		}
 
 		if roomsOnOccupiedTimeout != nil && len(roomsOnOccupiedTimeout) > 0 {
+			logger.Info("deleting rooms that are stuck at occupied status")
+
 			for _, roomName := range roomsOnOccupiedTimeout {
 				room := &models.Room{
 					ID:            roomName,
@@ -429,6 +429,9 @@ func (w *Watcher) checkState(
 		return false, false, changedState
 	}
 	if roomCount.Total() < autoScalingInfo.Min {
+		return true, false, changedState
+	}
+	if autoScalingInfo.Min > 0 && 100*roomCount.Occupied >= roomCount.Total()*autoScalingInfo.Up.Trigger.Limit {
 		return true, false, changedState
 	}
 
