@@ -160,11 +160,13 @@ var _ = Describe("Room", func() {
 			}
 			mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied), name)
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
+			mockPipeline.EXPECT().SCard(newSKey).Return(goredis.NewIntResult(10, nil))
 			mockPipeline.EXPECT().Exec()
 			reportStatus(room.SchedulerName, status, rKey, newSKey)
 
-			err := room.SetStatus(mockRedisClient, mockDb, mmr, status)
+			nReady, err := room.SetStatusAndReturnNumberOfReadyGRUs(mockRedisClient, mockDb, mmr, status)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(nReady).To(Equal(10))
 		})
 
 		It("should remove from redis is status is 'terminated'", func() {
@@ -182,10 +184,14 @@ var _ = Describe("Room", func() {
 			}
 			mockPipeline.EXPECT().ZRem(pKey, room.ID)
 			mockPipeline.EXPECT().Del(rKey)
+			mockPipeline.EXPECT().SCard(
+				models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady),
+			).Return(goredis.NewIntResult(10, nil))
 			mockPipeline.EXPECT().Exec()
 
-			err := room.SetStatus(mockRedisClient, mockDb, mmr, status)
+			nReady, err := room.SetStatusAndReturnNumberOfReadyGRUs(mockRedisClient, mockDb, mmr, status)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(nReady).To(Equal(10))
 		})
 
 		It("should return an error if redis returns an error", func() {
@@ -214,11 +220,13 @@ var _ = Describe("Room", func() {
 				mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, st), rKey)
 			}
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
+			mockPipeline.EXPECT().SCard(newSKey).Return(goredis.NewIntResult(10, nil))
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
-			err := room.SetStatus(mockRedisClient, mockDb, mmr, status)
+			nReady, err := room.SetStatusAndReturnNumberOfReadyGRUs(mockRedisClient, mockDb, mmr, status)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
+			Expect(nReady).To(Equal(-1))
 		})
 
 		It("should insert into zadd if status is occupied", func() {
@@ -243,11 +251,15 @@ var _ = Describe("Room", func() {
 				mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, st), rKey)
 			}
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
+			mockPipeline.EXPECT().SCard(
+				models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady),
+			).Return(goredis.NewIntResult(10, nil))
 			mockPipeline.EXPECT().Exec()
 			reportStatus(room.SchedulerName, status, rKey, newSKey)
 
-			err := room.SetStatus(mockRedisClient, mockDb, mmr, status)
+			nReady, err := room.SetStatusAndReturnNumberOfReadyGRUs(mockRedisClient, mockDb, mmr, status)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(nReady).To(Equal(10))
 		})
 	})
 

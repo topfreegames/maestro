@@ -11,6 +11,7 @@ package controller_test
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -3771,6 +3772,150 @@ cmd:
 			pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(int(replicas)))
+		})
+	})
+
+	Describe("SetRoomStatus", func() {
+		pKey := "scheduler:controller-name:ping"
+		sKey := "scheduler:controller-name:status:ready"
+		oKey := "scheduler:controller-name:status:occupied"
+		rKey := "scheduler:controller-name:rooms:roomName"
+		lKey := "scheduler:controller-name:last:status:occupied"
+		roomName := "roomName"
+		schedulerName := "controller-name"
+		allStatusKeys := []string{
+			"scheduler:controller-name:status:ready",
+			"scheduler:controller-name:status:creating",
+			"scheduler:controller-name:status:occupied",
+			"scheduler:controller-name:status:terminating",
+			"scheduler:controller-name:status:terminated",
+		}
+		room := models.NewRoom(roomName, schedulerName)
+
+		It("should not scale up if has enough ready rooms", func() {
+			status := "ready"
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+				"lastPing": time.Now().Unix(),
+				"status":   status,
+			})
+			mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+			mockPipeline.EXPECT().ZRem(lKey, roomName)
+			mockPipeline.EXPECT().SAdd(sKey, rKey)
+			for _, key := range allStatusKeys {
+				if !strings.Contains(key, status) {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
+			}
+			mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
+			mockPipeline.EXPECT().Exec()
+
+			err := controller.SetRoomStatus(
+				logger,
+				mockRedisClient,
+				mockDb,
+				mr,
+				clientset,
+				status,
+				config,
+				room,
+			)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should scale up if doesn't has enough ready rooms", func() {
+			status := "occupied"
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+				"lastPing": time.Now().Unix(),
+				"status":   status,
+			})
+			mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+			mockPipeline.EXPECT().Eval(models.ZaddIfNotExists, gomock.Any(), roomName)
+			mockPipeline.EXPECT().SAdd(oKey, rKey)
+			for _, key := range allStatusKeys {
+				if !strings.Contains(key, status) {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
+			}
+			mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(0), nil))
+			mockPipeline.EXPECT().Exec()
+
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+				})
+
+			// ScaleUp
+			scaleUpAmount := configYaml1.AutoScaling.Up.Delta
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(scaleUpAmount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil)).Times(scaleUpAmount * len(configYaml1.Ports))
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+
+			err := controller.SetRoomStatus(
+				logger,
+				mockRedisClient,
+				mockDb,
+				mr,
+				clientset,
+				status,
+				config,
+				room,
+			)
+
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should not scale up if error on db", func() {
+			status := "occupied"
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+				"lastPing": time.Now().Unix(),
+				"status":   status,
+			})
+			mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+			mockPipeline.EXPECT().Eval(models.ZaddIfNotExists, gomock.Any(), roomName)
+			mockPipeline.EXPECT().SAdd(oKey, rKey)
+			for _, key := range allStatusKeys {
+				if !strings.Contains(key, status) {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
+			}
+			mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(0), nil))
+			mockPipeline.EXPECT().Exec()
+
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+				Return(&types.Result{}, errors.New("some error on db"))
+
+			err := controller.SetRoomStatus(
+				logger,
+				mockRedisClient,
+				mockDb,
+				mr,
+				clientset,
+				status,
+				config,
+				room,
+			)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error on db"))
 		})
 	})
 })

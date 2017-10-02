@@ -75,7 +75,8 @@ func (r *Room) Create(redisClient interfaces.RedisClient, db pginterfaces.DB,
 	mr *MixedMetricsReporter) error {
 	r.LastPingAt = time.Now().Unix()
 	pipe := redisClient.TxPipeline()
-	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe)
+	_, err := r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, false)
+	return err
 }
 
 const ZaddIfNotExists = `
@@ -86,15 +87,20 @@ end
 return 'OK'
 `
 
-// SetStatus updates the status of a given room in the database
-func (r *Room) SetStatus(redisClient interfaces.RedisClient, db pginterfaces.DB,
-	mr *MixedMetricsReporter, status string) error {
+// SetStatusAndReturnNumberOfReadyGRUs updates the status of a given room in the database and returns how many
+//  ready rooms has left
+func (r *Room) SetStatusAndReturnNumberOfReadyGRUs(
+	redisClient interfaces.RedisClient,
+	db pginterfaces.DB,
+	mr *MixedMetricsReporter,
+	status string,
+) (int, error) {
 	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
 	r.Status = status
 	r.LastPingAt = time.Now().Unix()
 
 	if status == StatusTerminated {
-		return r.ClearAll(redisClient)
+		return r.ClearAllAndReturnNumberOfReadyGRUs(redisClient)
 	}
 
 	lastStatusChangedKey := GetLastStatusRedisKey(r.SchedulerName, StatusOccupied)
@@ -116,11 +122,17 @@ func (r *Room) SetStatus(redisClient interfaces.RedisClient, db pginterfaces.DB,
 			pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
 		}
 	}
-	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe)
+
+	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, true)
 }
 
-func (r *Room) addStatusToRedisPipeAndExec(redisClient interfaces.RedisClient,
-	db pginterfaces.DB, mr *MixedMetricsReporter, p redis.Pipeliner) error {
+func (r *Room) addStatusToRedisPipeAndExec(
+	redisClient interfaces.RedisClient,
+	db pginterfaces.DB,
+	mr *MixedMetricsReporter,
+	p redis.Pipeliner,
+	returnReadyRooms bool,
+) (int, error) {
 	prevStatus := "nil"
 
 	if reporters.HasReporters() {
@@ -140,11 +152,24 @@ func (r *Room) addStatusToRedisPipeAndExec(redisClient interfaces.RedisClient,
 		Score:  float64(r.LastPingAt),
 		Member: r.ID,
 	})
-	_, err := p.Exec()
-	if err != nil {
-		return err
+
+	var resultReady *redis.IntCmd
+	if returnReadyRooms {
+		resultReady = p.SCard(GetRoomStatusSetRedisKey(r.SchedulerName, RoomReady))
 	}
-	return r.reportStatus(redisClient, db, mr, r.Status, prevStatus != r.Status)
+
+	_, err := p.Exec()
+
+	if err != nil {
+		return -1, err
+	}
+
+	nReady := -1
+	if resultReady != nil {
+		nReady = int(resultReady.Val())
+	}
+
+	return nReady, r.reportStatus(redisClient, db, mr, r.Status, prevStatus != r.Status)
 }
 
 func (r *Room) reportStatus(redisClient interfaces.RedisClient,
@@ -191,16 +216,33 @@ func reportStatus(game, scheduler, status, gauge string) error {
 
 // ClearAll removes all room keys from redis
 func (r *Room) ClearAll(redisClient interfaces.RedisClient) error {
-	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
 	pipe := redisClient.TxPipeline()
+	r.clearAllWithPipe(pipe)
+	_, err := pipe.Exec()
+	return err
+}
+
+// ClearAll removes all room keys from redis and returns the number of ready rooms
+func (r *Room) ClearAllAndReturnNumberOfReadyGRUs(redisClient interfaces.RedisClient) (int, error) {
+	pipe := redisClient.TxPipeline()
+	r.clearAllWithPipe(pipe)
+
+	nReady := pipe.SCard(GetRoomStatusSetRedisKey(r.SchedulerName, RoomReady))
+
+	_, err := pipe.Exec()
+	return int(nReady.Val()), err
+}
+
+func (r *Room) clearAllWithPipe(
+	pipe redis.Pipeliner,
+) {
+	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
 	for _, st := range allStatus {
 		pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
 		pipe.ZRem(GetLastStatusRedisKey(r.SchedulerName, st), r.ID)
 	}
 	pipe.ZRem(GetRoomPingRedisKey(r.SchedulerName), r.ID)
 	pipe.Del(r.GetRoomRedisKey())
-	_, err := pipe.Exec()
-	return err
 }
 
 // GetRoomPingRedisKey gets the key for the sortedset that keeps the rooms ping timestamp in redis

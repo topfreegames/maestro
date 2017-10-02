@@ -32,8 +32,9 @@ var _ = Describe("Room", func() {
 		It("should set status ready", func() {
 			room = models.NewRoom(name, schedulerName)
 			now := time.Now().Unix()
-			err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady)
+			nReady, err := room.SetStatusAndReturnNumberOfReadyGRUs(redisClient.Client, mockDb, mmr, models.StatusReady)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(nReady).To(Equal(1))
 			pipe := redisClient.Client.TxPipeline()
 			status := pipe.HMGet(room.GetRoomRedisKey(), "status")
 			lastPing := pipe.HMGet(room.GetRoomRedisKey(), "lastPing")
@@ -66,8 +67,9 @@ var _ = Describe("Room", func() {
 		It("should set status occupied", func() {
 			room = models.NewRoom(name, schedulerName)
 			now := time.Now().Unix()
-			err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusOccupied)
+			nReady, err := room.SetStatusAndReturnNumberOfReadyGRUs(redisClient.Client, mockDb, mmr, models.StatusOccupied)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(nReady).To(Equal(0))
 			pipe := redisClient.Client.TxPipeline()
 			status := pipe.HMGet(room.GetRoomRedisKey(), "status")
 			lastPing := pipe.HMGet(room.GetRoomRedisKey(), "lastPing")
@@ -100,7 +102,8 @@ var _ = Describe("Room", func() {
 		It("should not update timestamp if status is still occupied", func() {
 			room = models.NewRoom(name, schedulerName)
 			now := time.Now().UnixNano()
-			err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusOccupied)
+			nReady, err := room.SetStatusAndReturnNumberOfReadyGRUs(redisClient.Client, mockDb, mmr, models.StatusReady)
+			Expect(nReady).To(Equal(1))
 			Expect(err).NotTo(HaveOccurred())
 
 			pipe := redisClient.Client.TxPipeline()
@@ -115,7 +118,8 @@ var _ = Describe("Room", func() {
 
 			time.Sleep(100 * time.Millisecond)
 
-			err = room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusOccupied)
+			nReady, err = room.SetStatusAndReturnNumberOfReadyGRUs(redisClient.Client, mockDb, mmr, models.StatusReady)
+			Expect(nReady).To(Equal(1))
 			Expect(err).NotTo(HaveOccurred())
 
 			pipe = redisClient.Client.TxPipeline()

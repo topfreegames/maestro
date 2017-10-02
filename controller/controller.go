@@ -17,6 +17,7 @@ import (
 	redisLock "github.com/bsm/redis-lock"
 	goredis "github.com/go-redis/redis"
 	uuid "github.com/satori/go.uuid"
+	"github.com/spf13/viper"
 	clockinterfaces "github.com/topfreegames/extensions/clock/interfaces"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis"
@@ -1170,5 +1171,57 @@ func ScaleScheduler(
 			)
 		}
 	}
+	return nil
+}
+
+// SetRoomStatus updates room status and scales up if necessary
+func SetRoomStatus(
+	logger logrus.FieldLogger,
+	redisClient redisinterfaces.RedisClient,
+	db pginterfaces.DB,
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	status string,
+	config *viper.Viper,
+	room *models.Room,
+) error {
+	log := logger.WithFields(logrus.Fields{
+		"operation": "SetRoomStatus",
+	})
+	nReady, err := room.SetStatusAndReturnNumberOfReadyGRUs(redisClient, db, mr, status)
+	if err != nil {
+		return err
+	}
+
+	// 1 is hardcoded for now
+	//TODO: when using cache for schedulers, get the scheduler and measure if the number of ready rooms
+	// is less than limit. And remove the Load call.
+	if status == models.StatusOccupied && nReady <= 1 {
+		log.WithFields(logrus.Fields{
+			"readyRooms": nReady,
+		}).Info("few ready rooms, scaling up")
+
+		scheduler := &models.Scheduler{Name: room.SchedulerName}
+		err = scheduler.Load(db)
+		if err != nil {
+			return maestroErrors.NewDatabaseError(err)
+		}
+		configYaml, err := models.NewConfigYAML(scheduler.YAML)
+		if err != nil {
+			return maestroErrors.NewYamlError("", err)
+		}
+		return ScaleUp(
+			logger,
+			mr,
+			db,
+			redisClient,
+			clientset,
+			scheduler,
+			configYaml.AutoScaling.Up.Delta,
+			config.GetInt("scaleUpTimeoutSeconds"),
+			false,
+		)
+	}
+
 	return nil
 }

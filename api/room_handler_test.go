@@ -71,6 +71,7 @@ var _ = Describe("Room Handler", func() {
 				for _, key := range allStatusKeys {
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}
+				mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 				mockPipeline.EXPECT().Exec()
 
 				app.Router.ServeHTTP(recorder, request)
@@ -168,6 +169,7 @@ var _ = Describe("Room Handler", func() {
 				for _, key := range allStatusKeys {
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}
+				mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 				mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
 				app.Router.ServeHTTP(recorder, request)
@@ -188,6 +190,7 @@ var _ = Describe("Room Handler", func() {
 		rKey := "scheduler:schedulerName:rooms:roomName"
 		pKey := "scheduler:schedulerName:ping"
 		lKey := "scheduler:schedulerName:last:status:occupied"
+		sKey := "scheduler:schedulerName:status:ready"
 		roomName := "roomName"
 		namespace := "schedulerName"
 		status := "ready"
@@ -219,6 +222,7 @@ var _ = Describe("Room Handler", func() {
 				for _, key := range allStatusKeys {
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}
+				mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 				mockPipeline.EXPECT().Exec()
 
 				app.Router.ServeHTTP(recorder, request)
@@ -361,6 +365,7 @@ var _ = Describe("Room Handler", func() {
 					for _, key := range allStatusKeys {
 						mockPipeline.EXPECT().SRem(key, rKey)
 					}
+					mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 					mockPipeline.EXPECT().Exec()
 					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 						Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -395,6 +400,7 @@ var _ = Describe("Room Handler", func() {
 					for _, key := range allStatusKeys {
 						mockPipeline.EXPECT().SRem(key, rKey)
 					}
+					mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 					mockPipeline.EXPECT().Exec()
 					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 						Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -444,6 +450,7 @@ var _ = Describe("Room Handler", func() {
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}
 				mockPipeline.EXPECT().SAdd(newSKey, rKey)
+				mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 				mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
 				app.Router.ServeHTTP(recorder, request)
