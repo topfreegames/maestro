@@ -56,8 +56,8 @@ func (g *GoogleOauthConfig) Exchange(ctx context.Context, code, redirectURI stri
 		token, err = g.googleOauthConfig.Exchange(ctx, code)
 	} else {
 		c := &oauth2.Config{
-			ClientID:     os.Getenv("MAESTRO_GOOGLE_CLIENT_ID"),
-			ClientSecret: os.Getenv("MAESTRO_GOOGLE_CLIENT_SECRET"),
+			ClientID:     os.Getenv(clientIDEnvVar),
+			ClientSecret: os.Getenv(clientSecretEnvVar),
 			RedirectURL:  redirectURI,
 			Endpoint:     google.Endpoint,
 			Scopes: []string{

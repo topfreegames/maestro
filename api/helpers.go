@@ -9,7 +9,9 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/rs/cors"
 )
@@ -42,9 +44,9 @@ func (rw *responseWriter) WriteHeader(code int) {
 
 func wrapHandlerWithResponseWriter(wrappedHandler http.Handler) http.Handler {
 	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "PUT"},
-		AllowedHeaders: []string{"authorization"},
+		AllowedOrigins: strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), " "),
+		AllowedMethods: strings.Split(os.Getenv("CORS_ALLOWED_METHODS"), " "),
+		AllowedHeaders: strings.Split(os.Getenv("CORS_ALLOWED_HEADERS"), " "),
 	})
 
 	return c.Handler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {

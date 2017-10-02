@@ -21,10 +21,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
+var clientIDEnvVar = "MAESTRO_GOOGLE_CLIENT_ID"
+var clientSecretEnvVar = "MAESTRO_GOOGLE_CLIENT_SECRET"
+
 type Login struct {
-	GoogleOauthConfig  logininterfaces.GoogleOauthConfig
-	clientIDEnvVar     string
-	clientSecretEnvVar string
+	GoogleOauthConfig logininterfaces.GoogleOauthConfig
 }
 
 func NewLogin() *Login {
@@ -32,34 +33,32 @@ func NewLogin() *Login {
 }
 
 func (l *Login) Setup() {
-	l.clientIDEnvVar = "MAESTRO_GOOGLE_CLIENT_ID"
-	l.clientSecretEnvVar = "MAESTRO_GOOGLE_CLIENT_SECRET"
 	googleOauthConfig := NewGoogleOauthConfig()
 	googleOauthConfig.Setup()
 	l.GoogleOauthConfig = googleOauthConfig
 }
 
 func (l *Login) getClientCredentials() error {
-	if len(os.Getenv(l.clientIDEnvVar)) == 0 {
+	if len(os.Getenv(clientIDEnvVar)) == 0 {
 		return errors.NewAccessError(
-			fmt.Sprintf("Undefined environment variable %s", l.clientIDEnvVar),
+			fmt.Sprintf("Undefined environment variable %s", clientIDEnvVar),
 			fmt.Errorf(
 				"Define your app's OAuth2 Client ID on %s environment variable and run again",
-				l.clientIDEnvVar,
+				clientIDEnvVar,
 			),
 		)
 	}
-	l.GoogleOauthConfig.SetClientID(os.Getenv(l.clientIDEnvVar))
-	if len(os.Getenv(l.clientSecretEnvVar)) == 0 {
+	l.GoogleOauthConfig.SetClientID(os.Getenv(clientIDEnvVar))
+	if len(os.Getenv(clientSecretEnvVar)) == 0 {
 		return errors.NewAccessError(
-			fmt.Sprintf("Undefined environment variable %s", l.clientSecretEnvVar),
+			fmt.Sprintf("Undefined environment variable %s", clientSecretEnvVar),
 			fmt.Errorf(
 				"Define your app's OAuth2 Client Secret on %s environment variable and run again",
-				l.clientSecretEnvVar,
+				clientSecretEnvVar,
 			),
 		)
 	}
-	l.GoogleOauthConfig.SetClientSecret(os.Getenv(l.clientSecretEnvVar))
+	l.GoogleOauthConfig.SetClientSecret(os.Getenv(clientSecretEnvVar))
 	return nil
 }
 
