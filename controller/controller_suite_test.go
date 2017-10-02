@@ -9,6 +9,8 @@
 package controller_test
 
 import (
+	"time"
+
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -38,6 +40,7 @@ var (
 	mockClock       *clockmocks.MockClock
 	redisClient     *redis.Client
 	mr              *models.MixedMetricsReporter
+	schedulerCache  *models.SchedulerCache
 	allStatus       = []string{
 		models.StatusCreating,
 		models.StatusReady,
@@ -79,6 +82,8 @@ var _ = BeforeEach(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	mockClock = clockmocks.NewMockClock(mockCtrl)
+
+	schedulerCache = models.NewSchedulerCache(1*time.Minute, 10*time.Minute, logger)
 })
 
 var _ = AfterEach(func() {

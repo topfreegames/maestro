@@ -14,9 +14,10 @@ func ForwardRoomEvent(
 	room *models.Room,
 	status string,
 	metadata map[string]interface{},
+	schedulerCache *models.SchedulerCache,
 ) error {
 	if len(forwarders) > 0 {
-		infos, err := room.GetRoomInfos(db, kubernetesClient)
+		infos, err := room.GetRoomInfos(db, kubernetesClient, schedulerCache)
 		if err != nil {
 			return err
 		}

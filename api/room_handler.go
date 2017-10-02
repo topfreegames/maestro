@@ -54,6 +54,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		payload.Status,
 		g.App.Config,
 		room,
+		g.App.SchedulerCache,
 	)
 
 	if err != nil {
@@ -149,6 +150,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		payload.Status,
 		g.App.Config,
 		room,
+		g.App.SchedulerCache,
 	)
 	if err != nil {
 		logger.WithError(err).Error("Status update failed.")
@@ -161,6 +163,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.KubernetesClient,
 		room, payload.Status,
 		payload.Metadata,
+		g.App.SchedulerCache,
 	)
 	mr.WithSegment(models.SegmentSerialization, func() error {
 		Write(w, http.StatusOK, `{"success": true}`)

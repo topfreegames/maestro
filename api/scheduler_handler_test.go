@@ -921,7 +921,7 @@ autoscaling:
 					mockPipeline.EXPECT().ZAdd(gomock.Any(), gomock.Any())
 					mockPipeline.EXPECT().Exec()
 
-					room.Create(mockRedisClient, mockDb, mmr)
+					room.Create(mockRedisClient, mockDb, mmr, &configYaml)
 				}
 				url := fmt.Sprintf("http://%s/scheduler/scheduler-name", app.Address)
 				request, err := http.NewRequest("GET", url, nil)

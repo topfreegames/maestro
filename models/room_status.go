@@ -10,6 +10,7 @@ package models
 import (
 	"fmt"
 
+	"github.com/go-redis/redis"
 	"github.com/topfreegames/extensions/redis/interfaces"
 )
 
@@ -34,18 +35,42 @@ func GetRoomStatusSetRedisKey(schedulerName, status string) string {
 // GetRoomsCountByStatus returns the count of rooms for each status
 func GetRoomsCountByStatus(redisClient interfaces.RedisClient, schedulerName string) (*RoomsStatusCount, error) {
 	pipe := redisClient.TxPipeline()
-	sCreating := pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, StatusCreating))
-	sReady := pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, StatusReady))
-	sOccupied := pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, StatusOccupied))
-	sTerminating := pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, StatusTerminating))
+	results := GetRoomsCountByStatusWithPipe(schedulerName, pipe)
 	_, err := pipe.Exec()
 	if err != nil {
 		return nil, err
 	}
-	countByStatus := &RoomsStatusCount{}
-	countByStatus.Creating = int(sCreating.Val())
-	countByStatus.Ready = int(sReady.Val())
-	countByStatus.Occupied = int(sOccupied.Val())
-	countByStatus.Terminating = int(sTerminating.Val())
+	countByStatus := RedisResultToRoomsCount(results)
 	return countByStatus, nil
+}
+
+//GetRoomsCountByStatusWithPipe adds to the redis pipeline the operations that count the number of elements
+//  on the redis sets
+func GetRoomsCountByStatusWithPipe(
+	schedulerName string,
+	pipe redis.Pipeliner,
+) map[string]*redis.IntCmd {
+	results := make(map[string]*redis.IntCmd)
+
+	results[StatusCreating] = pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, StatusCreating))
+	results[StatusReady] = pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, StatusReady))
+	results[StatusOccupied] = pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, StatusOccupied))
+	results[StatusTerminating] = pipe.SCard(GetRoomStatusSetRedisKey(schedulerName, StatusTerminating))
+
+	return results
+}
+
+//RedisResultToRoomsCount converts the redis results to ints and returns the RoomsStatusCount struct
+func RedisResultToRoomsCount(results map[string]*redis.IntCmd) *RoomsStatusCount {
+	if results == nil {
+		return nil
+	}
+
+	countByStatus := &RoomsStatusCount{}
+	countByStatus.Creating = int(results[StatusCreating].Val())
+	countByStatus.Ready = int(results[StatusReady].Val())
+	countByStatus.Occupied = int(results[StatusOccupied].Val())
+	countByStatus.Terminating = int(results[StatusTerminating].Val())
+
+	return countByStatus
 }

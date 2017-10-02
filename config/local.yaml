@@ -17,6 +17,9 @@ watcher:
   lockTimeoutMs: 180000
   gracefulShutdownTimeout: 300
   maxSurge: 25
+  cache:
+    defaultExpiration: 5m
+    cleanupInterval: 10m
 worker:
   syncPeriod: 5
   gracefulShutdownTimeout: 300
@@ -46,3 +49,6 @@ basicauth:
   username: user
   password: pass
   tryOauthIfUnset: true
+schedulerCache:
+  defaultExpiration: 5m
+  cleanupInterval: 10m

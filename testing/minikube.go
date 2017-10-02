@@ -90,7 +90,8 @@ func NextJsonStr() (string, error) {
       "trigger": {
         "usage": 70,
         "time": 3,
-        "threshold": 80
+        "threshold": 80,
+        "limit": 90
       },
       "cooldown": 1
     },

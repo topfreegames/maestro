@@ -17,7 +17,6 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -108,7 +107,7 @@ var _ = Describe("App", func() {
 				Expect(pod.Spec.Containers[0].Ports[0].HostPort).NotTo(BeZero())
 
 				room := models.NewRoom(pod.GetName(), ns)
-				err := room.Create(app.RedisClient, mockDb, mmr)
+				err := room.Create(app.RedisClient, mockDb, mmr, configYaml)
 				Expect(err).NotTo(HaveOccurred())
 
 				pipe := app.RedisClient.TxPipeline()
@@ -217,7 +216,7 @@ var _ = Describe("App", func() {
 				Expect(pod.Spec.Containers[0].Ports[0].HostPort).NotTo(BeZero())
 
 				room := models.NewRoom(pod.GetName(), ns)
-				err := room.Create(app.RedisClient, mockDb, mmr)
+				err := room.Create(app.RedisClient, mockDb, mmr, configYaml)
 				Expect(err).NotTo(HaveOccurred())
 
 				pipe := app.RedisClient.TxPipeline()
@@ -307,8 +306,6 @@ var _ = Describe("App", func() {
 		})
 
 		It("should delete a created scheduler", func() {
-			then := time.Now()
-
 			// Create the scheduler
 			body := strings.NewReader(jsonStr)
 
@@ -326,9 +323,6 @@ var _ = Describe("App", func() {
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 			Expect(recorder.Code).To(Equal(http.StatusCreated))
-
-			podsBefore, err := clientset.CoreV1().Pods(configYaml.Name).List(listOptions)
-			Expect(err).NotTo(HaveOccurred())
 
 			// Delete the scheduler
 			recorder = httptest.NewRecorder()
@@ -355,49 +349,6 @@ var _ = Describe("App", func() {
 			err = sch.Load(app.DB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sch.YAML).To(HaveLen(0))
-
-			for _, pod := range podsBefore.Items {
-				room := models.NewRoom(pod.GetName(), ns)
-
-				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, sch.Name, room.ID)
-				request, err := http.NewRequest("PUT", url, mt.JSONFor(mt.JSON{
-					"timestamp": time.Now().Sub(then),
-					"status":    models.StatusTerminated,
-				}))
-				Expect(err).NotTo(HaveOccurred())
-				request.Header.Add("Authorization", "Bearer token")
-				recorder = httptest.NewRecorder()
-
-				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
-				Expect(recorder.Code).To(Equal(http.StatusOK))
-
-				pipe := app.RedisClient.TxPipeline()
-				roomStatus := pipe.HExists(room.GetRoomRedisKey(), "status")
-				roomLastPing := pipe.HExists(room.GetRoomRedisKey(), "lastPing")
-				roomIsCreating := pipe.SIsMember(models.GetRoomStatusSetRedisKey(ns, room.Status), room.GetRoomRedisKey())
-				roomLastPingScore := pipe.ZScore(models.GetRoomPingRedisKey(ns), room.ID)
-
-				_, err = pipe.Exec()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("redis: nil"))
-
-				exists, err := roomStatus.Result()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(exists).To(BeFalse())
-
-				exists, err = roomLastPing.Result()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(exists).To(BeFalse())
-
-				exists, err = roomIsCreating.Result()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(exists).To(BeFalse())
-
-				_, err = roomLastPingScore.Result()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("redis: nil"))
-			}
 		})
 	})
 

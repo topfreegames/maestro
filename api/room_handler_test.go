@@ -51,6 +51,27 @@ var _ = Describe("Room Handler", func() {
 			"scheduler:schedulerName:status:terminating",
 			"scheduler:schedulerName:status:terminated",
 		}
+		namespace := "schedulerName"
+		game := "game"
+		yamlStr := `
+name: schedulerName
+game: game
+image: image:v1
+autoscaling: 
+  min: 100
+  up: 
+    delta: 10
+    trigger: 
+      usage: 70
+      time: 600
+    cooldown: 300
+  down: 
+    delta: 2
+    trigger: 
+      usage: 50
+      time: 900
+    cooldown: 300
+`
 
 		Context("when all services are healthy", func() {
 			It("returns a status code of 200 and success body", func() {
@@ -59,6 +80,12 @@ var _ = Describe("Room Handler", func() {
 					"status":    status,
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
+
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+						scheduler.Game = game
+					})
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
@@ -71,12 +98,52 @@ var _ = Describe("Room Handler", func() {
 				for _, key := range allStatusKeys {
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}
-				mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 				mockPipeline.EXPECT().Exec()
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(200))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			})
+
+			It("uses cache in the second ping", func() {
+				reader := JSONFor(JSON{
+					"timestamp": time.Now().Unix(),
+					"status":    status,
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+						scheduler.Game = game
+					})
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+					"lastPing": time.Now().Unix(),
+					"status":   status,
+				}).Times(2)
+				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any()).Times(2)
+				mockPipeline.EXPECT().ZRem(lKey, roomName).Times(2)
+				mockPipeline.EXPECT().SAdd(sKey, rKey).Times(2)
+				for _, key := range allStatusKeys {
+					mockPipeline.EXPECT().SRem(key, rKey).Times(2)
+				}
+				mockPipeline.EXPECT().Exec().Times(2)
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(200))
+
+				recorder = httptest.NewRecorder()
+				reader = JSONFor(JSON{
+					"timestamp": time.Now().Unix(),
+					"status":    status,
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(200))
 			})
 
 			It("returns status code of 422 if missing timestamp", func() {
@@ -158,6 +225,12 @@ var _ = Describe("Room Handler", func() {
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+						scheduler.Game = game
+					})
+
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
@@ -169,7 +242,6 @@ var _ = Describe("Room Handler", func() {
 				for _, key := range allStatusKeys {
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}
-				mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 				mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
 				app.Router.ServeHTTP(recorder, request)
@@ -190,7 +262,6 @@ var _ = Describe("Room Handler", func() {
 		rKey := "scheduler:schedulerName:rooms:roomName"
 		pKey := "scheduler:schedulerName:ping"
 		lKey := "scheduler:schedulerName:last:status:occupied"
-		sKey := "scheduler:schedulerName:status:ready"
 		roomName := "roomName"
 		namespace := "schedulerName"
 		status := "ready"
@@ -201,6 +272,26 @@ var _ = Describe("Room Handler", func() {
 			"scheduler:schedulerName:status:terminating",
 			"scheduler:schedulerName:status:terminated",
 		}
+		game := "game"
+		yamlStr := `
+name: schedulerName
+game: game
+image: image:v1
+autoscaling: 
+  min: 100
+  up: 
+    delta: 10
+    trigger: 
+      usage: 70
+      time: 600
+    cooldown: 300
+  down: 
+    delta: 2
+    trigger: 
+      usage: 50
+      time: 900
+    cooldown: 300
+`
 
 		//TODO ver se envia forward
 		Context("when all services are healthy", func() {
@@ -210,6 +301,12 @@ var _ = Describe("Room Handler", func() {
 					"timestamp": time.Now().Unix(),
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
+
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+						scheduler.Game = game
+					})
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
@@ -222,7 +319,6 @@ var _ = Describe("Room Handler", func() {
 				for _, key := range allStatusKeys {
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}
-				mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 				mockPipeline.EXPECT().Exec()
 
 				app.Router.ServeHTTP(recorder, request)
@@ -365,19 +461,18 @@ var _ = Describe("Room Handler", func() {
 					for _, key := range allStatusKeys {
 						mockPipeline.EXPECT().SRem(key, rKey)
 					}
-					mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 					mockPipeline.EXPECT().Exec()
 					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 						Do(func(scheduler *models.Scheduler, query string, modifier string) {
-							scheduler.YAML = ""
+							scheduler.YAML = yamlStr
 							scheduler.Game = game
 						})
 					mockEventForwarder1.EXPECT().Forward(status, gomock.Any())
 					mockEventForwarder2.EXPECT().Forward(status, gomock.Any())
 
 					app.Router.ServeHTTP(recorder, request)
-					Expect(recorder.Code).To(Equal(200))
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+					Expect(recorder.Code).To(Equal(200))
 				})
 				It("should forward event to eventforwarders with metadata", func() {
 					reader := JSONFor(JSON{
@@ -400,11 +495,10 @@ var _ = Describe("Room Handler", func() {
 					for _, key := range allStatusKeys {
 						mockPipeline.EXPECT().SRem(key, rKey)
 					}
-					mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 					mockPipeline.EXPECT().Exec()
 					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 						Do(func(scheduler *models.Scheduler, query string, modifier string) {
-							scheduler.YAML = ""
+							scheduler.YAML = yamlStr
 							scheduler.Game = game
 						})
 					mockEventForwarder1.EXPECT().Forward(status, gomock.Any()).Do(
@@ -425,8 +519,8 @@ var _ = Describe("Room Handler", func() {
 						})
 
 					app.Router.ServeHTTP(recorder, request)
-					Expect(recorder.Code).To(Equal(200))
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+					Expect(recorder.Code).To(Equal(200))
 				})
 			})
 		})
@@ -439,6 +533,12 @@ var _ = Describe("Room Handler", func() {
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+						scheduler.Game = game
+					})
+
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
@@ -450,7 +550,6 @@ var _ = Describe("Room Handler", func() {
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}
 				mockPipeline.EXPECT().SAdd(newSKey, rKey)
-				mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 				mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
 				app.Router.ServeHTTP(recorder, request)

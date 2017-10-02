@@ -3795,6 +3795,12 @@ cmd:
 		It("should not scale up if has enough ready rooms", func() {
 			status := "ready"
 
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+				})
+
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 				"lastPing": time.Now().Unix(),
@@ -3808,7 +3814,6 @@ cmd:
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}
 			}
-			mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(10), nil))
 			mockPipeline.EXPECT().Exec()
 
 			err := controller.SetRoomStatus(
@@ -3820,11 +3825,16 @@ cmd:
 				status,
 				config,
 				room,
+				schedulerCache,
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should scale up if doesn't has enough ready rooms", func() {
+		It("should scale up if doesn't have enough ready rooms", func() {
+			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
 			status := "occupied"
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -3840,7 +3850,16 @@ cmd:
 					mockPipeline.EXPECT().SRem(key, rKey)
 				}
 			}
-			mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(0), nil))
+			expC := &models.RoomsStatusCount{
+				Creating:    0,
+				Occupied:    3,
+				Ready:       0,
+				Terminating: 0,
+			}
+			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
 			mockDb.EXPECT().
@@ -3875,29 +3894,15 @@ cmd:
 				status,
 				config,
 				room,
+				schedulerCache,
 			)
 
 			Expect(err).NotTo(HaveOccurred())
+			time.Sleep(1 * time.Second)
 		})
 
 		It("should not scale up if error on db", func() {
 			status := "occupied"
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
-				"lastPing": time.Now().Unix(),
-				"status":   status,
-			})
-			mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
-			mockPipeline.EXPECT().Eval(models.ZaddIfNotExists, gomock.Any(), roomName)
-			mockPipeline.EXPECT().SAdd(oKey, rKey)
-			for _, key := range allStatusKeys {
-				if !strings.Contains(key, status) {
-					mockPipeline.EXPECT().SRem(key, rKey)
-				}
-			}
-			mockPipeline.EXPECT().SCard(sKey).Return(goredis.NewIntResult(int64(0), nil))
-			mockPipeline.EXPECT().Exec()
 
 			mockDb.EXPECT().
 				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
@@ -3912,6 +3917,7 @@ cmd:
 				status,
 				config,
 				room,
+				schedulerCache,
 			)
 
 			Expect(err).To(HaveOccurred())

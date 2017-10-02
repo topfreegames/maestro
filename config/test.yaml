@@ -43,3 +43,6 @@ basicauth:
   username: user
   password: pass
   tryOauthIfUnset: false
+schedulerCache:
+  defaultExpiration: 5m
+  cleanupInterval: 10m
