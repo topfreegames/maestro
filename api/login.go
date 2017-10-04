@@ -108,7 +108,9 @@ func (l *LoginAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body := fmt.Sprintf(`{"token": "%s"}`, token.AccessToken)
+	keyAccessToken, err := login.GetKeyAccessToken(email, l.App.DB)
+
+	body := fmt.Sprintf(`{"token": "%s"}`, keyAccessToken)
 
 	Write(w, http.StatusOK, body)
 	logger.Debug("Returning access token")

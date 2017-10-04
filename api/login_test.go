@@ -20,6 +20,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/topfreegames/maestro/login"
 )
 
 var _ = Describe("Login", func() {
@@ -109,11 +110,18 @@ var _ = Describe("Login", func() {
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
-				key_access_token = excluded.access_token,
+				key_access_token = users.key_access_token,
 				refresh_token = excluded.refresh_token,
 				expiry = excluded.expiry`,
 				gomock.Any(),
 			)
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"SELECT key_access_token FROM users WHERE email = ?",
+				gomock.Any(),
+			).Do(func(user *login.User, query string, modifier string) {
+				user.KeyAccessToken = token.AccessToken
+			})
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -193,7 +201,7 @@ var _ = Describe("Login", func() {
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
-				key_access_token = excluded.access_token,
+				key_access_token = users.key_access_token,
 				refresh_token = excluded.refresh_token,
 				expiry = excluded.expiry`,
 				gomock.Any(),
@@ -233,11 +241,18 @@ var _ = Describe("Login", func() {
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
-				key_access_token = excluded.access_token,
+				key_access_token = users.key_access_token,
 				refresh_token = excluded.refresh_token,
 				expiry = excluded.expiry`,
 				gomock.Any(),
 			)
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"SELECT key_access_token FROM users WHERE email = ?",
+				gomock.Any(),
+			).Do(func(user *login.User, query string, modifier string) {
+				user.KeyAccessToken = token.AccessToken
+			})
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
