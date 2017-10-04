@@ -22,6 +22,7 @@ var _ = Describe("Room", func() {
 	schedulerName := uuid.NewV4().String()
 	name := uuid.NewV4().String()
 	var room *models.Room
+	configYaml := &models.ConfigYAML{Game: "game-name"}
 
 	AfterEach(func() {
 		err := room.ClearAll(redisClient.Client)
@@ -32,7 +33,7 @@ var _ = Describe("Room", func() {
 		It("should set status ready", func() {
 			room = models.NewRoom(name, schedulerName)
 			now := time.Now().Unix()
-			err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady)
+			_, err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady, configYaml, false)
 			Expect(err).NotTo(HaveOccurred())
 			pipe := redisClient.Client.TxPipeline()
 			status := pipe.HMGet(room.GetRoomRedisKey(), "status")
@@ -66,7 +67,7 @@ var _ = Describe("Room", func() {
 		It("should set status occupied", func() {
 			room = models.NewRoom(name, schedulerName)
 			now := time.Now().Unix()
-			err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusOccupied)
+			_, err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusOccupied, configYaml, false)
 			Expect(err).NotTo(HaveOccurred())
 			pipe := redisClient.Client.TxPipeline()
 			status := pipe.HMGet(room.GetRoomRedisKey(), "status")
@@ -100,7 +101,7 @@ var _ = Describe("Room", func() {
 		It("should not update timestamp if status is still occupied", func() {
 			room = models.NewRoom(name, schedulerName)
 			now := time.Now().UnixNano()
-			err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusOccupied)
+			_, err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady, configYaml, false)
 			Expect(err).NotTo(HaveOccurred())
 
 			pipe := redisClient.Client.TxPipeline()
@@ -115,7 +116,7 @@ var _ = Describe("Room", func() {
 
 			time.Sleep(100 * time.Millisecond)
 
-			err = room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusOccupied)
+			_, err = room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady, configYaml, false)
 			Expect(err).NotTo(HaveOccurred())
 
 			pipe = redisClient.Client.TxPipeline()

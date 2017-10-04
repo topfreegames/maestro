@@ -71,11 +71,16 @@ func (r *Room) GetRoomRedisKey() string {
 }
 
 // Create creates a room in and update redis
-func (r *Room) Create(redisClient interfaces.RedisClient, db pginterfaces.DB,
-	mr *MixedMetricsReporter) error {
+func (r *Room) Create(
+	redisClient interfaces.RedisClient,
+	db pginterfaces.DB,
+	mr *MixedMetricsReporter,
+	configYaml *ConfigYAML,
+) error {
 	r.LastPingAt = time.Now().Unix()
 	pipe := redisClient.TxPipeline()
-	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe)
+	_, err := r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, false, configYaml)
+	return err
 }
 
 const ZaddIfNotExists = `
@@ -86,15 +91,22 @@ end
 return 'OK'
 `
 
-// SetStatus updates the status of a given room in the database
-func (r *Room) SetStatus(redisClient interfaces.RedisClient, db pginterfaces.DB,
-	mr *MixedMetricsReporter, status string) error {
+// SetStatusAndReturnNumberOfReadyGRUs updates the status of a given room in the database and returns how many
+//  ready rooms has left
+func (r *Room) SetStatus(
+	redisClient interfaces.RedisClient,
+	db pginterfaces.DB,
+	mr *MixedMetricsReporter,
+	status string,
+	configYaml *ConfigYAML,
+	returnRoomsCount bool,
+) (*RoomsStatusCount, error) {
 	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
 	r.Status = status
 	r.LastPingAt = time.Now().Unix()
 
 	if status == StatusTerminated {
-		return r.ClearAll(redisClient)
+		return nil, r.ClearAll(redisClient)
 	}
 
 	lastStatusChangedKey := GetLastStatusRedisKey(r.SchedulerName, StatusOccupied)
@@ -116,11 +128,18 @@ func (r *Room) SetStatus(redisClient interfaces.RedisClient, db pginterfaces.DB,
 			pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
 		}
 	}
-	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe)
+
+	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, returnRoomsCount, configYaml)
 }
 
-func (r *Room) addStatusToRedisPipeAndExec(redisClient interfaces.RedisClient,
-	db pginterfaces.DB, mr *MixedMetricsReporter, p redis.Pipeliner) error {
+func (r *Room) addStatusToRedisPipeAndExec(
+	redisClient interfaces.RedisClient,
+	db pginterfaces.DB,
+	mr *MixedMetricsReporter,
+	p redis.Pipeliner,
+	returnRoomsCount bool,
+	configYaml *ConfigYAML,
+) (*RoomsStatusCount, error) {
 	prevStatus := "nil"
 
 	if reporters.HasReporters() {
@@ -140,15 +159,29 @@ func (r *Room) addStatusToRedisPipeAndExec(redisClient interfaces.RedisClient,
 		Score:  float64(r.LastPingAt),
 		Member: r.ID,
 	})
+
+	var results map[string]*redis.IntCmd
+	if returnRoomsCount {
+		results = GetRoomsCountByStatusWithPipe(r.SchedulerName, p)
+	}
+
 	_, err := p.Exec()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return r.reportStatus(redisClient, db, mr, r.Status, prevStatus != r.Status)
+
+	roomsCountByStatus := RedisResultToRoomsCount(results)
+	return roomsCountByStatus, r.reportStatus(redisClient, db, mr, r.Status, prevStatus != r.Status, configYaml)
 }
 
-func (r *Room) reportStatus(redisClient interfaces.RedisClient,
-	db pginterfaces.DB, mr *MixedMetricsReporter, status string, statusChanged bool) error {
+func (r *Room) reportStatus(
+	redisClient interfaces.RedisClient,
+	db pginterfaces.DB,
+	mr *MixedMetricsReporter,
+	status string,
+	statusChanged bool,
+	configYaml *ConfigYAML,
+) error {
 	if !reporters.HasReporters() {
 		return nil
 	}
@@ -159,16 +192,11 @@ func (r *Room) reportStatus(redisClient interfaces.RedisClient,
 		return err
 	}
 
-	scheduler := NewScheduler(r.SchedulerName, "", "")
-	err = mr.WithSegment(SegmentSelect, func() error {
-		return scheduler.Load(db)
-	})
-
 	if statusChanged {
-		err = reportStatus(scheduler.Game, r.SchedulerName, status,
+		err = reportStatus(configYaml.Game, r.SchedulerName, status,
 			fmt.Sprint(float64(nStatus.Val())))
 	} else {
-		err = reportPing(scheduler.Game, r.SchedulerName)
+		err = reportPing(configYaml.Game, r.SchedulerName)
 	}
 	return err
 }
@@ -191,16 +219,22 @@ func reportStatus(game, scheduler, status, gauge string) error {
 
 // ClearAll removes all room keys from redis
 func (r *Room) ClearAll(redisClient interfaces.RedisClient) error {
-	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
 	pipe := redisClient.TxPipeline()
+	r.clearAllWithPipe(pipe)
+	_, err := pipe.Exec()
+	return err
+}
+
+func (r *Room) clearAllWithPipe(
+	pipe redis.Pipeliner,
+) {
+	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
 	for _, st := range allStatus {
 		pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
 		pipe.ZRem(GetLastStatusRedisKey(r.SchedulerName, st), r.ID)
 	}
 	pipe.ZRem(GetRoomPingRedisKey(r.SchedulerName), r.ID)
 	pipe.Del(r.GetRoomRedisKey())
-	_, err := pipe.Exec()
-	return err
 }
 
 // GetRoomPingRedisKey gets the key for the sortedset that keeps the rooms ping timestamp in redis
@@ -214,11 +248,12 @@ func GetLastStatusRedisKey(schedulerName, status string) string {
 }
 
 // GetRoomInfos returns a map with room informations
-func (r *Room) GetRoomInfos(db pginterfaces.DB, kubernetesClient kubernetes.Interface) (map[string]interface{}, error) {
-	scheduler := &Scheduler{
-		Name: r.SchedulerName,
-	}
-	err := scheduler.Load(db)
+func (r *Room) GetRoomInfos(
+	db pginterfaces.DB,
+	kubernetesClient kubernetes.Interface,
+	schedulerCache *SchedulerCache,
+) (map[string]interface{}, error) {
+	scheduler, err := schedulerCache.LoadScheduler(db, r.SchedulerName, true)
 	if err != nil {
 		return nil, err
 	}

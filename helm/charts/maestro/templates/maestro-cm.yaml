@@ -69,3 +69,6 @@ data:
       username: user
       password: pass
       tryOauthIfUnset: true
+    schedulerCache:
+      defaultExpiration: 5m
+      cleanupInterval: 10m

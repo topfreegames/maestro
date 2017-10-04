@@ -48,6 +48,7 @@ type App struct {
 	Login            logininterfaces.Login
 	EmailDomains     []string
 	Forwarders       []eventforwarder.EventForwarder
+	SchedulerCache   *models.SchedulerCache
 }
 
 //NewApp ctor
@@ -263,6 +264,8 @@ func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 		return err
 	}
 
+	a.configureCache()
+
 	a.configureSentry()
 
 	a.configureLogin()
@@ -278,6 +281,15 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("deleteTimeoutSeconds", 150)
 	a.Config.SetDefault("deleteTimeoutSeconds", 150)
 	a.Config.SetDefault("watcher.maxSurge", 25)
+	a.Config.SetDefault("watcher.maxSurge", 25)
+	a.Config.SetDefault("schedulerCache.defaultExpiration", "5m")
+	a.Config.SetDefault("schedulerCache.cleanupInterval", "10m")
+}
+
+func (a *App) configureCache() {
+	expirationTime := a.Config.GetDuration("schedulerCache.defaultExpiration")
+	cleanupInterval := a.Config.GetDuration("schedulerCache.cleanupInterval")
+	a.SchedulerCache = models.NewSchedulerCache(expirationTime, cleanupInterval, a.Logger)
 }
 
 func (a *App) configureForwarders() {

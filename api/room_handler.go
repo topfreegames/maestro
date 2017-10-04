@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 )
@@ -44,9 +45,17 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("Performing ping...")
 
 	room := models.NewRoom(params.Name, params.Scheduler)
-	err := mr.WithSegment(models.SegmentUpdate, func() error {
-		return room.SetStatus(g.App.RedisClient, g.App.DB, mr, payload.Status)
-	})
+	err := controller.SetRoomStatus(
+		g.App.Logger,
+		g.App.RedisClient,
+		g.App.DB,
+		mr,
+		g.App.KubernetesClient,
+		payload.Status,
+		g.App.Config,
+		room,
+		g.App.SchedulerCache,
+	)
 
 	if err != nil {
 		logger.WithError(err).Error("Ping failed.")
@@ -132,16 +141,30 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("Performing status update...")
 
 	room := models.NewRoom(params.Name, params.Scheduler)
-	err := mr.WithSegment(models.SegmentUpdate, func() error {
-		return room.SetStatus(g.App.RedisClient, g.App.DB, mr, payload.Status)
-	})
-
+	err := controller.SetRoomStatus(
+		g.App.Logger,
+		g.App.RedisClient,
+		g.App.DB,
+		mr,
+		g.App.KubernetesClient,
+		payload.Status,
+		g.App.Config,
+		room,
+		g.App.SchedulerCache,
+	)
 	if err != nil {
 		logger.WithError(err).Error("Status update failed.")
 		g.App.HandleError(w, http.StatusInternalServerError, "Status update failed", err)
 		return
 	}
-	eventforwarder.ForwardRoomEvent(g.App.Forwarders, g.App.DB, g.App.KubernetesClient, room, payload.Status, payload.Metadata)
+	eventforwarder.ForwardRoomEvent(
+		g.App.Forwarders,
+		g.App.DB,
+		g.App.KubernetesClient,
+		room, payload.Status,
+		payload.Metadata,
+		g.App.SchedulerCache,
+	)
 	mr.WithSegment(models.SegmentSerialization, func() error {
 		Write(w, http.StatusOK, `{"success": true}`)
 		return nil

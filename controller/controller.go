@@ -17,6 +17,7 @@ import (
 	redisLock "github.com/bsm/redis-lock"
 	goredis "github.com/go-redis/redis"
 	uuid "github.com/satori/go.uuid"
+	"github.com/spf13/viper"
 	clockinterfaces "github.com/topfreegames/extensions/clock/interfaces"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis"
@@ -186,7 +187,18 @@ func DeleteScheduler(
 }
 
 // GetSchedulerScalingInfo returns the scheduler scaling policies and room count by status
-func GetSchedulerScalingInfo(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, client redisinterfaces.RedisClient, schedulerName string) (*models.Scheduler, *models.AutoScaling, *models.RoomsStatusCount, error) {
+func GetSchedulerScalingInfo(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	client redisinterfaces.RedisClient,
+	schedulerName string,
+) (
+	*models.Scheduler,
+	*models.AutoScaling,
+	*models.RoomsStatusCount,
+	error,
+) {
 	scheduler := models.NewScheduler(schedulerName, "", "")
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		return scheduler.Load(db)
@@ -278,7 +290,16 @@ func pendingPods(
 }
 
 // ScaleUp scales up a scheduler using its config
-func ScaleUp(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, scheduler *models.Scheduler, amount, timeoutSec int, initalOp bool) error {
+func ScaleUp(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	clientset kubernetes.Interface,
+	scheduler *models.Scheduler,
+	amount, timeoutSec int,
+	initalOp bool,
+) error {
 	l := logger.WithFields(logrus.Fields{
 		"source":    "scaleUp",
 		"scheduler": scheduler.Name,
@@ -785,7 +806,7 @@ func createPod(
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
 	room := models.NewRoom(name, schedulerName)
 	err := mr.WithSegment(models.SegmentInsert, func() error {
-		return room.Create(redisClient, db, mr)
+		return room.Create(redisClient, db, mr, configYAML)
 	})
 	if err != nil {
 		return nil, err
@@ -1170,5 +1191,60 @@ func ScaleScheduler(
 			)
 		}
 	}
+	return nil
+}
+
+// SetRoomStatus updates room status and scales up if necessary
+func SetRoomStatus(
+	logger logrus.FieldLogger,
+	redisClient redisinterfaces.RedisClient,
+	db pginterfaces.DB,
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	status string,
+	config *viper.Viper,
+	room *models.Room,
+	schedulerCache *models.SchedulerCache,
+) error {
+	log := logger.WithFields(logrus.Fields{
+		"operation": "SetRoomStatus",
+	})
+
+	scheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
+	if err != nil {
+		return err
+	}
+
+	configYaml, err := schedulerCache.LoadConfigYaml(db, room.SchedulerName, true)
+	if err != nil {
+		return err
+	}
+
+	roomsCountByStatus, err := room.SetStatus(redisClient, db, mr, status, configYaml, status == models.StatusOccupied)
+	if err != nil {
+		return err
+	}
+
+	if status == models.StatusOccupied {
+		if roomsCountByStatus.Total()*configYaml.AutoScaling.Up.Trigger.Limit > 100*roomsCountByStatus.Ready {
+			log.WithFields(logrus.Fields{
+				"readyRooms": roomsCountByStatus.Ready,
+			}).Info("few ready rooms, scaling up")
+
+			go ScaleUp(
+				logger,
+				mr,
+				db,
+				redisClient,
+				clientset,
+				scheduler,
+				configYaml.AutoScaling.Up.Delta,
+				config.GetInt("scaleUpTimeoutSeconds"),
+				false,
+			)
+			return nil
+		}
+	}
+
 	return nil
 }

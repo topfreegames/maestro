@@ -9,6 +9,8 @@
 package models_test
 
 import (
+	"github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -33,6 +35,8 @@ var (
 	mmr             *models.MixedMetricsReporter
 	mr              *reportersmocks.MockReporter
 	singleton       *reporters.Reporters
+	hook            *test.Hook
+	logger          *logrus.Logger
 )
 
 func TestModels(t *testing.T) {
@@ -42,6 +46,8 @@ func TestModels(t *testing.T) {
 
 var _ = BeforeEach(func() {
 	mockCtrl = gomock.NewController(GinkgoT())
+	logger, hook = test.NewNullLogger()
+	logger.Level = logrus.DebugLevel
 	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
 	mockClientset = fake.NewSimpleClientset()
