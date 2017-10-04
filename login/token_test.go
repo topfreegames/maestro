@@ -45,7 +45,7 @@ var _ = Describe("Token", func() {
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
-				key_access_token = excluded.access_token,
+				key_access_token = users.key_access_token,
 				refresh_token = excluded.refresh_token,
 				expiry = excluded.expiry`, gomock.Any())
 
@@ -58,7 +58,7 @@ var _ = Describe("Token", func() {
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
-				key_access_token = excluded.access_token,
+				key_access_token = users.key_access_token,
 				refresh_token = excluded.refresh_token,
 				expiry = excluded.expiry`, gomock.Any()).Return(nil, errors.New("db error"))
 

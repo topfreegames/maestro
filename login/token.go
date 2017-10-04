@@ -30,7 +30,7 @@ func SaveToken(token *oauth2.Token, email, keyAccessToken string, db interfaces.
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
-				key_access_token = excluded.access_token,
+				key_access_token = users.key_access_token,
 				refresh_token = excluded.refresh_token,
 				expiry = excluded.expiry`
 	if token.RefreshToken == "" {
@@ -59,6 +59,14 @@ type DestinationToken struct {
 	RefreshToken string    `db:"refresh_token"`
 	Expiry       time.Time `db:"expiry"`
 	TokenType    string    `db:"token_type"`
+}
+
+// GetKeyAccessToken returns key_access_token for a users' email in DB
+func GetKeyAccessToken(email string, db interfaces.DB) (string, error) {
+	user := &User{}
+	query := "SELECT key_access_token FROM users WHERE email = ?"
+	_, err := db.Query(user, query, email)
+	return user.KeyAccessToken, err
 }
 
 //GetToken reads token from DB
