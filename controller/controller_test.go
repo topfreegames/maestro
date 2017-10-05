@@ -3901,6 +3901,60 @@ cmd:
 			time.Sleep(1 * time.Second)
 		})
 
+		It("should not scale up if has enough ready rooms", func() {
+			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			status := "occupied"
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+				"lastPing": time.Now().Unix(),
+				"status":   status,
+			})
+			mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+			mockPipeline.EXPECT().Eval(models.ZaddIfNotExists, gomock.Any(), roomName)
+			mockPipeline.EXPECT().SAdd(oKey, rKey)
+			for _, key := range allStatusKeys {
+				if !strings.Contains(key, status) {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
+			}
+			expC := &models.RoomsStatusCount{
+				Creating:    0,
+				Occupied:    3,
+				Ready:       3,
+				Terminating: 0,
+			}
+			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().Exec()
+
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+				})
+
+			err := controller.SetRoomStatus(
+				logger,
+				mockRedisClient,
+				mockDb,
+				mr,
+				clientset,
+				status,
+				config,
+				room,
+				schedulerCache,
+			)
+
+			time.Sleep(1 * time.Second)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("should not scale up if error on db", func() {
 			status := "occupied"
 

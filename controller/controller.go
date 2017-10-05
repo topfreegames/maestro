@@ -1226,22 +1226,28 @@ func SetRoomStatus(
 	}
 
 	if status == models.StatusOccupied {
-		if roomsCountByStatus.Total()*configYaml.AutoScaling.Up.Trigger.Limit > 100*roomsCountByStatus.Ready {
+		if roomsCountByStatus.Total()*configYaml.AutoScaling.Up.Trigger.Limit < 100*roomsCountByStatus.Occupied {
 			log.WithFields(logrus.Fields{
 				"readyRooms": roomsCountByStatus.Ready,
 			}).Info("few ready rooms, scaling up")
-
-			go ScaleUp(
-				logger,
-				mr,
-				db,
-				redisClient,
-				clientset,
-				scheduler,
-				configYaml.AutoScaling.Up.Delta,
-				config.GetInt("scaleUpTimeoutSeconds"),
-				false,
-			)
+			go func() {
+				err := ScaleUp(
+					logger,
+					mr,
+					db,
+					redisClient,
+					clientset,
+					scheduler,
+					configYaml.AutoScaling.Up.Delta,
+					config.GetInt("scaleUpTimeoutSeconds"),
+					false,
+				)
+				if err != nil {
+					log.WithError(err).Error(err)
+					return
+				}
+				log.Debug("finished scaling up")
+			}()
 			return nil
 		}
 	}
