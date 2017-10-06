@@ -18,7 +18,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/eventforwarder"
-	pb "github.com/topfreegames/maestro/plugins/grpc/generated"
+	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	context "golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
