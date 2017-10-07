@@ -17,35 +17,47 @@ import (
 	ex "github.com/topfreegames/maestro/extensions"
 )
 
+// Info is the struct that defines the information of a event forwarder
+type Info struct {
+	Plugin    string
+	Name      string
+	Forwarder EventForwarder
+}
+
 // EventForwarder interface
 type EventForwarder interface {
 	Forward(event string, infos map[string]interface{}) (int32, error)
 }
 
 // LoadEventForwardersFromConfig returns a slice of configured eventforwarders
-func LoadEventForwardersFromConfig(config *viper.Viper, logger logrus.FieldLogger) []EventForwarder {
-	forwarders := []EventForwarder{}
+func LoadEventForwardersFromConfig(config *viper.Viper, logger logrus.FieldLogger) []*Info {
+	forwarders := []*Info{}
 	if runtime.GOOS == "linux" {
 		forwardersConfig := config.GetStringMap("forwarders")
 		if len(forwardersConfig) > 0 {
-			for k, v := range forwardersConfig {
-				logger.Infof("loading plugin: %s", k)
-				p, err := ex.LoadPlugin(k, "./bin")
+			for plugin, v := range forwardersConfig {
+				logger.Infof("loading plugin: %s", plugin)
+				p, err := ex.LoadPlugin(plugin, "./bin")
 				if err != nil {
-					logger.Errorf("error loading plugin %s: %s", k, err.Error())
+					logger.Errorf("error loading plugin %s: %s", plugin, err.Error())
 					continue
 				}
 				forwarderConfigMap, ok := v.(map[string]interface{})
 				if ok {
-					for kk := range forwarderConfigMap {
-						logger.Infof("loading forwarder %s.%s", k, kk)
-						cfg := config.Sub(fmt.Sprintf("forwarders.%s.%s", k, kk))
+					for name := range forwarderConfigMap {
+						logger.Infof("loading forwarder %s.%s", plugin, name)
+						cfg := config.Sub(fmt.Sprintf("forwarders.%s.%s", plugin, name))
 						forwarder, err := LoadForwarder(p, cfg, logger)
 						if err != nil {
 							logger.Error(err)
 							continue
 						}
-						forwarders = append(forwarders, forwarder)
+						info := &Info{
+							Plugin:    plugin,
+							Name:      name,
+							Forwarder: forwarder,
+						}
+						forwarders = append(forwarders, info)
 					}
 				}
 			}

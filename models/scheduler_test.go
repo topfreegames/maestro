@@ -58,7 +58,7 @@ env:
   - name: ANOTHER_ENV_VAR
     value: anothervalue
   - name: SECRET_ENV_VAR
-    valueFrom: 
+    valueFrom:
       secretKeyRef:
         name: secretname
         key: secretkey
@@ -66,6 +66,16 @@ cmd:
   - "./room-binary"
   - "-serverType"
   - "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
+forwarders:
+  grpc:
+    matchmaking:
+      enabled: true
+      metadata:
+        roomType: green-ffa
+        numberOfTeams: 1
+        playersPerTeam: 6
+        metadata:
+          nested: object
 `
 )
 
@@ -109,6 +119,13 @@ var _ = Describe("Scheduler", func() {
 			Expect(configYAML.Cmd[0]).To(Equal("./room-binary"))
 			Expect(configYAML.Cmd[1]).To(Equal("-serverType"))
 			Expect(configYAML.Cmd[2]).To(Equal("6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"))
+			Expect(configYAML.Forwarders).To(HaveKey("grpc"))
+			Expect(configYAML.Forwarders["grpc"]).To(HaveKey("matchmaking"))
+			Expect(configYAML.Forwarders["grpc"]["matchmaking"].Enabled).To(BeTrue())
+			Expect(configYAML.Forwarders["grpc"]["matchmaking"].Metadata["roomType"]).To(Equal("green-ffa"))
+			Expect(configYAML.Forwarders["grpc"]["matchmaking"].Metadata["numberOfTeams"]).To(Equal(1))
+			Expect(configYAML.Forwarders["grpc"]["matchmaking"].Metadata["playersPerTeam"]).To(Equal(6))
+			Expect(configYAML.Forwarders["grpc"]["matchmaking"].Metadata["metadata"].(map[interface{}]interface{})["nested"]).To(Equal("object"))
 		})
 
 		It("should fail if invalid yaml", func() {

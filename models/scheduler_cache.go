@@ -28,13 +28,14 @@ func NewSchedulerCache(
 	}
 }
 
+// SchedulerKey returns the key for the scheduler cache
 func SchedulerKey(schedulerName string) string {
 	return fmt.Sprintf("scheduler:key:%s", schedulerName)
 }
 
 // LoadScheduler returns scheduler from cache
 //  If cache does not have scheduler or useCache is false, scheduler is loaded from database
-//  In this case, configYaml is also updated updated
+//  In this case, configYaml is also updated
 func (s *SchedulerCache) LoadScheduler(db interfaces.DB, schedulerName string, useCache bool) (*Scheduler, error) {
 	if s == nil {
 		return loadFromDB(db, schedulerName)

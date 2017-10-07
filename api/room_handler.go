@@ -98,7 +98,15 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 
-	err := eventforwarder.ForwardPlayerEvent(g.App.Forwarders, g.App.DB, room.ID, payload.Event, payload.Metadata)
+	err := eventforwarder.ForwardPlayerEvent(
+		g.App.Forwarders,
+		g.App.DB,
+		g.App.KubernetesClient,
+		room,
+		payload.Event,
+		payload.Metadata,
+		g.App.SchedulerCache,
+	)
 
 	if err != nil {
 		logger.WithError(err).Error("Player event forward failed.")
