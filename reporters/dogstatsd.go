@@ -13,6 +13,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/dogstatsd"
+	constants "github.com/topfreegames/maestro/reporters/constants"
 	handlers "github.com/topfreegames/maestro/reporters/dogstatsd"
 )
 
@@ -32,7 +33,7 @@ func (d *DogStatsD) Report(event string, opts map[string]string) error {
 	}
 	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
 
-	opts["region"] = d.region
+	opts[constants.TagRegion] = d.region
 	return handler(d.client, event, opts)
 }
 

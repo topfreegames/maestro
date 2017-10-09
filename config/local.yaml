@@ -43,6 +43,7 @@ newrelic:
   key: ""
 oauth:
   acceptedDomains: 
+  - "tfgco.com"
   - "example.com"
   - "other.com"
 basicauth:
