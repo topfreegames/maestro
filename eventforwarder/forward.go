@@ -1,8 +1,6 @@
 package eventforwarder
 
 import (
-	"fmt"
-
 	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
@@ -88,7 +86,6 @@ func ForwardRoomInfo(
 				if schedulerFwds, ok := config.Forwarders[configuredFwdInfo.Plugin]; ok {
 					if fwd, ok := schedulerFwds[configuredFwdInfo.Name]; ok {
 						if fwd.Enabled {
-							fmt.Println(fwd)
 							metadata := fwd.Metadata
 							if metadata != nil {
 								metadata["game"] = scheduler.Game
