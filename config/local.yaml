@@ -42,8 +42,7 @@ newrelic:
   app: "maestro"
   key: ""
 oauth:
-  acceptedDomains: 
-  - "tfgco.com"
+  acceptedDomains:
   - "example.com"
   - "other.com"
 basicauth:
