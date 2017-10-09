@@ -96,7 +96,17 @@ var _ = Describe("Scheduler Handler", func() {
     "./room-binary",
     "-serverType",
     "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
-  ]
+  ],
+  "forwarders": {
+    "mockplugin": {
+      "mockfwd": {
+        "enabled": true,
+        "medatada": {
+          "send": "me"
+        }
+      }
+    }
+  }
 }`
 
 	BeforeEach(func() {
