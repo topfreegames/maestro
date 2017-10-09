@@ -49,7 +49,7 @@ type ValueFrom struct {
 	SecretKeyRef SecretKeyRef `yaml:"secretKeyRef" json:"secretKeyRef"`
 }
 
-// ValueFrom has environment variables from secrets
+// SecretKeyRef has environment variables from secrets
 type SecretKeyRef struct {
 	Name string `yaml:"name" json:"name"`
 	Key  string `yaml:"key" json:"key"`
@@ -80,21 +80,28 @@ type AutoScaling struct {
 	Down *ScalingPolicy `yaml:"down" json:"down" valid:"int64"`
 }
 
+// Forwarder has the configuration for the event forwarders
+type Forwarder struct {
+	Enabled  bool                   `yaml:"enabled" json:"enabled"`
+	Metadata map[string]interface{} `yaml:"metadata" json:"metadata"`
+}
+
 // ConfigYAML is the struct for the config yaml
 type ConfigYAML struct {
-	Name            string       `yaml:"name" json:"name" valid:"required"`
-	Game            string       `yaml:"game" json:"game" valid:"required"`
-	Image           string       `yaml:"image" json:"image" valid:"required"`
-	Ports           []*Port      `yaml:"ports" json:"ports"`
-	Limits          *Resources   `yaml:"limits" json:"limits"`
-	Requests        *Resources   `yaml:"requests" json:"requests"`
-	ShutdownTimeout int          `yaml:"shutdownTimeout" json:"shutdownTimeout" valid:"int64"`
-	AutoScaling     *AutoScaling `yaml:"autoscaling" json:"autoscaling" valid:"required"`
-	Env             []*EnvVar    `yaml:"env" json:"env"`
-	Cmd             []string     `yaml:"cmd" json:"cmd"`
-	NodeAffinity    string       `yaml:"affinity" json:"affinity"`
-	NodeToleration  string       `yaml:"toleration" json:"toleration"`
-	OccupiedTimeout int64        `yaml:"occupiedTimeout" json:"occupiedTimeout"`
+	Name            string                           `yaml:"name" json:"name" valid:"required"`
+	Game            string                           `yaml:"game" json:"game" valid:"required"`
+	Image           string                           `yaml:"image" json:"image" valid:"required"`
+	Ports           []*Port                          `yaml:"ports" json:"ports"`
+	Limits          *Resources                       `yaml:"limits" json:"limits"`
+	Requests        *Resources                       `yaml:"requests" json:"requests"`
+	ShutdownTimeout int                              `yaml:"shutdownTimeout" json:"shutdownTimeout" valid:"int64"`
+	AutoScaling     *AutoScaling                     `yaml:"autoscaling" json:"autoscaling" valid:"required"`
+	Env             []*EnvVar                        `yaml:"env" json:"env"`
+	Cmd             []string                         `yaml:"cmd" json:"cmd"`
+	NodeAffinity    string                           `yaml:"affinity" json:"affinity"`
+	NodeToleration  string                           `yaml:"toleration" json:"toleration"`
+	OccupiedTimeout int64                            `yaml:"occupiedTimeout" json:"occupiedTimeout"`
+	Forwarders      map[string]map[string]*Forwarder `yaml:"forwarders" json:"forwarders"`
 }
 
 // NewScheduler is the scheduler constructor
@@ -168,6 +175,7 @@ func ListSchedulersNames(db interfaces.DB) ([]string, error) {
 	return names, nil
 }
 
+// LoadConfig loads the scheduler config from the database
 func LoadConfig(db interfaces.DB, schedulerName string) (string, error) {
 	c := new(Scheduler)
 	_, err := db.Query(c, "SELECT yaml FROM schedulers WHERE name = ?", schedulerName)

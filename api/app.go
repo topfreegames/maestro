@@ -47,7 +47,7 @@ type App struct {
 	KubeconfigPath   string
 	Login            logininterfaces.Login
 	EmailDomains     []string
-	Forwarders       []eventforwarder.EventForwarder
+	Forwarders       []*eventforwarder.Info
 	SchedulerCache   *models.SchedulerCache
 }
 
@@ -70,7 +70,7 @@ func NewApp(
 		InCluster:      incluster,
 		KubeconfigPath: kubeconfigPath,
 		EmailDomains:   config.GetStringSlice("oauth.acceptedDomains"),
-		Forwarders:     []eventforwarder.EventForwarder{},
+		Forwarders:     []*eventforwarder.Info{},
 	}
 	err := a.configureApp(dbOrNil, redisClientOrNil, kubernetesClientOrNil)
 	if err != nil {
