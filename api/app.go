@@ -225,6 +225,17 @@ func (a *App) getRouter() *mux.Router {
 		NewValidationMiddleware(func() interface{} { return &models.RoomStatusPayload{} }),
 	).ServeHTTP).Methods("PUT").Name("status")
 
+	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/roomevent", Chain(
+		NewRoomEventHandler(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewLoggingMiddleware(a),
+		NewVersionMiddleware(),
+		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
+		NewValidationMiddleware(func() interface{} { return &models.RoomEventPayload{} }),
+	).ServeHTTP).Methods("POST").Name("roomEvent")
+
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/playerevent", Chain(
 		NewPlayerEventHandler(a),
 		NewMetricsReporterMiddleware(a),
