@@ -6,6 +6,23 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+func getEnabledForwarders(
+	schedulerForwarders map[string]map[string]*models.Forwarder,
+	configuredForwarders []*Info,
+) []EventForwarder {
+	enabledForwarders := make([]EventForwarder, 0)
+	for _, configuredFwdInfo := range configuredForwarders {
+		if schedulerFwds, ok := schedulerForwarders[configuredFwdInfo.Plugin]; ok {
+			if fwd, ok := schedulerFwds[configuredFwdInfo.Name]; ok {
+				if fwd.Enabled {
+					enabledForwarders = append(enabledForwarders, configuredFwdInfo.Forwarder)
+				}
+			}
+		}
+	}
+	return enabledForwarders
+}
+
 // ForwardRoomEvent forwards room event to app eventforwarders
 func ForwardRoomEvent(
 	forwarders []*Info,
@@ -31,16 +48,7 @@ func ForwardRoomEvent(
 		}
 		infos["metadata"] = metadata
 		if len(config.Forwarders) > 0 {
-			enabledForwarders := make([]EventForwarder, 0)
-			for _, info := range forwarders {
-				if fwds, ok := config.Forwarders[info.Plugin]; ok {
-					if fwd, ok := fwds[info.Name]; ok {
-						if fwd.Enabled {
-							enabledForwarders = append(enabledForwarders, info.Forwarder)
-						}
-					}
-				}
-			}
+			enabledForwarders := getEnabledForwarders(config.Forwarders, forwarders)
 			if len(enabledForwarders) > 0 {
 				return ForwardEventToForwarders(enabledForwarders, status, infos)
 			}
@@ -71,16 +79,7 @@ func ForwardPlayerEvent(
 			return err
 		}
 		if len(config.Forwarders) > 0 {
-			enabledForwarders := make([]EventForwarder, 0)
-			for _, info := range forwarders {
-				if fwds, ok := config.Forwarders[info.Plugin]; ok {
-					if fwd, ok := fwds[info.Name]; ok {
-						if fwd.Enabled {
-							enabledForwarders = append(enabledForwarders, info.Forwarder)
-						}
-					}
-				}
-			}
+			enabledForwarders := getEnabledForwarders(config.Forwarders, forwarders)
 			if len(enabledForwarders) > 0 {
 				return ForwardEventToForwarders(enabledForwarders, event, metadata)
 			}
