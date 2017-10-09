@@ -28,11 +28,12 @@ func (_m *MockEventForwarder) EXPECT() *_MockEventForwarderRecorder {
 	return _m.recorder
 }
 
-func (_m *MockEventForwarder) Forward(event string, infos map[string]interface{}) (int32, error) {
+func (_m *MockEventForwarder) Forward(event string, infos map[string]interface{}) (int32, string, error) {
 	ret := _m.ctrl.Call(_m, "Forward", event, infos)
 	ret0, _ := ret[0].(int32)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 func (_mr *_MockEventForwarderRecorder) Forward(arg0, arg1 interface{}) *gomock.Call {

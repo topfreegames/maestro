@@ -1,10 +1,18 @@
 package eventforwarder
 
 import (
+	"strings"
+
 	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
 )
+
+// Response is the struct that defines a forwarder response
+type Response struct {
+	Code    int
+	Message string
+}
 
 func getEnabledForwarders(
 	schedulerForwarders map[string]map[string]*models.Forwarder,
@@ -32,11 +40,11 @@ func ForwardRoomEvent(
 	status string,
 	metadata map[string]interface{},
 	schedulerCache *models.SchedulerCache,
-) error {
+) (*Response, error) {
 	if len(forwarders) > 0 {
 		scheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		var config *models.ConfigYAML
 		if schedulerCache != nil {
@@ -45,11 +53,11 @@ func ForwardRoomEvent(
 			config, err = models.NewConfigYAML(scheduler.YAML)
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 		infos, err := room.GetRoomInfos(db, kubernetesClient, schedulerCache, scheduler)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		infos["metadata"] = metadata
 		if len(config.Forwarders) > 0 {
@@ -59,7 +67,7 @@ func ForwardRoomEvent(
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // ForwardRoomInfo forwards room info to app eventforwarders
@@ -69,11 +77,11 @@ func ForwardRoomInfo(
 	kubernetesClient kubernetes.Interface,
 	schedulerName string,
 	schedulerCache *models.SchedulerCache,
-) error {
+) (*Response, error) {
 	if len(forwarders) > 0 {
 		scheduler, err := schedulerCache.LoadScheduler(db, schedulerName, true)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		var config *models.ConfigYAML
 		if schedulerCache != nil {
@@ -81,7 +89,12 @@ func ForwardRoomInfo(
 		} else {
 			config, err = models.NewConfigYAML(scheduler.YAML)
 		}
+		if err != nil {
+			return nil, err
+		}
 		if len(config.Forwarders) > 0 {
+			respCode := 0
+			respMessage := []string{}
 			for _, configuredFwdInfo := range forwarders {
 				if schedulerFwds, ok := config.Forwarders[configuredFwdInfo.Plugin]; ok {
 					if fwd, ok := schedulerFwds[configuredFwdInfo.Name]; ok {
@@ -94,21 +107,37 @@ func ForwardRoomInfo(
 									"game": scheduler.Game,
 								}
 							}
-							err = ForwardEventToForwarders(
+
+							resp, err := ForwardEventToForwarders(
 								[]EventForwarder{configuredFwdInfo.Forwarder},
 								"schedulerEvent",
 								metadata,
 							)
 							if err != nil {
-								return err
+								return nil, err
+							}
+							if resp.Code > respCode {
+								respCode = resp.Code
+							}
+							if resp.Message != "" {
+								respMessage = append(respMessage, resp.Message)
 							}
 						}
 					}
 				}
 			}
+
+			if respCode != 0 {
+				response := &Response{
+					Code:    respCode,
+					Message: strings.Join(respMessage, ";"),
+				}
+				return response, nil
+			}
+			return nil, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // ForwardPlayerEvent forwards player event to app eventforwarders
@@ -120,12 +149,12 @@ func ForwardPlayerEvent(
 	event string,
 	metadata map[string]interface{},
 	schedulerCache *models.SchedulerCache,
-) error {
+) (*Response, error) {
 	if len(forwarders) > 0 {
 		metadata["roomId"] = room.ID
 		scheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		metadata["game"] = scheduler.Game
 		var config *models.ConfigYAML
@@ -135,7 +164,7 @@ func ForwardPlayerEvent(
 			config, err = models.NewConfigYAML(scheduler.YAML)
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if len(config.Forwarders) > 0 {
 			enabledForwarders := getEnabledForwarders(config.Forwarders, forwarders)
@@ -144,16 +173,31 @@ func ForwardPlayerEvent(
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // ForwardEventToForwarders forwards
-func ForwardEventToForwarders(forwarders []EventForwarder, event string, infos map[string]interface{}) error {
+func ForwardEventToForwarders(forwarders []EventForwarder, event string, infos map[string]interface{}) (*Response, error) {
+	respCode := 0
+	respMessage := []string{}
 	for _, f := range forwarders {
-		_, err := f.Forward(event, infos)
+		code, message, err := f.Forward(event, infos)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		// return the highest code received
+		// if a forwarder returns 200 and another 500 we should return 500 to indicate the error
+		// TODO: consider configuring for each forwarder if its errors can be ignored
+		if int(code) > respCode {
+			respCode = int(code)
+		}
+		if message != "" {
+			respMessage = append(respMessage, message)
 		}
 	}
-	return nil
+	resp := &Response{
+		Code:    respCode,
+		Message: strings.Join(respMessage, ";"),
+	}
+	return resp, nil
 }

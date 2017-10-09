@@ -694,7 +694,7 @@ forwarders:
 				scheduler.Game = game
 			})
 
-			mockEventForwarder1.EXPECT().Forward(event, gomock.Any()).Return(int32(500), errors.New("no playerId specified"))
+			mockEventForwarder1.EXPECT().Forward(event, gomock.Any()).Return(int32(500), "", errors.New("no playerId specified"))
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(500))
@@ -704,6 +704,37 @@ forwarders:
 			Expect(obj["code"]).To(Equal("MAE-000"))
 			Expect(obj["error"]).To(Equal("Player event forward failed"))
 			Expect(obj["description"]).To(ContainSubstring(`no playerId specified`))
+			Expect(obj["success"]).To(Equal(false))
+		})
+
+		It("should error if EventForwarder returns status code other than 200", func() {
+			event := "playerJoined"
+			reader := JSONFor(JSON{
+				"event":     event,
+				"timestamp": 23412342134,
+				"metadata":  make(map[string]interface{}),
+			})
+			request, _ = http.NewRequest("POST", url, reader)
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"SELECT * FROM schedulers WHERE name = ?",
+				"schedulerName",
+			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.YAML = yamlStr
+				scheduler.Game = game
+			})
+
+			mockEventForwarder1.EXPECT().Forward(event, gomock.Any()).Return(int32(403), "UNAUTHORIZED", nil)
+			mockEventForwarder2.EXPECT().Forward(event, gomock.Any()).Return(int32(200), "", nil)
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(403))
+			var obj map[string]interface{}
+			err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj["code"]).To(Equal("MAE-000"))
+			Expect(obj["error"]).To(Equal("player event forward failed"))
+			Expect(obj["description"]).To(Equal("UNAUTHORIZED"))
 			Expect(obj["success"]).To(Equal(false))
 		})
 
@@ -724,8 +755,8 @@ forwarders:
 				scheduler.Game = game
 			})
 
-			mockEventForwarder1.EXPECT().Forward(event, gomock.Any()).Return(int32(200), nil)
-			mockEventForwarder2.EXPECT().Forward(event, gomock.Any()).Return(int32(200), nil)
+			mockEventForwarder1.EXPECT().Forward(event, gomock.Any()).Return(int32(200), "resp1", nil)
+			mockEventForwarder2.EXPECT().Forward(event, gomock.Any()).Return(int32(200), "resp2", nil)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(200))
@@ -733,6 +764,7 @@ forwarders:
 			err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj["success"]).To(Equal(true))
+			Expect(obj["message"]).To(Equal("resp1;resp2"))
 		})
 	})
 
@@ -796,7 +828,7 @@ forwarders:
 			})
 
 			mockEventForwarder1.EXPECT().Forward("roomEvent", gomock.Any()).Return(
-				int32(500), errors.New("some error occurred"),
+				int32(500), "", errors.New("some error occurred"),
 			)
 
 			app.Router.ServeHTTP(recorder, request)
@@ -807,6 +839,38 @@ forwarders:
 			Expect(obj["code"]).To(Equal("MAE-000"))
 			Expect(obj["error"]).To(Equal("Room event forward failed"))
 			Expect(obj["description"]).To(ContainSubstring(`some error occurred`))
+			Expect(obj["success"]).To(Equal(false))
+		})
+
+		It("should error if EventForwarder returns code != 200", func() {
+			event := "customevent"
+			reader := JSONFor(JSON{
+				"event":     event,
+				"timestamp": 23412342134,
+				"metadata":  make(map[string]interface{}),
+			})
+			request, _ = http.NewRequest("POST", url, reader)
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"SELECT * FROM schedulers WHERE name = ?",
+				"schedulerName",
+			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.YAML = yamlStr
+				scheduler.Game = game
+			})
+
+			mockEventForwarder1.EXPECT().Forward("roomEvent", gomock.Any()).Return(
+				int32(500), "nice error reason", nil,
+			)
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(500))
+			var obj map[string]interface{}
+			err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj["code"]).To(Equal("MAE-000"))
+			Expect(obj["error"]).To(Equal("room event forward failed"))
+			Expect(obj["description"]).To(Equal("nice error reason"))
 			Expect(obj["success"]).To(Equal(false))
 		})
 
@@ -827,7 +891,9 @@ forwarders:
 				scheduler.Game = game
 			})
 
-			mockEventForwarder1.EXPECT().Forward("roomEvent", gomock.Any()).Return(int32(200), nil)
+			mockEventForwarder1.EXPECT().Forward("roomEvent", gomock.Any()).Return(
+				int32(200), "all went well", nil,
+			)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(200))
@@ -835,6 +901,7 @@ forwarders:
 			err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj["success"]).To(Equal(true))
+			Expect(obj["message"]).To(Equal("all went well"))
 		})
 	})
 
