@@ -85,9 +85,9 @@ func (n *Namespace) DeletePods(clientset kubernetes.Interface,
 	}
 	for _, pod := range pods.Items {
 		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
-			"game":      s.Game,
-			"scheduler": s.Name,
-			"reason":    reportersConstants.ReasonNamespaceDeletion,
+			reportersConstants.TagGame:      s.Game,
+			reportersConstants.TagScheduler: s.Name,
+			reportersConstants.TagReason:    reportersConstants.ReasonNamespaceDeletion,
 		})
 		err := RetrieveV1Ports(redisClient, pod.Spec.Containers[0].Ports)
 		if err != nil {

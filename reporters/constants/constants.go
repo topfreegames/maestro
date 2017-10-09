@@ -17,3 +17,11 @@ const (
 	ReasonUpdateError       = "update_error"
 	ReasonNamespaceDeletion = "namespace_deletion"
 )
+
+//Tag{...} represents datadog tags
+const (
+	TagGame      = "maestro-game"
+	TagScheduler = "maestro-scheduler"
+	TagRegion    = "maestro-region"
+	TagReason    = "maestro-reason"
+)

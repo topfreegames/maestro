@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/models"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
@@ -37,8 +38,8 @@ var _ = Describe("Pod", func() {
 
 	createPod := func() (*models.Pod, error) {
 		mr.EXPECT().Report("gru.new", map[string]string{
-			"game":      "pong",
-			"scheduler": "pong-free-for-all",
+			reportersConstants.TagGame:      "pong",
+			reportersConstants.TagScheduler: "pong-free-for-all",
 		})
 
 		pod, err := models.NewPod(
@@ -148,9 +149,9 @@ var _ = Describe("Pod", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				mr.EXPECT().Report("gru.delete", map[string]string{
-					"game":      "pong",
-					"scheduler": "pong-free-for-all",
-					"reason":    "deletion_reason",
+					reportersConstants.TagGame:      "pong",
+					reportersConstants.TagScheduler: "pong-free-for-all",
+					reportersConstants.TagReason:    "deletion_reason",
 				})
 				err = pod.Delete(clientset, mockRedisClient, "deletion_reason")
 				Expect(err).NotTo(HaveOccurred())
@@ -220,8 +221,8 @@ var _ = Describe("Pod", func() {
 
 		It("should create pod without requests and limits", func() {
 			mr.EXPECT().Report("gru.new", map[string]string{
-				"game":      "pong",
-				"scheduler": "pong-free-for-all",
+				reportersConstants.TagGame:      "pong",
+				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
 			pod, err := models.NewPod(
 				game,
@@ -351,9 +352,9 @@ var _ = Describe("Pod", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			mr.EXPECT().Report("gru.delete", map[string]string{
-				"game":      "pong",
-				"scheduler": "pong-free-for-all",
-				"reason":    "deletion_reason",
+				reportersConstants.TagGame:      "pong",
+				reportersConstants.TagScheduler: "pong-free-for-all",
+				reportersConstants.TagReason:    "deletion_reason",
 			})
 			err = pod.Delete(clientset, mockRedisClient, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
