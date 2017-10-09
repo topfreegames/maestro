@@ -63,6 +63,16 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: consider sampling requests by scheduler name and only forwarding a few pings
+	eventforwarder.ForwardRoomEvent(
+		g.App.Forwarders,
+		g.App.DB,
+		g.App.KubernetesClient,
+		room, payload.Status,
+		payload.Metadata,
+		g.App.SchedulerCache,
+	)
+
 	mr.WithSegment(models.SegmentSerialization, func() error {
 		Write(w, http.StatusOK, `{"success": true}`)
 		return nil

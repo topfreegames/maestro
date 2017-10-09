@@ -242,6 +242,63 @@ forwarders:
 			})
 		})
 
+		Context("with eventforwarders", func() {
+			var app *api.App
+			game := "somegame"
+			BeforeEach(func() {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+					Return(goredis.NewStringResult("5000", nil))
+				mockPipeline.EXPECT().Exec()
+
+				createNamespace(namespace, clientset)
+				err := createPod(roomName, namespace, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				app.Forwarders = []*eventforwarder.Info{
+					&eventforwarder.Info{
+						Plugin:    "mockplugin",
+						Name:      "mockfwd",
+						Forwarder: mockEventForwarder1,
+					},
+				}
+			})
+
+			It("forwards room event", func() {
+				reader := JSONFor(JSON{
+					"timestamp": time.Now().Unix(),
+					"status":    status,
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+						scheduler.Game = game
+					})
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+					"lastPing": time.Now().Unix(),
+					"status":   status,
+				})
+				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+				mockPipeline.EXPECT().ZRem(lKey, roomName)
+				mockPipeline.EXPECT().SAdd(sKey, rKey)
+				for _, key := range allStatusKeys {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
+				mockPipeline.EXPECT().Exec()
+
+				mockEventForwarder1.EXPECT().Forward(status, gomock.Any())
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(200))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			})
+		})
+
 		Context("when redis is down", func() {
 			It("returns status code of 500 if redis is unavailable", func() {
 				reader := JSONFor(JSON{
