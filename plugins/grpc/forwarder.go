@@ -10,6 +10,7 @@ package main
 import "C"
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -153,6 +154,40 @@ func (g *GRPCForwarder) playerEvent(infos map[string]interface{}, playerEvent pb
 	return response.Code, err
 }
 
+func (g *GRPCForwarder) roomInfoRequest(infos map[string]interface{}) (*pb.RoomInfo, error) {
+	game := infos["game"].(string)
+
+	g.logger.WithFields(log.Fields{
+		"op":   "roomInfoRequest",
+		"game": game,
+	}).Debug("getting room info request")
+
+	infosBytes, err := json.Marshal(infos)
+	if err != nil {
+		return nil, err
+	}
+
+	var req pb.RoomInfo
+	err = json.Unmarshal(infosBytes, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &req, nil
+}
+
+func (g *GRPCForwarder) sendRoomInfo(infos map[string]interface{}) (status int32, err error) {
+	req, err := g.roomInfoRequest(infos)
+	if err != nil {
+		return 500, err
+	}
+	response, err := g.client.SendRoomInfo(context.Background(), req)
+	if err != nil {
+		return 500, err
+	}
+	return response.Code, err
+}
+
 // Ready status
 func (g *GRPCForwarder) Ready(infos map[string]interface{}) (status int32, err error) {
 	return g.roomStatus(infos, pb.RoomStatus_ready)
@@ -188,6 +223,11 @@ func (g *GRPCForwarder) RoomEvent(infos map[string]interface{}) (status int32, e
 	eventType := infos["eventType"].(string)
 	delete(infos, "eventType")
 	return g.sendRoomEvent(infos, eventType)
+}
+
+// SchedulerEvent sends a scheduler event
+func (g *GRPCForwarder) SchedulerEvent(infos map[string]interface{}) (status int32, err error) {
+	return g.roomInfo(infos)
 }
 
 //Forward send room or player status to specified server

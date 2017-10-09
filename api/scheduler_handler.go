@@ -18,8 +18,10 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/extensions/clock"
 	"github.com/topfreegames/extensions/redis"
+
 	"github.com/topfreegames/maestro/controller"
 	maestroErrors "github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -63,6 +65,19 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			logger.WithError(err).Error("Create scheduler failed.")
 			g.App.HandleError(w, status, "Create scheduler failed", err)
 			return
+		}
+
+		// this forwards the metadata configured for each enabled forwarder
+		err = eventforwarder.ForwardRoomInfo(
+			g.App.Forwarders,
+			g.App.DB,
+			g.App.KubernetesClient,
+			payload.Name,
+			g.App.SchedulerCache,
+		)
+
+		if err != nil {
+			logger.WithError(err).Error("Room info forward failed.")
 		}
 
 		logger.Debug("Create scheduler succeeded.")
@@ -195,6 +210,19 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		logger.WithError(err).Error("Update scheduler failed.")
 		g.App.HandleError(w, status, "Update scheduler failed", err)
 		return
+	}
+
+	// this forwards the metadata configured for each enabled forwarder
+	err = eventforwarder.ForwardRoomInfo(
+		g.App.Forwarders,
+		g.App.DB,
+		g.App.KubernetesClient,
+		payload.Name,
+		nil, // intentionally omit SchedulerCache to force reload since it is an update
+	)
+
+	if err != nil {
+		logger.WithError(err).Error("Room info forward failed.")
 	}
 
 	mr.WithSegment(models.SegmentSerialization, func() error {
