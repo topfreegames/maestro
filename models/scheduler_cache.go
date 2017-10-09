@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	e "errors"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/pmylund/go-cache"
 	"github.com/topfreegames/extensions/pg/interfaces"
@@ -93,6 +95,9 @@ func loadFromDB(db interfaces.DB, schedulerName string) (*Scheduler, error) {
 //  If cache does not have scheduler or useCache is false, scheduler is loaded from database
 //  In this case, configYaml is also updated updated
 func (s *SchedulerCache) LoadConfigYaml(db interfaces.DB, schedulerName string, useCache bool) (*ConfigYAML, error) {
+	if s == nil {
+		return nil, e.New("scheduler cache is not defined")
+	}
 	_, err := s.LoadScheduler(db, schedulerName, useCache)
 	if err != nil {
 		return nil, err

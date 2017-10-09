@@ -38,7 +38,12 @@ func ForwardRoomEvent(
 		if err != nil {
 			return err
 		}
-		config, err := models.NewConfigYAML(scheduler.YAML)
+		var config *models.ConfigYAML
+		if schedulerCache != nil {
+			config, err = schedulerCache.LoadConfigYaml(db, room.SchedulerName, true)
+		} else {
+			config, err = models.NewConfigYAML(scheduler.YAML)
+		}
 		if err != nil {
 			return err
 		}
@@ -74,7 +79,12 @@ func ForwardPlayerEvent(
 			return err
 		}
 		metadata["game"] = scheduler.Game
-		config, err := models.NewConfigYAML(scheduler.YAML)
+		var config *models.ConfigYAML
+		if schedulerCache != nil {
+			config, err = schedulerCache.LoadConfigYaml(db, room.SchedulerName, true)
+		} else {
+			config, err = models.NewConfigYAML(scheduler.YAML)
+		}
 		if err != nil {
 			return err
 		}
