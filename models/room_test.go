@@ -21,6 +21,7 @@ import (
 	"github.com/golang/mock/gomock"
 	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/maestro/models"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -43,10 +44,10 @@ var _ = Describe("Room", func() {
 		mockPipeline.EXPECT().Exec()
 
 		mr.EXPECT().Report("gru.status", map[string]string{
-			"game":      "game-name",
-			"scheduler": scheduler,
-			"status":    status,
-			"gauge":     "5",
+			reportersConstants.TagGame:      "game-name",
+			reportersConstants.TagScheduler: scheduler,
+			"status":                        status,
+			"gauge":                         "5",
 		})
 	}
 
@@ -348,8 +349,8 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Exec()
 
 			mr.EXPECT().Report("gru.new", map[string]string{
-				"game":      "pong",
-				"scheduler": "pong-free-for-all",
+				reportersConstants.TagGame:      "pong",
+				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
 			pod, err := models.NewPod(
 				game,

@@ -149,8 +149,8 @@ func NewPod(
 
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruNew, map[string]string{
-			"game":      game,
-			"scheduler": namespace,
+			reportersConstants.TagGame:      game,
+			reportersConstants.TagScheduler: namespace,
 		})
 	}
 
@@ -213,9 +213,9 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 	}
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
-			"game":      p.Game,
-			"scheduler": p.Namespace,
-			"reason":    reason,
+			reportersConstants.TagGame:      p.Game,
+			reportersConstants.TagScheduler: p.Namespace,
+			reportersConstants.TagReason:    reason,
 		})
 	}
 
