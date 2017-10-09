@@ -227,7 +227,7 @@ func (g *GRPCForwarder) RoomEvent(infos map[string]interface{}) (status int32, e
 
 // SchedulerEvent sends a scheduler event
 func (g *GRPCForwarder) SchedulerEvent(infos map[string]interface{}) (status int32, err error) {
-	return g.roomInfo(infos)
+	return g.sendRoomInfo(infos)
 }
 
 //Forward send room or player status to specified server
