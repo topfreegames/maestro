@@ -252,10 +252,14 @@ func (r *Room) GetRoomInfos(
 	db pginterfaces.DB,
 	kubernetesClient kubernetes.Interface,
 	schedulerCache *SchedulerCache,
+	scheduler *Scheduler,
 ) (map[string]interface{}, error) {
-	scheduler, err := schedulerCache.LoadScheduler(db, r.SchedulerName, true)
-	if err != nil {
-		return nil, err
+	if scheduler == nil {
+		var err error
+		scheduler, err = schedulerCache.LoadScheduler(db, r.SchedulerName, true)
+		if err != nil {
+			return nil, err
+		}
 	}
 	address, err := r.GetAddresses(kubernetesClient)
 	if err != nil {

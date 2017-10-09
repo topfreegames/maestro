@@ -53,7 +53,7 @@ type Worker struct {
 	SyncPeriod       int
 	Watchers         map[string]*watcher.Watcher
 	gracefulShutdown *gracefulShutdown
-	Forwarders       []eventforwarder.EventForwarder
+	Forwarders       []*eventforwarder.Info
 	getLocksTimeout  int
 	lockTimeoutMs    int
 }

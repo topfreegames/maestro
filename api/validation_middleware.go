@@ -54,6 +54,18 @@ func playerEventPayloadFromCtx(ctx context.Context) *models.PlayerEventPayload {
 	return arr[0].(*models.PlayerEventPayload)
 }
 
+func roomEventPayloadFromCtx(ctx context.Context) *models.RoomEventPayload {
+	payload := ctx.Value(payloadString)
+	if payload == nil {
+		return nil
+	}
+	arr := payload.([]interface{})
+	if len(arr) == 0 || arr[0] == nil {
+		return nil
+	}
+	return arr[0].(*models.RoomEventPayload)
+}
+
 func statusPayloadFromCtx(ctx context.Context) *models.RoomStatusPayload {
 	payload := ctx.Value(payloadString)
 	if payload == nil {

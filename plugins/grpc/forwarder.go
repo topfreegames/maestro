@@ -18,7 +18,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/eventforwarder"
-	pb "github.com/topfreegames/maestro/plugins/grpc/generated"
+	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	context "golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -70,6 +70,49 @@ func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status p
 func (g *GRPCForwarder) roomStatus(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, err error) {
 	req := g.roomStatusRequest(infos, roomStatus)
 	response, err := g.client.SendRoomStatus(context.Background(), req)
+	if err != nil {
+		return 500, err
+	}
+	return response.Code, err
+}
+
+func (g *GRPCForwarder) roomEventRequest(infos map[string]interface{}, eventType string) *pb.RoomEvent {
+	game := infos["game"].(string)
+	roomID := infos["roomId"].(string)
+	host := infos["host"].(string)
+	port := infos["port"].(int32)
+
+	g.logger.WithFields(log.Fields{
+		"op":     "roomEventRequest",
+		"game":   game,
+		"roomId": roomID,
+		"host":   host,
+		"port":   port,
+		"event":  eventType,
+	}).Debug("getting room event request")
+
+	req := &pb.RoomEvent{
+		Room: &pb.Room{
+			Game:   game,
+			RoomId: roomID,
+			Host:   host,
+			Port:   port,
+		},
+		EventType: eventType,
+	}
+	if meta, ok := infos["metadata"].(map[string]interface{}); ok {
+		m := make(map[string]string)
+		for key, value := range meta {
+			m[key] = value.(string)
+		}
+		req.Room.Metadata = m
+	}
+	return req
+}
+
+func (g *GRPCForwarder) sendRoomEvent(infos map[string]interface{}, eventType string) (status int32, err error) {
+	req := g.roomEventRequest(infos, eventType)
+	response, err := g.client.SendRoomEvent(context.Background(), req)
 	if err != nil {
 		return 500, err
 	}
@@ -130,14 +173,21 @@ func (g *GRPCForwarder) Terminated(infos map[string]interface{}) (status int32, 
 	return g.roomStatus(infos, pb.RoomStatus_terminated)
 }
 
-// PlayerJoin status
+// PlayerJoin event
 func (g *GRPCForwarder) PlayerJoin(infos map[string]interface{}) (status int32, err error) {
 	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_JOINED)
 }
 
-// PlayerLeft status
+// PlayerLeft event
 func (g *GRPCForwarder) PlayerLeft(infos map[string]interface{}) (status int32, err error) {
 	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_LEFT)
+}
+
+// RoomEvent sends a generic room event
+func (g *GRPCForwarder) RoomEvent(infos map[string]interface{}) (status int32, err error) {
+	eventType := infos["eventType"].(string)
+	delete(infos, "eventType")
+	return g.sendRoomEvent(infos, eventType)
 }
 
 //Forward send room or player status to specified server

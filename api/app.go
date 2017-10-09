@@ -47,7 +47,7 @@ type App struct {
 	KubeconfigPath   string
 	Login            logininterfaces.Login
 	EmailDomains     []string
-	Forwarders       []eventforwarder.EventForwarder
+	Forwarders       []*eventforwarder.Info
 	SchedulerCache   *models.SchedulerCache
 }
 
@@ -70,7 +70,7 @@ func NewApp(
 		InCluster:      incluster,
 		KubeconfigPath: kubeconfigPath,
 		EmailDomains:   config.GetStringSlice("oauth.acceptedDomains"),
-		Forwarders:     []eventforwarder.EventForwarder{},
+		Forwarders:     []*eventforwarder.Info{},
 	}
 	err := a.configureApp(dbOrNil, redisClientOrNil, kubernetesClientOrNil)
 	if err != nil {
@@ -224,6 +224,17 @@ func (a *App) getRouter() *mux.Router {
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.RoomStatusPayload{} }),
 	).ServeHTTP).Methods("PUT").Name("status")
+
+	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/roomevent", Chain(
+		NewRoomEventHandler(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewLoggingMiddleware(a),
+		NewVersionMiddleware(),
+		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
+		NewValidationMiddleware(func() interface{} { return &models.RoomEventPayload{} }),
+	).ServeHTTP).Methods("POST").Name("roomEvent")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/playerevent", Chain(
 		NewPlayerEventHandler(a),

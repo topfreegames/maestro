@@ -63,6 +63,16 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: consider sampling requests by scheduler name and only forwarding a few pings
+	eventforwarder.ForwardRoomEvent(
+		g.App.Forwarders,
+		g.App.DB,
+		g.App.KubernetesClient,
+		room, payload.Status,
+		payload.Metadata,
+		g.App.SchedulerCache,
+	)
+
 	mr.WithSegment(models.SegmentSerialization, func() error {
 		Write(w, http.StatusOK, `{"success": true}`)
 		return nil
@@ -98,7 +108,15 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 
-	err := eventforwarder.ForwardPlayerEvent(g.App.Forwarders, g.App.DB, room.ID, payload.Event, payload.Metadata)
+	err := eventforwarder.ForwardPlayerEvent(
+		g.App.Forwarders,
+		g.App.DB,
+		g.App.KubernetesClient,
+		room,
+		payload.Event,
+		payload.Metadata,
+		g.App.SchedulerCache,
+	)
 
 	if err != nil {
 		logger.WithError(err).Error("Player event forward failed.")
@@ -112,6 +130,66 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 
 	logger.Debug("Performed player event forward.")
+}
+
+// RoomEventHandler handler
+type RoomEventHandler struct {
+	App *App
+}
+
+// NewRoomEventHandler creates a new room event handler
+func NewRoomEventHandler(a *App) *RoomEventHandler {
+	r := &RoomEventHandler{App: a}
+	return r
+}
+
+// ServeHTTP method
+func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	l := loggerFromContext(r.Context())
+	mr := metricsReporterFromCtx(r.Context())
+	params := roomParamsFromContext(r.Context())
+	payload := roomEventPayloadFromCtx(r.Context())
+
+	logger := l.WithFields(logrus.Fields{
+		"source":           "roomHandler",
+		"operation":        "roomEventHandler",
+		"payloadTimestamp": payload.Timestamp,
+		"event":            payload.Event,
+	})
+
+	logger.Debug("Performing room event handler...")
+
+	room := models.NewRoom(params.Name, params.Scheduler)
+
+	if payload.Metadata != nil {
+		payload.Metadata["eventType"] = payload.Event
+	} else {
+		payload.Metadata = map[string]interface{}{
+			"eventType": payload.Event,
+		}
+	}
+
+	err := eventforwarder.ForwardRoomEvent(
+		g.App.Forwarders,
+		g.App.DB,
+		g.App.KubernetesClient,
+		room,
+		"roomEvent",
+		payload.Metadata,
+		g.App.SchedulerCache,
+	)
+	if err != nil {
+		logger.WithError(err).Error("Room event forward failed.")
+		g.App.HandleError(w, http.StatusInternalServerError, "Room event forward failed", err)
+		return
+	}
+
+	mr.WithSegment(models.SegmentSerialization, func() error {
+		Write(w, http.StatusOK, `{"success": true}`)
+		return nil
+	})
+
+	logger.Debug("Performed room event forward.")
 }
 
 // RoomStatusHandler handler

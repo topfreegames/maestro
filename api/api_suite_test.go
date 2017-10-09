@@ -42,6 +42,9 @@ var (
 	mockClientset       *fake.Clientset
 	mockEventForwarder1 *eventforwardermock.MockEventForwarder
 	mockEventForwarder2 *eventforwardermock.MockEventForwarder
+	mockEventForwarder3 *eventforwardermock.MockEventForwarder
+	mockEventForwarder4 *eventforwardermock.MockEventForwarder
+	mockEventForwarder5 *eventforwardermock.MockEventForwarder
 	mockLogin           *mocks.MockLogin
 	mockClock           *clockmocks.MockClock
 	mmr                 *models.MixedMetricsReporter
@@ -71,6 +74,9 @@ var _ = BeforeEach(func() {
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
 	mockEventForwarder1 = eventforwardermock.NewMockEventForwarder(mockCtrl)
 	mockEventForwarder2 = eventforwardermock.NewMockEventForwarder(mockCtrl)
+	mockEventForwarder3 = eventforwardermock.NewMockEventForwarder(mockCtrl)
+	mockEventForwarder4 = eventforwardermock.NewMockEventForwarder(mockCtrl)
+	mockEventForwarder5 = eventforwardermock.NewMockEventForwarder(mockCtrl)
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 	mockClientset = fake.NewSimpleClientset()
 

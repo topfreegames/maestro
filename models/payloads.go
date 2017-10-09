@@ -20,3 +20,10 @@ type PlayerEventPayload struct {
 	Event     string                 `json:"status" valid:"matches(playerLeft|playerJoin),required"`
 	Timestamp int64                  `json:"timestamp" valid:"int64,required"`
 }
+
+// RoomEventPayload is the struct that defines the payload for the roomEvent route
+type RoomEventPayload struct {
+	Metadata  map[string]interface{} `json:"metadata"`
+	Event     string                 `json:"status" valid:"required"`
+	Timestamp int64                  `json:"timestamp" valid:"int64,required"`
+}

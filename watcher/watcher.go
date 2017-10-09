@@ -51,7 +51,7 @@ type Watcher struct {
 	GameName          string
 	gracefulShutdown  *gracefulShutdown
 	OccupiedTimeout   int64
-	EventForwarders   []eventforwarder.EventForwarder
+	EventForwarders   []*eventforwarder.Info
 	ScaleUpInfo       *models.ScaleInfo
 	ScaleDownInfo     *models.ScaleInfo
 }
@@ -66,7 +66,7 @@ func NewWatcher(
 	clientset kubernetes.Interface,
 	schedulerName, gameName string,
 	occupiedTimeout int64,
-	eventForwarders []eventforwarder.EventForwarder,
+	eventForwarders []*eventforwarder.Info,
 ) *Watcher {
 	w := &Watcher{
 		Config:           config,
@@ -95,6 +95,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("occupiedTimeout", 60*60)
 }
 
+// GetLockKey returns the key of the scheduler lock
 func GetLockKey(prefix, schedulerName string) string {
 	return fmt.Sprintf("%s-%s", prefix, schedulerName)
 }
