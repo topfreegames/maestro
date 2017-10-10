@@ -22,6 +22,7 @@ import (
 	goredis "github.com/go-redis/redis"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/controller"
+	"github.com/topfreegames/maestro/eventforwarder"
 	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,7 +96,17 @@ var _ = Describe("Scheduler Handler", func() {
     "./room-binary",
     "-serverType",
     "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
-  ]
+  ],
+  "forwarders": {
+    "mockplugin": {
+      "mockfwd": {
+        "enabled": true,
+        "medatada": {
+          "send": "me"
+        }
+      }
+    }
+  }
 }`
 
 	BeforeEach(func() {
@@ -424,6 +435,61 @@ autoscaling:
 					Expect(obj["error"]).To(Equal("Create scheduler failed"))
 					Expect(obj["description"]).To(Equal("node without label error"))
 					Expect(obj["success"]).To(Equal(false))
+				})
+			})
+
+			Context("with eventforwarders", func() {
+				BeforeEach(func() {
+					app.Forwarders = []*eventforwarder.Info{
+						&eventforwarder.Info{
+							Plugin:    "mockplugin",
+							Name:      "mockfwd",
+							Forwarder: mockEventForwarder1,
+						},
+					}
+				})
+
+				It("forwards scheduler event", func() {
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+						func(schedulerName string, statusInfo map[string]interface{}) {
+							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+						},
+					).Times(100)
+					mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(100)
+					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(100)
+					mockPipeline.EXPECT().Exec().Times(100)
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
+						gomock.Any(),
+					)
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+						gomock.Any(),
+					)
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+						Return(goredis.NewStringResult("5000", nil)).Times(200)
+					mockPipeline.EXPECT().Exec().Times(100)
+
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"SELECT * FROM schedulers WHERE name = ?",
+						"scheduler-name",
+					).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlString
+						scheduler.Game = "game-name"
+					})
+
+					mockEventForwarder1.EXPECT().Forward("schedulerEvent", gomock.Any())
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(201))
+					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 				})
 			})
 		})
@@ -900,6 +966,177 @@ autoscaling:
 					Expect(obj["error"]).To(Equal("DatabaseError"))
 					Expect(obj["description"]).To(Equal("sql: database is closed"))
 					Expect(obj["success"]).To(Equal(false))
+				})
+			})
+
+			Context("with eventforwarders", func() {
+				BeforeEach(func() {
+					app.Forwarders = []*eventforwarder.Info{
+						&eventforwarder.Info{
+							Plugin:    "mockplugin",
+							Name:      "mockfwd",
+							Forwarder: mockEventForwarder1,
+						},
+						&eventforwarder.Info{
+							Plugin:    "mockplugin",
+							Name:      "anothermockfwd",
+							Forwarder: mockEventForwarder2,
+						},
+					}
+				})
+
+				It("forwards scheduler event", func() {
+					// Create scheduler
+					yamlString1 := `
+name: scheduler-name
+game: game
+image: image:v1
+autoscaling:
+  min: 1
+  up:
+    delta: 10
+    trigger:
+      usage: 70
+      time: 600
+    cooldown: 300
+  down:
+    delta: 2
+    trigger:
+      usage: 50
+      time: 900
+    cooldown: 300
+`
+					reader := strings.NewReader(yamlString1)
+					url := "/scheduler"
+					request, err := http.NewRequest("POST", url, reader)
+					Expect(err).NotTo(HaveOccurred())
+
+					var configYaml1 models.ConfigYAML
+					err = yaml.Unmarshal([]byte(yamlString1), &configYaml1)
+					Expect(err).NotTo(HaveOccurred())
+
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
+					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+						func(schedulerName string, statusInfo map[string]interface{}) {
+							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+						},
+					).Times(configYaml1.AutoScaling.Min)
+					mockPipeline.EXPECT().
+						ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).
+						Times(configYaml1.AutoScaling.Min)
+					mockPipeline.EXPECT().
+						SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).
+						Times(configYaml1.AutoScaling.Min)
+					mockPipeline.EXPECT().
+						Exec().
+						Times(configYaml1.AutoScaling.Min)
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
+						gomock.Any(),
+					)
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
+						gomock.Any(),
+					)
+
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"SELECT * FROM schedulers WHERE name = ?",
+						"scheduler-name",
+					).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlString1
+						scheduler.Game = "game"
+					})
+
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Code).To(Equal(http.StatusCreated))
+					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+					pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+					Expect(err).NotTo(HaveOccurred())
+					Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+					// Update scheduler
+					yamlString2 := `
+name: scheduler-name
+game: game
+image: image:v1
+autoscaling:
+  min: 1
+  up:
+    delta: 10
+    trigger:
+      usage: 70
+      time: 300
+    cooldown: 300
+  down:
+    delta: 2
+    trigger:
+      usage: 50
+      time: 900
+    cooldown: 300
+forwarders:
+  mockplugin:
+    mockfwd:
+      enabled: true
+      metadata:
+        data: "to be forwarded"
+        intField: 123
+    anothermockfwd:
+      enabled: true
+      metadata:
+        data: "newData"
+        newInt: 987
+`
+					var configYaml2 models.ConfigYAML
+					err = yaml.Unmarshal([]byte(yamlString2), &configYaml2)
+					Expect(err).NotTo(HaveOccurred())
+
+					reader = strings.NewReader(yamlString2)
+					url = fmt.Sprintf("/scheduler/%s", configYaml2.Name)
+					request, err = http.NewRequest("PUT", url, reader)
+					Expect(err).NotTo(HaveOccurred())
+
+					mockRedisClient.EXPECT().Ping().AnyTimes()
+
+					mockDb.EXPECT().
+						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
+						Do(func(scheduler *models.Scheduler, query string, modifier string) {
+							*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString1)
+						})
+
+					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+
+					mockRedisClient.EXPECT().
+						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						Return(redis.NewBoolResult(true, nil))
+
+					mockDb.EXPECT().
+						Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+
+					mockRedisClient.EXPECT().
+						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
+						Return(redis.NewCmdResult(nil, nil))
+
+					mockDb.EXPECT().Query(
+						gomock.Any(),
+						"SELECT * FROM schedulers WHERE name = ?",
+						"scheduler-name",
+					).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlString2
+						scheduler.Game = "game"
+					})
+
+					mockEventForwarder1.EXPECT().Forward("schedulerEvent", gomock.Any())
+					mockEventForwarder2.EXPECT().Forward("schedulerEvent", gomock.Any())
+
+					recorder = httptest.NewRecorder()
+					app.Router.ServeHTTP(recorder, request)
+					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+					Expect(recorder.Code).To(Equal(http.StatusOK))
 				})
 			})
 		})

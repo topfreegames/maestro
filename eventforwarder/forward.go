@@ -62,6 +62,55 @@ func ForwardRoomEvent(
 	return nil
 }
 
+// ForwardRoomInfo forwards room info to app eventforwarders
+func ForwardRoomInfo(
+	forwarders []*Info,
+	db interfaces.DB,
+	kubernetesClient kubernetes.Interface,
+	schedulerName string,
+	schedulerCache *models.SchedulerCache,
+) error {
+	if len(forwarders) > 0 {
+		scheduler, err := schedulerCache.LoadScheduler(db, schedulerName, true)
+		if err != nil {
+			return err
+		}
+		var config *models.ConfigYAML
+		if schedulerCache != nil {
+			config, err = schedulerCache.LoadConfigYaml(db, schedulerName, true)
+		} else {
+			config, err = models.NewConfigYAML(scheduler.YAML)
+		}
+		if len(config.Forwarders) > 0 {
+			for _, configuredFwdInfo := range forwarders {
+				if schedulerFwds, ok := config.Forwarders[configuredFwdInfo.Plugin]; ok {
+					if fwd, ok := schedulerFwds[configuredFwdInfo.Name]; ok {
+						if fwd.Enabled {
+							metadata := fwd.Metadata
+							if metadata != nil {
+								metadata["game"] = scheduler.Game
+							} else {
+								metadata = map[string]interface{}{
+									"game": scheduler.Game,
+								}
+							}
+							err = ForwardEventToForwarders(
+								[]EventForwarder{configuredFwdInfo.Forwarder},
+								"schedulerEvent",
+								metadata,
+							)
+							if err != nil {
+								return err
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // ForwardPlayerEvent forwards player event to app eventforwarders
 func ForwardPlayerEvent(
 	forwarders []*Info,
