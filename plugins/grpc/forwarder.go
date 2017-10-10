@@ -33,7 +33,7 @@ type GRPCForwarder struct {
 }
 
 // ForwarderFunc is the type of functions in GRPCForwarder
-type ForwarderFunc func(client pb.GRPCForwarderClient, infos map[string]interface{}) (int32, error)
+type ForwarderFunc func(client pb.GRPCForwarderClient, infos map[string]interface{}) (int32, string, error)
 
 func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status pb.RoomStatus_RoomStatusType) *pb.RoomStatus {
 	game := infos["game"].(string)
@@ -68,13 +68,13 @@ func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status p
 	return req
 }
 
-func (g *GRPCForwarder) roomStatus(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, err error) {
+func (g *GRPCForwarder) roomStatus(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
 	req := g.roomStatusRequest(infos, roomStatus)
 	response, err := g.client.SendRoomStatus(context.Background(), req)
 	if err != nil {
-		return 500, err
+		return 500, "", err
 	}
-	return response.Code, err
+	return response.Code, response.Message, err
 }
 
 func (g *GRPCForwarder) roomEventRequest(infos map[string]interface{}, eventType string) *pb.RoomEvent {
@@ -111,13 +111,13 @@ func (g *GRPCForwarder) roomEventRequest(infos map[string]interface{}, eventType
 	return req
 }
 
-func (g *GRPCForwarder) sendRoomEvent(infos map[string]interface{}, eventType string) (status int32, err error) {
+func (g *GRPCForwarder) sendRoomEvent(infos map[string]interface{}, eventType string) (status int32, message string, err error) {
 	req := g.roomEventRequest(infos, eventType)
 	response, err := g.client.SendRoomEvent(context.Background(), req)
 	if err != nil {
-		return 500, err
+		return 500, "", err
 	}
-	return response.Code, err
+	return response.Code, response.Message, err
 }
 
 func (g *GRPCForwarder) playerEventRequest(infos map[string]interface{}, event pb.PlayerEvent_PlayerEventType) *pb.PlayerEvent {
@@ -137,21 +137,21 @@ func (g *GRPCForwarder) playerEventRequest(infos map[string]interface{}, event p
 	return req
 }
 
-func (g *GRPCForwarder) playerEvent(infos map[string]interface{}, playerEvent pb.PlayerEvent_PlayerEventType) (status int32, err error) {
+func (g *GRPCForwarder) playerEvent(infos map[string]interface{}, playerEvent pb.PlayerEvent_PlayerEventType) (status int32, message string, err error) {
 	_, ok := infos["playerId"].(string)
 	if !ok {
-		return 500, errors.New("no playerId specified in metadata")
+		return 500, "", errors.New("no playerId specified in metadata")
 	}
 	_, ok = infos["roomId"].(string)
 	if !ok {
-		return 500, errors.New("no roomId specified in metadata")
+		return 500, "", errors.New("no roomId specified in metadata")
 	}
 	req := g.playerEventRequest(infos, playerEvent)
 	response, err := g.client.SendPlayerEvent(context.Background(), req)
 	if err != nil {
-		return 500, err
+		return 500, "", err
 	}
-	return response.Code, err
+	return response.Code, response.Message, err
 }
 
 func (g *GRPCForwarder) roomInfoRequest(infos map[string]interface{}) (*pb.RoomInfo, error) {
@@ -176,62 +176,62 @@ func (g *GRPCForwarder) roomInfoRequest(infos map[string]interface{}) (*pb.RoomI
 	return &req, nil
 }
 
-func (g *GRPCForwarder) sendRoomInfo(infos map[string]interface{}) (status int32, err error) {
+func (g *GRPCForwarder) sendRoomInfo(infos map[string]interface{}) (status int32, message string, err error) {
 	req, err := g.roomInfoRequest(infos)
 	if err != nil {
-		return 500, err
+		return 500, "", err
 	}
 	response, err := g.client.SendRoomInfo(context.Background(), req)
 	if err != nil {
-		return 500, err
+		return 500, "", err
 	}
-	return response.Code, err
+	return response.Code, response.Message, err
 }
 
 // Ready status
-func (g *GRPCForwarder) Ready(infos map[string]interface{}) (status int32, err error) {
+func (g *GRPCForwarder) Ready(infos map[string]interface{}) (status int32, message string, err error) {
 	return g.roomStatus(infos, pb.RoomStatus_ready)
 }
 
 // Occupied status
-func (g *GRPCForwarder) Occupied(infos map[string]interface{}) (status int32, err error) {
+func (g *GRPCForwarder) Occupied(infos map[string]interface{}) (status int32, message string, err error) {
 	return g.roomStatus(infos, pb.RoomStatus_occupied)
 }
 
 // Terminating status
-func (g *GRPCForwarder) Terminating(infos map[string]interface{}) (status int32, err error) {
+func (g *GRPCForwarder) Terminating(infos map[string]interface{}) (status int32, message string, err error) {
 	return g.roomStatus(infos, pb.RoomStatus_terminating)
 }
 
 // Terminated status
-func (g *GRPCForwarder) Terminated(infos map[string]interface{}) (status int32, err error) {
+func (g *GRPCForwarder) Terminated(infos map[string]interface{}) (status int32, message string, err error) {
 	return g.roomStatus(infos, pb.RoomStatus_terminated)
 }
 
 // PlayerJoin event
-func (g *GRPCForwarder) PlayerJoin(infos map[string]interface{}) (status int32, err error) {
+func (g *GRPCForwarder) PlayerJoin(infos map[string]interface{}) (status int32, message string, err error) {
 	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_JOINED)
 }
 
 // PlayerLeft event
-func (g *GRPCForwarder) PlayerLeft(infos map[string]interface{}) (status int32, err error) {
+func (g *GRPCForwarder) PlayerLeft(infos map[string]interface{}) (status int32, message string, err error) {
 	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_LEFT)
 }
 
 // RoomEvent sends a generic room event
-func (g *GRPCForwarder) RoomEvent(infos map[string]interface{}) (status int32, err error) {
+func (g *GRPCForwarder) RoomEvent(infos map[string]interface{}) (status int32, message string, err error) {
 	eventType := infos["eventType"].(string)
 	delete(infos, "eventType")
 	return g.sendRoomEvent(infos, eventType)
 }
 
 // SchedulerEvent sends a scheduler event
-func (g *GRPCForwarder) SchedulerEvent(infos map[string]interface{}) (status int32, err error) {
+func (g *GRPCForwarder) SchedulerEvent(infos map[string]interface{}) (status int32, message string, err error) {
 	return g.sendRoomInfo(infos)
 }
 
 //Forward send room or player status to specified server
-func (g *GRPCForwarder) Forward(event string, infos map[string]interface{}) (status int32, err error) {
+func (g *GRPCForwarder) Forward(event string, infos map[string]interface{}) (status int32, message string, err error) {
 	l := g.logger.WithFields(log.Fields{
 		"op":         "Forward",
 		"event":      event,
@@ -241,14 +241,14 @@ func (g *GRPCForwarder) Forward(event string, infos map[string]interface{}) (sta
 	l.Debug("forwarding event")
 	f := reflect.ValueOf(g).MethodByName(strings.Title(event))
 	if !f.IsValid() {
-		return 500, fmt.Errorf("error calling method %s in plugin", event)
+		return 500, "", fmt.Errorf("error calling method %s in plugin", event)
 	}
 	ret := f.Call([]reflect.Value{reflect.ValueOf(infos)})
-	if _, ok := ret[1].Interface().(error); !ok {
-		return ret[0].Interface().(int32), nil
+	if _, ok := ret[2].Interface().(error); !ok {
+		return ret[0].Interface().(int32), ret[1].Interface().(string), nil
 	}
 	l.Debug("successfully forwarded event")
-	return ret[0].Interface().(int32), ret[1].Interface().(error)
+	return ret[0].Interface().(int32), ret[1].Interface().(string), ret[2].Interface().(error)
 }
 
 func (g *GRPCForwarder) configure() error {

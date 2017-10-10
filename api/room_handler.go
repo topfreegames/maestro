@@ -9,6 +9,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -108,7 +109,7 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 
-	err := eventforwarder.ForwardPlayerEvent(
+	resp, err := eventforwarder.ForwardPlayerEvent(
 		g.App.Forwarders,
 		g.App.DB,
 		g.App.KubernetesClient,
@@ -124,8 +125,19 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if resp.Code != 200 {
+		err := errors.New(resp.Message)
+		logger.WithError(err).Error("Player event forward failed.")
+		g.App.HandleError(w, resp.Code, "player event forward failed", err)
+		return
+	}
+
 	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusOK, `{"success": true}`)
+		resBytes, _ := json.Marshal(map[string]interface{}{
+			"success": true,
+			"message": resp.Message,
+		})
+		Write(w, http.StatusOK, string(resBytes))
 		return nil
 	})
 
@@ -169,7 +181,7 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err := eventforwarder.ForwardRoomEvent(
+	resp, err := eventforwarder.ForwardRoomEvent(
 		g.App.Forwarders,
 		g.App.DB,
 		g.App.KubernetesClient,
@@ -178,17 +190,28 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		payload.Metadata,
 		g.App.SchedulerCache,
 	)
+
 	if err != nil {
 		logger.WithError(err).Error("Room event forward failed.")
 		g.App.HandleError(w, http.StatusInternalServerError, "Room event forward failed", err)
 		return
 	}
 
+	if resp.Code != 200 {
+		err := errors.New(resp.Message)
+		logger.WithError(err).Error("Room event forward failed.")
+		g.App.HandleError(w, resp.Code, "room event forward failed", err)
+		return
+	}
+
 	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusOK, `{"success": true}`)
+		resBytes, _ := json.Marshal(map[string]interface{}{
+			"success": true,
+			"message": resp.Message,
+		})
+		Write(w, http.StatusOK, string(resBytes))
 		return nil
 	})
-
 	logger.Debug("Performed room event forward.")
 }
 

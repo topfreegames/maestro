@@ -26,7 +26,7 @@ type Info struct {
 
 // EventForwarder interface
 type EventForwarder interface {
-	Forward(event string, infos map[string]interface{}) (int32, error)
+	Forward(event string, infos map[string]interface{}) (int32, string, error)
 }
 
 // LoadEventForwardersFromConfig returns a slice of configured eventforwarders
