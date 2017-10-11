@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	e "errors"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/pmylund/go-cache"
 	"github.com/topfreegames/extensions/pg/interfaces"
@@ -14,9 +12,14 @@ import (
 
 // SchedulerCache holds the scheduler in memory for x minutes for performance boost
 type SchedulerCache struct {
-	configYaml *ConfigYAML
-	cache      *cache.Cache
-	logger     logrus.FieldLogger
+	cache  *cache.Cache
+	logger logrus.FieldLogger
+}
+
+// CachedScheduler is the struct for the scheduler that will be kept in the cache
+type CachedScheduler struct {
+	Scheduler  *Scheduler
+	ConfigYAML *ConfigYAML
 }
 
 //NewSchedulerCache returns a new *SchedulerCache
@@ -38,23 +41,38 @@ func SchedulerKey(schedulerName string) string {
 // LoadScheduler returns scheduler from cache
 //  If cache does not have scheduler or useCache is false, scheduler is loaded from database
 //  In this case, configYaml is also updated
-func (s *SchedulerCache) LoadScheduler(db interfaces.DB, schedulerName string, useCache bool) (*Scheduler, error) {
+func (s *SchedulerCache) LoadScheduler(
+	db interfaces.DB, schedulerName string, useCache bool,
+) (*CachedScheduler, error) {
 	if s == nil {
-		return loadFromDB(db, schedulerName)
+		scheduler, err := loadFromDB(db, schedulerName)
+		if err != nil {
+			return nil, err
+		}
+
+		configYaml, err := NewConfigYAML(scheduler.YAML)
+		if err != nil {
+			return nil, err
+		}
+
+		return &CachedScheduler{
+			Scheduler:  scheduler,
+			ConfigYAML: configYaml,
+		}, nil
+
 	}
 
 	schedulerKey := SchedulerKey(schedulerName)
-
 	logger := s.logger.WithFields(logrus.Fields{
 		"operation": "CacheLoad",
 		"scheduler": schedulerName,
 	})
 
 	if useCache {
-		scheduler, found := s.cache.Get(schedulerKey)
+		cachedScheduler, found := s.cache.Get(schedulerKey)
 		if found {
 			logger.Debug("found on cache")
-			return scheduler.(*Scheduler), nil
+			return cachedScheduler.(*CachedScheduler), nil
 		}
 		logger.Debug("not found on cache")
 	}
@@ -63,19 +81,22 @@ func (s *SchedulerCache) LoadScheduler(db interfaces.DB, schedulerName string, u
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug("adding scheduler on cache")
 
-	s.cache.Set(schedulerKey, scheduler, cache.DefaultExpiration)
-	s.configYaml, err = NewConfigYAML(scheduler.YAML)
+	configYaml, err := NewConfigYAML(scheduler.YAML)
 	if err != nil {
 		return nil, err
 	}
-
-	if s.configYaml.AutoScaling.Up.Trigger.Limit == 0 {
-		s.configYaml.AutoScaling.Up.Trigger.Limit = 90
+	if configYaml.AutoScaling.Up.Trigger.Limit == 0 {
+		configYaml.AutoScaling.Up.Trigger.Limit = 90
 	}
 
-	return scheduler, nil
+	cachedScheduler := &CachedScheduler{
+		Scheduler:  scheduler,
+		ConfigYAML: configYaml,
+	}
+	logger.Debug("adding scheduler on cache")
+	s.cache.Set(schedulerKey, cachedScheduler, cache.DefaultExpiration)
+	return cachedScheduler, nil
 }
 
 func loadFromDB(db interfaces.DB, schedulerName string) (*Scheduler, error) {
@@ -89,18 +110,4 @@ func loadFromDB(db interfaces.DB, schedulerName string) (*Scheduler, error) {
 		return nil, errors.NewValidationFailedError(msg)
 	}
 	return scheduler, nil
-}
-
-// LoadConfigYaml returns scheduler from cache
-//  If cache does not have scheduler or useCache is false, scheduler is loaded from database
-//  In this case, configYaml is also updated updated
-func (s *SchedulerCache) LoadConfigYaml(db interfaces.DB, schedulerName string, useCache bool) (*ConfigYAML, error) {
-	if s == nil {
-		return nil, e.New("scheduler cache is not defined")
-	}
-	_, err := s.LoadScheduler(db, schedulerName, useCache)
-	if err != nil {
-		return nil, err
-	}
-	return s.configYaml, nil
 }

@@ -1210,23 +1210,17 @@ func SetRoomStatus(
 		"operation": "SetRoomStatus",
 	})
 
-	scheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
+	cachedScheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
 	if err != nil {
 		return err
 	}
-
-	configYaml, err := schedulerCache.LoadConfigYaml(db, room.SchedulerName, true)
-	if err != nil {
-		return err
-	}
-
-	roomsCountByStatus, err := room.SetStatus(redisClient, db, mr, status, configYaml, status == models.StatusOccupied)
+	roomsCountByStatus, err := room.SetStatus(redisClient, db, mr, status, cachedScheduler.ConfigYAML, status == models.StatusOccupied)
 	if err != nil {
 		return err
 	}
 
 	if status == models.StatusOccupied {
-		if roomsCountByStatus.Total()*configYaml.AutoScaling.Up.Trigger.Limit < 100*roomsCountByStatus.Occupied {
+		if roomsCountByStatus.Total()*cachedScheduler.ConfigYAML.AutoScaling.Up.Trigger.Limit < 100*roomsCountByStatus.Occupied {
 			log.WithFields(logrus.Fields{
 				"readyRooms": roomsCountByStatus.Ready,
 			}).Info("few ready rooms, scaling up")
@@ -1237,8 +1231,8 @@ func SetRoomStatus(
 					db,
 					redisClient,
 					clientset,
-					scheduler,
-					configYaml.AutoScaling.Up.Delta,
+					cachedScheduler.Scheduler,
+					cachedScheduler.ConfigYAML.AutoScaling.Up.Delta,
 					config.GetInt("scaleUpTimeoutSeconds"),
 					false,
 				)

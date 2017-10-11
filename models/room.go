@@ -255,11 +255,11 @@ func (r *Room) GetRoomInfos(
 	scheduler *Scheduler,
 ) (map[string]interface{}, error) {
 	if scheduler == nil {
-		var err error
-		scheduler, err = schedulerCache.LoadScheduler(db, r.SchedulerName, true)
+		cachedScheduler, err := schedulerCache.LoadScheduler(db, r.SchedulerName, true)
 		if err != nil {
 			return nil, err
 		}
+		scheduler = cachedScheduler.Scheduler
 	}
 	address, err := r.GetAddresses(kubernetesClient)
 	if err != nil {

@@ -20,18 +20,18 @@ var _ = Describe("SchedulerCache", func() {
 name: scheduler-name
 game: game
 image: image:v1
-autoscaling: 
+autoscaling:
   min: 100
-  up: 
+  up:
     delta: 10
-    trigger: 
+    trigger:
       usage: 70
       time: 600
       limit: 90
     cooldown: 300
-  down: 
+  down:
     delta: 2
-    trigger: 
+    trigger:
       usage: 50
       time: 900
     cooldown: 300
@@ -56,9 +56,11 @@ autoscaling:
 					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
 				})
 
-			scheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
+			cachedScheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(scheduler.YAML).To(Equal(yamlStr))
+			Expect(cachedScheduler.Scheduler).NotTo(BeNil())
+			Expect(cachedScheduler.Scheduler.YAML).To(Equal(yamlStr))
+			Expect(cachedScheduler.ConfigYAML).NotTo(BeNil())
 		})
 
 		It("should load from cache for the next 10 times", func() {
@@ -70,14 +72,18 @@ autoscaling:
 					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
 				})
 
-			scheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
+			cachedScheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(scheduler.YAML).To(Equal(yamlStr))
+			Expect(cachedScheduler.Scheduler).NotTo(BeNil())
+			Expect(cachedScheduler.Scheduler.YAML).To(Equal(yamlStr))
+			Expect(cachedScheduler.ConfigYAML).NotTo(BeNil())
 
 			for i := 0; i < 10; i++ {
-				scheduler, err = cache.LoadScheduler(mockDb, schedulerName, true)
+				cachedScheduler, err = cache.LoadScheduler(mockDb, schedulerName, true)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(scheduler.YAML).To(Equal(yamlStr))
+				Expect(cachedScheduler.Scheduler).NotTo(BeNil())
+				Expect(cachedScheduler.Scheduler.YAML).To(Equal(yamlStr))
+				Expect(cachedScheduler.ConfigYAML).NotTo(BeNil())
 			}
 		})
 
@@ -90,13 +96,17 @@ autoscaling:
 					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
 				}).Times(2)
 
-			scheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
+			cachedScheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(scheduler.YAML).To(Equal(yamlStr))
+			Expect(cachedScheduler.Scheduler).NotTo(BeNil())
+			Expect(cachedScheduler.Scheduler.YAML).To(Equal(yamlStr))
+			Expect(cachedScheduler.ConfigYAML).NotTo(BeNil())
 
-			scheduler, err = cache.LoadScheduler(mockDb, schedulerName, false)
+			cachedScheduler, err = cache.LoadScheduler(mockDb, schedulerName, false)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(scheduler.YAML).To(Equal(yamlStr))
+			Expect(cachedScheduler.Scheduler).NotTo(BeNil())
+			Expect(cachedScheduler.Scheduler.YAML).To(Equal(yamlStr))
+			Expect(cachedScheduler.ConfigYAML).NotTo(BeNil())
 		})
 
 		It("should return error if scheduler is not found on cache nor on db", func() {
@@ -108,10 +118,10 @@ autoscaling:
 					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, "")
 				})
 
-			scheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
+			cachedScheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("scheduler \"scheduler-name\" not found"))
-			Expect(scheduler).To(BeNil())
+			Expect(cachedScheduler).To(BeNil())
 		})
 
 		It("should return error if db fails", func() {
@@ -136,64 +146,10 @@ autoscaling:
 					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, "}i am invalid!{")
 				})
 
-			scheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
+			cachedScheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("yaml: did not find expected node content"))
-			Expect(scheduler).To(BeNil())
-		})
-	})
-
-	Describe("LoadConfigYaml", func() {
-		It("should load from db for the first time", func() {
-			cache := NewSchedulerCache(timeout, purgeTime, logger)
-
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
-				Do(func(scheduler *Scheduler, query string, modifier string) {
-					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
-				})
-
-			newConfigYaml, err := cache.LoadConfigYaml(mockDb, schedulerName, true)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(newConfigYaml).To(Equal(configYaml))
-		})
-
-		It("should load from cache for the next 10 times", func() {
-			cache := NewSchedulerCache(timeout, purgeTime, logger)
-
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
-				Do(func(scheduler *Scheduler, query string, modifier string) {
-					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
-				})
-
-			newConfigYaml, err := cache.LoadConfigYaml(mockDb, schedulerName, true)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(newConfigYaml).To(Equal(configYaml))
-
-			for i := 0; i < 10; i++ {
-				newConfigYaml, err = cache.LoadConfigYaml(mockDb, schedulerName, true)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(newConfigYaml).To(Equal(configYaml))
-			}
-		})
-
-		It("should load from db is useCache is false", func() {
-			cache := NewSchedulerCache(timeout, purgeTime, logger)
-
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
-				Do(func(scheduler *Scheduler, query string, modifier string) {
-					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
-				}).Times(2)
-
-			newConfigYaml, err := cache.LoadConfigYaml(mockDb, schedulerName, true)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(newConfigYaml).To(Equal(configYaml))
-
-			newConfigYaml, err = cache.LoadConfigYaml(mockDb, schedulerName, false)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(newConfigYaml).To(Equal(configYaml))
+			Expect(cachedScheduler).To(BeNil())
 		})
 	})
 })

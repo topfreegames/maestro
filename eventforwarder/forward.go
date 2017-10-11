@@ -49,32 +49,23 @@ func ForwardRoomEvent(
 		"roomId":    room.ID,
 	})
 	if len(forwarders) > 0 {
-		scheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
+		cachedScheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
 		if err != nil {
 			return nil, err
 		}
-		var config *models.ConfigYAML
-		if schedulerCache != nil {
-			config, err = schedulerCache.LoadConfigYaml(db, room.SchedulerName, true)
-		} else {
-			config, err = models.NewConfigYAML(scheduler.YAML)
-		}
-		if err != nil {
-			return nil, err
-		}
-		infos, err := room.GetRoomInfos(db, kubernetesClient, schedulerCache, scheduler)
+		infos, err := room.GetRoomInfos(db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler)
 		if err != nil {
 			return nil, err
 		}
 		infos["metadata"] = metadata
 
 		l.WithFields(logrus.Fields{
-			"schedulerForwarders": len(config.Forwarders),
+			"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
 		}).Debug("checking enabled forwarders")
-		if len(config.Forwarders) > 0 {
-			enabledForwarders := getEnabledForwarders(config.Forwarders, forwarders)
+		if len(cachedScheduler.ConfigYAML.Forwarders) > 0 {
+			enabledForwarders := getEnabledForwarders(cachedScheduler.ConfigYAML.Forwarders, forwarders)
 			l.WithFields(logrus.Fields{
-				"schedulerForwarders": len(config.Forwarders),
+				"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
 				"enabledForwarders":   len(enabledForwarders),
 			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
@@ -100,40 +91,31 @@ func ForwardRoomInfo(
 		"scheduler": schedulerName,
 	})
 	if len(forwarders) > 0 {
-		scheduler, err := schedulerCache.LoadScheduler(db, schedulerName, true)
-		if err != nil {
-			return nil, err
-		}
-		var config *models.ConfigYAML
-		if schedulerCache != nil {
-			config, err = schedulerCache.LoadConfigYaml(db, schedulerName, true)
-		} else {
-			config, err = models.NewConfigYAML(scheduler.YAML)
-		}
+		cachedScheduler, err := schedulerCache.LoadScheduler(db, schedulerName, true)
 		if err != nil {
 			return nil, err
 		}
 
 		l.WithFields(logrus.Fields{
-			"schedulerForwarders": len(config.Forwarders),
+			"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
 		}).Debug("checking enabled forwarders")
-		if len(config.Forwarders) > 0 {
+		if len(cachedScheduler.ConfigYAML.Forwarders) > 0 {
 			respCode := 0
 			respMessage := []string{}
 			for _, configuredFwdInfo := range forwarders {
-				if schedulerFwds, ok := config.Forwarders[configuredFwdInfo.Plugin]; ok {
+				if schedulerFwds, ok := cachedScheduler.ConfigYAML.Forwarders[configuredFwdInfo.Plugin]; ok {
 					if fwd, ok := schedulerFwds[configuredFwdInfo.Name]; ok {
 						if fwd.Enabled {
 							l.WithFields(logrus.Fields{
-								"schedulerForwarders": len(config.Forwarders),
+								"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
 								"forwarder":           configuredFwdInfo.Name,
 							}).Debug("enabled forwarder")
 							metadata := fwd.Metadata
 							if metadata != nil {
-								metadata["game"] = scheduler.Game
+								metadata["game"] = cachedScheduler.Scheduler.Game
 							} else {
 								metadata = map[string]interface{}{
-									"game": scheduler.Game,
+									"game": cachedScheduler.Scheduler.Game,
 								}
 							}
 
@@ -189,27 +171,18 @@ func ForwardPlayerEvent(
 	})
 	if len(forwarders) > 0 {
 		metadata["roomId"] = room.ID
-		scheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
+		cachedScheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
 		if err != nil {
 			return nil, err
 		}
-		metadata["game"] = scheduler.Game
-		var config *models.ConfigYAML
-		if schedulerCache != nil {
-			config, err = schedulerCache.LoadConfigYaml(db, room.SchedulerName, true)
-		} else {
-			config, err = models.NewConfigYAML(scheduler.YAML)
-		}
-		if err != nil {
-			return nil, err
-		}
+		metadata["game"] = cachedScheduler.Scheduler.Game
 		l.WithFields(logrus.Fields{
-			"schedulerForwarders": len(config.Forwarders),
+			"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
 		}).Debug("checking enabled forwarders")
-		if len(config.Forwarders) > 0 {
-			enabledForwarders := getEnabledForwarders(config.Forwarders, forwarders)
+		if len(cachedScheduler.ConfigYAML.Forwarders) > 0 {
+			enabledForwarders := getEnabledForwarders(cachedScheduler.ConfigYAML.Forwarders, forwarders)
 			l.WithFields(logrus.Fields{
-				"schedulerForwarders": len(config.Forwarders),
+				"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
 				"enabledForwarders":   len(enabledForwarders),
 			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
