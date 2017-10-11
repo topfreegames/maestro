@@ -3,6 +3,7 @@ package eventforwarder
 import (
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
@@ -40,7 +41,13 @@ func ForwardRoomEvent(
 	status string,
 	metadata map[string]interface{},
 	schedulerCache *models.SchedulerCache,
+	logger logrus.FieldLogger,
 ) (*Response, error) {
+	l := logger.WithFields(logrus.Fields{
+		"op":        "forwardRoomEvent",
+		"scheduler": room.SchedulerName,
+		"roomId":    room.ID,
+	})
 	if len(forwarders) > 0 {
 		scheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
 		if err != nil {
@@ -60,8 +67,16 @@ func ForwardRoomEvent(
 			return nil, err
 		}
 		infos["metadata"] = metadata
+
+		l.WithFields(logrus.Fields{
+			"schedulerForwarders": config.Forwarders,
+		}).Debug("checking enabled forwarders")
 		if len(config.Forwarders) > 0 {
 			enabledForwarders := getEnabledForwarders(config.Forwarders, forwarders)
+			l.WithFields(logrus.Fields{
+				"schedulerForwarders": config.Forwarders,
+				"enabledForwarders":   enabledForwarders,
+			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
 				return ForwardEventToForwarders(enabledForwarders, status, infos)
 			}
@@ -77,7 +92,12 @@ func ForwardRoomInfo(
 	kubernetesClient kubernetes.Interface,
 	schedulerName string,
 	schedulerCache *models.SchedulerCache,
+	logger logrus.FieldLogger,
 ) (*Response, error) {
+	l := logger.WithFields(logrus.Fields{
+		"op":        "forwardRoomInfo",
+		"scheduler": schedulerName,
+	})
 	if len(forwarders) > 0 {
 		scheduler, err := schedulerCache.LoadScheduler(db, schedulerName, true)
 		if err != nil {
@@ -92,6 +112,10 @@ func ForwardRoomInfo(
 		if err != nil {
 			return nil, err
 		}
+
+		l.WithFields(logrus.Fields{
+			"schedulerForwarders": config.Forwarders,
+		}).Debug("checking enabled forwarders")
 		if len(config.Forwarders) > 0 {
 			respCode := 0
 			respMessage := []string{}
@@ -99,6 +123,10 @@ func ForwardRoomInfo(
 				if schedulerFwds, ok := config.Forwarders[configuredFwdInfo.Plugin]; ok {
 					if fwd, ok := schedulerFwds[configuredFwdInfo.Name]; ok {
 						if fwd.Enabled {
+							l.WithFields(logrus.Fields{
+								"schedulerForwarders": config.Forwarders,
+								"forwarder":           fwd,
+							}).Debug("enabled forwarder")
 							metadata := fwd.Metadata
 							if metadata != nil {
 								metadata["game"] = scheduler.Game
@@ -149,7 +177,13 @@ func ForwardPlayerEvent(
 	event string,
 	metadata map[string]interface{},
 	schedulerCache *models.SchedulerCache,
+	logger logrus.FieldLogger,
 ) (*Response, error) {
+	l := logger.WithFields(logrus.Fields{
+		"op":        "forwardRoomEvent",
+		"scheduler": room.SchedulerName,
+		"roomId":    room.ID,
+	})
 	if len(forwarders) > 0 {
 		metadata["roomId"] = room.ID
 		scheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
@@ -166,8 +200,15 @@ func ForwardPlayerEvent(
 		if err != nil {
 			return nil, err
 		}
+		l.WithFields(logrus.Fields{
+			"schedulerForwarders": config.Forwarders,
+		}).Debug("checking enabled forwarders")
 		if len(config.Forwarders) > 0 {
 			enabledForwarders := getEnabledForwarders(config.Forwarders, forwarders)
+			l.WithFields(logrus.Fields{
+				"schedulerForwarders": config.Forwarders,
+				"enabledForwarders":   enabledForwarders,
+			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
 				return ForwardEventToForwarders(enabledForwarders, event, metadata)
 			}

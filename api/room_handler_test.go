@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"time"
 
 	"k8s.io/client-go/kubernetes"
@@ -291,7 +292,7 @@ forwarders:
 				}
 				mockPipeline.EXPECT().Exec()
 
-				mockEventForwarder1.EXPECT().Forward(status, gomock.Any())
+				mockEventForwarder1.EXPECT().Forward(fmt.Sprintf("ping%s", strings.Title(status)), gomock.Any())
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(200))

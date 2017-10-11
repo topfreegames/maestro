@@ -10,6 +10,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -69,9 +70,10 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.Forwarders,
 		g.App.DB,
 		g.App.KubernetesClient,
-		room, payload.Status,
+		room, fmt.Sprintf("ping%s", strings.Title(payload.Status)),
 		payload.Metadata,
 		g.App.SchedulerCache,
+		g.App.Logger,
 	)
 
 	mr.WithSegment(models.SegmentSerialization, func() error {
@@ -117,6 +119,7 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		payload.Event,
 		payload.Metadata,
 		g.App.SchedulerCache,
+		g.App.Logger,
 	)
 
 	if err != nil {
@@ -189,6 +192,7 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"roomEvent",
 		payload.Metadata,
 		g.App.SchedulerCache,
+		g.App.Logger,
 	)
 
 	if err != nil {
@@ -265,6 +269,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		room, payload.Status,
 		payload.Metadata,
 		g.App.SchedulerCache,
+		g.App.Logger,
 	)
 	mr.WithSegment(models.SegmentSerialization, func() error {
 		Write(w, http.StatusOK, `{"success": true}`)

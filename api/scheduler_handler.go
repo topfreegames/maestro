@@ -74,6 +74,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			g.App.KubernetesClient,
 			payload.Name,
 			g.App.SchedulerCache,
+			g.App.Logger,
 		)
 
 		if err != nil {
@@ -219,6 +220,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		g.App.KubernetesClient,
 		payload.Name,
 		nil, // intentionally omit SchedulerCache to force reload since it is an update
+		g.App.Logger,
 	)
 
 	if err != nil {

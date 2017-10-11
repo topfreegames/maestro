@@ -35,6 +35,15 @@ type GRPCForwarder struct {
 // ForwarderFunc is the type of functions in GRPCForwarder
 type ForwarderFunc func(client pb.GRPCForwarderClient, infos map[string]interface{}) (int32, string, error)
 
+func (g *GRPCForwarder) roomPing(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
+	req := g.roomStatusRequest(infos, roomStatus)
+	response, err := g.client.SendRoomPing(context.Background(), req)
+	if err != nil {
+		return 500, "", err
+	}
+	return response.Code, response.Message, err
+}
+
 func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status pb.RoomStatus_RoomStatusType) *pb.RoomStatus {
 	game := infos["game"].(string)
 	roomID := infos["roomId"].(string)
@@ -206,6 +215,26 @@ func (g *GRPCForwarder) Terminating(infos map[string]interface{}) (status int32,
 // Terminated status
 func (g *GRPCForwarder) Terminated(infos map[string]interface{}) (status int32, message string, err error) {
 	return g.roomStatus(infos, pb.RoomStatus_terminated)
+}
+
+// PingReady status
+func (g *GRPCForwarder) PingReady(infos map[string]interface{}) (status int32, message string, err error) {
+	return g.roomPing(infos, pb.RoomStatus_ready)
+}
+
+// PingOccupied status
+func (g *GRPCForwarder) PingOccupied(infos map[string]interface{}) (status int32, message string, err error) {
+	return g.roomPing(infos, pb.RoomStatus_occupied)
+}
+
+// PingTerminating status
+func (g *GRPCForwarder) PingTerminating(infos map[string]interface{}) (status int32, message string, err error) {
+	return g.roomPing(infos, pb.RoomStatus_terminating)
+}
+
+// PingTerminated status
+func (g *GRPCForwarder) PingTerminated(infos map[string]interface{}) (status int32, message string, err error) {
+	return g.roomPing(infos, pb.RoomStatus_terminated)
 }
 
 // PlayerJoin event

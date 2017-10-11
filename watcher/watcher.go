@@ -221,7 +221,8 @@ func (w *Watcher) RemoveDeadRooms() {
 				ID:            roomName,
 				SchedulerName: w.SchedulerName,
 			}
-			eventforwarder.ForwardRoomEvent(w.EventForwarders, w.DB, w.KubernetesClient, room, models.RoomTerminated, map[string]interface{}{}, nil)
+			eventforwarder.ForwardRoomEvent(w.EventForwarders, w.DB, w.KubernetesClient, room,
+				models.RoomTerminated, map[string]interface{}{}, nil, w.Logger)
 		}
 
 		err := controller.DeleteUnavailableRooms(
@@ -266,7 +267,8 @@ func (w *Watcher) RemoveDeadRooms() {
 					ID:            roomName,
 					SchedulerName: w.SchedulerName,
 				}
-				eventforwarder.ForwardRoomEvent(w.EventForwarders, w.DB, w.KubernetesClient, room, models.RoomTerminated, map[string]interface{}{}, nil)
+				eventforwarder.ForwardRoomEvent(w.EventForwarders, w.DB, w.KubernetesClient, room,
+					models.RoomTerminated, map[string]interface{}{}, nil, w.Logger)
 			}
 
 			err = controller.DeleteUnavailableRooms(
