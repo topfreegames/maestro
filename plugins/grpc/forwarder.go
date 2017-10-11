@@ -249,7 +249,7 @@ func (g *GRPCForwarder) PlayerLeft(infos map[string]interface{}) (status int32, 
 
 // RoomEvent sends a generic room event
 func (g *GRPCForwarder) RoomEvent(infos map[string]interface{}) (status int32, message string, err error) {
-	eventType := infos["eventType"].(string)
+	eventType := infos["metadata"].(map[string]interface{})["eventType"].(string)
 	delete(infos, "eventType")
 	return g.sendRoomEvent(infos, eventType)
 }
