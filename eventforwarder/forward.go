@@ -69,19 +69,20 @@ func ForwardRoomEvent(
 		infos["metadata"] = metadata
 
 		l.WithFields(logrus.Fields{
-			"schedulerForwarders": config.Forwarders,
+			"schedulerForwarders": len(config.Forwarders),
 		}).Debug("checking enabled forwarders")
 		if len(config.Forwarders) > 0 {
 			enabledForwarders := getEnabledForwarders(config.Forwarders, forwarders)
 			l.WithFields(logrus.Fields{
-				"schedulerForwarders": config.Forwarders,
-				"enabledForwarders":   enabledForwarders,
+				"schedulerForwarders": len(config.Forwarders),
+				"enabledForwarders":   len(enabledForwarders),
 			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
-				return ForwardEventToForwarders(enabledForwarders, status, infos)
+				return ForwardEventToForwarders(enabledForwarders, status, infos, l)
 			}
 		}
 	}
+	l.Debug("no forwarders configured and enabled")
 	return nil, nil
 }
 
@@ -114,7 +115,7 @@ func ForwardRoomInfo(
 		}
 
 		l.WithFields(logrus.Fields{
-			"schedulerForwarders": config.Forwarders,
+			"schedulerForwarders": len(config.Forwarders),
 		}).Debug("checking enabled forwarders")
 		if len(config.Forwarders) > 0 {
 			respCode := 0
@@ -124,8 +125,8 @@ func ForwardRoomInfo(
 					if fwd, ok := schedulerFwds[configuredFwdInfo.Name]; ok {
 						if fwd.Enabled {
 							l.WithFields(logrus.Fields{
-								"schedulerForwarders": config.Forwarders,
-								"forwarder":           fwd,
+								"schedulerForwarders": len(config.Forwarders),
+								"forwarder":           configuredFwdInfo.Name,
 							}).Debug("enabled forwarder")
 							metadata := fwd.Metadata
 							if metadata != nil {
@@ -140,6 +141,7 @@ func ForwardRoomInfo(
 								[]EventForwarder{configuredFwdInfo.Forwarder},
 								"schedulerEvent",
 								metadata,
+								l,
 							)
 							if err != nil {
 								return nil, err
@@ -165,6 +167,7 @@ func ForwardRoomInfo(
 			return nil, nil
 		}
 	}
+	l.Debug("no forwarders configured and enabled")
 	return nil, nil
 }
 
@@ -180,7 +183,7 @@ func ForwardPlayerEvent(
 	logger logrus.FieldLogger,
 ) (*Response, error) {
 	l := logger.WithFields(logrus.Fields{
-		"op":        "forwardRoomEvent",
+		"op":        "forwardPlayerEvent",
 		"scheduler": room.SchedulerName,
 		"roomId":    room.ID,
 	})
@@ -201,24 +204,35 @@ func ForwardPlayerEvent(
 			return nil, err
 		}
 		l.WithFields(logrus.Fields{
-			"schedulerForwarders": config.Forwarders,
+			"schedulerForwarders": len(config.Forwarders),
 		}).Debug("checking enabled forwarders")
 		if len(config.Forwarders) > 0 {
 			enabledForwarders := getEnabledForwarders(config.Forwarders, forwarders)
 			l.WithFields(logrus.Fields{
-				"schedulerForwarders": config.Forwarders,
-				"enabledForwarders":   enabledForwarders,
+				"schedulerForwarders": len(config.Forwarders),
+				"enabledForwarders":   len(enabledForwarders),
 			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
-				return ForwardEventToForwarders(enabledForwarders, event, metadata)
+				return ForwardEventToForwarders(enabledForwarders, event, metadata, l)
 			}
 		}
 	}
+	l.Debug("no forwarders configured and enabled")
 	return nil, nil
 }
 
 // ForwardEventToForwarders forwards
-func ForwardEventToForwarders(forwarders []EventForwarder, event string, infos map[string]interface{}) (*Response, error) {
+func ForwardEventToForwarders(
+	forwarders []EventForwarder,
+	event string,
+	infos map[string]interface{},
+	logger logrus.FieldLogger,
+) (*Response, error) {
+	logger.WithFields(logrus.Fields{
+		"forwarders": len(forwarders),
+		"infos":      infos,
+		"event":      event,
+	}).Debug("forwarding events")
 	respCode := 0
 	respMessage := []string{}
 	for _, f := range forwarders {
