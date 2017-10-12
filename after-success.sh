@@ -4,8 +4,6 @@ IFS=$'\n\t'
 REPO=quay.io/tfgco/maestro
 DOCKER_REGISTRY=${DOCKER_REGISTRY:=quay.io}
 
-$HOME/gopath/bin/goveralls -coverprofile _build/coverage-all.out -service=travis-ci
-
 make build-docker
 
 docker login -u $DOCKER_USER -p $DOCKER_PASSWORD $DOCKER_REGISTRY
@@ -23,3 +21,5 @@ if [ $TRAVIS_PULL_REQUEST = 'false' ]; then
       && docker push $REPO:${TRAVIS_TAG};
   fi
 fi
+
+$HOME/gopath/bin/goveralls -coverprofile _build/coverage-all.out -service=travis-ci
