@@ -234,67 +234,67 @@ func (g *GRPCForwarder) sendRoomInfo(infos map[string]interface{}) (status int32
 
 // Ready status
 func (g *GRPCForwarder) Ready(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	return g.roomStatus(infos, pb.RoomStatus_ready)
 }
 
 // Occupied status
 func (g *GRPCForwarder) Occupied(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	return g.roomStatus(infos, pb.RoomStatus_occupied)
 }
 
 // Terminating status
 func (g *GRPCForwarder) Terminating(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	return g.roomStatus(infos, pb.RoomStatus_terminating)
 }
 
 // Terminated status
 func (g *GRPCForwarder) Terminated(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	return g.roomStatus(infos, pb.RoomStatus_terminated)
 }
 
 // PingReady status
 func (g *GRPCForwarder) PingReady(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	return g.roomPing(infos, pb.RoomStatus_ready)
 }
 
 // PingOccupied status
 func (g *GRPCForwarder) PingOccupied(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	return g.roomPing(infos, pb.RoomStatus_occupied)
 }
 
 // PingTerminating status
 func (g *GRPCForwarder) PingTerminating(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	return g.roomPing(infos, pb.RoomStatus_terminating)
 }
 
 // PingTerminated status
 func (g *GRPCForwarder) PingTerminated(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	return g.roomPing(infos, pb.RoomStatus_terminated)
 }
 
 // PlayerJoin event
 func (g *GRPCForwarder) PlayerJoin(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_JOINED)
 }
 
 // PlayerLeft event
 func (g *GRPCForwarder) PlayerLeft(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_LEFT)
 }
 
 // RoomEvent sends a generic room event
 func (g *GRPCForwarder) RoomEvent(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = mergeInfos(infos, fwdMetadata)
+	infos = g.mergeInfos(infos, fwdMetadata)
 	eventType := infos["metadata"].(map[string]interface{})["eventType"].(string)
 	delete(infos["metadata"].(map[string]interface{}), "eventType")
 	return g.sendRoomEvent(infos, eventType)
@@ -346,6 +346,34 @@ func (g *GRPCForwarder) configure() error {
 	return nil
 }
 
+func (g *GRPCForwarder) mergeInfos(infos, fwdMetadata map[string]interface{}) map[string]interface{} {
+	if fwdMetadata != nil {
+		if roomType, ok := fwdMetadata["roomType"]; ok {
+			if metadata, ok := infos["metadata"].(map[string]interface{}); ok {
+				if metadata != nil {
+					metadata["roomType"] = roomType
+				} else {
+					infos["metadata"] = map[string]interface{}{"roomType": roomType}
+				}
+			} else if metadata, ok := infos["metadata"].(map[interface{}]interface{}); ok {
+				if metadata != nil {
+					metadata["roomType"] = roomType
+				} else {
+					infos["metadata"] = map[string]interface{}{"roomType": roomType}
+				}
+			} else if infos["metadata"] == nil {
+				infos["metadata"] = map[string]interface{}{"roomType": roomType}
+			} else {
+				g.logger.WithFields(log.Fields{
+					"op":       "mergeInfos",
+					"metadata": fmt.Sprintf("%T", infos["metadata"]),
+				}).Warn("invalid metadata provided")
+			}
+		}
+	}
+	return infos
+}
+
 // NewForwarder returns a new GRPCForwarder
 func NewForwarder(config *viper.Viper, logger log.FieldLogger) (eventforwarder.EventForwarder, error) {
 	g := &GRPCForwarder{
@@ -357,19 +385,4 @@ func NewForwarder(config *viper.Viper, logger log.FieldLogger) (eventforwarder.E
 		return nil, err
 	}
 	return g, nil
-}
-
-func mergeInfos(infos, fwdMetadata map[string]interface{}) map[string]interface{} {
-	if fwdMetadata != nil {
-		if roomType, ok := fwdMetadata["roomType"]; ok {
-			if metadata, ok := infos["metadata"].(map[string]interface{}); ok {
-				if metadata != nil {
-					metadata["roomType"] = roomType
-				} else {
-					infos["metadata"] = map[string]interface{}{"roomType": roomType}
-				}
-			}
-		}
-	}
-	return infos
 }
