@@ -177,7 +177,7 @@ func (g *GRPCForwarder) roomInfoRequest(infos map[string]interface{}) (*pb.RoomI
 		g.logger.WithFields(log.Fields{
 			"op":       "roomInfoRequest",
 			"game":     game,
-			"metadata": fmt.Sprintf("%v", infos["metadata"]),
+			"metadata": fmt.Sprintf("%T", infos["metadata"]),
 		}).Warn("invalid metadata provided")
 	}
 	delete(infos, "metadata")
