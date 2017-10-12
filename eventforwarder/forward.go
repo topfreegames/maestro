@@ -15,16 +15,26 @@ type Response struct {
 	Message string
 }
 
+// Forwarder is the struct that defines a forwarder with its EventForwarder as configured
+// in maestro and the metadata configured for each scheduler
+type Forwarder struct {
+	Func     EventForwarder
+	Metadata map[string]interface{}
+}
+
 func getEnabledForwarders(
 	schedulerForwarders map[string]map[string]*models.Forwarder,
 	configuredForwarders []*Info,
-) []EventForwarder {
-	enabledForwarders := make([]EventForwarder, 0)
+) []*Forwarder {
+	enabledForwarders := make([]*Forwarder, 0)
 	for _, configuredFwdInfo := range configuredForwarders {
 		if schedulerFwds, ok := schedulerForwarders[configuredFwdInfo.Plugin]; ok {
 			if fwd, ok := schedulerFwds[configuredFwdInfo.Name]; ok {
 				if fwd.Enabled {
-					enabledForwarders = append(enabledForwarders, configuredFwdInfo.Forwarder)
+					enabledForwarders = append(
+						enabledForwarders,
+						&Forwarder{configuredFwdInfo.Forwarder, fwd.Metadata},
+					)
 				}
 			}
 		}
@@ -96,57 +106,21 @@ func ForwardRoomInfo(
 			return nil, err
 		}
 
+		infos := map[string]interface{}{
+			"game": cachedScheduler.Scheduler.Game,
+		}
 		l.WithFields(logrus.Fields{
 			"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
 		}).Debug("checking enabled forwarders")
 		if len(cachedScheduler.ConfigYAML.Forwarders) > 0 {
-			respCode := 0
-			respMessage := []string{}
-			for _, configuredFwdInfo := range forwarders {
-				if schedulerFwds, ok := cachedScheduler.ConfigYAML.Forwarders[configuredFwdInfo.Plugin]; ok {
-					if fwd, ok := schedulerFwds[configuredFwdInfo.Name]; ok {
-						if fwd.Enabled {
-							l.WithFields(logrus.Fields{
-								"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
-								"forwarder":           configuredFwdInfo.Name,
-							}).Debug("enabled forwarder")
-							metadata := fwd.Metadata
-							if metadata != nil {
-								metadata["game"] = cachedScheduler.Scheduler.Game
-							} else {
-								metadata = map[string]interface{}{
-									"game": cachedScheduler.Scheduler.Game,
-								}
-							}
-
-							resp, err := ForwardEventToForwarders(
-								[]EventForwarder{configuredFwdInfo.Forwarder},
-								"schedulerEvent",
-								metadata,
-								l,
-							)
-							if err != nil {
-								return nil, err
-							}
-							if resp.Code > respCode {
-								respCode = resp.Code
-							}
-							if resp.Message != "" {
-								respMessage = append(respMessage, resp.Message)
-							}
-						}
-					}
-				}
+			enabledForwarders := getEnabledForwarders(cachedScheduler.ConfigYAML.Forwarders, forwarders)
+			l.WithFields(logrus.Fields{
+				"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
+				"enabledForwarders":   len(enabledForwarders),
+			}).Debug("got enabled forwarders")
+			if len(enabledForwarders) > 0 {
+				return ForwardEventToForwarders(enabledForwarders, "schedulerEvent", infos, l)
 			}
-
-			if respCode != 0 {
-				response := &Response{
-					Code:    respCode,
-					Message: strings.Join(respMessage, ";"),
-				}
-				return response, nil
-			}
-			return nil, nil
 		}
 	}
 	l.Debug("no forwarders configured and enabled")
@@ -196,7 +170,7 @@ func ForwardPlayerEvent(
 
 // ForwardEventToForwarders forwards
 func ForwardEventToForwarders(
-	forwarders []EventForwarder,
+	forwarders []*Forwarder,
 	event string,
 	infos map[string]interface{},
 	logger logrus.FieldLogger,
@@ -209,7 +183,7 @@ func ForwardEventToForwarders(
 	respCode := 0
 	respMessage := []string{}
 	for _, f := range forwarders {
-		code, message, err := f.Forward(event, infos)
+		code, message, err := f.Func.Forward(event, infos, f.Metadata)
 		if err != nil {
 			return nil, err
 		}

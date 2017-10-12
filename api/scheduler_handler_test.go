@@ -485,7 +485,7 @@ autoscaling:
 						scheduler.Game = "game-name"
 					})
 
-					mockEventForwarder1.EXPECT().Forward("schedulerEvent", gomock.Any())
+					mockEventForwarder1.EXPECT().Forward("schedulerEvent", gomock.Any(), gomock.Any())
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(201))
@@ -1130,8 +1130,8 @@ forwarders:
 						scheduler.Game = "game"
 					})
 
-					mockEventForwarder1.EXPECT().Forward("schedulerEvent", gomock.Any())
-					mockEventForwarder2.EXPECT().Forward("schedulerEvent", gomock.Any())
+					mockEventForwarder1.EXPECT().Forward("schedulerEvent", gomock.Any(), gomock.Any())
+					mockEventForwarder2.EXPECT().Forward("schedulerEvent", gomock.Any(), gomock.Any())
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)

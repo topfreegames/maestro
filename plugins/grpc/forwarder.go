@@ -33,7 +33,7 @@ type GRPCForwarder struct {
 }
 
 // ForwarderFunc is the type of functions in GRPCForwarder
-type ForwarderFunc func(client pb.GRPCForwarderClient, infos map[string]interface{}) (int32, string, error)
+type ForwarderFunc func(client pb.GRPCForwarderClient, infos, fwdMetadata map[string]interface{}) (int32, string, error)
 
 func (g *GRPCForwarder) roomPing(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
 	req := g.roomStatusRequest(infos, roomStatus)
@@ -223,69 +223,83 @@ func (g *GRPCForwarder) sendRoomInfo(infos map[string]interface{}) (status int32
 }
 
 // Ready status
-func (g *GRPCForwarder) Ready(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) Ready(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	return g.roomStatus(infos, pb.RoomStatus_ready)
 }
 
 // Occupied status
-func (g *GRPCForwarder) Occupied(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) Occupied(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	return g.roomStatus(infos, pb.RoomStatus_occupied)
 }
 
 // Terminating status
-func (g *GRPCForwarder) Terminating(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) Terminating(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	return g.roomStatus(infos, pb.RoomStatus_terminating)
 }
 
 // Terminated status
-func (g *GRPCForwarder) Terminated(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) Terminated(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	return g.roomStatus(infos, pb.RoomStatus_terminated)
 }
 
 // PingReady status
-func (g *GRPCForwarder) PingReady(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PingReady(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	return g.roomPing(infos, pb.RoomStatus_ready)
 }
 
 // PingOccupied status
-func (g *GRPCForwarder) PingOccupied(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PingOccupied(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	return g.roomPing(infos, pb.RoomStatus_occupied)
 }
 
 // PingTerminating status
-func (g *GRPCForwarder) PingTerminating(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PingTerminating(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	return g.roomPing(infos, pb.RoomStatus_terminating)
 }
 
 // PingTerminated status
-func (g *GRPCForwarder) PingTerminated(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PingTerminated(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	return g.roomPing(infos, pb.RoomStatus_terminated)
 }
 
 // PlayerJoin event
-func (g *GRPCForwarder) PlayerJoin(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PlayerJoin(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_JOINED)
 }
 
 // PlayerLeft event
-func (g *GRPCForwarder) PlayerLeft(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PlayerLeft(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_LEFT)
 }
 
 // RoomEvent sends a generic room event
-func (g *GRPCForwarder) RoomEvent(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) RoomEvent(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	infos = mergeInfos(infos, fwdMetadata)
 	eventType := infos["metadata"].(map[string]interface{})["eventType"].(string)
-	delete(infos, "eventType")
+	delete(infos["metadata"].(map[string]interface{}), "eventType")
 	return g.sendRoomEvent(infos, eventType)
 }
 
 // SchedulerEvent sends a scheduler event
-func (g *GRPCForwarder) SchedulerEvent(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) SchedulerEvent(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+	for k, v := range fwdMetadata {
+		infos[k] = v
+	}
 	return g.sendRoomInfo(infos)
 }
 
 //Forward send room or player status to specified server
-func (g *GRPCForwarder) Forward(event string, infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) Forward(event string, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	l := g.logger.WithFields(log.Fields{
 		"op":         "Forward",
 		"event":      event,
@@ -297,7 +311,7 @@ func (g *GRPCForwarder) Forward(event string, infos map[string]interface{}) (sta
 	if !f.IsValid() {
 		return 500, "", fmt.Errorf("error calling method %s in plugin", event)
 	}
-	ret := f.Call([]reflect.Value{reflect.ValueOf(infos)})
+	ret := f.Call([]reflect.Value{reflect.ValueOf(infos), reflect.ValueOf(fwdMetadata)})
 	if _, ok := ret[2].Interface().(error); !ok {
 		return ret[0].Interface().(int32), ret[1].Interface().(string), nil
 	}
@@ -333,4 +347,19 @@ func NewForwarder(config *viper.Viper, logger log.FieldLogger) (eventforwarder.E
 		return nil, err
 	}
 	return g, nil
+}
+
+func mergeInfos(infos, fwdMetadata map[string]interface{}) map[string]interface{} {
+	if fwdMetadata != nil {
+		if roomType, ok := fwdMetadata["roomType"]; ok {
+			if metadata, ok := infos["metadata"].(map[string]interface{}); ok {
+				if metadata != nil {
+					metadata["roomType"] = roomType
+				} else {
+					infos["metadata"] = map[string]interface{}{"roomType": roomType}
+				}
+			}
+		}
+	}
+	return infos
 }

@@ -1666,8 +1666,8 @@ cmd:
 				mockPipeline.EXPECT().Exec()
 			}
 
-			mockEventForwarder.EXPECT().Forward(models.RoomTerminated, gomock.Any()).Do(
-				func(status string, infos map[string]interface{}) {
+			mockEventForwarder.EXPECT().Forward(models.RoomTerminated, gomock.Any(), gomock.Any()).Do(
+				func(status string, infos, fwdMetadata map[string]interface{}) {
 					Expect(status).To(Equal(models.RoomTerminated))
 					Expect(infos["game"]).To(Equal(schedulerName))
 					Expect(expectedRooms).To(ContainElement(infos["roomId"]))
