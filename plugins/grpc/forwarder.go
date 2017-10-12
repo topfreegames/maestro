@@ -282,13 +282,13 @@ func (g *GRPCForwarder) PingTerminated(infos, fwdMetadata map[string]interface{}
 
 // PlayerJoin event
 func (g *GRPCForwarder) PlayerJoin(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = g.mergeInfos(infos, fwdMetadata)
+	infos = g.mergePlayerInfos(infos, fwdMetadata)
 	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_JOINED)
 }
 
 // PlayerLeft event
 func (g *GRPCForwarder) PlayerLeft(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	infos = g.mergeInfos(infos, fwdMetadata)
+	infos = g.mergePlayerInfos(infos, fwdMetadata)
 	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_LEFT)
 }
 
@@ -368,6 +368,19 @@ func (g *GRPCForwarder) mergeInfos(infos, fwdMetadata map[string]interface{}) ma
 					"op":       "mergeInfos",
 					"metadata": fmt.Sprintf("%T", infos["metadata"]),
 				}).Warn("invalid metadata provided")
+			}
+		}
+	}
+	return infos
+}
+
+func (g *GRPCForwarder) mergePlayerInfos(infos, fwdMetadata map[string]interface{}) map[string]interface{} {
+	if fwdMetadata != nil {
+		if roomType, ok := fwdMetadata["roomType"]; ok {
+			if infos != nil {
+				infos["roomType"] = roomType
+			} else {
+				infos = map[string]interface{}{"roomType": roomType}
 			}
 		}
 	}
