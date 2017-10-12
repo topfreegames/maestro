@@ -173,15 +173,27 @@ func (g *GRPCForwarder) roomInfoRequest(infos map[string]interface{}) (*pb.RoomI
 
 	var m map[string]interface{}
 	var ok bool
-	if m, ok = infos["metadata"].(map[string]interface{}); !ok {
-		g.logger.WithFields(log.Fields{
-			"op":       "roomInfoRequest",
-			"game":     game,
-			"metadata": fmt.Sprintf("%T", infos["metadata"]),
-		}).Warn("invalid metadata provided")
+	if infos["metadata"] != nil {
+		if m, ok = infos["metadata"].(map[string]interface{}); !ok {
+			var n map[interface{}]interface{}
+			if n, ok = infos["metadata"].(map[interface{}]interface{}); ok {
+				m = map[string]interface{}{}
+				for key, value := range n {
+					switch key := key.(type) {
+					case string:
+						m[key] = value
+					}
+				}
+			} else {
+				g.logger.WithFields(log.Fields{
+					"op":       "roomInfoRequest",
+					"game":     game,
+					"metadata": fmt.Sprintf("%T", infos["metadata"]),
+				}).Warn("invalid metadata provided")
+			}
+		}
+		delete(infos, "metadata")
 	}
-	delete(infos, "metadata")
-
 	infosBytes, err := json.Marshal(infos)
 	if err != nil {
 		return nil, err
