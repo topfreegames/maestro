@@ -58,7 +58,7 @@ func GruIncrHandler(c dogstatsd.Client, event string,
 // GruStatusHandler calls dogstatsd.Client.Incr with tags formatted as key:value
 func GruStatusHandler(c dogstatsd.Client, event string,
 	opts map[string]string) error {
-	tags := createAllowedTags(opts, []string{"game", "scheduler", "region"})
+	tags := createAllowedTags(opts, []string{constants.TagGame, constants.TagScheduler, constants.TagRegion})
 	gauge, err := strconv.ParseFloat(opts["gauge"], 64)
 	if err != nil {
 		return err
