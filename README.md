@@ -92,15 +92,15 @@ autoscaling:
     trigger:
       usage: 70             # minimum usage (percentage) that can trigger the scaling policy
       time: 600             # duration in seconds to wait before scaling policy takes place
-      threshold: 80        # percentage of the points that are above 'usage' needed to trigger scale up
+      threshold: 80         # percentage of the points that are above 'usage' needed to trigger scale up
     cooldown: 300           # duration in seconds to wait before consecutive scaling
   down:
     delta: 2                # how many GRUs will be terminated every time the scaling policy is triggered
     trigger:
       usage: 50             # maximum usage (percentage) the can trigger the scaling policy
-      time: 900            
+      time: 900
       threshold: 80        # percentage of the points that are above 'usage' needed to trigger scale down
-    cooldown: 300          
+    cooldown: 300
 env:                        # environment variable to be passed on to the container
   - name: EXAMPLE_ENV_VAR
     value: examplevalue
@@ -110,6 +110,18 @@ cmd:                        # if the image can run with different arguments you 
   - "./room-binary"
   - "-serverType"
   - "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
+forwarders:                # optional field: if set events will be forwarded for the grpc matchmaking plugin
+  grpc:
+    matchmaking:
+      enabled: true
+      metadata:            # the forwarder metadata is forwarded in scheduler events (create and update)
+        matchmakingScript: default
+        metadata:
+          authTimeout: 10000
+        minimumNumberOfPlayers: 1
+        numberOfTeams: 1
+        playersPerTeam: 6
+        roomType: "10"
 ```
 
 A JSON file equivalent to the yaml above can also be used.
