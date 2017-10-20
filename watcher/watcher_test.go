@@ -29,6 +29,9 @@ import (
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/reporters"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
+	reportersMocks "github.com/topfreegames/maestro/reporters/mocks"
 	"github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/watcher"
 )
@@ -316,6 +319,79 @@ var _ = Describe("Watcher", func() {
 			Eventually(func() bool { return hook.LastEntry() != nil }).Should(BeTrue())
 			Eventually(func() string { return hook.LastEntry().Message }, 1500*time.Millisecond).
 				Should(Equal("unable to get watcher my-scheduler lock, maybe some other process has it..."))
+		})
+	})
+
+	Describe("ReportRoomsStatuses", func() {
+		It("Should report all 4 statuses", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					scheduler.YAML = yaml1
+				})
+
+			w := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, configYaml1.Game, occupiedTimeout, []*eventforwarder.Info{})
+			Expect(w).NotTo(BeNil())
+
+			r := reporters.GetInstance()
+			mockCtrl = gomock.NewController(GinkgoT())
+			mockReporter := reportersMocks.NewMockReporter(mockCtrl)
+			r.SetReporter("mockReporter", mockReporter)
+
+			Creating := models.GetRoomStatusSetRedisKey(w.SchedulerName, models.StatusCreating)
+			Ready := models.GetRoomStatusSetRedisKey(w.SchedulerName, models.StatusReady)
+			Occupied := models.GetRoomStatusSetRedisKey(w.SchedulerName, models.StatusOccupied)
+			Terminating := models.GetRoomStatusSetRedisKey(w.SchedulerName, models.StatusTerminating)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SCard(Creating).Return(redis.NewIntResult(int64(3), nil))
+			mockPipeline.EXPECT().SCard(Ready).Return(redis.NewIntResult(int64(2), nil))
+			mockPipeline.EXPECT().SCard(Occupied).Return(redis.NewIntResult(int64(1), nil))
+			mockPipeline.EXPECT().SCard(Terminating).Return(redis.NewIntResult(int64(5), nil))
+			mockPipeline.EXPECT().Exec()
+
+			mockReporter.EXPECT().Report(
+				reportersConstants.EventGruStatus,
+				map[string]string{
+					reportersConstants.TagGame:      w.GameName,
+					reportersConstants.TagScheduler: w.SchedulerName,
+					"status":                        models.StatusCreating,
+					"gauge":                         "3",
+				},
+			)
+			mockReporter.EXPECT().Report(
+				reportersConstants.EventGruStatus,
+				map[string]string{
+					reportersConstants.TagGame:      w.GameName,
+					reportersConstants.TagScheduler: w.SchedulerName,
+					"status":                        models.StatusReady,
+					"gauge":                         "2",
+				},
+			)
+			mockReporter.EXPECT().Report(
+				reportersConstants.EventGruStatus,
+				map[string]string{
+					reportersConstants.TagGame:      w.GameName,
+					reportersConstants.TagScheduler: w.SchedulerName,
+					"status":                        models.StatusOccupied,
+					"gauge":                         "1",
+				},
+			)
+			mockReporter.EXPECT().Report(
+				reportersConstants.EventGruStatus,
+				map[string]string{
+					reportersConstants.TagGame:      w.GameName,
+					reportersConstants.TagScheduler: w.SchedulerName,
+					"status":                        models.StatusTerminating,
+					"gauge":                         "5",
+				},
+			)
+
+			w.ReportRoomsStatuses()
+
+			r.UnsetReporter("mockReporter")
 		})
 	})
 

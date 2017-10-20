@@ -209,7 +209,7 @@ func reportPing(game, scheduler string) error {
 }
 
 func reportStatus(game, scheduler, status, gauge string) error {
-	return reporters.Report(reportersConstants.EventRoomStatus, map[string]string{
+	return reporters.Report(reportersConstants.EventGruStatus, map[string]string{
 		reportersConstants.TagGame:      game,
 		reportersConstants.TagScheduler: scheduler,
 		"status":                        status,

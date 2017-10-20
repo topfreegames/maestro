@@ -2,10 +2,10 @@ package constants
 
 // Constants for event metrics possible of being reported
 const (
-	EventGruNew     = "gru.new"
-	EventGruPing    = "gru.ping"
-	EventGruDelete  = "gru.delete"
-	EventRoomStatus = "gru.status"
+	EventGruNew    = "gru.new"
+	EventGruPing   = "gru.ping"
+	EventGruDelete = "gru.delete"
+	EventGruStatus = "gru.status"
 )
 
 //Reason{...} represents reasons for a pod/gru being deleted
