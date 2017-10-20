@@ -37,7 +37,7 @@ data:
     worker:
       syncPeriod: 30
       gracefulShutdownTimeout: 300
-      retrieveFreePortsPeriod: 3600
+      retrieveFreePortsPeriod: 86400
       getLocksTimeout: 300
       lockTimeoutMs: 180000
     {{- if ne .Values.reporters.dogstatsd.host "" }}
