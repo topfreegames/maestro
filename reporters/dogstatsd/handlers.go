@@ -16,10 +16,10 @@ import (
 )
 
 var handlers = map[string]interface{}{
-	constants.EventGruNew:     GruIncrHandler,
-	constants.EventGruDelete:  GruIncrHandler,
-	constants.EventGruPing:    GruIncrHandler,
-	constants.EventRoomStatus: GruStatusHandler,
+	constants.EventGruNew:    GruIncrHandler,
+	constants.EventGruDelete: GruIncrHandler,
+	constants.EventGruPing:   GruIncrHandler,
+	constants.EventGruStatus: GruStatusHandler,
 }
 
 // Find looks for a matching handler to a given event

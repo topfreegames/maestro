@@ -13,6 +13,7 @@ extensions:
     connectionTimeout: 200
 watcher:
   autoScalingPeriod: 10
+  roomsStatusesReportPeriod: 10
   lockKey: "maestro-lock-key"
   lockTimeoutMs: 180000
   gracefulShutdownTimeout: 300

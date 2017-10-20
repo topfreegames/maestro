@@ -26,6 +26,7 @@ import (
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	"k8s.io/client-go/kubernetes"
 )
@@ -37,23 +38,24 @@ type gracefulShutdown struct {
 
 // Watcher struct for watcher
 type Watcher struct {
-	AutoScalingPeriod int
-	Config            *viper.Viper
-	DB                pginterfaces.DB
-	KubernetesClient  kubernetes.Interface
-	Logger            logrus.FieldLogger
-	MetricsReporter   *models.MixedMetricsReporter
-	RedisClient       *redis.Client
-	LockKey           string
-	LockTimeoutMS     int
-	Run               bool
-	SchedulerName     string
-	GameName          string
-	gracefulShutdown  *gracefulShutdown
-	OccupiedTimeout   int64
-	EventForwarders   []*eventforwarder.Info
-	ScaleUpInfo       *models.ScaleInfo
-	ScaleDownInfo     *models.ScaleInfo
+	AutoScalingPeriod         int
+	RoomsStatusesReportPeriod int
+	Config                    *viper.Viper
+	DB                        pginterfaces.DB
+	KubernetesClient          kubernetes.Interface
+	Logger                    logrus.FieldLogger
+	MetricsReporter           *models.MixedMetricsReporter
+	RedisClient               *redis.Client
+	LockKey                   string
+	LockTimeoutMS             int
+	Run                       bool
+	SchedulerName             string
+	GameName                  string
+	gracefulShutdown          *gracefulShutdown
+	OccupiedTimeout           int64
+	EventForwarders           []*eventforwarder.Info
+	ScaleUpInfo               *models.ScaleInfo
+	ScaleDownInfo             *models.ScaleInfo
 }
 
 // NewWatcher is the watcher constructor
@@ -88,6 +90,7 @@ func NewWatcher(
 func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("scaleUpTimeoutSeconds", 300)
 	w.Config.SetDefault("watcher.autoScalingPeriod", 10)
+	w.Config.SetDefault("watcher.roomsStatusesReportPeriod", 10)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
 	w.Config.SetDefault("watcher.gracefulShutdownTimeout", 300)
@@ -102,6 +105,7 @@ func GetLockKey(prefix, schedulerName string) string {
 
 func (w *Watcher) configure() error {
 	w.AutoScalingPeriod = w.Config.GetInt("watcher.autoScalingPeriod")
+	w.RoomsStatusesReportPeriod = w.Config.GetInt("watcher.roomsStatusesReportPeriod")
 	w.LockKey = GetLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
 	var wg sync.WaitGroup
@@ -166,28 +170,102 @@ func (w *Watcher) Start() {
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	ticker := time.NewTicker(time.Duration(w.AutoScalingPeriod) * time.Second)
+	tickerRs := time.NewTicker(time.Duration(w.RoomsStatusesReportPeriod) * time.Second)
 
 	for w.Run == true {
 		select {
 		case <-ticker.C:
-			lock, err := w.RedisClient.EnterCriticalSection(w.RedisClient.Client, w.LockKey, time.Duration(w.LockTimeoutMS)*time.Millisecond, 0, 0)
-			if lock == nil || err != nil {
-				if err != nil {
-					l.WithError(err).Error("error getting watcher lock")
-				} else if lock == nil {
-					l.Warnf("unable to get watcher %s lock, maybe some other process has it...", w.SchedulerName)
-				}
-			} else if lock.IsLocked() {
-				w.RemoveDeadRooms()
-				w.AutoScale()
-				w.RedisClient.LeaveCriticalSection(lock)
-			}
+			w.WithRedisLock(l, w.watchRooms)
+		case <-tickerRs.C:
+			w.WithRedisLock(l, w.ReportRoomsStatuses)
 		case sig := <-sigchan:
 			l.Warnf("caught signal %v: terminating\n", sig)
 			w.Run = false
 		}
 	}
 	extensions.GracefulShutdown(l, w.gracefulShutdown.wg, w.gracefulShutdown.timeout)
+}
+
+func (w *Watcher) watchRooms() error {
+	w.RemoveDeadRooms()
+	w.AutoScale()
+	return nil
+}
+
+// ReportRoomsStatuses runs as a block of code inside WithRedisLock
+// inside a timer tick in w.Start()
+func (w *Watcher) ReportRoomsStatuses() error {
+	if !reporters.HasReporters() {
+		return nil
+	}
+
+	var roomCountByStatus *models.RoomsStatusCount
+	err := w.MetricsReporter.WithSegment(models.SegmentGroupBy, func() error {
+		var err error
+		roomCountByStatus, err = models.GetRoomsCountByStatus(w.RedisClient.Client, w.SchedulerName)
+		return err
+	})
+
+	if err != nil {
+		return err
+	}
+
+	type RoomData struct {
+		Status string
+		Gauge  string
+	}
+
+	roomDataSlice := []RoomData{
+		RoomData{
+			models.StatusCreating,
+			fmt.Sprint(int(roomCountByStatus.Creating)),
+		},
+		RoomData{
+			models.StatusReady,
+			fmt.Sprint(int(roomCountByStatus.Ready)),
+		},
+		RoomData{
+			models.StatusOccupied,
+			fmt.Sprint(int(roomCountByStatus.Occupied)),
+		},
+		RoomData{
+			models.StatusTerminating,
+			fmt.Sprint(int(roomCountByStatus.Terminating)),
+		},
+	}
+
+	for _, r := range roomDataSlice {
+		reporters.Report(reportersConstants.EventGruStatus, map[string]string{
+			reportersConstants.TagGame:      w.GameName,
+			reportersConstants.TagScheduler: w.SchedulerName,
+			"status":                        r.Status,
+			"gauge":                         r.Gauge,
+		})
+	}
+
+	return nil
+}
+
+// WithRedisLock is a helper function that runs a block of code
+// that needs to hold a lock to redis
+func (w *Watcher) WithRedisLock(l *logrus.Entry, f func() error) {
+	lock, err := w.RedisClient.EnterCriticalSection(
+		w.RedisClient.Client, w.LockKey,
+		time.Duration(w.LockTimeoutMS)*time.Millisecond, 0, 0,
+	)
+	if lock == nil || err != nil {
+		if err != nil {
+			l.WithError(err).Error("error getting watcher lock")
+		} else if lock == nil {
+			l.Warnf("unable to get watcher %s lock, maybe some other process has it...", w.SchedulerName)
+		}
+	} else if lock.IsLocked() {
+		err = f()
+		if err != nil {
+			l.WithError(err).Error("WithRedisLock block function failed")
+		}
+		w.RedisClient.LeaveCriticalSection(lock)
+	}
 }
 
 // RemoveDeadRooms remove rooms that have not sent ping requests for a while
