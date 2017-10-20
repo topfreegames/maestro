@@ -218,19 +218,19 @@ func (w *Watcher) ReportRoomsStatuses() error {
 	roomDataSlice := []RoomData{
 		RoomData{
 			models.StatusCreating,
-			fmt.Sprint(int(roomCountByStatus.Creating)),
+			fmt.Sprint(roomCountByStatus.Creating),
 		},
 		RoomData{
 			models.StatusReady,
-			fmt.Sprint(int(roomCountByStatus.Ready)),
+			fmt.Sprint(roomCountByStatus.Ready),
 		},
 		RoomData{
 			models.StatusOccupied,
-			fmt.Sprint(int(roomCountByStatus.Occupied)),
+			fmt.Sprint(roomCountByStatus.Occupied),
 		},
 		RoomData{
 			models.StatusTerminating,
-			fmt.Sprint(int(roomCountByStatus.Terminating)),
+			fmt.Sprint(roomCountByStatus.Terminating),
 		},
 	}
 
