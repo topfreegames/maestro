@@ -192,6 +192,31 @@ var _ = Describe("Scheduler", func() {
 		})
 	})
 
+	Describe("LoadSchedulers", func() {
+		It("should load schedulers from the database", func() {
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"SELECT * FROM schedulers WHERE name IN (?)",
+				gomock.Any(),
+			)
+			names := []string{"s1", "s2"}
+			_, err := models.LoadSchedulers(mockDb, names)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return an error if db returns an error", func() {
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"SELECT * FROM schedulers WHERE name IN (?)",
+				gomock.Any(),
+			).Return(&types.Result{}, errors.New("some error in pg"))
+			names := []string{"s1", "s2"}
+			_, err := models.LoadSchedulers(mockDb, names)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("some error in pg"))
+		})
+	})
+
 	Describe("Update Scheduler", func() {
 		It("should update scheduler in the database", func() {
 			scheduler := models.NewScheduler(name, game, yaml1)

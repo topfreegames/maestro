@@ -18,6 +18,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/extensions/clock"
 	"github.com/topfreegames/extensions/redis"
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/topfreegames/maestro/controller"
 	maestroErrors "github.com/topfreegames/maestro/errors"
@@ -260,9 +261,17 @@ func (g *SchedulerListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		g.App.HandleError(w, status, "List scheduler failed", err)
 		return
 	}
+
+	_, getInfo := r.URL.Query()["info"]
+	if getInfo {
+		g.returnInfo(w, r, l, mr, names)
+		return
+	}
+
 	resp := map[string]interface{}{
 		"schedulers": names,
 	}
+
 	bts, err := json.Marshal(resp)
 	if err != nil {
 		logger.WithError(err).Error("List scheduler failed.")
@@ -395,6 +404,85 @@ func (g *SchedulerStatusHandler) returnConfig(
 		return nil
 	})
 	logger.Debug("config scheduler succeeded.")
+}
+
+func (g *SchedulerListHandler) returnInfo(
+	w http.ResponseWriter,
+	r *http.Request,
+	l logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	schedulersNames []string,
+) {
+	logger := l.WithFields(logrus.Fields{
+		"source":    "schedulerHandler",
+		"operation": "get infos",
+	})
+
+	logger.Debugf("Getting schedulers infos")
+
+	var schedulers []models.Scheduler
+	err := mr.WithSegment(models.SegmentSelect, func() error {
+		var err error
+		schedulers, err = models.LoadSchedulers(g.App.DB, schedulersNames)
+		return err
+	})
+	if err != nil {
+		errStr := "failed to get schedulers from DB"
+		logger.WithError(err).Error(errStr)
+		g.App.HandleError(w, http.StatusInternalServerError, errStr, err)
+		return
+	}
+
+	redisClient, err := redis.NewClient("extensions.redis", g.App.Config, g.App.RedisClient)
+	if err != nil {
+		errStr := "failed to create redis client"
+		logger.WithError(err).Error(errStr)
+		g.App.HandleError(w, http.StatusInternalServerError, errStr, err)
+		return
+	}
+	roomsCounts, err := models.GetRoomsCountByStatusForSchedulers(redisClient.Client, schedulersNames)
+	if err != nil {
+		errStr := "failed to get rooms counts for schedulers"
+		logger.WithError(err).Error(errStr)
+		g.App.HandleError(w, http.StatusInternalServerError, errStr, err)
+		return
+	}
+
+	resp := make([]map[string]interface{}, len(schedulersNames))
+	for i, s := range schedulers {
+		configYaml := models.ConfigYAML{}
+		err = yaml.Unmarshal([]byte(s.YAML), &configYaml)
+		if err != nil {
+			errStr := fmt.Sprintf("parse yaml error for scheduler %s", s.Name)
+			logger.WithError(err).Error(errStr)
+			g.App.HandleError(w, http.StatusInternalServerError, errStr, err)
+			return
+		}
+
+		resp[i] = map[string]interface{}{
+			"name":             s.Name,
+			"game":             s.Game,
+			"roomsReady":       roomsCounts[i].Ready,
+			"roomsOccupied":    roomsCounts[i].Occupied,
+			"roomsCreating":    roomsCounts[i].Creating,
+			"roomsTerminating": roomsCounts[i].Terminating,
+			"autoscalingMin":   configYaml.AutoScaling.Min,
+		}
+	}
+
+	bts, err := json.Marshal(resp)
+	if err != nil {
+		errStr := "failed to marshal schedulers infos"
+		logger.WithError(err).Error(errStr)
+		g.App.HandleError(w, http.StatusInternalServerError, errStr, err)
+		return
+	}
+
+	mr.WithSegment(models.SegmentSerialization, func() error {
+		WriteBytes(w, http.StatusOK, bts)
+		return nil
+	})
+	logger.Debug("get schedulers infos succeeded")
 }
 
 // SchedulerScaleHandler handler
