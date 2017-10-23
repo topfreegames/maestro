@@ -44,6 +44,28 @@ func GetRoomsCountByStatus(redisClient interfaces.RedisClient, schedulerName str
 	return countByStatus, nil
 }
 
+// GetRoomsCountByStatusForSchedulers returns the count of rooms for each
+// status for multiple schedulers
+func GetRoomsCountByStatusForSchedulers(
+	redisClient interfaces.RedisClient,
+	schedulersNames []string,
+) ([]RoomsStatusCount, error) {
+	pipe := redisClient.TxPipeline()
+	var results []map[string]*redis.IntCmd
+	for _, name := range schedulersNames {
+		results = append(results, GetRoomsCountByStatusWithPipe(name, pipe))
+	}
+	_, err := pipe.Exec()
+	if err != nil {
+		return nil, err
+	}
+	var convertedResults []RoomsStatusCount
+	for _, r := range results {
+		convertedResults = append(convertedResults, *RedisResultToRoomsCount(r))
+	}
+	return convertedResults, nil
+}
+
 //GetRoomsCountByStatusWithPipe adds to the redis pipeline the operations that count the number of elements
 //  on the redis sets
 func GetRoomsCountByStatusWithPipe(

@@ -206,6 +206,85 @@ var _ = Describe("Scheduler Handler", func() {
 			})
 		})
 
+		Describe("GET /scheduler?info", func() {
+			var request *http.Request
+
+			BeforeEach(func() {
+				var err error
+				url := fmt.Sprintf("http://%s/scheduler?info", app.Address)
+				request, err = http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			expectationsGivenNames := func(names []string) {
+				var configYaml models.ConfigYAML
+				err := json.Unmarshal([]byte(yamlString), &configYaml)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT name FROM schedulers").Do(
+					func(schedulers *[]models.Scheduler, query string) {
+						expectedSchedulers := make([]models.Scheduler, len(names))
+						for idx, name := range names {
+							expectedSchedulers[idx] = models.Scheduler{Name: name}
+						}
+						*schedulers = expectedSchedulers
+					})
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name IN (?)", gomock.Any()).
+					Do(func(schedulers *[]models.Scheduler, query string, _ interface{}) {
+						expectedSchedulers := make([]models.Scheduler, len(names))
+						for idx, name := range names {
+							expectedSchedulers[idx] = models.Scheduler{
+								Name: name,
+								Game: configYaml.Game,
+								YAML: yamlString,
+							}
+						}
+						*schedulers = expectedSchedulers
+					})
+			}
+
+			redisExpectations := func(f func()) {
+				mockRedisClient.EXPECT().Ping()
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				f()
+				mockPipeline.EXPECT().Exec()
+			}
+
+			FIt("should list schedulers with infos", func() {
+				expectedNames := []string{"scheduler1"}
+				expectationsGivenNames(expectedNames)
+
+				redisExpectations(func() {
+					Creating := models.GetRoomStatusSetRedisKey(expectedNames[0], models.StatusCreating)
+					Ready := models.GetRoomStatusSetRedisKey(expectedNames[0], models.StatusReady)
+					Occupied := models.GetRoomStatusSetRedisKey(expectedNames[0], models.StatusOccupied)
+					Terminating := models.GetRoomStatusSetRedisKey(expectedNames[0], models.StatusTerminating)
+					mockPipeline.EXPECT().SCard(Creating).Return(redis.NewIntResult(int64(2), nil))
+					mockPipeline.EXPECT().SCard(Ready).Return(redis.NewIntResult(int64(1), nil))
+					mockPipeline.EXPECT().SCard(Occupied).Return(redis.NewIntResult(int64(1), nil))
+					mockPipeline.EXPECT().SCard(Terminating).Return(redis.NewIntResult(int64(0), nil))
+				})
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`[{"autoscalingMin":100,"game":"game-name","name":"scheduler1","roomsCreating":2,"roomsOccupied":1,"roomsReady":1,"roomsTerminating":0}]`))
+			})
+
+			FIt("should list empty array when there aren't schedulers", func() {
+				expectedNames := []string{}
+				expectationsGivenNames(expectedNames)
+
+				redisExpectations(func() {})
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal("[]"))
+			})
+		})
+
 		Describe("POST /scheduler", func() {
 			url := "/scheduler"
 			BeforeEach(func() {

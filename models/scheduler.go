@@ -131,6 +131,17 @@ func (c *Scheduler) Load(db interfaces.DB) error {
 	return err
 }
 
+// LoadSchedulers loads a slice of schedulers from database by names
+func LoadSchedulers(db interfaces.DB, names []string) ([]Scheduler, error) {
+	var schedulers []Scheduler
+	_, err := db.Query(
+		&schedulers,
+		"SELECT * FROM schedulers WHERE name IN (?)",
+		pg.In(names),
+	)
+	return schedulers, err
+}
+
 // Create creates a scheduler in the database
 func (c *Scheduler) Create(db interfaces.DB) error {
 	_, err := db.Query(c, "INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id", c)
