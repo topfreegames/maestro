@@ -253,7 +253,7 @@ var _ = Describe("Scheduler Handler", func() {
 				mockPipeline.EXPECT().Exec()
 			}
 
-			FIt("should list schedulers with infos", func() {
+			It("should list schedulers with infos", func() {
 				expectedNames := []string{"scheduler1"}
 				expectationsGivenNames(expectedNames)
 
@@ -273,7 +273,7 @@ var _ = Describe("Scheduler Handler", func() {
 				Expect(recorder.Body.String()).To(Equal(`[{"autoscalingMin":100,"game":"game-name","name":"scheduler1","roomsCreating":2,"roomsOccupied":1,"roomsReady":1,"roomsTerminating":0}]`))
 			})
 
-			FIt("should list empty array when there aren't schedulers", func() {
+			It("should list empty array when there aren't schedulers", func() {
 				expectedNames := []string{}
 				expectationsGivenNames(expectedNames)
 

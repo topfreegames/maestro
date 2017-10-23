@@ -440,7 +440,6 @@ func (g *SchedulerListHandler) returnInfo(
 		g.App.HandleError(w, http.StatusInternalServerError, errStr, err)
 		return
 	}
-	println("huahusahduhaushd")
 	roomsCounts, err := models.GetRoomsCountByStatusForSchedulers(redisClient.Client, schedulersNames)
 	if err != nil {
 		errStr := "failed to get rooms counts for schedulers"
@@ -449,7 +448,7 @@ func (g *SchedulerListHandler) returnInfo(
 		return
 	}
 
-	resp := []map[string]interface{}{}
+	resp := make([]map[string]interface{}, len(schedulersNames))
 	for i, s := range schedulers {
 		configYaml := models.ConfigYAML{}
 		err = yaml.Unmarshal([]byte(s.YAML), &configYaml)
@@ -460,7 +459,7 @@ func (g *SchedulerListHandler) returnInfo(
 			return
 		}
 
-		resp = append(resp, map[string]interface{}{
+		resp[i] = map[string]interface{}{
 			"name":             s.Name,
 			"game":             s.Game,
 			"roomsReady":       roomsCounts[i].Ready,
@@ -468,7 +467,7 @@ func (g *SchedulerListHandler) returnInfo(
 			"roomsCreating":    roomsCounts[i].Creating,
 			"roomsTerminating": roomsCounts[i].Terminating,
 			"autoscalingMin":   configYaml.AutoScaling.Min,
-		})
+		}
 	}
 
 	bts, err := json.Marshal(resp)
