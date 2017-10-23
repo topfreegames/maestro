@@ -460,13 +460,16 @@ func (g *SchedulerListHandler) returnInfo(
 		}
 
 		resp[i] = map[string]interface{}{
-			"name":             s.Name,
-			"game":             s.Game,
-			"roomsReady":       roomsCounts[i].Ready,
-			"roomsOccupied":    roomsCounts[i].Occupied,
-			"roomsCreating":    roomsCounts[i].Creating,
-			"roomsTerminating": roomsCounts[i].Terminating,
-			"autoscalingMin":   configYaml.AutoScaling.Min,
+			"name":                        s.Name,
+			"game":                        s.Game,
+			"state":                       s.State,
+			"roomsReady":                  roomsCounts[i].Ready,
+			"roomsOccupied":               roomsCounts[i].Occupied,
+			"roomsCreating":               roomsCounts[i].Creating,
+			"roomsTerminating":            roomsCounts[i].Terminating,
+			"autoscalingMin":              configYaml.AutoScaling.Min,
+			"autoscalingUpTriggerUsage":   configYaml.AutoScaling.Up.Trigger.Usage,
+			"autoscalingDownTriggerUsage": configYaml.AutoScaling.Down.Trigger.Usage,
 		}
 	}
 

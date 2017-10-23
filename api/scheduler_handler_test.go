@@ -237,9 +237,10 @@ var _ = Describe("Scheduler Handler", func() {
 						expectedSchedulers := make([]models.Scheduler, len(names))
 						for idx, name := range names {
 							expectedSchedulers[idx] = models.Scheduler{
-								Name: name,
-								Game: configYaml.Game,
-								YAML: yamlString,
+								Name:  name,
+								Game:  configYaml.Game,
+								YAML:  yamlString,
+								State: models.StateInSync,
 							}
 						}
 						*schedulers = expectedSchedulers
@@ -270,7 +271,7 @@ var _ = Describe("Scheduler Handler", func() {
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
-				Expect(recorder.Body.String()).To(Equal(`[{"autoscalingMin":100,"game":"game-name","name":"scheduler1","roomsCreating":2,"roomsOccupied":1,"roomsReady":1,"roomsTerminating":0}]`))
+				Expect(recorder.Body.String()).To(Equal(`[{"autoscalingDownTriggerUsage":50,"autoscalingMin":100,"autoscalingUpTriggerUsage":70,"game":"game-name","name":"scheduler1","roomsCreating":2,"roomsOccupied":1,"roomsReady":1,"roomsTerminating":0,"state":"in-sync"}]`))
 			})
 
 			It("should list empty array when there aren't schedulers", func() {
