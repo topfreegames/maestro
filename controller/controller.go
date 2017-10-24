@@ -691,6 +691,7 @@ waitForLock:
 		return err
 	}
 	yamlString := string(configBytes)
+	scheduler.Game = configYAML.Game
 	scheduler.YAML = yamlString
 	err = mr.WithSegment(models.SegmentUpdate, func() error {
 		return scheduler.Update(db)

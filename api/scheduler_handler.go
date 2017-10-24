@@ -420,6 +420,16 @@ func (g *SchedulerListHandler) returnInfo(
 
 	logger.Debugf("Getting schedulers infos")
 
+	if len(schedulersNames) == 0 {
+		mr.WithSegment(models.SegmentSerialization, func() error {
+			bts, _ := json.Marshal([]map[string]interface{}{})
+			WriteBytes(w, http.StatusOK, bts)
+			return nil
+		})
+		logger.Debug("get schedulers infos succeeded")
+		return
+	}
+
 	var schedulers []models.Scheduler
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		var err error
