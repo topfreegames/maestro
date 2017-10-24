@@ -324,12 +324,13 @@ func (g *GRPCForwarder) Forward(event string, infos, fwdMetadata map[string]inte
 		return 500, "", fmt.Errorf("error calling method %s in plugin", event)
 	}
 	ret := f.Call([]reflect.Value{reflect.ValueOf(infos), reflect.ValueOf(fwdMetadata)})
-	if err, ok := ret[2].Interface().(error); !ok {
+	err, ok := ret[2].Interface().(error)
+	if ok {
 		l.WithError(err).Error("forward event failed")
-		return ret[0].Interface().(int32), ret[1].Interface().(string), nil
+		return ret[0].Interface().(int32), ret[1].Interface().(string), ret[2].Interface().(error)
 	}
 	l.Info("successfully forwarded event")
-	return ret[0].Interface().(int32), ret[1].Interface().(string), ret[2].Interface().(error)
+	return ret[0].Interface().(int32), ret[1].Interface().(string), nil
 }
 
 func (g *GRPCForwarder) configure() error {
