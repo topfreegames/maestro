@@ -397,6 +397,7 @@ var _ = Describe("App", func() {
 			newConfigYaml, err := models.NewConfigYAML(scheduler.YAML)
 			newConfigYaml.Env = nil
 			newConfigYaml.Cmd = nil
+			newConfigYaml.Forwarders = nil
 			configYaml.Ports[0].HostPort = newConfigYaml.Ports[0].HostPort
 			Expect(err).NotTo(HaveOccurred())
 			Expect(newConfigYaml).To(Equal(configYaml))

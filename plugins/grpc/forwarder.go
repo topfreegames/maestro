@@ -311,21 +311,24 @@ func (g *GRPCForwarder) SchedulerEvent(infos, fwdMetadata map[string]interface{}
 //Forward send room or player status to specified server
 func (g *GRPCForwarder) Forward(event string, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	l := g.logger.WithFields(log.Fields{
-		"op":         "Forward",
-		"event":      event,
-		"infos":      infos,
-		"serverAddr": g.serverAddress,
+		"op":          "Forward",
+		"source":      "plugin/grpc",
+		"event":       event,
+		"infos":       fmt.Sprintf("%v", infos),
+		"fwdMetadata": fmt.Sprintf("%v", fwdMetadata),
+		"serverAddr":  g.serverAddress,
 	})
-	l.Debug("forwarding event")
+	l.Info("forwarding event")
 	f := reflect.ValueOf(g).MethodByName(strings.Title(event))
 	if !f.IsValid() {
 		return 500, "", fmt.Errorf("error calling method %s in plugin", event)
 	}
 	ret := f.Call([]reflect.Value{reflect.ValueOf(infos), reflect.ValueOf(fwdMetadata)})
-	if _, ok := ret[2].Interface().(error); !ok {
+	if err, ok := ret[2].Interface().(error); !ok {
+		l.WithError(err).Error("forward event failed")
 		return ret[0].Interface().(int32), ret[1].Interface().(string), nil
 	}
-	l.Debug("successfully forwarded event")
+	l.Info("successfully forwarded event")
 	return ret[0].Interface().(int32), ret[1].Interface().(string), ret[2].Interface().(error)
 }
 
