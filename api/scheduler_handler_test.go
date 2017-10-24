@@ -231,6 +231,10 @@ var _ = Describe("Scheduler Handler", func() {
 						*schedulers = expectedSchedulers
 					})
 
+				if len(names) == 0 {
+					return
+				}
+
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name IN (?)", gomock.Any()).
 					Do(func(schedulers *[]models.Scheduler, query string, _ interface{}) {
@@ -277,8 +281,6 @@ var _ = Describe("Scheduler Handler", func() {
 			It("should list empty array when there aren't schedulers", func() {
 				expectedNames := []string{}
 				expectationsGivenNames(expectedNames)
-
-				redisExpectations(func() {})
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
