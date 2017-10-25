@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/pprof"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -89,6 +90,9 @@ func (a *App) getRouter() *mux.Router {
 		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 	)).Methods("GET").Name("healthcheck")
+
+	r.HandleFunc("/debug/pprof/", pprof.Index)
+	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
 
 	r.Handle("/login", Chain(
 		NewLoginUrlHandler(a),
