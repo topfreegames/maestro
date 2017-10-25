@@ -419,13 +419,14 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 		return errors.New("timeout scaling down scheduler")
 	}
 	timeout := time.NewTimer(willTimeoutAt.Sub(time.Now())).C
+	ticker := time.NewTicker(500 * time.Millisecond).C
 
 	for {
 		exit := true
 		select {
 		case <-timeout:
 			return errors.New("timeout scaling down scheduler")
-		default:
+		case <-ticker:
 			for _, name := range idleRooms {
 				_, err := clientset.CoreV1().Pods(scheduler.Name).Get(name, metav1.GetOptions{})
 				if err == nil {
@@ -436,7 +437,6 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 				}
 			}
 			l.Debug("scaling down scheduler...")
-			time.Sleep(time.Duration(1) * time.Second)
 		}
 		if exit {
 			l.Info("finished scaling down scheduler")
@@ -568,7 +568,7 @@ waitForLock:
 
 		for startDelete < totalPodsToDelete {
 			// This sleep avoids race condition between select goroutine and timer goroutine
-			time.Sleep(1 * time.Millisecond)
+			time.Sleep(10 * time.Nanosecond)
 			podsToDelete := kubePods.Items[startDelete:endDelete]
 
 			logger.WithField("numberOfRooms", endDelete-startDelete).Info("deleting old rooms")
@@ -597,7 +597,7 @@ waitForLock:
 			createdPods := 0
 			numberOfPodsToCreate := endCreate - startCreate
 			timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
-			ticker = time.NewTicker(10 * time.Millisecond)
+			ticker = time.NewTicker(500 * time.Millisecond)
 
 			// Creates pods as they are deleted
 			for createdPods < numberOfPodsToCreate {
@@ -736,13 +736,15 @@ func deleteSchedulerHelper(
 		return err
 	}
 	timeoutPods := time.NewTimer(time.Duration(2*configYAML.ShutdownTimeout) * time.Second).C
+	ticker := time.NewTicker(1 * time.Second).C
+
 	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
 	exit := false
 	for !exit {
 		select {
 		case <-timeoutPods:
 			return errors.New("timeout deleting scheduler pods")
-		default:
+		case <-ticker:
 			pods, listErr := clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
 			if listErr != nil {
 				logger.WithError(listErr).Error("error listing pods")
@@ -750,7 +752,6 @@ func deleteSchedulerHelper(
 				exit = true
 			}
 			logger.Debug("deleting scheduler pods")
-			time.Sleep(time.Duration(1) * time.Second)
 		}
 	}
 
@@ -958,7 +959,7 @@ func waitForPods(
 	mr *models.MixedMetricsReporter,
 ) error {
 	timeoutChan := time.NewTimer(timeout).C
-	tickerChan := time.NewTicker(10 * time.Millisecond).C
+	tickerChan := time.NewTicker(500 * time.Millisecond).C
 
 	for {
 		exit := true
