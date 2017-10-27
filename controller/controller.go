@@ -418,15 +418,16 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 	if willTimeoutAt.Sub(time.Now()) < 0 {
 		return errors.New("timeout scaling down scheduler")
 	}
-	timeout := time.NewTimer(willTimeoutAt.Sub(time.Now())).C
-	ticker := time.NewTicker(500 * time.Millisecond).C
+	timeout := time.NewTimer(willTimeoutAt.Sub(time.Now()))
+	ticker := time.NewTicker(500 * time.Millisecond)
 
 	for {
 		exit := true
 		select {
-		case <-timeout:
+		case <-timeout.C:
+			timeout.Stop()
 			return errors.New("timeout scaling down scheduler")
-		case <-ticker:
+		case <-ticker.C:
 			for _, name := range idleRooms {
 				_, err := clientset.CoreV1().Pods(scheduler.Name).Get(name, metav1.GetOptions{})
 				if err == nil {
@@ -443,6 +444,9 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 			break
 		}
 	}
+
+	ticker.Stop()
+	timeout.Stop()
 
 	return deletionErr
 }
@@ -519,6 +523,7 @@ waitForLock:
 		)
 		select {
 		case <-timeout.C:
+			timeout.Stop()
 			return errors.New("timeout while wating for redis lock")
 		case <-ticker.C:
 			if lock == nil || err != nil {
@@ -533,7 +538,10 @@ waitForLock:
 			}
 		}
 	}
+
 	ticker.Stop()
+	timeout.Stop()
+
 	defer func() {
 		if lock != nil {
 			redisClient.LeaveCriticalSection(lock)
@@ -619,6 +627,7 @@ waitForLock:
 						}
 					}
 					err = errors.New("timeout during new room creation")
+					timeout.Stop()
 					return maestroErrors.
 						NewKubernetesError(
 							"error when creating new rooms. Maestro will scale up, if necessary, with previous room configuration.",
@@ -648,6 +657,8 @@ waitForLock:
 			}
 
 			ticker.Stop()
+			timeout.Stop()
+
 			if willTimeoutAt.Sub(clock.Now()) < 0 {
 				return errors.New("timeout scaling up scheduler")
 			}
@@ -735,16 +746,17 @@ func deleteSchedulerHelper(
 		logger.WithError(err).Error("failed to delete namespace pods")
 		return err
 	}
-	timeoutPods := time.NewTimer(time.Duration(2*configYAML.ShutdownTimeout) * time.Second).C
-	ticker := time.NewTicker(1 * time.Second).C
+	timeoutPods := time.NewTimer(time.Duration(2*configYAML.ShutdownTimeout) * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 
 	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
 	exit := false
 	for !exit {
 		select {
-		case <-timeoutPods:
+		case <-timeoutPods.C:
+			timeoutPods.Stop()
 			return errors.New("timeout deleting scheduler pods")
-		case <-ticker:
+		case <-ticker.C:
 			pods, listErr := clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
 			if listErr != nil {
 				logger.WithError(listErr).Error("error listing pods")
@@ -755,6 +767,9 @@ func deleteSchedulerHelper(
 		}
 	}
 
+	ticker.Stop()
+	timeoutPods.Stop()
+
 	err = mr.WithSegment(models.SegmentNamespace, func() error {
 		return namespace.Delete(clientset)
 	})
@@ -762,12 +777,13 @@ func deleteSchedulerHelper(
 		logger.WithError(err).Error("failed to delete namespace while deleting scheduler")
 		return err
 	}
-	timeoutNamespace := time.NewTimer(time.Duration(timeoutSec) * time.Second).C
+	timeoutNamespace := time.NewTimer(time.Duration(timeoutSec) * time.Second)
 	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
 	exit = false
 	for !exit {
 		select {
-		case <-timeoutNamespace:
+		case <-timeoutNamespace.C:
+			timeoutNamespace.Stop()
 			return errors.New("timeout deleting namespace")
 		default:
 			exists, existsErr := namespace.Exists(clientset)
@@ -958,15 +974,16 @@ func waitForPods(
 	l logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 ) error {
-	timeoutChan := time.NewTimer(timeout).C
-	tickerChan := time.NewTicker(500 * time.Millisecond).C
+	timeoutTimer := time.NewTimer(timeout)
+	ticker := time.NewTicker(500 * time.Millisecond)
 
 	for {
 		exit := true
 		select {
-		case <-timeoutChan:
+		case <-timeoutTimer.C:
+			timeoutTimer.Stop()
 			return errors.New("timeout waiting for rooms to be created")
-		case <-tickerChan:
+		case <-ticker.C:
 			for i := range pods {
 				if pods[i] != nil {
 					pod, err := clientset.CoreV1().Pods(namespace).Get(pods[i].GetName(), metav1.GetOptions{})
@@ -1003,6 +1020,9 @@ func waitForPods(
 			break
 		}
 	}
+
+	ticker.Stop()
+	timeoutTimer.Stop()
 
 	return nil
 }
