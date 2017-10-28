@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/reporters"
+
+	"github.com/stackimpact/stackimpact-go"
 )
 
 var bind string
@@ -60,6 +62,11 @@ var startCmd = &cobra.Command{
 		}
 
 		reporters.MakeReporters(config, log)
+
+		stackimpact.Start(stackimpact.Options{
+			AgentKey: "b69163f494653a9c2627f6e96239162c169bdeb8",
+			AppName:  "Maestro",
+		})
 
 		app.ListenAndServe()
 	},
