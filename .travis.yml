@@ -15,7 +15,7 @@ install:
 - helm init --client-only
   # s3cmd
 - sudo apt-get install python-pip
-- sudo pip install s3cmd
+- sudo -H pip install s3cmd
   # rest
 - make setup-ci
 script:
