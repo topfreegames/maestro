@@ -22,6 +22,7 @@ script:
 - make test-ci
 after_success:
 - bash after-success.sh
+- bash create-helm-chart.sh
 env:
   global:
   - S3CMD_ZIP=master.zip

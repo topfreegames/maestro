@@ -19,14 +19,6 @@ if [ $TRAVIS_PULL_REQUEST = 'false' ]; then
   if ! test -z $TRAVIS_TAG; then
     docker tag maestro:latest $REPO:${TRAVIS_TAG} \
       && docker push $REPO:${TRAVIS_TAG};
-
-    # creating helm chart for this tag
-    cd helm; make package; cd ..
-    ssh-keyscan $TFG_GITLAB >> ~/.ssh/known_hosts 
-    git clone $HELM_REPO_GIT > /dev/null 2>&1
-    cp -r \helm/pkg/* helm-repo/charts
-    cd helm-repo; make vendor; make upload-with-env
-    git add .; git commit -m "travis helm update"; git push origin master
   fi
 fi
 
