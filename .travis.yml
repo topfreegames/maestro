@@ -14,9 +14,8 @@ install:
 - PATH=`pwd`/linux-amd64/:$PATH
 - helm init --client-only
   # s3cmd
-- wget -q ${S3CMD_URL}/${S3CMD_ZIP}
-- unzip -q ${S3CMD_ZIP}
-- PATH=`pwd`/s3cmd-master/:$PATH
+- sudo apt-get install python-pip
+- sudo pip install s3cmd
   # rest
 - make setup-ci
 script:
