@@ -8,14 +8,16 @@ cache:
   - $GOPATH/pkg
 sudo: true
 install:
+  # helm
 - wget -q ${HELM_URL}/${HELM_TGZ}
 - tar xzfv ${HELM_TGZ}
 - PATH=`pwd`/linux-amd64/:$PATH
 - helm init --client-only
-- wget -O- -q http://s3tools.org/repo/deb-all/stable/s3tools.key | sudo apt-key add
-  -
-- sudo wget -O/etc/apt/sources.list.d/s3tools.list http://s3tools.org/repo/deb-all/stable/s3tools.list
-- sudo apt-get update && sudo apt-get install s3cmd
+  # s3cmd
+- wget -q ${S3CMD_URL}/${S3CMD_ZIP}
+- tar xzfv ${S3CMD_ZIP}
+- PATH=`pwd`/s3cmd-master/:$PATH
+  # rest
 - make setup-ci
 script:
 - make test-ci
@@ -23,6 +25,8 @@ after_success:
 - bash after-success.sh
 env:
   global:
+  - S3CMD_ZIP=master.zip
+  - S3CMD_URL=https://github.com/s3tools/s3cmd/archive
   - HELM_URL=https://storage.googleapis.com/kubernetes-helm
   - HELM_TGZ=helm-v2.4.1-linux-amd64.tar.gz
   - secure: DgyQ0pT+P+aMj3iCshPiHmG7sDx95QVC3Qq+ITD2769dz1Sep6Bvz99emLM84b5g1V3aT7hvjg+RE/A8yrpCHZfuiNeiNY5XQR58zaKcShoRmYxyuSJPLUxbu12AVrbaQJFbwEs5evc2BDHBAN1+YTaEGIkAeEfAjyw4DpxZZNm8NHB5JHSKuZmcdoPz7ASdysenLzWxon/fxRB5nXVK2Jky/+0uFhMpJPJhvpQBE0SLrZ6L9mSduIehcrnl/qvJnVIWZDkMb1qRgSDZ3rXSFk05T1bZtbeQXQRWcz2AtHfvmhR51ufsfI7tZ/n65U/J40hq8OcSLjJyA4GOy0Xt7Vai0pjOyv5XBvwyCqTcl1ptm3Yf5aW75kiCsMlBGXv8dK8vI7IY4iXLPnipSKVK1UkgCfSQNRsHlf0vJ21k/7KRAZnhmtS39WcVapOed/UoXIWDgMH5PcrnkuZPylLONlHSE5pbevnObHsRGh86YSAxx0RS+RXJ2qlF6l8QYT5S0TDDHtpJ9qlJHpD6jJCMm9/0txTBgMDfaksmFLVnEEKhZrWW/lDk8YCDNz+Sb2Pq1cBRXzi2+i10b21XS4pYBbxyNecanwxNtr8Bia7yQbJHZF1zByUz4IaMA1pX7B2XGA46gDpav6edKWtN9es/HBxH8FgH7EG1dECjGBNXlw8=
