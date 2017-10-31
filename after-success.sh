@@ -21,12 +21,12 @@ if [ $TRAVIS_PULL_REQUEST = 'false' ]; then
       && docker push $REPO:${TRAVIS_TAG};
 
     # creating helm chart for this tag
-    cd helm; make package
-    ssh-keyscan $TFG_GITLAB >> ~/.ssh/known_hosts
-    git clone $HELM_REPO_GIT
+    cd helm; make package; cd ..
+    ssh-keyscan $TFG_GITLAB >> ~/.ssh/known_hosts 
+    git clone $HELM_REPO_GIT > /dev/null 2>&1
     cp -r \helm/pkg/* helm-repo/charts
     cd helm-repo; make vendor; make upload-with-env
-    cd helm-repo; git add .; git commit -m "travis helm update"; git push origin master
+    git add .; git commit -m "travis helm update"; git push origin master
   fi
 fi
 
