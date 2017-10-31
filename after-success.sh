@@ -19,6 +19,12 @@ if [ $TRAVIS_PULL_REQUEST = 'false' ]; then
   if ! test -z $TRAVIS_TAG; then
     docker tag maestro:latest $REPO:${TRAVIS_TAG} \
       && docker push $REPO:${TRAVIS_TAG};
+
+    # creating helm chart for this tag
+    cd helm; make package
+    git clone git@git.topfreegames.com:topfreegames/helm-repo.git
+    cp -r helm/pkg helm-repo/charts
+    cd helm-repo; make vendor; make upload-with-env
   fi
 fi
 
