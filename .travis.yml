@@ -20,7 +20,7 @@ script:
 after_success:
 - bash after-success.sh
 - bash create-helm-chart.sh
-- /bin/bash -c '[ $TRAVIS_TAG ] && curl -H POST $JENKINS_URL&version=$TRAVIS_TAG'
+- /bin/bash -c '[ "$TRAVIS_TAG" ] && curl -H POST "$JENKINS_URL&version=$TRAVIS_TAG"'
 env:
   global:
   - S3CMD_ZIP=master.zip
