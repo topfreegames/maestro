@@ -8,21 +8,19 @@ cache:
   - $GOPATH/pkg
 sudo: true
 install:
-  # helm
 - wget -q ${HELM_URL}/${HELM_TGZ}
 - tar xzfv ${HELM_TGZ}
 - PATH=`pwd`/linux-amd64/:$PATH
 - helm init --client-only
-  # s3cmd
 - sudo apt-get install python-pip
 - sudo -H pip install s3cmd
-  # rest
 - make setup-ci
 script:
 - make test-ci
 after_success:
 - bash after-success.sh
 - bash create-helm-chart.sh
+- /bin/bash -c '[ $TRAVIS_TAG ] && curl -H POST $JENKINS_URL&version=$TRAVIS_TAG'
 env:
   global:
   - S3CMD_ZIP=master.zip
@@ -40,3 +38,5 @@ before_install:
   -in id_rsa_travis.enc -out id_rsa -d
 - mv id_rsa ~/.ssh/id_rsa
 - chmod 400 ~/.ssh/id_rsa
+dd:
+  secure: nex8aO3A1k9gHgWam9auNFGVfbM7pCBYBwwyvQgY2CUTR+CyFpAQyWd9CWcf8FSdXdh5UNvSFr3XCSCXMXNF9TVpXxC+DenxETPCVge57bZ+2/jGLJzPdmvJHDa2PKX6/5evYpD48I0kEQdV0/Q3AaxDxaDnLsN+8xE+0/aEo5EKSClcI8h3VXkk8koMWqo9/vRdvWnF6O08ZDzVJEF1ezv6thgaoM0cWZE3Zckb88PgxO3sAcJl1WUKdDbOXmV8HruhGqN5ZlI0BqtT7bJYcOIkDJ36AfvtJsK6cu0ZklOKo53Ga6H8AoPlvNv+/OkIqc/p+1s4EY4QYnre4K1Wxg06g2E6VYg68g1MLwEK8iVuStimk06WnEA9cD9mSrROlMoEkiY4R2N5s1ZlDiGFoNhQEBRtWvO6ER3NwNU++ESDn0BZzRyN5AbHibtEjwC8y6Fz6jsLagi1jPT8xBw6r40DovQePzLlEVoq5yuQJbG6s4/fU6uaZX5BOTH2CIh7YG30fbLTL0F51GVmD92DgemLgWyWYXabooIUNZiVtrhZ9+vjiFF3ErpBUxAmPwF27UuY76LaGex8+Pth7XkStwh4NQGGSaGBFQlPPhR4Dg92sxwVXT4rW8ZcO9Qjx46lJBBnEdwIg9xktAoTrg/JCxlmW+lkSL+2wLUr5yPFjfw=
