@@ -20,10 +20,10 @@ import (
 
 	"github.com/go-redis/redis"
 	goredis "github.com/go-redis/redis"
+	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
-	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
@@ -483,7 +483,7 @@ autoscaling:
 						gomock.Any(),
 						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
 						gomock.Any(),
-					).Return(&types.Result{}, errors.New("sql: database is closed"))
+					).Return(pg.NewTestResult(errors.New("sql: database is closed"), 0), errors.New("sql: database is closed"))
 					mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", gomock.Any())
 
 					app.Router.ServeHTTP(recorder, request)
@@ -505,7 +505,7 @@ autoscaling:
 						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
 						gomock.Any(),
 					//HACK!!! DB won't return this information, but Kubernetes will
-					).Return(&types.Result{}, errors.New("node without label error"))
+					).Return(pg.NewTestResult(errors.New("node without label error"), 0), errors.New("node without label error"))
 					mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", gomock.Any())
 
 					app.Router.ServeHTTP(recorder, request)
@@ -619,7 +619,7 @@ autoscaling:
 						gomock.Any(),
 						"SELECT * FROM schedulers WHERE name = ?",
 						"schedulerName",
-					).Return(&types.Result{}, errors.New("sql: database is closed"))
+					).Return(pg.NewTestResult(errors.New("sql: database is closed"), 0), errors.New("sql: database is closed"))
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
@@ -1037,7 +1037,7 @@ autoscaling:
 						gomock.Any(),
 						"SELECT * FROM schedulers WHERE name = ?",
 						configYaml1.Name,
-					).Return(&types.Result{}, errors.New("sql: database is closed"))
+					).Return(pg.NewTestResult(errors.New("sql: database is closed"), 0), errors.New("sql: database is closed"))
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
@@ -2244,7 +2244,7 @@ ports:
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-					Return(&types.Result{}, errors.New("some error in db"))
+					Return(pg.NewTestResult(errors.New("some error in db"), 0), errors.New("some error in db"))
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2592,7 +2592,7 @@ ports:
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-					Return(&types.Result{}, errors.New("some error in db"))
+					Return(pg.NewTestResult(errors.New("some error in db"), 0), errors.New("some error in db"))
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)

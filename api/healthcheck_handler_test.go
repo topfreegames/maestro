@@ -14,10 +14,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"gopkg.in/pg.v5/types"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/metadata"
 )
 
@@ -57,7 +56,7 @@ var _ = Describe("Healthcheck Handler", func() {
 
 		Context("when postgres is down", func() {
 			It("returns status code of 500 if database is unavailable", func() {
-				mockDb.EXPECT().Exec("select 1").Return(&types.Result{}, errors.New("sql: database is closed"))
+				mockDb.EXPECT().Exec("select 1").Return(pg.NewTestResult(errors.New("sql: database is closed"), 0), errors.New("sql: database is closed"))
 				app.Router.ServeHTTP(recorder, request)
 
 				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))

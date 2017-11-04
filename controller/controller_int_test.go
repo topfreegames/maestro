@@ -18,10 +18,10 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
-	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
@@ -71,7 +71,7 @@ var _ = Describe("Controller", func() {
 				gomock.Any(),
 				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
 				gomock.Any(),
-			).Return(&types.Result{}, errors.New("error updating state"))
+			).Return(pg.NewTestResult(errors.New("error updating state"), 0), errors.New("error updating state"))
 			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)

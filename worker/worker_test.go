@@ -17,12 +17,12 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/watcher"
 	"github.com/topfreegames/maestro/worker"
-	"gopkg.in/pg.v5/types"
 )
 
 var _ = Describe("Worker", func() {
@@ -117,7 +117,7 @@ cmd:
 				func(schedulers *[]models.Scheduler, query string) {
 					w.Run = false
 				},
-			).Return(&types.Result{}, errors.New("some error in pg"))
+			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
 
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), gomock.Any(), startPortRange, endPortRange).

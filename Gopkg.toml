@@ -49,11 +49,6 @@
 ## what source location any dependent projects specify.
 # source = "https://github.com/myfork/package.git"
 
-required = [
-  "github.com/go-pg/pg",
-  "github.com/go-pg/pg/orm",
-]
-
 [[dependencies]]
   branch = "master"
   name = "github.com/lib/pq"

@@ -4,9 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"gopkg.in/pg.v5/types"
-
 	"github.com/golang/mock/gomock"
+	"github.com/topfreegames/extensions/pg"
 	. "github.com/topfreegames/maestro/models"
 
 	. "github.com/onsi/ginkgo"
@@ -129,7 +128,7 @@ autoscaling:
 
 			mockDb.EXPECT().
 				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
-				Return(&types.Result{}, errors.New("db failed"))
+				Return(pg.NewTestResult(errors.New("db failed"), 0), errors.New("db failed"))
 
 			scheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
 			Expect(err).To(HaveOccurred())

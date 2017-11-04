@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"time"
 
-	"gopkg.in/pg.v5/types"
+	"github.com/topfreegames/extensions/pg"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -273,7 +273,7 @@ var _ = Describe("Watcher", func() {
 				gomock.Any(),
 			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
 				w.Run = false
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			// LeaveCriticalSection (unlock done by redis-lock)
 			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{lockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
@@ -416,7 +416,7 @@ var _ = Describe("Watcher", func() {
 				gomock.Any(),
 				"SELECT * FROM schedulers WHERE name = ?",
 				configYaml1.Name,
-			).Return(&types.Result{}, errors.New(fmt.Sprintf("scheduler \"%s\" not found")))
+			).Return(pg.NewTestResult(errors.New(fmt.Sprintf("scheduler \"%s\" not found")), 0), errors.New(fmt.Sprintf("scheduler \"%s\" not found")))
 
 			w.Run = true
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
@@ -470,7 +470,7 @@ var _ = Describe("Watcher", func() {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			fmt.Sprintf("%v \n", hook.Entries)
@@ -526,7 +526,7 @@ var _ = Describe("Watcher", func() {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
@@ -565,7 +565,7 @@ var _ = Describe("Watcher", func() {
 				Expect(scheduler.State).To(Equal("subdimensioned"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -602,7 +602,7 @@ var _ = Describe("Watcher", func() {
 				Expect(scheduler.State).To(Equal("overdimensioned"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -639,7 +639,7 @@ var _ = Describe("Watcher", func() {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -784,7 +784,7 @@ var _ = Describe("Watcher", func() {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is overdimensioned, should scale down"))
@@ -1006,7 +1006,7 @@ cmd:
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			fmt.Sprintf("%v \n", hook.Entries)
 			Expect(w.ScaleUpInfo.IsAboveThreshold(60)).To(BeTrue())
@@ -1159,7 +1159,7 @@ cmd:
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			fmt.Sprintf("%v \n", hook.Entries)
 			Expect(w.ScaleUpInfo.IsAboveThreshold(60)).To(BeTrue())
@@ -1174,7 +1174,7 @@ cmd:
 			// GetSchedulerScalingInfo
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yaml1
-			}).Return(&types.Result{}, errors.New("some cool error in pg"))
+			}).Return(pg.NewTestResult(nil, 0), errors.New("some cool error in pg"))
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("failed to get scheduler scaling info"))
@@ -1211,7 +1211,7 @@ cmd:
 				Expect(scheduler.State).To(Equal("subdimensioned"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
-			}).Return(&types.Result{}, errors.New("some error in pg"))
+			}).Return(pg.NewTestResult(nil, 0), errors.New("some error in pg"))
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("failed to update scheduler info"))
@@ -1342,7 +1342,7 @@ cmd:
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
@@ -1486,7 +1486,7 @@ cmd:
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is overdimensioned, should scale down"))
@@ -1538,7 +1538,7 @@ cmd:
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			fmt.Sprintf("%v \n", hook.Entries)
@@ -1591,7 +1591,7 @@ cmd:
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			fmt.Sprintf("%v \n", hook.Entries)
@@ -1628,7 +1628,7 @@ cmd:
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(&types.Result{}, nil)
+			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			fmt.Sprintf("%v \n", hook.Entries)

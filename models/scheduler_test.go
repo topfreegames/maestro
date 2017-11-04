@@ -13,9 +13,8 @@ import (
 	"fmt"
 	"time"
 
-	"gopkg.in/pg.v5/types"
-
 	"github.com/golang/mock/gomock"
+	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/models"
 
 	. "github.com/onsi/ginkgo"
@@ -164,7 +163,7 @@ var _ = Describe("Scheduler", func() {
 				scheduler,
 				"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
 				scheduler,
-			).Return(&types.Result{}, errors.New("some error in pg"))
+			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
 			err := scheduler.Create(mockDb)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
@@ -185,7 +184,7 @@ var _ = Describe("Scheduler", func() {
 				scheduler,
 				"SELECT * FROM schedulers WHERE name = ?",
 				name,
-			).Return(&types.Result{}, errors.New("some error in pg"))
+			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
 			err := scheduler.Load(mockDb)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
@@ -209,7 +208,7 @@ var _ = Describe("Scheduler", func() {
 				gomock.Any(),
 				"SELECT * FROM schedulers WHERE name IN (?)",
 				gomock.Any(),
-			).Return(&types.Result{}, errors.New("some error in pg"))
+			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
 			names := []string{"s1", "s2"}
 			_, err := models.LoadSchedulers(mockDb, names)
 			Expect(err).To(HaveOccurred())
@@ -241,7 +240,7 @@ var _ = Describe("Scheduler", func() {
 				scheduler,
 				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
 				scheduler,
-			).Return(&types.Result{}, errors.New("some error in pg"))
+			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
 			err := scheduler.Update(mockDb)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
@@ -260,7 +259,7 @@ var _ = Describe("Scheduler", func() {
 			mockDb.EXPECT().Exec(
 				"DELETE FROM schedulers WHERE name = ?",
 				name,
-			).Return(&types.Result{}, errors.New("pg: no rows in result set"))
+			).Return(pg.NewTestResult(errors.New("pg: no rows in result set"), 0), errors.New("pg: no rows in result set"))
 			err := scheduler.Delete(mockDb)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -270,7 +269,7 @@ var _ = Describe("Scheduler", func() {
 			mockDb.EXPECT().Exec(
 				"DELETE FROM schedulers WHERE name = ?",
 				name,
-			).Return(&types.Result{}, errors.New("some error in pg"))
+			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
 			err := scheduler.Delete(mockDb)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
@@ -314,7 +313,7 @@ var _ = Describe("Scheduler", func() {
 
 		It("should succeed if error is 'no rows in result set'", func() {
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Return(
-				&types.Result{}, errors.New("pg: no rows in result set"),
+				pg.NewTestResult(errors.New("pg: no rows in result set"), 0), errors.New("pg: no rows in result set"),
 			)
 			_, err := models.ListSchedulersNames(mockDb)
 			Expect(err).NotTo(HaveOccurred())
@@ -322,7 +321,7 @@ var _ = Describe("Scheduler", func() {
 
 		It("should return an error if db returns an error", func() {
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Return(
-				&types.Result{}, errors.New("some error in pg"),
+				pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"),
 			)
 			_, err := models.ListSchedulersNames(mockDb)
 			Expect(err).To(HaveOccurred())

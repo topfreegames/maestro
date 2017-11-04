@@ -328,7 +328,6 @@
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","dogstatsd/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
-  revision = ""
   version = "v3.1.3"
 
 [[projects]]
@@ -398,12 +397,6 @@
   version = "v0.9.0"
 
 [[projects]]
-  name = "gopkg.in/pg.v5"
-  packages = [".","internal","internal/parser","internal/pool","orm","types"]
-  revision = "2246060a2a43f8282ad53295d56d780dbc930b7f"
-  version = "v5.3.3"
-
-[[projects]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -423,6 +416,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e9347d8bc234ac7cd7048f02ae080f6caeb6e5b81dd3f8bae8ea10a54f30265c"
+  inputs-digest = "1095e98108fc367a9f75259d0d06008e52bb49486a4ec3b28bedcbd341b0ed68"
   solver-name = "gps-cdcl"
   solver-version = 1

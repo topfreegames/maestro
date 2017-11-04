@@ -10,9 +10,9 @@ package models
 import (
 	"time"
 
+	"github.com/go-pg/pg"
 	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
-	pg "gopkg.in/pg.v5"
 	yaml "gopkg.in/yaml.v2"
 )
 

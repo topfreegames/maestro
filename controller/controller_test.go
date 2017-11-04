@@ -25,7 +25,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gopkg.in/pg.v5/types"
+	"github.com/topfreegames/extensions/pg"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -272,7 +272,7 @@ cmd:
 				gomock.Any(),
 				"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
 				gomock.Any(),
-			).Return(&types.Result{}, errors.New("some error in db"))
+			).Return(pg.NewTestResult(errors.New("some error in db"), 0), errors.New("some error in db"))
 
 			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
 
@@ -418,7 +418,7 @@ cmd:
 				gomock.Any(),
 				"SELECT * FROM schedulers WHERE name = ?",
 				configYaml1.Name,
-			).Return(&types.Result{}, errors.New("some error in db"))
+			).Return(pg.NewTestResult(errors.New("some error in db"), 0), errors.New("some error in db"))
 
 			err = controller.DeleteScheduler(logger, mr, mockDb, mockRedisClient, clientset, configYaml1.Name, timeoutSec)
 			Expect(err).To(HaveOccurred())
@@ -436,7 +436,7 @@ cmd:
 			mockDb.EXPECT().Exec(
 				"DELETE FROM schedulers WHERE name = ?",
 				configYaml1.Name,
-			).Return(&types.Result{}, errors.New("some error deleting in db"))
+			).Return(pg.NewTestResult(errors.New("some error deleting in db"), 0), errors.New("some error deleting in db"))
 			err = controller.DeleteScheduler(logger, mr, mockDb, mockRedisClient, clientset, configYaml1.Name, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error deleting in db"))
@@ -566,7 +566,7 @@ cmd:
 				gomock.Any(),
 				"SELECT * FROM schedulers WHERE name = ?",
 				name,
-			).Return(&types.Result{}, errors.New("some error in db"))
+			).Return(pg.NewTestResult(errors.New("some error in db"), 0), errors.New("some error in db"))
 			_, _, _, err := controller.GetSchedulerScalingInfo(logger, mr, mockDb, mockRedisClient, name)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in db"))
@@ -609,7 +609,7 @@ cmd:
 				scheduler,
 				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
 				scheduler,
-			).Return(&types.Result{}, nil)
+			).Return(pg.NewTestResult(nil, 0), nil)
 			err := controller.UpdateScheduler(logger, mr, mockDb, scheduler)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -624,7 +624,7 @@ cmd:
 				scheduler,
 				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
 				scheduler,
-			).Return(&types.Result{}, errors.New("some error in pg"))
+			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
 			err := controller.UpdateScheduler(logger, mr, mockDb, scheduler)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
@@ -650,7 +650,7 @@ cmd:
 
 		It("should succeed if error is 'no rows in result set'", func() {
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Return(
-				&types.Result{}, errors.New("pg: no rows in result set"),
+				pg.NewTestResult(errors.New("pg: no rows in result set"), 0), errors.New("pg: no rows in result set"),
 			)
 			_, err := controller.ListSchedulersNames(logger, mr, mockDb)
 			Expect(err).NotTo(HaveOccurred())
@@ -658,7 +658,7 @@ cmd:
 
 		It("should return an error if db returns an error", func() {
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Return(
-				&types.Result{}, errors.New("some error in pg"),
+				pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"),
 			)
 			_, err := controller.ListSchedulersNames(logger, mr, mockDb)
 			Expect(err).To(HaveOccurred())
@@ -2288,7 +2288,7 @@ cmd:
 
 		It("should return error if db fails to select scheduler", func() {
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
-				Return(&types.Result{}, errors.New("error on select"))
+				Return(pg.NewTestResult(errors.New("error on select"), 0), errors.New("error on select"))
 
 			err := controller.UpdateSchedulerConfig(
 				logger,
@@ -3292,7 +3292,7 @@ cmd:
 			// Update scheduler
 			mockDb.EXPECT().
 				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-				Return(&types.Result{}, errors.New("some error in db"))
+				Return(pg.NewTestResult(errors.New("some error in db"), 0), errors.New("some error in db"))
 
 			err := controller.UpdateSchedulerImage(
 				logger,
@@ -3465,7 +3465,7 @@ cmd:
 			// Update scheduler
 			mockDb.EXPECT().
 				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-				Return(&types.Result{}, errors.New("some error in db"))
+				Return(pg.NewTestResult(errors.New("some error in db"), 0), errors.New("some error in db"))
 
 			err := controller.UpdateSchedulerMin(logger,
 				mr,
@@ -3501,7 +3501,7 @@ cmd:
 			var amountUp, amountDown, replicas uint = 1, 0, 0
 			mockDb.EXPECT().
 				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-				Return(&types.Result{}, errors.New("some error in db"))
+				Return(pg.NewTestResult(errors.New("some error in db"), 0), errors.New("some error in db"))
 
 			err := controller.ScaleScheduler(
 				logger,
@@ -3960,7 +3960,7 @@ cmd:
 
 			mockDb.EXPECT().
 				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-				Return(&types.Result{}, errors.New("some error on db"))
+				Return(pg.NewTestResult(errors.New("some error on db"), 0), errors.New("some error on db"))
 
 			err := controller.SetRoomStatus(
 				logger,
