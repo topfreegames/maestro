@@ -43,6 +43,8 @@ func CreateScheduler(
 	configYAML *models.ConfigYAML,
 	timeoutSec int,
 ) error {
+	configYAML.EnsureDefaultValues()
+
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
 		return err
@@ -464,6 +466,8 @@ func UpdateSchedulerConfig(
 	clock clockinterfaces.Clock,
 	schedulerOrNil *models.Scheduler,
 ) error {
+	configYAML.EnsureDefaultValues()
+
 	schedulerName := configYAML.Name
 	gameName := configYAML.Game
 	l := logger.WithFields(logrus.Fields{
@@ -1236,9 +1240,12 @@ func SetRoomStatus(
 
 	if status == models.StatusOccupied {
 		if roomsCountByStatus.Total()*cachedScheduler.ConfigYAML.AutoScaling.Up.Trigger.Limit < 100*roomsCountByStatus.Occupied {
-			log.WithFields(logrus.Fields{
+			scaleUpLog := log.WithFields(logrus.Fields{
+				"scheduler":  room.SchedulerName,
 				"readyRooms": roomsCountByStatus.Ready,
-			}).Info("few ready rooms, scaling up")
+				"id":         uuid.NewV4().String(),
+			})
+			scaleUpLog.Info("few ready rooms, scaling up")
 			go func() {
 				err := ScaleUp(
 					logger,
@@ -1255,7 +1262,7 @@ func SetRoomStatus(
 					log.WithError(err).Error(err)
 					return
 				}
-				log.Debug("finished scaling up")
+				scaleUpLog.Info("finished scaling up")
 			}()
 			return nil
 		}

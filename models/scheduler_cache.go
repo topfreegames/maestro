@@ -86,9 +86,7 @@ func (s *SchedulerCache) LoadScheduler(
 	if err != nil {
 		return nil, err
 	}
-	if configYaml.AutoScaling.Up.Trigger.Limit == 0 {
-		configYaml.AutoScaling.Up.Trigger.Limit = 90
-	}
+	configYaml.EnsureDefaultValues()
 
 	cachedScheduler := &CachedScheduler{
 		Scheduler:  scheduler,

@@ -332,7 +332,7 @@ func (w *Worker) RetrieveFreePorts(
 		for {
 			select {
 			case <-timeout.C:
-				return errors.New("error getting locks, trying again next period...")
+				return errors.New("error getting locks, trying again next period")
 			default:
 				lock, err := w.RedisClient.EnterCriticalSection(
 					w.RedisClient.Client,

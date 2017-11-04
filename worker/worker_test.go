@@ -292,7 +292,7 @@ cmd:
 			elapsedTime := time.Now().Sub(startTime)
 			Expect(elapsedTime).To(BeNumerically(">=", time.Duration(timeout)*time.Second))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("error getting locks, trying again next period..."))
+			Expect(err.Error()).To(Equal("error getting locks, trying again next period"))
 			Expect(hook.Entries).To(mtesting.ContainLogMessage(
 				"unable to get watcher room-0 lock, maybe some other process has it...",
 			))
@@ -321,7 +321,7 @@ cmd:
 			elapsedTime := time.Now().Sub(startTime)
 			Expect(elapsedTime).To(BeNumerically(">=", time.Duration(timeout)*time.Second))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("error getting locks, trying again next period..."))
+			Expect(err.Error()).To(Equal("error getting locks, trying again next period"))
 			Expect(hook.Entries).To(mtesting.ContainLogMessage(
 				"error getting watcher room-0 lock",
 			))

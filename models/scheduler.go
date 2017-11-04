@@ -104,6 +104,54 @@ type ConfigYAML struct {
 	Forwarders      map[string]map[string]*Forwarder `yaml:"forwarders" json:"forwarders"`
 }
 
+// EnsureDefaultValues check if specific fields are empty and
+// fill them with default values
+func (c *ConfigYAML) EnsureDefaultValues() {
+	if c == nil {
+		return
+	}
+
+	defaultPolicyTrigger := &ScalingPolicyTrigger{
+		Time:      600,
+		Usage:     80,
+		Threshold: 80,
+		Limit:     90,
+	}
+
+	defaultScalingPolicy := &ScalingPolicy{
+		Cooldown: 600,
+		Delta:    1,
+		Trigger:  defaultPolicyTrigger,
+	}
+
+	if c.AutoScaling == nil {
+		c.AutoScaling = &AutoScaling{
+			Up:   defaultScalingPolicy,
+			Down: defaultScalingPolicy,
+		}
+	}
+
+	if c.AutoScaling.Up == nil {
+		c.AutoScaling.Up = defaultScalingPolicy
+	}
+
+	if c.AutoScaling.Down == nil {
+		c.AutoScaling.Down = defaultScalingPolicy
+	}
+
+	if c.AutoScaling.Up.Trigger == nil {
+		c.AutoScaling.Up.Trigger = defaultPolicyTrigger
+	}
+
+	if c.AutoScaling.Down.Trigger == nil {
+		c.AutoScaling.Down.Trigger = defaultPolicyTrigger
+	}
+
+	if c.AutoScaling.Up.Trigger.Limit == 0 {
+		c.AutoScaling.Up.Trigger.Limit = 90
+	}
+}
+
 // NewScheduler is the scheduler constructor
 func NewScheduler(name, game, yaml string) *Scheduler {
 	return &Scheduler{
