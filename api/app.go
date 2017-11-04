@@ -93,7 +93,7 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/debug/pprof/", pprof.Index)
 	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	r.HandleFunc("/debug/trace", TraceHandlerFunc)
+	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	r.Handle("/login", Chain(
 		NewLoginUrlHandler(a),

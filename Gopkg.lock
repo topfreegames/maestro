@@ -323,7 +323,7 @@
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","dogstatsd/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
   revision = ""
-  version = "v2.8.0"
+  version = "v3.1.2"
 
 [[projects]]
   name = "github.com/topfreegames/protos"
