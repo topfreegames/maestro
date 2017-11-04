@@ -6,6 +6,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/reporters"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -52,7 +54,12 @@ func ForwardRoomEvent(
 	metadata map[string]interface{},
 	schedulerCache *models.SchedulerCache,
 	logger logrus.FieldLogger,
-) (*Response, error) {
+) (res *Response, err error) {
+	var eventWasForwarded bool
+	defer func() {
+		reportRPCStatus(eventWasForwarded, room.SchedulerName, db, schedulerCache, logger, err)
+	}()
+
 	l := logger.WithFields(logrus.Fields{
 		"op":        "forwardRoomEvent",
 		"scheduler": room.SchedulerName,
@@ -79,6 +86,7 @@ func ForwardRoomEvent(
 				"enabledForwarders":   len(enabledForwarders),
 			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
+				eventWasForwarded = true
 				return ForwardEventToForwarders(enabledForwarders, status, infos, l)
 			}
 		}
@@ -95,7 +103,12 @@ func ForwardRoomInfo(
 	schedulerName string,
 	schedulerCache *models.SchedulerCache,
 	logger logrus.FieldLogger,
-) (*Response, error) {
+) (res *Response, err error) {
+	var eventWasForwarded bool
+	defer func() {
+		reportRPCStatus(eventWasForwarded, schedulerName, db, schedulerCache, logger, err)
+	}()
+
 	l := logger.WithFields(logrus.Fields{
 		"op":        "forwardRoomInfo",
 		"scheduler": schedulerName,
@@ -105,7 +118,6 @@ func ForwardRoomInfo(
 		if err != nil {
 			return nil, err
 		}
-
 		infos := map[string]interface{}{
 			"game": cachedScheduler.Scheduler.Game,
 		}
@@ -119,6 +131,7 @@ func ForwardRoomInfo(
 				"enabledForwarders":   len(enabledForwarders),
 			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
+				eventWasForwarded = true
 				return ForwardEventToForwarders(enabledForwarders, "schedulerEvent", infos, l)
 			}
 		}
@@ -137,7 +150,12 @@ func ForwardPlayerEvent(
 	metadata map[string]interface{},
 	schedulerCache *models.SchedulerCache,
 	logger logrus.FieldLogger,
-) (*Response, error) {
+) (resp *Response, err error) {
+	var eventWasForwarded bool
+	defer func() {
+		reportRPCStatus(eventWasForwarded, room.SchedulerName, db, schedulerCache, logger, err)
+	}()
+
 	l := logger.WithFields(logrus.Fields{
 		"op":        "forwardPlayerEvent",
 		"scheduler": room.SchedulerName,
@@ -160,6 +178,7 @@ func ForwardPlayerEvent(
 				"enabledForwarders":   len(enabledForwarders),
 			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
+				eventWasForwarded = true
 				return ForwardEventToForwarders(enabledForwarders, event, metadata, l)
 			}
 		}
@@ -202,4 +221,56 @@ func ForwardEventToForwarders(
 		Message: strings.Join(respMessage, ";"),
 	}
 	return resp, nil
+}
+
+// reportRPCStatus sends to StatsD success true if err is null
+// and false otherwise
+func reportRPCStatus(
+	eventWasForwarded bool,
+	schedulerName string,
+	db interfaces.DB,
+	cache *models.SchedulerCache,
+	logger logrus.FieldLogger,
+	eventForwarderErr error,
+) {
+	if !reporters.HasReporters() {
+		return
+	}
+	log := logger.WithField("operation", "reportRPCStatus")
+
+	if !eventWasForwarded {
+		log.Debug("no rpc was made, returning...")
+		return
+	}
+
+	scheduler, err := cache.LoadScheduler(db, schedulerName, true)
+	if err != nil {
+		logger.
+			WithField("operation", "reportRPCStatus").
+			WithError(err).
+			Error("failed to report RPC connection to StatsD")
+		return
+	}
+
+	game := scheduler.ConfigYAML.Game
+
+	status := map[string]string{
+		reportersConstants.TagGame:      game,
+		reportersConstants.TagScheduler: schedulerName,
+		reportersConstants.TagStatus:    "success",
+	}
+
+	if eventForwarderErr != nil {
+		status[reportersConstants.TagStatus] = "failed"
+		status[reportersConstants.TagReason] = eventForwarderErr.Error()
+	}
+
+	reporterErr := reporters.Report(reportersConstants.EventRPCStatus, status)
+	if reporterErr != nil {
+		logger.
+			WithField("operation", "reportRPCStatus").
+			WithError(err).
+			Error("failed to report RPC connection to StatsD")
+		return
+	}
 }

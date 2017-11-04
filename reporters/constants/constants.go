@@ -6,6 +6,8 @@ const (
 	EventGruPing   = "gru.ping"
 	EventGruDelete = "gru.delete"
 	EventGruStatus = "gru.status"
+
+	EventRPCStatus = "rpc.status"
 )
 
 //Reason{...} represents reasons for a pod/gru being deleted
@@ -24,4 +26,5 @@ const (
 	TagScheduler = "maestro-scheduler"
 	TagRegion    = "maestro-region"
 	TagReason    = "maestro-reason"
+	TagStatus    = "maestro-status"
 )
