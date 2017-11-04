@@ -116,6 +116,12 @@
   revision = "aa30237cf993e01e1a1e467eead45d1ce5ad155e"
 
 [[projects]]
+  name = "github.com/go-pg/pg"
+  packages = [".","internal","internal/parser","internal/pool","orm","types"]
+  revision = "c2c9b3c1cb6dcc2eac1269d1557aeee791312a1c"
+  version = "v6.6.6"
+
+[[projects]]
   name = "github.com/go-redis/redis"
   packages = [".","internal","internal/consistenthash","internal/hashtag","internal/pool","internal/proto"]
   revision = "d371792f33b2c2e6747674b87be1f069aef21778"
@@ -322,8 +328,8 @@
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","dogstatsd/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
-  revision = ""
-  version = "v3.1.2"
+  revision = "0389442ad5a6e3a9f2805edc3ee6f9b9809165a9"
+  version = "v2.8.1"
 
 [[projects]]
   name = "github.com/topfreegames/protos"
@@ -417,6 +423,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fb61d1ded5e6cf095f8b5498d18199bc43878b3f61a2b2d416175f4f595bd0c1"
+  inputs-digest = "e9347d8bc234ac7cd7048f02ae080f6caeb6e5b81dd3f8bae8ea10a54f30265c"
   solver-name = "gps-cdcl"
   solver-version = 1
