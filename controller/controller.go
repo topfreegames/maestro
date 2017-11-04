@@ -419,13 +419,14 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 		return errors.New("timeout scaling down scheduler")
 	}
 	timeout := time.NewTimer(willTimeoutAt.Sub(time.Now()))
+	defer timeout.Stop()
 	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
 		exit := true
 		select {
 		case <-timeout.C:
-			timeout.Stop()
 			return errors.New("timeout scaling down scheduler")
 		case <-ticker.C:
 			for _, name := range idleRooms {
@@ -444,9 +445,6 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 			break
 		}
 	}
-
-	ticker.Stop()
-	timeout.Stop()
 
 	return deletionErr
 }
@@ -512,7 +510,10 @@ func UpdateSchedulerConfig(
 	timeoutDur := time.Duration(timeoutSec) * time.Second
 	willTimeoutAt := clock.Now().Add(timeoutDur)
 	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
 	timeout := time.NewTimer(timeoutDur)
+	defer timeout.Stop()
+
 waitForLock:
 	for {
 		lock, err = redisClient.EnterCriticalSection(
@@ -523,7 +524,6 @@ waitForLock:
 		)
 		select {
 		case <-timeout.C:
-			timeout.Stop()
 			return errors.New("timeout while wating for redis lock")
 		case <-ticker.C:
 			if lock == nil || err != nil {
@@ -538,9 +538,6 @@ waitForLock:
 			}
 		}
 	}
-
-	ticker.Stop()
-	timeout.Stop()
 
 	defer func() {
 		if lock != nil {
@@ -573,6 +570,7 @@ waitForLock:
 
 		newPods := []*v1.Pod{}
 		timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
+		defer timeout.Stop()
 
 		for startDelete < totalPodsToDelete {
 			// This sleep avoids race condition between select goroutine and timer goroutine
@@ -605,7 +603,9 @@ waitForLock:
 			createdPods := 0
 			numberOfPodsToCreate := endCreate - startCreate
 			timeout = time.NewTimer(willTimeoutAt.Sub(clock.Now()))
+			defer timeout.Stop()
 			ticker = time.NewTicker(500 * time.Millisecond)
+			defer ticker.Stop()
 
 			// Creates pods as they are deleted
 			for createdPods < numberOfPodsToCreate {
@@ -627,7 +627,6 @@ waitForLock:
 						}
 					}
 					err = errors.New("timeout during new room creation")
-					timeout.Stop()
 					return maestroErrors.
 						NewKubernetesError(
 							"error when creating new rooms. Maestro will scale up, if necessary, with previous room configuration.",
@@ -655,9 +654,6 @@ waitForLock:
 					}
 				}
 			}
-
-			ticker.Stop()
-			timeout.Stop()
 
 			if willTimeoutAt.Sub(clock.Now()) < 0 {
 				return errors.New("timeout scaling up scheduler")
@@ -747,14 +743,15 @@ func deleteSchedulerHelper(
 		return err
 	}
 	timeoutPods := time.NewTimer(time.Duration(2*configYAML.ShutdownTimeout) * time.Second)
+	defer timeoutPods.Stop()
 	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 
 	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
 	exit := false
 	for !exit {
 		select {
 		case <-timeoutPods.C:
-			timeoutPods.Stop()
 			return errors.New("timeout deleting scheduler pods")
 		case <-ticker.C:
 			pods, listErr := clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
@@ -767,9 +764,6 @@ func deleteSchedulerHelper(
 		}
 	}
 
-	ticker.Stop()
-	timeoutPods.Stop()
-
 	err = mr.WithSegment(models.SegmentNamespace, func() error {
 		return namespace.Delete(clientset)
 	})
@@ -778,12 +772,13 @@ func deleteSchedulerHelper(
 		return err
 	}
 	timeoutNamespace := time.NewTimer(time.Duration(timeoutSec) * time.Second)
+	defer timeoutNamespace.Stop()
+
 	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
 	exit = false
 	for !exit {
 		select {
 		case <-timeoutNamespace.C:
-			timeoutNamespace.Stop()
 			return errors.New("timeout deleting namespace")
 		default:
 			exists, existsErr := namespace.Exists(clientset)
@@ -975,13 +970,14 @@ func waitForPods(
 	mr *models.MixedMetricsReporter,
 ) error {
 	timeoutTimer := time.NewTimer(timeout)
+	defer timeoutTimer.Stop()
 	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
 		exit := true
 		select {
 		case <-timeoutTimer.C:
-			timeoutTimer.Stop()
 			return errors.New("timeout waiting for rooms to be created")
 		case <-ticker.C:
 			for i := range pods {
@@ -1020,9 +1016,6 @@ func waitForPods(
 			break
 		}
 	}
-
-	ticker.Stop()
-	timeoutTimer.Stop()
 
 	return nil
 }

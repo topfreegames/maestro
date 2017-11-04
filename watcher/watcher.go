@@ -170,7 +170,9 @@ func (w *Watcher) Start() {
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	ticker := time.NewTicker(time.Duration(w.AutoScalingPeriod) * time.Second)
+	defer ticker.Stop()
 	tickerRs := time.NewTicker(time.Duration(w.RoomsStatusesReportPeriod) * time.Second)
+	defer tickerRs.Stop()
 
 	for w.Run == true {
 		select {

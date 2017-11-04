@@ -396,12 +396,13 @@ var _ = Describe("Worker", func() {
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 			}
 
-			ticker := time.NewTicker(1 * time.Second).C
+			ticker := time.NewTicker(1 * time.Second)
+			defer ticker.Stop()
 
 		waitForUp:
 			for {
 				select {
-				case <-ticker:
+				case <-ticker.C:
 					pods, err = clientset.CoreV1().Pods(yaml.Name).List(listOptions)
 					Expect(err).NotTo(HaveOccurred())
 					if len(pods.Items) >= yaml.AutoScaling.Min+yaml.AutoScaling.Up.Delta {

@@ -197,9 +197,11 @@ func (w *Worker) Start(startHostPortRange, endHostPortRange int, showProfile boo
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	ticker := time.NewTicker(time.Duration(w.SyncPeriod) * time.Second)
+	defer ticker.Stop()
 
 	retrieveFreePortsPeriod := w.Config.GetInt("worker.retrieveFreePortsPeriod")
 	retrieveFreePortsTicker := time.NewTicker(time.Duration(retrieveFreePortsPeriod) * time.Second)
+	defer retrieveFreePortsTicker.Stop()
 
 	err := models.InitAvailablePorts(w.RedisClient.Client, startHostPortRange, endHostPortRange)
 	if err != nil {
@@ -318,6 +320,7 @@ func (w *Worker) RetrieveFreePorts(
 ) error {
 	watcherLockPrefix := w.Config.GetString("watcher.lockKey")
 	timeout := time.NewTimer(time.Duration(w.getLocksTimeout) * time.Second)
+	defer timeout.Stop()
 	sleepDurationIfError := 1 * time.Second
 
 	l := w.Logger.WithFields(logrus.Fields{
