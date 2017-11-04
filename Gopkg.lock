@@ -124,8 +124,8 @@
 [[projects]]
   name = "github.com/go-redis/redis"
   packages = [".","internal","internal/consistenthash","internal/hashtag","internal/pool","internal/proto"]
-  revision = "d371792f33b2c2e6747674b87be1f069aef21778"
-  version = "v6.3.1"
+  revision = "d0f86971b5d61de9cebd2616b932acb7ba14d957"
+  version = "v6.7.3"
 
 [[projects]]
   name = "github.com/gogo/protobuf"
@@ -320,14 +320,15 @@
   revision = "e453343e6260b4a3a89f1f0e10a2fbb07f8d9750"
 
 [[projects]]
-  branch = "master"
   name = "github.com/spf13/viper"
   packages = ["."]
-  revision = "5d46e70da8c0b6f812e0b170b7a985753b5c63cb"
+  revision = "25b30aa063fc18e48662b86996252eabdcf2f0c7"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","dogstatsd/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
+  revision = ""
   version = "v3.1.3"
 
 [[projects]]
@@ -416,6 +417,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1095e98108fc367a9f75259d0d06008e52bb49486a4ec3b28bedcbd341b0ed68"
+  inputs-digest = "4cdc0bec65130de9ac3d442f166db618f48054d1717d2e780d5cf38496d976d3"
   solver-name = "gps-cdcl"
   solver-version = 1
