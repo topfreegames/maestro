@@ -18,6 +18,7 @@ import (
 
 var config *viper.Viper
 var json bool
+var showProfile bool
 
 // ConfigFile is the configuration file used for running a command
 var ConfigFile string
@@ -54,6 +55,12 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(
 		&ConfigFile, "config", "c", "./config/local.yaml",
 		"config file",
+	)
+
+	workerCmd.Flags().BoolVar(&showProfile,
+		"show-profile",
+		false,
+		"if true creates an endpoint to show collected metrics",
 	)
 }
 

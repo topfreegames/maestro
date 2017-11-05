@@ -58,7 +58,7 @@ func NewApp(
 	port int,
 	config *viper.Viper,
 	logger logrus.FieldLogger,
-	incluster bool,
+	incluster, showProfile bool,
 	kubeconfigPath string,
 	dbOrNil pginterfaces.DB,
 	redisClientOrNil redisinterfaces.RedisClient,
@@ -73,14 +73,14 @@ func NewApp(
 		EmailDomains:   config.GetStringSlice("oauth.acceptedDomains"),
 		Forwarders:     []*eventforwarder.Info{},
 	}
-	err := a.configureApp(dbOrNil, redisClientOrNil, kubernetesClientOrNil)
+	err := a.configureApp(dbOrNil, redisClientOrNil, kubernetesClientOrNil, showProfile)
 	if err != nil {
 		return nil, err
 	}
 	return a, nil
 }
 
-func (a *App) getRouter() *mux.Router {
+func (a *App) getRouter(showProfile bool) *mux.Router {
 	r := mux.NewRouter()
 	r.Handle("/healthcheck", Chain(
 		NewHealthcheckHandler(a),
@@ -91,9 +91,11 @@ func (a *App) getRouter() *mux.Router {
 		NewVersionMiddleware(),
 	)).Methods("GET").Name("healthcheck")
 
-	r.HandleFunc("/debug/pprof/", pprof.Index)
-	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	if showProfile {
+		r.HandleFunc("/debug/pprof/", pprof.Index)
+		r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		r.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	}
 
 	r.Handle("/login", Chain(
 		NewLoginUrlHandler(a),
@@ -255,7 +257,7 @@ func (a *App) getRouter() *mux.Router {
 	return r
 }
 
-func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface) error {
+func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface, showProfile bool) error {
 	a.loadConfigurationDefaults()
 	a.configureLogger()
 
@@ -286,7 +288,7 @@ func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 
 	a.configureLogin()
 
-	a.configureServer()
+	a.configureServer(showProfile)
 
 	return nil
 }
@@ -399,8 +401,8 @@ func (a *App) configureNewRelic() error {
 	return nil
 }
 
-func (a *App) configureServer() {
-	a.Router = a.getRouter()
+func (a *App) configureServer(showProfile bool) {
+	a.Router = a.getRouter(showProfile)
 	a.Server = &http.Server{Addr: a.Address, Handler: wrapHandlerWithResponseWriter(a.Router)}
 }
 
