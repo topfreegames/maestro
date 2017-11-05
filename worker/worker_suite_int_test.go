@@ -37,9 +37,9 @@ var (
 	w              *worker.Worker
 	mockLogin      *mocks.MockLogin
 	mockCtrl       *gomock.Controller
-	token          string = "token"
-	startPortRange        = 40000
-	endPortRange          = 40099
+	token          = "token"
+	startPortRange = 40000
+	endPortRange   = 40099
 )
 
 func TestIntWorker(t *testing.T) {
@@ -67,7 +67,7 @@ var _ = BeforeSuite(func() {
 	config.Set("pingTimeout", 600)
 	config.Set("occupiedTimeout", 1)
 
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", nil, nil, clientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, clientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	user := &login.User{

@@ -38,7 +38,7 @@ var (
 	mockLogin *mocks.MockLogin
 	mockCtrl  *gomock.Controller
 	mmr       *models.MixedMetricsReporter
-	token     string = "token"
+	token     = "token"
 )
 
 func TestIntModels(t *testing.T) {
@@ -60,7 +60,7 @@ var _ = BeforeSuite(func() {
 	config, err = mTest.GetDefaultConfig()
 	Expect(err).NotTo(HaveOccurred())
 
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", nil, nil, clientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, clientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	user := &login.User{

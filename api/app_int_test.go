@@ -243,7 +243,7 @@ var _ = Describe("App", func() {
 		})
 
 		It("should return code 500 if postgres is down", func() {
-			app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", nil, nil, clientset)
+			app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = app.DB.Close()
@@ -458,8 +458,8 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
 
-			bodyJson := map[string]interface{}{"scaleup": 1}
-			bts, _ := json.Marshal(bodyJson)
+			bodyJSON := map[string]interface{}{"scaleup": 1}
+			bts, _ := json.Marshal(bodyJSON)
 			reader := strings.NewReader(string(bts))
 
 			urlScale := fmt.Sprintf("http://%s/scheduler/%s", app.Address, configYaml.Name)
@@ -503,8 +503,8 @@ var _ = Describe("App", func() {
 			tx.SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady), pods.Items[0].GetName())
 			tx.Exec()
 
-			bodyJson := map[string]interface{}{"scaledown": 1}
-			bts, _ := json.Marshal(bodyJson)
+			bodyJSON := map[string]interface{}{"scaledown": 1}
+			bts, _ := json.Marshal(bodyJSON)
 			reader := strings.NewReader(string(bts))
 
 			urlScale := fmt.Sprintf("http://%s/scheduler/%s", app.Address, configYaml.Name)

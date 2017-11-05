@@ -89,7 +89,7 @@ var _ = BeforeEach(func() {
 	lockTimeoutMS = config.GetInt("watcher.lockTimeoutMs")
 	lockKey = config.GetString("watcher.lockKey")
 
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	mockLogin = mocks.NewMockLogin(mockCtrl)

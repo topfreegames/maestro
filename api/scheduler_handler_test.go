@@ -1405,7 +1405,7 @@ game: game-name
 				config, err := mtesting.GetDefaultConfig()
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
-				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
+				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 			})
@@ -2405,7 +2405,7 @@ ports:
 			It("should set image if basicauth is not sent and tryOauthIfUnset is true", func() {
 				os.Setenv("basicauth.tryOauthIfUnset", "true")
 				config, err := GetDefaultConfig()
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 				newImageName := "new-image"
@@ -2752,7 +2752,7 @@ ports:
 			It("should set min if basicauth is not sent and tryOauthIfUnset is true", func() {
 				os.Setenv("basicauth.tryOauthIfUnset", "true")
 				config, err := GetDefaultConfig()
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockRedisClient, clientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 

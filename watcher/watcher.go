@@ -150,13 +150,13 @@ func (w *Watcher) configureAutoScale(configYaml *models.ConfigYAML) {
 	if capacity <= 0 {
 		capacity = 1
 	}
-	w.ScaleUpInfo = models.NewScaleInfo(capacity)
+	w.ScaleUpInfo = models.NewScaleUpInfo(capacity, w.RedisClient.Client)
 
 	capacity = configYaml.AutoScaling.Down.Trigger.Time / w.AutoScalingPeriod
 	if capacity <= 0 {
 		capacity = 1
 	}
-	w.ScaleDownInfo = models.NewScaleInfo(capacity)
+	w.ScaleDownInfo = models.NewScaleDownInfo(capacity, w.RedisClient.Client)
 }
 
 // Start starts the watcher
@@ -430,12 +430,16 @@ func (w *Watcher) AutoScale() {
 	}
 
 	nowTimestamp := time.Now().Unix()
-	shouldScaleUp, shouldScaleDown, changedState := w.checkState(
+	shouldScaleUp, shouldScaleDown, changedState, err := w.checkState(
 		autoScalingInfo,
 		roomCountByStatus,
 		scheduler,
 		nowTimestamp,
 	)
+	if err != nil {
+		logger.WithError(err).Error("failed to get scheduler occupancy info")
+		return
+	}
 
 	if shouldScaleUp {
 		l.Info("scheduler is subdimensioned, scaling up")
@@ -504,26 +508,33 @@ func (w *Watcher) checkState(
 	roomCount *models.RoomsStatusCount,
 	scheduler *models.Scheduler,
 	nowTimestamp int64,
-) (bool, bool, bool) { //shouldScaleUp, shouldScaleDown, changedState
+) (bool, bool, bool, error) { //shouldScaleUp, shouldScaleDown, changedState
 	var shouldScaleUp, shouldScaleDown, changedState bool
 	inSync := true
 
 	if scheduler.State == models.StateCreating || scheduler.State == models.StateTerminating {
-		return false, false, changedState
+		return false, false, changedState, nil
 	}
 	if roomCount.Total() < autoScalingInfo.Min {
-		return true, false, changedState
+		return true, false, changedState, nil
 	}
 	if autoScalingInfo.Min > 0 && 100*roomCount.Occupied >= roomCount.Total()*autoScalingInfo.Up.Trigger.Limit {
-		return true, false, changedState
+		return true, false, changedState, nil
 	}
 
 	threshold := autoScalingInfo.Up.Trigger.Threshold
 	usage := float32(autoScalingInfo.Up.Trigger.Usage) / 100
 	capacity := autoScalingInfo.Up.Trigger.Time / w.AutoScalingPeriod
 
-	w.ScaleUpInfo.AddPoint(capacity, roomCount.Occupied, roomCount.Total(), usage)
-	if w.ScaleUpInfo.IsAboveThreshold(threshold) {
+	isAboveThreshold, err := w.ScaleUpInfo.SendUsageAndReturnStatus(
+		w.SchedulerName,
+		capacity, roomCount.Occupied, roomCount.Total(),
+		threshold, usage,
+	)
+	if err != nil {
+		return false, false, false, err
+	}
+	if isAboveThreshold {
 		inSync = false
 		if scheduler.State != models.StateSubdimensioned {
 			scheduler.State = models.StateSubdimensioned
@@ -538,8 +549,15 @@ func (w *Watcher) checkState(
 	usage = float32(autoScalingInfo.Down.Trigger.Usage) / 100
 	capacity = autoScalingInfo.Down.Trigger.Time / w.AutoScalingPeriod
 
-	w.ScaleDownInfo.AddPoint(capacity, roomCount.Ready, roomCount.Total(), 1-usage)
-	if w.ScaleDownInfo.IsAboveThreshold(threshold) && roomCount.Total()-autoScalingInfo.Down.Delta >= autoScalingInfo.Min {
+	isAboveThreshold, err = w.ScaleDownInfo.SendUsageAndReturnStatus(
+		w.SchedulerName,
+		capacity, roomCount.Ready, roomCount.Total(),
+		threshold, 1-usage,
+	)
+	if err != nil {
+		return false, false, false, err
+	}
+	if isAboveThreshold && roomCount.Total()-autoScalingInfo.Down.Delta >= autoScalingInfo.Min {
 		inSync = false
 		if scheduler.State != models.StateOverdimensioned {
 			scheduler.State = models.StateOverdimensioned
@@ -550,54 +568,11 @@ func (w *Watcher) checkState(
 		}
 	}
 
-	w.printScaleInfos()
-
 	if inSync && scheduler.State != models.StateInSync {
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
 		changedState = true
 	}
 
-	return shouldScaleUp, shouldScaleDown, changedState
-}
-
-func (w *Watcher) printScaleInfos() {
-	envName := fmt.Sprintf(
-		"%s_ENABLE_INFO",
-		strings.ToUpper(
-			strings.Replace(
-				w.SchedulerName, "-", "_", -1,
-			),
-		),
-	)
-
-	if os.Getenv(envName) == "true" {
-		upPoints := ""
-		for i, point := range w.ScaleUpInfo.GetPoints() {
-			if i == w.ScaleUpInfo.GetPointer() {
-				upPoints = fmt.Sprintf("%s _%f_", upPoints, point)
-			} else {
-				upPoints = fmt.Sprintf("%s %f", upPoints, point)
-			}
-		}
-		upPoints = fmt.Sprintf("%s\n", upPoints)
-
-		downPoints := ""
-		for i, point := range w.ScaleDownInfo.GetPoints() {
-			if i == w.ScaleDownInfo.GetPointer() {
-				downPoints = fmt.Sprintf("%s _%f_", downPoints, point)
-			} else {
-				downPoints = fmt.Sprintf("%s %f", downPoints, point)
-			}
-		}
-		downPoints = fmt.Sprintf("%s\n", downPoints)
-
-		w.Logger.WithFields(logrus.Fields{
-			"operation":            "checkState",
-			"occupiedPercentages":  upPoints,
-			"pointsAboveUpUsage":   w.ScaleUpInfo.GetPointsAboveUsage(),
-			"pointsAboveDownUsage": w.ScaleDownInfo.GetPointsAboveUsage(),
-			"readyPercentages":     downPoints,
-		}).Info("points above usage")
-	}
+	return shouldScaleUp, shouldScaleDown, changedState, nil
 }
