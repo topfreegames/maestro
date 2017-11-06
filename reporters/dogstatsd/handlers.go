@@ -20,6 +20,7 @@ var handlers = map[string]interface{}{
 	constants.EventGruDelete: GruIncrHandler,
 	constants.EventGruPing:   GruIncrHandler,
 	constants.EventGruStatus: GruStatusHandler,
+	constants.EventRPCStatus: GruIncrHandler,
 }
 
 // Find looks for a matching handler to a given event
