@@ -325,10 +325,10 @@ memo = "d752dd3bbc434fb2cf1343cec7108127303b533c6396294ba46d40d986780fb8"
   revision = "8ef37cbca71638bf32f3d5e194117d4cb46da163"
 
 [[projects]]
-  branch = "master"
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","dogstatsd/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
   revision = "f984128ff45df9434d7b787d39d3f6a0b5a12770"
+  version = "v3.1.4"
 
 [[projects]]
   name = "github.com/topfreegames/protos"
