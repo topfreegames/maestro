@@ -1,7 +1,10 @@
 package eventforwarder
 
 import (
+	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/extensions/pg/interfaces"
@@ -56,8 +59,17 @@ func ForwardRoomEvent(
 	logger logrus.FieldLogger,
 ) (res *Response, err error) {
 	var eventWasForwarded bool
+	startTime := time.Now()
 	defer func() {
-		reportRPCStatus(eventWasForwarded, room.SchedulerName, db, schedulerCache, logger, err)
+		reportRPCStatus(
+			eventWasForwarded,
+			room.SchedulerName, RouteRoomEvent,
+			db,
+			schedulerCache,
+			logger,
+			err,
+			time.Now().Sub(startTime),
+		)
 	}()
 
 	l := logger.WithFields(logrus.Fields{
@@ -105,8 +117,17 @@ func ForwardRoomInfo(
 	logger logrus.FieldLogger,
 ) (res *Response, err error) {
 	var eventWasForwarded bool
+	startTime := time.Now()
 	defer func() {
-		reportRPCStatus(eventWasForwarded, schedulerName, db, schedulerCache, logger, err)
+		reportRPCStatus(
+			eventWasForwarded,
+			schedulerName, RouteRoomInfo,
+			db,
+			schedulerCache,
+			logger,
+			err,
+			time.Now().Sub(startTime),
+		)
 	}()
 
 	l := logger.WithFields(logrus.Fields{
@@ -152,8 +173,17 @@ func ForwardPlayerEvent(
 	logger logrus.FieldLogger,
 ) (resp *Response, err error) {
 	var eventWasForwarded bool
+	startTime := time.Now()
 	defer func() {
-		reportRPCStatus(eventWasForwarded, room.SchedulerName, db, schedulerCache, logger, err)
+		reportRPCStatus(
+			eventWasForwarded,
+			room.SchedulerName, RoutePlayerEvent,
+			db,
+			schedulerCache,
+			logger,
+			err,
+			time.Now().Sub(startTime),
+		)
 	}()
 
 	l := logger.WithFields(logrus.Fields{
@@ -227,11 +257,12 @@ func ForwardEventToForwarders(
 // and false otherwise
 func reportRPCStatus(
 	eventWasForwarded bool,
-	schedulerName string,
+	schedulerName, forwardRoute string,
 	db interfaces.DB,
 	cache *models.SchedulerCache,
 	logger logrus.FieldLogger,
 	eventForwarderErr error,
+	responseTime time.Duration,
 ) {
 	if !reporters.HasReporters() {
 		return
@@ -257,6 +288,8 @@ func reportRPCStatus(
 	status := map[string]string{
 		reportersConstants.TagGame:      game,
 		reportersConstants.TagScheduler: schedulerName,
+		reportersConstants.TagHostname:  Hostname(),
+		reportersConstants.TagRoute:     forwardRoute,
 		reportersConstants.TagStatus:    "success",
 	}
 
@@ -271,6 +304,27 @@ func reportRPCStatus(
 			WithField("operation", "reportRPCStatus").
 			WithError(err).
 			Error("failed to report RPC connection to StatsD")
-		return
 	}
+
+	status[reportersConstants.TagResponseTime] = responseTime.String()
+	reporterErr = reporters.Report(reportersConstants.EventRPCDuration, status)
+	if reporterErr != nil {
+		logger.
+			WithField("operation", "reportRPCDuration").
+			WithError(err).
+			Error("failed to report RPC connection to StatsD")
+	}
+}
+
+//Hostname returns the host name.
+//If running on Kubernetes, returns the pod name.
+func Hostname() string {
+	hostname, _ := os.Hostname()
+	return hostname
+}
+
+func toSecondsString(secs time.Duration) string {
+	return fmt.Sprint(
+		secs.Seconds(),
+	)
 }

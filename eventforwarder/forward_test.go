@@ -31,8 +31,12 @@ var _ = Describe("Forward", func() {
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
+				reportersConstants.TagHostname:  Hostname(),
+				reportersConstants.TagRoute:     RouteRoomEvent,
 				reportersConstants.TagStatus:    "success",
 			})
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			response, err := ForwardRoomEvent(
 				mockForwarders,
@@ -67,9 +71,13 @@ var _ = Describe("Forward", func() {
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
+				reportersConstants.TagHostname:  Hostname(),
+				reportersConstants.TagRoute:     RouteRoomEvent,
 				reportersConstants.TagStatus:    "failed",
 				reportersConstants.TagReason:    errMsg,
 			})
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			response, err := ForwardRoomEvent(
 				mockForwarders,
@@ -160,8 +168,12 @@ game: game
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
+				reportersConstants.TagHostname:  Hostname(),
+				reportersConstants.TagRoute:     RoutePlayerEvent,
 				reportersConstants.TagStatus:    "success",
 			})
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			response, err := ForwardPlayerEvent(
 				mockForwarders,
@@ -193,9 +205,13 @@ game: game
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
+				reportersConstants.TagHostname:  Hostname(),
+				reportersConstants.TagRoute:     RoutePlayerEvent,
 				reportersConstants.TagStatus:    "failed",
 				reportersConstants.TagReason:    errMsg,
 			})
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			_, err := ForwardPlayerEvent(
 				mockForwarders,
@@ -225,8 +241,12 @@ game: game
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
+				reportersConstants.TagHostname:  Hostname(),
+				reportersConstants.TagRoute:     RouteRoomInfo,
 				reportersConstants.TagStatus:    "success",
 			})
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			response, err := ForwardRoomInfo(
 				mockForwarders,
@@ -251,9 +271,13 @@ game: game
 				metadata,
 			).Return(int32(0), "", errors.New(errMsg))
 
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
+
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
+				reportersConstants.TagHostname:  Hostname(),
+				reportersConstants.TagRoute:     RouteRoomInfo,
 				reportersConstants.TagStatus:    "failed",
 				reportersConstants.TagReason:    errMsg,
 			})

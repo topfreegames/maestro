@@ -8,6 +8,7 @@
 package reporters_test
 
 import (
+	"github.com/golang/mock/gomock"
 	"github.com/topfreegames/extensions/dogstatsd/mocks"
 	"github.com/topfreegames/maestro/reporters"
 	handlers "github.com/topfreegames/maestro/reporters/dogstatsd"
@@ -19,13 +20,13 @@ import (
 var _ = Describe("DogStatsD", func() {
 	var (
 		r    *reporters.Reporters
-		c    *mocks.ClientMock
+		c    *mocks.MockClient
 		opts map[string]string
 	)
 
 	BeforeEach(func() {
 		r = reporters.NewReporters()
-		c = mocks.NewClientMock()
+		c = mocks.NewMockClient(mockCtrl)
 		opts = map[string]string{"game": "pong"}
 	})
 
@@ -39,34 +40,36 @@ var _ = Describe("DogStatsD", func() {
 	})
 
 	It("GruIncrHandler should Incr event metric by 1", func() {
-		Expect(c.Counts["gru.new"]).To(Equal(int64(0)))
+		c.EXPECT().Incr("gru.new", []string{"game:pong"}, float64(1))
+
 		handlers.GruIncrHandler(c, "gru.new", opts)
-		Expect(c.Counts["gru.new"]).To(Equal(int64(1)))
 	})
 
 	It("GruStatusHandler should send Gauge of given status", func() {
-		Expect(c.Gauges["gru.terminating"]).To(Equal(float64(0)))
+		var emptyArr []string
+		c.EXPECT().Gauge("gru.terminating", float64(42), emptyArr, float64(1))
+
 		opts["status"] = "terminating"
 		opts["gauge"] = "42"
 		handlers.GruStatusHandler(c, "gru.status", opts)
-		Expect(c.Gauges["gru.terminating"]).To(Equal(float64(42)))
 	})
 
 	It("Report(gru.new, opts) should Incr gru.new", func() {
+		c.EXPECT().Incr("gru.new", gomock.Any(), float64(1))
+
 		d := reporters.NewDogStatsDFromClient(c, "test")
-		Expect(c.Counts["gru.new"]).To(Equal(int64(0)))
 		err := d.Report("gru.new", opts)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(c.Counts["gru.new"]).To(Equal(int64(1)))
 	})
 
 	It("Report(gru.status, opts) should send Gauge of given status", func() {
+		c.EXPECT().Gauge("gru.creating", float64(5),
+			[]string{"maestro-region:test"}, float64(1))
+
 		d := reporters.NewDogStatsDFromClient(c, "test")
-		Expect(c.Gauges["gru.creating"]).To(Equal(float64(0)))
 		opts["status"] = "creating"
 		opts["gauge"] = "5"
 		err := d.Report("gru.status", opts)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(c.Gauges["gru.creating"]).To(Equal(float64(5)))
 	})
 })

@@ -7,7 +7,8 @@ const (
 	EventGruDelete = "gru.delete"
 	EventGruStatus = "gru.status"
 
-	EventRPCStatus = "rpc.status"
+	EventRPCStatus   = "rpc.status"
+	EventRPCDuration = "rpc.duration"
 )
 
 //Reason{...} represents reasons for a pod/gru being deleted
@@ -22,9 +23,12 @@ const (
 
 //Tag{...} represents datadog tags
 const (
-	TagGame      = "maestro-game"
-	TagScheduler = "maestro-scheduler"
-	TagRegion    = "maestro-region"
-	TagReason    = "maestro-reason"
-	TagStatus    = "maestro-status"
+	TagGame         = "maestro-game"
+	TagScheduler    = "maestro-scheduler"
+	TagRegion       = "maestro-region"
+	TagReason       = "maestro-reason"
+	TagStatus       = "maestro-status"
+	TagHostname     = "maestro-hostname"
+	TagRoute        = "maestro-route"
+	TagResponseTime = "maestro-response-time"
 )

@@ -10,17 +10,19 @@ package dogstatsd
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/topfreegames/extensions/dogstatsd"
 	"github.com/topfreegames/maestro/reporters/constants"
 )
 
 var handlers = map[string]interface{}{
-	constants.EventGruNew:    GruIncrHandler,
-	constants.EventGruDelete: GruIncrHandler,
-	constants.EventGruPing:   GruIncrHandler,
-	constants.EventGruStatus: GruStatusHandler,
-	constants.EventRPCStatus: GruIncrHandler,
+	constants.EventGruNew:      GruIncrHandler,
+	constants.EventGruDelete:   GruIncrHandler,
+	constants.EventGruPing:     GruIncrHandler,
+	constants.EventGruStatus:   GruStatusHandler,
+	constants.EventRPCStatus:   GruIncrHandler,
+	constants.EventRPCDuration: GruTimingHandler,
 }
 
 // Find looks for a matching handler to a given event
@@ -65,5 +67,17 @@ func GruStatusHandler(c dogstatsd.Client, event string,
 		return err
 	}
 	c.Gauge(fmt.Sprintf("gru.%s", opts["status"]), gauge, tags, 1)
+	return nil
+}
+
+// GruTimingHandler calls dogstatsd.Client.Timing with tags formatted as key:value
+func GruTimingHandler(c dogstatsd.Client, event string,
+	opts map[string]string) error {
+	tags := createAllowedTags(opts, []string{
+		constants.TagGame, constants.TagScheduler, constants.TagRegion,
+		constants.TagHostname, constants.TagRoute, constants.TagStatus,
+	})
+	duration, _ := time.ParseDuration(opts[constants.TagResponseTime])
+	c.Timing(constants.EventRPCDuration, duration, tags, 1)
 	return nil
 }
