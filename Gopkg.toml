@@ -14,7 +14,7 @@
 
 ## Dependencies define constraints on dependent projects. They are respected by
 ## dep whether coming from the Gopkg.toml of the current project or a dependency.
-# [[dependencies]]
+# [[constraint]]
 ## Required: the root import path of the project being constrained.
 # name = "github.com/user/project"
 #
@@ -27,8 +27,8 @@
 ## Optional: an alternate location (URL or import path) for the project's source.
 # source = "https://github.com/myfork/package.git"
 
-## Overrides have the same structure as [[dependencies]], but supercede all
-## [[dependencies]] declarations from all projects. Only the current project's
+## Overrides have the same structure as [[constraint]], but supercede all
+## [[constraint]] declarations from all projects. Only the current project's
 ## [[overrides]] are applied.
 ##
 ## Overrides are a sledgehammer. Use them only as a last resort.
@@ -49,42 +49,14 @@
 ## what source location any dependent projects specify.
 # source = "https://github.com/myfork/package.git"
 
-[[dependencies]]
-  branch = "master"
-  name = "github.com/lib/pq"
+[[constraint]]
+  name = "k8s.io/client-go"
+  version = "=3.0.0-beta.0"
 
-[[dependencies]]
-  branch = "master"
-  name = "github.com/onsi/ginkgo"
-
-[[dependencies]]
-  branch = "master"
-  name = "github.com/onsi/gomega"
-
-[[dependencies]]
-  branch = "master"
-  name = "github.com/spf13/cobra"
-
-[[dependencies]]
-  branch = "master"
-  name = "github.com/spf13/viper"
-
-[[dependencies]]
-  branch = "v2"
-  name = "gopkg.in/yaml.v2"
-
-[[dependencies]]
+[[override]]
   name = "k8s.io/apimachinery"
   revision = "75b8dd260ef0469d96d578705a87cffd0e09dab8"
 
-[[dependencies]]
-  name = "k8s.io/client-go"
-  version = "v3.0.0-beta.0"
-
-[[dependencies]]
-  version = "=v3.1.4"
+[[constraint]]
   name = "github.com/topfreegames/extensions"
-
-[[dependencies]]
-  name = "github.com/go-redis/redis"
-  version = "v6.3.1"
+  version = "=v3.1.4"
