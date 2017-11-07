@@ -1,4 +1,4 @@
-memo = "c00bb6201ad56173a9bda563ffd9b624317357ca480abf695072bb3857d5ca78"
+memo = "d752dd3bbc434fb2cf1343cec7108127303b533c6396294ba46d40d986780fb8"
 
 [[projects]]
   name = "cloud.google.com/go"
@@ -327,6 +327,7 @@ memo = "c00bb6201ad56173a9bda563ffd9b624317357ca480abf695072bb3857d5ca78"
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","dogstatsd/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
+  revision = "f984128ff45df9434d7b787d39d3f6a0b5a12770"
   version = "v3.1.4"
 
 [[projects]]
