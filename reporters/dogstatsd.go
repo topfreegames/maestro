@@ -20,6 +20,7 @@ import (
 // DogStatsD reports metrics to a dogstatsd.Client
 type DogStatsD struct {
 	client dogstatsd.Client
+	logger *logrus.Logger
 	region string
 }
 
@@ -34,7 +35,13 @@ func (d *DogStatsD) Report(event string, opts map[string]string) error {
 	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
 
 	opts[constants.TagRegion] = d.region
-	return handler(d.client, event, opts)
+
+	err := handler(d.client, event, opts)
+	if err != nil {
+		d.logger.Error(err)
+	}
+
+	return err
 }
 
 // MakeDogStatsD adds a DogStatsD struct to the Reporters' singleton
