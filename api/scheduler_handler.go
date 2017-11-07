@@ -608,7 +608,7 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	lockKey := fmt.Sprintf("%s-%s", g.App.Config.GetString("watcher.lockKey"), params.SchedulerName)
 	err = mr.WithSegment(models.SegmentController, func() error {
 		return controller.UpdateSchedulerImage(
-			l,
+			logger,
 			mr,
 			g.App.DB,
 			redisClient,
@@ -681,7 +681,7 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	err = mr.WithSegment(models.SegmentController, func() error {
 		return controller.UpdateSchedulerMin(
-			l,
+			logger,
 			mr,
 			g.App.DB,
 			redisClient,

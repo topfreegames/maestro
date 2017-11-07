@@ -559,7 +559,7 @@ waitForLock:
 		}
 
 		totalPodsToDelete := len(kubePods.Items)
-		logger.WithField("numberOfRooms", totalPodsToDelete).Info("recreating rooms")
+		l.WithField("numberOfRooms", totalPodsToDelete).Info("recreating rooms")
 
 		totalPodsToCreate := totalPodsToDelete
 		if totalPodsToCreate < configYAML.AutoScaling.Min {
@@ -581,7 +581,7 @@ waitForLock:
 			time.Sleep(10 * time.Nanosecond)
 			podsToDelete := kubePods.Items[startDelete:endDelete]
 
-			logger.WithField("numberOfRooms", endDelete-startDelete).Info("deleting old rooms")
+			l.WithField("numberOfRooms", endDelete-startDelete).Info("deleting old rooms")
 			for _, pod := range podsToDelete {
 				select {
 				case <-timeout.C:
@@ -589,16 +589,16 @@ waitForLock:
 					msg := "error when deleting old rooms. Maestro will scale up, if necessary, with previous room configuration"
 					return maestroErrors.NewKubernetesError(msg, err)
 				default:
-					err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, pod.GetName(), reportersConstants.ReasonUpdate)
+					err := deletePod(l, mr, clientset, redisClient.Client, schedulerName, gameName, pod.GetName(), reportersConstants.ReasonUpdate)
 					if err != nil {
-						logger.WithField("roomName", pod.GetName()).WithError(err).Error("error deleting room")
+						l.WithField("roomName", pod.GetName()).WithError(err).Error("error deleting room")
 						time.Sleep(1 * time.Second)
 					} else {
 						room := models.NewRoom(pod.GetName(), schedulerName)
 						err := room.ClearAll(redisClient.Client)
 						if err != nil {
 							//TODO: try again so Redis doesn't hold trash data
-							logger.WithField("roomName", pod.GetName()).WithError(err).Error("error removing room info from redis")
+							l.WithField("roomName", pod.GetName()).WithError(err).Error("error removing room info from redis")
 						}
 					}
 				}
@@ -616,9 +616,9 @@ waitForLock:
 				select {
 				case <-timeout.C:
 					for _, podToDelete := range newPods {
-						err := deletePod(logger, mr, clientset, redisClient.Client, schedulerName, gameName, podToDelete.GetName(), reportersConstants.ReasonUpdateError)
+						err := deletePod(l, mr, clientset, redisClient.Client, schedulerName, gameName, podToDelete.GetName(), reportersConstants.ReasonUpdateError)
 						if err != nil {
-							logger.
+							l.
 								WithField("roomName", podToDelete.GetName()).
 								WithError(err).
 								Error("update scheduler timed out and room deletion failed")
@@ -627,7 +627,7 @@ waitForLock:
 						err = room.ClearAll(redisClient.Client)
 						if err != nil {
 							//TODO: try again so Redis doesn't hold trash data
-							logger.WithField("roomName", podToDelete).WithError(err).Error("error removing room info from redis")
+							l.WithField("roomName", podToDelete).WithError(err).Error("error removing room info from redis")
 						}
 					}
 					err = errors.New("timeout during new room creation")
@@ -639,17 +639,18 @@ waitForLock:
 				case <-ticker.C:
 					for i := startCreate; i < endCreate; i++ {
 						var podExists bool
+						var getPodErr error
 						if i < len(podsToDelete) {
 							podToDelete := podsToDelete[i]
-							podExists, err = models.PodExists(podToDelete.GetName(), podToDelete.GetNamespace(), clientset)
+							podExists, getPodErr = models.PodExists(podToDelete.GetName(), podToDelete.GetNamespace(), clientset)
 							if err != nil {
-								logger.WithError(err).Errorf("error getting pod %s", podToDelete.GetName())
+								l.WithError(err).Errorf("error getting pod %s", podToDelete.GetName())
 							}
 						}
-						if i >= len(podsToDelete) || !podExists {
+						if getPodErr != nil && (i >= len(podsToDelete) || !podExists) {
 							pod, err := createPod(l, mr, redisClient.Client, db, clientset, configYAML, schedulerName)
 							if err != nil {
-								logger.WithError(err).Error("error when creating pod")
+								l.WithError(err).Error("error when creating pod")
 								continue
 							}
 							newPods = append(newPods, pod)
@@ -673,14 +674,14 @@ waitForLock:
 				mr,
 			)
 			if err != nil {
-				logger.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
+				l.WithError(err).Error("error when updating scheduler and waiting for new pods to run")
 				for _, podToDelete := range newPods {
 					deletePod(l, mr, clientset, redisClient.Client, configYAML.Name, configYAML.Game, podToDelete.GetName(), reportersConstants.ReasonUpdateError)
 					room := models.NewRoom(podToDelete.GetName(), schedulerName)
 					err := room.ClearAll(redisClient.Client)
 					if err != nil {
 						//TODO: try again so Redis doesn't hold trash data
-						logger.WithField("roomName", podToDelete).WithError(err).Error("error removing room info from redis")
+						l.WithField("roomName", podToDelete).WithError(err).Error("error removing room info from redis")
 					}
 				}
 				return err
