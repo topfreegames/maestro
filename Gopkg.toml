@@ -82,8 +82,8 @@
   version = "v3.0.0-beta.0"
 
 [[dependencies]]
+  branch = "master"
   name = "github.com/topfreegames/extensions"
-  version = "v3.1.4"
 
 [[dependencies]]
   name = "github.com/go-redis/redis"
