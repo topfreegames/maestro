@@ -82,7 +82,7 @@
   version = "v3.0.0-beta.0"
 
 [[dependencies]]
-  branch = "master"
+  version = "v3.1.4"
   name = "github.com/topfreegames/extensions"
 
 [[dependencies]]
