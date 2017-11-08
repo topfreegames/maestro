@@ -31,6 +31,8 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: {{.Name}}
+  annotations:
+    cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
 spec:
   terminationGracePeriodSeconds: {{.ShutdownTimeout}}
 {{- if .NodeToleration }}
@@ -157,10 +159,12 @@ func NewPod(
 	return pod, err
 }
 
+//SetAffinity sets kubernetes Affinity on pod
 func (p *Pod) SetAffinity(affinity string) {
 	p.NodeAffinity = affinity
 }
 
+//SetToleration sets kubernetes Toleration on pod
 func (p *Pod) SetToleration(toleration string) {
 	p.NodeToleration = toleration
 }

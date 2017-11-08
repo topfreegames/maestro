@@ -217,6 +217,8 @@ var _ = Describe("Pod", func() {
 			}
 			Expect(podv1.Spec.Containers[0].Command).To(HaveLen(3))
 			Expect(podv1.Spec.Containers[0].Command).To(Equal(command))
+
+			Expect(podv1.GetAnnotations()).To(HaveKeyWithValue("cluster-autoscaler.kubernetes.io/safe-to-evict", "true"))
 		})
 
 		It("should create pod without requests and limits", func() {
