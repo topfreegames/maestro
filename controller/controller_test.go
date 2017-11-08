@@ -535,10 +535,10 @@ cmd:
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yaml1
 			})
-			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
-			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
-			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
-			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			creating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			ready := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			occupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			terminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
 			expC := &models.RoomsStatusCount{
 				Creating:    4,
 				Occupied:    3,
@@ -546,10 +546,10 @@ cmd:
 				Terminating: 1,
 			}
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
-			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
-			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
-			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
 			scheduler, autoScalingPolicy, countByStatus, err := controller.GetSchedulerScalingInfo(logger, mr, mockDb, mockRedisClient, configYaml1.Name)
@@ -3831,10 +3831,10 @@ cmd:
 		})
 
 		It("should scale up if doesn't have enough ready rooms", func() {
-			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
-			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
-			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
-			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			creating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			ready := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			occupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			terminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
 			status := "occupied"
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -3856,10 +3856,10 @@ cmd:
 				Ready:       0,
 				Terminating: 0,
 			}
-			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
-			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
-			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
-			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
 			mockDb.EXPECT().
@@ -3902,10 +3902,10 @@ cmd:
 		})
 
 		It("should not scale up if has enough ready rooms", func() {
-			kCreating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
-			kReady := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
-			kOccupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
-			kTerminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			creating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
+			ready := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
+			occupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
+			terminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
 			status := "occupied"
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -3927,10 +3927,10 @@ cmd:
 				Ready:       3,
 				Terminating: 0,
 			}
-			mockPipeline.EXPECT().SCard(kCreating).Return(redis.NewIntResult(int64(expC.Creating), nil))
-			mockPipeline.EXPECT().SCard(kReady).Return(redis.NewIntResult(int64(expC.Ready), nil))
-			mockPipeline.EXPECT().SCard(kOccupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
-			mockPipeline.EXPECT().SCard(kTerminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
 			mockDb.EXPECT().

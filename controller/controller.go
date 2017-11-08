@@ -647,7 +647,7 @@ waitForLock:
 								l.WithError(err).Errorf("error getting pod %s", podToDelete.GetName())
 							}
 						}
-						if getPodErr != nil && (i >= len(podsToDelete) || !podExists) {
+						if getPodErr == nil && (i >= len(podsToDelete) || !podExists) {
 							pod, err := createPod(l, mr, redisClient.Client, db, clientset, configYAML, schedulerName)
 							if err != nil {
 								l.WithError(err).Error("error when creating pod")
