@@ -24,14 +24,14 @@ watcher:
 worker:
   syncPeriod: 30
   gracefulShutdownTimeout: 300
-  retrieveFreePortsPeriod: 3600
+  retrieveFreePortsPeriod: 86400
   getLocksTimeout: 300
-scaleUpTimeoutSeconds: 300
+scaleUpTimeoutSeconds: 600
 scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 600
 pingTimeout: 60
 occupiedTimeout: 180
-updateTimeoutSeconds: 300
+updateTimeoutSeconds: 600
 sentry:
   url: ""
 newrelic:

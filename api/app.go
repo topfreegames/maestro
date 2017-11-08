@@ -294,7 +294,7 @@ func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 }
 
 func (a *App) loadConfigurationDefaults() {
-	a.Config.SetDefault("scaleUpTimeoutSeconds", 300)
+	a.Config.SetDefault("scaleUpTimeoutSeconds", 600)
 	a.Config.SetDefault("scaleDownTimeoutSeconds", 300)
 	a.Config.SetDefault("deleteTimeoutSeconds", 150)
 	a.Config.SetDefault("deleteTimeoutSeconds", 150)
