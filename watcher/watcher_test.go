@@ -167,6 +167,51 @@ env:
 cmd:
   - "./room"
 `
+	yamlWithDownDelta5 = `
+name: controller-name
+game: controller
+image: controller/controller:v123
+occupiedTimeout: 300
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+      threshold: 80
+    cooldown: 200
+  down:
+    delta: 5
+    trigger:
+      usage: 30
+      time: 500
+      threshold: 80
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+forwarders:
+  plugin:
+    name:
+      enabled: true
+`
 	occupiedTimeout = 300
 )
 
@@ -1346,7 +1391,6 @@ var _ = Describe("Watcher", func() {
 			}).Return(pg.NewTestResult(nil, 0), nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			fmt.Sprintf("%v \n", hook.Entries)
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
 		})
 	})

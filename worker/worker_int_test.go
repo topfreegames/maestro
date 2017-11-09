@@ -439,13 +439,113 @@ var _ = Describe("Worker", func() {
 
 			Eventually(func() int {
 				pipe := app.RedisClient.TxPipeline()
-				cmd := pipe.Keys("scheduler:*:rooms:*")
+				cmd := pipe.Keys(fmt.Sprintf("scheduler:%s:rooms:*", yaml.Name))
 				_, err := pipe.Exec()
 				Expect(err).NotTo(HaveOccurred())
 				keys, err := cmd.Result()
 				Expect(err).NotTo(HaveOccurred())
 				return len(keys)
 			}, 120*time.Second, 1*time.Second).Should(Equal(newRoomNumber))
+
+			totalPorts := endPortRange - startPortRange + 1
+			takenPorts := yaml.AutoScaling.Min * len(yaml.Ports)
+			Eventually(func() (int, error) {
+				cmd := app.RedisClient.Eval(`return redis.call("SCARD", KEYS[1])`, []string{models.FreePortsRedisKey()})
+				amountInterface, err := cmd.Result()
+				var amount int64 = 0
+				if amountInterface != nil {
+					amount, _ = amountInterface.(int64)
+				}
+				return int(amount), err
+			}, 120*time.Second, 1*time.Second).
+				Should(BeNumerically("<=", totalPorts-takenPorts))
+		})
+
+		It("should scale down to min if total - delta < min", func() {
+			var err error
+			jsonStr, err = mt.NextJsonStr(5)
+			Expect(err).NotTo(HaveOccurred())
+			recorder = httptest.NewRecorder()
+
+			url = fmt.Sprintf("http://%s/scheduler", app.Address)
+			request, err := http.NewRequest("POST", url, strings.NewReader(jsonStr))
+			request.Header.Add("Authorization", "Bearer token")
+			Expect(err).NotTo(HaveOccurred())
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			Expect(recorder.Code).To(Equal(http.StatusCreated))
+
+			yaml, err = models.NewConfigYAML(jsonStr)
+			Expect(err).NotTo(HaveOccurred())
+
+			defer func() {
+				clientset.CoreV1().Namespaces().Delete(yaml.Name, &metav1.DeleteOptions{})
+			}()
+
+			pods, err := clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, pod := range pods.Items {
+				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, pod.GetNamespace(), pod.GetName())
+				request, err := http.NewRequest("PUT", url, mt.JSONFor(mt.JSON{
+					"timestamp": 1000,
+					"status":    models.StatusOccupied,
+				}))
+				Expect(err).NotTo(HaveOccurred())
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			}
+
+			ticker := time.NewTicker(1 * time.Second)
+			defer ticker.Stop()
+
+		waitForUp:
+			for {
+				select {
+				case <-ticker.C:
+					pods, err = clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+					Expect(err).NotTo(HaveOccurred())
+					if len(pods.Items) >= yaml.AutoScaling.Min+yaml.AutoScaling.Up.Delta {
+						break waitForUp
+					}
+				}
+			}
+
+			for _, pod := range pods.Items {
+				url = fmt.Sprintf("http://%s/scheduler/%s/rooms/%s/status", app.Address, pod.GetNamespace(), pod.GetName())
+				request, err := http.NewRequest("PUT", url, mt.JSONFor(mt.JSON{
+					"timestamp": 1000,
+					"status":    models.StatusReady,
+				}))
+				Expect(err).NotTo(HaveOccurred())
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+			}
+
+			time.Sleep(time.Duration(yaml.AutoScaling.Up.Cooldown) * time.Second)
+
+			Eventually(func() int {
+				pods, _ = clientset.CoreV1().Pods(yaml.Name).List(listOptions)
+				return len(pods.Items)
+			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.AutoScaling.Min))
+
+			Eventually(func() int {
+				pipe := app.RedisClient.TxPipeline()
+				key := fmt.Sprintf("scheduler:%s:rooms:*", yaml.Name)
+				cmd := pipe.Keys(key)
+				_, err := pipe.Exec()
+				Expect(err).NotTo(HaveOccurred())
+				keys, err := cmd.Result()
+				Expect(err).NotTo(HaveOccurred())
+				return len(keys)
+			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.AutoScaling.Min))
 
 			totalPorts := endPortRange - startPortRange + 1
 			takenPorts := yaml.AutoScaling.Min * len(yaml.Ports)

@@ -27,6 +27,11 @@ func (c *RoomsStatusCount) Total() int {
 	return c.Creating + c.Occupied + c.Ready + c.Terminating
 }
 
+// Available returns the total number of rooms excluding terminating rooms
+func (c *RoomsStatusCount) Available() int {
+	return c.Creating + c.Occupied + c.Ready + c.Terminating
+}
+
 // GetRoomStatusSetRedisKey gets the key for the set that will keep rooms in a determined state in redis
 func GetRoomStatusSetRedisKey(schedulerName, status string) string {
 	return fmt.Sprintf("scheduler:%s:status:%s", schedulerName, status)

@@ -25,6 +25,7 @@ import (
 
 const minikubeHostFileName string = "MAESTRO_MINIKUBE_HOST"
 
+// MinikubeConfig gets the config file from your home
 func MinikubeConfig() (*rest.Config, error) {
 	var err error
 	usr, err := user.Current()
@@ -59,7 +60,8 @@ func MinikubeConfig() (*rest.Config, error) {
 	return config, nil
 }
 
-func NextJsonStr() (string, error) {
+//NextJsonStr returns a new scheduler with name equals to a UUID
+func NextJsonStr(params ...interface{}) (string, error) {
 	jsonTempl := `
 {
   "name": "{{.Name}}",
@@ -96,7 +98,7 @@ func NextJsonStr() (string, error) {
       "cooldown": 1
     },
     "down": {
-      "delta": 1,
+      "delta": {{.DownDelta}},
       "trigger": {
         "usage": 50,
         "time": 3,
@@ -109,7 +111,8 @@ func NextJsonStr() (string, error) {
 
 	var jsonStr string
 	index := struct {
-		Name string
+		Name      string
+		DownDelta int
 	}{}
 
 	tmpl, err := template.New("json").Parse(jsonTempl)
@@ -118,6 +121,12 @@ func NextJsonStr() (string, error) {
 	}
 
 	index.Name = fmt.Sprintf("maestro-test-%s", uuid.NewV4())
+
+	if len(params) == 0 {
+		index.DownDelta = 1
+	} else {
+		index.DownDelta = params[0].(int)
+	}
 
 	buf := new(bytes.Buffer)
 	err = tmpl.Execute(buf, index)

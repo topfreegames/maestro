@@ -446,7 +446,7 @@ func (w *Watcher) AutoScale() {
 		timeoutSec := w.Config.GetInt("scaleUpTimeoutSeconds")
 
 		delta := autoScalingInfo.Up.Delta
-		currentRooms := roomCountByStatus.Creating + roomCountByStatus.Occupied + roomCountByStatus.Ready
+		currentRooms := roomCountByStatus.Available()
 		if currentRooms+delta < autoScalingInfo.Min {
 			delta = autoScalingInfo.Min - currentRooms
 		}
@@ -473,7 +473,7 @@ func (w *Watcher) AutoScale() {
 		timeoutSec := w.Config.GetInt("scaleDownTimeoutSeconds")
 
 		delta := autoScalingInfo.Down.Delta
-		currentRooms := roomCountByStatus.Creating + roomCountByStatus.Occupied + roomCountByStatus.Ready
+		currentRooms := roomCountByStatus.Available()
 		if currentRooms-delta < autoScalingInfo.Min {
 			delta = currentRooms - autoScalingInfo.Min
 		}
@@ -566,7 +566,7 @@ func (w *Watcher) checkState(
 	}
 	// If total>min, should scale down. But if total-scaleDownDelta < min, scaleDownDelta must be
 	// equal to total-min
-	if isAboveThreshold && roomCount.Total()-autoScalingInfo.Down.Delta >= autoScalingInfo.Min {
+	if isAboveThreshold && roomCount.Available() > autoScalingInfo.Min {
 		inSync = false
 		if scheduler.State != models.StateOverdimensioned {
 			scheduler.State = models.StateOverdimensioned
