@@ -471,6 +471,13 @@ func (w *Watcher) AutoScale() {
 	} else if shouldScaleDown {
 		l.Info("scheduler is overdimensioned, should scale down")
 		timeoutSec := w.Config.GetInt("scaleDownTimeoutSeconds")
+
+		delta := autoScalingInfo.Down.Delta
+		currentRooms := roomCountByStatus.Creating + roomCountByStatus.Occupied + roomCountByStatus.Ready
+		if currentRooms-delta < autoScalingInfo.Min {
+			delta = currentRooms - autoScalingInfo.Min
+		}
+
 		err = controller.ScaleDown(
 			logger,
 			w.MetricsReporter,
@@ -478,7 +485,7 @@ func (w *Watcher) AutoScale() {
 			w.RedisClient.Client,
 			w.KubernetesClient,
 			scheduler,
-			autoScalingInfo.Down.Delta,
+			delta,
 			timeoutSec,
 		)
 		scheduler.State = models.StateInSync
@@ -557,6 +564,8 @@ func (w *Watcher) checkState(
 	if err != nil {
 		return false, false, false, err
 	}
+	// If total>min, should scale down. But if total-scaleDownDelta < min, scaleDownDelta must be
+	// equal to total-min
 	if isAboveThreshold && roomCount.Total()-autoScalingInfo.Down.Delta >= autoScalingInfo.Min {
 		inSync = false
 		if scheduler.State != models.StateOverdimensioned {
