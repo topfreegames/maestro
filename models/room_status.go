@@ -54,19 +54,19 @@ func GetRoomsCountByStatus(redisClient interfaces.RedisClient, schedulerName str
 func GetRoomsCountByStatusForSchedulers(
 	redisClient interfaces.RedisClient,
 	schedulersNames []string,
-) ([]RoomsStatusCount, error) {
+) (map[string]RoomsStatusCount, error) {
 	pipe := redisClient.TxPipeline()
-	results := make([]map[string]*redis.IntCmd, len(schedulersNames))
-	for i, name := range schedulersNames {
-		results[i] = GetRoomsCountByStatusWithPipe(name, pipe)
+	results := map[string]map[string]*redis.IntCmd{}
+	for _, name := range schedulersNames {
+		results[name] = GetRoomsCountByStatusWithPipe(name, pipe)
 	}
 	_, err := pipe.Exec()
 	if err != nil {
 		return nil, err
 	}
-	convertedResults := make([]RoomsStatusCount, len(results))
-	for i, r := range results {
-		convertedResults[i] = *RedisResultToRoomsCount(r)
+	convertedResults := map[string]RoomsStatusCount{}
+	for k, v := range results {
+		convertedResults[k] = *RedisResultToRoomsCount(v)
 	}
 	return convertedResults, nil
 }

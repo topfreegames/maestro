@@ -422,10 +422,8 @@ var _ = Describe("Watcher", func() {
 			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, configYaml1.Game, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 
-			r := reporters.GetInstance()
 			mockCtrl = gomock.NewController(GinkgoT())
 			mockReporter := reportersMocks.NewMockReporter(mockCtrl)
-			r.SetReporter("mockReporter", mockReporter)
 
 			Creating := models.GetRoomStatusSetRedisKey(w.SchedulerName, models.StatusCreating)
 			Ready := models.GetRoomStatusSetRedisKey(w.SchedulerName, models.StatusReady)
@@ -474,9 +472,19 @@ var _ = Describe("Watcher", func() {
 					"gauge":                         "5",
 				},
 			)
+			mockReporter.EXPECT().Report(
+				reportersConstants.EventGruStatus,
+				map[string]string{
+					reportersConstants.TagGame:      w.GameName,
+					reportersConstants.TagScheduler: w.SchedulerName,
+					"status":                        models.StatusReadyOrOccupied,
+					"gauge":                         "3",
+				},
+			)
 
+			r := reporters.GetInstance()
+			r.SetReporter("mockReporter", mockReporter)
 			w.ReportRoomsStatuses()
-
 			r.UnsetReporter("mockReporter")
 		})
 	})

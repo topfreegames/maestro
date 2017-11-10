@@ -234,6 +234,10 @@ func (w *Watcher) ReportRoomsStatuses() error {
 			models.StatusTerminating,
 			fmt.Sprint(roomCountByStatus.Terminating),
 		},
+		RoomData{
+			models.StatusReadyOrOccupied,
+			fmt.Sprint(roomCountByStatus.Ready + roomCountByStatus.Occupied),
+		},
 	}
 
 	for _, r := range roomDataSlice {

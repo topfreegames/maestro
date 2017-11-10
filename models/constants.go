@@ -85,6 +85,9 @@ const StatusReady = "ready"
 //StatusOccupied represents a room status
 const StatusOccupied = "occupied"
 
+//StatusReadyOrOccupied represents an aggregate of room status
+const StatusReadyOrOccupied = "ready-or-occupied"
+
 //StatusTerminating represents a room status
 const StatusTerminating = "terminating"
 
