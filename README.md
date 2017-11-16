@@ -122,6 +122,8 @@ forwarders:                # optional field: if set events will be forwarded for
         numberOfTeams: 1
         playersPerTeam: 6
         roomType: "10"
+        tags:
+          score: score
 ```
 
 A JSON file equivalent to the yaml above can also be used.

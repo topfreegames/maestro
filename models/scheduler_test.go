@@ -75,6 +75,8 @@ forwarders:
         playersPerTeam: 6
         metadata:
           nested: object
+        tags:
+          score: score
 `
 )
 

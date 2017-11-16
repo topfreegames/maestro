@@ -334,8 +334,8 @@
 [[projects]]
   name = "github.com/topfreegames/protos"
   packages = ["maestro/grpc/generated"]
-  revision = "ca8b321133a3f670bbb4afb1006a134309a1b738"
-  version = "v1.2.0"
+  revision = "fc2c08bd1c9bae2a22e65820d0e1fd19e9b0e9d4"
+  version = "v1.3.0"
 
 [[projects]]
   branch = "master"
