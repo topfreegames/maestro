@@ -22,6 +22,7 @@ type Port struct {
 	HostPort      int    `yaml:"-" json:"-"`
 }
 
+//FreePortsRedisKey returns the free ports set key on redis
 func FreePortsRedisKey() string {
 	return "maestro:free:ports"
 }

@@ -159,6 +159,18 @@ func NewPod(
 	return pod, err
 }
 
+// NewDefaultPod creates a pod only with necessary information
+// Should not be used to create a real pod
+func NewDefaultPod(
+	game, name, namespace string,
+	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+) (*Pod, error) {
+	return NewPod(
+		game, "", name, namespace,
+		nil, nil, 0, []*Port{}, []string{}, []*EnvVar{}, clientset, redisClient)
+}
+
 //SetAffinity sets kubernetes Affinity on pod
 func (p *Pod) SetAffinity(affinity string) {
 	p.NodeAffinity = affinity

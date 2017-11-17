@@ -956,8 +956,15 @@ autoscaling:
 
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 
+					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+					mockRedisClient.EXPECT().
+						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						Return(redis.NewBoolResult(true, nil))
 					mockDb.EXPECT().
 						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name)
+					mockRedisClient.EXPECT().
+						Eval(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(redis.NewCmdResult(nil, nil))
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)
@@ -1005,6 +1012,14 @@ autoscaling:
 
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 
+					mockRedisClient.EXPECT().
+						SetNX(gomock.Any(), gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						Return(redis.NewBoolResult(true, nil))
+
+					mockRedisClient.EXPECT().
+						Eval(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(redis.NewCmdResult(nil, nil))
+
 					mockDb.EXPECT().
 						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 						//HACK!!! DB won't return this error, Kubernetes will
@@ -1033,11 +1048,18 @@ autoscaling:
 					Expect(err).NotTo(HaveOccurred())
 
 					mockRedisClient.EXPECT().Ping().AnyTimes()
+					mockRedisClient.EXPECT().
+						SetNX(gomock.Any(), gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						Return(redis.NewBoolResult(true, nil))
 					mockDb.EXPECT().Query(
 						gomock.Any(),
 						"SELECT * FROM schedulers WHERE name = ?",
 						configYaml1.Name,
 					).Return(pg.NewTestResult(errors.New("sql: database is closed"), 0), errors.New("sql: database is closed"))
+					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+					mockRedisClient.EXPECT().
+						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
+						Return(redis.NewCmdResult(nil, nil))
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(http.StatusInternalServerError))

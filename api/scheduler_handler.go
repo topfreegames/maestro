@@ -604,7 +604,7 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
+	timeoutSec := g.App.Config.GetInt("updateTimeoutSeconds")
 	lockKey := fmt.Sprintf("%s-%s", g.App.Config.GetString("watcher.lockKey"), params.SchedulerName)
 	err = mr.WithSegment(models.SegmentController, func() error {
 		return controller.UpdateSchedulerImage(

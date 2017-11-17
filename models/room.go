@@ -83,6 +83,7 @@ func (r *Room) Create(
 	return err
 }
 
+//ZaddIfNotExists adds to zset if not
 const ZaddIfNotExists = `
 local c = redis.call('zscore', KEYS[1], ARGV[1])
 if not c then
@@ -91,7 +92,7 @@ end
 return 'OK'
 `
 
-// SetStatusAndReturnNumberOfReadyGRUs updates the status of a given room in the database and returns how many
+// SetStatus updates the status of a given room in the database and returns how many
 //  ready rooms has left
 func (r *Room) SetStatus(
 	redisClient interfaces.RedisClient,

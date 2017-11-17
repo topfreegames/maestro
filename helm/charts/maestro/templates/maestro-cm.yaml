@@ -51,11 +51,11 @@ data:
     {{- end}}
     {{- end}}
     {{- end}}
-    scaleUpTimeoutSeconds: 600
-    scaleDownTimeoutSeconds: 600
-    deleteTimeoutSeconds: 600
+    scaleUpTimeoutSeconds: 1200
+    scaleDownTimeoutSeconds: 1200
+    deleteTimeoutSeconds: 1200
     pingTimeout: 90
-    updateTimeoutSeconds: 600
+    updateTimeoutSeconds: 3600
     sentry:
       url: ""
     newrelic:
