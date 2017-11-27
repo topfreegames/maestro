@@ -31,7 +31,7 @@ data:
     watcher:
       autoScalingPeriod: 30
       lockKey: "maestro-lock-key"
-      lockTimeoutMs: 600000
+      lockTimeoutMs: 3600000
       gracefulShutdownTimeout: 300
       maxSurge: 25
     worker:
@@ -39,7 +39,7 @@ data:
       gracefulShutdownTimeout: 300
       retrieveFreePortsPeriod: 86400
       getLocksTimeout: 300
-      lockTimeoutMs: 600000
+      lockTimeoutMs: 3600000
     {{- if ne .Values.reporters.dogstatsd.host "" }}
     {{- if ne .Values.reporters.dogstatsd.prefix "" }}
     {{- if ne .Values.reporters.dogstatsd.region "" }}
