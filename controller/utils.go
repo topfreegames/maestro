@@ -34,46 +34,42 @@ func replacePodsAndWait(
 	clock clockinterfaces.Clock,
 	configYAML *models.ConfigYAML,
 	podsToDelete []v1.Pod,
-) (createdPods []v1.Pod, deletedPods []v1.Pod, err error) {
+) (createdPods []v1.Pod, deletedPods []v1.Pod, timedout bool) {
 	createdPods = []v1.Pod{}
 	deletedPods = []v1.Pod{}
 
 	for _, pod := range podsToDelete {
 		logger.Debugf("deleting pod %s", pod.GetName())
 
-		err = deletePodAndRoom(
+		err := deletePodAndRoom(
 			logger, mr, clientset, redisClient,
 			configYAML.Name, configYAML.Game,
 			pod.GetName(), reportersConstants.ReasonUpdate)
 		if err == nil || strings.Contains(err.Error(), "redis") {
-
 			deletedPods = append(deletedPods, pod)
 		}
 		if err != nil {
 			logger.WithError(err).Debugf("error deleting pod %s", pod.GetName())
-			return createdPods, deletedPods, err
 		}
 	}
 
 	timeout := willTimeoutAt.Sub(clock.Now())
-	createdPods, err = createPodsAsTheyAreDeleted(
+	createdPods, timedout = createPodsAsTheyAreDeleted(
 		logger, mr, clientset, db, redisClient, timeout, configYAML,
-		deletedPods,
-	)
-	if err != nil {
-		return createdPods, deletedPods, err
+		deletedPods)
+	if timedout {
+		return createdPods, deletedPods, timedout
 	}
 
 	timeout = willTimeoutAt.Sub(clock.Now())
-	err = waitCreatingPods(
+	timedout = waitCreatingPods(
 		logger, clientset, timeout, configYAML.Name,
-		createdPods,
-	)
-	if err != nil {
-		return createdPods, deletedPods, err
+		createdPods)
+	if timedout {
+		return createdPods, deletedPods, timedout
 	}
 
-	return createdPods, deletedPods, err
+	return createdPods, deletedPods, false
 }
 
 // In rollback, it must delete newly created pod and
@@ -154,13 +150,9 @@ func rollback(
 			}
 
 			waitTimeout := willTimeoutAt.Sub(time.Now())
-			err = waitCreatingPods(
+			waitCreatingPods(
 				logger, clientset, waitTimeout, configYAML.Name,
-				newlyCreatedPods,
-			)
-			if err != nil {
-				return err
-			}
+				newlyCreatedPods)
 		}
 	}
 
@@ -176,7 +168,7 @@ func createPodsAsTheyAreDeleted(
 	timeout time.Duration,
 	configYAML *models.ConfigYAML,
 	deletedPods []v1.Pod,
-) (createdPods []v1.Pod, err error) {
+) (createdPods []v1.Pod, timedout bool) {
 	logger := l.WithFields(logrus.Fields{
 		"operation": "controller.waitTerminatingPods",
 		"scheduler": configYAML.Name,
@@ -225,7 +217,7 @@ func createPodsAsTheyAreDeleted(
 		case <-timeoutTimer.C:
 			err := errors.New("timeout waiting for rooms to be removed")
 			logger.WithError(err).Error("stopping scale")
-			return createdPods, err
+			return createdPods, true
 		}
 
 		if exit {
@@ -234,7 +226,7 @@ func createPodsAsTheyAreDeleted(
 		}
 	}
 
-	return createdPods, err
+	return createdPods, false
 }
 
 func waitTerminatingPods(
@@ -292,7 +284,7 @@ func waitCreatingPods(
 	timeout time.Duration,
 	namespace string,
 	createdPods []v1.Pod,
-) error {
+) bool {
 	logger := l.WithFields(logrus.Fields{
 		"operation": "controller.waitCreatingPods",
 		"scheduler": namespace,
@@ -340,7 +332,8 @@ func waitCreatingPods(
 				}
 			}
 		case <-timeoutTimer.C:
-			return errors.New("timeout waiting for rooms to be created")
+			logger.Error("timeout waiting for rooms to be created")
+			return true
 		}
 
 		if exit {
@@ -349,7 +342,7 @@ func waitCreatingPods(
 		}
 	}
 
-	return nil
+	return false
 }
 
 func deletePodAndRoom(

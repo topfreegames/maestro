@@ -558,23 +558,23 @@ waitForLock:
 		for i, chunk := range podChunks {
 			l.Debugf("deleting chunk %d: %#v", i, names(chunk))
 
-			newlyCreatedPods, newlyDeletedPods, err := replacePodsAndWait(
+			newlyCreatedPods, newlyDeletedPods, timedout := replacePodsAndWait(
 				l, mr, clientset, db, redisClient.Client,
 				willTimeoutAt, clock, configYAML, chunk,
 			)
 			createdPods = append(createdPods, newlyCreatedPods...)
 			deletedPods = append(deletedPods, newlyDeletedPods...)
-			if err != nil {
+
+			if timedout {
 				l.Debug("update timed out, rolling back")
 				rollErr := rollback(
 					l, mr, db, redisClient.Client, clientset,
-					&oldConfig, maxSurge, 2*timeoutDur, createdPods, deletedPods,
-				)
+					&oldConfig, maxSurge, 2*timeoutDur, createdPods, deletedPods)
 				if rollErr != nil {
 					l.WithError(rollErr).Debug("error during update roll back")
 					err = rollErr
 				}
-				return err
+				return errors.New("timedout waiting rooms to be replaced, rolled back")
 			}
 		}
 	}

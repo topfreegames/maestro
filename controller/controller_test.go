@@ -2500,10 +2500,9 @@ cmd:
 				timeoutSec, lockTimeoutMS, 10,
 				lockKey,
 				mockClock,
-				nil,
-			)
+				nil)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("timeout waiting for rooms to be removed"))
+			Expect(err.Error()).To(Equal("timedout waiting rooms to be replaced, rolled back"))
 		})
 
 		It("should return error if timeout when creating rooms", func() {
@@ -2676,7 +2675,7 @@ cmd:
 				nil,
 			)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("timeout waiting for rooms to be created"))
+			Expect(err.Error()).To(Equal("timedout waiting rooms to be replaced, rolled back"))
 		})
 
 		It("should not return error if ClearAll fails in deleting old rooms", func() {
@@ -2705,7 +2704,7 @@ cmd:
 						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 					}))
 
-			// Delete first room
+			// Delete rooms
 			for _, pod := range pods.Items {
 				calls.Add(mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
 				calls.Add(mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()))
@@ -2727,10 +2726,14 @@ cmd:
 				calls.Add(mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID))
 				calls.Add(mockPipeline.EXPECT().Del(room.GetRoomRedisKey()))
 				calls.Add(mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis error")))
-				break
 			}
 
-			// Recreate pod that was deleted but redis failed
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(0, 0)))
+
+			// Create new pods
 			for range pods.Items {
 				calls.Add(mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
 				calls.Add(
@@ -2759,8 +2762,16 @@ cmd:
 						SPop(models.FreePortsRedisKey()).
 						Return(goredis.NewStringResult("5000", nil)))
 				calls.Add(mockPipeline.EXPECT().Exec())
-				break
 			}
+
+			calls.Add(
+				mockClock.EXPECT().
+					Now().
+					Return(time.Unix(0, 0)))
+
+			mockDb.EXPECT().
+				Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+
 			calls.Add(
 				mockRedisClient.EXPECT().
 					Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
@@ -2774,17 +2785,30 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, 10,
+				timeoutSec, lockTimeoutMS, 100,
 				lockKey,
 				mockClock,
 				nil,
 			)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("redis error"))
+			Expect(err).NotTo(HaveOccurred())
 
 			pods, err = clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(3))
+
+			for _, pod := range pods.Items {
+				Expect(pod.GetName()).To(ContainSubstring("controller-name-"))
+				Expect(pod.GetName()).To(HaveLen(len("controller-name-") + 8))
+				Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MY_ENV_VAR"))
+				Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("myvalue"))
+				Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MY_NEW_ENV_VAR"))
+				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("myvalue"))
+				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
+				Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal("controller-name"))
+				Expect(pod.Spec.Containers[0].Env[3].Name).To(Equal("MAESTRO_ROOM_ID"))
+				Expect(pod.Spec.Containers[0].Env[3].Value).To(Equal(pod.GetName()))
+				Expect(pod.Spec.Containers[0].Env).To(HaveLen(4))
+			}
 		})
 
 		It("should update in two steps if maxSurge is 50%", func() {
