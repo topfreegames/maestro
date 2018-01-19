@@ -1373,7 +1373,71 @@ game: game-name
 				resp := make(map[string]interface{})
 				err = json.Unmarshal(recorder.Body.Bytes(), &resp)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(resp).To(HaveKeyWithValue("yaml", yamlStr))
+				Expect(resp).To(HaveKeyWithValue("yaml", `name: scheduler-name
+game: game-name
+shutdownTimeout: 0
+autoscaling: null
+affinity: ""
+toleration: ""
+occupiedTimeout: 0
+forwarders: {}
+image: ""
+ports: []
+limits: null
+requests: null
+env: []
+cmd: []
+`))
+			})
+
+			It("should return yaml config for two container pods", func() {
+				yamlStr := `
+name: scheduler-name
+game: game-name
+containers:
+- image: image/image
+  name: container1
+  ports:
+  - containerPort: 8080
+    protocol: TCP
+    name: tcp
+`
+				url := fmt.Sprintf("http://%s/scheduler/%s?config", app.Address, schedulerName)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().
+					Query(gomock.Any(), "SELECT yaml FROM schedulers WHERE name = ?", schedulerName).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+					})
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+
+				resp := make(map[string]interface{})
+				err = json.Unmarshal(recorder.Body.Bytes(), &resp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp).To(HaveKeyWithValue("yaml", `name: scheduler-name
+game: game-name
+shutdownTimeout: 0
+autoscaling: null
+affinity: ""
+toleration: ""
+occupiedTimeout: 0
+forwarders: {}
+containers:
+- name: container1
+  image: image/image
+  ports:
+  - containerPort: 8080
+    protocol: TCP
+    name: tcp
+  limits: null
+  requests: null
+  env: []
+  cmd: []
+`))
 			})
 
 			It("should return 500 if db fails", func() {

@@ -388,17 +388,15 @@ func (g *SchedulerStatusHandler) returnConfig(
 		g.App.HandleError(w, http.StatusNotFound, "get config error", errors.New("config scheduler not found"))
 		return
 	}
-	resp := map[string]interface{}{
-		"yaml": yamlStr,
-	}
 
-	bts, err := json.Marshal(resp)
+	yamlConf, err := models.NewConfigYAML(yamlStr)
 	if err != nil {
 		logger.WithError(err).Error("config scheduler failed.")
 		g.App.HandleError(w, http.StatusInternalServerError, "config scheduler failed", err)
 		return
 	}
 
+	bts := yamlConf.ToYAML()
 	mr.WithSegment(models.SegmentSerialization, func() error {
 		WriteBytes(w, http.StatusOK, bts)
 		return nil

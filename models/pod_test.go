@@ -17,13 +17,11 @@ import (
 	"github.com/topfreegames/maestro/models"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
 var _ = Describe("Pod", func() {
 	var (
-		clientset       *fake.Clientset
 		command         []string
 		env             []*models.EnvVar
 		game            string
@@ -62,7 +60,6 @@ var _ = Describe("Pod", func() {
 	}
 
 	BeforeEach(func() {
-		clientset = fake.NewSimpleClientset()
 		command = []string{
 			"./room-binary",
 			"-serverType",
@@ -119,17 +116,17 @@ var _ = Describe("Pod", func() {
 			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Game).To(Equal(game))
-			Expect(pod.Image).To(Equal(image))
 			Expect(pod.Name).To(Equal(name))
 			Expect(pod.Namespace).To(Equal(namespace))
-			Expect(pod.ResourcesLimitsCPU).To(Equal(limits.CPU))
-			Expect(pod.ResourcesLimitsMemory).To(Equal(limits.Memory))
-			Expect(pod.ResourcesRequestsCPU).To(Equal(requests.CPU))
-			Expect(pod.ResourcesRequestsMemory).To(Equal(requests.Memory))
 			Expect(pod.ShutdownTimeout).To(Equal(shutdownTimeout))
-			Expect(pod.Ports).To(Equal(ports))
-			Expect(pod.Command).To(Equal(command))
-			Expect(pod.Env).To(Equal(env))
+			Expect(pod.Containers[0].Image).To(Equal(image))
+			Expect(pod.Containers[0].Limits.CPU).To(Equal(limits.CPU))
+			Expect(pod.Containers[0].Limits.Memory).To(Equal(limits.Memory))
+			Expect(pod.Containers[0].Requests.CPU).To(Equal(requests.CPU))
+			Expect(pod.Containers[0].Requests.Memory).To(Equal(requests.Memory))
+			Expect(pod.Containers[0].Ports).To(Equal(ports))
+			Expect(pod.Containers[0].Command).To(Equal(command))
+			Expect(pod.Containers[0].Env).To(Equal(env))
 		})
 
 		Describe("Calling Reporters' singleton instance", func() {
@@ -145,7 +142,7 @@ var _ = Describe("Pod", func() {
 
 				pod, err := createPod()
 
-				_, err = pod.Create(clientset)
+				_, err = pod.Create(mockClientset)
 				Expect(err).NotTo(HaveOccurred())
 
 				mr.EXPECT().Report("gru.delete", map[string]string{
@@ -153,11 +150,241 @@ var _ = Describe("Pod", func() {
 					reportersConstants.TagScheduler: "pong-free-for-all",
 					reportersConstants.TagReason:    "deletion_reason",
 				})
-				err = pod.Delete(clientset, mockRedisClient, "deletion_reason")
+				err = pod.Delete(mockClientset, mockRedisClient, "deletion_reason")
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 
+	})
+
+	Describe("NewPodWithContainers", func() {
+		It("should create pod with two containers", func() {
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5000", nil))
+			mockPipeline.EXPECT().Exec()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5001", nil))
+			mockPipeline.EXPECT().Exec()
+
+			mr.EXPECT().Report("gru.new", map[string]string{
+				reportersConstants.TagGame:      "pong",
+				reportersConstants.TagScheduler: "pong-free-for-all",
+			})
+
+			pod, err := models.NewPodWithContainers(
+				game, name, namespace,
+				shutdownTimeout,
+				[]*models.Container{
+					{
+						Name:     "container1",
+						Image:    "pong/pong:v123",
+						Limits:   limits,
+						Requests: requests,
+						Ports:    ports[0:1],
+						Env:      env,
+						Command:  command,
+					},
+					{
+						Name:     "container2",
+						Image:    "ping/ping:v123",
+						Limits:   limits,
+						Requests: requests,
+						Ports:    ports[1:2],
+						Env:      env,
+						Command:  command,
+					},
+				},
+				mockClientset, mockRedisClient,
+			)
+
+			Expect(err).NotTo(HaveOccurred())
+			pod.SetToleration(game)
+			podv1, err := pod.Create(mockClientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(podv1.GetNamespace()).To(Equal(namespace))
+			pods, err := mockClientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(1))
+			Expect(pods.Items[0].GetName()).To(Equal(name))
+			Expect(podv1.ObjectMeta.Name).To(Equal(name))
+			Expect(podv1.ObjectMeta.Namespace).To(Equal(namespace))
+			Expect(podv1.ObjectMeta.Labels).To(HaveLen(1))
+			Expect(podv1.ObjectMeta.Labels["app"]).To(Equal(name))
+			Expect(*podv1.Spec.TerminationGracePeriodSeconds).To(BeEquivalentTo(shutdownTimeout))
+			Expect(podv1.Spec.Tolerations).To(HaveLen(1))
+			Expect(podv1.Spec.Tolerations[0].Key).To(Equal("dedicated"))
+			Expect(podv1.Spec.Tolerations[0].Operator).To(Equal(v1.TolerationOpEqual))
+			Expect(podv1.Spec.Tolerations[0].Value).To(Equal(game))
+			Expect(podv1.Spec.Tolerations[0].Effect).To(Equal(v1.TaintEffectNoSchedule))
+
+			podv1.Spec.Containers[0].Image = "pong/pong:v123"
+			podv1.Spec.Containers[0].Name = "container1"
+			podv1.Spec.Containers[1].Image = "ping/ping:v123"
+			podv1.Spec.Containers[1].Name = "container2"
+
+			Expect(podv1.Spec.Containers).To(HaveLen(2))
+			for cIdx, container := range podv1.Spec.Containers {
+				Expect(container.Ports).To(HaveLen(1))
+				for _, port := range container.Ports {
+					Expect(port.ContainerPort).To(BeEquivalentTo(ports[cIdx].ContainerPort))
+					Expect(port.HostPort).To(BeEquivalentTo(ports[cIdx].HostPort))
+					Expect(string(port.Protocol)).To(Equal(ports[cIdx].Protocol))
+				}
+				quantity := container.Resources.Limits["memory"]
+				Expect((&quantity).String()).To(Equal(limits.Memory))
+				quantity = container.Resources.Limits["cpu"]
+				Expect((&quantity).String()).To(Equal(limits.CPU))
+				quantity = container.Resources.Requests["memory"]
+				Expect((&quantity).String()).To(Equal(requests.Memory))
+				quantity = container.Resources.Requests["cpu"]
+				Expect((&quantity).String()).To(Equal(requests.CPU))
+				Expect(container.Env).To(HaveLen(len(env)))
+				for idx, envVar := range container.Env {
+					Expect(envVar.Name).To(Equal(env[idx].Name))
+					Expect(envVar.Value).To(Equal(env[idx].Value))
+				}
+				Expect(container.Command).To(HaveLen(3))
+				Expect(container.Command).To(Equal(command))
+			}
+
+			Expect(podv1.GetAnnotations()).To(HaveKeyWithValue("cluster-autoscaler.kubernetes.io/safe-to-evict", "true"))
+		})
+
+		It("should return correct ports if pod already exists", func() {
+			mr.EXPECT().Report("gru.new", map[string]string{
+				reportersConstants.TagGame:      "pong",
+				reportersConstants.TagScheduler: "pong-free-for-all",
+			})
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5000", nil))
+			mockPipeline.EXPECT().Exec()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5001", nil))
+			mockPipeline.EXPECT().Exec()
+
+			mr.EXPECT().Report("gru.new", map[string]string{
+				reportersConstants.TagGame:      "pong",
+				reportersConstants.TagScheduler: "pong-free-for-all",
+			})
+
+			firstPod, err := models.NewPodWithContainers(
+				game, name, namespace,
+				shutdownTimeout,
+				[]*models.Container{
+					{
+						Name:     "container1",
+						Image:    "pong/pong:v123",
+						Limits:   limits,
+						Requests: requests,
+						Ports:    ports[0:1],
+						Env:      env,
+						Command:  command,
+					},
+					{
+						Name:     "container2",
+						Image:    "ping/ping:v123",
+						Limits:   limits,
+						Requests: requests,
+						Ports:    ports[1:2],
+						Env:      env,
+						Command:  command,
+					},
+				},
+				mockClientset, mockRedisClient,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			firstPod.SetToleration(game)
+			podv1, err := firstPod.Create(mockClientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			pod, err := models.NewPodWithContainers(
+				game, name, namespace,
+				shutdownTimeout,
+				[]*models.Container{
+					{
+						Name:     "container1",
+						Image:    "pong/pong:v123",
+						Limits:   limits,
+						Requests: requests,
+						Ports:    ports[0:1],
+						Env:      env,
+						Command:  command,
+					},
+					{
+						Name:     "container2",
+						Image:    "ping/ping:v123",
+						Limits:   limits,
+						Requests: requests,
+						Ports:    ports[1:2],
+						Env:      env,
+						Command:  command,
+					},
+				},
+				mockClientset, mockRedisClient,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			pod.SetToleration(game)
+
+			for i, container := range pod.Containers {
+				Expect(container.Ports).To(Equal(firstPod.Containers[i].Ports))
+			}
+
+			Expect(podv1.GetNamespace()).To(Equal(namespace))
+			pods, err := mockClientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(1))
+			Expect(pods.Items[0].GetName()).To(Equal(name))
+			Expect(podv1.ObjectMeta.Name).To(Equal(name))
+			Expect(podv1.ObjectMeta.Namespace).To(Equal(namespace))
+			Expect(podv1.ObjectMeta.Labels).To(HaveLen(1))
+			Expect(podv1.ObjectMeta.Labels["app"]).To(Equal(name))
+			Expect(*podv1.Spec.TerminationGracePeriodSeconds).To(BeEquivalentTo(shutdownTimeout))
+			Expect(podv1.Spec.Tolerations).To(HaveLen(1))
+			Expect(podv1.Spec.Tolerations[0].Key).To(Equal("dedicated"))
+			Expect(podv1.Spec.Tolerations[0].Operator).To(Equal(v1.TolerationOpEqual))
+			Expect(podv1.Spec.Tolerations[0].Value).To(Equal(game))
+			Expect(podv1.Spec.Tolerations[0].Effect).To(Equal(v1.TaintEffectNoSchedule))
+
+			podv1.Spec.Containers[0].Image = "pong/pong:v123"
+			podv1.Spec.Containers[0].Name = "container1"
+			podv1.Spec.Containers[1].Image = "ping/ping:v123"
+			podv1.Spec.Containers[1].Name = "container2"
+
+			Expect(podv1.Spec.Containers).To(HaveLen(2))
+			for cIdx, container := range podv1.Spec.Containers {
+				Expect(container.Ports).To(HaveLen(1))
+				for _, port := range container.Ports {
+					Expect(port.ContainerPort).To(BeEquivalentTo(ports[cIdx].ContainerPort))
+					Expect(port.HostPort).To(BeEquivalentTo(ports[cIdx].HostPort))
+					Expect(string(port.Protocol)).To(Equal(ports[cIdx].Protocol))
+				}
+				quantity := container.Resources.Limits["memory"]
+				Expect((&quantity).String()).To(Equal(limits.Memory))
+				quantity = container.Resources.Limits["cpu"]
+				Expect((&quantity).String()).To(Equal(limits.CPU))
+				quantity = container.Resources.Requests["memory"]
+				Expect((&quantity).String()).To(Equal(requests.Memory))
+				quantity = container.Resources.Requests["cpu"]
+				Expect((&quantity).String()).To(Equal(requests.CPU))
+				Expect(container.Env).To(HaveLen(len(env)))
+				for idx, envVar := range container.Env {
+					Expect(envVar.Name).To(Equal(env[idx].Name))
+					Expect(envVar.Value).To(Equal(env[idx].Value))
+				}
+				Expect(container.Command).To(HaveLen(3))
+				Expect(container.Command).To(Equal(command))
+			}
+
+			Expect(podv1.GetAnnotations()).To(HaveKeyWithValue("cluster-autoscaler.kubernetes.io/safe-to-evict", "true"))
+		})
 	})
 
 	Describe("Create", func() {
@@ -174,11 +401,11 @@ var _ = Describe("Pod", func() {
 			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
-			podv1, err := pod.Create(clientset)
+			podv1, err := pod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(podv1.GetNamespace()).To(Equal(namespace))
-			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			pods, err := mockClientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(1))
 			Expect(pods.Items[0].GetName()).To(Equal(name))
@@ -241,11 +468,11 @@ var _ = Describe("Pod", func() {
 				mockRedisClient,
 			)
 			Expect(err).NotTo(HaveOccurred())
-			podv1, err := pod.Create(clientset)
+			podv1, err := pod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(podv1.GetNamespace()).To(Equal(namespace))
-			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			pods, err := mockClientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(1))
 			Expect(pods.Items[0].GetName()).To(Equal(name))
@@ -283,7 +510,7 @@ var _ = Describe("Pod", func() {
 			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetAffinity(game)
-			podv1, err := pod.Create(clientset)
+			podv1, err := pod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(podv1.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Key).To(Equal(game))
@@ -310,7 +537,7 @@ var _ = Describe("Pod", func() {
 
 			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
-			podv1, err := pod.Create(clientset)
+			podv1, err := pod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(podv1.Spec.Containers[0].Env).To(HaveLen(2))
 			Expect(podv1.Spec.Containers[0].Env[0].Name).To(Equal("EXAMPLE_ENV_VAR"))
@@ -323,10 +550,10 @@ var _ = Describe("Pod", func() {
 		It("should return error when creating existing pod", func() {
 			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
-			_, err = pod.Create(clientset)
+			_, err = pod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = pod.Create(clientset)
+			_, err = pod.Create(mockClientset)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprintf("Pod \"%s\" already exists", name)))
 		})
@@ -350,7 +577,7 @@ var _ = Describe("Pod", func() {
 
 			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
-			_, err = pod.Create(clientset)
+			_, err = pod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			mr.EXPECT().Report("gru.delete", map[string]string{
@@ -358,14 +585,14 @@ var _ = Describe("Pod", func() {
 				reportersConstants.TagScheduler: "pong-free-for-all",
 				reportersConstants.TagReason:    "deletion_reason",
 			})
-			err = pod.Delete(clientset, mockRedisClient, "deletion_reason")
+			err = pod.Delete(mockClientset, mockRedisClient, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return error when deleting non existent pod", func() {
 			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
-			err = pod.Delete(clientset, mockRedisClient, "deletion_reason")
+			err = pod.Delete(mockClientset, mockRedisClient, "deletion_reason")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Pod \"pong-free-for-all-0\" not found"))
 		})
@@ -377,10 +604,10 @@ var _ = Describe("Pod", func() {
 			namespace := "pod-ns"
 			pod := &v1.Pod{}
 			pod.SetName(name)
-			_, err := clientset.CoreV1().Pods(namespace).Create(pod)
+			_, err := mockClientset.CoreV1().Pods(namespace).Create(pod)
 			Expect(err).NotTo(HaveOccurred())
 
-			exists, err := models.PodExists(name, namespace, clientset)
+			exists, err := models.PodExists(name, namespace, mockClientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
 		})
@@ -389,7 +616,7 @@ var _ = Describe("Pod", func() {
 			name := "pod-name"
 			namespace := "pod-ns"
 
-			exists, err := models.PodExists(name, namespace, clientset)
+			exists, err := models.PodExists(name, namespace, mockClientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeFalse())
 		})

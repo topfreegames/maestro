@@ -15,10 +15,10 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/topfreegames/extensions/pg"
-	"github.com/topfreegames/maestro/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/topfreegames/maestro/models"
 )
 
 const (
@@ -86,7 +86,7 @@ var _ = Describe("Scheduler", func() {
 
 	Describe("NewConfigYAML", func() {
 		It("should build correct config yaml struct from yaml", func() {
-			configYAML, err := models.NewConfigYAML(yaml1)
+			configYAML, err := NewConfigYAML(yaml1)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(configYAML.Name).To(Equal("pong-free-for-all"))
 			Expect(configYAML.Game).To(Equal("pong"))
@@ -130,7 +130,7 @@ var _ = Describe("Scheduler", func() {
 		})
 
 		It("should fail if invalid yaml", func() {
-			configYAML, err := models.NewConfigYAML("not-a-valid-yaml")
+			configYAML, err := NewConfigYAML("not-a-valid-yaml")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cannot unmarshal"))
 			Expect(fmt.Sprintf("%T", err)).To(Equal("*errors.YamlError"))
@@ -140,7 +140,7 @@ var _ = Describe("Scheduler", func() {
 
 	Describe("NewScheduler", func() {
 		It("should build correct scheduler struct", func() {
-			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler := NewScheduler(name, game, yaml1)
 			Expect(scheduler.Name).To(Equal(name))
 			Expect(scheduler.Game).To(Equal(game))
 			Expect(scheduler.YAML).To(Equal(yaml1))
@@ -149,7 +149,7 @@ var _ = Describe("Scheduler", func() {
 
 	Describe("Create Scheduler", func() {
 		It("should save scheduler in the database", func() {
-			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler := NewScheduler(name, game, yaml1)
 			mockDb.EXPECT().Query(
 				scheduler,
 				"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
@@ -160,7 +160,7 @@ var _ = Describe("Scheduler", func() {
 		})
 
 		It("should return an error if db returns an error", func() {
-			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler := NewScheduler(name, game, yaml1)
 			mockDb.EXPECT().Query(
 				scheduler,
 				"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
@@ -174,14 +174,14 @@ var _ = Describe("Scheduler", func() {
 
 	Describe("Load Scheduler", func() {
 		It("should load scheduler from the database", func() {
-			scheduler := models.NewScheduler(name, "", "")
+			scheduler := NewScheduler(name, "", "")
 			mockDb.EXPECT().Query(scheduler, "SELECT * FROM schedulers WHERE name = ?", name)
 			err := scheduler.Load(mockDb)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return an error if db returns an error", func() {
-			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler := NewScheduler(name, game, yaml1)
 			mockDb.EXPECT().Query(
 				scheduler,
 				"SELECT * FROM schedulers WHERE name = ?",
@@ -201,7 +201,7 @@ var _ = Describe("Scheduler", func() {
 				gomock.Any(),
 			)
 			names := []string{"s1", "s2"}
-			_, err := models.LoadSchedulers(mockDb, names)
+			_, err := LoadSchedulers(mockDb, names)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -212,7 +212,7 @@ var _ = Describe("Scheduler", func() {
 				gomock.Any(),
 			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
 			names := []string{"s1", "s2"}
-			_, err := models.LoadSchedulers(mockDb, names)
+			_, err := LoadSchedulers(mockDb, names)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
 		})
@@ -220,7 +220,7 @@ var _ = Describe("Scheduler", func() {
 
 	Describe("Update Scheduler", func() {
 		It("should update scheduler in the database", func() {
-			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler := NewScheduler(name, game, yaml1)
 			scheduler.State = "terminating"
 			scheduler.StateLastChangedAt = time.Now().Unix()
 			scheduler.LastScaleOpAt = time.Now().Unix()
@@ -234,7 +234,7 @@ var _ = Describe("Scheduler", func() {
 		})
 
 		It("should return an error if db returns an error", func() {
-			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler := NewScheduler(name, game, yaml1)
 			scheduler.State = "terminating"
 			scheduler.StateLastChangedAt = time.Now().Unix()
 			scheduler.LastScaleOpAt = time.Now().Unix()
@@ -250,14 +250,14 @@ var _ = Describe("Scheduler", func() {
 	})
 	Describe("Delete Scheduler", func() {
 		It("should delete scheduler in the database", func() {
-			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler := NewScheduler(name, game, yaml1)
 			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", name)
 			err := scheduler.Delete(mockDb)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should succeed if error is 'no rows in result set'", func() {
-			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler := NewScheduler(name, game, yaml1)
 			mockDb.EXPECT().Exec(
 				"DELETE FROM schedulers WHERE name = ?",
 				name,
@@ -267,7 +267,7 @@ var _ = Describe("Scheduler", func() {
 		})
 
 		It("should return an error if db returns an error", func() {
-			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler := NewScheduler(name, game, yaml1)
 			mockDb.EXPECT().Exec(
 				"DELETE FROM schedulers WHERE name = ?",
 				name,
@@ -280,7 +280,7 @@ var _ = Describe("Scheduler", func() {
 
 	Describe("GetAutoScalingPolicy", func() {
 		It("should return the scheduler auto scaling policy", func() {
-			scheduler := models.NewScheduler(name, game, yaml1)
+			scheduler := NewScheduler(name, game, yaml1)
 			autoScalingPolicy := scheduler.GetAutoScalingPolicy()
 			Expect(autoScalingPolicy.Min).To(Equal(100))
 			Expect(autoScalingPolicy.Up.Cooldown).To(Equal(300))
@@ -300,15 +300,15 @@ var _ = Describe("Scheduler", func() {
 		It("should get schedulers names from the database", func() {
 			expectedNames := []string{"scheduler1", "scheduler2", "scheduler3"}
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Do(
-				func(schedulers *[]models.Scheduler, query string) {
-					expectedSchedulers := make([]models.Scheduler, len(expectedNames))
+				func(schedulers *[]Scheduler, query string) {
+					expectedSchedulers := make([]Scheduler, len(expectedNames))
 					for idx, name := range expectedNames {
-						expectedSchedulers[idx] = models.Scheduler{Name: name}
+						expectedSchedulers[idx] = Scheduler{Name: name}
 					}
 					*schedulers = expectedSchedulers
 				},
 			)
-			names, err := models.ListSchedulersNames(mockDb)
+			names, err := ListSchedulersNames(mockDb)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(names).To(Equal(expectedNames))
 		})
@@ -317,7 +317,7 @@ var _ = Describe("Scheduler", func() {
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Return(
 				pg.NewTestResult(errors.New("pg: no rows in result set"), 0), errors.New("pg: no rows in result set"),
 			)
-			_, err := models.ListSchedulersNames(mockDb)
+			_, err := ListSchedulersNames(mockDb)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -325,7 +325,7 @@ var _ = Describe("Scheduler", func() {
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Return(
 				pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"),
 			)
-			_, err := models.ListSchedulersNames(mockDb)
+			_, err := ListSchedulersNames(mockDb)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
 		})
@@ -336,13 +336,80 @@ var _ = Describe("Scheduler", func() {
 			yamlStr := "scheduler: example"
 			name := "scheduler-name"
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT yaml FROM schedulers WHERE name = ?", name).Do(
-				func(scheduler *models.Scheduler, query string, name string) {
+				func(scheduler *Scheduler, query string, name string) {
 					scheduler.YAML = yamlStr
 				},
 			)
-			yamlRes, err := models.LoadConfig(mockDb, name)
+			yamlRes, err := LoadConfig(mockDb, name)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(yamlRes).To(Equal(yamlStr))
+		})
+	})
+})
+
+var _ = Describe("Container", func() {
+	container := &Container{
+		Name:  "name",
+		Image: "image",
+		Ports: []*Port{
+			{
+				Name:          "port1",
+				ContainerPort: 80,
+			},
+		},
+		Limits:   &Resources{CPU: "1", Memory: "100Mi"},
+		Requests: &Resources{CPU: "200m", Memory: "10Mi"},
+		Command:  []string{"/bin/bash", "-c", "./start.sh"},
+		Env: []*EnvVar{
+			{
+				Name:  "ENV_1",
+				Value: "value_1",
+			},
+			{
+				Name: "ENV_2",
+				ValueFrom: ValueFrom{
+					SecretKeyRef: SecretKeyRef{
+						Key:  "SECRET_KEY",
+						Name: "SECRET_NAME",
+					},
+				},
+			},
+		},
+	}
+
+	Describe("NewWithCopiedEnvs", func() {
+		It("should return same parameters with a copied array of envs", func() {
+			newContainer := container.NewWithCopiedEnvs()
+
+			Expect(newContainer.Name).To(Equal(container.Name))
+			Expect(newContainer.Image).To(Equal(container.Image))
+			Expect(newContainer.Ports).To(Equal(container.Ports))
+			Expect(newContainer.Limits).To(Equal(container.Limits))
+			Expect(newContainer.Requests).To(Equal(container.Requests))
+			Expect(newContainer.Command).To(Equal(container.Command))
+			Expect(newContainer.Env).To(Equal(container.Env))
+
+			Expect(fmt.Sprintf("%p", newContainer.Env)).
+				ToNot(Equal(fmt.Sprintf("%p", container.Env)))
+		})
+
+		It("should not panic if env is nil", func() {
+			container := &Container{
+				Name:  "name",
+				Image: "image",
+				Ports: []*Port{
+					{
+						Name:          "port1",
+						ContainerPort: 80,
+					},
+				},
+				Limits:   &Resources{CPU: "1", Memory: "100Mi"},
+				Requests: &Resources{CPU: "200m", Memory: "10Mi"},
+				Command:  []string{"/bin/bash", "-c", "./start.sh"},
+			}
+
+			newContainer := container.NewWithCopiedEnvs()
+			Expect(newContainer.Env).To(BeEmpty())
 		})
 	})
 })

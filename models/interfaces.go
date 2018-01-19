@@ -18,3 +18,14 @@ type MetricsReporter interface {
 	StartExternalSegment(string) map[string]interface{}
 	EndExternalSegment(map[string]interface{})
 }
+
+// ContainerIface returns container properties
+type ContainerIface interface {
+	GetImage() string
+	GetName() string
+	GetPorts() []*Port
+	GetLimits() *Resources
+	GetRequests() *Resources
+	GetCmd() []string
+	GetEnv() []*EnvVar
+}

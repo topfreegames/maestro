@@ -720,30 +720,52 @@ func createPod(
 			Value: name,
 		},
 	}
-	env := append(configYAML.Env, namesEnvVars...)
-	pod, err := models.NewPod(
-		configYAML.Game,
-		configYAML.Image,
-		name,
-		configYAML.Name,
-		configYAML.Limits,
-		configYAML.Requests, // TODO: requests should be <= limits calculate it
-		configYAML.ShutdownTimeout,
-		configYAML.Ports,
-		configYAML.Cmd,
-		env,
-		clientset,
-		redisClient,
-	)
+
+	var pod *models.Pod
+	if configYAML.Containers == nil || len(configYAML.Containers) == 0 {
+		env := append(configYAML.Env, namesEnvVars...)
+		pod, err = models.NewPod(
+			configYAML.Game,
+			configYAML.Image,
+			name,
+			configYAML.Name,
+			configYAML.Limits,
+			configYAML.Requests, // TODO: requests should be <= limits calculate it
+			configYAML.ShutdownTimeout,
+			configYAML.Ports,
+			configYAML.Cmd,
+			env,
+			clientset,
+			redisClient,
+		)
+	} else {
+		containers := make([]*models.Container, len(configYAML.Containers))
+		for i, container := range configYAML.Containers {
+			containers[i] = container.NewWithCopiedEnvs()
+			containers[i].Env = append(containers[i].Env, namesEnvVars...)
+		}
+
+		pod, err = models.NewPodWithContainers(
+			configYAML.Game,
+			name,
+			configYAML.Name,
+			configYAML.ShutdownTimeout,
+			containers,
+			clientset,
+			redisClient,
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
+
 	if configYAML.NodeAffinity != "" {
 		pod.SetAffinity(configYAML.NodeAffinity)
 	}
 	if configYAML.NodeToleration != "" {
 		pod.SetToleration(configYAML.NodeToleration)
 	}
+
 	var kubePod *v1.Pod
 	err = mr.WithSegment(models.SegmentPod, func() error {
 		kubePod, err = pod.Create(clientset)
@@ -780,6 +802,18 @@ func deletePod(
 // MustUpdatePods returns true if it's necessary to delete old pod and create a new one
 //  so this have the new configuration.
 func MustUpdatePods(old, new *models.ConfigYAML) bool {
+	if old.Version() == "v1" && new.Version() == "v2" && len(new.Containers) != 1 {
+		return true
+	}
+
+	if old.Version() == "v2" && new.Version() == "v1" && len(old.Containers) != 1 {
+		return true
+	}
+
+	if old.Version() == "v2" && new.Version() == "v2" && len(old.Containers) != len(new.Containers) {
+		return true
+	}
+
 	samePorts := func(ps1, ps2 []*models.Port) bool {
 		if len(ps1) != len(ps2) {
 			return false
@@ -825,26 +859,52 @@ func MustUpdatePods(old, new *models.ConfigYAML) bool {
 		return true
 	}
 
-	switch {
-	case old.Image != new.Image:
-		return true
-	case !samePorts(old.Ports, new.Ports):
-		return true
-	case old.Limits != nil && new.Limits != nil && *old.Limits != *new.Limits:
-		return true
-	case old.Requests != nil && new.Requests != nil && *old.Requests != *new.Requests:
-		return true
-	case !sameCmd(old.Cmd, new.Cmd):
-		return true
-	case !sameEnv(old.Env, new.Env):
-		return true
-	case old.NodeAffinity != new.NodeAffinity:
-		return true
-	case old.NodeToleration != new.NodeToleration:
-		return true
-	default:
-		return false
+	// per container avaliations goes here
+	mustUpdate := func(old, new models.ContainerIface) bool {
+		switch {
+		case old.GetImage() != new.GetImage():
+			return true
+		case !samePorts(old.GetPorts(), new.GetPorts()):
+			return true
+		case old.GetLimits() != nil && new.GetLimits() != nil && *old.GetLimits() != *new.GetLimits():
+			return true
+		case old.GetRequests() != nil && new.GetRequests() != nil && *old.GetRequests() != *new.GetRequests():
+			return true
+		case !sameCmd(old.GetCmd(), new.GetCmd()):
+			return true
+		case !sameEnv(old.GetEnv(), new.GetEnv()):
+			return true
+		case new.GetName() != old.GetName():
+			return true
+		default:
+			return false
+		}
 	}
+
+	// per pod avaliation goes here
+	if old.NodeAffinity != new.NodeAffinity {
+		return true
+	} else if old.NodeToleration != new.NodeToleration {
+		return true
+	}
+
+	if old.Version() == "v1" && new.Version() == "v1" {
+		return mustUpdate(old, new)
+	}
+
+	for _, oldContainer := range old.Containers {
+		for _, newContainer := range new.Containers {
+			if oldContainer.Name == newContainer.Name {
+				if mustUpdate(oldContainer, newContainer) {
+					return true
+				}
+
+				break
+			}
+		}
+	}
+
+	return false
 }
 
 func waitForPods(

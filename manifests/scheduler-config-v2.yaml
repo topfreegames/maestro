@@ -1,8 +1,8 @@
 ---
-name: scheduler-name
+name: scheduler-with-two-containers
 game: game-name
 occupiedTimeout: 180
-shutdownTimeout: 10
+shutdownTimeout: 180
 autoscaling:
   min: 2
   up:
@@ -20,9 +20,15 @@ autoscaling:
       time: 60
       threshold: 80
 containers:
-- name: nginx
-  image: nginx:alpine
+- image: nginx:alpine
+  name: nginx
   ports:
-  - containerPort: 8080
+  - containerPort: 8081
+    protocol: TCP
+    name: tcp
+- image: redis:alpine
+  name: redis
+  ports:
+  - containerPort: 6379
     protocol: TCP
     name: tcp

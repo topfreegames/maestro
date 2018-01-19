@@ -12,8 +12,6 @@ import (
 
 	"github.com/go-pg/pg"
 	"github.com/topfreegames/extensions/pg/interfaces"
-	"github.com/topfreegames/maestro/errors"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // Scheduler is the struct that defines a maestro scheduler
@@ -86,70 +84,73 @@ type Forwarder struct {
 	Metadata map[string]interface{} `yaml:"metadata" json:"metadata"`
 }
 
-// ConfigYAML is the struct for the config yaml
-type ConfigYAML struct {
-	Name            string                           `yaml:"name" json:"name" valid:"required"`
-	Game            string                           `yaml:"game" json:"game" valid:"required"`
-	Image           string                           `yaml:"image" json:"image" valid:"required"`
-	Ports           []*Port                          `yaml:"ports" json:"ports"`
-	Limits          *Resources                       `yaml:"limits" json:"limits"`
-	Requests        *Resources                       `yaml:"requests" json:"requests"`
-	ShutdownTimeout int                              `yaml:"shutdownTimeout" json:"shutdownTimeout" valid:"int64"`
-	AutoScaling     *AutoScaling                     `yaml:"autoscaling" json:"autoscaling" valid:"required"`
-	Env             []*EnvVar                        `yaml:"env" json:"env"`
-	Cmd             []string                         `yaml:"cmd" json:"cmd"`
-	NodeAffinity    string                           `yaml:"affinity" json:"affinity"`
-	NodeToleration  string                           `yaml:"toleration" json:"toleration"`
-	OccupiedTimeout int64                            `yaml:"occupiedTimeout" json:"occupiedTimeout"`
-	Forwarders      map[string]map[string]*Forwarder `yaml:"forwarders" json:"forwarders"`
+// Container represents a container inside a pod
+type Container struct {
+	Name     string     `yaml:"name" json:"name" valid:"required"`
+	Image    string     `yaml:"image" json:"image" valid:"required"`
+	Ports    []*Port    `yaml:"ports" json:"ports"`
+	Limits   *Resources `yaml:"limits" json:"limits"`
+	Requests *Resources `yaml:"requests" json:"requests"`
+	Env      []*EnvVar  `yaml:"env" json:"env"`
+	Command  []string   `yaml:"cmd" json:"cmd"`
 }
 
-// EnsureDefaultValues check if specific fields are empty and
-// fill them with default values
-func (c *ConfigYAML) EnsureDefaultValues() {
-	if c == nil {
-		return
+// NewWithCopiedEnvs copy all container properties and create new envs with same values as c
+func (c *Container) NewWithCopiedEnvs() *Container {
+	new := &Container{
+		Name:     c.Name,
+		Image:    c.Image,
+		Ports:    c.Ports,
+		Limits:   c.Limits,
+		Requests: c.Requests,
+		Command:  c.Command,
+		Env:      make([]*EnvVar, len(c.Env)),
 	}
 
-	defaultPolicyTrigger := &ScalingPolicyTrigger{
-		Time:      600,
-		Usage:     80,
-		Threshold: 80,
-		Limit:     90,
-	}
-
-	defaultScalingPolicy := &ScalingPolicy{
-		Cooldown: 600,
-		Delta:    1,
-		Trigger:  defaultPolicyTrigger,
-	}
-
-	if c.AutoScaling == nil {
-		c.AutoScaling = &AutoScaling{
-			Up:   defaultScalingPolicy,
-			Down: defaultScalingPolicy,
+	for i, env := range c.Env {
+		new.Env[i] = &EnvVar{
+			Name:      env.Name,
+			Value:     env.Value,
+			ValueFrom: env.ValueFrom,
 		}
 	}
 
-	if c.AutoScaling.Up == nil {
-		c.AutoScaling.Up = defaultScalingPolicy
-	}
+	return new
+}
 
-	if c.AutoScaling.Down == nil {
-		c.AutoScaling.Down = defaultScalingPolicy
-	}
+//GetImage returns the container Image
+func (c *Container) GetImage() string {
+	return c.Image
+}
 
-	if c.AutoScaling.Up.Trigger == nil {
-		c.AutoScaling.Up.Trigger = defaultPolicyTrigger
-	}
+//GetName returns the container Image
+func (c *Container) GetName() string {
+	return c.Name
+}
 
-	if c.AutoScaling.Down.Trigger == nil {
-		c.AutoScaling.Down.Trigger = defaultPolicyTrigger
-	}
+//GetPorts returns the container Ports
+func (c *Container) GetPorts() []*Port {
+	return c.Ports
+}
 
-	if c.AutoScaling.Up.Trigger.Limit == 0 {
-		c.AutoScaling.Up.Trigger.Limit = 90
-	}
+//GetLimits returns the container Limits
+func (c *Container) GetLimits() *Resources {
+	return c.Limits
+}
+
+//GetRequests returns the container Requests
+func (c *Container) GetRequests() *Resources {
+	return c.Requests
+}
+
+//GetCmd returns the container Cmd
+func (c *Container) GetCmd() []string {
+	return c.Command
+}
+
+//GetEnv returns the container Env
+func (c *Container) GetEnv() []*EnvVar {
+	return c.Env
 }
 
 // NewScheduler is the scheduler constructor
@@ -161,16 +162,6 @@ func NewScheduler(name, game, yaml string) *Scheduler {
 		State:              StateCreating,
 		StateLastChangedAt: time.Now().Unix(),
 	}
-}
-
-// NewConfigYAML is the config yaml constructor
-func NewConfigYAML(yamlString string) (*ConfigYAML, error) {
-	configYAML := ConfigYAML{}
-	err := yaml.Unmarshal([]byte(yamlString), &configYAML)
-	if err != nil {
-		return nil, errors.NewYamlError("parse yaml error", err)
-	}
-	return &configYAML, nil
 }
 
 // Load loads a scheduler from the database using the scheduler name

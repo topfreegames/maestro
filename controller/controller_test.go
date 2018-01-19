@@ -74,6 +74,68 @@ env:
 cmd:
   - "./room"
 `
+	yaml2 = `
+name: controller-name
+game: controller
+affinity: maestro-dedicated
+toleration: maestro
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+containers:
+- name: container1
+  image: controller/controller:v123
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+    - containerPort: 7654
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./room"
+- name: container2
+  image: helper/helper:v1
+  ports:
+    - containerPort: 1235
+      protocol: UDP
+      name: port1
+    - containerPort: 7655
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./helper"
+`
 )
 
 var _ = Describe("Controller", func() {
@@ -942,6 +1004,37 @@ cmd:
 			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("there are pending pods, check if there are enough CPU and memory to allocate new rooms"))
+		})
+
+		It("should scaleup pods with two containers", func() {
+			amount := 5
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml2), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml2)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(amount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(amount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(amount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(amount)
+			mockPipeline.EXPECT().Exec().Times(amount)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
+			mockPipeline.EXPECT().
+				SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil)).Times(amount * 4)
+			mockPipeline.EXPECT().Exec().Times(amount * len(configYaml1.Containers))
+
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true)
+			Expect(err).NotTo(HaveOccurred())
+
+			pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(amount))
 		})
 	})
 
@@ -1986,6 +2079,612 @@ cmd:
 			err = yaml.Unmarshal([]byte(yaml2), &configYaml2)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(controller.MustUpdatePods(&configYaml1, &configYaml2)).To(BeFalse())
+		})
+
+		It(`should return true if configs of different versions and new version 
+		has more than one container`, func() {
+			yaml1 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1235
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_SECRET_ENV_VAR
+    valueFrom:
+      secretKeyRef:
+        name: secretname
+        value: secretkey
+cmd:
+  - "./room"
+`
+			yaml2 := `
+name: controller-name
+game: controller
+affinity: maestro-dedicated
+toleration: maestro
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+containers:
+- name: container1
+  image: controller/controller:v123
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+    - containerPort: 7654
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./room"
+- name: container2
+  image: helper/helper:v1
+  ports:
+    - containerPort: 1235
+      protocol: UDP
+      name: port1
+    - containerPort: 7655
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./helper"
+`
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			var configYaml2 models.ConfigYAML
+			err = yaml.Unmarshal([]byte(yaml2), &configYaml2)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(controller.MustUpdatePods(&configYaml1, &configYaml2)).To(BeTrue())
+			Expect(controller.MustUpdatePods(&configYaml2, &configYaml1)).To(BeTrue())
+		})
+
+		It(`should return true if both configs of version 2 but with different 
+		number of containers`, func() {
+			yaml1 := `
+name: controller-name
+game: controller
+affinity: maestro-dedicated
+toleration: maestro
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+containers:
+- name: container1
+  image: controller/controller:v123
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+    - containerPort: 7654
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./room"
+`
+			yaml2 := `
+name: controller-name
+game: controller
+affinity: maestro-dedicated
+toleration: maestro
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+containers:
+- name: container1
+  image: controller/controller:v123
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+    - containerPort: 7654
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./room"
+- name: container2
+  image: helper/helper:v1
+  ports:
+    - containerPort: 1235
+      protocol: UDP
+      name: port1
+    - containerPort: 7655
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./helper"
+`
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			var configYaml2 models.ConfigYAML
+			err = yaml.Unmarshal([]byte(yaml2), &configYaml2)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(controller.MustUpdatePods(&configYaml1, &configYaml2)).To(BeTrue())
+		})
+
+		It(`should return true if both configs of version 2 but affinity
+		or toleration changes`, func() {
+			yaml1 := `
+name: controller-name
+game: controller
+affinity: maestro-dedicated
+toleration: maestro
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+containers:
+- name: container1
+  image: controller/controller:v123
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+    - containerPort: 7654
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./room"
+`
+			yaml2 := `
+name: controller-name
+game: controller
+affinity: maestro-dedicated
+toleration: maestro
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+containers:
+- name: container1
+  image: controller/controller:v123
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+    - containerPort: 7654
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./room"
+`
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			var configYaml2 models.ConfigYAML
+			err = yaml.Unmarshal([]byte(yaml2), &configYaml2)
+			Expect(err).NotTo(HaveOccurred())
+
+			configYaml1.NodeAffinity = "affinity1"
+			configYaml2.NodeAffinity = "affinity2"
+			Expect(controller.MustUpdatePods(&configYaml1, &configYaml2)).To(BeTrue())
+
+			configYaml1.NodeAffinity = "affinity"
+			configYaml2.NodeAffinity = "affinity"
+
+			configYaml1.NodeToleration = "toleration1"
+			configYaml2.NodeToleration = "toleration2"
+			Expect(controller.MustUpdatePods(&configYaml1, &configYaml2)).To(BeTrue())
+		})
+
+		It(`should return false if both configs of version 2 and autoscaling 
+		parameters change`, func() {
+			yaml1 := `
+name: controller-name
+game: controller
+affinity: maestro-dedicated
+toleration: maestro
+shutdownTimeout: 20
+autoscaling:
+  min: 4
+  up:
+    delta: 3
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 2
+    trigger:
+      usage: 20
+      time: 500
+    cooldown: 500
+containers:
+- name: container2
+  image: helper/helper:v1
+  ports:
+    - containerPort: 1235
+      protocol: UDP
+      name: port1
+    - containerPort: 7655
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./helper"
+- name: container1
+  image: controller/controller:v123
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+    - containerPort: 7654
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./room"
+`
+			yaml2 := `
+name: controller-name
+game: controller
+affinity: maestro-dedicated
+toleration: maestro
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+containers:
+- name: container1
+  image: controller/controller:v123
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+    - containerPort: 7654
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./room"
+- name: container2
+  image: helper/helper:v1
+  ports:
+    - containerPort: 1235
+      protocol: UDP
+      name: port1
+    - containerPort: 7655
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./helper"
+`
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			var configYaml2 models.ConfigYAML
+			err = yaml.Unmarshal([]byte(yaml2), &configYaml2)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(controller.MustUpdatePods(&configYaml1, &configYaml2)).To(BeFalse())
+		})
+
+		It(`should return true if both configs of version 2 and image 
+		of one container changes`, func() {
+			yaml1 := `
+name: controller-name
+game: controller
+affinity: maestro-dedicated
+toleration: maestro
+shutdownTimeout: 20
+autoscaling:
+  min: 4
+  up:
+    delta: 3
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 2
+    trigger:
+      usage: 20
+      time: 500
+    cooldown: 500
+containers:
+- name: container2
+  image: helper/helper:v1
+  ports:
+    - containerPort: 1235
+      protocol: UDP
+      name: port1
+    - containerPort: 7655
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./helper"
+- name: container1
+  image: controller/controller:v1
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+    - containerPort: 7654
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./room"
+`
+			yaml2 := `
+name: controller-name
+game: controller
+affinity: maestro-dedicated
+toleration: maestro
+shutdownTimeout: 20
+autoscaling:
+  min: 4
+  up:
+    delta: 3
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 2
+    trigger:
+      usage: 20
+      time: 500
+    cooldown: 500
+containers:
+- name: container1
+  image: controller/controller:v2
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+    - containerPort: 7654
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./room"
+- name: container2
+  image: helper/helper:v1
+  ports:
+    - containerPort: 1235
+      protocol: UDP
+      name: port1
+    - containerPort: 7655
+      protocol: TCP
+      name: port2
+  limits:
+    memory: "66Mi"
+    cpu: "2"
+  requests:
+    memory: "66Mi"
+    cpu: "2"
+  env:
+    - name: MY_ENV_VAR
+      value: myvalue
+  cmd:
+    - "./helper"
+`
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			var configYaml2 models.ConfigYAML
+			err = yaml.Unmarshal([]byte(yaml2), &configYaml2)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(controller.MustUpdatePods(&configYaml1, &configYaml2)).To(BeTrue())
 		})
 	})
 

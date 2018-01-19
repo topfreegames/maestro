@@ -53,6 +53,7 @@ spec:
             values: ["true"]
 {{- end}}
   containers:
+  {{range .Containers}}
   - name: {{.Name}}
     image: {{.Image}}
     hostNetwork: "true"
@@ -64,20 +65,24 @@ spec:
         name: "{{.Name}}"
       {{end}}
     resources:
+      {{- with .Requests}}
       requests:
-        {{- if .ResourcesRequestsCPU}}
-        cpu: {{.ResourcesRequestsCPU}}
+        {{- if .CPU}}
+        cpu: {{.CPU}}
         {{- end}}
-        {{- if .ResourcesRequestsMemory}}
-        memory: {{.ResourcesRequestsMemory}}
+        {{- if .Memory}}
+        memory: {{.Memory}}
         {{- end}}
+      {{- end}}
+      {{- with .Limits}}
       limits:
-        {{- if .ResourcesLimitsCPU}}
-        cpu: {{.ResourcesLimitsCPU}}
+        {{- if .CPU}}
+        cpu: {{.CPU}}
         {{- end}}
-        {{- if .ResourcesLimitsMemory}}
-        memory: {{.ResourcesLimitsMemory}}
+        {{- if .Memory}}
+        memory: {{.Memory}}
         {{- end}}
+      {{- end}}
     env:
       {{range .Env}}
       - name: {{.Name}}
@@ -98,24 +103,18 @@ spec:
       - {{.}}
       {{- end}}
     {{- end}}
+  {{end}}
 `
 
 // Pod represents a pod
 type Pod struct {
-	Command                 []string
-	Env                     []*EnvVar
-	Game                    string
-	Image                   string
-	Name                    string
-	Namespace               string
-	Ports                   []*Port
-	ResourcesLimitsCPU      string
-	ResourcesLimitsMemory   string
-	ResourcesRequestsCPU    string
-	ResourcesRequestsMemory string
-	ShutdownTimeout         int
-	NodeAffinity            string
-	NodeToleration          string
+	Game            string
+	Name            string
+	Namespace       string
+	ShutdownTimeout int
+	NodeAffinity    string
+	NodeToleration  string
+	Containers      []*Container
 }
 
 // NewPod is the pod constructor
@@ -130,23 +129,33 @@ func NewPod(
 	redisClient redisinterfaces.RedisClient,
 ) (*Pod, error) {
 	pod := &Pod{
-		Command:         command,
-		Env:             env,
 		Game:            game,
-		Image:           image,
 		Name:            name,
 		Namespace:       namespace,
-		Ports:           ports,
 		ShutdownTimeout: shutdownTimeout,
 	}
+
+	container := &Container{
+		Image:   image,
+		Name:    name,
+		Env:     env,
+		Ports:   ports,
+		Command: command,
+	}
+
 	if limits != nil {
-		pod.ResourcesLimitsCPU = limits.CPU
-		pod.ResourcesLimitsMemory = limits.Memory
+		container.Limits = &Resources{
+			CPU:    limits.CPU,
+			Memory: limits.Memory,
+		}
 	}
 	if requests != nil {
-		pod.ResourcesRequestsCPU = requests.CPU
-		pod.ResourcesRequestsMemory = requests.Memory
+		container.Requests = &Resources{
+			CPU:    requests.CPU,
+			Memory: requests.Memory,
+		}
 	}
+	pod.Containers = []*Container{container}
 	err := pod.configureHostPorts(clientset, redisClient)
 
 	if err == nil {
@@ -169,6 +178,32 @@ func NewDefaultPod(
 	return NewPod(
 		game, "", name, namespace,
 		nil, nil, 0, []*Port{}, []string{}, []*EnvVar{}, clientset, redisClient)
+}
+
+// NewPodWithContainers returns a pod with multiple containers
+func NewPodWithContainers(
+	game, name, namespace string,
+	shutdownTimeout int,
+	containers []*Container,
+	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+) (*Pod, error) {
+	pod := &Pod{
+		Game:            game,
+		Name:            name,
+		Namespace:       namespace,
+		ShutdownTimeout: shutdownTimeout,
+		Containers:      containers,
+	}
+	err := pod.configureHostPorts(clientset, redisClient)
+	if err == nil {
+		reporters.Report(reportersConstants.EventGruNew, map[string]string{
+			reportersConstants.TagGame:      game,
+			reportersConstants.TagScheduler: namespace,
+		})
+	}
+
+	return pod, err
 }
 
 //SetAffinity sets kubernetes Affinity on pod
@@ -223,9 +258,11 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 	if err != nil {
 		return errors.NewKubernetesError("delete pod error", err)
 	}
-	err = RetrievePorts(redisClient, p.Ports)
-	if err != nil {
-		//TODO: try again?
+	for _, container := range p.Containers {
+		err = RetrievePorts(redisClient, container.Ports)
+		if err != nil {
+			//TODO: try again?
+		}
 	}
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
@@ -238,39 +275,58 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 	return nil
 }
 
+func getContainerWithName(name string, pod *v1.Pod) v1.Container {
+	var container v1.Container
+
+	for _, container = range pod.Spec.Containers {
+		if container.Name == name {
+			break
+		}
+	}
+
+	return container
+}
+
 func (p *Pod) configureHostPorts(clientset kubernetes.Interface, redisClient redisinterfaces.RedisClient) error {
 	pod, err := clientset.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		return errors.NewKubernetesError("could not access kubernetes", err)
 	} else if err == nil {
 		//pod exists, so just retrieve ports
-		p.Ports = make([]*Port, len(pod.Spec.Containers[0].Ports))
-		for i, port := range pod.Spec.Containers[0].Ports {
-			p.Ports[i] = &Port{
-				ContainerPort: int(port.ContainerPort),
-				Name:          port.Name,
-				HostPort:      int(port.HostPort),
-				Protocol:      string(port.Protocol),
+		for _, container := range p.Containers {
+			podContainer := getContainerWithName(container.Name, pod)
+			container.Ports = make([]*Port, len(podContainer.Ports))
+
+			for i, port := range podContainer.Ports {
+				container.Ports[i] = &Port{
+					ContainerPort: int(port.ContainerPort),
+					Name:          port.Name,
+					HostPort:      int(port.HostPort),
+					Protocol:      string(port.Protocol),
+				}
 			}
+			break
 		}
 		return nil
 	}
 
 	//pod not found, so give new ports
-	ports, err := GetFreePorts(redisClient, len(p.Ports))
-	if err != nil {
-		return err
-	}
-	podPorts := make([]*Port, len(ports))
-	for i, port := range ports {
-		podPorts[i] = &Port{
-			ContainerPort: p.Ports[i].ContainerPort,
-			Name:          p.Ports[i].Name,
-			HostPort:      port,
-			Protocol:      p.Ports[i].Protocol,
+	for _, container := range p.Containers {
+		ports, err := GetFreePorts(redisClient, len(container.Ports))
+		if err != nil {
+			return err
 		}
+		containerPorts := make([]*Port, len(ports))
+		for i, port := range ports {
+			containerPorts[i] = &Port{
+				ContainerPort: container.Ports[i].ContainerPort,
+				Name:          container.Ports[i].Name,
+				HostPort:      port,
+				Protocol:      container.Ports[i].Protocol,
+			}
+		}
+		container.Ports = containerPorts
 	}
-	p.Ports = podPorts
 	return nil
 }
 
