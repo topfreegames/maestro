@@ -167,7 +167,7 @@ func (c *ConfigYAML) EnsureDefaultValues() {
 
 // Version returns the config version
 func (c *ConfigYAML) Version() string {
-	if c.Containers != nil || len(c.Containers) > 0 {
+	if c.Containers != nil && len(c.Containers) > 0 {
 		return "v2"
 	}
 

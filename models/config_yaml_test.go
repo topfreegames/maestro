@@ -26,6 +26,7 @@ cmd: ["/bin/bash", "-c", "./start.sh"]
 env:
 - name: ENV_1
   value: VALUE_1
+containers: []
 `)
 
 			result := `{"yaml":"name: scheduler-name\ngame: game\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nimage: nginx:alpine\nports:\n- containerPort: 8080\n  protocol: TCP\n  name: tcp\nlimits:\n  cpu: 100m\n  memory: 100Mi\nrequests:\n  cpu: 50m\n  memory: 50Mi\nenv:\n- name: ENV_1\n  value: VALUE_1\n  valueFrom:\n    secretKeyRef:\n      name: \"\"\n      key: \"\"\ncmd:\n- /bin/bash\n- -c\n- ./start.sh\n"}`
