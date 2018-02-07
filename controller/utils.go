@@ -205,7 +205,6 @@ func createPodsAsTheyAreDeleted(
 					exit = false
 					logger.
 						WithError(err).
-						WithField("pod", newPod.GetName()).
 						Info("error creating pod")
 					break
 				}
