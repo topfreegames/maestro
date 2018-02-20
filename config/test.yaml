@@ -37,6 +37,7 @@ newrelic:
   app: maestro
   key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 oauth:
+  enabled: true
   acceptedDomains: 
   - "example.com"
   - "other.com"

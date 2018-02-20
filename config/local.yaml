@@ -43,6 +43,7 @@ newrelic:
   app: "maestro"
   key: ""
 oauth:
+  enabled: true
   acceptedDomains: 
   - "example.com"
   - "other.com"
