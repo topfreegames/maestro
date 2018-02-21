@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis"
 	goredis "github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	uuid "github.com/satori/go.uuid"
@@ -120,10 +119,10 @@ containers:
   ports:
     - containerPort: 1235
       protocol: UDP
-      name: port1
+      name: port3
     - containerPort: 7655
       protocol: TCP
-      name: port2
+      name: port4
   limits:
     memory: "66Mi"
     cpu: "2"
@@ -141,7 +140,7 @@ containers:
 var _ = Describe("Controller", func() {
 	var clientset *fake.Clientset
 	var timeoutSec int
-	var lockTimeoutMS int = 600
+	var lockTimeoutMs int = 600
 	var lockKey string = "maestro-test-lock-key"
 	var configYaml1 models.ConfigYAML
 	var maxSurge int = 100
@@ -379,7 +378,7 @@ cmd:
 			)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any())
-			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
+			mockPipeline.EXPECT().Exec().Return([]goredis.Cmder{}, errors.New("some error in redis"))
 			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
 
 			err = controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
@@ -608,10 +607,10 @@ cmd:
 				Terminating: 1,
 			}
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
-			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil))
-			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
-			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().SCard(creating).Return(goredis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(ready).Return(goredis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(occupied).Return(goredis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(terminating).Return(goredis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
 			scheduler, autoScalingPolicy, countByStatus, err := controller.GetSchedulerScalingInfo(logger, mr, mockDb, mockRedisClient, configYaml1.Name)
@@ -643,7 +642,7 @@ cmd:
 			})
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SCard(gomock.Any()).Times(4)
-			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
+			mockPipeline.EXPECT().Exec().Return([]goredis.Cmder{}, errors.New("some error in redis"))
 			_, _, _, err = controller.GetSchedulerScalingInfo(logger, mr, mockDb, mockRedisClient, configYaml1.Name)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
@@ -876,7 +875,7 @@ cmd:
 			)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any())
-			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
+			mockPipeline.EXPECT().Exec().Return([]goredis.Cmder{}, errors.New("some error in redis"))
 
 			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true)
 			Expect(err).To(HaveOccurred())
@@ -937,7 +936,7 @@ cmd:
 			).Times(amount)
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(amount)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(amount)
-			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
+			mockPipeline.EXPECT().Exec().Return([]goredis.Cmder{}, errors.New("some error in redis"))
 			mockPipeline.EXPECT().Exec().Times(amount - 1)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(amount - 1)
@@ -1072,7 +1071,7 @@ cmd:
 			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
-				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
 
 			}
 			mockPipeline.EXPECT().Exec()
@@ -1138,7 +1137,7 @@ cmd:
 			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
-				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
 			}
 			mockPipeline.EXPECT().Exec()
 
@@ -1151,7 +1150,7 @@ cmd:
 			}
 			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), gomock.Any())
 			mockPipeline.EXPECT().Del(gomock.Any())
-			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
+			mockPipeline.EXPECT().Exec().Return([]goredis.Cmder{}, errors.New("some error in redis"))
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(len(configYaml1.Ports))
@@ -1199,9 +1198,9 @@ cmd:
 			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
-				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
 			}
-			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
+			mockPipeline.EXPECT().Exec().Return([]goredis.Cmder{}, errors.New("some error in redis"))
 
 			timeoutSec = 0
 			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
@@ -1240,9 +1239,9 @@ cmd:
 			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for i := 0; i < scaleDownAmount; i++ {
-				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult("", nil))
+				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult("", nil))
 			}
-			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
+			mockPipeline.EXPECT().Exec().Return([]goredis.Cmder{}, errors.New("some error in redis"))
 
 			timeoutSec = 0
 			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
@@ -1264,7 +1263,7 @@ cmd:
 			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
-				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
 			}
 			mockPipeline.EXPECT().Exec()
 
@@ -1320,7 +1319,7 @@ cmd:
 			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
-				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
 			}
 			mockPipeline.EXPECT().Exec()
 
@@ -2779,8 +2778,8 @@ cmd:
 				})
 
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(true, nil))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(true, nil))
 
 			for _, pod := range pods.Items {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -2818,7 +2817,7 @@ cmd:
 			mockRedisClient.EXPECT().Ping().AnyTimes()
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-				Return(redis.NewCmdResult(nil, nil))
+				Return(goredis.NewCmdResult(nil, nil))
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil)).Times(configYaml1.AutoScaling.Min * len(configYaml2.Ports))
@@ -2835,7 +2834,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				lockKey,
 				&clock.Clock{},
 				nil,
@@ -2870,11 +2869,11 @@ cmd:
 			configYaml2 := models.ConfigYAML{Name: "another-name"}
 
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(true, nil))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(true, nil))
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-				Return(redis.NewCmdResult(nil, nil))
+				Return(goredis.NewCmdResult(nil, nil))
 
 			mockDb.EXPECT().
 				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name)
@@ -2886,7 +2885,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				lockKey,
 				&clock.Clock{},
 				nil,
@@ -2952,10 +2951,10 @@ cmd:
 				Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-				Return(redis.NewCmdResult(nil, nil))
+				Return(goredis.NewCmdResult(nil, nil))
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(true, nil))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(true, nil))
 
 			err = controller.UpdateSchedulerConfig(
 				logger,
@@ -2964,7 +2963,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				lockKey,
 				&clock.Clock{},
 				nil,
@@ -2995,11 +2994,11 @@ cmd:
 
 		It("should return error if db fails to select scheduler", func() {
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(true, nil))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(true, nil))
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-				Return(redis.NewCmdResult(nil, nil))
+				Return(goredis.NewCmdResult(nil, nil))
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
 				Return(pg.NewTestResult(errors.New("error on select"), 0), errors.New("error on select"))
 
@@ -3010,7 +3009,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				lockKey,
 				&clock.Clock{},
 				nil,
@@ -3022,8 +3021,8 @@ cmd:
 
 		It("should return error if timeout waiting for lock", func() {
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(true, nil))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(true, nil))
 
 			timeoutSec := 0
 			err := controller.UpdateSchedulerConfig(
@@ -3033,7 +3032,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				lockKey,
 				&clock.Clock{},
 				nil,
@@ -3044,16 +3043,16 @@ cmd:
 
 		It("should timeout after lock is always connected", func() {
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(true, nil))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(true, nil))
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(false, nil))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(false, nil))
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-				Return(redis.NewCmdResult(nil, nil))
+				Return(goredis.NewCmdResult(nil, nil))
 
-			lock, err := redisClient.EnterCriticalSection(redisClient.Client, lockKey, time.Duration(lockTimeoutMS)*time.Millisecond, 0, 0)
+			lock, err := redisClient.EnterCriticalSection(redisClient.Client, lockKey, time.Duration(lockTimeoutMs)*time.Millisecond, 0, 0)
 			Expect(err).NotTo(HaveOccurred())
 			defer redisClient.LeaveCriticalSection(lock)
 
@@ -3065,7 +3064,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				lockKey,
 				&clock.Clock{},
 				nil,
@@ -3076,8 +3075,8 @@ cmd:
 
 		It("should return error if error occurred on lock", func() {
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(true, errors.New("error getting lock")))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(true, errors.New("error getting lock")))
 
 			err := controller.UpdateSchedulerConfig(
 				logger,
@@ -3086,7 +3085,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				lockKey,
 				&clock.Clock{},
 				nil,
@@ -3110,8 +3109,8 @@ cmd:
 					Return(time.Unix(0, 0)))
 			calls.Add(
 				mockRedisClient.EXPECT().
-					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil)))
+					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+					Return(goredis.NewBoolResult(true, nil)))
 
 			// Get scheduler from DB
 			calls.Add(
@@ -3186,7 +3185,7 @@ cmd:
 			calls.Add(
 				mockRedisClient.EXPECT().
 					Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil)))
+					Return(goredis.NewCmdResult(nil, nil)))
 			calls.Finish()
 
 			err = controller.UpdateSchedulerConfig(
@@ -3196,7 +3195,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, 10,
+				timeoutSec, lockTimeoutMs, 10,
 				lockKey,
 				mockClock,
 				nil)
@@ -3219,8 +3218,8 @@ cmd:
 					Return(time.Unix(0, 0)))
 			calls.Add(
 				mockRedisClient.EXPECT().
-					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil)))
+					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+					Return(goredis.NewBoolResult(true, nil)))
 
 			// Get scheduler from DB
 			calls.Add(
@@ -3358,7 +3357,7 @@ cmd:
 			calls.Add(
 				mockRedisClient.EXPECT().
 					Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil)))
+					Return(goredis.NewCmdResult(nil, nil)))
 			calls.Finish()
 
 			err = controller.UpdateSchedulerConfig(
@@ -3368,7 +3367,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, 10,
+				timeoutSec, lockTimeoutMs, 10,
 				lockKey,
 				mockClock,
 				nil,
@@ -3392,8 +3391,8 @@ cmd:
 					Return(time.Unix(0, 0)))
 			calls.Add(
 				mockRedisClient.EXPECT().
-					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil)))
+					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+					Return(goredis.NewBoolResult(true, nil)))
 
 			// Get scheduler from DB
 			calls.Add(
@@ -3474,7 +3473,7 @@ cmd:
 			calls.Add(
 				mockRedisClient.EXPECT().
 					Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil)))
+					Return(goredis.NewCmdResult(nil, nil)))
 			calls.Finish()
 
 			err = controller.UpdateSchedulerConfig(
@@ -3484,7 +3483,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, 100,
+				timeoutSec, lockTimeoutMs, 100,
 				lockKey,
 				mockClock,
 				nil,
@@ -3525,8 +3524,8 @@ cmd:
 				})
 
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(true, nil))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(true, nil))
 
 			for i := 0; i < len(pods.Items); i++ {
 				pod := pods.Items[i]
@@ -3565,7 +3564,7 @@ cmd:
 			mockRedisClient.EXPECT().Ping().AnyTimes()
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-				Return(redis.NewCmdResult(nil, nil))
+				Return(goredis.NewCmdResult(nil, nil))
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil)).Times(configYaml1.AutoScaling.Min * len(configYaml2.Ports))
@@ -3582,7 +3581,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				lockKey,
 				&clock.Clock{},
 				nil,
@@ -3716,7 +3715,7 @@ cmd:
 
 	Describe("UpdateSchedulerImage", func() {
 		var configYaml1 models.ConfigYAML
-		var newImageName string
+		var imageParams *models.SchedulerImageParams
 
 		BeforeEach(func() {
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
@@ -3749,7 +3748,9 @@ cmd:
 			err = controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).NotTo(HaveOccurred())
 
-			newImageName = "new-image"
+			imageParams = &models.SchedulerImageParams{
+				Image: "new-image",
+			}
 		})
 
 		It("should update image", func() {
@@ -3765,8 +3766,8 @@ cmd:
 				})
 
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(true, nil))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(true, nil))
 
 			for _, pod := range pods.Items {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -3804,7 +3805,7 @@ cmd:
 			mockRedisClient.EXPECT().Ping().AnyTimes()
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-				Return(redis.NewCmdResult(nil, nil))
+				Return(goredis.NewCmdResult(nil, nil))
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil)).Times(configYaml1.AutoScaling.Min * len(configYaml1.Ports))
@@ -3820,8 +3821,9 @@ cmd:
 				mockDb,
 				redisClient,
 				clientset,
-				configYaml1.Name, newImageName, lockKey,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				configYaml1.Name, lockKey,
+				imageParams,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				&clock.Clock{},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -3844,7 +3846,7 @@ cmd:
 				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
 				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
 				Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
-				Expect(pod.Spec.Containers[0].Image).To(Equal(newImageName))
+				Expect(pod.Spec.Containers[0].Image).To(Equal(imageParams.Image))
 				Expect(pod.Spec.Containers[0].Env).To(HaveLen(3))
 			}
 		})
@@ -3864,8 +3866,9 @@ cmd:
 				mockDb,
 				redisClient,
 				clientset,
-				newSchedulerName, newImageName, lockKey,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				newSchedulerName, lockKey,
+				imageParams,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				&clock.Clock{},
 			)
 			Expect(err).To(HaveOccurred())
@@ -3906,8 +3909,9 @@ cmd:
 				mockDb,
 				redisClient,
 				clientset,
-				configYaml1.Name, newImageName, lockKey,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				configYaml1.Name, lockKey,
+				imageParams,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				&clock.Clock{},
 			)
 			Expect(err).To(HaveOccurred())
@@ -3928,8 +3932,9 @@ cmd:
 				mockDb,
 				redisClient,
 				clientset,
-				configYaml1.Name, newImageName, lockKey,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				configYaml1.Name, lockKey,
+				imageParams,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				&clock.Clock{},
 			)
 			Expect(err).To(HaveOccurred())
@@ -3944,17 +3949,203 @@ cmd:
 					*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 				})
 
+			imageParams.Image = configYaml1.Image
 			err := controller.UpdateSchedulerImage(
 				logger,
 				mr,
 				mockDb,
 				redisClient,
 				clientset,
-				configYaml1.Name, configYaml1.Image, lockKey,
-				timeoutSec, lockTimeoutMS, maxSurge,
+				configYaml1.Name, lockKey,
+				imageParams,
+				timeoutSec, lockTimeoutMs, maxSurge,
 				&clock.Clock{},
 			)
 			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("UpdateSchedulerImage for configYaml v2", func() {
+		var configYaml models.ConfigYAML
+		imageParams := &models.SchedulerImageParams{
+			Image: "new-image",
+		}
+
+		It("Should update scheduler with configYaml v2", func() {
+			err := yaml.Unmarshal([]byte(yaml2), &configYaml)
+			Expect(err).NotTo(HaveOccurred())
+
+			var namespace = configYaml.Name
+
+			// Create scheduler
+			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb, logger, mr, yaml2, timeoutSec)
+
+			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+
+			// Update scheduler
+			mt.MockSelectScheduler(yaml2, mockDb)
+
+			// Get lock
+			mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+			// Remove old rooms
+			mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
+
+			// Create new rooms
+			mt.MockCreateRoomsFromPods(mockRedisClient, mockPipeline, &configYaml)
+
+			// Update on database
+			mt.MockUpdateSchedulerOnDB(mockDb)
+
+			// return lock
+			mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+			imageParams.Container = "container1"
+			err = controller.UpdateSchedulerImage(
+				logger,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				configYaml.Name, lockKey,
+				imageParams,
+				timeoutSec, lockTimeoutMs, maxSurge,
+				&clock.Clock{},
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ns.Items).To(HaveLen(1))
+			Expect(ns.Items[0].GetName()).To(Equal(namespace))
+
+			pods, err = clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+
+			for _, pod := range pods.Items {
+				Expect(pod.GetName()).To(ContainSubstring(namespace))
+				Expect(pod.GetName()).To(HaveLen(len(namespace) + 9))
+				Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MY_ENV_VAR"))
+				Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("myvalue"))
+				Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
+				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
+				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
+				Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
+				Expect(pod.Spec.Containers[0].Image).To(Equal(imageParams.Image))
+				Expect(pod.Spec.Containers[0].Env).To(HaveLen(3))
+			}
+		})
+
+		FIt("Should not update scheduler with configYaml v2 if image is the same", func() {
+			err := yaml.Unmarshal([]byte(yaml2), &configYaml)
+			Expect(err).NotTo(HaveOccurred())
+
+			var namespace = configYaml.Name
+
+			// Create scheduler
+			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb, logger, mr, yaml2, timeoutSec)
+
+			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+
+			// Update scheduler
+			mt.MockSelectScheduler(yaml2, mockDb)
+
+			imageParams.Container = configYaml.Containers[0].Name
+			imageParams.Image = configYaml.Containers[0].Image
+			err = controller.UpdateSchedulerImage(
+				logger,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				configYaml.Name, lockKey,
+				imageParams,
+				timeoutSec, lockTimeoutMs, maxSurge,
+				&clock.Clock{},
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ns.Items).To(HaveLen(1))
+			Expect(ns.Items[0].GetName()).To(Equal(namespace))
+
+			pods, err = clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+
+			for _, pod := range pods.Items {
+				Expect(pod.GetName()).To(ContainSubstring(namespace))
+				Expect(pod.GetName()).To(HaveLen(len(namespace) + 9))
+				Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MY_ENV_VAR"))
+				Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("myvalue"))
+				Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
+				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
+				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
+				Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
+				Expect(pod.Spec.Containers[0].Image).To(Equal(imageParams.Image))
+				Expect(pod.Spec.Containers[0].Env).To(HaveLen(3))
+			}
+		})
+
+		FIt("Should not update scheduler with configYaml v2 if container name is invalid", func() {
+			err := yaml.Unmarshal([]byte(yaml2), &configYaml)
+			Expect(err).NotTo(HaveOccurred())
+
+			var namespace = configYaml.Name
+
+			// Create scheduler
+			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb, logger, mr, yaml2, timeoutSec)
+
+			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+
+			// Update scheduler
+			mt.MockSelectScheduler(yaml2, mockDb)
+
+			imageParams.Container = "invalid-container"
+			imageParams.Image = configYaml.Containers[0].Image
+			err = controller.UpdateSchedulerImage(
+				logger,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				configYaml.Name, lockKey,
+				imageParams,
+				timeoutSec, lockTimeoutMs, maxSurge,
+				&clock.Clock{},
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("no container with name invalid-container"))
+
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ns.Items).To(HaveLen(1))
+			Expect(ns.Items[0].GetName()).To(Equal(namespace))
+
+			pods, err = clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+
+			for _, pod := range pods.Items {
+				Expect(pod.GetName()).To(ContainSubstring(namespace))
+				Expect(pod.GetName()).To(HaveLen(len(namespace) + 9))
+				Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MY_ENV_VAR"))
+				Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("myvalue"))
+				Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
+				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
+				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
+				Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
+				Expect(pod.Spec.Containers[0].Image).To(Equal(configYaml.Containers[0].Image))
+				Expect(pod.Spec.Containers[0].Env).To(HaveLen(3))
+			}
 		})
 	})
 
@@ -4008,17 +4199,17 @@ cmd:
 			mockRedisClient.EXPECT().Ping().AnyTimes()
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-				Return(redis.NewCmdResult(nil, nil))
+				Return(goredis.NewCmdResult(nil, nil))
 			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-				Return(redis.NewBoolResult(true, nil))
+				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+				Return(goredis.NewBoolResult(true, nil))
 
 			err := controller.UpdateSchedulerMin(logger,
 				mr,
 				mockDb,
 				redisClient,
 				configYaml1.Name, lockKey,
-				timeoutSec, lockTimeoutMS, newMin,
+				timeoutSec, lockTimeoutMs, newMin,
 				&clock.Clock{},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -4060,7 +4251,7 @@ cmd:
 				mockDb,
 				redisClient,
 				configYaml1.Name, lockKey,
-				timeoutSec, lockTimeoutMS, newMin,
+				timeoutSec, lockTimeoutMs, newMin,
 				&clock.Clock{},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -4078,7 +4269,7 @@ cmd:
 				mockDb,
 				redisClient,
 				configYaml1.Name, lockKey,
-				timeoutSec, lockTimeoutMS, newMin,
+				timeoutSec, lockTimeoutMs, newMin,
 				&clock.Clock{},
 			)
 			Expect(err).To(HaveOccurred())
@@ -4224,7 +4415,7 @@ cmd:
 			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
-				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
 
 			}
 			mockPipeline.EXPECT().Exec()
@@ -4342,7 +4533,7 @@ cmd:
 			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
-				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
+				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
 			}
 			mockPipeline.EXPECT().Exec()
 
@@ -4462,10 +4653,10 @@ cmd:
 				Ready:       0,
 				Terminating: 0,
 			}
-			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
-			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil))
-			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
-			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().SCard(creating).Return(goredis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(ready).Return(goredis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(occupied).Return(goredis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(terminating).Return(goredis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
 			mockDb.EXPECT().
@@ -4533,10 +4724,10 @@ cmd:
 				Ready:       3,
 				Terminating: 0,
 			}
-			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
-			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil))
-			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
-			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().SCard(creating).Return(goredis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(ready).Return(goredis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(occupied).Return(goredis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(terminating).Return(goredis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
 			mockDb.EXPECT().

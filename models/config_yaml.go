@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/topfreegames/maestro/errors"
 	yaml "gopkg.in/yaml.v2"
@@ -172,6 +173,38 @@ func (c *ConfigYAML) Version() string {
 	}
 
 	return "v1"
+}
+
+// UpdateImage updates the image of the configYaml
+// Returns true if the image was updated
+// Returns false if the the image was the same
+// Returns error if version v2 and there is no container with that name
+func (c *ConfigYAML) UpdateImage(imageParams *SchedulerImageParams) (bool, error) {
+	if c.Version() == "v1" {
+		if c.Image == imageParams.Image {
+			return false, nil
+		}
+
+		c.Image = imageParams.Image
+		return true, nil
+	} else if c.Version() == "v2" {
+		for _, container := range c.Containers {
+			if container.Name == imageParams.Container {
+				if container.Image == imageParams.Image {
+					return false, nil
+				}
+
+				container.Image = imageParams.Image
+				return true, nil
+			}
+		}
+
+		return false, errors.NewValidationFailedError(
+			fmt.Errorf("no container with name %s", imageParams.Container))
+	}
+
+	return false, errors.NewValidationFailedError(
+		fmt.Errorf("no update function for version %s", c.Version()))
 }
 
 //GetImage returns the container Image

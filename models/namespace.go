@@ -89,9 +89,11 @@ func (n *Namespace) DeletePods(clientset kubernetes.Interface,
 			reportersConstants.TagScheduler: s.Name,
 			reportersConstants.TagReason:    reportersConstants.ReasonNamespaceDeletion,
 		})
-		err := RetrieveV1Ports(redisClient, pod.Spec.Containers[0].Ports)
-		if err != nil {
-			//TODO: try again?
+		for _, container := range pod.Spec.Containers {
+			err := RetrieveV1Ports(redisClient, container.Ports)
+			if err != nil {
+				//TODO: try again?
+			}
 		}
 	}
 	return nil

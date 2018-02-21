@@ -611,7 +611,8 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 			g.App.DB,
 			redisClient,
 			g.App.KubernetesClient,
-			params.SchedulerName, schedulerImage.Image, lockKey,
+			params.SchedulerName, lockKey,
+			schedulerImage,
 			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"), maxSurge,
 			&clock.Clock{},
 		)

@@ -254,12 +254,18 @@ func (p *Pod) Create(clientset kubernetes.Interface) (*v1.Pod, error) {
 func (p *Pod) Delete(clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
 	reason string) error {
-	err := clientset.CoreV1().Pods(p.Namespace).Delete(p.Name, &metav1.DeleteOptions{})
+	kubePod, err := clientset.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
+	if err != nil {
+		return errors.NewKubernetesError("error getting pod to delete", err)
+	}
+
+	err = clientset.CoreV1().Pods(p.Namespace).Delete(p.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		return errors.NewKubernetesError("delete pod error", err)
 	}
-	for _, container := range p.Containers {
-		err = RetrievePorts(redisClient, container.Ports)
+
+	for _, container := range kubePod.Spec.Containers {
+		err = RetrieveV1Ports(redisClient, container.Ports)
 		if err != nil {
 			//TODO: try again?
 		}

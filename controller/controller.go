@@ -779,6 +779,7 @@ func createPod(
 		"node": nodeName,
 		"name": name,
 	}).Info("Created GRU (pod) successfully.")
+
 	return kubePod, nil
 }
 
@@ -973,7 +974,8 @@ func UpdateSchedulerImage(
 	db pginterfaces.DB,
 	redisClient *redis.Client,
 	clientset kubernetes.Interface,
-	schedulerName, image, lockKey string,
+	schedulerName, lockKey string,
+	imageParams *models.SchedulerImageParams,
 	timeoutSec, lockTimeoutMS, maxSurge int,
 	clock clockinterfaces.Clock,
 ) error {
@@ -981,10 +983,15 @@ func UpdateSchedulerImage(
 	if err != nil {
 		return err
 	}
-	if configYaml.Image == image {
+
+	updated, err := configYaml.UpdateImage(imageParams)
+	if err != nil {
+		return err
+	}
+	if !updated {
 		return nil
 	}
-	configYaml.Image = image
+
 	return UpdateSchedulerConfig(
 		logger,
 		mr,
