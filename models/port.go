@@ -50,6 +50,7 @@ func GetFreePorts(redisClient redisinterfaces.RedisClient, n int) ([]int, error)
 	}
 	//TODO: check if enough ports
 	//TODO: check if port is available in host machine
+
 	freePortsKey := FreePortsRedisKey()
 	pipe := redisClient.TxPipeline()
 	ports := make([]int, n)

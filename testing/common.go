@@ -10,6 +10,7 @@ import (
 
 	goredis "github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
+	"github.com/topfreegames/extensions/pg"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/controller"
@@ -21,18 +22,20 @@ import (
 func MockSelectScheduler(
 	yamlStr string,
 	mockDb *pgmocks.MockDB,
-) (calls []*gomock.Call) {
-	calls = []*gomock.Call{}
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
 
 	var configYaml models.ConfigYAML
 	yaml.Unmarshal([]byte(yamlStr), &configYaml)
 
-	calls = append(calls,
+	calls.Add(
 		mockDb.EXPECT().
 			Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 			Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
-			}))
+			}).
+			Return(pg.NewTestResult(nil, 1), errDB))
 
 	return calls
 }
@@ -44,13 +47,12 @@ func MockRedisLock(
 	lockTimeoutMs int,
 	lockResult bool,
 	errLock error,
-) (calls []*gomock.Call) {
-	calls = []*gomock.Call{}
+) (calls *Calls) {
+	calls = NewCalls()
 
-	calls = append(calls,
-		mockRedisClient.EXPECT().
-			SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-			Return(goredis.NewBoolResult(lockResult, errLock)))
+	calls.Add(mockRedisClient.EXPECT().
+		SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+		Return(goredis.NewBoolResult(lockResult, errLock)))
 
 	return calls
 }
@@ -60,19 +62,97 @@ func MockReturnRedisLock(
 	mockRedisClient *redismocks.MockRedisClient,
 	lockKey string,
 	errLock error,
-) {
-	mockRedisClient.EXPECT().Ping().AnyTimes()
-	mockRedisClient.EXPECT().
-		Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-		Return(goredis.NewCmdResult(nil, errLock))
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(
+		mockRedisClient.EXPECT().Ping().AnyTimes())
+
+	calls.Add(
+		mockRedisClient.EXPECT().
+			Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
+			Return(goredis.NewCmdResult(nil, errLock)))
+
+	return calls
 }
 
-// MockUpdateSchedulerOnDB mocks the update call to DB
-func MockUpdateSchedulerOnDB(
+// MockUpdateSchedulersTable mocks update on schedulers table
+func MockUpdateSchedulersTable(
 	mockDb *pgmocks.MockDB,
-) {
-	mockDb.EXPECT().
-		Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	query := "UPDATE schedulers SET (game, yaml, version) = (?game, ?yaml, ?version) WHERE id = ?id"
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), query, gomock.Any()).
+			Return(pg.NewTestResult(nil, 1), errDB))
+
+	return calls
+}
+
+// MockInsertIntoVersionsTable mocks insert into scheduler_versions table
+func MockInsertIntoVersionsTable(
+	scheduler *models.Scheduler,
+	mockDb *pgmocks.MockDB,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	query := `INSERT INTO scheduler_versions (name, version, yaml) 
+	VALUES (?, ?, ?)`
+	calls.Add(mockDb.EXPECT().
+		Query(gomock.Any(), query, scheduler.Name, scheduler.Version+1, gomock.Any()).
+		Return(pg.NewTestResult(nil, 1), errDB))
+
+	return calls
+}
+
+// MockCountNumberOfVersions mocks the call to select how many versions
+// are of a scheduler
+func MockCountNumberOfVersions(
+	scheduler *models.Scheduler,
+	returnCount int,
+	mockDb *pgmocks.MockDB,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	query := "SELECT COUNT(*) FROM scheduler_versions WHERE name = ?"
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), query, scheduler.Name).
+			Do(func(count *int, _ string, _ string) {
+				*count = returnCount
+			}).
+			Return(pg.NewTestResult(nil, 1), errDB))
+
+	return calls
+}
+
+// MockDeleteOldVersions mocks the deletions of old versions
+func MockDeleteOldVersions(
+	scheduler *models.Scheduler,
+	deletedVersions int,
+	mockDb *pgmocks.MockDB,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	query := `DELETE FROM scheduler_versions WHERE id IN (
+			SELECT id
+			FROM scheduler_versions
+			WHERE name = ?
+			ORDER BY created_at ASC 
+			LIMIT ?
+		)`
+	calls.Add(
+		mockDb.EXPECT().
+			Exec(query, scheduler.Name, deletedVersions).
+			Return(pg.NewTestResult(nil, 1), errDB))
+
+	return calls
 }
 
 // MockRemoveRoomsFromRedis mocks the room creation from pod
@@ -81,7 +161,9 @@ func MockRemoveRoomsFromRedis(
 	mockPipeline *redismocks.MockPipeliner,
 	pods *v1.PodList,
 	configYaml *models.ConfigYAML,
-) {
+) (calls *Calls) {
+	calls = NewCalls()
+
 	allStatus := []string{
 		models.StatusCreating,
 		models.StatusReady,
@@ -91,110 +173,126 @@ func MockRemoveRoomsFromRedis(
 	}
 
 	for _, pod := range pods.Items {
-		// Remove room from redis
-		mockRedisClient.EXPECT().
-			TxPipeline().
-			Return(mockPipeline)
-		room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-		for _, status := range allStatus {
-			mockPipeline.EXPECT().
-				SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
-			mockPipeline.EXPECT().
-				ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+		// Retrieve ports to pool
+		for _, c := range pod.Spec.Containers {
+			if len(c.Ports) > 0 {
+				calls.Add(
+					mockRedisClient.EXPECT().
+						TxPipeline().
+						Return(mockPipeline))
+				for range c.Ports {
+					calls.Add(
+						mockPipeline.EXPECT().
+							SAdd(models.FreePortsRedisKey(), gomock.Any()))
+				}
+				calls.Add(
+					mockPipeline.EXPECT().
+						Exec())
+			}
 		}
-		mockPipeline.EXPECT().
-			ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID)
-		mockPipeline.EXPECT().
-			Del(room.GetRoomRedisKey())
-		mockPipeline.EXPECT().
-			Exec()
-
-			// Retrieve ports to pool
-		if configYaml.Version() == "v1" {
+		room := models.NewRoom(pod.GetName(), pod.GetNamespace())
+		calls.Add(
 			mockRedisClient.EXPECT().
 				TxPipeline().
-				Return(mockPipeline)
-			for range configYaml.Ports {
+				Return(mockPipeline))
+		for _, status := range allStatus {
+			calls.Add(
 				mockPipeline.EXPECT().
-					SAdd(models.FreePortsRedisKey(), gomock.Any())
-			}
-			mockPipeline.EXPECT().
-				Exec()
-		} else if configYaml.Version() == "v2" {
-			for _, c := range configYaml.Containers {
-				mockRedisClient.EXPECT().
-					TxPipeline().
-					Return(mockPipeline)
-				for range c.Ports {
-					mockPipeline.EXPECT().
-						SAdd(models.FreePortsRedisKey(), gomock.Any())
-				}
+					SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey()))
+			calls.Add(
 				mockPipeline.EXPECT().
-					Exec()
-			}
+					ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID))
 		}
+		calls.Add(
+			mockPipeline.EXPECT().
+				ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID))
+		calls.Add(
+			mockPipeline.EXPECT().
+				Del(room.GetRoomRedisKey()))
+		calls.Add(
+			mockPipeline.EXPECT().
+				Exec())
 	}
+
+	return calls
 }
 
-// MockCreateRoomsFromPods mocks the
-func MockCreateRoomsFromPods(
+// MockCreateRooms mocks the creation of rooms on redis
+func MockCreateRooms(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 	configYaml *models.ConfigYAML,
-) {
+) (calls *Calls) {
+	calls = NewCalls()
+
 	for i := 0; i < configYaml.AutoScaling.Min; i++ {
-		mockRedisClient.EXPECT().
-			TxPipeline().
-			Return(mockPipeline)
-
-		mockPipeline.EXPECT().
-			HMSet(gomock.Any(), gomock.Any()).
-			Do(func(schedulerName string, statusInfo map[string]interface{}) {
-				gomega.Expect(statusInfo["status"]).
-					To(gomega.Equal(models.StatusCreating))
-				gomega.Expect(statusInfo["lastPing"]).
-					To(gomega.BeNumerically("~", time.Now().Unix(), 1))
-			})
-
-		mockPipeline.EXPECT().
-			ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
-
-		mockPipeline.EXPECT().
-			SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"),
-				gomock.Any())
-
-		mockPipeline.EXPECT().Exec()
-
-		if configYaml.Version() == "v1" {
+		calls.Add(
 			mockRedisClient.EXPECT().
 				TxPipeline().
-				Return(mockPipeline)
+				Return(mockPipeline))
 
-			for range configYaml.Ports {
-				mockPipeline.EXPECT().
-					SPop(models.FreePortsRedisKey()).
-					Return(goredis.NewStringResult("5000", nil))
-			}
-
+		calls.Add(
 			mockPipeline.EXPECT().
-				Exec()
-		} else if configYaml.Version() == "v2" {
-			for _, c := range configYaml.Containers {
+				HMSet(gomock.Any(), gomock.Any()).
+				Do(func(schedulerName string, statusInfo map[string]interface{}) {
+					gomega.Expect(statusInfo["status"]).
+						To(gomega.Equal(models.StatusCreating))
+					gomega.Expect(statusInfo["lastPing"]).
+						To(gomega.BeNumerically("~", time.Now().Unix(), 1))
+				}))
+
+		calls.Add(
+			mockPipeline.EXPECT().
+				SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"),
+					gomock.Any()))
+
+		calls.Add(
+			mockPipeline.EXPECT().
+				ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()))
+
+		calls.Add(
+			mockPipeline.EXPECT().Exec())
+
+		if configYaml.Version() == "v1" {
+			calls.Add(
 				mockRedisClient.EXPECT().
 					TxPipeline().
-					Return(mockPipeline)
+					Return(mockPipeline))
 
-				for range c.Ports {
+			for range configYaml.Ports {
+				calls.Add(
 					mockPipeline.EXPECT().
 						SPop(models.FreePortsRedisKey()).
-						Return(goredis.NewStringResult("5000", nil))
-				}
+						Return(goredis.NewStringResult("5000", nil)))
+			}
 
+			calls.Add(
 				mockPipeline.EXPECT().
-					Exec()
+					Exec())
+		} else if configYaml.Version() == "v2" {
+			for _, c := range configYaml.Containers {
+				if len(c.Ports) > 0 {
+					calls.Add(
+						mockRedisClient.EXPECT().
+							TxPipeline().
+							Return(mockPipeline))
+
+					for range c.Ports {
+						calls.Add(
+							mockPipeline.EXPECT().
+								SPop(models.FreePortsRedisKey()).
+								Return(goredis.NewStringResult("5000", nil)))
+					}
+
+					calls.Add(
+						mockPipeline.EXPECT().
+							Exec())
+				}
 			}
 		}
 	}
+
+	return calls
 }
 
 // MockCreateScheduler mocks the creation of a scheduler
@@ -207,58 +305,248 @@ func MockCreateScheduler(
 	mr *models.MixedMetricsReporter,
 	yamlStr string,
 	timeoutSec int,
-) {
+) (calls *Calls) {
+	calls = NewCalls()
+
 	var configYaml models.ConfigYAML
 	err := yaml.Unmarshal([]byte(yamlStr), &configYaml)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	mockRedisClient.EXPECT().
-		TxPipeline().
-		Return(mockPipeline).
-		Times(configYaml.AutoScaling.Min)
-	mockPipeline.EXPECT().
-		HMSet(gomock.Any(), gomock.Any()).Do(
-		func(schedulerName string, statusInfo map[string]interface{}) {
-			gomega.Expect(statusInfo["status"]).To(gomega.Equal(models.StatusCreating))
-			gomega.Expect(statusInfo["lastPing"]).To(gomega.BeNumerically("~", time.Now().Unix(), 1))
-		},
-	).Times(configYaml.AutoScaling.Min)
+	calls.Append(
+		MockInsertScheduler(mockDb, nil))
 
-	mockPipeline.EXPECT().
-		ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).
-		Times(configYaml.AutoScaling.Min)
-	mockPipeline.EXPECT().
-		SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).
-		Times(configYaml.AutoScaling.Min)
-	mockPipeline.EXPECT().
-		Exec().
-		Times(configYaml.AutoScaling.Min)
-
-	mockDb.EXPECT().Query(
-		gomock.Any(),
-		"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-		gomock.Any(),
-	)
-	mockDb.EXPECT().Query(
-		gomock.Any(),
-		"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-		gomock.Any(),
-	)
-
-	for _, c := range configYaml.Containers {
+	calls.Add(
 		mockRedisClient.EXPECT().
 			TxPipeline().
 			Return(mockPipeline).
-			Times(configYaml.AutoScaling.Min)
+			Times(configYaml.AutoScaling.Min))
+
+	calls.Add(
 		mockPipeline.EXPECT().
-			SPop(models.FreePortsRedisKey()).
-			Return(goredis.NewStringResult("5000", nil)).
-			Times(configYaml.AutoScaling.Min * len(c.Ports))
+			HMSet(gomock.Any(), gomock.Any()).Do(
+			func(schedulerName string, statusInfo map[string]interface{}) {
+				gomega.Expect(statusInfo["status"]).To(gomega.Equal(models.StatusCreating))
+				gomega.Expect(statusInfo["lastPing"]).To(gomega.BeNumerically("~", time.Now().Unix(), 1))
+			},
+		).Times(configYaml.AutoScaling.Min))
+
+	calls.Add(
+		mockPipeline.EXPECT().
+			ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).
+			Times(configYaml.AutoScaling.Min))
+	calls.Add(
+		mockPipeline.EXPECT().
+			SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).
+			Times(configYaml.AutoScaling.Min))
+	calls.Add(
 		mockPipeline.EXPECT().
 			Exec().
-			Times(configYaml.AutoScaling.Min)
-	}
+			Times(configYaml.AutoScaling.Min))
+
+	calls.Append(
+		MockGetPortsFromPool(&configYaml, mockRedisClient, mockPipeline))
+
+	calls.Append(
+		MockUpdateSchedulerStatus(mockDb, nil, nil))
 
 	err = controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml, timeoutSec)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	return calls
+}
+
+// MockGetPortsFromPool mocks the function that gets free ports from redis
+// to be used as HostPort in the pods
+func MockGetPortsFromPool(
+	configYaml *models.ConfigYAML,
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	if configYaml.Version() == "v1" {
+		calls.Add(
+			mockRedisClient.EXPECT().
+				TxPipeline().
+				Return(mockPipeline).
+				Times(configYaml.AutoScaling.Min))
+		calls.Add(
+			mockPipeline.EXPECT().
+				SPop(models.FreePortsRedisKey()).
+				Return(goredis.NewStringResult("5000", nil)).
+				Times(configYaml.AutoScaling.Min * len(configYaml.Ports)))
+		calls.Add(
+			mockPipeline.EXPECT().
+				Exec().
+				Times(configYaml.AutoScaling.Min))
+	} else if configYaml.Version() == "v2" {
+		for _, c := range configYaml.Containers {
+			if len(c.Ports) > 0 {
+				calls.Add(
+					mockRedisClient.EXPECT().
+						TxPipeline().
+						Return(mockPipeline).
+						Times(configYaml.AutoScaling.Min))
+				calls.Add(
+					mockPipeline.EXPECT().
+						SPop(models.FreePortsRedisKey()).
+						Return(goredis.NewStringResult("5000", nil)).
+						Times(configYaml.AutoScaling.Min * len(c.Ports)))
+				calls.Add(
+					mockPipeline.EXPECT().
+						Exec().
+						Times(configYaml.AutoScaling.Min))
+			}
+		}
+	}
+
+	return calls
+}
+
+// MockInsertScheduler inserts a new scheduler into database
+func MockInsertScheduler(
+	mockDb *pgmocks.MockDB,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), `INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at, version) 
+	VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?version) 
+	RETURNING id`, gomock.Any()).
+			Return(pg.NewTestResult(nil, 1), errDB))
+
+	return calls
+}
+
+// MockUpdateSchedulerStatus mocks the scheduler update query on database
+func MockUpdateSchedulerStatus(
+	mockDb *pgmocks.MockDB,
+	errUpdate, errInsert error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), `UPDATE schedulers
+	SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at, version) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at, ?version)
+	WHERE id=?id`, gomock.Any()).
+			Return(pg.NewTestResult(nil, 1), errUpdate))
+
+	if errUpdate == nil {
+		calls.Add(
+			mockDb.EXPECT().
+				Query(gomock.Any(), `INSERT INTO scheduler_versions (name, version, yaml)
+	VALUES (?name, ?version, ?yaml)
+	ON CONFLICT DO NOTHING`, gomock.Any()).
+				Return(pg.NewTestResult(nil, 1), errInsert))
+	}
+
+	return calls
+}
+
+// MockUpdateSchedulerStatusAndDo mocks the scheduler update query on database
+func MockUpdateSchedulerStatusAndDo(
+	do func(base *models.Scheduler, query string, scheduler *models.Scheduler),
+	mockDb *pgmocks.MockDB,
+	errUpdate, errInsert error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), `UPDATE schedulers
+	SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at, version) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at, ?version)
+	WHERE id=?id`, gomock.Any()).
+			Return(pg.NewTestResult(nil, 1), errUpdate).
+			Do(do))
+
+	if errUpdate == nil {
+		calls.Add(
+			mockDb.EXPECT().
+				Query(gomock.Any(), `INSERT INTO scheduler_versions (name, version, yaml)
+	VALUES (?name, ?version, ?yaml)
+	ON CONFLICT DO NOTHING`, gomock.Any()).
+				Return(pg.NewTestResult(nil, 1), errInsert))
+	}
+
+	return calls
+}
+
+// MockSelectYaml mocks the select of yaml from database
+func MockSelectYaml(
+	yamlStr string,
+	mockDb *pgmocks.MockDB,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	var configYaml models.ConfigYAML
+	yaml.Unmarshal([]byte(yamlStr), &configYaml)
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), "SELECT yaml FROM schedulers WHERE name = ?", configYaml.Name).
+			Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
+			}).
+			Return(pg.NewTestResult(nil, 1), errDB))
+
+	return calls
+}
+
+// MockSelectYamlWithVersion mocks the select of a yaml version
+func MockSelectYamlWithVersion(
+	yamlStr string,
+	version int,
+	mockDb *pgmocks.MockDB,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	var configYaml models.ConfigYAML
+	yaml.Unmarshal([]byte(yamlStr), &configYaml)
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(
+				gomock.Any(),
+				"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?",
+				configYaml.Name, version).
+			Do(func(scheduler *models.Scheduler, query string, name string, version int) {
+				*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
+			}).
+			Return(pg.NewTestResult(nil, 1), errDB))
+
+	return calls
+}
+
+// MockSelectSchedulerVersions mocks the select to list scheduler versions
+func MockSelectSchedulerVersions(
+	yamlStr string,
+	versions []string,
+	mockDb *pgmocks.MockDB,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	var configYaml models.ConfigYAML
+	yaml.Unmarshal([]byte(yamlStr), &configYaml)
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(
+				gomock.Any(),
+				"SELECT version, created_at FROM scheduler_versions WHERE name = ?",
+				configYaml.Name).
+			Do(func(rVersions *[]*models.SchedulerVersion, query string, name string) {
+				*rVersions = make([]*models.SchedulerVersion, len(versions))
+				for i, version := range versions {
+					(*rVersions)[i] = &models.SchedulerVersion{Version: version}
+				}
+			}).
+			Return(pg.NewTestResult(nil, 1), errDB))
+
+	return calls
 }

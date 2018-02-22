@@ -44,7 +44,7 @@ func GetDB(logger logrus.FieldLogger, config *viper.Viper) (pginterfaces.DB, err
 		"operation": "configureDatabase",
 	})
 	l.Debug("connecting to DB...")
-	client, err := pg.NewClient("extensions.pg", config)
+	client, err := pg.NewClient("extensions.pg", config, nil, nil)
 	if err != nil {
 		l.WithError(err).Error("connection to database failed")
 		return nil, err

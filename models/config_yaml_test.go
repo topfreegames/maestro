@@ -159,4 +159,106 @@ env:
 			}))
 		})
 	})
+
+	Describe("UpdateImage", func() {
+		var configYamlV1, configYamlV2 *ConfigYAML
+
+		BeforeEach(func() {
+			configYamlV1, _ = NewConfigYAML(`name: scheduler-name
+game: game
+image: nginx:alpine
+ports:
+- containerPort: 8080
+  protocol: TCP
+  name: tcp
+limits:
+  cpu: 100m
+  memory: 100Mi
+requests:
+  cpu: 50m
+  memory: 50Mi
+cmd: ["/bin/bash", "-c", "./start.sh"]
+env:
+- name: ENV_1
+  value: VALUE_1
+containers: []
+`)
+			configYamlV2, _ = NewConfigYAML(`name: scheduler-name
+game: game
+containers:
+  - name: container1
+    image: nginx:alpine
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+      name: tcp
+    limits:
+      cpu: 100m
+      memory: 100Mi
+    requests:
+      cpu: 50m
+      memory: 50Mi
+    cmd: ["/bin/bash", "-c", "./start.sh"]
+    env:
+    - name: ENV_1
+      value: VALUE_1
+`)
+		})
+
+		It("should update image on version v1", func() {
+			var imageParams = &SchedulerImageParams{
+				Image: "new-image",
+			}
+			updated, err := configYamlV1.UpdateImage(imageParams)
+			Expect(updated).To(BeTrue())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(configYamlV1.Image).To(Equal(imageParams.Image))
+		})
+
+		It("should return not updated if image is the same", func() {
+			var imageParams = &SchedulerImageParams{
+				Image: configYamlV1.Image,
+			}
+
+			updated, err := configYamlV1.UpdateImage(imageParams)
+			Expect(updated).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(configYamlV1.Image).To(Equal(imageParams.Image))
+		})
+
+		It("should update image on specified container", func() {
+			var imageParams = &SchedulerImageParams{
+				Image:     "new-image",
+				Container: "container1",
+			}
+
+			updated, err := configYamlV2.UpdateImage(imageParams)
+			Expect(updated).To(BeTrue())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(configYamlV2.Containers[0].Image).To(Equal(imageParams.Image))
+		})
+
+		It("should return error if container not found", func() {
+			var imageParams = &SchedulerImageParams{
+				Image:     "new-image",
+				Container: "container2",
+			}
+
+			updated, err := configYamlV2.UpdateImage(imageParams)
+			Expect(updated).To(BeFalse())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("no container with name container2"))
+		})
+
+		It("should return not updated if container image is the same", func() {
+			var imageParams = &SchedulerImageParams{
+				Image:     configYamlV2.Containers[0].Image,
+				Container: "container1",
+			}
+
+			updated, err := configYamlV2.UpdateImage(imageParams)
+			Expect(updated).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
 })

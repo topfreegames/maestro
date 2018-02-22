@@ -463,12 +463,17 @@ func UpdateSchedulerConfig(
 	redisClient *redis.Client,
 	clientset kubernetes.Interface,
 	configYAML *models.ConfigYAML,
-	timeoutSec, lockTimeoutMS, maxSurge int,
-	lockKey string,
+	maxSurge int,
 	clock clockinterfaces.Clock,
 	schedulerOrNil *models.Scheduler,
+	config *viper.Viper,
 ) error {
 	configYAML.EnsureDefaultValues()
+
+	timeoutSec := config.GetInt("updateTimeoutSeconds")
+	lockTimeoutMS := config.GetInt("watcher.lockTimeoutMs")
+	lockKey := GetLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
+	maxVersions := config.GetInt("schedulers.versions.toKeep")
 
 	schedulerName := configYAML.Name
 	l := logger.WithFields(logrus.Fields{
@@ -556,7 +561,7 @@ waitForLock:
 		deletedPods := []v1.Pod{}
 
 		for i, chunk := range podChunks {
-			l.Debugf("deleting chunk %d: %#v", i, names(chunk))
+			l.Debugf("deleting chunk %d: %v", i, names(chunk))
 
 			newlyCreatedPods, newlyDeletedPods, timedout := replacePodsAndWait(
 				l, mr, clientset, db, redisClient.Client,
@@ -590,14 +595,28 @@ waitForLock:
 	yamlString := string(configBytes)
 	scheduler.Game = configYAML.Game
 	scheduler.YAML = yamlString
-	err = mr.WithSegment(models.SegmentUpdate, func() error {
-		return scheduler.Update(db)
-	})
-	if err != nil {
-		return err
+
+	if string(oldConfig.ToYAML()) != string(configYAML.ToYAML()) {
+		err = mr.WithSegment(models.SegmentUpdate, func() error {
+			created, err := scheduler.UpdateVersion(db, maxVersions)
+			if !created {
+				return err
+			}
+			if err != nil {
+				l.WithError(err).Error("error on operation on scheduler_verions table. But the newest one was created.")
+			}
+			return nil
+		})
+		if err != nil {
+			l.WithError(err).Error("failed to update scheduler on database")
+			return err
+		}
+
+		l.Info("updated configYaml on database")
+	} else {
+		l.Info("config yaml is the same, skipping")
 	}
 
-	l.Info("updated configYaml on database")
 	return nil
 }
 
@@ -981,10 +1000,11 @@ func UpdateSchedulerImage(
 	db pginterfaces.DB,
 	redisClient *redis.Client,
 	clientset kubernetes.Interface,
-	schedulerName, lockKey string,
+	schedulerName string,
 	imageParams *models.SchedulerImageParams,
-	timeoutSec, lockTimeoutMS, maxSurge int,
+	maxSurge int,
 	clock clockinterfaces.Clock,
+	config *viper.Viper,
 ) error {
 	scheduler, configYaml, err := schedulerAndConfigFromName(mr, db, schedulerName)
 	if err != nil {
@@ -1007,10 +1027,10 @@ func UpdateSchedulerImage(
 		redisClient,
 		clientset,
 		&configYaml,
-		timeoutSec, lockTimeoutMS, maxSurge,
-		lockKey,
+		maxSurge,
 		clock,
 		scheduler,
+		config,
 	)
 }
 
@@ -1020,9 +1040,10 @@ func UpdateSchedulerMin(
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
 	redisClient *redis.Client,
-	schedulerName, lockKey string,
-	timeoutSec, lockTimeoutMS, schedulerMin int,
+	schedulerName string,
+	schedulerMin int,
 	clock clockinterfaces.Clock,
+	config *viper.Viper,
 ) error {
 	scheduler, configYaml, err := schedulerAndConfigFromName(mr, db, schedulerName)
 	if err != nil {
@@ -1039,10 +1060,10 @@ func UpdateSchedulerMin(
 		redisClient,
 		nil,
 		&configYaml,
-		timeoutSec, lockTimeoutMS, 100,
-		lockKey,
+		100,
 		clock,
 		scheduler,
+		config,
 	)
 }
 
@@ -1063,6 +1084,7 @@ func schedulerAndConfigFromName(
 	if err != nil {
 		return nil, configYaml, maestroErrors.NewDatabaseError(err)
 	}
+
 	// Check if scheduler to Update exists indeed
 	if scheduler.YAML == "" {
 		msg := fmt.Sprintf("scheduler %s not found, create it first", schedulerName)

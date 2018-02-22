@@ -217,6 +217,7 @@ forwarders:
 
 var _ = Describe("Watcher", func() {
 	var w *watcher.Watcher
+	var errDB = errors.New("db failed")
 
 	buildRedisScaleInfo := func(
 		percentageAboveUp, percentageAboveDown int,
@@ -353,13 +354,9 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec().AnyTimes()
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				w.Run = false
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			// LeaveCriticalSection (unlock done by redis-lock)
 			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{lockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
@@ -558,15 +555,11 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
@@ -613,15 +606,11 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
@@ -655,15 +644,11 @@ var _ = Describe("Watcher", func() {
 			buildRedisScaleInfo(90, 50)
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("subdimensioned"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -695,15 +680,11 @@ var _ = Describe("Watcher", func() {
 			buildRedisScaleInfo(50, 90)
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("overdimensioned"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -735,15 +716,11 @@ var _ = Describe("Watcher", func() {
 			buildRedisScaleInfo(50, 50)
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -889,15 +866,11 @@ var _ = Describe("Watcher", func() {
 			}
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is overdimensioned, should scale down"))
@@ -1017,15 +990,11 @@ var _ = Describe("Watcher", func() {
 			buildRedisScaleInfo(90, 50)
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("subdimensioned"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
-			}).Return(pg.NewTestResult(nil, 0), errors.New("some error in pg"))
+			}, mockDb, errDB, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("failed to update scheduler info"))
@@ -1082,11 +1051,8 @@ var _ = Describe("Watcher", func() {
 				usages, nil,
 			))
 
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			)
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -1138,15 +1104,11 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec().Times(2)
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
@@ -1177,11 +1139,8 @@ var _ = Describe("Watcher", func() {
 			// check scale infos and if should scale
 			buildRedisScaleInfo(50, 50)
 
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			)
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -1245,15 +1204,11 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any())
 			mockPipeline.EXPECT().Exec()
 
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is overdimensioned, should scale down"))
@@ -1297,15 +1252,11 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			fmt.Sprintf("%v \n", hook.Entries)
@@ -1350,15 +1301,11 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			fmt.Sprintf("%v \n", hook.Entries)
@@ -1390,13 +1337,9 @@ var _ = Describe("Watcher", func() {
 			buildRedisScaleInfo(0, 0)
 
 			// UpdateScheduler
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Do(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
+			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				Expect(scheduler.State).To(Equal("in-sync"))
-			}).Return(pg.NewTestResult(nil, 0), nil)
+			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))

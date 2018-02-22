@@ -99,7 +99,6 @@ clear-coverage-profiles:
 	@find . -name '*.coverprofile' -delete
 
 unit-board:
-	@echo
 	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
 	@echo "\033[1;34m=         Unit Tests         -\033[0m"
 	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"

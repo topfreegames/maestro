@@ -19,6 +19,10 @@ func NewCalls() *Calls {
 	}
 }
 
+func (c *Calls) Append(calls *Calls) {
+	c.CallList = append(c.CallList, calls.CallList...)
+}
+
 func (c *Calls) Add(call *gomock.Call) {
 	c.CallList = append(c.CallList, call)
 }

@@ -9,6 +9,7 @@ package controller
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -53,7 +54,8 @@ func replacePodsAndWait(
 		}
 	}
 
-	timeout := willTimeoutAt.Sub(clock.Now())
+	now := clock.Now()
+	timeout := willTimeoutAt.Sub(now)
 	createdPods, timedout = createPodsAsTheyAreDeleted(
 		logger, mr, clientset, db, redisClient, timeout, configYAML,
 		deletedPods)
@@ -175,7 +177,7 @@ func createPodsAsTheyAreDeleted(
 	})
 
 	createdPods = []v1.Pod{}
-	logger.Debugf("waiting for pods to terminate: %#v", names(deletedPods))
+	logger.Debugf("pods to terminate: %#v", names(deletedPods))
 
 	timeoutTimer := time.NewTimer(timeout)
 	defer timeoutTimer.Stop()
@@ -189,10 +191,7 @@ func createPodsAsTheyAreDeleted(
 		case <-ticker.C:
 			for j := i; j < len(deletedPods); j++ {
 				pod := deletedPods[i]
-				_, err := clientset.CoreV1().Pods(configYAML.Name).Get(
-					pod.GetName(), getOptions,
-				)
-
+				_, err := clientset.CoreV1().Pods(configYAML.Name).Get(pod.GetName(), getOptions)
 				if err == nil || !strings.Contains(err.Error(), "not found") {
 					logger.WithField("pod", pod.GetName()).Debugf("pod still exists")
 					exit = false
@@ -419,4 +418,9 @@ func names(pods []v1.Pod) []string {
 		names[i] = pod.GetName()
 	}
 	return names
+}
+
+// GetLockKey returns the key of the scheduler lock
+func GetLockKey(prefix, schedulerName string) string {
+	return fmt.Sprintf("%s-%s", prefix, schedulerName)
 }

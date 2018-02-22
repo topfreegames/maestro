@@ -55,7 +55,7 @@ var (
 		models.StatusTerminating,
 		models.StatusTerminated,
 	}
-	lockTimeoutMS int
+	lockTimeoutMs int
 	lockKey       string
 )
 
@@ -86,7 +86,7 @@ var _ = BeforeEach(func() {
 
 	config, err = mtesting.GetDefaultConfig()
 
-	lockTimeoutMS = config.GetInt("watcher.lockTimeoutMs")
+	lockTimeoutMs = config.GetInt("watcher.lockTimeoutMs")
 	lockKey = config.GetString("watcher.lockKey")
 
 	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)

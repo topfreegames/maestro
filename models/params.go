@@ -7,6 +7,8 @@
 
 package models
 
+import "time"
+
 // RoomParams is the struct that defines the params for room routes
 type RoomParams struct {
 	Name      string `json:"roomName" valid:"required"`
@@ -34,4 +36,10 @@ type SchedulerScaleParams struct {
 	ScaleDown uint `json:"scaledown" yaml:"scaledown"`
 	ScaleUp   uint `json:"scaleup" yaml:"scaleup"`
 	Replicas  uint `json:"replicas" yaml:"replicas"`
+}
+
+// SchedulerVersion holds the scheduler version
+type SchedulerVersion struct {
+	Version   string    `db:"version" json:"version"`
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 }

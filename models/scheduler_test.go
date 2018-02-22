@@ -19,6 +19,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/testing"
 )
 
 const (
@@ -83,6 +84,7 @@ forwarders:
 var _ = Describe("Scheduler", func() {
 	name := "pong-free-for-all"
 	game := "pong"
+	errDB := errors.New("db failed")
 
 	Describe("NewConfigYAML", func() {
 		It("should build correct config yaml struct from yaml", func() {
@@ -150,25 +152,17 @@ var _ = Describe("Scheduler", func() {
 	Describe("Create Scheduler", func() {
 		It("should save scheduler in the database", func() {
 			scheduler := NewScheduler(name, game, yaml1)
-			mockDb.EXPECT().Query(
-				scheduler,
-				"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-				scheduler,
-			)
+			testing.MockInsertScheduler(mockDb, nil)
 			err := scheduler.Create(mockDb)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return an error if db returns an error", func() {
 			scheduler := NewScheduler(name, game, yaml1)
-			mockDb.EXPECT().Query(
-				scheduler,
-				"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-				scheduler,
-			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
+			testing.MockInsertScheduler(mockDb, errDB)
 			err := scheduler.Create(mockDb)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("some error in pg"))
+			Expect(err.Error()).To(Equal(errDB.Error()))
 		})
 	})
 
@@ -224,11 +218,7 @@ var _ = Describe("Scheduler", func() {
 			scheduler.State = "terminating"
 			scheduler.StateLastChangedAt = time.Now().Unix()
 			scheduler.LastScaleOpAt = time.Now().Unix()
-			mockDb.EXPECT().Query(
-				scheduler,
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				scheduler,
-			)
+			testing.MockUpdateSchedulerStatus(mockDb, nil, nil)
 			err := scheduler.Update(mockDb)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -238,14 +228,21 @@ var _ = Describe("Scheduler", func() {
 			scheduler.State = "terminating"
 			scheduler.StateLastChangedAt = time.Now().Unix()
 			scheduler.LastScaleOpAt = time.Now().Unix()
-			mockDb.EXPECT().Query(
-				scheduler,
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				scheduler,
-			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
+			testing.MockUpdateSchedulerStatus(mockDb, errDB, nil)
 			err := scheduler.Update(mockDb)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("some error in pg"))
+			Expect(err.Error()).To(Equal("error updating status on schedulers: db failed"))
+		})
+
+		It("should return an error if db returns an error on insert", func() {
+			scheduler := NewScheduler(name, game, yaml1)
+			scheduler.State = "terminating"
+			scheduler.StateLastChangedAt = time.Now().Unix()
+			scheduler.LastScaleOpAt = time.Now().Unix()
+			testing.MockUpdateSchedulerStatus(mockDb, nil, errDB)
+			err := scheduler.Update(mockDb)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("error inserting on scheduler_versions: db failed"))
 		})
 	})
 	Describe("Delete Scheduler", func() {
@@ -343,6 +340,150 @@ var _ = Describe("Scheduler", func() {
 			yamlRes, err := LoadConfig(mockDb, name)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(yamlRes).To(Equal(yamlStr))
+		})
+	})
+
+	Describe("UpdateVersion", func() {
+		var maxVersions = 10
+		var query string
+		var errDB = errors.New("db failed")
+
+		It("should increment version and insert into scheduler_versions table", func() {
+			scheduler := NewScheduler(name, game, yaml1)
+
+			scheduler.NextVersion()
+
+			query = "UPDATE schedulers SET (game, yaml, version) = (?game, ?yaml, ?version) WHERE id = ?id"
+			mockDb.EXPECT().Query(scheduler, query, scheduler).Return(pg.NewTestResult(nil, 1), nil)
+
+			query = `INSERT INTO scheduler_versions (name, version, yaml) 
+	VALUES (?, ?, ?)`
+			mockDb.EXPECT().
+				Query(scheduler, query, name, scheduler.Version, yaml1).
+				Return(pg.NewTestResult(nil, 1), nil)
+
+			query = "SELECT COUNT(*) FROM scheduler_versions WHERE name = ?"
+			mockDb.EXPECT().
+				Query(gomock.Any(), query, name).
+				Do(func(count *int, _ string, _ string) {
+					*count = maxVersions
+				}).Return(pg.NewTestResult(nil, 1), nil)
+
+			scheduler.Version = scheduler.Version - 1
+
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			Expect(created).To(BeTrue())
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should delete older versions from scheduler_versions table is more than max", func() {
+			scheduler := NewScheduler(name, game, yaml1)
+
+			testing.MockUpdateSchedulersTable(mockDb, nil)
+			testing.MockInsertIntoVersionsTable(scheduler, mockDb, nil)
+			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, nil)
+			testing.MockDeleteOldVersions(scheduler, 1, mockDb, nil)
+
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			Expect(created).To(BeTrue())
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return error if update schedulers table failed", func() {
+			scheduler := NewScheduler(name, game, yaml1)
+
+			testing.MockUpdateSchedulersTable(mockDb, errDB)
+
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			Expect(created).To(BeFalse())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("error to update scheduler on schedulers table: db failed"))
+		})
+
+		It("should return error if insert into scheduler_versions table failed", func() {
+			scheduler := NewScheduler(name, game, yaml1)
+
+			testing.MockUpdateSchedulersTable(mockDb, nil)
+			testing.MockInsertIntoVersionsTable(scheduler, mockDb, errDB)
+
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			Expect(created).To(BeTrue())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("error to insert into scheduler_versions table: db failed"))
+		})
+
+		It("should return error if count on scheduler_versions table failed", func() {
+			scheduler := NewScheduler(name, game, yaml1)
+
+			testing.MockUpdateSchedulersTable(mockDb, nil)
+			testing.MockInsertIntoVersionsTable(scheduler, mockDb, nil)
+			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, errDB)
+
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			Expect(created).To(BeTrue())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("error to select count on scheduler_versions table: db failed"))
+		})
+
+		It("should return error if delete on scheduler_versions table failed", func() {
+			scheduler := NewScheduler(name, game, yaml1)
+
+			testing.MockUpdateSchedulersTable(mockDb, nil)
+			testing.MockInsertIntoVersionsTable(scheduler, mockDb, nil)
+			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, nil)
+			testing.MockDeleteOldVersions(scheduler, 1, mockDb, errDB)
+
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			Expect(created).To(BeTrue())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("error to delete from scheduler_versions table: db failed"))
+		})
+	})
+
+	Describe("LoadConfigWithVersion", func() {
+		It("should return current version if none is specified", func() {
+			testing.MockSelectYaml(yaml1, mockDb, nil)
+
+			configYaml, err := LoadConfigWithVersion(mockDb, name, "")
+			Expect(configYaml).To(Equal(yaml1))
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return error if not in the correct format", func() {
+			_, err := LoadConfigWithVersion(mockDb, name, "invalid-format")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("version is not of format v<integer>, like v1, v2, v3, etc"))
+		})
+
+		It("should select version from database", func() {
+			testing.MockSelectYamlWithVersion(yaml1, 2, mockDb, nil)
+
+			configYaml, err := LoadConfigWithVersion(mockDb, name, "v2")
+			Expect(configYaml).To(Equal(yaml1))
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Describe("ListSchedulerReleases", func() {
+		It("should return scheduler versions", func() {
+			versions := []string{"1", "2", "3"}
+			testing.MockSelectSchedulerVersions(yaml1, versions, mockDb, nil)
+
+			rVersions, err := ListSchedulerReleases(mockDb, name)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(rVersions[0].Version).To(Equal("v1"))
+			Expect(rVersions[1].Version).To(Equal("v2"))
+			Expect(rVersions[2].Version).To(Equal("v3"))
+		})
+
+		It("should return error if db failed", func() {
+			versions := []string{"1", "2", "3"}
+			testing.MockSelectSchedulerVersions(yaml1, versions, mockDb, errDB)
+
+			_, err := ListSchedulerReleases(mockDb, name)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(errDB.Error()))
 		})
 	})
 })

@@ -8,6 +8,11 @@
 package models
 
 import (
+	"errors"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-pg/pg"
@@ -25,6 +30,7 @@ type Scheduler struct {
 	LastScaleOpAt      int64       `db:"last_scale_op_at"`
 	CreatedAt          pg.NullTime `db:"created_at"`
 	UpdatedAt          pg.NullTime `db:"updated_at"`
+	Version            int         `db:"version"`
 }
 
 // Resources the CPU and memory resources limits
@@ -161,6 +167,7 @@ func NewScheduler(name, game, yaml string) *Scheduler {
 		YAML:               yaml,
 		State:              StateCreating,
 		StateLastChangedAt: time.Now().Unix(),
+		Version:            1,
 	}
 }
 
@@ -181,16 +188,88 @@ func LoadSchedulers(db interfaces.DB, names []string) ([]Scheduler, error) {
 	return schedulers, err
 }
 
+// NextVersion chooses a random uuid and saves on Version attribute
+func (c *Scheduler) NextVersion() {
+	c.Version = c.Version + 1
+}
+
 // Create creates a scheduler in the database
-func (c *Scheduler) Create(db interfaces.DB) error {
-	_, err := db.Query(c, "INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id", c)
+func (c *Scheduler) Create(db interfaces.DB) (err error) {
+	_, err = db.Query(c, `INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at, version) 
+	VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?version) 
+	RETURNING id`, c)
 	return err
 }
 
-// Update updates a scheduler in the database
+// Update updates a scheduler status in the database
 func (c *Scheduler) Update(db interfaces.DB) error {
-	_, err := db.Query(c, "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", c)
-	return err
+	_, err := db.Query(c, `UPDATE schedulers
+	SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at, version) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at, ?version)
+	WHERE id=?id`, c)
+	if err != nil {
+		err = fmt.Errorf("error updating status on schedulers: %s", err.Error())
+		return err
+	}
+
+	_, err = db.Query(c, `INSERT INTO scheduler_versions (name, version, yaml)
+	VALUES (?name, ?version, ?yaml)
+	ON CONFLICT DO NOTHING`, c)
+	if err != nil {
+		err = fmt.Errorf("error inserting on scheduler_versions: %s", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+// UpdateVersion updates a scheduler on database
+// Instead of Update, it creates a new scheduler and delete the oldest one if necessary
+func (c *Scheduler) UpdateVersion(
+	db interfaces.DB,
+	maxVersions int,
+) (created bool, err error) {
+	currentVersion := c.Version
+	c.NextVersion()
+
+	query := "UPDATE schedulers SET (game, yaml, version) = (?game, ?yaml, ?version) WHERE id = ?id"
+	_, err = db.Query(c, query, c)
+	if err != nil {
+		c.Version = currentVersion
+		err = fmt.Errorf("error to update scheduler on schedulers table: %s", err.Error())
+		return false, err
+	}
+
+	query = `INSERT INTO scheduler_versions (name, version, yaml) 
+	VALUES (?, ?, ?)`
+	_, err = db.Query(c, query, c.Name, c.Version, c.YAML)
+	if err != nil {
+		err = fmt.Errorf("error to insert into scheduler_versions table: %s", err.Error())
+		return true, err
+	}
+
+	var count int
+	_, err = db.Query(&count, "SELECT COUNT(*) FROM scheduler_versions WHERE name = ?", c.Name)
+	if err != nil {
+		err = fmt.Errorf("error to select count on scheduler_versions table: %s", err.Error())
+		return true, err
+	}
+
+	if count > maxVersions {
+		query = `DELETE FROM scheduler_versions WHERE id IN (
+			SELECT id
+			FROM scheduler_versions
+			WHERE name = ?
+			ORDER BY created_at ASC 
+			LIMIT ?
+		)`
+		_, err = db.Exec(query, c.Name, count-maxVersions)
+		if err != nil {
+			err = fmt.Errorf("error to delete from scheduler_versions table: %s", err.Error())
+			return true, err
+		}
+	}
+
+	return true, nil
 }
 
 // Delete deletes a scheduler from the database using the scheduler name
@@ -226,8 +305,47 @@ func ListSchedulersNames(db interfaces.DB) ([]string, error) {
 }
 
 // LoadConfig loads the scheduler config from the database
+// Since no version is specified, it returns the last one (current in use)
 func LoadConfig(db interfaces.DB, schedulerName string) (string, error) {
 	c := new(Scheduler)
 	_, err := db.Query(c, "SELECT yaml FROM schedulers WHERE name = ?", schedulerName)
 	return c.YAML, err
+}
+
+// LoadConfigWithVersion loads the scheduler config from the database of a specific version
+func LoadConfigWithVersion(db interfaces.DB, schedulerName, version string) (string, error) {
+	if version == "" {
+		return LoadConfig(db, schedulerName)
+	}
+
+	matched, _ := regexp.MatchString("v[0-9]+", version)
+	if !matched {
+		return "", errors.New("version is not of format v<integer>, like v1, v2, v3, etc")
+	}
+
+	versionInt, _ := strconv.Atoi(strings.TrimPrefix(version, "v"))
+
+	c := new(Scheduler)
+	_, err := db.Query(c, "SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?", schedulerName, versionInt)
+	return c.YAML, err
+}
+
+// ListSchedulerReleases returns the list of releases of a scheduler
+func ListSchedulerReleases(db interfaces.DB, schedulerName string) (
+	versions []*SchedulerVersion,
+	err error,
+) {
+	_, err = db.Query(
+		&versions,
+		"SELECT version, created_at FROM scheduler_versions WHERE name = ?",
+		schedulerName,
+	)
+	if err != nil {
+		return
+	}
+
+	for _, version := range versions {
+		version.Version = fmt.Sprintf("v%s", version.Version)
+	}
+	return
 }

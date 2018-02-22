@@ -336,7 +336,7 @@ func (w *Worker) RetrieveFreePorts(
 			default:
 				lock, err := w.RedisClient.EnterCriticalSection(
 					w.RedisClient.Client,
-					watcher.GetLockKey(watcherLockPrefix, schedulerName),
+					controller.GetLockKey(watcherLockPrefix, schedulerName),
 					time.Duration(w.lockTimeoutMs)*time.Millisecond,
 					0, 0,
 				)

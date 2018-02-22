@@ -164,6 +164,30 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerStatus")
 
+	r.HandleFunc("/scheduler/{schedulerName}/config", Chain(
+		NewGetSchedulerConfigHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
+		NewVersionMiddleware(),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+	).ServeHTTP).Methods("GET").Name("schedulerConfigs")
+
+	r.HandleFunc("/scheduler/{schedulerName}/releases", Chain(
+		NewGetSchedulerReleasesHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
+		NewVersionMiddleware(),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+	).ServeHTTP).Methods("GET").Name("schedulerConfigs")
+
+	r.HandleFunc("/scheduler/{schedulerName}/rollback", Chain(
+		NewSchedulerRollbackHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
+		NewVersionMiddleware(),
+		NewValidationMiddleware(func() interface{} { return &models.SchedulerVersion{} }),
+	).ServeHTTP).Methods("PUT").Name("schedulerRollback")
+
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerScaleHandler(a),
 		NewLoggingMiddleware(a),
@@ -302,6 +326,7 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("watcher.maxSurge", 25)
 	a.Config.SetDefault("schedulerCache.defaultExpiration", "5m")
 	a.Config.SetDefault("schedulerCache.cleanupInterval", "10m")
+	a.Config.SetDefault("schedulers.versions.toKeep", 100)
 }
 
 func (a *App) configureCache() {

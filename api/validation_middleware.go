@@ -126,6 +126,18 @@ func schedulerScaleParamsFromCtx(ctx context.Context) *models.SchedulerScalePara
 	return arr[0].(*models.SchedulerScaleParams)
 }
 
+func schedulerVersionParamsFromContext(ctx context.Context) *models.SchedulerVersion {
+	payload := ctx.Value(payloadString)
+	if payload == nil {
+		return nil
+	}
+	arr := payload.([]interface{})
+	if len(arr) == 0 || arr[0] == nil {
+		return nil
+	}
+	return arr[0].(*models.SchedulerVersion)
+}
+
 //ServeHTTP method
 func (m *ValidationMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())

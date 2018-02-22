@@ -159,12 +159,6 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		"scheduler": params.SchedulerName,
 	})
 
-	maxSurge, err := getMaxSurge(g.App, r)
-	if err != nil {
-		g.App.HandleError(w, http.StatusBadRequest, "invalid maxsurge parameter", err)
-		return
-	}
-
 	logger.Info("updating scheduler")
 
 	if params.SchedulerName != payload.Name {
@@ -174,28 +168,43 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	redisClient, err := redis.NewClient("extensions.redis", g.App.Config, g.App.RedisClient)
+	updateSchedulerConfigCommon(g.App, w, r, logger, mr, payload)
+}
+
+func updateSchedulerConfigCommon(
+	app *App,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	configYaml *models.ConfigYAML,
+) {
+	redisClient, err := redis.NewClient("extensions.redis", app.Config, app.RedisClient)
 	if err != nil {
 		logger.WithError(err).Error("error getting redisClient")
-		g.App.HandleError(w, http.StatusInternalServerError, "Update scheduler failed", err)
+		app.HandleError(w, http.StatusInternalServerError, "Update scheduler failed", err)
 		return
 	}
 
-	timeoutSec := g.App.Config.GetInt("updateTimeoutSeconds")
+	maxSurge, err := getMaxSurge(app, r)
+	if err != nil {
+		app.HandleError(w, http.StatusBadRequest, "invalid maxsurge parameter", err)
+		return
+	}
+
 	logger.WithField("time", time.Now()).Info("Starting update")
-	lockKey := fmt.Sprintf("%s-%s", g.App.Config.GetString("watcher.lockKey"), payload.Name)
 	err = mr.WithSegment(models.SegmentController, func() error {
 		return controller.UpdateSchedulerConfig(
-			l,
+			logger,
 			mr,
-			g.App.DB,
+			app.DB,
 			redisClient,
-			g.App.KubernetesClient,
-			payload,
-			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"), maxSurge,
-			lockKey,
+			app.KubernetesClient,
+			configYaml,
+			maxSurge,
 			&clock.Clock{},
 			nil,
+			app.Config,
 		)
 	})
 	logger.WithField("time", time.Now()).Info("finished update")
@@ -210,18 +219,18 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			status = http.StatusBadRequest
 		}
 		logger.WithError(err).Error("Update scheduler failed.")
-		g.App.HandleError(w, status, "Update scheduler failed", err)
+		app.HandleError(w, status, "Update scheduler failed", err)
 		return
 	}
 
 	// this forwards the metadata configured for each enabled forwarder
 	_, err = eventforwarder.ForwardRoomInfo(
-		g.App.Forwarders,
-		g.App.DB,
-		g.App.KubernetesClient,
-		payload.Name,
+		app.Forwarders,
+		app.DB,
+		app.KubernetesClient,
+		configYaml.Name,
 		nil, // intentionally omit SchedulerCache to force reload since it is an update
-		g.App.Logger,
+		app.Logger,
 	)
 
 	if err != nil {
@@ -602,8 +611,6 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	timeoutSec := g.App.Config.GetInt("updateTimeoutSeconds")
-	lockKey := fmt.Sprintf("%s-%s", g.App.Config.GetString("watcher.lockKey"), params.SchedulerName)
 	err = mr.WithSegment(models.SegmentController, func() error {
 		return controller.UpdateSchedulerImage(
 			logger,
@@ -611,10 +618,11 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 			g.App.DB,
 			redisClient,
 			g.App.KubernetesClient,
-			params.SchedulerName, lockKey,
+			params.SchedulerName,
 			schedulerImage,
-			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"), maxSurge,
+			maxSurge,
 			&clock.Clock{},
+			g.App.Config,
 		)
 	})
 
@@ -675,8 +683,6 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		g.App.HandleError(w, http.StatusInternalServerError, "Update scheduler failed", err)
 		return
 	}
-	lockKey := fmt.Sprintf("%s-%s", g.App.Config.GetString("watcher.lockKey"), params.SchedulerName)
-	timeoutSec := g.App.Config.GetInt("updateTimeoutSeconds")
 
 	err = mr.WithSegment(models.SegmentController, func() error {
 		return controller.UpdateSchedulerMin(
@@ -684,9 +690,10 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 			mr,
 			g.App.DB,
 			redisClient,
-			params.SchedulerName, lockKey,
-			timeoutSec, g.App.Config.GetInt("watcher.lockTimeoutMs"), schedulerMin.Min,
+			params.SchedulerName,
+			schedulerMin.Min,
 			&clock.Clock{},
+			g.App.Config,
 		)
 	})
 

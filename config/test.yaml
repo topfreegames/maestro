@@ -30,9 +30,9 @@ reporters:
     region: "test"
 scaleUpTimeoutSeconds: 300
 scaleDownTimeoutSeconds: 300
-deleteTimeoutSeconds: 150
+deleteTimeoutSeconds: 300
 pingTimeout: 300
-updateTimeoutSeconds: 600
+updateTimeoutSeconds: 300
 newrelic:
   app: maestro
   key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -48,3 +48,6 @@ basicauth:
 schedulerCache:
   defaultExpiration: 5m
   cleanupInterval: 10m
+schedulers:
+  versions:
+    toKeep: 10

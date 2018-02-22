@@ -54,3 +54,6 @@ basicauth:
 schedulerCache:
   defaultExpiration: 5m
   cleanupInterval: 10m
+schedulers:
+  versions:
+    toKeep: 10

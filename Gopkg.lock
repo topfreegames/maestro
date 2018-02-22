@@ -158,6 +158,12 @@
   revision = "44d81051d367757e1c7c6a5a86423ece9afcf63c"
 
 [[projects]]
+  name = "github.com/google/uuid"
+  packages = ["."]
+  revision = "064e2069ce9c359c118179501254f67d7d37ba24"
+  version = "0.2"
+
+[[projects]]
   branch = "master"
   name = "github.com/googleapis/gax-go"
   packages = ["."]
@@ -328,8 +334,8 @@
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","dogstatsd/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
-  revision = "f984128ff45df9434d7b787d39d3f6a0b5a12770"
-  version = "v3.1.4"
+  revision = "60652653febcf337a1dee3fd9405988e0d8cf4d0"
+  version = "v5.0.0"
 
 [[projects]]
   name = "github.com/topfreegames/protos"
@@ -417,6 +423,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ec8dfc05a57d186462f0f0fd00085fc0d2b020c328a0dde6072069b59d47a6e0"
+  inputs-digest = "1c11b34281d94bff19943831ff44d92e2a270e8e76a52d7042f32b0c6b39a618"
   solver-name = "gps-cdcl"
   solver-version = 1

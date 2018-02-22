@@ -18,7 +18,6 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
@@ -66,12 +65,9 @@ var _ = Describe("Controller", func() {
 			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Min)
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
-			mockDb.EXPECT().Query(gomock.Any(), "INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id", gomock.Any())
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-				gomock.Any(),
-			).Return(pg.NewTestResult(errors.New("error updating state"), 0), errors.New("error updating state"))
+
+			mtesting.MockInsertScheduler(mockDb, nil)
+			mtesting.MockUpdateSchedulerStatus(mockDb, errors.New("error updating state"), nil)
 			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -93,7 +89,7 @@ var _ = Describe("Controller", func() {
 
 			err := controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("error updating state"))
+			Expect(err.Error()).To(Equal("error updating status on schedulers: error updating state"))
 
 			Eventually(func() error {
 				_, err := clientset.CoreV1().Namespaces().Get(configYaml1.Name, metav1.GetOptions{})

@@ -51,6 +51,7 @@ var _ = BeforeEach(func() {
 	var err error
 	logger, hook = test.NewNullLogger()
 	logger.Level = logrus.DebugLevel
+
 	fakeReporter := mtesting.FakeMetricsReporter{}
 	mr = models.NewMixedMetricsReporter()
 	mr.AddReporter(fakeReporter)

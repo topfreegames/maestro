@@ -59,4 +59,4 @@
 
 [[constraint]]
   name = "github.com/topfreegames/extensions"
-  version = "=v3.1.4"
+  version = "=v5.0.0"

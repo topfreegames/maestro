@@ -34,7 +34,6 @@ import (
 	"github.com/topfreegames/maestro/login"
 	"github.com/topfreegames/maestro/models"
 	. "github.com/topfreegames/maestro/testing"
-	mtesting "github.com/topfreegames/maestro/testing"
 )
 
 var _ = Describe("Scheduler Handler", func() {
@@ -42,6 +41,10 @@ var _ = Describe("Scheduler Handler", func() {
 	var recorder *httptest.ResponseRecorder
 	var payload JSON
 	var yamlString string
+	var timeoutSec = 300
+	var numberOfVersions int = 1
+	var scheduler1 *models.Scheduler
+	var lockKeyNs string
 	yamlString = `{
   "name": "scheduler-name",
   "game": "game-name",
@@ -119,6 +122,10 @@ var _ = Describe("Scheduler Handler", func() {
 		})
 		_, err := clientset.CoreV1().Nodes().Create(node)
 		Expect(err).NotTo(HaveOccurred())
+
+		lockKeyNs = fmt.Sprintf("%s-scheduler-name", lockKey)
+
+		mockRedisClient.EXPECT().Ping().AnyTimes()
 	})
 
 	Context("When authentication is ok", func() {
@@ -252,7 +259,7 @@ var _ = Describe("Scheduler Handler", func() {
 			}
 
 			redisExpectations := func(f func()) {
-				mockRedisClient.EXPECT().Ping()
+				mockRedisClient.EXPECT().Ping().AnyTimes()
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				f()
 				mockPipeline.EXPECT().Exec()
@@ -309,16 +316,8 @@ var _ = Describe("Scheduler Handler", func() {
 					mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(100)
 					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(100)
 					mockPipeline.EXPECT().Exec().Times(100)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-						gomock.Any(),
-					)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-						gomock.Any(),
-					)
+					MockInsertScheduler(mockDb, nil)
+					MockUpdateSchedulerStatus(mockDb, nil, nil)
 
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
 					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
@@ -395,16 +394,12 @@ autoscaling:
 					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name-1", "creating"), gomock.Any())
 					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name-2", "creating"), gomock.Any())
 					mockPipeline.EXPECT().Exec().Times(2)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-						gomock.Any(),
-					).Times(2)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-						gomock.Any(),
-					).Times(2)
+
+					MockInsertScheduler(mockDb, nil)
+					MockUpdateSchedulerStatus(mockDb, nil, nil)
+
+					MockInsertScheduler(mockDb, nil)
+					MockUpdateSchedulerStatus(mockDb, nil, nil)
 
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
@@ -479,11 +474,8 @@ autoscaling:
 
 			Context("when postgres is down", func() {
 				It("returns status code of 500 if database is unavailable", func() {
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-						gomock.Any(),
-					).Return(pg.NewTestResult(errors.New("sql: database is closed"), 0), errors.New("sql: database is closed"))
+
+					MockInsertScheduler(mockDb, errors.New("sql: database is closed"))
 					mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", gomock.Any())
 
 					app.Router.ServeHTTP(recorder, request)
@@ -500,12 +492,8 @@ autoscaling:
 
 			Context("when there is no nodes with affinity label", func() {
 				It("should return error code 422", func() {
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-						gomock.Any(),
-					//HACK!!! DB won't return this information, but Kubernetes will
-					).Return(pg.NewTestResult(errors.New("node without label error"), 0), errors.New("node without label error"))
+					MockInsertScheduler(mockDb, errors.New("node without label error"))
+
 					mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", gomock.Any())
 
 					app.Router.ServeHTTP(recorder, request)
@@ -542,16 +530,6 @@ autoscaling:
 					mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(100)
 					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(100)
 					mockPipeline.EXPECT().Exec().Times(100)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-						gomock.Any(),
-					)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-						gomock.Any(),
-					)
 
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
 					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
@@ -568,6 +546,9 @@ autoscaling:
 					})
 
 					mockEventForwarder1.EXPECT().Forward("schedulerEvent", gomock.Any(), gomock.Any())
+
+					MockInsertScheduler(mockDb, nil)
+					MockUpdateSchedulerStatus(mockDb, nil, nil)
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(201))
@@ -635,6 +616,8 @@ autoscaling:
 		})
 
 		Describe("PUT /scheduler/{schedulerName}", func() {
+			var configYaml models.ConfigYAML
+			var url string
 			newJSONString := `{
 		    "name": "scheduler-name",
 		    "game": "game-name",
@@ -698,124 +681,51 @@ autoscaling:
 
 			Context("when all services are healthy", func() {
 				It("returns a status code of 200 and success body", func() {
-					// Create scheduler
-					reader := strings.NewReader(yamlString)
-					url := "/scheduler"
-					request, err := http.NewRequest("POST", url, reader)
+					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
+						logger, mmr, yamlString, timeoutSec)
+
+					err := yaml.Unmarshal([]byte(yamlString), &configYaml)
 					Expect(err).NotTo(HaveOccurred())
+					scheduler1 := models.NewScheduler(configYaml.Name, configYaml.Game, yamlString)
 
-					var configYaml1 models.ConfigYAML
-					err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
+					pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 					Expect(err).NotTo(HaveOccurred())
-
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
-					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-						func(schedulerName string, statusInfo map[string]interface{}) {
-							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-						},
-					).Times(configYaml1.AutoScaling.Min)
-					mockPipeline.EXPECT().
-						ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).
-						Times(configYaml1.AutoScaling.Min)
-					mockPipeline.EXPECT().
-						SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).
-						Times(configYaml1.AutoScaling.Min)
-					mockPipeline.EXPECT().
-						Exec().
-						Times(configYaml1.AutoScaling.Min)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-						gomock.Any(),
-					)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-						gomock.Any(),
-					)
-
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
-					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-						Return(goredis.NewStringResult("5000", nil)).Times(200)
-					mockPipeline.EXPECT().Exec().Times(100)
-
-					app.Router.ServeHTTP(recorder, request)
-					Expect(recorder.Code).To(Equal(http.StatusCreated))
-					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
-
-					pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+					Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
 
 					// Update scheduler
 					var configYaml2 models.ConfigYAML
 					err = yaml.Unmarshal([]byte(newJSONString), &configYaml2)
 					Expect(err).NotTo(HaveOccurred())
 
-					reader = strings.NewReader(newJSONString)
-					url = fmt.Sprintf("/scheduler/%s", configYaml1.Name)
+					reader := strings.NewReader(newJSONString)
+					url = fmt.Sprintf("/scheduler/%s", configYaml.Name)
 					request, err = http.NewRequest("PUT", url, reader)
 					Expect(err).NotTo(HaveOccurred())
 
-					mockRedisClient.EXPECT().Ping().AnyTimes()
+					// Select current scheduler yaml
+					MockSelectScheduler(yamlString, mockDb, nil)
 
-					mockDb.EXPECT().
-						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
-						Do(func(scheduler *models.Scheduler, query string, modifier string) {
-							*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-						})
+					// Get redis lock
+					MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 
-					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+					// Remove old rooms
+					MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
 
-					mockRedisClient.EXPECT().
-						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-						Return(redis.NewBoolResult(true, nil))
-
-					for _, pod := range pods.Items {
-						mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-						room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-						for _, status := range allStatus {
-							mockPipeline.EXPECT().
-								SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
-							mockPipeline.EXPECT().
-								ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
-						}
-						mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(room.SchedulerName), room.ID)
-						mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
-						mockPipeline.EXPECT().Exec()
-					}
+					// Create new roome
 					// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
-					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-						func(schedulerName string, statusInfo map[string]interface{}) {
-							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-						},
-					).Times(configYaml1.AutoScaling.Min)
-					mockPipeline.EXPECT().
-						ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).
-						Times(configYaml1.AutoScaling.Min)
-					mockPipeline.EXPECT().
-						SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).
-						Times(configYaml1.AutoScaling.Min)
-					mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
+					MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
 
-					mockDb.EXPECT().
-						Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+					// Update new config on schedulers table
+					MockUpdateSchedulersTable(mockDb, nil)
 
-					mockRedisClient.EXPECT().
-						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
-						Return(redis.NewCmdResult(nil, nil))
+					// Add new version into versions table
+					MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
-					mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(200)
-					mockPipeline.EXPECT().Exec().Times(100)
+					// Count to delete old versions if necessary
+					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
-					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-						Return(goredis.NewStringResult("5000", nil)).Times(200)
-					mockPipeline.EXPECT().Exec().Times(100)
+					// Retrieve redis lock
+					MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)
@@ -869,20 +779,13 @@ autoscaling:
 					mockPipeline.EXPECT().
 						Exec().
 						Times(configYaml1.AutoScaling.Min)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-						gomock.Any(),
-					)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-						gomock.Any(),
-					)
+
+					MockInsertScheduler(mockDb, nil)
+					MockUpdateSchedulerStatus(mockDb, nil, nil)
 
 					app.Router.ServeHTTP(recorder, request)
-					Expect(recorder.Code).To(Equal(http.StatusCreated))
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+					Expect(recorder.Code).To(Equal(http.StatusCreated))
 
 					pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 					Expect(err).NotTo(HaveOccurred())
@@ -928,11 +831,16 @@ autoscaling:
 					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
 
 					mockRedisClient.EXPECT().
-						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
 
-					mockDb.EXPECT().
-						Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
+					// Update new config on schedulers table
+					MockUpdateSchedulersTable(mockDb, nil)
+					// Add new version into versions table
+					MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+					// Count to delete old versions if necessary
+					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
 					mockRedisClient.EXPECT().
 						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
@@ -958,7 +866,7 @@ autoscaling:
 
 					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
 					mockRedisClient.EXPECT().
-						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
 					mockDb.EXPECT().
 						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name)
@@ -1013,7 +921,7 @@ autoscaling:
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 
 					mockRedisClient.EXPECT().
-						SetNX(gomock.Any(), gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						SetNX(gomock.Any(), gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
 
 					mockRedisClient.EXPECT().
@@ -1049,7 +957,7 @@ autoscaling:
 
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 					mockRedisClient.EXPECT().
-						SetNX(gomock.Any(), gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						SetNX(gomock.Any(), gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
 					mockDb.EXPECT().Query(
 						gomock.Any(),
@@ -1135,16 +1043,9 @@ autoscaling:
 					mockPipeline.EXPECT().
 						Exec().
 						Times(configYaml1.AutoScaling.Min)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-						gomock.Any(),
-					)
-					mockDb.EXPECT().Query(
-						gomock.Any(),
-						"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-						gomock.Any(),
-					)
+
+					MockInsertScheduler(mockDb, nil)
+					MockUpdateSchedulerStatus(mockDb, nil, nil)
 
 					mockDb.EXPECT().Query(
 						gomock.Any(),
@@ -1215,11 +1116,16 @@ forwarders:
 					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
 
 					mockRedisClient.EXPECT().
-						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
 
-					mockDb.EXPECT().
-						Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
+					// Update new config on schedulers table
+					MockUpdateSchedulersTable(mockDb, nil)
+					// Add new version into versions table
+					MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+					// Count to delete old versions if necessary
+					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
 					mockRedisClient.EXPECT().
 						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
@@ -1488,7 +1394,7 @@ containers:
 		Describe("POST /scheduler/{schedulerName}", func() {
 			var app *api.App
 			BeforeEach(func() {
-				config, err := mtesting.GetDefaultConfig()
+				config, err := GetDefaultConfig()
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
 				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
@@ -2023,130 +1929,63 @@ ports:
 		Describe("PUT /scheduler/{schedulerName}/image", func() {
 			var configYaml1 models.ConfigYAML
 			var user, pass string
+			var err error
 
 			BeforeEach(func() {
-				// Create scheduler
-				reader := strings.NewReader(yamlString)
-				url := "/scheduler"
-				request, err := http.NewRequest("POST", url, reader)
-				Expect(err).NotTo(HaveOccurred())
-
 				err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().
-					ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).
-					Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().
-					SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).
-					Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().
-					Exec().
-					Times(configYaml1.AutoScaling.Min)
-				mockDb.EXPECT().Query(
-					gomock.Any(),
-					"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-					gomock.Any(),
-				)
-				mockDb.EXPECT().Query(
-					gomock.Any(),
-					"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-					gomock.Any(),
-				)
+				MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
+					logger, mmr, yamlString, timeoutSec)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
-				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-					Return(goredis.NewStringResult("5000", nil)).Times(200)
-				mockPipeline.EXPECT().Exec().Times(100)
-
-				mockRedisClient.EXPECT().Ping().AnyTimes()
-
-				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(http.StatusCreated))
-				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 
 				user = app.Config.GetString("basicauth.username")
 				pass = app.Config.GetString("basicauth.password")
 			})
 
 			It("should update image", func() {
+				var configYaml models.ConfigYAML
+				err = yaml.Unmarshal([]byte(yamlString), &configYaml)
+
 				newImageName := "new-image"
-				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
 
 				// Update scheduler
 				body := map[string]interface{}{"image": newImageName}
 				bts, _ := json.Marshal(body)
 				reader := strings.NewReader(string(bts))
-				url := fmt.Sprintf("/scheduler/%s/image", configYaml1.Name)
+				url := fmt.Sprintf("/scheduler/%s/image", configYaml.Name)
 				request, err = http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					})
+				// Select current scheduler yaml
+				MockSelectScheduler(yamlString, mockDb, nil)
 
-				lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+				// Get redis lock
+				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 
-				mockRedisClient.EXPECT().
-					SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil))
+				// Remove old rooms
+				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
 
-				for _, pod := range pods.Items {
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-					room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-					for _, status := range allStatus {
-						mockPipeline.EXPECT().
-							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
-						mockPipeline.EXPECT().
-							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
-					}
-					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(room.SchedulerName), room.ID)
-					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
-					mockPipeline.EXPECT().Exec()
-				}
+				// Create new roome
 				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().
-					ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).
-					Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().
-					SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).
-					Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
+				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+				// Update new config on schedulers table
+				MockUpdateSchedulersTable(mockDb, nil)
 
-				mockRedisClient.EXPECT().
-					Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil))
+				// Add new version into versions table
+				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
-				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(200)
-				mockPipeline.EXPECT().Exec().Times(100)
+				// Count to delete old versions if necessary
+				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
-				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-					Return(goredis.NewStringResult("5000", nil)).Times(200)
-				mockPipeline.EXPECT().Exec().Times(100)
+				// Retrieve redis lock
+				MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2155,76 +1994,47 @@ ports:
 			})
 
 			It("should update image with max surge of 100%", func() {
+				var configYaml models.ConfigYAML
+				err = yaml.Unmarshal([]byte(yamlString), &configYaml)
+
 				newImageName := "new-image"
-				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
 
 				// Update scheduler
 				body := map[string]interface{}{"image": newImageName}
 				bts, _ := json.Marshal(body)
 				reader := strings.NewReader(string(bts))
-				url := fmt.Sprintf("/scheduler/%s/image?maxsurge=100", configYaml1.Name)
+				url := fmt.Sprintf("/scheduler/%s/image?maxsurge=100", configYaml.Name)
 				request, err = http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					})
+				// Select current scheduler yaml
+				MockSelectScheduler(yamlString, mockDb, nil)
 
-				lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+				// Get redis lock
+				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 
-				mockRedisClient.EXPECT().
-					SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil))
+				// Remove old rooms
+				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
 
-				for _, pod := range pods.Items {
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-					room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-					for _, status := range allStatus {
-						mockPipeline.EXPECT().
-							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
-						mockPipeline.EXPECT().
-							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
-					}
-					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(room.SchedulerName), room.ID)
-					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
-					mockPipeline.EXPECT().Exec()
-				}
+				// Create new roome
 				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().
-					ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).
-					Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().
-					SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).
-					Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
+				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+				// Update new config on schedulers table
+				MockUpdateSchedulersTable(mockDb, nil)
 
-				mockRedisClient.EXPECT().
-					Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil))
+				// Add new version into versions table
+				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
-				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(200)
-				mockPipeline.EXPECT().Exec().Times(100)
+				// Count to delete old versions if necessary
+				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
-				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-					Return(goredis.NewStringResult("5000", nil)).Times(200)
-				mockPipeline.EXPECT().Exec().Times(100)
+				// Retrieve redis lock
+				MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2489,19 +2299,102 @@ ports:
 			})
 
 			It("should set image if basicauth is not sent and tryOauthIfUnset is true", func() {
-				os.Setenv("basicauth.tryOauthIfUnset", "true")
+				var configYaml models.ConfigYAML
+				err = yaml.Unmarshal([]byte(yamlString), &configYaml)
+
 				config, err := GetDefaultConfig()
+				Expect(err).NotTo(HaveOccurred())
+				config.Set("basicauth.tryOauthIfUnset", true)
+
 				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 				newImageName := "new-image"
+
+				pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+
+				// Update scheduler
+				body := map[string]interface{}{"image": newImageName}
+				bts, _ := json.Marshal(body)
+				reader := strings.NewReader(string(bts))
+				url := fmt.Sprintf("/scheduler/%s/image", configYaml.Name)
+				request, err = http.NewRequest("PUT", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+				request.SetBasicAuth(user, pass)
+
+				// Select current scheduler yaml
+				MockSelectScheduler(yamlString, mockDb, nil)
+
+				// Get redis lock
+				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+
+				// Remove old rooms
+				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
+
+				// Create new roome
+				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
+				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
+
+				// Update new config on schedulers table
+				MockUpdateSchedulersTable(mockDb, nil)
+
+				// Add new version into versions table
+				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+
+				// Count to delete old versions if necessary
+				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
+
+				// Retrieve redis lock
+				MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+
+				recorder = httptest.NewRecorder()
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+			})
+
+			It("should set image on scheduler with two containers per pod", func() {
+				jsonString := `{
+  "name": "scheduler-name-2",
+  "game": "game-name",
+	"autoscaling": {
+    "min": 1
+	},
+	"containers": [{
+		"name": "container1",
+		"image": "image1"
+	}, {
+		"name": "container2",
+		"image": "image2"
+	}]
+}`
+
+				MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
+					logger, mmr, jsonString, timeoutSec)
+
+				err := json.Unmarshal([]byte(jsonString), &configYaml1)
+				Expect(err).NotTo(HaveOccurred())
+				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
+
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				app.Login = mockLogin
+
+				newImageName := "new-image"
+				containerName := "container1"
+				lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
 
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
 
 				// Update scheduler
-				body := map[string]interface{}{"image": newImageName}
+				body := map[string]interface{}{
+					"image":     newImageName,
+					"container": containerName,
+				}
 				bts, _ := json.Marshal(body)
 				reader := strings.NewReader(string(bts))
 				url := fmt.Sprintf("/scheduler/%s/image", configYaml1.Name)
@@ -2509,62 +2402,30 @@ ports:
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					})
+				// Select current scheduler yaml
+				MockSelectScheduler(jsonString, mockDb, nil)
 
-				lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+				// Get redis lock
+				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 
-				mockRedisClient.EXPECT().
-					SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil))
+				// Remove old rooms
+				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml1)
 
-				for _, pod := range pods.Items {
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-					room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-					for _, status := range allStatus {
-						mockPipeline.EXPECT().
-							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
-						mockPipeline.EXPECT().
-							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
-					}
-					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(room.SchedulerName), room.ID)
-					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
-					mockPipeline.EXPECT().Exec()
-				}
+				// Create new roome
 				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().
-					ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).
-					Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().
-					SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).
-					Times(configYaml1.AutoScaling.Min)
-				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
+				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1)
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+				// Update new config on schedulers table
+				MockUpdateSchedulersTable(mockDb, nil)
 
-				mockRedisClient.EXPECT().
-					Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil))
+				// Add new version into versions table
+				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
-				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(200)
-				mockPipeline.EXPECT().Exec().Times(100)
+				// Count to delete old versions if necessary
+				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
-				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-					Return(goredis.NewStringResult("5000", nil)).Times(200)
-				mockPipeline.EXPECT().Exec().Times(100)
+				// Retrieve redis lock
+				MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2603,16 +2464,9 @@ ports:
 				mockPipeline.EXPECT().
 					Exec().
 					Times(configYaml1.AutoScaling.Min)
-				mockDb.EXPECT().Query(
-					gomock.Any(),
-					"INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at) VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at) RETURNING id",
-					gomock.Any(),
-				)
-				mockDb.EXPECT().Query(
-					gomock.Any(),
-					"UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id",
-					gomock.Any(),
-				)
+
+				MockInsertScheduler(mockDb, nil)
+				MockUpdateSchedulerStatus(mockDb, nil, nil)
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
 				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
@@ -2630,6 +2484,7 @@ ports:
 			})
 
 			It("should update min", func() {
+				scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 				newMin := configYaml1.AutoScaling.Min + 1
 
 				// Update scheduler
@@ -2646,7 +2501,7 @@ ports:
 					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
 					Return(redis.NewCmdResult(nil, nil))
 				mockRedisClient.EXPECT().
-					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 					Return(redis.NewBoolResult(true, nil))
 
 				mockDb.EXPECT().
@@ -2655,8 +2510,12 @@ ports:
 						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					})
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+				// Update new config on schedulers table
+				MockUpdateSchedulersTable(mockDb, nil)
+				// Add new version into versions table
+				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+				// Count to delete old versions if necessary
+				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2748,6 +2607,7 @@ ports:
 			})
 
 			It("should set min 0 if body is empty (default value is 0)", func() {
+				scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 				// Update scheduler
 				body := map[string]interface{}{}
 				bts, _ := json.Marshal(body)
@@ -2768,11 +2628,15 @@ ports:
 					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
 					Return(redis.NewCmdResult(nil, nil))
 				mockRedisClient.EXPECT().
-					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 					Return(redis.NewBoolResult(true, nil))
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+				// Update new config on schedulers table
+				MockUpdateSchedulersTable(mockDb, nil)
+				// Add new version into versions table
+				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+				// Count to delete old versions if necessary
+				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2851,7 +2715,7 @@ ports:
 					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
 					Return(redis.NewCmdResult(nil, nil))
 				mockRedisClient.EXPECT().
-					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMS)*time.Millisecond).
+					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 					Return(redis.NewBoolResult(true, nil))
 
 				// Update scheduler
@@ -2869,8 +2733,13 @@ ports:
 						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					})
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "UPDATE schedulers SET (name, game, yaml, state, state_last_changed_at, last_scale_op_at) = (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?last_scale_op_at) WHERE id=?id", gomock.Any())
+				scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
+				// Update new config on schedulers table
+				MockUpdateSchedulersTable(mockDb, nil)
+				// Add new version into versions table
+				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+				// Count to delete old versions if necessary
+				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)

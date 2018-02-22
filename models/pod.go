@@ -265,10 +265,7 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 	}
 
 	for _, container := range kubePod.Spec.Containers {
-		err = RetrieveV1Ports(redisClient, container.Ports)
-		if err != nil {
-			//TODO: try again?
-		}
+		RetrieveV1Ports(redisClient, container.Ports)
 	}
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
