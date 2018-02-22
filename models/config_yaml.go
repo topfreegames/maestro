@@ -188,6 +188,11 @@ func (c *ConfigYAML) UpdateImage(imageParams *SchedulerImageParams) (bool, error
 		c.Image = imageParams.Image
 		return true, nil
 	} else if c.Version() == "v2" {
+		if imageParams.Container == "" {
+			return false, errors.NewValidationFailedError(
+				fmt.Errorf("need to specify container name"))
+		}
+
 		for _, container := range c.Containers {
 			if container.Name == imageParams.Container {
 				if container.Image == imageParams.Image {

@@ -577,8 +577,11 @@ waitForLock:
 				return errors.New("timedout waiting rooms to be replaced, rolled back")
 			}
 		}
+	} else {
+		l.Info("pods do not need to be recreated")
 	}
 
+	l.Info("updating configYaml on database")
 	// Update new config on DB
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
@@ -590,8 +593,12 @@ waitForLock:
 	err = mr.WithSegment(models.SegmentUpdate, func() error {
 		return scheduler.Update(db)
 	})
+	if err != nil {
+		return err
+	}
 
-	return err
+	l.Info("updated configYaml on database")
+	return nil
 }
 
 func deleteSchedulerHelper(
@@ -722,7 +729,7 @@ func createPod(
 	}
 
 	var pod *models.Pod
-	if configYAML.Containers == nil || len(configYAML.Containers) == 0 {
+	if configYAML.Version() == "v1" {
 		env := append(configYAML.Env, namesEnvVars...)
 		pod, err = models.NewPod(
 			configYAML.Game,
@@ -738,7 +745,7 @@ func createPod(
 			clientset,
 			redisClient,
 		)
-	} else {
+	} else if configYAML.Version() == "v2" {
 		containers := make([]*models.Container, len(configYAML.Containers))
 		for i, container := range configYAML.Containers {
 			containers[i] = container.NewWithCopiedEnvs()
@@ -989,6 +996,7 @@ func UpdateSchedulerImage(
 		return err
 	}
 	if !updated {
+		logger.Infof("scheduler was not updated because the image is the same: %s", imageParams.Image)
 		return nil
 	}
 

@@ -2,7 +2,7 @@
 name: scheduler-name
 game: game-name
 occupiedTimeout: 180
-shutdownTimeout: 10
+shutdownTimeout: 100
 autoscaling:
   min: 2
   up:

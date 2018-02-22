@@ -16,7 +16,7 @@ import (
 
 	goredis "github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"github.com/topfreegames/extensions/clock"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
@@ -361,7 +361,7 @@ cmd:
 				gomock.Any(),
 			).Do(
 				func(scheduler *models.Scheduler, query string, srcScheduler *models.Scheduler) {
-					scheduler.ID = uuid.NewV4().String()
+					scheduler.ID = uuid.New().String()
 				},
 			)
 			mockDb.EXPECT().Query(
@@ -3967,9 +3967,13 @@ cmd:
 
 	Describe("UpdateSchedulerImage for configYaml v2", func() {
 		var configYaml models.ConfigYAML
-		imageParams := &models.SchedulerImageParams{
-			Image: "new-image",
-		}
+		var imageParams *models.SchedulerImageParams
+
+		BeforeEach(func() {
+			imageParams = &models.SchedulerImageParams{
+				Image: "new-image",
+			}
+		})
 
 		It("Should update scheduler with configYaml v2", func() {
 			err := yaml.Unmarshal([]byte(yaml2), &configYaml)
@@ -4031,7 +4035,7 @@ cmd:
 				Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MY_ENV_VAR"))
 				Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("myvalue"))
 				Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
-				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
+				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal(configYaml.Name))
 				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
 				Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
 				Expect(pod.Spec.Containers[0].Image).To(Equal(imageParams.Image))
@@ -4039,7 +4043,7 @@ cmd:
 			}
 		})
 
-		FIt("Should not update scheduler with configYaml v2 if image is the same", func() {
+		It("Should not update scheduler with configYaml v2 if image is the same", func() {
 			err := yaml.Unmarshal([]byte(yaml2), &configYaml)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -4093,7 +4097,7 @@ cmd:
 			}
 		})
 
-		FIt("Should not update scheduler with configYaml v2 if container name is invalid", func() {
+		It("Should not update scheduler with configYaml v2 if container name is invalid", func() {
 			err := yaml.Unmarshal([]byte(yaml2), &configYaml)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -4124,6 +4128,61 @@ cmd:
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("no container with name invalid-container"))
+
+			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ns.Items).To(HaveLen(1))
+			Expect(ns.Items[0].GetName()).To(Equal(namespace))
+
+			pods, err = clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+
+			for _, pod := range pods.Items {
+				Expect(pod.GetName()).To(ContainSubstring(namespace))
+				Expect(pod.GetName()).To(HaveLen(len(namespace) + 9))
+				Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MY_ENV_VAR"))
+				Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("myvalue"))
+				Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
+				Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
+				Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
+				Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
+				Expect(pod.Spec.Containers[0].Image).To(Equal(configYaml.Containers[0].Image))
+				Expect(pod.Spec.Containers[0].Env).To(HaveLen(3))
+			}
+		})
+
+		It("Should not update scheduler and return error if configYaml v2 and container name is empty", func() {
+			err := yaml.Unmarshal([]byte(yaml2), &configYaml)
+			Expect(err).NotTo(HaveOccurred())
+
+			var namespace = configYaml.Name
+
+			// Create scheduler
+			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb, logger, mr, yaml2, timeoutSec)
+
+			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+
+			// Update scheduler
+			mt.MockSelectScheduler(yaml2, mockDb)
+
+			imageParams.Container = ""
+			imageParams.Image = configYaml.Containers[0].Image
+			err = controller.UpdateSchedulerImage(
+				logger,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				configYaml.Name, lockKey,
+				imageParams,
+				timeoutSec, lockTimeoutMs, maxSurge,
+				&clock.Clock{},
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("need to specify container name"))
 
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
