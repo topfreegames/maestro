@@ -326,7 +326,7 @@ func ScaleUp(
 
 	j := 0
 	for i := 0; i < amount; i++ {
-		pod, err := createPod(l, mr, redisClient, db, clientset, configYAML)
+		pod, err := createPod(l, mr, redisClient, db, clientset, configYAML, scheduler)
 		if err != nil {
 			l.WithError(err).Error("scale up error")
 			if initalOp {
@@ -545,6 +545,8 @@ waitForLock:
 		}
 	}
 
+	scheduler.NextVersion()
+
 	if MustUpdatePods(&oldConfig, configYAML) {
 		l.Info("pods must be recreated, starting process")
 
@@ -566,6 +568,7 @@ waitForLock:
 			newlyCreatedPods, newlyDeletedPods, timedout := replacePodsAndWait(
 				l, mr, clientset, db, redisClient.Client,
 				willTimeoutAt, clock, configYAML, chunk,
+				scheduler,
 			)
 			createdPods = append(createdPods, newlyCreatedPods...)
 			deletedPods = append(deletedPods, newlyDeletedPods...)
@@ -574,7 +577,8 @@ waitForLock:
 				l.Debug("update timed out, rolling back")
 				rollErr := rollback(
 					l, mr, db, redisClient.Client, clientset,
-					&oldConfig, maxSurge, 2*timeoutDur, createdPods, deletedPods)
+					&oldConfig, maxSurge, 2*timeoutDur, createdPods, deletedPods,
+					scheduler)
 				if rollErr != nil {
 					l.WithError(rollErr).Debug("error during update roll back")
 					err = rollErr
@@ -726,6 +730,7 @@ func createPod(
 	db pginterfaces.DB,
 	clientset kubernetes.Interface,
 	configYAML *models.ConfigYAML,
+	scheduler *models.Scheduler,
 ) (*v1.Pod, error) {
 	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
@@ -791,6 +796,8 @@ func createPod(
 	if configYAML.NodeToleration != "" {
 		pod.SetToleration(configYAML.NodeToleration)
 	}
+
+	pod.SetVersion(scheduler.Version)
 
 	var kubePod *v1.Pod
 	err = mr.WithSegment(models.SegmentPod, func() error {

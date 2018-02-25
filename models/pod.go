@@ -9,6 +9,7 @@ package models
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"text/template"
 
@@ -31,6 +32,8 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     app: {{.Name}}
+    heritage: maestro
+    version: {{.Version}}
   annotations:
     cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
 spec:
@@ -115,6 +118,7 @@ type Pod struct {
 	NodeAffinity    string
 	NodeToleration  string
 	Containers      []*Container
+	Version         string
 }
 
 // NewPod is the pod constructor
@@ -214,6 +218,11 @@ func (p *Pod) SetAffinity(affinity string) {
 //SetToleration sets kubernetes Toleration on pod
 func (p *Pod) SetToleration(toleration string) {
 	p.NodeToleration = toleration
+}
+
+// SetVersion sets the pod version equals to the scheduler version
+func (p *Pod) SetVersion(version int) {
+	p.Version = fmt.Sprintf("v%d", version)
 }
 
 // Create creates a pod in Kubernetes

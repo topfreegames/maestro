@@ -188,8 +188,13 @@ func LoadSchedulers(db interfaces.DB, names []string) ([]Scheduler, error) {
 	return schedulers, err
 }
 
-// NextVersion chooses a random uuid and saves on Version attribute
+// NextVersion increments the version
 func (c *Scheduler) NextVersion() {
+	c.Version = c.Version + 1
+}
+
+// PreviousVersion decrements the version
+func (c *Scheduler) PreviousVersion() {
 	c.Version = c.Version + 1
 }
 
@@ -229,8 +234,6 @@ func (c *Scheduler) UpdateVersion(
 	maxVersions int,
 ) (created bool, err error) {
 	currentVersion := c.Version
-	c.NextVersion()
-
 	query := "UPDATE schedulers SET (game, yaml, version) = (?game, ?yaml, ?version) WHERE id = ?id"
 	_, err = db.Query(c, query, c)
 	if err != nil {

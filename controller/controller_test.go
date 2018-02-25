@@ -2729,6 +2729,11 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(3))
 
+			for _, pod := range pods.Items {
+				Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
+				Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1"))
+			}
+
 			// Select current scheduler yaml
 			mt.MockSelectScheduler(yaml1, mockDb, nil)
 
@@ -2789,6 +2794,8 @@ cmd:
 				Expect(pod.Spec.Containers[0].Env[3].Name).To(Equal("MAESTRO_ROOM_ID"))
 				Expect(pod.Spec.Containers[0].Env[3].Value).To(Equal(pod.GetName()))
 				Expect(pod.Spec.Containers[0].Env).To(HaveLen(4))
+				Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
+				Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v2"))
 			}
 		})
 

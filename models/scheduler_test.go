@@ -351,15 +351,13 @@ var _ = Describe("Scheduler", func() {
 		It("should increment version and insert into scheduler_versions table", func() {
 			scheduler := NewScheduler(name, game, yaml1)
 
-			scheduler.NextVersion()
-
 			query = "UPDATE schedulers SET (game, yaml, version) = (?game, ?yaml, ?version) WHERE id = ?id"
 			mockDb.EXPECT().Query(scheduler, query, scheduler).Return(pg.NewTestResult(nil, 1), nil)
 
 			query = `INSERT INTO scheduler_versions (name, version, yaml) 
 	VALUES (?, ?, ?)`
 			mockDb.EXPECT().
-				Query(scheduler, query, name, scheduler.Version, yaml1).
+				Query(scheduler, query, name, scheduler.Version+1, yaml1).
 				Return(pg.NewTestResult(nil, 1), nil)
 
 			query = "SELECT COUNT(*) FROM scheduler_versions WHERE name = ?"
@@ -369,8 +367,7 @@ var _ = Describe("Scheduler", func() {
 					*count = maxVersions
 				}).Return(pg.NewTestResult(nil, 1), nil)
 
-			scheduler.Version = scheduler.Version - 1
-
+			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
@@ -384,6 +381,7 @@ var _ = Describe("Scheduler", func() {
 			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, nil)
 			testing.MockDeleteOldVersions(scheduler, 1, mockDb, nil)
 
+			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
@@ -394,6 +392,7 @@ var _ = Describe("Scheduler", func() {
 
 			testing.MockUpdateSchedulersTable(mockDb, errDB)
 
+			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeFalse())
 			Expect(err).To(HaveOccurred())
@@ -406,6 +405,7 @@ var _ = Describe("Scheduler", func() {
 			testing.MockUpdateSchedulersTable(mockDb, nil)
 			testing.MockInsertIntoVersionsTable(scheduler, mockDb, errDB)
 
+			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeTrue())
 			Expect(err).To(HaveOccurred())
@@ -419,6 +419,7 @@ var _ = Describe("Scheduler", func() {
 			testing.MockInsertIntoVersionsTable(scheduler, mockDb, nil)
 			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, errDB)
 
+			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeTrue())
 			Expect(err).To(HaveOccurred())
@@ -433,6 +434,7 @@ var _ = Describe("Scheduler", func() {
 			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, nil)
 			testing.MockDeleteOldVersions(scheduler, 1, mockDb, errDB)
 
+			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeTrue())
 			Expect(err).To(HaveOccurred())

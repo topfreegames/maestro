@@ -35,6 +35,7 @@ func replacePodsAndWait(
 	clock clockinterfaces.Clock,
 	configYAML *models.ConfigYAML,
 	podsToDelete []v1.Pod,
+	scheduler *models.Scheduler,
 ) (createdPods []v1.Pod, deletedPods []v1.Pod, timedout bool) {
 	createdPods = []v1.Pod{}
 	deletedPods = []v1.Pod{}
@@ -58,7 +59,7 @@ func replacePodsAndWait(
 	timeout := willTimeoutAt.Sub(now)
 	createdPods, timedout = createPodsAsTheyAreDeleted(
 		logger, mr, clientset, db, redisClient, timeout, configYAML,
-		deletedPods)
+		deletedPods, scheduler)
 	if timedout {
 		return createdPods, deletedPods, timedout
 	}
@@ -86,7 +87,10 @@ func rollback(
 	maxSurge int,
 	timeout time.Duration,
 	createdPods, deletedPods []v1.Pod,
+	scheduler *models.Scheduler,
 ) error {
+	scheduler.PreviousVersion()
+
 	var err error
 	willTimeoutAt := time.Now().Add(timeout)
 	logger := l.WithFields(logrus.Fields{
@@ -140,7 +144,7 @@ func rollback(
 				logger.Debugf("creating new pod to substitute %s", pod.GetName())
 
 				newPod, err := createPod(logger, mr, redisClient,
-					db, clientset, configYAML)
+					db, clientset, configYAML, scheduler)
 				if err != nil {
 					logger.WithError(err).Debug("error creating new pod")
 					time.Sleep(1 * time.Second)
@@ -170,6 +174,7 @@ func createPodsAsTheyAreDeleted(
 	timeout time.Duration,
 	configYAML *models.ConfigYAML,
 	deletedPods []v1.Pod,
+	scheduler *models.Scheduler,
 ) (createdPods []v1.Pod, timedout bool) {
 	logger := l.WithFields(logrus.Fields{
 		"operation": "controller.waitTerminatingPods",
@@ -199,7 +204,7 @@ func createPodsAsTheyAreDeleted(
 				}
 
 				newPod, err := createPod(logger, mr, redisClient,
-					db, clientset, configYAML)
+					db, clientset, configYAML, scheduler)
 				if err != nil {
 					exit = false
 					logger.
