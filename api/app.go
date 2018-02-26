@@ -242,6 +242,22 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewValidationMiddleware(func() interface{} { return &models.SchedulerMinParams{} }),
 	).ServeHTTP).Methods("PUT").Name("schedulerMin")
 
+	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/status", Chain(
+		NewSchedulerOperationHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a),
+		NewVersionMiddleware(),
+	).ServeHTTP).Methods("GET").Name("schedulersOperationStatus")
+
+	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/cancel", Chain(
+		NewSchedulerOperationCancelHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a),
+		NewVersionMiddleware(),
+	).ServeHTTP).Methods("PUT").Name("schedulersOperationStatus")
+
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),
 		NewMetricsReporterMiddleware(a),

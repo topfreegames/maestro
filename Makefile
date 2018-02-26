@@ -66,7 +66,7 @@ run:
 
 run-dev:
 	@echo "serverUrl: http://localhost:8080" > ~/.maestro/config-local.yaml
-	@env MAESTRO_OAUTH_ENABLED=false go run main.go start
+	@env MAESTRO_OAUTH_ENABLED=false go run main.go start -v3
 
 stop-deps:
 	@env MY_IP=${MY_IP} docker-compose --project-name maestro down

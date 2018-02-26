@@ -581,3 +581,50 @@ func MockSelectPreviousSchedulerVersion(
 
 	return calls
 }
+
+// MockOperationManagerStart mocks the start of operation
+func MockOperationManagerStart(
+	opManager *models.OperationManager,
+	timeout time.Duration,
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+) {
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any())
+	mockPipeline.EXPECT().Expire(gomock.Any(), timeout)
+	mockPipeline.EXPECT().Exec()
+}
+
+// MockOperationManager mocks the redis operations of opManager
+func MockOperationManager(
+	opManager *models.OperationManager,
+	timeout time.Duration,
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+) {
+	MockOperationManagerStart(opManager, timeout, mockRedisClient, mockPipeline)
+
+	mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
+		goredis.NewStringStringMapResult(map[string]string{
+			"not": "empty",
+		}, nil)).AnyTimes()
+
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any())
+	mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
+	mockPipeline.EXPECT().Exec().Do(func() {
+		opManager.StopLoop()
+	})
+}
+
+// MockDeleteRedisKey mocks a delete operation on redis
+func MockDeleteRedisKey(
+	opManager *models.OperationManager,
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	err error,
+) {
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().Del(opManager.GetOperationKey())
+	mockPipeline.EXPECT().Exec().Return(nil, err)
+}

@@ -13,7 +13,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
+	goredis "github.com/go-redis/redis"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/golang/mock/gomock"
@@ -34,6 +36,8 @@ autoscaling:
   min: 1`
 	var configYaml *models.ConfigYAML
 	var numberOfVersions int = 1
+	var opManager *models.OperationManager
+	var timeoutDur = time.Duration(300) * time.Second
 
 	BeforeEach(func() {
 		mockDb.EXPECT().Query(gomock.Any(), `SELECT access_token, refresh_token, expiry, token_type
@@ -68,6 +72,9 @@ autoscaling:
 			yaml.Unmarshal([]byte(yamlStringToRollbackTo), &configYaml)
 			scheduler1 := models.NewScheduler(configYaml.Name, configYaml.Game, yamlStringToRollbackTo)
 			lockKeyNs := fmt.Sprintf("%s-scheduler-name", lockKey)
+
+			opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+			MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
 			version := "v1.0"
 			// Select version from database
@@ -139,6 +146,137 @@ autoscaling:
 			Expect(response).To(HaveKeyWithValue("description", "yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `invalid...` into models.ConfigYAML"))
 			Expect(response).To(HaveKeyWithValue("error", "parse yaml error"))
 			Expect(response).To(HaveKeyWithValue("success", false))
+		})
+	})
+
+	Describe("PUT /scheduler/{schedulerName}/rollback?async=true", func() {
+		BeforeEach(func() {
+			reader := JSONFor(JSON{
+				"version": "v1.0",
+			})
+			url = fmt.Sprintf("http://%s/scheduler/%s/rollback?async=true", app.Address, configYaml.Name)
+			request, _ = http.NewRequest("PUT", url, reader)
+		})
+
+		It("should asynchronously rollback to previous version", func() {
+			yamlStringToRollbackTo := `name: scheduler-name
+game: game
+autoscaling:
+  min: 10`
+
+			yaml.Unmarshal([]byte(yamlStringToRollbackTo), &configYaml)
+			scheduler1 := models.NewScheduler(configYaml.Name, configYaml.Game, yamlStringToRollbackTo)
+			lockKeyNs := fmt.Sprintf("%s-scheduler-name", lockKey)
+
+			opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
+				Expect(m).To(HaveKeyWithValue("operation", "SchedulerRollback"))
+			})
+			mockPipeline.EXPECT().Expire(gomock.Any(), timeoutDur)
+			mockPipeline.EXPECT().Exec()
+
+			mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
+				Expect(m).To(HaveKeyWithValue("status", http.StatusOK))
+				Expect(m).To(HaveKeyWithValue("operation", "SchedulerRollback"))
+				Expect(m).To(HaveKeyWithValue("success", true))
+			})
+			mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
+			mockPipeline.EXPECT().Exec().Do(func() {
+				opManager.StopLoop()
+			})
+
+			version := "v1.0"
+			// Select version from database
+			MockSelectYamlWithVersion(yamlStringToRollbackTo, version, mockDb, nil)
+
+			// Select current scheduler
+			MockSelectScheduler(yamlString, mockDb, nil)
+
+			// Get redis lock
+			MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+
+			// Update new config on schedulers table
+			MockUpdateSchedulersTable(mockDb, nil)
+
+			// Add new version into versions table
+			scheduler1.NextMinorVersion()
+			MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+
+			// Count to delete old versions if necessary
+			MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
+
+			// Retrieve redis lock
+			MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var response map[string]interface{}
+			json.Unmarshal(recorder.Body.Bytes(), &response)
+			Expect(response).To(HaveKeyWithValue("success", true))
+			Expect(response).To(HaveKey("operationKey"))
+
+			Eventually(opManager.IsStopped, 10*time.Second).Should(BeTrue())
+		})
+
+		It("should save error on redis if failed", func() {
+			mockRedisClient.EXPECT().Ping().AnyTimes()
+
+			yamlStringToRollbackTo := `name: scheduler-name
+game: game
+autoscaling:
+  min: 10`
+
+			yaml.Unmarshal([]byte(yamlStringToRollbackTo), &configYaml)
+
+			opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
+				Expect(m).To(HaveKeyWithValue("operation", "SchedulerRollback"))
+			})
+			mockPipeline.EXPECT().Expire(gomock.Any(), timeoutDur)
+			mockPipeline.EXPECT().Exec()
+
+			mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
+				Expect(m).To(HaveKeyWithValue("status", http.StatusBadRequest))
+				Expect(m).To(HaveKeyWithValue("operation", "SchedulerRollback"))
+				Expect(m).To(HaveKeyWithValue("success", false))
+				Expect(m).To(HaveKeyWithValue("description", "invalid parameters"))
+				Expect(m).To(HaveKeyWithValue("error", "invalid parameter: maxsurge must be greater than 0"))
+			})
+			mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
+			mockPipeline.EXPECT().Exec().Do(func() {
+				opManager.StopLoop()
+			})
+
+			version := "v1.0"
+			// Select version from database
+			MockSelectYamlWithVersion(yamlStringToRollbackTo, version, mockDb, nil)
+
+			reader := JSONFor(JSON{
+				"version": "v1.0",
+			})
+			url = fmt.Sprintf("http://%s/scheduler/%s/rollback?async=true&maxsurge=-50", app.Address, configYaml.Name)
+			request, _ = http.NewRequest("PUT", url, reader)
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var response map[string]interface{}
+			json.Unmarshal(recorder.Body.Bytes(), &response)
+			Expect(response).To(HaveKeyWithValue("success", true))
+			Expect(response).To(HaveKey("operationKey"))
+
+			Eventually(opManager.IsStopped, 10*time.Second).Should(BeTrue())
 		})
 	})
 })

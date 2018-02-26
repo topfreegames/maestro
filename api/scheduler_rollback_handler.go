@@ -20,6 +20,28 @@ func NewSchedulerRollbackHandler(a *App) *SchedulerRollbackHandler {
 	return m
 }
 
+func (g *SchedulerRollbackHandler) update(
+	r *http.Request,
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	configYaml *models.ConfigYAML,
+	operationManager *models.OperationManager,
+) (status int, description string, err error) {
+	status, description, err =
+		updateSchedulerConfigCommon(r, g.App, logger, mr, configYaml, operationManager)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"description": description,
+			"status":      status,
+		}).Error("error updating scheduler config")
+	}
+	finishOpErr := operationManager.Finish(status, description, err)
+	if finishOpErr != nil {
+		logger.WithError(err).Error("error saving the results on redis")
+	}
+	return
+}
+
 func (g *SchedulerRollbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	schedulerName := mux.Vars(r)["schedulerName"]
 	version := schedulerVersionParamsFromContext(r.Context()).Version
@@ -54,6 +76,23 @@ func (g *SchedulerRollbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	updateSchedulerConfigCommon(g.App, w, r, logger, mr, configYaml)
+	async := r.URL.Query().Get("async") == "true"
+	operationManager := getOperationManager(g.App, schedulerName, "SchedulerRollback", logger)
+	if async {
+		go g.update(r, logger, mr, configYaml, operationManager)
+		WriteJSON(w, http.StatusOK, map[string]interface{}{
+			"success":      true,
+			"operationKey": operationManager.GetOperationKey(),
+		})
+		return
+	}
+
 	logger.Info("rollback scheduler release succeeded")
+	status, description, err := g.update(r, logger, mr, configYaml, operationManager)
+	if err != nil {
+		g.App.HandleError(w, status, description, err)
+		return
+	}
+	Write(w, http.StatusOK, `{"success": true}`)
+	logger.Info("successfully updated scheduler min")
 }

@@ -145,10 +145,13 @@ var _ = Describe("Controller", func() {
 	var maxSurge int = 100
 	var errDB = errors.New("some error in db")
 	var numberOfVersions int = 1
+	var opManager *models.OperationManager
+	var timeoutDur time.Duration
 
 	BeforeEach(func() {
 		clientset = fake.NewSimpleClientset()
 		timeoutSec = 300
+		timeoutDur = time.Duration(timeoutSec) * time.Second
 		lockTimeoutMs = config.GetInt("watcher.lockTimeoutMs")
 		lockKey = controller.GetLockKey(config.GetString("watcher.lockKey"), "controller-name")
 		err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
@@ -2677,6 +2680,7 @@ containers:
 			Expect(err).NotTo(HaveOccurred())
 
 			scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+			opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 
 			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
 				logger, mr, yaml1, timeoutSec)
@@ -2771,6 +2775,7 @@ cmd:
 				&clock.Clock{},
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -2828,6 +2833,7 @@ cmd:
 				&clock.Clock{},
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("scheduler another-name not found, create it first"))
@@ -2906,6 +2912,7 @@ cmd:
 				&clock.Clock{},
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -2952,6 +2959,7 @@ cmd:
 				&clock.Clock{},
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error on select"))
@@ -2975,6 +2983,7 @@ cmd:
 				&clock.Clock{},
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timeout while wating for redis lock"))
@@ -3008,6 +3017,7 @@ cmd:
 				&clock.Clock{},
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timeout while wating for redis lock"))
@@ -3030,6 +3040,7 @@ cmd:
 				&clock.Clock{},
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error getting lock"))
@@ -3085,6 +3096,7 @@ cmd:
 				mockClock,
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timedout waiting rooms to be replaced, rolled back"))
@@ -3258,6 +3270,7 @@ cmd:
 				mockClock,
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timedout waiting rooms to be replaced, rolled back"))
@@ -3367,6 +3380,7 @@ cmd:
 				mockClock,
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -3438,6 +3452,7 @@ cmd:
 				&clock.Clock{},
 				nil,
 				config,
+				opManager,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -3630,6 +3645,7 @@ cmd:
 				maxSurge,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -3678,6 +3694,7 @@ cmd:
 				maxSurge,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("scheduler new-name not found, create it first"))
@@ -3722,6 +3739,7 @@ cmd:
 				maxSurge,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in db"))
@@ -3746,6 +3764,7 @@ cmd:
 				maxSurge,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("yaml: did not find expected ',' or '}'"))
@@ -3771,6 +3790,7 @@ cmd:
 				maxSurge,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -3838,6 +3858,7 @@ cmd:
 				maxSurge,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -3893,6 +3914,7 @@ cmd:
 				maxSurge,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -3948,6 +3970,7 @@ cmd:
 				maxSurge,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("no container with name invalid-container"))
@@ -4004,6 +4027,7 @@ cmd:
 				maxSurge,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("need to specify container name"))
@@ -4082,6 +4106,7 @@ cmd:
 				newMin,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -4126,6 +4151,7 @@ cmd:
 				newMin,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -4146,6 +4172,7 @@ cmd:
 				newMin,
 				&clock.Clock{},
 				config,
+				opManager,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in db"))

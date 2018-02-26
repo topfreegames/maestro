@@ -167,7 +167,7 @@ func migrations0005AlterversiontypeSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0005-AlterVersionType.sql", size: 333, mode: os.FileMode(420), modTime: time.Unix(1519753008, 0)}
+	info := bindataFileInfo{name: "migrations/0005-AlterVersionType.sql", size: 333, mode: os.FileMode(420), modTime: time.Unix(1519758866, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

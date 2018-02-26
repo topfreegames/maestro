@@ -68,6 +68,7 @@ var _ = BeforeEach(func() {
 	var err error
 	logger, hook = test.NewNullLogger()
 	logger.Level = logrus.DebugLevel
+
 	clientset = fake.NewSimpleClientset()
 	mockCtrl = gomock.NewController(GinkgoT())
 	mockDb = pgmocks.NewMockDB(mockCtrl)

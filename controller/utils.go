@@ -36,7 +36,8 @@ func replacePodsAndWait(
 	configYAML *models.ConfigYAML,
 	podsToDelete []v1.Pod,
 	scheduler *models.Scheduler,
-) (createdPods []v1.Pod, deletedPods []v1.Pod, timedout bool) {
+	operationManager *models.OperationManager,
+) (createdPods []v1.Pod, deletedPods []v1.Pod, timedout, canceled bool) {
 	createdPods = []v1.Pod{}
 	deletedPods = []v1.Pod{}
 
@@ -57,22 +58,22 @@ func replacePodsAndWait(
 
 	now := clock.Now()
 	timeout := willTimeoutAt.Sub(now)
-	createdPods, timedout = createPodsAsTheyAreDeleted(
+	createdPods, timedout, canceled = createPodsAsTheyAreDeleted(
 		logger, mr, clientset, db, redisClient, timeout, configYAML,
-		deletedPods, scheduler)
-	if timedout {
-		return createdPods, deletedPods, timedout
+		deletedPods, scheduler, operationManager)
+	if timedout || canceled {
+		return createdPods, deletedPods, timedout, canceled
 	}
 
 	timeout = willTimeoutAt.Sub(clock.Now())
-	timedout = waitCreatingPods(
+	timedout, canceled = waitCreatingPods(
 		logger, clientset, timeout, configYAML.Name,
-		createdPods)
+		createdPods, operationManager)
 	if timedout {
-		return createdPods, deletedPods, timedout
+		return createdPods, deletedPods, timedout, canceled
 	}
 
-	return createdPods, deletedPods, false
+	return createdPods, deletedPods, false, false
 }
 
 // In rollback, it must delete newly created pod and
@@ -157,9 +158,8 @@ func rollback(
 			}
 
 			waitTimeout := willTimeoutAt.Sub(time.Now())
-			waitCreatingPods(
-				logger, clientset, waitTimeout, configYAML.Name,
-				newlyCreatedPods)
+			waitCreatingPods(logger, clientset, waitTimeout, configYAML.Name,
+				newlyCreatedPods, nil)
 		}
 	}
 
@@ -176,7 +176,8 @@ func createPodsAsTheyAreDeleted(
 	configYAML *models.ConfigYAML,
 	deletedPods []v1.Pod,
 	scheduler *models.Scheduler,
-) (createdPods []v1.Pod, timedout bool) {
+	operationManager *models.OperationManager,
+) (createdPods []v1.Pod, timedout, wasCanceled bool) {
 	logger := l.WithFields(logrus.Fields{
 		"operation": "controller.waitTerminatingPods",
 		"scheduler": configYAML.Name,
@@ -195,6 +196,11 @@ func createPodsAsTheyAreDeleted(
 		exit := true
 		select {
 		case <-ticker.C:
+			if operationManager.WasCanceled() {
+				l.Warn("operation was canceled")
+				return createdPods, false, true
+			}
+
 			for j := i; j < len(deletedPods); j++ {
 				pod := deletedPods[i]
 				_, err := clientset.CoreV1().Pods(configYAML.Name).Get(pod.GetName(), getOptions)
@@ -221,7 +227,7 @@ func createPodsAsTheyAreDeleted(
 		case <-timeoutTimer.C:
 			err := errors.New("timeout waiting for rooms to be removed")
 			logger.WithError(err).Error("stopping scale")
-			return createdPods, true
+			return createdPods, true, false
 		}
 
 		if exit {
@@ -230,7 +236,7 @@ func createPodsAsTheyAreDeleted(
 		}
 	}
 
-	return createdPods, false
+	return createdPods, false, false
 }
 
 func waitTerminatingPods(
@@ -288,7 +294,8 @@ func waitCreatingPods(
 	timeout time.Duration,
 	namespace string,
 	createdPods []v1.Pod,
-) bool {
+	operationManager *models.OperationManager,
+) (timedout, wasCanceled bool) {
 	logger := l.WithFields(logrus.Fields{
 		"operation": "controller.waitCreatingPods",
 		"scheduler": namespace,
@@ -303,6 +310,11 @@ func waitCreatingPods(
 		exit := true
 		select {
 		case <-ticker.C:
+			if operationManager.WasCanceled() {
+				l.Warn("operation was canceled")
+				return false, true
+			}
+
 			for _, pod := range createdPods {
 				createdPod, err := clientset.CoreV1().Pods(namespace).Get(
 					pod.GetName(), getOptions,
@@ -337,7 +349,7 @@ func waitCreatingPods(
 			}
 		case <-timeoutTimer.C:
 			logger.Error("timeout waiting for rooms to be created")
-			return true
+			return true, false
 		}
 
 		if exit {
@@ -346,7 +358,7 @@ func waitCreatingPods(
 		}
 	}
 
-	return false
+	return false, false
 }
 
 func deletePodAndRoom(

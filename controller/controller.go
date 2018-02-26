@@ -467,6 +467,7 @@ func UpdateSchedulerConfig(
 	clock clockinterfaces.Clock,
 	schedulerOrNil *models.Scheduler,
 	config *viper.Viper,
+	operationManager *models.OperationManager,
 ) error {
 	configYAML.EnsureDefaultValues()
 
@@ -511,6 +512,11 @@ waitForLock:
 		case <-timeout.C:
 			return errors.New("timeout while wating for redis lock")
 		case <-ticker.C:
+			if operationManager.WasCanceled() {
+				l.Warn("operation was canceled")
+				return nil
+			}
+
 			if lock == nil || err != nil {
 				if err != nil {
 					l.WithError(err).Error("error getting watcher lock")
@@ -526,7 +532,10 @@ waitForLock:
 
 	defer func() {
 		if lock != nil {
-			redisClient.LeaveCriticalSection(lock)
+			err := redisClient.LeaveCriticalSection(lock)
+			if err != nil {
+				l.WithError(err).Error("error retrieving lock. Either wait of remove it manually from redis")
+			}
 		}
 	}()
 
@@ -566,16 +575,21 @@ waitForLock:
 		for i, chunk := range podChunks {
 			l.Debugf("deleting chunk %d: %v", i, names(chunk))
 
-			newlyCreatedPods, newlyDeletedPods, timedout := replacePodsAndWait(
+			newlyCreatedPods, newlyDeletedPods, timedout, canceled := replacePodsAndWait(
 				l, mr, clientset, db, redisClient.Client,
 				willTimeoutAt, clock, configYAML, chunk,
-				scheduler,
+				scheduler, operationManager,
 			)
 			createdPods = append(createdPods, newlyCreatedPods...)
 			deletedPods = append(deletedPods, newlyDeletedPods...)
 
-			if timedout {
-				l.Debug("update timed out, rolling back")
+			if timedout || canceled {
+				errMsg := "timedout waiting rooms to be replaced, rolled back"
+				if canceled {
+					errMsg = "operation was canceled, rolled back"
+				}
+
+				l.Debug(errMsg)
 				rollErr := rollback(
 					l, mr, db, redisClient.Client, clientset,
 					&oldConfig, maxSurge, 2*timeoutDur, createdPods, deletedPods,
@@ -584,7 +598,7 @@ waitForLock:
 					l.WithError(rollErr).Debug("error during update roll back")
 					err = rollErr
 				}
-				return errors.New("timedout waiting rooms to be replaced, rolled back")
+				return errors.New(errMsg)
 			}
 		}
 	} else {
@@ -1015,6 +1029,7 @@ func UpdateSchedulerImage(
 	maxSurge int,
 	clock clockinterfaces.Clock,
 	config *viper.Viper,
+	operationManager *models.OperationManager,
 ) error {
 	scheduler, configYaml, err := schedulerAndConfigFromName(mr, db, schedulerName)
 	if err != nil {
@@ -1041,6 +1056,7 @@ func UpdateSchedulerImage(
 		clock,
 		scheduler,
 		config,
+		operationManager,
 	)
 }
 
@@ -1054,6 +1070,7 @@ func UpdateSchedulerMin(
 	schedulerMin int,
 	clock clockinterfaces.Clock,
 	config *viper.Viper,
+	operationManager *models.OperationManager,
 ) error {
 	scheduler, configYaml, err := schedulerAndConfigFromName(mr, db, schedulerName)
 	if err != nil {
@@ -1074,6 +1091,7 @@ func UpdateSchedulerMin(
 		clock,
 		scheduler,
 		config,
+		operationManager,
 	)
 }
 
