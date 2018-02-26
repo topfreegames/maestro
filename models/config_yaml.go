@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/topfreegames/maestro/errors"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -245,4 +246,16 @@ func (c *ConfigYAML) GetCmd() []string {
 //GetEnv returns the container Env
 func (c *ConfigYAML) GetEnv() []*EnvVar {
 	return c.Env
+}
+
+// Diff returns the diff between two config yamls
+func (c *ConfigYAML) Diff(o *ConfigYAML) string {
+	yaml1, _ := yaml.Marshal(c)
+	yaml2, _ := yaml.Marshal(o)
+
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(string(yaml1), string(yaml2), false)
+	whatChanged := dmp.DiffPrettyText(diffs)
+
+	return whatChanged
 }

@@ -126,7 +126,7 @@ func migrations0003CreateschedulerversionstableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0003-CreateSchedulerVersionsTable.sql", size: 664, mode: os.FileMode(420), modTime: time.Unix(1519473040, 0)}
+	info := bindataFileInfo{name: "migrations/0003-CreateSchedulerVersionsTable.sql", size: 664, mode: os.FileMode(420), modTime: time.Unix(1519665751, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

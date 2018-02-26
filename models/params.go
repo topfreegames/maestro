@@ -43,3 +43,10 @@ type SchedulerVersion struct {
 	Version   string    `db:"version" json:"version"`
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 }
+
+// SchedulersDiff has the diff between schedulers v1 and v2
+type SchedulersDiff struct {
+	Version1 string `json:"version1"`
+	Version2 string `json:"version2"`
+	Diff     string `json:"diff"`
+}

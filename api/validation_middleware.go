@@ -138,6 +138,18 @@ func schedulerVersionParamsFromContext(ctx context.Context) *models.SchedulerVer
 	return arr[0].(*models.SchedulerVersion)
 }
 
+func schedulersDiffParamsFromContext(ctx context.Context) *models.SchedulersDiff {
+	payload := ctx.Value(payloadString)
+	if payload == nil {
+		return &models.SchedulersDiff{}
+	}
+	arr := payload.([]interface{})
+	if len(arr) == 0 || arr[0] == nil {
+		return &models.SchedulersDiff{}
+	}
+	return arr[0].(*models.SchedulersDiff)
+}
+
 //ServeHTTP method
 func (m *ValidationMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())

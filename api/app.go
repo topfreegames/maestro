@@ -180,6 +180,14 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerConfigs")
 
+	r.HandleFunc("/scheduler/{schedulerName}/diff", Chain(
+		NewSchedulerDiffHandler(a),
+		NewLoggingMiddleware(a),
+		NewAccessMiddleware(a),
+		NewVersionMiddleware(),
+		NewValidationMiddleware(func() interface{} { return &models.SchedulersDiff{} }),
+	).ServeHTTP).Methods("GET").Name("schedulersDiff")
+
 	r.HandleFunc("/scheduler/{schedulerName}/rollback", Chain(
 		NewSchedulerRollbackHandler(a),
 		NewLoggingMiddleware(a),
