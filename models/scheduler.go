@@ -174,6 +174,9 @@ func NewScheduler(name, game, yaml string) *Scheduler {
 // Load loads a scheduler from the database using the scheduler name
 func (c *Scheduler) Load(db interfaces.DB) error {
 	_, err := db.Query(c, "SELECT * FROM schedulers WHERE name = ?", c.Name)
+	if c.Version == 0 {
+		c.Version = 1
+	}
 	return err
 }
 
