@@ -769,8 +769,10 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
   ### Scheduler Config
 
   `GET /scheduler/:schedulerName?config`
+  `GET /scheduler/:schedulerName/config?version=<version>`
 
   Returns scheduler config.
+  On the new route, when specified version of a scheduler, returns that one.
 
   * Success Response
     * Code: `200`
@@ -974,3 +976,147 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
       }
     ```
 
+  ### Releases
+
+  `GET /scheduler/:schedulerName/releases`
+
+  Returns the releases (versions) of the scheduler. 
+  A minor release means that the scheduler changed but the pods didn't need to be recreated. Every attribute related only to Maestro and not to the pods does that, e.g.: autoscaling values, forwarder configurations, etc. This means that the pod can have as label version=v1.0 and the scheduler is in version v1.1.
+  A major relese means that the pods needed to be recreated in order to respect the new scheduler configuration, e.g.: new image, new ports, new env var, new command. In this case, the scheduler will go, for example, from v1.0 to v2.0 and all new pods must have label verion=v2.0.
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "releases": [{
+            "version": <vesion>,
+            "createdAt": <created_at>
+          }, ...]
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if the request is invalid or the sent parameters are incorrect.
+
+    * Code: `422`|`400`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+  ### Rollback
+
+  `PUT /scheduler/:schedulerName/rollback`
+
+  Rollback to a previous version. It gets the config specified or the versionn and executes an update.
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "version": <version>
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if the request is invalid or the sent parameters are incorrect.
+
+    * Code: `422`|`400`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+  ### Diff
+
+  `PUT /scheduler/:schedulerName/diff`
+
+  Returns the diff between the configs of two versions of a scheduler. If no version is specified, diff compares the current version with the previous one. If only version v1 is specified, it gets the diff between v1 and the previous one. If v1 and v2 are specified, it gets the diff between this two versions.
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "version1": <version1>,
+          "version2": <version2>,
+          "diff": <diff>,
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if the request is invalid or the sent parameters are incorrect.
+
+    * Code: `422`|`400`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if some other error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
