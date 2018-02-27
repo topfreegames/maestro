@@ -7,6 +7,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 )
@@ -17,10 +18,27 @@ type BasicAuthMiddleware struct {
 	next http.Handler
 }
 
+// NewBasicAuthMiddleware returns an instance of basicauth
 func NewBasicAuthMiddleware(a *App) *BasicAuthMiddleware {
 	return &BasicAuthMiddleware{
 		App: a,
 	}
+}
+
+const basicPayloadString = contextKey("basicPayload")
+
+func newContextWithBasicAuthOK(ctx context.Context) context.Context {
+	c := context.WithValue(ctx, basicPayloadString, true)
+	return c
+}
+
+func isBasicAuthOkFromContext(ctx context.Context) bool {
+	payload := ctx.Value(basicPayloadString)
+	if payload == nil {
+		return false
+	}
+
+	return payload.(bool)
 }
 
 //ServeHTTP methods
@@ -43,14 +61,17 @@ func (m *BasicAuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 				nextMiddleware.SetNext(m.next)
 				nextMiddleware.ServeHTTP(w, r)
 				return
-			} else {
-				m.App.HandleError(w, http.StatusUnauthorized, "authentication failed", errors.New("no basic auth sent"))
-				return
 			}
+
+			m.App.HandleError(w, http.StatusUnauthorized, "authentication failed", errors.New("no basic auth sent"))
+			return
 		}
 	}
+
+	ctx := newContextWithBasicAuthOK(r.Context())
+
 	// Call the next middleware/handler in chain
-	m.next.ServeHTTP(w, r)
+	m.next.ServeHTTP(w, r.WithContext(ctx))
 }
 
 //SetNext middleware

@@ -399,6 +399,7 @@ var _ = Describe("App", func() {
 			newConfigYaml.Cmd = nil
 			newConfigYaml.Forwarders = nil
 			newConfigYaml.Containers = nil
+			newConfigYaml.AuthorizedUsers = nil
 			configYaml.Ports[0].HostPort = newConfigYaml.Ports[0].HostPort
 			Expect(err).NotTo(HaveOccurred())
 			Expect(newConfigYaml).To(Equal(configYaml))

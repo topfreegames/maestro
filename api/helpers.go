@@ -94,3 +94,17 @@ func getMaxSurge(app *App, r *http.Request) (int, error) {
 	}
 	return maxSurge, err
 }
+
+func isAuth(email string, auths []string) bool {
+	if auths == nil {
+		return false
+	}
+
+	for _, auth := range auths {
+		if auth == email {
+			return true
+		}
+	}
+
+	return false
+}

@@ -48,8 +48,18 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		"operation": "create",
 	})
 
+	email := emailFromContext(r.Context())
+
 	for _, payload := range configs {
 		logger.Debug("Creating scheduler...")
+
+		if email != "" && !isAuth(email, payload.AuthorizedUsers) {
+			if payload.AuthorizedUsers == nil {
+				payload.AuthorizedUsers = []string{}
+			}
+
+			payload.AuthorizedUsers = append(payload.AuthorizedUsers, email)
+		}
 
 		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
 		err := mr.WithSegment(models.SegmentController, func() error {
@@ -153,12 +163,14 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
 	payload := configYamlFromCtx(r.Context())[0]
+	email := emailFromContext(r.Context())
+
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "update",
 		"scheduler": params.SchedulerName,
+		"user":      email,
 	})
-
 	logger.Info("updating scheduler")
 
 	if params.SchedulerName != payload.Name {

@@ -19,6 +19,7 @@ type ConfigYAMLv1 struct {
 	NodeToleration  string                           `yaml:"toleration"`
 	OccupiedTimeout int64                            `yaml:"occupiedTimeout"`
 	Forwarders      map[string]map[string]*Forwarder `yaml:"forwarders"`
+	AuthorizedUsers []string                         `yaml:"authorizedUsers"`
 
 	// Container level, to keep compatibility
 	Image    string     `yaml:"image" json:"image"`
@@ -39,6 +40,7 @@ type ConfigYAMLv2 struct {
 	NodeToleration  string                           `yaml:"toleration"`
 	OccupiedTimeout int64                            `yaml:"occupiedTimeout"`
 	Forwarders      map[string]map[string]*Forwarder `yaml:"forwarders"`
+	AuthorizedUsers []string                         `yaml:"authorizedUsers"`
 	Containers      []*Container                     `yaml:"containers"`
 }
 
@@ -53,6 +55,7 @@ type ConfigYAML struct {
 	NodeToleration  string                           `yaml:"toleration" json:"toleration"`
 	OccupiedTimeout int64                            `yaml:"occupiedTimeout" json:"occupiedTimeout"`
 	Forwarders      map[string]map[string]*Forwarder `yaml:"forwarders" json:"forwarders"`
+	AuthorizedUsers []string                         `yaml:"authorizedUsers" json:"authorizedUsers"`
 
 	// Container level, to keep compatibility
 	Image    string     `yaml:"image" json:"image"`
@@ -96,6 +99,7 @@ func (c *ConfigYAML) ToYAML() []byte {
 			Requests:        c.Requests,
 			Env:             c.Env,
 			Cmd:             c.Cmd,
+			AuthorizedUsers: c.AuthorizedUsers,
 		}
 	} else if c.Version() == "v2" {
 		config = &ConfigYAMLv2{
@@ -107,6 +111,7 @@ func (c *ConfigYAML) ToYAML() []byte {
 			NodeToleration:  c.NodeToleration,
 			OccupiedTimeout: c.OccupiedTimeout,
 			Forwarders:      c.Forwarders,
+			AuthorizedUsers: c.AuthorizedUsers,
 			Containers:      c.Containers,
 		}
 	}

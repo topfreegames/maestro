@@ -593,6 +593,7 @@ waitForLock:
 	}
 
 	l.Info("updating configYaml on database")
+
 	// Update new config on DB
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {

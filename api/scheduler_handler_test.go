@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"time"
 
@@ -1290,6 +1289,7 @@ affinity: ""
 toleration: ""
 occupiedTimeout: 0
 forwarders: {}
+authorizedUsers: []
 image: ""
 ports: []
 limits: null
@@ -1335,6 +1335,7 @@ affinity: ""
 toleration: ""
 occupiedTimeout: 0
 forwarders: {}
+authorizedUsers: []
 containers:
 - name: container1
   image: image/image
@@ -2062,6 +2063,7 @@ ports:
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 				body = make(map[string]interface{})
+
 				err = json.Unmarshal(recorder.Body.Bytes(), &body)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(body["code"]).To(Equal("MAE-000"))
@@ -2709,8 +2711,8 @@ ports:
 			})
 
 			It("should set min if basicauth is not sent and tryOauthIfUnset is true", func() {
-				os.Setenv("basicauth.tryOauthIfUnset", "true")
 				config, err := GetDefaultConfig()
+				config.Set("basicauth.tryOauthIfUnset", true)
 				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin

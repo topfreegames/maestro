@@ -57,3 +57,5 @@ schedulerCache:
 schedulers:
   versions:
     toKeep: 10
+users:
+  admin: admin1@example.com,admin2@example.com,admin3@example.com

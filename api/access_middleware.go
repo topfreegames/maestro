@@ -34,8 +34,15 @@ func NewAccessMiddleware(a *App) *AccessMiddleware {
 
 const emailKey = contextKey("emailKey")
 
-//NewContextWithEmail save email on context
-func NewContextWithEmail(ctx context.Context, email string) context.Context {
+func emailFromContext(ctx context.Context) string {
+	payload := ctx.Value(emailKey)
+	if payload == nil {
+		return ""
+	}
+	return payload.(string)
+}
+
+func newContextWithEmail(ctx context.Context, email string) context.Context {
 	c := context.WithValue(ctx, emailKey, email)
 	return c
 }
@@ -100,7 +107,7 @@ func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := NewContextWithEmail(r.Context(), email)
+	ctx := newContextWithEmail(r.Context(), email)
 
 	logger.Debug("Access token checked")
 	m.next.ServeHTTP(w, r.WithContext(ctx))

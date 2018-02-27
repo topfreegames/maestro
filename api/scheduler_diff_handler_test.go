@@ -64,7 +64,7 @@ image: image2`
 			json.Unmarshal(recorder.Body.Bytes(), &response)
 			Expect(response["version1"]).To(Equal("v1.0"))
 			Expect(response["version2"]).To(Equal("v0.1"))
-			Expect(response["diff"]).To(Equal("name: scheduler-name\ngame: \"\"\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nimage: image\u001b[31m1\u001b[0m\u001b[32m2\u001b[0m\nports: []\nlimits: null\nrequests: null\nenv: []\ncmd: []\ncontainers: []\n"))
+			Expect(response["diff"]).To(Equal("name: scheduler-name\ngame: \"\"\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nauthorizedUsers: []\nimage: image\u001b[31m1\u001b[0m\u001b[32m2\u001b[0m\nports: []\nlimits: null\nrequests: null\nenv: []\ncmd: []\ncontainers: []\n"))
 		})
 
 		It("should return schedulers diff between v2 and previous", func() {
@@ -82,7 +82,7 @@ image: image2`
 			json.Unmarshal(recorder.Body.Bytes(), &response)
 			Expect(response["version1"]).To(Equal("v2.0"))
 			Expect(response["version2"]).To(Equal("v1.0"))
-			Expect(response["diff"]).To(Equal("name: scheduler-name\ngame: \"\"\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nimage: image\u001b[31m1\u001b[0m\u001b[32m2\u001b[0m\nports: []\nlimits: null\nrequests: null\nenv: []\ncmd: []\ncontainers: []\n"))
+			Expect(response["diff"]).To(Equal("name: scheduler-name\ngame: \"\"\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nauthorizedUsers: []\nimage: image\u001b[31m1\u001b[0m\u001b[32m2\u001b[0m\nports: []\nlimits: null\nrequests: null\nenv: []\ncmd: []\ncontainers: []\n"))
 		})
 
 		It("should return schedulers diff between v2 and v1", func() {
@@ -101,7 +101,7 @@ image: image2`
 			json.Unmarshal(recorder.Body.Bytes(), &response)
 			Expect(response["version1"]).To(Equal("v2.0"))
 			Expect(response["version2"]).To(Equal("v1.0"))
-			Expect(response["diff"]).To(Equal("name: scheduler-name\ngame: \"\"\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nimage: image\u001b[31m1\u001b[0m\u001b[32m2\u001b[0m\nports: []\nlimits: null\nrequests: null\nenv: []\ncmd: []\ncontainers: []\n"))
+			Expect(response["diff"]).To(Equal("name: scheduler-name\ngame: \"\"\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nauthorizedUsers: []\nimage: image\u001b[31m1\u001b[0m\u001b[32m2\u001b[0m\nports: []\nlimits: null\nrequests: null\nenv: []\ncmd: []\ncontainers: []\n"))
 		})
 
 		It("should return error if version1 not found", func() {
