@@ -159,6 +159,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewSchedulerStatusHandler(a),
 		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
+		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -170,6 +171,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewGetSchedulerConfigHandler(a),
 		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
+		NewAuthMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerConfigs")
@@ -178,6 +180,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewGetSchedulerReleasesHandler(a),
 		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
+		NewAuthMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerConfigs")
@@ -186,6 +189,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewSchedulerDiffHandler(a),
 		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
+		NewAuthMiddleware(a),
 		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulersDiff{} }),
 	).ServeHTTP).Methods("GET").Name("schedulersDiff")
@@ -341,6 +345,7 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("schedulerCache.defaultExpiration", "5m")
 	a.Config.SetDefault("schedulerCache.cleanupInterval", "10m")
 	a.Config.SetDefault("schedulers.versions.toKeep", 100)
+	a.Config.SetDefault("oauth.enabled", true)
 }
 
 func (a *App) configureCache() {
