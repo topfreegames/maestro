@@ -377,7 +377,7 @@ func PreviousVersion(db interfaces.DB, schedulerName, version string) (*Schedule
 		SELECT created_at 
 		FROM scheduler_versions 
 		WHERE name = ?name AND version = ?version
-	) 
+	) AND name = ?name
 	ORDER BY created_at DESC 
 	LIMIT 1`, previousScheduler)
 	return previousScheduler, err

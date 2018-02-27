@@ -569,7 +569,7 @@ func MockSelectPreviousSchedulerVersion(
 		SELECT created_at 
 		FROM scheduler_versions 
 		WHERE name = ?name AND version = ?version
-	) 
+	) AND name = ?name
 	ORDER BY created_at DESC 
 	LIMIT 1`, gomock.Any()).
 			Do(func(rScheduler *models.Scheduler, _ string, _ *models.Scheduler) {
