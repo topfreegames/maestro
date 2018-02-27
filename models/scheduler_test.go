@@ -357,7 +357,7 @@ var _ = Describe("Scheduler", func() {
 			query = `INSERT INTO scheduler_versions (name, version, yaml) 
 	VALUES (?, ?, ?)`
 			mockDb.EXPECT().
-				Query(scheduler, query, name, scheduler.Version+1, yaml1).
+				Query(scheduler, query, name, scheduler.Version, yaml1).
 				Return(pg.NewTestResult(nil, 1), nil)
 
 			query = "SELECT COUNT(*) FROM scheduler_versions WHERE name = ?"
@@ -367,7 +367,6 @@ var _ = Describe("Scheduler", func() {
 					*count = maxVersions
 				}).Return(pg.NewTestResult(nil, 1), nil)
 
-			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
@@ -381,7 +380,6 @@ var _ = Describe("Scheduler", func() {
 			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, nil)
 			testing.MockDeleteOldVersions(scheduler, 1, mockDb, nil)
 
-			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
@@ -392,7 +390,6 @@ var _ = Describe("Scheduler", func() {
 
 			testing.MockUpdateSchedulersTable(mockDb, errDB)
 
-			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeFalse())
 			Expect(err).To(HaveOccurred())
@@ -405,7 +402,6 @@ var _ = Describe("Scheduler", func() {
 			testing.MockUpdateSchedulersTable(mockDb, nil)
 			testing.MockInsertIntoVersionsTable(scheduler, mockDb, errDB)
 
-			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeTrue())
 			Expect(err).To(HaveOccurred())
@@ -419,7 +415,6 @@ var _ = Describe("Scheduler", func() {
 			testing.MockInsertIntoVersionsTable(scheduler, mockDb, nil)
 			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, errDB)
 
-			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeTrue())
 			Expect(err).To(HaveOccurred())
@@ -434,7 +429,6 @@ var _ = Describe("Scheduler", func() {
 			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, nil)
 			testing.MockDeleteOldVersions(scheduler, 1, mockDb, errDB)
 
-			scheduler.NextVersion()
 			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
 			Expect(created).To(BeTrue())
 			Expect(err).To(HaveOccurred())
@@ -451,14 +445,8 @@ var _ = Describe("Scheduler", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should return error if not in the correct format", func() {
-			_, err := LoadConfigWithVersion(mockDb, name, "invalid-format")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("version is not of format v<integer>, like v1, v2, v3, etc"))
-		})
-
 		It("should select version from database", func() {
-			testing.MockSelectYamlWithVersion(yaml1, 2, mockDb, nil)
+			testing.MockSelectYamlWithVersion(yaml1, "v2", mockDb, nil)
 
 			configYaml, err := LoadConfigWithVersion(mockDb, name, "v2")
 			Expect(configYaml).To(Equal(yaml1))
@@ -468,15 +456,15 @@ var _ = Describe("Scheduler", func() {
 
 	Describe("ListSchedulerReleases", func() {
 		It("should return scheduler versions", func() {
-			versions := []string{"1", "2", "3"}
+			versions := []string{"v1.0", "v1.1", "v2.0"}
 			testing.MockSelectSchedulerVersions(yaml1, versions, mockDb, nil)
 
 			rVersions, err := ListSchedulerReleases(mockDb, name)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(rVersions[0].Version).To(Equal("v1"))
-			Expect(rVersions[1].Version).To(Equal("v2"))
-			Expect(rVersions[2].Version).To(Equal("v3"))
+			Expect(rVersions[0].Version).To(Equal("v1.0"))
+			Expect(rVersions[1].Version).To(Equal("v1.1"))
+			Expect(rVersions[2].Version).To(Equal("v2.0"))
 		})
 
 		It("should return error if db failed", func() {

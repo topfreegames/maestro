@@ -103,7 +103,7 @@ func MockInsertIntoVersionsTable(
 	query := `INSERT INTO scheduler_versions (name, version, yaml) 
 	VALUES (?, ?, ?)`
 	calls.Add(mockDb.EXPECT().
-		Query(gomock.Any(), query, scheduler.Name, scheduler.Version+1, gomock.Any()).
+		Query(gomock.Any(), query, scheduler.Name, scheduler.Version, gomock.Any()).
 		Return(pg.NewTestResult(nil, 1), errDB))
 
 	return calls
@@ -498,8 +498,7 @@ func MockSelectYaml(
 
 // MockSelectYamlWithVersion mocks the select of a yaml version
 func MockSelectYamlWithVersion(
-	yamlStr string,
-	version int,
+	yamlStr, version string,
 	mockDb *pgmocks.MockDB,
 	errDB error,
 ) (calls *Calls) {
@@ -514,7 +513,7 @@ func MockSelectYamlWithVersion(
 				gomock.Any(),
 				"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?",
 				configYaml.Name, version).
-			Do(func(scheduler *models.Scheduler, query string, name string, version int) {
+			Do(func(scheduler *models.Scheduler, query, name, version string) {
 				*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
 			}).
 			Return(pg.NewTestResult(nil, 1), errDB))
@@ -545,6 +544,38 @@ func MockSelectSchedulerVersions(
 				for i, version := range versions {
 					(*rVersions)[i] = &models.SchedulerVersion{Version: version}
 				}
+			}).
+			Return(pg.NewTestResult(nil, 1), errDB))
+
+	return calls
+}
+
+// MockSelectPreviousSchedulerVersion mocks the query that gets the scheduler before
+// current one
+func MockSelectPreviousSchedulerVersion(
+	name, previousVersion, previousYaml string,
+	mockDb *pgmocks.MockDB,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	scheduler := models.NewScheduler(name, "", "")
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), `SELECT * 
+	FROM scheduler_versions 
+	WHERE created_at < ( 
+		SELECT created_at 
+		FROM scheduler_versions 
+		WHERE name = ?name AND version = ?version
+	) 
+	ORDER BY created_at DESC 
+	LIMIT 1`, gomock.Any()).
+			Do(func(rScheduler *models.Scheduler, _ string, _ *models.Scheduler) {
+				*rScheduler = *scheduler
+				rScheduler.Version = previousVersion
+				rScheduler.YAML = previousYaml
 			}).
 			Return(pg.NewTestResult(nil, 1), errDB))
 

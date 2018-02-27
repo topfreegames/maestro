@@ -11,8 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -55,19 +53,20 @@ func (g *SchedulerDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		schedulersVersion.Version1 = fmt.Sprintf("v%d", scheduler.Version)
+		schedulersVersion.Version1 = scheduler.Version
 		yamlStr1 = scheduler.YAML
 	}
 
 	if schedulersVersion.Version2 == "" {
-		versionInt, err := strconv.Atoi(strings.TrimPrefix(schedulersVersion.Version1, "v"))
+		schedulerVersion2, err := models.PreviousVersion(
+			g.App.DB, schedulerName, schedulersVersion.Version1)
 		if err != nil {
-			logger.WithError(err).Errorf("invalid version was sent: %s", schedulersVersion.Version1)
-			g.App.HandleError(w, http.StatusBadRequest, "schedulers diff failed", err)
+			logger.WithError(err).Errorf("error getting previous scheduler version")
+			g.App.HandleError(w, http.StatusBadRequest, "error getting previous scheduler version", err)
 			return
 		}
-
-		schedulersVersion.Version2 = fmt.Sprintf("v%d", versionInt-1)
+		schedulersVersion.Version2 = schedulerVersion2.Version
+		yamlStr2 = schedulerVersion2.YAML
 	}
 
 	if yamlStr1 == "" {
@@ -85,17 +84,19 @@ func (g *SchedulerDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	yamlStr2, err = models.LoadConfigWithVersion(g.App.DB, schedulerName, schedulersVersion.Version2)
-	if err != nil {
-		logger.WithError(err).Error("load scheduler with version error")
-		g.App.HandleError(w, http.StatusInternalServerError, "schedulers diff failed", err)
-		return
-	}
-	if len(yamlStr2) == 0 {
-		logger.Error("config for scheduler and version not found")
-		g.App.HandleError(w, http.StatusNotFound, "schedulers diff failed",
-			fmt.Errorf("config scheduler not found: %s:%s", schedulerName, schedulersVersion.Version2))
-		return
+	if yamlStr2 == "" {
+		yamlStr2, err = models.LoadConfigWithVersion(g.App.DB, schedulerName, schedulersVersion.Version2)
+		if err != nil {
+			logger.WithError(err).Error("load scheduler with version error")
+			g.App.HandleError(w, http.StatusInternalServerError, "schedulers diff failed", err)
+			return
+		}
+		if len(yamlStr2) == 0 {
+			logger.Error("config for scheduler and version not found")
+			g.App.HandleError(w, http.StatusNotFound, "schedulers diff failed",
+				fmt.Errorf("config scheduler not found: %s:%s", schedulerName, schedulersVersion.Version2))
+			return
+		}
 	}
 
 	configYaml1, err := models.NewConfigYAML(yamlStr1)

@@ -719,6 +719,7 @@ autoscaling:
 					MockUpdateSchedulersTable(mockDb, nil)
 
 					// Add new version into versions table
+					scheduler1.NextMajorVersion()
 					MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 					// Count to delete old versions if necessary
@@ -838,6 +839,7 @@ autoscaling:
 					// Update new config on schedulers table
 					MockUpdateSchedulersTable(mockDb, nil)
 					// Add new version into versions table
+					scheduler1.NextMinorVersion()
 					MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
@@ -1123,6 +1125,7 @@ forwarders:
 					// Update new config on schedulers table
 					MockUpdateSchedulersTable(mockDb, nil)
 					// Add new version into versions table
+					scheduler1.NextMinorVersion()
 					MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
@@ -1979,6 +1982,7 @@ ports:
 				MockUpdateSchedulersTable(mockDb, nil)
 
 				// Add new version into versions table
+				scheduler1.NextMajorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 				// Count to delete old versions if necessary
@@ -2028,6 +2032,7 @@ ports:
 				MockUpdateSchedulersTable(mockDb, nil)
 
 				// Add new version into versions table
+				scheduler1.NextMajorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 				// Count to delete old versions if necessary
@@ -2341,6 +2346,7 @@ ports:
 				MockUpdateSchedulersTable(mockDb, nil)
 
 				// Add new version into versions table
+				scheduler1.NextMajorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 				// Count to delete old versions if necessary
@@ -2419,6 +2425,7 @@ ports:
 				MockUpdateSchedulersTable(mockDb, nil)
 
 				// Add new version into versions table
+				scheduler1.NextMajorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 				// Count to delete old versions if necessary
@@ -2513,6 +2520,7 @@ ports:
 				// Update new config on schedulers table
 				MockUpdateSchedulersTable(mockDb, nil)
 				// Add new version into versions table
+				scheduler1.NextMinorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
@@ -2634,6 +2642,7 @@ ports:
 				// Update new config on schedulers table
 				MockUpdateSchedulersTable(mockDb, nil)
 				// Add new version into versions table
+				scheduler1.NextMinorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
@@ -2737,6 +2746,7 @@ ports:
 				// Update new config on schedulers table
 				MockUpdateSchedulersTable(mockDb, nil)
 				// Add new version into versions table
+				scheduler1.NextMinorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)

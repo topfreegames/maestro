@@ -2731,7 +2731,7 @@ cmd:
 
 			for _, pod := range pods.Items {
 				Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
-				Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1"))
+				Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 			}
 
 			// Select current scheduler yaml
@@ -2751,6 +2751,7 @@ cmd:
 			mt.MockUpdateSchedulersTable(mockDb, nil)
 
 			// Add new version into versions table
+			scheduler1.NextMajorVersion()
 			mt.MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 			// Count to delete old versions if necessary
@@ -2795,7 +2796,7 @@ cmd:
 				Expect(pod.Spec.Containers[0].Env[3].Value).To(Equal(pod.GetName()))
 				Expect(pod.Spec.Containers[0].Env).To(HaveLen(4))
 				Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
-				Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v2"))
+				Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v2.0"))
 			}
 		})
 
@@ -2885,6 +2886,7 @@ cmd:
 			mt.MockUpdateSchedulersTable(mockDb, nil)
 
 			// Add new version into versions table
+			scheduler1.NextMinorVersion()
 			mt.MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 			// Count to delete old versions if necessary
@@ -3341,6 +3343,7 @@ cmd:
 				mt.MockUpdateSchedulersTable(mockDb, nil))
 
 			// Add new version into versions table
+			scheduler1.NextMajorVersion()
 			calls.Append(
 				mt.MockInsertIntoVersionsTable(scheduler1, mockDb, nil))
 
@@ -3415,6 +3418,7 @@ cmd:
 			mt.MockUpdateSchedulersTable(mockDb, nil)
 
 			// Add new version into versions table
+			scheduler1.NextMajorVersion()
 			mt.MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 			// Count to delete old versions if necessary
@@ -3606,6 +3610,7 @@ cmd:
 			mt.MockUpdateSchedulersTable(mockDb, nil)
 
 			// Add new version into versions table
+			scheduler1.NextMajorVersion()
 			mt.MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 			// Count to delete old versions if necessary
@@ -3812,6 +3817,7 @@ cmd:
 			mt.MockUpdateSchedulersTable(mockDb, nil)
 
 			// Add new version into versions table
+			scheduler1.NextMajorVersion()
 			mt.MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 			// Count to delete old versions if necessary
@@ -4058,6 +4064,7 @@ cmd:
 			mt.MockUpdateSchedulersTable(mockDb, nil)
 
 			// Add new version into versions table
+			scheduler1.NextMinorVersion()
 			mt.MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 			// Count to delete old versions if necessary

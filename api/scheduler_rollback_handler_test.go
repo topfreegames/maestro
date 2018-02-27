@@ -51,7 +51,7 @@ autoscaling:
 		configYaml, _ = models.NewConfigYAML(yamlString)
 
 		reader := JSONFor(JSON{
-			"version": "v1",
+			"version": "v1.0",
 		})
 
 		url = fmt.Sprintf("http://%s/scheduler/%s/rollback", app.Address, configYaml.Name)
@@ -69,7 +69,7 @@ autoscaling:
 			scheduler1 := models.NewScheduler(configYaml.Name, configYaml.Game, yamlStringToRollbackTo)
 			lockKeyNs := fmt.Sprintf("%s-scheduler-name", lockKey)
 
-			version := 1
+			version := "v1.0"
 			// Select version from database
 			MockSelectYamlWithVersion(yamlStringToRollbackTo, version, mockDb, nil)
 
@@ -83,6 +83,7 @@ autoscaling:
 			MockUpdateSchedulersTable(mockDb, nil)
 
 			// Add new version into versions table
+			scheduler1.NextMinorVersion()
 			MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 
 			// Count to delete old versions if necessary
@@ -97,13 +98,13 @@ autoscaling:
 		})
 
 		It("should return error if scheduler not found", func() {
-			version := 1
+			version := "v1.0"
 			// Select version from database
 			mockDb.EXPECT().
 				Query(gomock.Any(),
 					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?",
 					"scheduler-name", version).
-				Do(func(scheduler *models.Scheduler, query string, name string, version int) {
+				Do(func(scheduler *models.Scheduler, query, name, version string) {
 					*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, "")
 				})
 
@@ -119,13 +120,13 @@ autoscaling:
 		})
 
 		It("should return error if invalid yaml", func() {
-			version := 1
+			version := "v1.0"
 			// Select version from database
 			mockDb.EXPECT().
 				Query(gomock.Any(),
 					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?",
 					"scheduler-name", version).
-				Do(func(scheduler *models.Scheduler, query string, name string, version int) {
+				Do(func(scheduler *models.Scheduler, query, name, version string) {
 					*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, "  invalid{ yaml!.")
 				})
 

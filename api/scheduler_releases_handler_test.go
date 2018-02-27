@@ -52,7 +52,7 @@ var _ = Describe("SchedulerReleasesHandler", func() {
 
 	Describe("GET /scheduler/{schedulerName}/releases", func() {
 		It("should return scheduler releases", func() {
-			versions := []string{"1", "2", "3"}
+			versions := []string{"v1.0", "v2.0", "v3.0"}
 			testing.MockSelectSchedulerVersions(yamlString, versions, mockDb, nil)
 
 			app.Router.ServeHTTP(recorder, request)
@@ -66,12 +66,12 @@ var _ = Describe("SchedulerReleasesHandler", func() {
 			releases := response["releases"].([]interface{})
 			for i, release := range releases {
 				releaseMap := release.(map[string]interface{})
-				Expect(releaseMap["version"]).To(Equal(fmt.Sprintf("v%d", i+1)))
+				Expect(releaseMap["version"]).To(Equal(versions[i]))
 			}
 		})
 
 		It("should return error if db fails", func() {
-			versions := []string{"1", "2", "3"}
+			versions := []string{"v1.0", "v2.0", "v3.0"}
 			testing.MockSelectSchedulerVersions(yamlString, versions, mockDb, errDB)
 
 			app.Router.ServeHTTP(recorder, request)

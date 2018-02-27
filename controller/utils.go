@@ -88,8 +88,9 @@ func rollback(
 	timeout time.Duration,
 	createdPods, deletedPods []v1.Pod,
 	scheduler *models.Scheduler,
+	versionToRollbackTo string,
 ) error {
-	scheduler.PreviousVersion()
+	scheduler.Version = versionToRollbackTo
 
 	var err error
 	willTimeoutAt := time.Now().Add(timeout)

@@ -545,9 +545,10 @@ waitForLock:
 		}
 	}
 
-	scheduler.NextVersion()
+	currentVersion := scheduler.Version
 
 	if MustUpdatePods(&oldConfig, configYAML) {
+		scheduler.NextMajorVersion()
 		l.Info("pods must be recreated, starting process")
 
 		kubePods, err := clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
@@ -578,7 +579,7 @@ waitForLock:
 				rollErr := rollback(
 					l, mr, db, redisClient.Client, clientset,
 					&oldConfig, maxSurge, 2*timeoutDur, createdPods, deletedPods,
-					scheduler)
+					scheduler, currentVersion)
 				if rollErr != nil {
 					l.WithError(rollErr).Debug("error during update roll back")
 					err = rollErr
@@ -587,6 +588,7 @@ waitForLock:
 			}
 		}
 	} else {
+		scheduler.NextMinorVersion()
 		l.Info("pods do not need to be recreated")
 	}
 

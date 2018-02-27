@@ -8,9 +8,7 @@
 package models
 
 import (
-	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +28,7 @@ type Scheduler struct {
 	LastScaleOpAt      int64       `db:"last_scale_op_at"`
 	CreatedAt          pg.NullTime `db:"created_at"`
 	UpdatedAt          pg.NullTime `db:"updated_at"`
-	Version            int         `db:"version"`
+	Version            string      `db:"version"`
 }
 
 // Resources the CPU and memory resources limits
@@ -167,15 +165,15 @@ func NewScheduler(name, game, yaml string) *Scheduler {
 		YAML:               yaml,
 		State:              StateCreating,
 		StateLastChangedAt: time.Now().Unix(),
-		Version:            1,
+		Version:            "v1.0",
 	}
 }
 
 // Load loads a scheduler from the database using the scheduler name
 func (c *Scheduler) Load(db interfaces.DB) error {
 	_, err := db.Query(c, "SELECT * FROM schedulers WHERE name = ?", c.Name)
-	if c.Version == 0 {
-		c.Version = 1
+	if c.Version == "" {
+		c.Version = "v1.0"
 	}
 	return err
 }
@@ -191,14 +189,36 @@ func LoadSchedulers(db interfaces.DB, names []string) ([]Scheduler, error) {
 	return schedulers, err
 }
 
-// NextVersion increments the version
-func (c *Scheduler) NextVersion() {
-	c.Version = c.Version + 1
+// SplitedVersion returns major and minor version as int
+func (c *Scheduler) SplitedVersion() (majorInt, minorInt int, err error) {
+	version := strings.Split(strings.TrimPrefix(c.Version, "v"), ".")
+	major, minor := version[0], "0"
+	if len(version) > 1 {
+		minor = version[1]
+	}
+
+	minorInt, err = strconv.Atoi(minor)
+	if err != nil {
+		return
+	}
+	majorInt, err = strconv.Atoi(major)
+	if err != nil {
+		return
+	}
+
+	return majorInt, minorInt, nil
 }
 
-// PreviousVersion decrements the version
-func (c *Scheduler) PreviousVersion() {
-	c.Version = c.Version + 1
+// NextMajorVersion increments the major version
+func (c *Scheduler) NextMajorVersion() {
+	major, _, _ := c.SplitedVersion()
+	c.Version = fmt.Sprintf("v%d.0", major+1)
+}
+
+// NextMinorVersion increments the major version
+func (c *Scheduler) NextMinorVersion() {
+	major, minor, _ := c.SplitedVersion()
+	c.Version = fmt.Sprintf("v%d.%d", major, minor+1)
 }
 
 // Create creates a scheduler in the database
@@ -324,15 +344,9 @@ func LoadConfigWithVersion(db interfaces.DB, schedulerName, version string) (str
 		return LoadConfig(db, schedulerName)
 	}
 
-	matched, _ := regexp.MatchString("v[0-9]+", version)
-	if !matched {
-		return "", errors.New("version is not of format v<integer>, like v1, v2, v3, etc")
-	}
-
-	versionInt, _ := strconv.Atoi(strings.TrimPrefix(version, "v"))
-
 	c := new(Scheduler)
-	_, err := db.Query(c, "SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?", schedulerName, versionInt)
+	_, err := db.Query(c,
+		"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?", schedulerName, version)
 	return c.YAML, err
 }
 
@@ -350,8 +364,21 @@ func ListSchedulerReleases(db interfaces.DB, schedulerName string) (
 		return
 	}
 
-	for _, version := range versions {
-		version.Version = fmt.Sprintf("v%s", version.Version)
-	}
 	return
+}
+
+// PreviousVersion returns the previous version of a scheduler
+func PreviousVersion(db interfaces.DB, schedulerName, version string) (*Scheduler, error) {
+	previousScheduler := NewScheduler(schedulerName, "", "")
+	previousScheduler.Version = version
+	_, err := db.Query(previousScheduler, `SELECT * 
+	FROM scheduler_versions 
+	WHERE created_at < ( 
+		SELECT created_at 
+		FROM scheduler_versions 
+		WHERE name = ?name AND version = ?version
+	) 
+	ORDER BY created_at DESC 
+	LIMIT 1`, previousScheduler)
+	return previousScheduler, err
 }

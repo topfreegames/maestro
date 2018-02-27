@@ -100,7 +100,7 @@ var _ = Describe("Pod", func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
-			pod.SetVersion(1)
+			pod.SetVersion("v1.0")
 			podv1, err := pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -114,7 +114,7 @@ var _ = Describe("Pod", func() {
 			Expect(podv1.ObjectMeta.Labels).To(HaveLen(3))
 			Expect(podv1.ObjectMeta.Labels["app"]).To(Equal(name))
 			Expect(podv1.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
-			Expect(podv1.ObjectMeta.Labels["version"]).To(Equal("v1"))
+			Expect(podv1.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 			Expect(*podv1.Spec.TerminationGracePeriodSeconds).To(BeEquivalentTo(shutdownTimeout))
 			Expect(podv1.Spec.Tolerations).To(HaveLen(1))
 			Expect(podv1.Spec.Tolerations[0].Key).To(Equal("dedicated"))

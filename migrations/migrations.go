@@ -4,6 +4,7 @@
 // migrations/0002-CreateUserTable.sql
 // migrations/0003-CreateSchedulerVersionsTable.sql
 // migrations/0004-AlterSchedulerTableAddVersion.sql
+// migrations/0005-AlterVersionType.sql
 // DO NOT EDIT!
 
 package migrations
@@ -126,7 +127,7 @@ func migrations0003CreateschedulerversionstableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0003-CreateSchedulerVersionsTable.sql", size: 664, mode: os.FileMode(420), modTime: time.Unix(1519665751, 0)}
+	info := bindataFileInfo{name: "migrations/0003-CreateSchedulerVersionsTable.sql", size: 664, mode: os.FileMode(420), modTime: time.Unix(1519672930, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -146,7 +147,27 @@ func migrations0004AlterschedulertableaddversionSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0004-AlterSchedulerTableAddVersion.sql", size: 243, mode: os.FileMode(420), modTime: time.Unix(1519473040, 0)}
+	info := bindataFileInfo{name: "migrations/0004-AlterSchedulerTableAddVersion.sql", size: 243, mode: os.FileMode(420), modTime: time.Unix(1519672930, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _migrations0005AlterversiontypeSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\x8e\xc1\x4a\xc4\x30\x14\x45\xf7\xfd\x8a\xb7\xd4\x45\x1a\x1d\x18\x90\x2a\xe2\x38\x54\x11\x3a\x2a\x12\x17\xae\x24\x93\xbe\x49\x82\xd3\xbc\xf0\x92\x4e\xf1\x93\xfc\x0d\xbf\x4c\x4a\x2b\x6e\x5c\xcc\xf2\x5e\xce\xb9\x5c\x21\xa0\xd3\x98\x32\x53\x21\x04\xb8\x9c\x63\xaa\xa4\xb4\x3e\xbb\x7e\x5b\x1a\xea\x64\xa6\xb8\x63\x44\xab\x3b\x4c\xf2\x0f\x1d\xe9\xc6\x1b\x0c\x09\x5b\xe8\x43\x8b\x0c\xd9\x21\x6c\x1e\x14\xec\xa7\xba\xfa\x1d\xac\xa4\x1c\x86\xa1\xa4\x88\x21\x51\xcf\x06\x4b\x62\x2b\x67\x2a\xc9\xce\x67\x31\x87\xd1\x58\x53\xfc\x64\x6f\x5d\x86\xef\x2f\x58\x9c\x9d\x5f\x80\xa2\x08\x77\x8c\x08\xf7\xe3\x07\xb8\xda\x6a\xf3\x81\xa1\xbd\xc9\x3b\x6b\x68\xfc\x78\x5d\x14\xab\x46\xd5\x2f\xa0\x56\xb7\x4d\x0d\xc9\x38\x6c\xfb\x3d\x72\x82\xa9\x5e\x3f\x35\xaf\x9b\x47\x38\x20\x27\x4f\x01\xd4\xdb\x73\x0d\x07\xcd\xc6\x69\x3e\x59\x2c\x97\xa7\x97\xff\xeb\xef\xb3\x70\xfc\xcc\x4f\x00\x00\x00\xff\xff\x97\xb5\xe0\x5d\x4d\x01\x00\x00")
+
+func migrations0005AlterversiontypeSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations0005AlterversiontypeSql,
+		"migrations/0005-AlterVersionType.sql",
+	)
+}
+
+func migrations0005AlterversiontypeSql() (*asset, error) {
+	bytes, err := migrations0005AlterversiontypeSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/0005-AlterVersionType.sql", size: 333, mode: os.FileMode(420), modTime: time.Unix(1519685138, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -207,6 +228,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/0002-CreateUserTable.sql": migrations0002CreateusertableSql,
 	"migrations/0003-CreateSchedulerVersionsTable.sql": migrations0003CreateschedulerversionstableSql,
 	"migrations/0004-AlterSchedulerTableAddVersion.sql": migrations0004AlterschedulertableaddversionSql,
+	"migrations/0005-AlterVersionType.sql": migrations0005AlterversiontypeSql,
 }
 
 // AssetDir returns the file names below a certain
@@ -254,6 +276,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"0002-CreateUserTable.sql": &bintree{migrations0002CreateusertableSql, map[string]*bintree{}},
 		"0003-CreateSchedulerVersionsTable.sql": &bintree{migrations0003CreateschedulerversionstableSql, map[string]*bintree{}},
 		"0004-AlterSchedulerTableAddVersion.sql": &bintree{migrations0004AlterschedulertableaddversionSql, map[string]*bintree{}},
+		"0005-AlterVersionType.sql": &bintree{migrations0005AlterversiontypeSql, map[string]*bintree{}},
 	}},
 }}
 

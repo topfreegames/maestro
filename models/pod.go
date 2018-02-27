@@ -9,7 +9,6 @@ package models
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"text/template"
 
@@ -221,8 +220,8 @@ func (p *Pod) SetToleration(toleration string) {
 }
 
 // SetVersion sets the pod version equals to the scheduler version
-func (p *Pod) SetVersion(version int) {
-	p.Version = fmt.Sprintf("v%d", version)
+func (p *Pod) SetVersion(version string) {
+	p.Version = version
 }
 
 // Create creates a pod in Kubernetes

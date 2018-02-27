@@ -55,100 +55,66 @@ image: image2`
 			request, _ = http.NewRequest("GET", url, nil)
 
 			MockSelectScheduler(yaml1, mockDb, nil)
-			MockSelectYamlWithVersion(yaml2, 0, mockDb, nil)
+			MockSelectPreviousSchedulerVersion(name, "v0.1", yaml2, mockDb, nil)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 
 			var response map[string]string
 			json.Unmarshal(recorder.Body.Bytes(), &response)
-			Expect(response["version1"]).To(Equal("v1"))
-			Expect(response["version2"]).To(Equal("v0"))
+			Expect(response["version1"]).To(Equal("v1.0"))
+			Expect(response["version2"]).To(Equal("v0.1"))
 			Expect(response["diff"]).To(Equal("name: scheduler-name\ngame: \"\"\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nimage: image\u001b[31m1\u001b[0m\u001b[32m2\u001b[0m\nports: []\nlimits: null\nrequests: null\nenv: []\ncmd: []\ncontainers: []\n"))
 		})
 
 		It("should return schedulers diff between v2 and previous", func() {
 			request, _ = http.NewRequest("GET", url, JSONFor(JSON{
-				"version1": "v2",
+				"version1": "v2.0",
 			}))
 
-			MockSelectYamlWithVersion(yaml1, 2, mockDb, nil)
-			MockSelectYamlWithVersion(yaml2, 1, mockDb, nil)
+			MockSelectYamlWithVersion(yaml1, "v2.0", mockDb, nil)
+			MockSelectPreviousSchedulerVersion(name, "v1.0", yaml2, mockDb, nil)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 
 			var response map[string]string
 			json.Unmarshal(recorder.Body.Bytes(), &response)
-			Expect(response["version1"]).To(Equal("v2"))
-			Expect(response["version2"]).To(Equal("v1"))
+			Expect(response["version1"]).To(Equal("v2.0"))
+			Expect(response["version2"]).To(Equal("v1.0"))
 			Expect(response["diff"]).To(Equal("name: scheduler-name\ngame: \"\"\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nimage: image\u001b[31m1\u001b[0m\u001b[32m2\u001b[0m\nports: []\nlimits: null\nrequests: null\nenv: []\ncmd: []\ncontainers: []\n"))
 		})
 
 		It("should return schedulers diff between v2 and v1", func() {
 			request, _ = http.NewRequest("GET", url, JSONFor(JSON{
-				"version1": "v2",
-				"version2": "v1",
+				"version1": "v2.0",
+				"version2": "v1.0",
 			}))
 
-			MockSelectYamlWithVersion(yaml1, 2, mockDb, nil)
-			MockSelectYamlWithVersion(yaml2, 1, mockDb, nil)
+			MockSelectYamlWithVersion(yaml1, "v2.0", mockDb, nil)
+			MockSelectYamlWithVersion(yaml2, "v1.0", mockDb, nil)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 
 			var response map[string]string
 			json.Unmarshal(recorder.Body.Bytes(), &response)
-			Expect(response["version1"]).To(Equal("v2"))
-			Expect(response["version2"]).To(Equal("v1"))
+			Expect(response["version1"]).To(Equal("v2.0"))
+			Expect(response["version2"]).To(Equal("v1.0"))
 			Expect(response["diff"]).To(Equal("name: scheduler-name\ngame: \"\"\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nimage: image\u001b[31m1\u001b[0m\u001b[32m2\u001b[0m\nports: []\nlimits: null\nrequests: null\nenv: []\ncmd: []\ncontainers: []\n"))
-		})
-
-		It("should return error if invalid version1", func() {
-			request, _ = http.NewRequest("GET", url, JSONFor(JSON{
-				"version1": "not a version",
-				"version2": "v1",
-			}))
-
-			app.Router.ServeHTTP(recorder, request)
-			Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
-
-			var response map[string]string
-			json.Unmarshal(recorder.Body.Bytes(), &response)
-			Expect(response["code"]).To(Equal("MAE-000"))
-			Expect(response["description"]).To(Equal("version is not of format v<integer>, like v1, v2, v3, etc"))
-			Expect(response["error"]).To(Equal("schedulers diff failed"))
-		})
-
-		It("should return error if invalid version2", func() {
-			request, _ = http.NewRequest("GET", url, JSONFor(JSON{
-				"version1": "v1",
-				"version2": "not a version",
-			}))
-
-			MockSelectYamlWithVersion(yaml1, 1, mockDb, nil)
-
-			app.Router.ServeHTTP(recorder, request)
-			Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
-
-			var response map[string]string
-			json.Unmarshal(recorder.Body.Bytes(), &response)
-			Expect(response["code"]).To(Equal("MAE-000"))
-			Expect(response["description"]).To(Equal("version is not of format v<integer>, like v1, v2, v3, etc"))
-			Expect(response["error"]).To(Equal("schedulers diff failed"))
 		})
 
 		It("should return error if version1 not found", func() {
 			request, _ = http.NewRequest("GET", url, JSONFor(JSON{
-				"version1": "v1",
-				"version2": "v2",
+				"version1": "v1.0",
+				"version2": "v2.0",
 			}))
 
 			mockDb.EXPECT().
 				Query(
 					gomock.Any(),
-					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?", name, 1).
-				Do(func(scheduler *models.Scheduler, query string, name string, version int) {
+					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?", name, "v1.0").
+				Do(func(scheduler *models.Scheduler, query, name, version string) {
 					*scheduler = *models.NewScheduler(name, "", "")
 				})
 
@@ -158,22 +124,22 @@ image: image2`
 			var response map[string]string
 			json.Unmarshal(recorder.Body.Bytes(), &response)
 			Expect(response["code"]).To(Equal("MAE-000"))
-			Expect(response["description"]).To(Equal("config scheduler not found: scheduler-name:v1"))
+			Expect(response["description"]).To(Equal("config scheduler not found: scheduler-name:v1.0"))
 			Expect(response["error"]).To(Equal("schedulers diff failed"))
 		})
 
 		It("should return error if version2 not found", func() {
 			request, _ = http.NewRequest("GET", url, JSONFor(JSON{
-				"version1": "v1",
-				"version2": "v2",
+				"version1": "v1.0",
+				"version2": "v2.0",
 			}))
 
-			MockSelectYamlWithVersion(yaml1, 1, mockDb, nil)
+			MockSelectYamlWithVersion(yaml1, "v1.0", mockDb, nil)
 			mockDb.EXPECT().
 				Query(
 					gomock.Any(),
-					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?", name, 2).
-				Do(func(scheduler *models.Scheduler, query string, name string, version int) {
+					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?", name, "v2.0").
+				Do(func(scheduler *models.Scheduler, query, name, version string) {
 					*scheduler = *models.NewScheduler(name, "", "")
 				})
 
@@ -183,7 +149,7 @@ image: image2`
 			var response map[string]string
 			json.Unmarshal(recorder.Body.Bytes(), &response)
 			Expect(response["code"]).To(Equal("MAE-000"))
-			Expect(response["description"]).To(Equal("config scheduler not found: scheduler-name:v2"))
+			Expect(response["description"]).To(Equal("config scheduler not found: scheduler-name:v2.0"))
 			Expect(response["error"]).To(Equal("schedulers diff failed"))
 		})
 	})

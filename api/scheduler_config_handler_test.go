@@ -68,10 +68,10 @@ var _ = Describe("SchedulerConfigHandler", func() {
 		})
 
 		It("should return config yaml of specified version", func() {
-			version := 1
+			version := "v1.0"
 			MockSelectYamlWithVersion(yamlString, version, mockDb, nil)
 
-			url = fmt.Sprintf("http://%s/scheduler/%s/config?version=v%d",
+			url = fmt.Sprintf("http://%s/scheduler/%s/config?version=%s",
 				app.Address, configYaml.Name, version)
 			request, _ = http.NewRequest("GET", url, nil)
 
@@ -86,17 +86,17 @@ var _ = Describe("SchedulerConfigHandler", func() {
 		})
 
 		It("should return error if scheduler not found", func() {
-			version := 1
+			version := "v1.0"
 
 			mockDb.EXPECT().
 				Query(gomock.Any(),
 					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?",
 					"scheduler-name", version).
-				Do(func(scheduler *models.Scheduler, query string, name string, version int) {
+				Do(func(scheduler *models.Scheduler, query, name, version string) {
 					*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, "")
 				})
 
-			url = fmt.Sprintf("http://%s/scheduler/%s/config?version=v%d",
+			url = fmt.Sprintf("http://%s/scheduler/%s/config?version=%s",
 				app.Address, configYaml.Name, version)
 			request, _ = http.NewRequest("GET", url, nil)
 
