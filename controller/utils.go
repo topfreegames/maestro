@@ -197,7 +197,7 @@ func createPodsAsTheyAreDeleted(
 		select {
 		case <-ticker.C:
 			if operationManager.WasCanceled() {
-				l.Warn("operation was canceled")
+				logger.Warn("operation was canceled")
 				return createdPods, false, true
 			}
 
@@ -311,7 +311,7 @@ func waitCreatingPods(
 		select {
 		case <-ticker.C:
 			if operationManager.WasCanceled() {
-				l.Warn("operation was canceled")
+				logger.Warn("operation was canceled")
 				return false, true
 			}
 

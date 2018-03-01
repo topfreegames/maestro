@@ -976,7 +976,9 @@ autoscaling:
 					mockPipeline.EXPECT().Expire(gomock.Any(), timeoutDur)
 					mockPipeline.EXPECT().Exec()
 
-					mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
+					mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
+						"not": "empty",
+					}, nil)).AnyTimes()
 
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
@@ -1055,7 +1057,9 @@ autoscaling:
 					mockPipeline.EXPECT().Expire(gomock.Any(), timeoutDur)
 					mockPipeline.EXPECT().Exec()
 
-					mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
+					mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
+						"not": "empty",
+					}, nil)).AnyTimes()
 
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
@@ -2662,7 +2666,9 @@ ports:
 				mockPipeline.EXPECT().Expire(gomock.Any(), timeoutDur)
 				mockPipeline.EXPECT().Exec()
 
-				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
+				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
+					"not": "empty",
+				}, nil)).AnyTimes()
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
@@ -2739,7 +2745,9 @@ ports:
 				mockPipeline.EXPECT().Expire(gomock.Any(), timeoutDur)
 				mockPipeline.EXPECT().Exec()
 
-				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
+				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
+					"not": "empty",
+				}, nil)).AnyTimes()
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
@@ -3129,7 +3137,9 @@ ports:
 				mockPipeline.EXPECT().Expire(gomock.Any(), timeoutDur)
 				mockPipeline.EXPECT().Exec()
 
-				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
+				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
+					"not": "empty",
+				}, nil)).AnyTimes()
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
@@ -3198,7 +3208,9 @@ ports:
 				mockPipeline.EXPECT().Expire(gomock.Any(), timeoutDur)
 				mockPipeline.EXPECT().Exec()
 
-				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
+				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
+					"not": "empty",
+				}, nil)).AnyTimes()
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {

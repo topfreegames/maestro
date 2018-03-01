@@ -22,6 +22,7 @@ type OperationManager struct {
 	wasCanceledBool bool
 	continueLoop    bool
 	operationName   string
+	loopTime        time.Duration
 }
 
 // NewOperationManager returns an instance of operation manager
@@ -35,9 +36,16 @@ func NewOperationManager(
 		redisClient:   redisClient,
 		logger:        logger,
 		continueLoop:  true,
+		loopTime:      10 * time.Second,
 	}
 	o.operationKey = o.buildKey()
 	return o
+}
+
+// SetLoopTime sets how much will wait to check again if operation was canceled
+// Default is 10s
+func (o *OperationManager) SetLoopTime(t time.Duration) {
+	o.loopTime = t
 }
 
 // GetOperationKey returns the operation key
@@ -83,7 +91,7 @@ func (o *OperationManager) Start(
 
 	l.Debug("starting check loop on a goroutine")
 	go func() {
-		ticker := time.NewTicker(10 * time.Second)
+		ticker := time.NewTicker(o.loopTime)
 		defer ticker.Stop()
 
 		for o.continueLoop {
