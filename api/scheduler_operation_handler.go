@@ -55,6 +55,13 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if _, ok := status["status"]; ok {
+		bts, _ := json.Marshal(status)
+		WriteBytes(w, http.StatusOK, bts)
+		logger.Info("Successfully wrote status response")
+		return
+	}
+
 	scheduler := models.NewScheduler(schedulerName, "", "")
 	err = scheduler.Load(g.App.DB)
 	if err != nil {
