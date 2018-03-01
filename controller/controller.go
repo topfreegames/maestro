@@ -255,11 +255,17 @@ func DeleteUnavailableRooms(
 		logger.Debug("no rooms need to be deleted")
 		return nil
 	}
+
+	logger.Info("deleting unvavailable pods")
 	for _, roomName := range roomNames {
 		err := deletePod(logger, mr, clientset, redisClient, schedulerName, gameName, roomName, reason)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteUnavailableRooms"}).WithError(err).Error("error deleting room")
 		} else {
+			if err != nil {
+				logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteUnavailableRooms"}).WithError(err).Error("pod was not found, deleting room from redis")
+			}
+
 			room := models.NewRoom(roomName, schedulerName)
 			err = room.ClearAll(redisClient)
 			if err != nil {
@@ -267,6 +273,7 @@ func DeleteUnavailableRooms(
 			}
 		}
 	}
+	logger.Info("successfully deleted unavailable pods")
 
 	return nil
 }

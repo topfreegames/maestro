@@ -304,6 +304,10 @@ func (w *Watcher) RemoveDeadRooms() {
 				models.RoomTerminated, map[string]interface{}{}, nil, w.Logger)
 		}
 
+		logger.WithFields(logrus.Fields{
+			"rooms": fmt.Sprintf("%v", roomsNoPingSince),
+		}).Info("rooms that are not pinging")
+
 		err := controller.DeleteUnavailableRooms(
 			logger,
 			w.MetricsReporter,
@@ -316,6 +320,10 @@ func (w *Watcher) RemoveDeadRooms() {
 		)
 		if err != nil {
 			logger.WithError(err).Error("error removing dead rooms")
+		} else {
+			logger.WithFields(logrus.Fields{
+				"rooms": fmt.Sprintf("%v", roomsNoPingSince),
+			}).Info("successfully deleted rooms that were not pinging")
 		}
 	}
 
@@ -365,6 +373,8 @@ func (w *Watcher) RemoveDeadRooms() {
 			}
 		}
 	}
+
+	logger.Info("finish check of dead rooms")
 }
 
 func (w *Watcher) updateOccupiedTimeout(scheduler *models.Scheduler) error {
@@ -386,6 +396,7 @@ func (w *Watcher) AutoScale() {
 		"operation":   "autoScale",
 		"scheduler":   w.SchedulerName,
 	})
+	logger.Info("starting auto scale")
 
 	scheduler, autoScalingInfo, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
 		logger,
