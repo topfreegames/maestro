@@ -259,7 +259,7 @@ func (c *ConfigYAML) Diff(o *ConfigYAML) string {
 	yaml2, _ := yaml.Marshal(o)
 
 	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(string(yaml1), string(yaml2), false)
+	diffs := dmp.DiffMain(string(yaml2), string(yaml1), false)
 	whatChanged := dmp.DiffPrettyText(diffs)
 
 	return whatChanged
