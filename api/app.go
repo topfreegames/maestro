@@ -245,7 +245,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/status", Chain(
 		NewSchedulerOperationHandler(a),
 		NewLoggingMiddleware(a),
-		NewAccessMiddleware(a),
+		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
 		NewVersionMiddleware(),
 	).ServeHTTP).Methods("GET").Name("schedulersOperationStatus")
@@ -253,7 +253,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/cancel", Chain(
 		NewSchedulerOperationCancelHandler(a),
 		NewLoggingMiddleware(a),
-		NewAccessMiddleware(a),
+		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
 		NewVersionMiddleware(),
 	).ServeHTTP).Methods("PUT").Name("schedulersOperationStatus")
