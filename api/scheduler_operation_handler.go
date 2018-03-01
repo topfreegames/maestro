@@ -10,6 +10,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 // SchedulerOperationHandler returns the current status on scheduler operation
@@ -90,7 +91,11 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		g.App.HandleError(w, http.StatusInternalServerError, "error getting getting pods from kubernetes", err)
 		return
 	}
-	news = news + float64(len(podsMinorVersion.Items))
+	for _, pod := range podsMinorVersion.Items {
+		if v1.IsPodReady(&pod) {
+			news = news + 1.0
+		}
+	}
 
 	podsMajorVersion, err := g.App.KubernetesClient.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
 		LabelSelector: labels.Set{"version": major}.String(),
@@ -99,7 +104,11 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		g.App.HandleError(w, http.StatusInternalServerError, "error getting getting pods from kubernetes", err)
 		return
 	}
-	news = news + float64(len(podsMajorVersion.Items))
+	for _, pod := range podsMajorVersion.Items {
+		if v1.IsPodReady(&pod) {
+			news = news + 1.0
+		}
+	}
 
 	status["progress"] = fmt.Sprintf("%.2f%%", 100.0*news/total)
 
