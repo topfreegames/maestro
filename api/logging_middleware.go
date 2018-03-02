@@ -32,7 +32,8 @@ func NewLoggingMiddleware(a *App) *LoggingMiddleware {
 const requestIDKey = contextKey("requestID")
 const loggerKey = contextKey("logger")
 
-func newContextWithRequestIDAndLogger(ctx context.Context, logger logrus.FieldLogger) context.Context {
+// NewContextWithRequestIDAndLogger returns new context with request ID and logger
+func NewContextWithRequestIDAndLogger(ctx context.Context, logger logrus.FieldLogger) context.Context {
 	reqID := uuid.NewV4().String()
 	l := logger.WithField("requestID", reqID)
 
@@ -47,7 +48,7 @@ func loggerFromContext(ctx context.Context) logrus.FieldLogger {
 
 // ServeHTTP method
 func (m *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := newContextWithRequestIDAndLogger(r.Context(), m.App.Logger)
+	ctx := NewContextWithRequestIDAndLogger(r.Context(), m.App.Logger)
 
 	start := time.Now()
 	defer func() {

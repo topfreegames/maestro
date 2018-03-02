@@ -39,23 +39,26 @@ func NewAuthMiddleware(a *App) *AuthMiddleware {
 
 //ServeHTTP methods
 func (m *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	logger := loggerFromContext(r.Context())
+
 	if !m.enabled {
+		logger.Debug("oauth disabled")
 		m.next.ServeHTTP(w, r)
 		return
 	}
 
-	logger := loggerFromContext(r.Context())
-	logger.Debug("Checking auth")
+	logger.Debug("checking auth")
 
 	isBasicAuthOK := isBasicAuthOkFromContext(r.Context())
 	if isBasicAuthOK {
-		logger.Debug("Authorized user")
+		logger.Debug("authorized user from basic auth")
 		m.next.ServeHTTP(w, r)
 		return
 	}
 
 	email := emailFromContext(r.Context())
 	if email == "" {
+		logger.Debug("user not sent")
 		m.App.HandleError(w, http.StatusUnauthorized, "",
 			errors.NewAccessError("user not sent",
 				e.New("user is empty (not using basicauth nor oauth) and auth is required")))
@@ -68,6 +71,7 @@ func (m *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		scheduler.Load(m.App.DB)
 		configYaml, _ := models.NewConfigYAML(scheduler.YAML)
 		if !isAuth(email, configYaml.AuthorizedUsers) {
+			logger.Debug("not authorized user")
 			m.App.HandleError(w, http.StatusUnauthorized, "",
 				errors.NewAccessError("not authorized user",
 					e.New("user is not admin and is not authorized to operate on this scheduler")))
@@ -75,7 +79,7 @@ func (m *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	logger.Debug("Authorized user")
+	logger.Debug("authorized user")
 	m.next.ServeHTTP(w, r)
 }
 

@@ -42,7 +42,8 @@ func emailFromContext(ctx context.Context) string {
 	return payload.(string)
 }
 
-func newContextWithEmail(ctx context.Context, email string) context.Context {
+// NewContextWithEmail adds the email from oauth into context
+func NewContextWithEmail(ctx context.Context, email string) context.Context {
 	c := context.WithValue(ctx, emailKey, email)
 	return c
 }
@@ -107,7 +108,7 @@ func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := newContextWithEmail(r.Context(), email)
+	ctx := NewContextWithEmail(r.Context(), email)
 
 	logger.Debug("Access token checked")
 	m.next.ServeHTTP(w, r.WithContext(ctx))

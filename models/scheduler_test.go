@@ -476,6 +476,47 @@ var _ = Describe("Scheduler", func() {
 			Expect(err.Error()).To(Equal(errDB.Error()))
 		})
 	})
+
+	Describe("PreviousVersion", func() {
+		It("should select previous scheduler on db", func() {
+			version := "v1.0"
+
+			mockDb.EXPECT().Query(gomock.Any(), `SELECT * 
+	FROM scheduler_versions 
+	WHERE created_at < ( 
+		SELECT created_at 
+		FROM scheduler_versions 
+		WHERE name = ?name AND version = ?version
+	) AND name = ?name
+	ORDER BY created_at DESC 
+	LIMIT 1`, gomock.Any())
+
+			scheduler, err := PreviousVersion(mockDb, name, version)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(scheduler.Version).To(Equal(version))
+			Expect(scheduler.Name).To(Equal(name))
+		})
+	})
+
+	Describe("Next*Version", func() {
+		It("should return next minor version", func() {
+			scheduler := NewScheduler(name, game, yaml1)
+			Expect(scheduler.Version).To(Equal("v1.0"))
+
+			scheduler.NextMinorVersion()
+			Expect(scheduler.Version).To(Equal("v1.1"))
+		})
+
+		It("should return next major version", func() {
+			scheduler := NewScheduler(name, game, yaml1)
+			Expect(scheduler.Version).To(Equal("v1.0"))
+
+			scheduler.NextMinorVersion()
+
+			scheduler.NextMajorVersion()
+			Expect(scheduler.Version).To(Equal("v2.0"))
+		})
+	})
 })
 
 var _ = Describe("Container", func() {

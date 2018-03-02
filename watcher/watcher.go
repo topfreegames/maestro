@@ -293,15 +293,20 @@ func (w *Watcher) RemoveDeadRooms() {
 	}
 
 	if roomsNoPingSince != nil && len(roomsNoPingSince) > 0 {
-		logger.Info("deleting rooms that are not pinging Maestro")
+		logger.WithFields(logrus.Fields{
+			"quantity": len(roomsNoPingSince),
+		}).Info("deleting rooms that are not pinging Maestro")
 
 		for _, roomName := range roomsNoPingSince {
 			room := &models.Room{
 				ID:            roomName,
 				SchedulerName: w.SchedulerName,
 			}
-			eventforwarder.ForwardRoomEvent(w.EventForwarders, w.DB, w.KubernetesClient, room,
+			_, err := eventforwarder.ForwardRoomEvent(w.EventForwarders, w.DB, w.KubernetesClient, room,
 				models.RoomTerminated, map[string]interface{}{}, nil, w.Logger)
+			if err != nil {
+				logger.WithError(err).Error("event forwarder failed")
+			}
 		}
 
 		logger.WithFields(logrus.Fields{

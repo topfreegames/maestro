@@ -189,8 +189,7 @@ func LoadSchedulers(db interfaces.DB, names []string) ([]Scheduler, error) {
 	return schedulers, err
 }
 
-// SplitedVersion returns major and minor version as int
-func (c *Scheduler) SplitedVersion() (majorInt, minorInt int, err error) {
+func (c *Scheduler) splitedVersion() (majorInt, minorInt int, err error) {
 	version := strings.Split(strings.TrimPrefix(c.Version, "v"), ".")
 	major, minor := version[0], "0"
 	if len(version) > 1 {
@@ -211,13 +210,13 @@ func (c *Scheduler) SplitedVersion() (majorInt, minorInt int, err error) {
 
 // NextMajorVersion increments the major version
 func (c *Scheduler) NextMajorVersion() {
-	major, _, _ := c.SplitedVersion()
+	major, _, _ := c.splitedVersion()
 	c.Version = fmt.Sprintf("v%d.0", major+1)
 }
 
 // NextMinorVersion increments the major version
 func (c *Scheduler) NextMinorVersion() {
-	major, minor, _ := c.SplitedVersion()
+	major, minor, _ := c.splitedVersion()
 	c.Version = fmt.Sprintf("v%d.%d", major, minor+1)
 }
 

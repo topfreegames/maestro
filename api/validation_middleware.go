@@ -29,7 +29,7 @@ type ValidationMiddleware struct {
 
 type contextKey string
 
-const payloadString = contextKey("payload")
+const PayloadString = contextKey("payload")
 
 // NewValidationMiddleware creates a new validation middleware
 func NewValidationMiddleware(f func() interface{}) *ValidationMiddleware {
@@ -38,12 +38,12 @@ func NewValidationMiddleware(f func() interface{}) *ValidationMiddleware {
 }
 
 func newContextWithPayload(ctx context.Context, payload interface{}, r *http.Request) context.Context {
-	c := context.WithValue(ctx, payloadString, payload)
+	c := context.WithValue(ctx, PayloadString, payload)
 	return c
 }
 
 func playerEventPayloadFromCtx(ctx context.Context) *models.PlayerEventPayload {
-	payload := ctx.Value(payloadString)
+	payload := ctx.Value(PayloadString)
 	if payload == nil {
 		return nil
 	}
@@ -55,7 +55,7 @@ func playerEventPayloadFromCtx(ctx context.Context) *models.PlayerEventPayload {
 }
 
 func roomEventPayloadFromCtx(ctx context.Context) *models.RoomEventPayload {
-	payload := ctx.Value(payloadString)
+	payload := ctx.Value(PayloadString)
 	if payload == nil {
 		return nil
 	}
@@ -67,7 +67,7 @@ func roomEventPayloadFromCtx(ctx context.Context) *models.RoomEventPayload {
 }
 
 func statusPayloadFromCtx(ctx context.Context) *models.RoomStatusPayload {
-	payload := ctx.Value(payloadString)
+	payload := ctx.Value(PayloadString)
 	if payload == nil {
 		return nil
 	}
@@ -79,7 +79,7 @@ func statusPayloadFromCtx(ctx context.Context) *models.RoomStatusPayload {
 }
 
 func configYamlFromCtx(ctx context.Context) []*models.ConfigYAML {
-	payload := ctx.Value(payloadString)
+	payload := ctx.Value(PayloadString)
 	if payload == nil {
 		return nil
 	}
@@ -91,7 +91,7 @@ func configYamlFromCtx(ctx context.Context) []*models.ConfigYAML {
 }
 
 func schedulerImageParamsFromCtx(ctx context.Context) *models.SchedulerImageParams {
-	payload := ctx.Value(payloadString)
+	payload := ctx.Value(PayloadString)
 	if payload == nil {
 		return nil
 	}
@@ -103,7 +103,7 @@ func schedulerImageParamsFromCtx(ctx context.Context) *models.SchedulerImagePara
 }
 
 func schedulerMinParamsFromCtx(ctx context.Context) *models.SchedulerMinParams {
-	payload := ctx.Value(payloadString)
+	payload := ctx.Value(PayloadString)
 	if payload == nil {
 		return nil
 	}
@@ -115,7 +115,7 @@ func schedulerMinParamsFromCtx(ctx context.Context) *models.SchedulerMinParams {
 }
 
 func schedulerScaleParamsFromCtx(ctx context.Context) *models.SchedulerScaleParams {
-	payload := ctx.Value(payloadString)
+	payload := ctx.Value(PayloadString)
 	if payload == nil {
 		return nil
 	}
@@ -127,7 +127,7 @@ func schedulerScaleParamsFromCtx(ctx context.Context) *models.SchedulerScalePara
 }
 
 func schedulerVersionParamsFromContext(ctx context.Context) *models.SchedulerVersion {
-	payload := ctx.Value(payloadString)
+	payload := ctx.Value(PayloadString)
 	if payload == nil {
 		return nil
 	}
@@ -139,7 +139,7 @@ func schedulerVersionParamsFromContext(ctx context.Context) *models.SchedulerVer
 }
 
 func schedulersDiffParamsFromContext(ctx context.Context) *models.SchedulersDiff {
-	payload := ctx.Value(payloadString)
+	payload := ctx.Value(PayloadString)
 	if payload == nil {
 		return &models.SchedulersDiff{}
 	}

@@ -178,8 +178,8 @@
 [[projects]]
   name = "github.com/gorilla/mux"
   packages = ["."]
-  revision = "392c28fe23e1c45ddba891b0320b3b5df220beea"
-  version = "v1.3.0"
+  revision = "53c1911da2b537f792e7cafcb446b05ffe33b996"
+  version = "v1.6.1"
 
 [[projects]]
   branch = "master"
@@ -294,6 +294,12 @@
   packages = ["."]
   revision = "879c5887cd475cd7864858769793b2ceb0d44feb"
   version = "v1.1.0"
+
+[[projects]]
+  name = "github.com/sergi/go-diff"
+  packages = ["diffmatchpatch"]
+  revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -423,6 +429,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1c11b34281d94bff19943831ff44d92e2a270e8e76a52d7042f32b0c6b39a618"
+  inputs-digest = "a4556547819f1356fd57d946550ebd82ab5d00c728b2f741cde0de339fbdb013"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -27,7 +27,8 @@ func NewBasicAuthMiddleware(a *App) *BasicAuthMiddleware {
 
 const basicPayloadString = contextKey("basicPayload")
 
-func newContextWithBasicAuthOK(ctx context.Context) context.Context {
+// NewContextWithBasicAuthOK gets if basic auth was sent and is ok
+func NewContextWithBasicAuthOK(ctx context.Context) context.Context {
 	c := context.WithValue(ctx, basicPayloadString, true)
 	return c
 }
@@ -68,7 +69,7 @@ func (m *BasicAuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	ctx := newContextWithBasicAuthOK(r.Context())
+	ctx := NewContextWithBasicAuthOK(r.Context())
 
 	// Call the next middleware/handler in chain
 	m.next.ServeHTTP(w, r.WithContext(ctx))
