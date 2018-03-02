@@ -69,7 +69,7 @@ func replacePodsAndWait(
 	timedout, canceled = waitCreatingPods(
 		logger, clientset, timeout, configYAML.Name,
 		createdPods, operationManager)
-	if timedout {
+	if timedout || canceled {
 		return createdPods, deletedPods, timedout, canceled
 	}
 
