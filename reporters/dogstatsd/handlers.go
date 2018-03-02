@@ -17,12 +17,13 @@ import (
 )
 
 var handlers = map[string]interface{}{
-	constants.EventGruNew:      GruIncrHandler,
-	constants.EventGruDelete:   GruIncrHandler,
-	constants.EventGruPing:     GruIncrHandler,
-	constants.EventGruStatus:   GruStatusHandler,
-	constants.EventRPCStatus:   GruIncrHandler,
-	constants.EventRPCDuration: GruTimingHandler,
+	constants.EventGruNew:           GruIncrHandler,
+	constants.EventGruDelete:        GruIncrHandler,
+	constants.EventGruPing:          GruIncrHandler,
+	constants.EventGruStatus:        GruStatusHandler,
+	constants.EventRPCStatus:        GruIncrHandler,
+	constants.EventRPCDuration:      GruTimingHandler,
+	constants.EventHTTPResponseTime: HistogramHandler,
 }
 
 // Find looks for a matching handler to a given event
@@ -79,5 +80,17 @@ func GruTimingHandler(c dogstatsd.Client, event string,
 	})
 	duration, _ := time.ParseDuration(opts[constants.TagResponseTime])
 	c.Timing(constants.EventRPCDuration, duration, tags, 1)
+	return nil
+}
+
+// HistogramHandler calls dogstatsd.Client.Histogram with tags formatted as key:value
+func HistogramHandler(c dogstatsd.Client, event string, opts map[string]string) error {
+	tags := createAllowedTags(opts, []string{
+		constants.TagGame, constants.TagScheduler, constants.TagRegion, constants.TagHTTPStatus})
+	histogram, err := strconv.ParseFloat(opts["histogram"], 64)
+	if err != nil {
+		return err
+	}
+	c.Histogram(opts["name"], histogram, tags, 1)
 	return nil
 }

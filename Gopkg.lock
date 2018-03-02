@@ -340,8 +340,8 @@
 [[projects]]
   name = "github.com/topfreegames/extensions"
   packages = ["clock","clock/interfaces","clock/mocks","dogstatsd","dogstatsd/mocks","pg","pg/interfaces","pg/mocks","redis","redis/interfaces","redis/mocks"]
-  revision = "60652653febcf337a1dee3fd9405988e0d8cf4d0"
-  version = "v5.0.0"
+  revision = "f355fdf8af96dc742f66fc67fab17d4ff9431f7d"
+  version = "v5.1.0"
 
 [[projects]]
   name = "github.com/topfreegames/protos"
@@ -429,6 +429,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a4556547819f1356fd57d946550ebd82ab5d00c728b2f741cde0de339fbdb013"
+  inputs-digest = "c835e801b2d2262573876c5d7b50cbb34af07530ca1f18f8edb223630d4e1006"
   solver-name = "gps-cdcl"
   solver-version = 1

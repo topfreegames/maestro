@@ -93,3 +93,6 @@ const StatusTerminating = "terminating"
 
 //StatusTerminated represents a room status
 const StatusTerminated = "terminated"
+
+// Million is an int64 equals to 1M
+const Million int64 = 1000 * 1000

@@ -260,10 +260,11 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),
+		NewLoggingMiddleware(a),
+		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
-		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.RoomStatusPayload{} }),
@@ -271,20 +272,22 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/address", Chain(
 		NewRoomAddressHandler(a),
+		NewLoggingMiddleware(a),
+		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
-		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 	).ServeHTTP).Methods("GET").Name("address")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/status", Chain(
 		NewRoomStatusHandler(a),
+		NewLoggingMiddleware(a),
+		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
-		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.RoomStatusPayload{} }),
@@ -292,10 +295,11 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/roomevent", Chain(
 		NewRoomEventHandler(a),
+		NewLoggingMiddleware(a),
+		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
-		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.RoomEventPayload{} }),
@@ -303,10 +307,11 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/playerevent", Chain(
 		NewPlayerEventHandler(a),
+		NewLoggingMiddleware(a),
+		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
-		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.PlayerEventPayload{} }),

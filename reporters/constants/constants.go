@@ -9,6 +9,8 @@ const (
 
 	EventRPCStatus   = "rpc.status"
 	EventRPCDuration = "rpc.duration"
+
+	EventHTTPResponseTime = "http.response.time"
 )
 
 //Reason{...} represents reasons for a pod/gru being deleted
@@ -31,4 +33,12 @@ const (
 	TagHostname     = "maestro-hostname"
 	TagRoute        = "maestro-route"
 	TagResponseTime = "maestro-response-time"
+	TagHTTPStatus   = "maestro-http-status"
+)
+
+// Value{...} are values that reporters use
+const (
+	ValueGauge     = "gauge"
+	ValueHistogram = "histogram"
+	ValueName      = "name"
 )
