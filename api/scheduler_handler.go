@@ -202,7 +202,11 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	operationManager := getOperationManager(g.App, payload.Name, "UpdateSchedulerConfig", logger)
+	operationManager, err := getOperationManager(g.App, payload.Name, "UpdateSchedulerConfig", logger)
+	if returnIfOperationManagerExists(g.App, w, err) {
+		logger.WithError(err).Error("Update scheduler failed: error getting operation key")
+		return
+	}
 
 	async := r.URL.Query().Get("async") == "true"
 	if async {
@@ -696,7 +700,12 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	logger.Info("updating scheduler's image")
 
 	async := r.URL.Query().Get("async") == "true"
-	operationManager := getOperationManager(g.App, params.SchedulerName, "UpdateSchedulerImage", logger)
+	operationManager, err := getOperationManager(g.App, params.SchedulerName, "UpdateSchedulerImage", logger)
+	if returnIfOperationManagerExists(g.App, w, err) {
+		logger.WithError(err).Error("Update scheduler image failed")
+		return
+	}
+
 	if async {
 		go g.update(logger, mr, params.SchedulerName, schedulerImage, maxSurge, operationManager)
 		WriteJSON(w, http.StatusOK, map[string]interface{}{
@@ -787,7 +796,12 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	async := r.URL.Query().Get("async") == "true"
 
-	operationManager := getOperationManager(g.App, params.SchedulerName, "UpdateSchedulerMin", logger)
+	operationManager, err := getOperationManager(g.App, params.SchedulerName, "UpdateSchedulerMin", logger)
+	if returnIfOperationManagerExists(g.App, w, err) {
+		logger.WithError(err).Error("Update scheduler min failed")
+		return
+	}
+
 	if async {
 		go g.update(w, logger, mr, params.SchedulerName, schedulerMin.Min, operationManager)
 		WriteJSON(w, http.StatusOK, map[string]interface{}{

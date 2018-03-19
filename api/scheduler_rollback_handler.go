@@ -77,7 +77,12 @@ func (g *SchedulerRollbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 
 	async := r.URL.Query().Get("async") == "true"
-	operationManager := getOperationManager(g.App, schedulerName, "SchedulerRollback", logger)
+	operationManager, err := getOperationManager(g.App, schedulerName, "SchedulerRollback", logger)
+	if returnIfOperationManagerExists(g.App, w, err) {
+		logger.WithError(err).Error("Rollback scheduler failed")
+		return
+	}
+
 	if async {
 		go g.update(r, logger, mr, configYaml, operationManager)
 		WriteJSON(w, http.StatusOK, map[string]interface{}{

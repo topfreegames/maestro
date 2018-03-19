@@ -1,3 +1,10 @@
+// maestro
+// https://github.com/topfreegames/maestro
+//
+// Licensed under the MIT license:
+// http://www.opensource.org/licenses/mit-license
+// Copyright © 2018 Top Free Games <backend@tfgco.com>
+
 package models
 
 import (
@@ -58,6 +65,11 @@ func (o *OperationManager) buildKey() string {
 	return fmt.Sprintf("opmanager:%s:%s", o.schedulerName, token)
 }
 
+// BuildCurrOpKey builds the key that gets current op on redis
+func (o *OperationManager) BuildCurrOpKey() string {
+	return fmt.Sprintf("opmanager:%s:current", o.schedulerName)
+}
+
 // Start saves on redis that an operation
 // started on this scheduler
 func (o *OperationManager) Start(
@@ -80,6 +92,7 @@ func (o *OperationManager) Start(
 		"progress":  "running",
 	})
 	txpipeline.Expire(o.operationKey, timeout)
+	txpipeline.Set(o.BuildCurrOpKey(), o.operationKey, timeout)
 	_, err = txpipeline.Exec()
 
 	if err == goredis.Nil {
@@ -208,6 +221,7 @@ func (o *OperationManager) Finish(status int, description string, opErr error) e
 	txpipeline := o.redisClient.TxPipeline()
 	txpipeline.HMSet(o.operationKey, result)
 	txpipeline.Expire(o.operationKey, 10*time.Minute)
+	txpipeline.Del(o.BuildCurrOpKey())
 	_, err := txpipeline.Exec()
 
 	if err == goredis.Nil {
@@ -241,6 +255,16 @@ func (o *OperationManager) Get(operationKey string) (map[string]string, error) {
 	}
 
 	return result, err
+}
+
+// CurrentOperation returns the current operation key that is in progress
+func (o *OperationManager) CurrentOperation() (string, error) {
+	currOp, err := o.redisClient.Get(o.BuildCurrOpKey()).Result()
+	if err == goredis.Nil {
+		err = nil
+	}
+
+	return currOp, err
 }
 
 // StopLoop sets continueLoop to false

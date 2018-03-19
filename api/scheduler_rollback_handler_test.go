@@ -169,12 +169,14 @@ autoscaling:
 			lockKeyNs := fmt.Sprintf("%s-scheduler-name", lockKey)
 
 			opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+			MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 				Expect(m).To(HaveKeyWithValue("operation", "SchedulerRollback"))
 			})
 			mockPipeline.EXPECT().Expire(gomock.Any(), timeoutDur)
+			mockPipeline.EXPECT().Set(opManager.BuildCurrOpKey(), gomock.Any(), timeoutDur)
 			mockPipeline.EXPECT().Exec()
 
 			mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
@@ -186,6 +188,7 @@ autoscaling:
 				Expect(m).To(HaveKeyWithValue("success", true))
 			})
 			mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
+			mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 			mockPipeline.EXPECT().Exec().Do(func() {
 				opManager.StopLoop()
 			})
@@ -235,12 +238,14 @@ autoscaling:
 			yaml.Unmarshal([]byte(yamlStringToRollbackTo), &configYaml)
 
 			opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+			MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 				Expect(m).To(HaveKeyWithValue("operation", "SchedulerRollback"))
 			})
 			mockPipeline.EXPECT().Expire(gomock.Any(), timeoutDur)
+			mockPipeline.EXPECT().Set(opManager.BuildCurrOpKey(), gomock.Any(), timeoutDur)
 			mockPipeline.EXPECT().Exec()
 
 			mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
@@ -254,6 +259,7 @@ autoscaling:
 				Expect(m).To(HaveKeyWithValue("error", "invalid parameter: maxsurge must be greater than 0"))
 			})
 			mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
+			mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 			mockPipeline.EXPECT().Exec().Do(func() {
 				opManager.StopLoop()
 			})

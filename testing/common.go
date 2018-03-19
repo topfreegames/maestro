@@ -592,6 +592,7 @@ func MockOperationManagerStart(
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any())
 	mockPipeline.EXPECT().Expire(gomock.Any(), timeout)
+	mockPipeline.EXPECT().Set(opManager.BuildCurrOpKey(), gomock.Any(), timeout)
 	mockPipeline.EXPECT().Exec()
 }
 
@@ -602,6 +603,7 @@ func MockOperationManager(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 ) {
+	MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
 	MockOperationManagerStart(opManager, timeout, mockRedisClient, mockPipeline)
 
 	mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
@@ -612,6 +614,7 @@ func MockOperationManager(
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any())
 	mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
+	mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 	mockPipeline.EXPECT().Exec().Do(func() {
 		opManager.StopLoop()
 	})
@@ -627,4 +630,15 @@ func MockDeleteRedisKey(
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 	mockPipeline.EXPECT().Del(opManager.GetOperationKey())
 	mockPipeline.EXPECT().Exec().Return(nil, err)
+}
+
+// MockGetCurrentOperationKey mocks get current operation on redis
+func MockGetCurrentOperationKey(
+	opManager *models.OperationManager,
+	mockRedisClient *redismocks.MockRedisClient,
+	err error,
+) {
+	mockRedisClient.EXPECT().
+		Get(opManager.BuildCurrOpKey()).
+		Return(goredis.NewStringResult("", err))
 }

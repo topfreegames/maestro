@@ -41,13 +41,25 @@ var _ = Describe("OperationManager", func() {
 		return n
 	}
 
-	mockSaveStatusOnRedis := func(m map[string]interface{}, err error) {
+	mockStartOnRedis := func(m map[string]interface{}, err error) {
 		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 		mockPipeline.EXPECT().HMSet(opManager.GetOperationKey(), gomock.Any()).
 			Do(func(_ string, n map[string]interface{}) {
 				Expect(n).To(Equal(m))
 			})
 		mockPipeline.EXPECT().Expire(opManager.GetOperationKey(), timeout)
+		mockPipeline.EXPECT().Set(opManager.BuildCurrOpKey(), gomock.Any(), timeout)
+		mockPipeline.EXPECT().Exec().Return(nil, err)
+	}
+
+	mockFinishOnRedis := func(m map[string]interface{}, err error) {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().HMSet(opManager.GetOperationKey(), gomock.Any()).
+			Do(func(_ string, n map[string]interface{}) {
+				Expect(n).To(Equal(m))
+			})
+		mockPipeline.EXPECT().Expire(opManager.GetOperationKey(), timeout)
+		mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 		mockPipeline.EXPECT().Exec().Return(nil, err)
 	}
 
@@ -76,7 +88,7 @@ var _ = Describe("OperationManager", func() {
 
 	Describe("Start", func() {
 		It("should save on redis and start goroutine", func() {
-			mockSaveStatusOnRedis(initialStatus, nil)
+			mockStartOnRedis(initialStatus, nil)
 			mockGetStatusFromRedis(toMapStringString(initialStatus), nil)
 			mockGetStatusFromRedis(nil, nil)
 
@@ -87,7 +99,7 @@ var _ = Describe("OperationManager", func() {
 		})
 
 		It("should not return error if goroutine gets error from redis", func() {
-			mockSaveStatusOnRedis(initialStatus, nil)
+			mockStartOnRedis(initialStatus, nil)
 			mockGetStatusFromRedis(toMapStringString(initialStatus), errDB)
 			mockGetStatusFromRedis(nil, nil)
 
@@ -98,7 +110,7 @@ var _ = Describe("OperationManager", func() {
 		})
 
 		It("should return error if failed to save initial status on redis", func() {
-			mockSaveStatusOnRedis(initialStatus, errDB)
+			mockStartOnRedis(initialStatus, errDB)
 
 			err := opManager.Start(timeout, opName)
 			Expect(err).To(HaveOccurred())
@@ -145,7 +157,7 @@ var _ = Describe("OperationManager", func() {
 		var description = "some description"
 
 		It("should save result on redis when not error", func() {
-			mockSaveStatusOnRedis(map[string]interface{}{
+			mockFinishOnRedis(map[string]interface{}{
 				"success":   true,
 				"status":    status,
 				"operation": "",
@@ -157,7 +169,7 @@ var _ = Describe("OperationManager", func() {
 		})
 
 		It("should save result on redis when error", func() {
-			mockSaveStatusOnRedis(map[string]interface{}{
+			mockFinishOnRedis(map[string]interface{}{
 				"success":     false,
 				"status":      status,
 				"operation":   "",
@@ -170,7 +182,7 @@ var _ = Describe("OperationManager", func() {
 		})
 
 		It("should return no error if error from redis is redis.Nil", func() {
-			mockSaveStatusOnRedis(map[string]interface{}{
+			mockFinishOnRedis(map[string]interface{}{
 				"success":   true,
 				"status":    status,
 				"operation": "",
@@ -182,7 +194,7 @@ var _ = Describe("OperationManager", func() {
 		})
 
 		It("should return error if error from redis is not redis.Nil", func() {
-			mockSaveStatusOnRedis(map[string]interface{}{
+			mockFinishOnRedis(map[string]interface{}{
 				"success":   true,
 				"status":    status,
 				"operation": "",
