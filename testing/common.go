@@ -642,3 +642,41 @@ func MockGetCurrentOperationKey(
 		Get(opManager.BuildCurrOpKey()).
 		Return(goredis.NewStringResult("", err))
 }
+
+// MockSetDescription mocks the set description call
+func MockSetDescription(
+	opManager *models.OperationManager,
+	mockRedisClient *redismocks.MockRedisClient,
+	description string,
+	err error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(
+		mockRedisClient.EXPECT().
+			HMSet(opManager.GetOperationKey(), map[string]interface{}{
+				"description": description,
+			}).
+			Return(goredis.NewStatusResult("", err)))
+
+	return calls
+}
+
+// MockAnySetDescription mocks the set description call
+func MockAnySetDescription(
+	opManager *models.OperationManager,
+	mockRedisClient *redismocks.MockRedisClient,
+	description string,
+	err error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(
+		mockRedisClient.EXPECT().
+			HMSet(gomock.Any(), map[string]interface{}{
+				"description": description,
+			}).
+			Return(goredis.NewStatusResult("", err)))
+
+	return calls
+}

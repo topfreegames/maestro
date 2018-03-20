@@ -165,6 +165,8 @@ var _ = Describe("Controller", func() {
 
 		_, err = clientset.CoreV1().Nodes().Create(node)
 		Expect(err).NotTo(HaveOccurred())
+
+		opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 	})
 
 	Describe("CreateScheduler", func() {
@@ -2680,7 +2682,6 @@ containers:
 			Expect(err).NotTo(HaveOccurred())
 
 			scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
-			opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 
 			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
 				logger, mr, yaml1, timeoutSec)
@@ -2743,6 +2744,9 @@ cmd:
 
 			// Get redis lock
 			mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+			// Set new operation manager description
+			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
 
 			// Remove old rooms
 			mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml2)
@@ -2814,6 +2818,9 @@ cmd:
 
 			// Get redis lock
 			mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+			// Set new operation manager description
+			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
 
 			// Select empty scheduler yaml
 			mockDb.EXPECT().
@@ -2888,6 +2895,9 @@ cmd:
 			// Get redis lock
 			mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
+			// Set new operation manager description
+			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+
 			// Update new config on schedulers table
 			mt.MockUpdateSchedulersTable(mockDb, nil)
 
@@ -2942,6 +2952,10 @@ cmd:
 			mockRedisClient.EXPECT().
 				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 				Return(goredis.NewBoolResult(true, nil))
+
+			// Set new operation manager description
+			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
 				Return(goredis.NewCmdResult(nil, nil))
@@ -2997,6 +3011,7 @@ cmd:
 			mockRedisClient.EXPECT().
 				SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 				Return(goredis.NewBoolResult(false, nil))
+
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
 				Return(goredis.NewCmdResult(nil, nil))
@@ -3062,6 +3077,10 @@ cmd:
 			calls.Append(
 				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil))
 
+			// Set new operation manager description
+			calls.Append(
+				mt.MockSetDescription(opManager, mockRedisClient, "running", nil))
+
 			// Get scheduler from DB
 			calls.Append(
 				mt.MockSelectScheduler(yaml1, mockDb, nil))
@@ -3119,6 +3138,9 @@ cmd:
 				mockRedisClient.EXPECT().
 					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 					Return(goredis.NewBoolResult(true, nil)))
+
+			// Set new operation manager description
+			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
 
 			// Get scheduler from DB
 			calls.Add(
@@ -3292,6 +3314,10 @@ cmd:
 			calls.Append(
 				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil))
 
+			// Set new operation manager description
+			calls.Append(
+				mt.MockSetDescription(opManager, mockRedisClient, "running", nil))
+
 			// Get scheduler from DB
 			calls.Append(mt.MockSelectScheduler(yaml1, mockDb, nil))
 
@@ -3420,6 +3446,9 @@ cmd:
 
 			// Get redis lock
 			mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+			// Set new operation manager description
+			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
 
 			// Remove old rooms
 			mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml2)
@@ -3576,6 +3605,9 @@ containers:
 				lockKey := "maestro-lock-key-scheduler-name-cancel"
 				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
+				// Set new operation manager description
+				mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+
 				// Remove old room
 				for i, pod := range pods.Items {
 					room := models.NewRoom(pod.GetName(), pod.GetNamespace())
@@ -3680,6 +3712,9 @@ containers:
 				// Get redis lock
 				lockKey := "maestro-lock-key-scheduler-name-cancel"
 				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Set new operation manager description
+				mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
 
 				// Delete keys from OperationManager (to cancel it)
 				mt.MockDeleteRedisKey(opManager, mockRedisClient, mockPipeline, nil)
@@ -3906,6 +3941,9 @@ containers:
 			// Get redis lock
 			mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
+			// Set new operation manager description
+			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+
 			// Remove old rooms
 			mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml1)
 
@@ -3925,8 +3963,6 @@ containers:
 
 			// Retrieve redis lock
 			mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-			opManager = models.NewOperationManager(scheduler1.Name, mockRedisClient, logger)
 
 			err = controller.UpdateSchedulerImage(
 				logger,
@@ -4121,6 +4157,9 @@ containers:
 			// Get lock
 			mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
+			// Set new operation manager description
+			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+
 			// Remove old rooms
 			mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
 
@@ -4139,8 +4178,6 @@ containers:
 
 			// return lock
 			mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-			opManager = models.NewOperationManager(scheduler1.Name, mockRedisClient, logger)
 
 			imageParams.Container = "container1"
 			err = controller.UpdateSchedulerImage(
@@ -4379,6 +4416,9 @@ containers:
 
 			// Get redis lock
 			mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+			// Set new operation manager description
+			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
 
 			// Update new config on schedulers table
 			mt.MockUpdateSchedulersTable(mockDb, nil)

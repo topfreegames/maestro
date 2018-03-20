@@ -86,6 +86,9 @@ autoscaling:
 			// Get redis lock
 			MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 
+			// Set new operation manager description
+			MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 			// Update new config on schedulers table
 			MockUpdateSchedulersTable(mockDb, nil)
 
@@ -202,6 +205,9 @@ autoscaling:
 
 			// Get redis lock
 			MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+
+			// Set new operation manager description
+			MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
 			// Update new config on schedulers table
 			MockUpdateSchedulersTable(mockDb, nil)

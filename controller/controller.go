@@ -547,6 +547,8 @@ waitForLock:
 		}
 	}()
 
+	operationManager.SetDescription("running")
+
 	var scheduler *models.Scheduler
 	var oldConfig models.ConfigYAML
 	if schedulerOrNil != nil {

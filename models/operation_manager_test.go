@@ -29,8 +29,8 @@ var _ = Describe("OperationManager", func() {
 	var timeout = 10 * time.Minute
 	var errDB = errors.New("db failed")
 	var initialStatus = map[string]interface{}{
-		"operation": opName,
-		"progress":  "running",
+		"operation":   opName,
+		"description": "waiting for lock",
 	}
 
 	toMapStringString := func(m map[string]interface{}) map[string]string {
@@ -154,14 +154,15 @@ var _ = Describe("OperationManager", func() {
 
 	Describe("Finish", func() {
 		var status = http.StatusOK
-		var description = "some description"
+		var description = "finished"
 
 		It("should save result on redis when not error", func() {
 			mockFinishOnRedis(map[string]interface{}{
-				"success":   true,
-				"status":    status,
-				"operation": "",
-				"progress":  "100%",
+				"success":     true,
+				"status":      status,
+				"operation":   "",
+				"progress":    "100%",
+				"description": description,
 			}, nil)
 
 			err := opManager.Finish(status, description, nil)
@@ -183,10 +184,11 @@ var _ = Describe("OperationManager", func() {
 
 		It("should return no error if error from redis is redis.Nil", func() {
 			mockFinishOnRedis(map[string]interface{}{
-				"success":   true,
-				"status":    status,
-				"operation": "",
-				"progress":  "100%",
+				"success":     true,
+				"status":      status,
+				"operation":   "",
+				"progress":    "100%",
+				"description": description,
 			}, goredis.Nil)
 
 			err := opManager.Finish(status, description, nil)
@@ -195,10 +197,11 @@ var _ = Describe("OperationManager", func() {
 
 		It("should return error if error from redis is not redis.Nil", func() {
 			mockFinishOnRedis(map[string]interface{}{
-				"success":   true,
-				"status":    status,
-				"operation": "",
-				"progress":  "100%",
+				"success":     true,
+				"status":      status,
+				"operation":   "",
+				"progress":    "100%",
+				"description": description,
 			}, errDB)
 
 			err := opManager.Finish(status, description, nil)

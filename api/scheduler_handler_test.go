@@ -712,6 +712,9 @@ autoscaling:
 					// Get redis lock
 					MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 
+					// Set new operation manager description
+					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 					// Remove old rooms
 					MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
 
@@ -842,6 +845,9 @@ autoscaling:
 						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
 
+					// Set new operation manager description
+					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					// Update new config on schedulers table
 					MockUpdateSchedulersTable(mockDb, nil)
@@ -880,6 +886,10 @@ autoscaling:
 					mockRedisClient.EXPECT().
 						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
+
+					// Set new operation manager description
+					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 					mockDb.EXPECT().
 						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name)
 					mockRedisClient.EXPECT().
@@ -939,6 +949,9 @@ autoscaling:
 					mockRedisClient.EXPECT().
 						SetNX(gomock.Any(), gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
+
+					// Set new operation manager description
+					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
 					mockRedisClient.EXPECT().
 						Eval(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -1013,6 +1026,9 @@ autoscaling:
 
 					// Get redis lock
 					MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+
+					// Set new operation manager description
+					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
 					// Remove old rooms
 					MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
@@ -1100,6 +1116,9 @@ autoscaling:
 					// Get redis lock
 					MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 
+					// Set new operation manager description
+					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 					// Remove old rooms
 					MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
 
@@ -1149,6 +1168,10 @@ autoscaling:
 					mockRedisClient.EXPECT().
 						SetNX(gomock.Any(), gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
+
+					// Set new operation manager description
+					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 					mockDb.EXPECT().Query(
 						gomock.Any(),
 						"SELECT * FROM schedulers WHERE name = ?",
@@ -1311,6 +1334,9 @@ forwarders:
 					mockRedisClient.EXPECT().
 						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 						Return(redis.NewBoolResult(true, nil))
+
+					// Set new operation manager description
+					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
 					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					// Update new config on schedulers table
@@ -2167,6 +2193,9 @@ ports:
 				// Get redis lock
 				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 				// Remove old rooms
 				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
 
@@ -2219,6 +2248,9 @@ ports:
 
 				// Get redis lock
 				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
 				// Remove old rooms
 				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
@@ -2551,6 +2583,9 @@ ports:
 				// Get redis lock
 				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 				// Remove old rooms
 				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
 
@@ -2634,6 +2669,9 @@ ports:
 				// Get redis lock
 				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 				// Remove old rooms
 				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml1)
 
@@ -2710,6 +2748,9 @@ ports:
 
 				// Get redis lock
 				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
 				// Remove old rooms
 				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
@@ -2880,6 +2921,9 @@ ports:
 					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 					Return(redis.NewBoolResult(true, nil))
 
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -3019,6 +3063,9 @@ ports:
 					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 					Return(redis.NewBoolResult(true, nil))
 
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 				// Update new config on schedulers table
 				MockUpdateSchedulersTable(mockDb, nil)
 				// Add new version into versions table
@@ -3110,6 +3157,9 @@ ports:
 					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 					Return(redis.NewBoolResult(true, nil))
 
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 				// Update scheduler
 				body := map[string]interface{}{"min": configYaml1.AutoScaling.Min + 1}
 				bts, _ := json.Marshal(body)
@@ -3188,6 +3238,9 @@ ports:
 					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 					Return(redis.NewBoolResult(true, nil))
 
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -3261,6 +3314,9 @@ ports:
 				mockRedisClient.EXPECT().
 					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
 					Return(redis.NewBoolResult(true, nil))
+
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).

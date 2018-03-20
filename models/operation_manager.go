@@ -88,8 +88,8 @@ func (o *OperationManager) Start(
 
 	txpipeline := o.redisClient.TxPipeline()
 	txpipeline.HMSet(o.operationKey, map[string]interface{}{
-		"operation": operationName,
-		"progress":  "running",
+		"operation":   operationName,
+		"description": "waiting for lock",
 	})
 	txpipeline.Expire(o.operationKey, timeout)
 	txpipeline.Set(o.BuildCurrOpKey(), o.operationKey, timeout)
@@ -204,9 +204,10 @@ func (o *OperationManager) Finish(status int, description string, opErr error) e
 	})
 
 	result := map[string]interface{}{
-		"success":   opErr == nil,
-		"status":    status,
-		"operation": o.operationName,
+		"success":     opErr == nil,
+		"status":      status,
+		"operation":   o.operationName,
+		"description": "finished",
 	}
 
 	if opErr != nil {
@@ -275,4 +276,11 @@ func (o *OperationManager) StopLoop() {
 // IsStopped returns true if operation manager is not in loop
 func (o *OperationManager) IsStopped() bool {
 	return !o.continueLoop
+}
+
+// SetDescription sets the description of the operation current state
+func (o *OperationManager) SetDescription(description string) error {
+	return o.redisClient.HMSet(o.operationKey, map[string]interface{}{
+		"description": description,
+	}).Err()
 }
