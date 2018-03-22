@@ -99,7 +99,8 @@ func HistogramHandler(c dogstatsd.Client, event string, opts map[string]string) 
 func HTTPTimingHandler(c dogstatsd.Client, event string,
 	opts map[string]string) error {
 	tags := createAllowedTags(opts, []string{
-		constants.TagScheduler, constants.TagRegion, constants.TagHTTPStatus})
+		constants.TagRoute, constants.TagScheduler, constants.TagRegion,
+		constants.TagHTTPStatus, constants.TagHostname})
 	duration, _ := time.ParseDuration(opts[constants.TagResponseTime])
 	c.Timing(constants.EventHTTPResponseTime, duration, tags, 1)
 	return nil

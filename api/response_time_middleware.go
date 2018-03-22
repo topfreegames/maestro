@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
@@ -43,10 +44,11 @@ func (m *ResponseTimeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	routeName, _ := mux.CurrentRoute(r).GetPathTemplate()
 	reporters.Report(reportersConstants.EventHTTPResponseTime, map[string]string{
-		reportersConstants.ValueName:       routeName,
+		reportersConstants.TagRoute:        routeName,
 		reportersConstants.TagResponseTime: time.Now().Sub(start).String(),
 		reportersConstants.TagHTTPStatus:   writerWrapper.Status(),
 		reportersConstants.TagScheduler:    schedulerName,
+		reportersConstants.TagHostname:     eventforwarder.Hostname(),
 	})
 }
 
