@@ -7,7 +7,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -37,14 +36,17 @@ func (m *ResponseTimeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	start := time.Now()
 
+	schedulerName := mux.Vars(r)["schedulerName"]
+
 	writerWrapper := models.NewWriterWrapper(w)
 	m.next.ServeHTTP(writerWrapper, r)
 
 	routeName, _ := mux.CurrentRoute(r).GetPathTemplate()
 	reporters.Report(reportersConstants.EventHTTPResponseTime, map[string]string{
-		reportersConstants.ValueName:      routeName,
-		reportersConstants.ValueHistogram: fmt.Sprintf("%d", time.Now().Sub(start).Nanoseconds()/models.Million),
-		reportersConstants.TagHTTPStatus:  writerWrapper.Status(),
+		reportersConstants.ValueName:       routeName,
+		reportersConstants.TagResponseTime: time.Now().Sub(start).String(),
+		reportersConstants.TagHTTPStatus:   writerWrapper.Status(),
+		reportersConstants.TagScheduler:    schedulerName,
 	})
 }
 

@@ -261,6 +261,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),
 		NewLoggingMiddleware(a),
+		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -283,6 +284,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/status", Chain(
 		NewRoomStatusHandler(a),
 		NewLoggingMiddleware(a),
+		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),

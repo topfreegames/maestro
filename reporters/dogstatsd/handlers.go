@@ -23,7 +23,7 @@ var handlers = map[string]interface{}{
 	constants.EventGruStatus:        GruStatusHandler,
 	constants.EventRPCStatus:        GruIncrHandler,
 	constants.EventRPCDuration:      GruTimingHandler,
-	constants.EventHTTPResponseTime: HistogramHandler,
+	constants.EventHTTPResponseTime: HTTPTimingHandler,
 }
 
 // Find looks for a matching handler to a given event
@@ -92,5 +92,15 @@ func HistogramHandler(c dogstatsd.Client, event string, opts map[string]string) 
 		return err
 	}
 	c.Histogram(opts["name"], histogram, tags, 1)
+	return nil
+}
+
+// HTTPTimingHandler calls dogstatsd.Client.Timing with tags formatted as key:value for http calls
+func HTTPTimingHandler(c dogstatsd.Client, event string,
+	opts map[string]string) error {
+	tags := createAllowedTags(opts, []string{
+		constants.TagScheduler, constants.TagRegion, constants.TagHTTPStatus})
+	duration, _ := time.ParseDuration(opts[constants.TagResponseTime])
+	c.Timing(constants.EventHTTPResponseTime, duration, tags, 1)
 	return nil
 }
