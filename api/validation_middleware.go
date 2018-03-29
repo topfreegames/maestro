@@ -29,6 +29,7 @@ type ValidationMiddleware struct {
 
 type contextKey string
 
+// PayloadString is the context key for validation middleware
 const PayloadString = contextKey("payload")
 
 // NewValidationMiddleware creates a new validation middleware

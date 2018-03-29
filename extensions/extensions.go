@@ -42,6 +42,8 @@ func GetRedisClient(logger logrus.FieldLogger, config *viper.Viper) (*redis.Clie
 func GetDB(logger logrus.FieldLogger, config *viper.Viper) (pginterfaces.DB, error) {
 	l := logger.WithFields(logrus.Fields{
 		"operation": "configureDatabase",
+		"host":      config.GetString("extensions.pg.host"),
+		"port":      config.GetString("extensions.pg.port"),
 	})
 	l.Debug("connecting to DB...")
 	client, err := pg.NewClient("extensions.pg", config, nil, nil)
