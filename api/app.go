@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -367,6 +368,7 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("schedulerCache.cleanupInterval", "10m")
 	a.Config.SetDefault("schedulers.versions.toKeep", 100)
 	a.Config.SetDefault("oauth.enabled", true)
+	a.Config.SetDefault("forwarders.grpc.matchmaking.timeout", 1*time.Second)
 }
 
 func (a *App) configureCache() {

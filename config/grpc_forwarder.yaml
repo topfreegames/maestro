@@ -1,7 +1,8 @@
 forwarders:
   grpc:
     matchmaking: 
-      address: "10.0.23.57:10000"
+      address: "localhost:10000"
+      timeout: 1s
 extensions:
   pg:
     host: "10.0.23.57"

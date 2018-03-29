@@ -37,7 +37,11 @@ type ForwarderFunc func(client pb.GRPCForwarderClient, infos, fwdMetadata map[st
 
 func (g *GRPCForwarder) roomPing(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
 	req := g.roomStatusRequest(infos, roomStatus)
-	response, err := g.client.SendRoomPing(context.Background(), req)
+
+	ctx, cancel := context.WithTimeout(context.Background(), g.config.GetDuration("timeout"))
+	defer cancel()
+
+	response, err := g.client.SendRoomPing(ctx, req)
 	if err != nil {
 		return 500, "", err
 	}
@@ -79,7 +83,11 @@ func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status p
 
 func (g *GRPCForwarder) roomStatus(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
 	req := g.roomStatusRequest(infos, roomStatus)
-	response, err := g.client.SendRoomStatus(context.Background(), req)
+
+	ctx, cancel := context.WithTimeout(context.Background(), g.config.GetDuration("timeout"))
+	defer cancel()
+
+	response, err := g.client.SendRoomStatus(ctx, req)
 	if err != nil {
 		return 500, "", err
 	}
@@ -122,7 +130,11 @@ func (g *GRPCForwarder) roomEventRequest(infos map[string]interface{}, eventType
 
 func (g *GRPCForwarder) sendRoomEvent(infos map[string]interface{}, eventType string) (status int32, message string, err error) {
 	req := g.roomEventRequest(infos, eventType)
-	response, err := g.client.SendRoomEvent(context.Background(), req)
+
+	ctx, cancel := context.WithTimeout(context.Background(), g.config.GetDuration("timeout"))
+	defer cancel()
+
+	response, err := g.client.SendRoomEvent(ctx, req)
 	if err != nil {
 		return 500, "", err
 	}
@@ -156,7 +168,11 @@ func (g *GRPCForwarder) playerEvent(infos map[string]interface{}, playerEvent pb
 		return 500, "", errors.New("no roomId specified in metadata")
 	}
 	req := g.playerEventRequest(infos, playerEvent)
-	response, err := g.client.SendPlayerEvent(context.Background(), req)
+
+	ctx, cancel := context.WithTimeout(context.Background(), g.config.GetDuration("timeout"))
+	defer cancel()
+
+	response, err := g.client.SendPlayerEvent(ctx, req)
 	if err != nil {
 		return 500, "", err
 	}
@@ -225,7 +241,11 @@ func (g *GRPCForwarder) sendRoomInfo(infos map[string]interface{}) (status int32
 	if err != nil {
 		return 500, "", err
 	}
-	response, err := g.client.SendRoomInfo(context.Background(), req)
+
+	ctx, cancel := context.WithTimeout(context.Background(), g.config.GetDuration("timeout"))
+	defer cancel()
+
+	response, err := g.client.SendRoomInfo(ctx, req)
 	if err != nil {
 		return 500, "", err
 	}
