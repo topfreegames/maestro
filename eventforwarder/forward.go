@@ -77,33 +77,45 @@ func ForwardRoomEvent(
 		"scheduler": room.SchedulerName,
 		"roomId":    room.ID,
 	})
+
 	if len(forwarders) > 0 {
+		l.Debug("forwarding information to app forwarders")
+
 		cachedScheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
 		if err != nil {
+			l.WithError(err).Error("error reading scheduler from cache")
 			return nil, err
 		}
-		infos, err := room.GetRoomInfos(db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler)
-		if err != nil {
-			return nil, err
-		}
-		infos["metadata"] = metadata
 
 		l.WithFields(logrus.Fields{
 			"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
 		}).Debug("checking enabled forwarders")
+
 		if len(cachedScheduler.ConfigYAML.Forwarders) > 0 {
 			enabledForwarders := getEnabledForwarders(cachedScheduler.ConfigYAML.Forwarders, forwarders)
+
 			l.WithFields(logrus.Fields{
 				"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
 				"enabledForwarders":   len(enabledForwarders),
 			}).Debug("got enabled forwarders")
+
 			if len(enabledForwarders) > 0 {
+				infos, err := room.GetRoomInfos(db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler)
+				if err != nil {
+					l.WithError(err).Error("error getting room info from redis")
+					return nil, err
+				}
+
+				infos["metadata"] = metadata
 				eventWasForwarded = true
+
 				return ForwardEventToForwarders(enabledForwarders, status, infos, l)
 			}
 		}
 	}
+
 	l.Debug("no forwarders configured and enabled")
+
 	return nil, nil
 }
 
