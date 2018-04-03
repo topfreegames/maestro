@@ -1,5 +1,6 @@
-database_location: "on-cluster"
-redis_location: "on-cluster"
+global:
+  database_location: "on-cluster"
+  redis_location: "on-cluster"
 use_ingress: "false"
 postgres_host: maestro-postgres
 postgres_port: "5432"
