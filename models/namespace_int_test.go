@@ -44,17 +44,17 @@ var _ = Describe("Namespace", func() {
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod, err := models.NewPod(
-				"game", "image", "name", namespace.Name,
-				&models.Resources{CPU: "1", Memory: "1"},
-				&models.Resources{CPU: "1", Memory: "1"},
-				0,
-				[]*models.Port{{ContainerPort: 5050}},
-				[]string{"command"},
-				[]*models.EnvVar{},
-				clientset,
-				redisClient.Client,
-			)
+			configYaml := &models.ConfigYAML{
+				Game:     "game",
+				Image:    "image",
+				Name:     namespace.Name,
+				Limits:   &models.Resources{CPU: "1", Memory: "1"},
+				Requests: &models.Resources{CPU: "1", Memory: "1"},
+				Ports:    []*models.Port{{ContainerPort: 5050}},
+				Cmd:      []string{"command"},
+			}
+
+			pod, err := models.NewPod("name", []*models.EnvVar{}, configYaml, clientset, redisClient.Client)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())

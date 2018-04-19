@@ -20,6 +20,7 @@ type ConfigYAMLv1 struct {
 	OccupiedTimeout int64                            `yaml:"occupiedTimeout"`
 	Forwarders      map[string]map[string]*Forwarder `yaml:"forwarders"`
 	AuthorizedUsers []string                         `yaml:"authorizedUsers"`
+	PortRange       *PortRange                       `yaml:"portRange"`
 
 	// Container level, to keep compatibility
 	Image    string     `yaml:"image" json:"image"`
@@ -42,6 +43,7 @@ type ConfigYAMLv2 struct {
 	Forwarders      map[string]map[string]*Forwarder `yaml:"forwarders"`
 	AuthorizedUsers []string                         `yaml:"authorizedUsers"`
 	Containers      []*Container                     `yaml:"containers"`
+	PortRange       *PortRange                       `yaml:"portRange"`
 }
 
 // ConfigYAML is the struct for the config yaml
@@ -56,6 +58,7 @@ type ConfigYAML struct {
 	OccupiedTimeout int64                            `yaml:"occupiedTimeout" json:"occupiedTimeout"`
 	Forwarders      map[string]map[string]*Forwarder `yaml:"forwarders" json:"forwarders"`
 	AuthorizedUsers []string                         `yaml:"authorizedUsers" json:"authorizedUsers"`
+	PortRange       *PortRange                       `yaml:"portRange"`
 
 	// Container level, to keep compatibility
 	Image    string     `yaml:"image" json:"image"`
@@ -100,6 +103,7 @@ func (c *ConfigYAML) ToYAML() []byte {
 			Env:             c.Env,
 			Cmd:             c.Cmd,
 			AuthorizedUsers: c.AuthorizedUsers,
+			PortRange:       c.PortRange,
 		}
 	} else if c.Version() == "v2" {
 		config = &ConfigYAMLv2{
@@ -113,6 +117,7 @@ func (c *ConfigYAML) ToYAML() []byte {
 			Forwarders:      c.Forwarders,
 			AuthorizedUsers: c.AuthorizedUsers,
 			Containers:      c.Containers,
+			PortRange:       c.PortRange,
 		}
 	}
 
@@ -263,4 +268,12 @@ func (c *ConfigYAML) Diff(o *ConfigYAML) string {
 	whatChanged := dmp.DiffPrettyText(diffs)
 
 	return whatChanged
+}
+
+// PortsPoolRedisKey returns the redis key used to access ports pool for this scheduler
+func (c *ConfigYAML) PortsPoolRedisKey() string {
+	if !c.PortRange.IsSet() {
+		return FreePortsRedisKey()
+	}
+	return FreeSchedulerPortsRedisKey(c.Name)
 }

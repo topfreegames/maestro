@@ -82,6 +82,9 @@ var _ = Describe("Controller", func() {
 				Return(goredis.NewStringResult(randomPort(40000, 60000), nil))
 			mockPipeline.EXPECT().Exec()
 
+			mockRedisClient.EXPECT().
+				Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("40000-60000", nil)).Times(2)
+
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
 			mockPipeline.EXPECT().
 				SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(2)

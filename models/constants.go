@@ -96,3 +96,9 @@ const StatusTerminated = "terminated"
 
 // Million is an int64 equals to 1M
 const Million int64 = 1000 * 1000
+
+// GlobalPortsPoolKey is the key on redis that saves the range of ports used for pods
+const GlobalPortsPoolKey = "maestro:free:ports:global:range"
+
+// Global is the string global
+const Global = "global"

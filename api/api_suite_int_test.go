@@ -80,4 +80,7 @@ var _ = BeforeSuite(func() {
 	mockCtrl = gomock.NewController(GinkgoT())
 	mockLogin = mocks.NewMockLogin(mockCtrl)
 	app.Login = mockLogin
+
+	err = models.InitAvailablePorts(app.RedisClient, models.FreePortsRedisKey(), 40000, 60000)
+	Expect(err).NotTo(HaveOccurred())
 })

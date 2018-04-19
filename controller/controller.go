@@ -13,20 +13,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	redisLock "github.com/bsm/redis-lock"
 	goredis "github.com/go-redis/redis"
 	uuid "github.com/satori/go.uuid"
-	"github.com/spf13/viper"
 	clockinterfaces "github.com/topfreegames/extensions/clock/interfaces"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
-	"github.com/topfreegames/maestro/models"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/spf13/viper"
+	"github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/maestro/models"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -44,9 +45,12 @@ func CreateScheduler(
 	clientset kubernetes.Interface,
 	configYAML *models.ConfigYAML,
 	timeoutSec int,
-) error {
+) (err error) {
+	logger = logger.WithField("operation", "controller.CreateScheduler")
+
 	configYAML.EnsureDefaultValues()
 
+	logger.Info("unmarshalling config yaml")
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
 		return err
@@ -56,16 +60,19 @@ func CreateScheduler(
 	// by creating the namespace first we ensure it is available in kubernetes
 	namespace := models.NewNamespace(configYAML.Name)
 
+	logger.Info("checking if namespace exists")
 	var exists bool
 	err = mr.WithSegment(models.SegmentNamespace, func() error {
 		exists, err = namespace.Exists(clientset)
 		return err
 	})
 	if err != nil {
+		logger.WithError(err).Error("error accessing namespace of Kubernetes")
 		return err
 	}
 
 	if exists {
+		logger.Error("namespace already exists, aborting scheduler creation")
 		return fmt.Errorf(`namespace "%s" already exists`, namespace.Name)
 	}
 
@@ -74,11 +81,14 @@ func CreateScheduler(
 	})
 
 	if err != nil {
+		logger.WithError(err).Error("error creating namespace")
+
 		deleteErr := mr.WithSegment(models.SegmentNamespace, func() error {
 			return namespace.Delete(clientset)
 		})
 		if deleteErr != nil {
-			err = deleteErr
+			logger.WithError(err).Error("error deleting namespace")
+			return deleteErr
 		}
 		return err
 	}
@@ -89,22 +99,49 @@ func CreateScheduler(
 	})
 
 	if err != nil {
+		logger.WithError(err).Error("error creating scheduler on database")
 		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
 		if deleteErr != nil {
+			logger.WithError(err).Error("deleting scheduler after error")
 			err = deleteErr
 		}
 		return err
 	}
 
+	logger.Info("creating ports pool if necessary")
+	usesPortRange, _, err := checkPortRange(nil, configYAML, logger, db, redisClient)
+	if err != nil {
+		logger.WithError(err).Error("error checking port range, deleting scheduler")
+		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
+		if deleteErr != nil {
+			logger.WithError(err).Error("error deleting scheduler after check port range error")
+		}
+		return err
+	}
+
+	logger.Info("creating pods of new scheduler")
 	err = ScaleUp(logger, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true)
 	if err != nil {
+		logger.WithError(err).Error("error scaling up scheduler, deleting it")
 		if scheduler.LastScaleOpAt == int64(0) {
 			// this prevents error: null value in column \"last_scale_op_at\" violates not-null constraint
 			scheduler.LastScaleOpAt = int64(1)
 		}
 		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
 		if deleteErr != nil {
+			logger.WithError(err).Error("error deleting scheduler after scale up error")
 			return deleteErr
+		}
+
+		if usesPortRange {
+			logger.Info("deleting newly created ports pool due to scheduler creation error")
+			poolDeletionErr := deletePortPool(redisClient, scheduler.Name)
+			if poolDeletionErr != nil {
+				logger.WithError(poolDeletionErr).Errorf(
+					"error deleting newly created port pool, you can delete it by hand on redis: %s",
+					models.FreeSchedulerPortsRedisKey(scheduler.Name),
+				)
+			}
 		}
 
 		return err
@@ -119,7 +156,8 @@ func CreateScheduler(
 	if err != nil {
 		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
 		if deleteErr != nil {
-			err = deleteErr
+			logger.WithError(err).Error("error deleting scheduler after database update error")
+			return deleteErr
 		}
 		return err
 	}
@@ -248,7 +286,7 @@ func DeleteUnavailableRooms(
 	mr *models.MixedMetricsReporter,
 	redisClient redisinterfaces.RedisClient,
 	clientset kubernetes.Interface,
-	schedulerName, gameName string,
+	scheduler *models.Scheduler,
 	roomNames []string,
 	reason string,
 ) error {
@@ -257,9 +295,14 @@ func DeleteUnavailableRooms(
 		return nil
 	}
 
+	configYaml, err := models.NewConfigYAML(scheduler.YAML)
+	if err != nil {
+		return err
+	}
+
 	logger.Info("deleting unvavailable pods")
 	for _, roomName := range roomNames {
-		err := deletePod(logger, mr, clientset, redisClient, schedulerName, gameName, roomName, reason)
+		err := deletePod(logger, mr, clientset, redisClient, configYaml, roomName, reason)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteUnavailableRooms"}).WithError(err).Error("error deleting room")
 		} else {
@@ -267,7 +310,7 @@ func DeleteUnavailableRooms(
 				logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteUnavailableRooms"}).WithError(err).Error("pod was not found, deleting room from redis")
 			}
 
-			room := models.NewRoom(roomName, schedulerName)
+			room := models.NewRoom(roomName, scheduler.Name)
 			err = room.ClearAll(redisClient)
 			if err != nil {
 				logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
@@ -277,28 +320,6 @@ func DeleteUnavailableRooms(
 	logger.Info("successfully deleted unavailable pods")
 
 	return nil
-}
-
-func pendingPods(
-	clientset kubernetes.Interface,
-	namespace string,
-) (bool, error) {
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.Set{}.AsSelector().String(),
-		FieldSelector: fields.Everything().String(),
-	}
-	pods, err := clientset.CoreV1().Pods(namespace).List(listOptions)
-	if err != nil {
-		return false, maestroErrors.NewKubernetesError("error when listing pods", err)
-	}
-
-	for _, pod := range pods.Items {
-		if pod.Status.Phase == v1.PodPending {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 // ScaleUp scales up a scheduler using its config
@@ -370,7 +391,15 @@ func ScaleUp(
 }
 
 // ScaleDown scales down the number of rooms
-func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, redisClient redisinterfaces.RedisClient, clientset kubernetes.Interface, scheduler *models.Scheduler, amount, timeoutSec int) error {
+func ScaleDown(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	clientset kubernetes.Interface,
+	scheduler *models.Scheduler,
+	amount, timeoutSec int,
+) error {
 	l := logger.WithFields(logrus.Fields{
 		"source":    "scaleDown",
 		"scheduler": scheduler.Name,
@@ -412,8 +441,13 @@ func ScaleDown(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pg
 
 	var deletionErr error
 
+	configYaml, err := models.NewConfigYAML(scheduler.YAML)
+	if err != nil {
+		return err
+	}
+
 	for _, roomName := range idleRooms {
-		err := deletePod(logger, mr, clientset, redisClient, scheduler.Name, scheduler.Game, roomName, reportersConstants.ReasonScaleDown)
+		err := deletePod(logger, mr, clientset, redisClient, configYaml, roomName, reportersConstants.ReasonScaleDown)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
 			deletionErr = err
@@ -566,7 +600,12 @@ waitForLock:
 
 	currentVersion := scheduler.Version
 
-	if MustUpdatePods(&oldConfig, configYAML) {
+	changedPortRange, shouldDeleteOldPool, err := checkPortRange(&oldConfig, configYAML, l, db, redisClient.Client)
+	if err != nil {
+		return err
+	}
+
+	if changedPortRange || MustUpdatePods(&oldConfig, configYAML) {
 		scheduler.NextMajorVersion()
 		l.Info("pods must be recreated, starting process")
 
@@ -646,6 +685,14 @@ waitForLock:
 		l.Info("updated configYaml on database")
 	} else {
 		l.Info("config yaml is the same, skipping")
+	}
+
+	if shouldDeleteOldPool {
+		l.Infof("not using scheduler port range anymore, deleting old pool: %s", models.FreeSchedulerPortsRedisKey(configYAML.Name))
+		err = deletePortPool(redisClient.Client, configYAML.Name)
+		if err != nil {
+			l.WithError(err).Errorf("error deleting old pool of '%s', must delete it by hand on redis if you are ABSOLUTELY CERTAIN that this port pool is not being used anymore. If you are not COMPLETELY SURE that the pool is not being used, leave it there.", configYAML.Name)
+		}
 	}
 
 	return nil
@@ -747,6 +794,11 @@ func deleteSchedulerHelper(
 		return err
 	}
 
+	if configYAML.PortRange.IsSet() {
+		err = deletePortPool(redisClient, configYAML.Name)
+		logger.WithError(err).Error("failed to delete old ports pool")
+	}
+
 	return nil
 }
 
@@ -782,20 +834,7 @@ func createPod(
 	var pod *models.Pod
 	if configYAML.Version() == "v1" {
 		env := append(configYAML.Env, namesEnvVars...)
-		pod, err = models.NewPod(
-			configYAML.Game,
-			configYAML.Image,
-			name,
-			configYAML.Name,
-			configYAML.Limits,
-			configYAML.Requests, // TODO: requests should be <= limits calculate it
-			configYAML.ShutdownTimeout,
-			configYAML.Ports,
-			configYAML.Cmd,
-			env,
-			clientset,
-			redisClient,
-		)
+		pod, err = models.NewPod(name, env, configYAML, clientset, redisClient)
 	} else if configYAML.Version() == "v2" {
 		containers := make([]*models.Container, len(configYAML.Containers))
 		for i, container := range configYAML.Containers {
@@ -803,15 +842,7 @@ func createPod(
 			containers[i].Env = append(containers[i].Env, namesEnvVars...)
 		}
 
-		pod, err = models.NewPodWithContainers(
-			configYAML.Game,
-			name,
-			configYAML.Name,
-			configYAML.ShutdownTimeout,
-			containers,
-			clientset,
-			redisClient,
-		)
+		pod, err = models.NewPodWithContainers(name, containers, configYAML, clientset, redisClient)
 	}
 	if err != nil {
 		return nil, err
@@ -848,11 +879,16 @@ func deletePod(
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
-	schedulerName, gameName, name, reason string,
+	configYaml *models.ConfigYAML,
+	name, reason string,
 ) error {
-	pod, err := models.NewPod(gameName, "", name, schedulerName, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{}, clientset, redisClient)
-	err = mr.WithSegment(models.SegmentPod, func() error {
-		return pod.Delete(clientset, redisClient, reason)
+	pod := &models.Pod{
+		Name:      name,
+		Game:      configYaml.Game,
+		Namespace: configYaml.Name,
+	}
+	err := mr.WithSegment(models.SegmentPod, func() error {
+		return pod.Delete(clientset, redisClient, reason, configYaml)
 	})
 	if err != nil {
 		return err
@@ -966,65 +1002,6 @@ func MustUpdatePods(old, new *models.ConfigYAML) bool {
 	}
 
 	return false
-}
-
-func waitForPods(
-	timeout time.Duration,
-	clientset kubernetes.Interface,
-	namespace string,
-	pods []*v1.Pod,
-	l logrus.FieldLogger,
-	mr *models.MixedMetricsReporter,
-) error {
-	timeoutTimer := time.NewTimer(timeout)
-	defer timeoutTimer.Stop()
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		exit := true
-		select {
-		case <-timeoutTimer.C:
-			return errors.New("timeout waiting for rooms to be created")
-		case <-ticker.C:
-			for i := range pods {
-				if pods[i] != nil {
-					pod, err := clientset.CoreV1().Pods(namespace).Get(pods[i].GetName(), metav1.GetOptions{})
-					if err != nil {
-						//The pod does not exist (not even on Pending or ContainerCreating state), so create again
-						exit = false
-						l.WithError(err).Infof("error creating pod %s, recreating...", pods[i].GetName())
-						pods[i].ResourceVersion = ""
-						_, err = clientset.CoreV1().Pods(namespace).Create(pods[i])
-						if err != nil {
-							l.WithError(err).Errorf("error recreating pod %s", pods[i].GetName())
-						}
-					} else {
-						if len(pod.Status.Phase) == 0 {
-							break // TODO: HACK!!!  Trying to detect if we are running unit tests
-						}
-						if pod.Status.Phase != v1.PodRunning {
-							exit = false
-							break
-						}
-						for _, containerStatus := range pod.Status.ContainerStatuses {
-							if !containerStatus.Ready {
-								exit = false
-								break
-							}
-						}
-					}
-				}
-			}
-			l.Debug("scaling scheduler...")
-		}
-		if exit {
-			l.Info("finished scaling scheduler")
-			break
-		}
-	}
-
-	return nil
 }
 
 // UpdateSchedulerImage is a UpdateSchedulerConfig sugar that updates only the image

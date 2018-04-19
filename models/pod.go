@@ -9,6 +9,7 @@ package models
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"text/template"
 
@@ -122,87 +123,72 @@ type Pod struct {
 
 // NewPod is the pod constructor
 func NewPod(
-	game, image, name, namespace string,
-	limits, requests *Resources,
-	shutdownTimeout int,
-	ports []*Port,
-	command []string,
-	env []*EnvVar,
+	name string,
+	envs []*EnvVar,
+	configYaml *ConfigYAML,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
 ) (*Pod, error) {
 	pod := &Pod{
-		Game:            game,
 		Name:            name,
-		Namespace:       namespace,
-		ShutdownTimeout: shutdownTimeout,
+		Game:            configYaml.Game,
+		Namespace:       configYaml.Name,
+		ShutdownTimeout: configYaml.ShutdownTimeout,
 	}
 
 	container := &Container{
-		Image:   image,
+		Image:   configYaml.Image,
 		Name:    name,
-		Env:     env,
-		Ports:   ports,
-		Command: command,
+		Env:     envs,
+		Ports:   configYaml.Ports,
+		Command: configYaml.Cmd,
 	}
 
-	if limits != nil {
+	if configYaml.Limits != nil {
 		container.Limits = &Resources{
-			CPU:    limits.CPU,
-			Memory: limits.Memory,
+			CPU:    configYaml.Limits.CPU,
+			Memory: configYaml.Limits.Memory,
 		}
 	}
-	if requests != nil {
+	if configYaml.Requests != nil {
 		container.Requests = &Resources{
-			CPU:    requests.CPU,
-			Memory: requests.Memory,
+			CPU:    configYaml.Requests.CPU,
+			Memory: configYaml.Requests.Memory,
 		}
 	}
 	pod.Containers = []*Container{container}
-	err := pod.configureHostPorts(clientset, redisClient)
+	err := pod.configureHostPorts(configYaml, clientset, redisClient)
 
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruNew, map[string]string{
-			reportersConstants.TagGame:      game,
-			reportersConstants.TagScheduler: namespace,
+			reportersConstants.TagGame:      configYaml.Game,
+			reportersConstants.TagScheduler: configYaml.Name,
 		})
 	}
 
 	return pod, err
 }
 
-// NewDefaultPod creates a pod only with necessary information
-// Should not be used to create a real pod
-func NewDefaultPod(
-	game, name, namespace string,
-	clientset kubernetes.Interface,
-	redisClient redisinterfaces.RedisClient,
-) (*Pod, error) {
-	return NewPod(
-		game, "", name, namespace,
-		nil, nil, 0, []*Port{}, []string{}, []*EnvVar{}, clientset, redisClient)
-}
-
 // NewPodWithContainers returns a pod with multiple containers
 func NewPodWithContainers(
-	game, name, namespace string,
-	shutdownTimeout int,
+	name string,
 	containers []*Container,
+	configYaml *ConfigYAML,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
 ) (*Pod, error) {
 	pod := &Pod{
-		Game:            game,
+		Game:            configYaml.Game,
 		Name:            name,
-		Namespace:       namespace,
-		ShutdownTimeout: shutdownTimeout,
+		Namespace:       configYaml.Name,
+		ShutdownTimeout: configYaml.ShutdownTimeout,
 		Containers:      containers,
 	}
-	err := pod.configureHostPorts(clientset, redisClient)
+	err := pod.configureHostPorts(configYaml, clientset, redisClient)
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruNew, map[string]string{
-			reportersConstants.TagGame:      game,
-			reportersConstants.TagScheduler: namespace,
+			reportersConstants.TagGame:      configYaml.Game,
+			reportersConstants.TagScheduler: configYaml.Name,
 		})
 	}
 
@@ -258,10 +244,12 @@ func (p *Pod) Create(clientset kubernetes.Interface) (*v1.Pod, error) {
 	return pod, nil
 }
 
-// Delete deletes a pod from kubernetes
+// Delete deletes a pod from kubernetes.
 func (p *Pod) Delete(clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
-	reason string) error {
+	reason string,
+	configYaml *ConfigYAML,
+) error {
 	kubePod, err := clientset.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
 	if err != nil {
 		return errors.NewKubernetesError("error getting pod to delete", err)
@@ -273,7 +261,7 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 	}
 
 	for _, container := range kubePod.Spec.Containers {
-		RetrieveV1Ports(redisClient, container.Ports)
+		RetrieveV1Ports(redisClient, container.Ports, configYaml)
 	}
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
@@ -298,7 +286,11 @@ func getContainerWithName(name string, pod *v1.Pod) v1.Container {
 	return container
 }
 
-func (p *Pod) configureHostPorts(clientset kubernetes.Interface, redisClient redisinterfaces.RedisClient) error {
+func (p *Pod) configureHostPorts(
+	configYaml *ConfigYAML,
+	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+) error {
 	pod, err := clientset.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		return errors.NewKubernetesError("could not access kubernetes", err)
@@ -323,9 +315,9 @@ func (p *Pod) configureHostPorts(clientset kubernetes.Interface, redisClient red
 
 	//pod not found, so give new ports
 	for _, container := range p.Containers {
-		ports, err := GetFreePorts(redisClient, len(container.Ports))
+		ports, err := GetFreePorts(redisClient, len(container.Ports), configYaml.PortsPoolRedisKey())
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting ports from redis, check if there is enough ports: %s", err.Error())
 		}
 		containerPorts := make([]*Port, len(ports))
 		for i, port := range ports {

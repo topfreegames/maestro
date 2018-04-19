@@ -58,5 +58,5 @@ var _ = BeforeSuite(func() {
 	kubeConfig, err := mtesting.MinikubeConfig()
 	clientset, err = kubernetes.NewForConfig(kubeConfig)
 
-	models.InitAvailablePorts(redisClient.Client, 40000, 60000)
+	models.InitAvailablePorts(redisClient.Client, models.FreePortsRedisKey(), 40000, 60000)
 })

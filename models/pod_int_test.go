@@ -32,6 +32,7 @@ var _ = Describe("Pod", func() {
 		requests        *models.Resources
 		limits          *models.Resources
 		shutdownTimeout int
+		configYaml      *models.ConfigYAML
 	)
 
 	BeforeEach(func() {
@@ -71,6 +72,16 @@ var _ = Describe("Pod", func() {
 			Memory: "64487424",
 		}
 		shutdownTimeout = 180
+		configYaml = &models.ConfigYAML{
+			Name:            namespace,
+			Game:            game,
+			Image:           image,
+			Ports:           ports,
+			Limits:          limits,
+			Requests:        requests,
+			Cmd:             command,
+			ShutdownTimeout: shutdownTimeout,
+		}
 	})
 
 	AfterEach(func() {
@@ -84,20 +95,7 @@ var _ = Describe("Pod", func() {
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				clientset,
-				redisClient.Client,
-			)
+			pod, err := models.NewPod(name, env, configYaml, clientset, redisClient.Client)
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
 			pod.SetVersion("v1.0")

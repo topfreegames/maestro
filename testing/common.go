@@ -15,6 +15,7 @@ import (
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
+	"gopkg.in/pg.v5/types"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -155,12 +156,12 @@ func MockDeleteOldVersions(
 	return calls
 }
 
-// MockRemoveRoomsFromRedis mocks the room creation from pod
-func MockRemoveRoomsFromRedis(
+func mockRemoveRoomsFromRedis(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 	pods *v1.PodList,
 	configYaml *models.ConfigYAML,
+	removeFromPortPool bool,
 ) (calls *Calls) {
 	calls = NewCalls()
 
@@ -176,18 +177,21 @@ func MockRemoveRoomsFromRedis(
 		// Retrieve ports to pool
 		for _, c := range pod.Spec.Containers {
 			if len(c.Ports) > 0 {
-				calls.Add(
-					mockRedisClient.EXPECT().
-						TxPipeline().
-						Return(mockPipeline))
-				for range c.Ports {
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
+				if removeFromPortPool {
+					calls.Add(
+						mockRedisClient.EXPECT().
+							TxPipeline().
+							Return(mockPipeline))
+					for range c.Ports {
+						calls.Add(
+							mockPipeline.EXPECT().
+								SAdd(models.FreePortsRedisKey(), gomock.Any()))
+					}
 					calls.Add(
 						mockPipeline.EXPECT().
-							SAdd(models.FreePortsRedisKey(), gomock.Any()))
+							Exec())
 				}
-				calls.Add(
-					mockPipeline.EXPECT().
-						Exec())
 			}
 		}
 		room := models.NewRoom(pod.GetName(), pod.GetNamespace())
@@ -217,11 +221,33 @@ func MockRemoveRoomsFromRedis(
 	return calls
 }
 
-// MockCreateRooms mocks the creation of rooms on redis
-func MockCreateRooms(
+// MockRemoveRoomStatusFromRedis removes room only from redis
+func MockRemoveRoomStatusFromRedis(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	pods *v1.PodList,
+	configYaml *models.ConfigYAML,
+) (calls *Calls) {
+	return mockRemoveRoomsFromRedis(mockRedisClient, mockPipeline,
+		pods, configYaml, false)
+}
+
+// MockRemoveRoomsFromRedis mocks the room creation from pod
+func MockRemoveRoomsFromRedis(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	pods *v1.PodList,
+	configYaml *models.ConfigYAML,
+) (calls *Calls) {
+	return mockRemoveRoomsFromRedis(mockRedisClient, mockPipeline,
+		pods, configYaml, true)
+}
+
+func mockCreateRooms(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 	configYaml *models.ConfigYAML,
+	portsPoolKey string,
 ) (calls *Calls) {
 	calls = NewCalls()
 
@@ -262,7 +288,7 @@ func MockCreateRooms(
 			for range configYaml.Ports {
 				calls.Add(
 					mockPipeline.EXPECT().
-						SPop(models.FreePortsRedisKey()).
+						SPop(portsPoolKey).
 						Return(goredis.NewStringResult("5000", nil)))
 			}
 
@@ -280,7 +306,7 @@ func MockCreateRooms(
 					for range c.Ports {
 						calls.Add(
 							mockPipeline.EXPECT().
-								SPop(models.FreePortsRedisKey()).
+								SPop(portsPoolKey).
 								Return(goredis.NewStringResult("5000", nil)))
 					}
 
@@ -293,6 +319,27 @@ func MockCreateRooms(
 	}
 
 	return calls
+}
+
+// MockCreateRooms mocks the creation of rooms on redis
+func MockCreateRooms(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	configYaml *models.ConfigYAML,
+) (calls *Calls) {
+	return mockCreateRooms(mockRedisClient, mockPipeline,
+		configYaml, models.FreePortsRedisKey())
+}
+
+// MockCreateRoomsWithPorts mocks the creation of rooms on redis when
+// scheduler has port range
+func MockCreateRoomsWithPorts(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	configYaml *models.ConfigYAML,
+) (calls *Calls) {
+	return mockCreateRooms(mockRedisClient, mockPipeline,
+		configYaml, models.FreeSchedulerPortsRedisKey(configYaml.Name))
 }
 
 // MockCreateScheduler mocks the creation of a scheduler
@@ -372,7 +419,7 @@ func MockGetPortsFromPool(
 				Times(configYaml.AutoScaling.Min))
 		calls.Add(
 			mockPipeline.EXPECT().
-				SPop(models.FreePortsRedisKey()).
+				SPop(configYaml.PortsPoolRedisKey()).
 				Return(goredis.NewStringResult("5000", nil)).
 				Times(configYaml.AutoScaling.Min * len(configYaml.Ports)))
 		calls.Add(
@@ -389,7 +436,7 @@ func MockGetPortsFromPool(
 						Times(configYaml.AutoScaling.Min))
 				calls.Add(
 					mockPipeline.EXPECT().
-						SPop(models.FreePortsRedisKey()).
+						SPop(configYaml.PortsPoolRedisKey()).
 						Return(goredis.NewStringResult("5000", nil)).
 						Times(configYaml.AutoScaling.Min * len(c.Ports)))
 				calls.Add(
@@ -679,4 +726,91 @@ func MockAnySetDescription(
 			Return(goredis.NewStatusResult("", err)))
 
 	return calls
+}
+
+// MockDeletePortPool mocks the delete port pool commands
+func MockDeletePortPool(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	schedulerName string,
+	err error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(mockRedisClient.EXPECT().
+		TxPipeline().
+		Return(mockPipeline))
+
+	calls.Add(mockPipeline.EXPECT().
+		Del(models.FreeSchedulerPortsRedisKey(schedulerName)))
+
+	calls.Add(mockPipeline.EXPECT().
+		Exec().
+		Return(nil, err))
+
+	return
+}
+
+// MockSelectSchedulerNames mocks the ListSchedulersNames function
+func MockSelectSchedulerNames(
+	mockDb *pgmocks.MockDB,
+	schedulerNames []string,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), "SELECT name FROM schedulers").
+			Do(func(schedulers *[]models.Scheduler, _ string) {
+				*schedulers = make([]models.Scheduler, len(schedulerNames))
+				for idx, name := range schedulerNames {
+					(*schedulers)[idx] = models.Scheduler{Name: name}
+				}
+			}).
+			Return(pg.NewTestResult(nil, 1), errDB))
+
+	return
+}
+
+// MockSelectConfigYamls mocks the LoadSchedulers function
+func MockSelectConfigYamls(
+	mockDb *pgmocks.MockDB,
+	schedulersToReturn []models.Scheduler,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), "SELECT * FROM schedulers WHERE name IN (?)", gomock.Any()).
+			Do(func(schedulers *[]models.Scheduler, _ string, _ types.ValueAppender) {
+				*schedulers = schedulersToReturn
+			}).
+			Return(pg.NewTestResult(nil, 1), errDB))
+
+	return
+}
+
+// MockPopulatePortPool mocks the InitAvailablePorts function
+func MockPopulatePortPool(
+	mockRedisClient *redismocks.MockRedisClient,
+	freePortsKey string,
+	begin, end int,
+	err error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(mockRedisClient.EXPECT().
+		Eval(`
+if redis.call("EXISTS", KEYS[1]) == 0 then
+  for i=ARGV[1],ARGV[2] do
+    redis.call("SADD", KEYS[1], i)
+  end
+end
+return "OK"
+`, []string{freePortsKey}, begin, end).
+		Return(goredis.NewCmdResult(nil, err)))
+
+	return
 }

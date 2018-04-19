@@ -32,6 +32,7 @@ var _ = Describe("Pod", func() {
 		requests        *models.Resources
 		limits          *models.Resources
 		shutdownTimeout int
+		configYaml      *models.ConfigYAML
 	)
 
 	createPod := func() (*models.Pod, error) {
@@ -40,20 +41,7 @@ var _ = Describe("Pod", func() {
 			reportersConstants.TagScheduler: "pong-free-for-all",
 		})
 
-		pod, err := models.NewPod(
-			game,
-			image,
-			name,
-			namespace,
-			limits,
-			requests,
-			shutdownTimeout,
-			ports,
-			command,
-			env,
-			mockClientset,
-			mockRedisClient,
-		)
+		pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient)
 		Expect(err).NotTo(HaveOccurred())
 
 		return pod, err
@@ -100,6 +88,17 @@ var _ = Describe("Pod", func() {
 			Memory: "64487424",
 		}
 		shutdownTimeout = 180
+
+		configYaml = &models.ConfigYAML{
+			Name:            namespace,
+			Game:            game,
+			Image:           image,
+			Limits:          limits,
+			Requests:        requests,
+			ShutdownTimeout: shutdownTimeout,
+			Ports:           ports,
+			Cmd:             command,
+		}
 	})
 
 	Describe("NewPod", func() {
@@ -135,6 +134,7 @@ var _ = Describe("Pod", func() {
 			})
 
 			It("should report gru.delete on pod.Delete()", func() {
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5000)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
@@ -150,7 +150,7 @@ var _ = Describe("Pod", func() {
 					reportersConstants.TagScheduler: "pong-free-for-all",
 					reportersConstants.TagReason:    "deletion_reason",
 				})
-				err = pod.Delete(mockClientset, mockRedisClient, "deletion_reason")
+				err = pod.Delete(mockClientset, mockRedisClient, "deletion_reason", configYaml)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -175,8 +175,7 @@ var _ = Describe("Pod", func() {
 			})
 
 			pod, err := models.NewPodWithContainers(
-				game, name, namespace,
-				shutdownTimeout,
+				name,
 				[]*models.Container{
 					{
 						Name:     "container1",
@@ -197,7 +196,7 @@ var _ = Describe("Pod", func() {
 						Command:  command,
 					},
 				},
-				mockClientset, mockRedisClient,
+				configYaml, mockClientset, mockRedisClient,
 			)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -279,8 +278,7 @@ var _ = Describe("Pod", func() {
 			})
 
 			firstPod, err := models.NewPodWithContainers(
-				game, name, namespace,
-				shutdownTimeout,
+				name,
 				[]*models.Container{
 					{
 						Name:     "container1",
@@ -301,7 +299,7 @@ var _ = Describe("Pod", func() {
 						Command:  command,
 					},
 				},
-				mockClientset, mockRedisClient,
+				configYaml, mockClientset, mockRedisClient,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			firstPod.SetToleration(game)
@@ -309,8 +307,7 @@ var _ = Describe("Pod", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			pod, err := models.NewPodWithContainers(
-				game, name, namespace,
-				shutdownTimeout,
+				name,
 				[]*models.Container{
 					{
 						Name:     "container1",
@@ -331,7 +328,7 @@ var _ = Describe("Pod", func() {
 						Command:  command,
 					},
 				},
-				mockClientset, mockRedisClient,
+				configYaml, mockClientset, mockRedisClient,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
@@ -456,20 +453,19 @@ var _ = Describe("Pod", func() {
 				reportersConstants.TagGame:      "pong",
 				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				nil,
-				nil,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+
+			configYaml = &models.ConfigYAML{
+				Name:            namespace,
+				Game:            game,
+				Image:           image,
+				Limits:          nil,
+				Requests:        nil,
+				ShutdownTimeout: shutdownTimeout,
+				Ports:           ports,
+				Cmd:             command,
+			}
+
+			pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
 			podv1, err := pod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -573,6 +569,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should delete a pod from kubernetes", func() {
+			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5000)
 			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
@@ -588,14 +585,14 @@ var _ = Describe("Pod", func() {
 				reportersConstants.TagScheduler: "pong-free-for-all",
 				reportersConstants.TagReason:    "deletion_reason",
 			})
-			err = pod.Delete(mockClientset, mockRedisClient, "deletion_reason")
+			err = pod.Delete(mockClientset, mockRedisClient, "deletion_reason", configYaml)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return error when deleting non existent pod", func() {
 			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
-			err = pod.Delete(mockClientset, mockRedisClient, "deletion_reason")
+			err = pod.Delete(mockClientset, mockRedisClient, "deletion_reason", configYaml)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("Pod \"pong-free-for-all-0\" not found"))
 		})

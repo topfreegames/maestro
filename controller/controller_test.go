@@ -296,6 +296,168 @@ cmd:
 			}
 		})
 
+		Context("scheduler with port range", func() {
+			It("should create scheduler with port range", func() {
+				yaml1 := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+portRange:
+  start: 10000
+  end: 10010
+`
+				var configYaml1 models.ConfigYAML
+				err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+					func(schedulerName string, statusInfo map[string]interface{}) {
+						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+					},
+				).Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
+
+				mt.MockInsertScheduler(mockDb, nil)
+				mt.MockUpdateSchedulerStatus(mockDb, nil, nil)
+
+				mockDb.EXPECT().Query(gomock.Any(), `SELECT name FROM schedulers`)
+				mockDb.EXPECT().Query(gomock.Any(), `SELECT * FROM schedulers WHERE name IN (?)`, gomock.Any())
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("40000-60000", nil))
+				mt.MockDeletePortPool(mockRedisClient, mockPipeline, configYaml1.Name, nil)
+
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), gomock.Any(), 10000, 10010).
+					Return(goredis.NewCmdResult(nil, nil))
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).
+					Times(configYaml1.AutoScaling.Min)
+				mockPipeline.EXPECT().SPop(models.FreeSchedulerPortsRedisKey(configYaml1.Name)).
+					Return(goredis.NewStringResult("5000", nil)).
+					Times(configYaml1.AutoScaling.Min * len(configYaml1.Ports))
+				mockPipeline.EXPECT().Exec().
+					Times(configYaml1.AutoScaling.Min)
+
+				err = controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+				Expect(err).NotTo(HaveOccurred())
+
+				ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ns.Items).To(HaveLen(1))
+				Expect(ns.Items[0].GetName()).To(Equal("controller-name"))
+
+				pods, err := clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(3))
+				for _, pod := range pods.Items {
+					Expect(pod.GetName()).To(ContainSubstring("controller-name-"))
+					Expect(pod.GetName()).To(HaveLen(len("controller-name-") + 8))
+					Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
+					Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
+					Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
+					Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
+				}
+			})
+
+			It("should return error if port range is the same as worker", func() {
+				yamlStr := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+portRange:
+  start: 40000
+  end: 40010
+`
+				var configYaml1 models.ConfigYAML
+				err := yaml.Unmarshal([]byte(yamlStr), &configYaml1)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockDb.EXPECT().Query(gomock.Any(), `SELECT name FROM schedulers`)
+				mockDb.EXPECT().Query(gomock.Any(), `SELECT * FROM schedulers WHERE name IN (?)`, gomock.Any())
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("40000-60000", nil))
+				mt.MockDeletePortPool(mockRedisClient, mockPipeline, configYaml1.Name, nil)
+
+				mt.MockInsertScheduler(mockDb, nil)
+
+				mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
+
+				err = controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("scheduler trying to use ports used by pool 'global'"))
+
+				ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ns.Items).To(HaveLen(0))
+
+				pods, err := clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(0))
+			})
+		})
+
 		It("should return error if namespace already exists", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
@@ -713,14 +875,15 @@ cmd:
 
 	Describe("DeleteUnavailableRooms", func() {
 		It("should delete GRUs", func() {
-			scheduler := "pong-free-for-all"
+			scheduler := &models.Scheduler{Name: "scheduler-name", YAML: `name: scheduler-name`}
+			configYaml, _ := models.NewConfigYAML(scheduler.YAML)
 
 			expectedRooms := []string{"room1", "room2", "room3"}
-			namespace := models.NewNamespace(scheduler)
+			namespace := models.NewNamespace(scheduler.Name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod("", "", roomName, scheduler, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{}, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -737,29 +900,30 @@ cmd:
 			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler), gomock.Any()).Times(len(expectedRooms))
+			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().Del(gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().Exec().Times(len(expectedRooms))
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, "", expectedRooms, "deletion_reason")
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should call redis successfully and exit if no rooms should be deleted", func() {
-			scheduler := "pong-free-for-all"
+		It("should exit if no rooms should be deleted", func() {
+			scheduler := &models.Scheduler{Name: "scheduler-name", YAML: `name: scheduler-name`}
 
-			err := controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, "", []string{}, "deletion_reason")
+			err := controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, []string{}, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should not return an error if failed to delete pod", func() {
-			scheduler := "pong-free-for-all"
+			scheduler := &models.Scheduler{Name: "scheduler-name", YAML: `name: scheduler-name`}
+			configYaml, _ := models.NewConfigYAML(scheduler.YAML)
 
 			expectedRooms := []string{"room1", "room2", "room3"}
-			namespace := models.NewNamespace(scheduler)
+			namespace := models.NewNamespace(scheduler.Name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod("", "", roomName, scheduler, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{}, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -767,57 +931,58 @@ cmd:
 
 			for _, name := range expectedRooms {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				room := models.NewRoom(name, scheduler)
+				room := models.NewRoom(name, scheduler.Name)
 				for _, status := range allStatus {
 					mockPipeline.EXPECT().
 						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
 					mockPipeline.EXPECT().
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler), room.ID)
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
 			}
 
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, "", expectedRooms, "deletion_reason")
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should not return an error if failed to delete pod", func() {
-			scheduler := "pong-free-for-all"
+			scheduler := &models.Scheduler{Name: "scheduler-name", YAML: `name: scheduler-name`}
 
 			expectedRooms := []string{"room1", "room2", "room3"}
-			namespace := models.NewNamespace(scheduler)
+			namespace := models.NewNamespace(scheduler.Name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			for _, name := range expectedRooms {
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				room := models.NewRoom(name, scheduler)
+				room := models.NewRoom(name, scheduler.Name)
 				for _, status := range allStatus {
 					mockPipeline.EXPECT().
 						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
 					mockPipeline.EXPECT().
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler), room.ID)
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
 			}
 
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, "", expectedRooms, "deletion_reason")
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should not return an error if redis returns an error when deleting old rooms", func() {
-			scheduler := "pong-free-for-all"
+			scheduler := &models.Scheduler{Name: "scheduler-name", YAML: `name: scheduler-name`}
+			configYaml, _ := models.NewConfigYAML(scheduler.YAML)
 
 			expectedRooms := []string{"room1", "room2", "room3"}
-			namespace := models.NewNamespace(scheduler)
+			namespace := models.NewNamespace(scheduler.Name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod("", "", roomName, scheduler, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{}, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -834,10 +999,10 @@ cmd:
 			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler), gomock.Any()).Times(len(expectedRooms))
+			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().Del(gomock.Any()).Times(len(expectedRooms))
 			mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis error")).Times(len(expectedRooms))
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, "", expectedRooms, "deletion_reason")
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -1019,6 +1184,65 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(amount))
 		})
+
+		It("should scale up using correct port when scheduler with port range", func() {
+			yamlStr := `
+name: controller-name
+game: controller
+autoscaling:
+  min: 4
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+containers:
+- name: container1
+  image: controller/controller:v123
+  ports:
+    - containerPort: 1234
+      protocol: UDP
+      name: port1
+portRange:
+  start: 10000
+  end: 10010
+`
+			amount := 5
+			var configYaml models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml2), &configYaml)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(amount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(amount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(amount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(amount)
+			mockPipeline.EXPECT().Exec().Times(amount)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
+			mockPipeline.EXPECT().
+				SPop(models.FreeSchedulerPortsRedisKey(configYaml.Name)).Return(goredis.NewStringResult("10000", nil)).Times(amount)
+			mockPipeline.EXPECT().Exec().Times(amount)
+
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true)
+			Expect(err).NotTo(HaveOccurred())
+
+			pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(amount))
+		})
 	})
 
 	Describe("ScaleDown", func() {
@@ -1073,9 +1297,195 @@ cmd:
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
 
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
+
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(len(configYaml1.Ports))
 				mockPipeline.EXPECT().Exec()
+			}
+
+			timeoutSec = 300
+			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
+			Expect(err).NotTo(HaveOccurred())
+			pods, err := clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{
+				FieldSelector: fields.Everything().String(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(scaleUpAmount - scaleDownAmount))
+		})
+
+		It("should scale down and return the ports to correct pool", func() {
+			yamlStr := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+portRange:
+  start: 10000
+  end: 10010
+`
+			var configYaml models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yamlStr), &configYaml)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
+
+			// ScaleUp
+			scaleUpAmount := 5
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(scaleUpAmount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SPop(models.FreeSchedulerPortsRedisKey(configYaml.Name)).Return(goredis.NewStringResult("10000", nil)).Times(scaleUpAmount * len(configYaml.Ports))
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+
+			// ScaleDown
+			scaleDownAmount := 2
+			names, err := controller.GetPodNames(scaleDownAmount, scheduler.Name, clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			readyKey := models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for _, name := range names {
+				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
+
+			}
+			mockPipeline.EXPECT().Exec()
+
+			for _, name := range names {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				room := models.NewRoom(name, scheduler.Name)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().
+						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+					mockPipeline.EXPECT().
+						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SAdd(models.FreeSchedulerPortsRedisKey(configYaml.Name), gomock.Any()).Times(len(configYaml.Ports))
+				mockPipeline.EXPECT().Exec()
+			}
+
+			timeoutSec = 300
+			err = controller.ScaleDown(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleDownAmount, timeoutSec)
+			Expect(err).NotTo(HaveOccurred())
+			pods, err := clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{
+				FieldSelector: fields.Everything().String(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(scaleUpAmount - scaleDownAmount))
+		})
+
+		It("should scale down and not return the ports to incorrect pool", func() {
+			yamlStr := `
+name: controller-name
+game: controller
+image: controller/controller:v123
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+portRange:
+  start: 10000
+  end: 10010
+`
+			var configYaml models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yamlStr), &configYaml)
+			Expect(err).NotTo(HaveOccurred())
+			scheduler := models.NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
+
+			// ScaleUp
+			scaleUpAmount := 5
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(scaleUpAmount)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
+			mockPipeline.EXPECT().SPop(models.FreeSchedulerPortsRedisKey(configYaml.Name)).Return(goredis.NewStringResult("40000", nil)).Times(scaleUpAmount * len(configYaml.Ports))
+			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+
+			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+
+			// ScaleDown
+			scaleDownAmount := 2
+			names, err := controller.GetPodNames(scaleDownAmount, scheduler.Name, clientset)
+			Expect(err).NotTo(HaveOccurred())
+
+			readyKey := models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for _, name := range names {
+				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
+
+			}
+			mockPipeline.EXPECT().Exec()
+
+			for _, name := range names {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				room := models.NewRoom(name, scheduler.Name)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().
+						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
+					mockPipeline.EXPECT().
+						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
 			}
 
 			timeoutSec = 300
@@ -1135,6 +1545,8 @@ cmd:
 			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), gomock.Any())
 			mockPipeline.EXPECT().Del(gomock.Any())
 			mockPipeline.EXPECT().Exec().Return([]goredis.Cmder{}, errors.New("some error in redis"))
+
+			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(len(configYaml1.Ports))
@@ -1319,6 +1731,8 @@ cmd:
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
+
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(len(configYaml1.Ports))
@@ -2809,6 +3223,473 @@ cmd:
 			}
 		})
 
+		Context("Port Range", func() {
+			It("should recreate rooms with new ports if added port range", func() {
+				yaml2 = `
+name: controller-name
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+requests:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+portRange:
+  start: 20000
+  end: 20010
+`
+				var configYaml2 models.ConfigYAML
+				yaml.Unmarshal([]byte(yaml2), &configYaml2)
+
+				pods, err := clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(3))
+
+				for _, pod := range pods.Items {
+					Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
+					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
+				}
+
+				// Select current scheduler yaml
+				mt.MockSelectScheduler(yaml1, mockDb, nil)
+
+				// Get redis lock
+				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Set new operation manager description
+				mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+
+				// check other scheduler ports
+				mt.MockSelectSchedulerNames(mockDb, []string{}, nil)
+				mt.MockSelectConfigYamls(mockDb, []models.Scheduler{}, nil)
+				mt.MockDeletePortPool(mockRedisClient, mockPipeline, configYaml2.Name, nil)
+				mt.MockPopulatePortPool(mockRedisClient,
+					models.FreeSchedulerPortsRedisKey(configYaml2.Name), 20000, 20010, nil)
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
+					Return(goredis.NewStringResult("5000-6000", nil))
+
+				// Remove old rooms
+				mt.MockRemoveRoomStatusFromRedis(mockRedisClient, mockPipeline, pods, &configYaml2)
+
+				// Create new rooms
+				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
+				mt.MockCreateRoomsWithPorts(mockRedisClient, mockPipeline, &configYaml2)
+
+				// Update new config on schedulers table
+				mt.MockUpdateSchedulersTable(mockDb, nil)
+
+				// Add new version into versions table
+				scheduler1.NextMajorVersion()
+				mt.MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+
+				// Count to delete old versions if necessary
+				mt.MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
+
+				// Retrieve redis lock
+				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				err = controller.UpdateSchedulerConfig(logger, mr, mockDb, redisClient, clientset, &configYaml2,
+					maxSurge, &clock.Clock{}, nil, config, opManager)
+				Expect(err).NotTo(HaveOccurred())
+
+				ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ns.Items).To(HaveLen(1))
+				Expect(ns.Items[0].GetName()).To(Equal(configYaml2.Name))
+
+				pods, err = clientset.CoreV1().Pods(configYaml2.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				for _, pod := range pods.Items {
+					Expect(pod.GetName()).To(ContainSubstring("controller-name-"))
+					Expect(pod.GetName()).To(HaveLen(len("controller-name-") + 8))
+					Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MY_ENV_VAR"))
+					Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("myvalue"))
+					Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
+					Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name"))
+					Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
+					Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
+					Expect(pod.Spec.Containers[0].Env).To(HaveLen(3))
+					Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
+					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v2.0"))
+				}
+			})
+
+			It("should recreate rooms with new ports if remove port range", func() {
+				yaml1 := `
+name: controller-name-ports
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+requests:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+portRange:
+  start: 20000
+  end: 20010
+`
+				var configYaml1 models.ConfigYAML
+				yaml.Unmarshal([]byte(yaml1), &configYaml1)
+
+				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+
+				mt.MockSelectSchedulerNames(mockDb, []string{}, nil)
+				mt.MockSelectConfigYamls(mockDb, []models.Scheduler{}, nil)
+				mt.MockDeletePortPool(mockRedisClient, mockPipeline, configYaml1.Name, nil)
+				mt.MockPopulatePortPool(mockRedisClient,
+					models.FreeSchedulerPortsRedisKey(configYaml1.Name), 20000, 20010, nil)
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
+					Return(goredis.NewStringResult("5000-6000", nil))
+
+				mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
+					logger, mr, yaml1, timeoutSec)
+
+				yaml2 = `
+name: controller-name-ports
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+requests:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+`
+				var configYaml2 models.ConfigYAML
+				yaml.Unmarshal([]byte(yaml2), &configYaml2)
+
+				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(3))
+
+				for _, pod := range pods.Items {
+					Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
+					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
+				}
+
+				// Select current scheduler yaml
+				mt.MockSelectScheduler(yaml1, mockDb, nil)
+
+				// Get redis lock
+				lockKey = controller.GetLockKey(config.GetString("watcher.lockKey"), "controller-name-ports")
+				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Set new operation manager description
+				mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+
+				// Remove old rooms
+				mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml1)
+
+				// Create new rooms
+				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml2)
+
+				// Update new config on schedulers table
+				mt.MockUpdateSchedulersTable(mockDb, nil)
+
+				// Add new version into versions table
+				scheduler1.NextMajorVersion()
+				mt.MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+
+				// Count to delete old versions if necessary
+				mt.MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
+
+				// Delete old ports pool
+				mt.MockDeletePortPool(mockRedisClient, mockPipeline, configYaml1.Name, nil)
+
+				// Retrieve redis lock
+				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				err = controller.UpdateSchedulerConfig(logger, mr, mockDb, redisClient,
+					clientset, &configYaml2, maxSurge, &clock.Clock{}, nil, config, opManager)
+				Expect(err).NotTo(HaveOccurred())
+
+				pods, err = clientset.CoreV1().Pods(configYaml2.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				for _, pod := range pods.Items {
+					Expect(pod.GetName()).To(ContainSubstring("controller-name-ports"))
+					Expect(pod.GetName()).To(HaveLen(len("controller-name-ports-") + 8))
+					Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MY_ENV_VAR"))
+					Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("myvalue"))
+					Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
+					Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name-ports"))
+					Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
+					Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
+					Expect(pod.Spec.Containers[0].Env).To(HaveLen(3))
+					Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
+					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v2.0"))
+				}
+			})
+
+			It("should recreate rooms with new ports if change port range", func() {
+				yaml1 := `
+name: controller-name-ports
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+requests:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+portRange:
+  start: 20000
+  end: 20010
+`
+				var configYaml1 models.ConfigYAML
+				yaml.Unmarshal([]byte(yaml1), &configYaml1)
+
+				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+
+				mt.MockSelectSchedulerNames(mockDb, []string{}, nil)
+				mt.MockSelectConfigYamls(mockDb, []models.Scheduler{}, nil)
+				mt.MockDeletePortPool(mockRedisClient, mockPipeline, configYaml1.Name, nil)
+				mt.MockPopulatePortPool(mockRedisClient,
+					models.FreeSchedulerPortsRedisKey(configYaml1.Name), 20000, 20010, nil)
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
+					Return(goredis.NewStringResult("5000-6000", nil))
+
+				mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
+					logger, mr, yaml1, timeoutSec)
+
+				yaml2 = `
+name: controller-name-ports
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+requests:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+portRange:
+  start: 20000
+  end: 20020
+`
+				var configYaml2 models.ConfigYAML
+				yaml.Unmarshal([]byte(yaml2), &configYaml2)
+
+				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(3))
+
+				for _, pod := range pods.Items {
+					Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
+					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
+				}
+
+				// Select current scheduler yaml
+				mt.MockSelectScheduler(yaml1, mockDb, nil)
+
+				// Get redis lock
+				lockKey = controller.GetLockKey(config.GetString("watcher.lockKey"), "controller-name-ports")
+				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Set new operation manager description
+				mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+
+				// check other scheduler ports
+				mt.MockSelectSchedulerNames(mockDb, []string{}, nil)
+				mt.MockSelectConfigYamls(mockDb, []models.Scheduler{}, nil)
+				mt.MockDeletePortPool(mockRedisClient, mockPipeline, configYaml2.Name, nil)
+				mt.MockPopulatePortPool(mockRedisClient,
+					models.FreeSchedulerPortsRedisKey(configYaml2.Name), 20000, 20020, nil)
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
+					Return(goredis.NewStringResult("5000-6000", nil))
+
+				// Remove old rooms
+				mt.MockRemoveRoomStatusFromRedis(mockRedisClient, mockPipeline, pods, &configYaml1)
+
+				// Create new rooms
+				mt.MockCreateRoomsWithPorts(mockRedisClient, mockPipeline, &configYaml2)
+
+				// Update new config on schedulers table
+				mt.MockUpdateSchedulersTable(mockDb, nil)
+
+				// Add new version into versions table
+				scheduler1.NextMajorVersion()
+				mt.MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+
+				// Count to delete old versions if necessary
+				mt.MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
+
+				// Retrieve redis lock
+				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				err = controller.UpdateSchedulerConfig(logger, mr, mockDb, redisClient,
+					clientset, &configYaml2, maxSurge, &clock.Clock{}, nil, config, opManager)
+				Expect(err).NotTo(HaveOccurred())
+
+				pods, err = clientset.CoreV1().Pods(configYaml2.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+
+				for _, pod := range pods.Items {
+					Expect(pod.GetName()).To(ContainSubstring("controller-name-ports"))
+					Expect(pod.GetName()).To(HaveLen(len("controller-name-ports-") + 8))
+					Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MY_ENV_VAR"))
+					Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("myvalue"))
+					Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
+					Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal("controller-name-ports"))
+					Expect(pod.Spec.Containers[0].Env[2].Name).To(Equal("MAESTRO_ROOM_ID"))
+					Expect(pod.Spec.Containers[0].Env[2].Value).To(Equal(pod.GetName()))
+					Expect(pod.Spec.Containers[0].Env).To(HaveLen(3))
+					Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
+					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v2.0"))
+				}
+			})
+		})
+
 		It("should return error if updating unexisting scheduler", func() {
 			yaml2 := `name: another-name`
 			configYaml2, err := models.NewConfigYAML(yaml2)
@@ -3152,6 +4033,8 @@ cmd:
 
 			// Delete first room
 			for _, pod := range pods.Items {
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
+
 				calls.Add(mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
 				calls.Add(mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()))
 				calls.Add(mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()))
@@ -3222,6 +4105,8 @@ cmd:
 			// Timed out, so rollback
 			// Delete newly created room
 			for range pods.Items {
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
+
 				calls.Add(mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
 				calls.Add(mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()))
 				calls.Add(mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()))
@@ -3324,6 +4209,8 @@ cmd:
 			// Delete rooms
 			errRedis := errors.New("redis error")
 			for _, pod := range pods.Items {
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
+
 				// Retrieve ports to pool
 				for _, c := range pod.Spec.Containers {
 					calls.Add(
@@ -3813,100 +4700,104 @@ containers:
 
 	Describe("DeleteRoomsOccupiedTimeout", func() {
 		It("should delete rooms that timed out", func() {
-			schedulerName := "scheduler-name"
+			scheduler := &models.Scheduler{Name: "scheduler-name", YAML: `name: scheduler-name`}
+			configYaml, _ := models.NewConfigYAML(scheduler.YAML)
 
 			expectedRooms := []string{"room1", "room2", "room3"}
-			namespace := models.NewNamespace(schedulerName)
+			namespace := models.NewNamespace(scheduler.Name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod("", "", roomName, schedulerName, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{}, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
 			for _, roomName := range expectedRooms {
-				room := models.NewRoom(roomName, schedulerName)
+				room := models.NewRoom(roomName, scheduler.Name)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				for _, status := range allStatus {
-					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey())
-					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, status), roomName)
+					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(scheduler.Name, status), room.GetRoomRedisKey())
+					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(scheduler.Name, status), roomName)
 				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName)
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), roomName)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
 			}
 
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, "", expectedRooms, "deletion_reason")
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return nil if there is no dead rooms", func() {
-			schedulerName := "scheduler-name"
+			scheduler := &models.Scheduler{Name: "scheduler-name", YAML: `name: scheduler-name`}
+			configYaml, _ := models.NewConfigYAML(scheduler.YAML)
 
 			expectedRooms := []string{"room1", "room2", "room3"}
-			namespace := models.NewNamespace(schedulerName)
+			namespace := models.NewNamespace(scheduler.Name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod("", "", roomName, schedulerName, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{}, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
 			}
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, "", []string{}, "deletion_reason")
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, []string{}, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should not return error if error when cleaning room", func() {
-			schedulerName := "scheduler-name"
+			scheduler := &models.Scheduler{Name: "scheduler-name", YAML: `name: scheduler-name`}
+			configYaml, _ := models.NewConfigYAML(scheduler.YAML)
 
 			expectedRooms := []string{"room1", "room2", "room3"}
-			namespace := models.NewNamespace(schedulerName)
+			namespace := models.NewNamespace(scheduler.Name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod("", "", roomName, schedulerName, nil, nil, 0, []*models.Port{}, []string{}, []*models.EnvVar{}, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
 			}
 			for _, roomName := range expectedRooms {
-				room := models.NewRoom(roomName, schedulerName)
+				room := models.NewRoom(roomName, scheduler.Name)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				for _, status := range allStatus {
-					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey())
-					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, status), roomName)
+					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(scheduler.Name, status), room.GetRoomRedisKey())
+					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(scheduler.Name, status), roomName)
 				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName)
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), roomName)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis error"))
 			}
 
-			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, "", expectedRooms, "deletion_reason")
+			err = controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should delete rooms that were not found on kube", func() {
-			schedulerName := "scheduler-name"
+			scheduler := &models.Scheduler{Name: "scheduler-name", YAML: `name: scheduler-name`}
+
 			expectedRooms := []string{"room1", "room2", "room3"}
 
 			for _, roomName := range expectedRooms {
-				room := models.NewRoom(roomName, schedulerName)
+				room := models.NewRoom(roomName, scheduler.Name)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				for _, status := range allStatus {
-					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey())
-					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, status), roomName)
+					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(scheduler.Name, status), room.GetRoomRedisKey())
+					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(scheduler.Name, status), roomName)
 				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName)
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), roomName)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
 			}
 
-			err := controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, schedulerName, "", expectedRooms, "deletion_reason")
+			err := controller.DeleteUnavailableRooms(logger, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -4671,6 +5562,8 @@ containers:
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
 
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
+
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(len(configYaml1.Ports))
 				mockPipeline.EXPECT().Exec()
@@ -4787,6 +5680,8 @@ containers:
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
+
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(len(configYaml1.Ports))

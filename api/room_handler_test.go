@@ -68,11 +68,14 @@ forwarders:
 		return models.NewNamespace(name).Create(clientset)
 	}
 	createPod := func(name, namespace string, clientset kubernetes.Interface) error {
-		pod, err := models.NewPod(
-			"game", "img", name, namespace, nil, nil, 0,
-			[]*models.Port{&models.Port{ContainerPort: 1234, Name: "port1", Protocol: "UDP"}},
-			nil, nil, mockClientset, mockRedisClient,
-		)
+		configYaml := &models.ConfigYAML{
+			Name:  namespace,
+			Game:  "game",
+			Image: "img",
+			Ports: []*models.Port{&models.Port{ContainerPort: 1234, Name: "port1", Protocol: "UDP"}},
+		}
+
+		pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
 		if err != nil {
 			return err
 		}
@@ -926,6 +929,16 @@ forwarders:
 				Memory: "64487424",
 			}
 			shutdownTimeout = 180
+
+			configYaml = &models.ConfigYAML{
+				Name:            namespace,
+				Game:            game,
+				Image:           image,
+				Ports:           ports,
+				Limits:          limits,
+				Requests:        requests,
+				ShutdownTimeout: shutdownTimeout,
+			}
 		)
 		It("should return addresses", func() {
 			ns := models.NewNamespace(namespace)
@@ -937,20 +950,7 @@ forwarders:
 				Return(goredis.NewStringResult("5000", nil))
 			mockPipeline.EXPECT().Exec()
 
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				nil,
-				nil,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -983,20 +983,7 @@ forwarders:
 				Return(goredis.NewStringResult("5000", nil))
 			mockPipeline.EXPECT().Exec()
 
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				nil,
-				nil,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())

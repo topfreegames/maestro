@@ -9,6 +9,7 @@ package worker
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -31,7 +32,6 @@ import (
 
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type gracefulShutdown struct {
@@ -180,6 +180,11 @@ func (w *Worker) configureLogger() {
 	})
 }
 
+func (w *Worker) savePortRangeOnRedis(start, end int) error {
+	portsRange := fmt.Sprintf("%d-%d", start, end)
+	return w.RedisClient.Client.Set(models.GlobalPortsPoolKey, portsRange, 0).Err()
+}
+
 // Start starts the worker
 func (w *Worker) Start(startHostPortRange, endHostPortRange int, showProfile bool) error {
 	l := w.Logger.WithFields(logrus.Fields{
@@ -203,7 +208,11 @@ func (w *Worker) Start(startHostPortRange, endHostPortRange int, showProfile boo
 	retrieveFreePortsTicker := time.NewTicker(time.Duration(retrieveFreePortsPeriod) * time.Second)
 	defer retrieveFreePortsTicker.Stop()
 
-	err := models.InitAvailablePorts(w.RedisClient.Client, startHostPortRange, endHostPortRange)
+	err := w.savePortRangeOnRedis(startHostPortRange, endHostPortRange)
+	if err != nil {
+		return err
+	}
+	err = models.InitAvailablePorts(w.RedisClient.Client, models.FreePortsRedisKey(), startHostPortRange, endHostPortRange)
 	if err != nil {
 		return err
 	}
@@ -211,6 +220,12 @@ func (w *Worker) Start(startHostPortRange, endHostPortRange int, showProfile boo
 	for w.Run == true {
 		select {
 		case <-ticker.C:
+			err = w.savePortRangeOnRedis(startHostPortRange, endHostPortRange)
+			if err != nil {
+				l.WithError(err).Error("error saving ports on redis")
+				return err
+			}
+
 			schedulerNames, err := controller.ListSchedulersNames(l, w.MetricsReporter, w.DB)
 			if err != nil {
 				l.WithError(err).Error("error listing schedulers")
@@ -327,6 +342,8 @@ func (w *Worker) RetrieveFreePorts(
 		"operation": "RetrieveFreePorts",
 	})
 
+	l.Info("getting all scheduler locks")
+
 	for _, schedulerName := range schedulerNames {
 	schedulersLoop:
 		for {
@@ -356,28 +373,37 @@ func (w *Worker) RetrieveFreePorts(
 		}
 	}
 
-	// Make all changes in another Set then Rename it. In case of error, redis does not rollback.
-	redisKey := "maestro:updated:free:ports"
+	// The errors are ignored but logged, so we try to retrieve on all pools
+	l.Info("starting to retrieve ports on worker")
 
-	pipe := w.RedisClient.Client.TxPipeline()
-	for i := start; i <= end; i++ {
-		pipe.SAdd(redisKey, i)
+	schedulersWithGlobalRange := []string{}
+	configsWithOwnRange := []*models.ConfigYAML{}
+
+	l.Info("reading scheduler configs from database")
+	schedulers, err := models.LoadSchedulers(w.DB, schedulerNames)
+	if err != nil {
+		return err
 	}
 
-	for _, namespace := range schedulerNames {
-		pods, err := w.KubernetesClient.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+	l.Info("getting configs yaml from schedulers")
+	for _, scheduler := range schedulers {
+		configYaml, err := models.NewConfigYAML(scheduler.YAML)
 		if err != nil {
+			l.WithError(err).Error("failed to unmarshal scheduler %s", scheduler.Name)
 			return err
 		}
 
-		for _, pod := range pods.Items {
-			for _, port := range pod.Spec.Containers[0].Ports {
-				pipe.SRem(redisKey, port.HostPort)
-			}
+		if configYaml.PortRange.IsSet() {
+			configsWithOwnRange = append(configsWithOwnRange, configYaml)
+		} else {
+			schedulersWithGlobalRange = append(schedulersWithGlobalRange, scheduler.Name)
 		}
 	}
 
-	pipe.Rename(redisKey, models.FreePortsRedisKey())
-	_, err := pipe.Exec()
-	return err
+	retrievePorts(w, start, end, true, schedulersWithGlobalRange...)
+	for _, c := range configsWithOwnRange {
+		retrievePorts(w, c.PortRange.Start, c.PortRange.End, false, c.Name)
+	}
+
+	return nil
 }

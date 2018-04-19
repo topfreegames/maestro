@@ -860,6 +860,7 @@ var _ = Describe("Watcher", func() {
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
 
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(redis.NewStringResult("5000-6000", nil))
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(len(configYaml1.Ports))
 				mockPipeline.EXPECT().Exec()
@@ -1200,6 +1201,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Del(gomock.Any())
 			mockPipeline.EXPECT().Exec()
 
+			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(redis.NewStringResult("5000-6000", nil))
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any())
 			mockPipeline.EXPECT().Exec()
@@ -1353,25 +1355,19 @@ var _ = Describe("Watcher", func() {
 			return models.NewNamespace(name).Create(clientset)
 		}
 		createPod := func(name, namespace string, clientset kubernetes.Interface) error {
-			pod, err := models.NewPod(
-				"game",
-				"img",
-				name,
-				namespace,
-				nil,
-				nil,
-				0,
-				[]*models.Port{
+			configYaml := &models.ConfigYAML{
+				Name:  namespace,
+				Game:  "game",
+				Image: "img",
+				Ports: []*models.Port{
 					&models.Port{
 						ContainerPort: 1234,
 						Name:          "port1",
 						Protocol:      "UDP",
-					}},
-				nil,
-				nil,
-				clientset,
-				mockRedisClient,
-			)
+					},
+				},
+			}
+			pod, err := models.NewPod(name, nil, configYaml, clientset, mockRedisClient)
 			if err != nil {
 				return err
 			}
@@ -1447,6 +1443,7 @@ var _ = Describe("Watcher", func() {
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).Times(2)
 				mockPipeline.EXPECT().Exec().Times(2)
 
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(redis.NewStringResult("5000-6000", nil))
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any())
 				mockPipeline.EXPECT().Exec()
@@ -1462,7 +1459,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 					scheduler.Game = schedulerName
-				}).Times(6)
+				}).Times(8)
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 		})
@@ -1499,7 +1496,7 @@ var _ = Describe("Watcher", func() {
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
-				}).Times(3)
+				}).Times(4)
 
 			for _, roomName := range expectedRooms {
 				room := models.NewRoom(roomName, schedulerName)

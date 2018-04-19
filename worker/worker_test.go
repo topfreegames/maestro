@@ -11,18 +11,19 @@ import (
 	"errors"
 	"time"
 
-	"k8s.io/client-go/pkg/api/v1"
-
 	goredis "github.com/go-redis/redis"
+	mtesting "github.com/topfreegames/maestro/testing"
+
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
-	mtesting "github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/watcher"
 	"github.com/topfreegames/maestro/worker"
+	"gopkg.in/pg.v5/types"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 var _ = Describe("Worker", func() {
@@ -105,6 +106,9 @@ cmd:
 				},
 			)
 			mockRedisClient.EXPECT().
+				Set(models.GlobalPortsPoolKey, "40000-50000", 0*time.Second).
+				Return(goredis.NewStatusResult("", nil)).Times(2)
+			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), gomock.Any(), startPortRange, endPortRange).
 				Return(goredis.NewCmdResult(nil, nil))
 
@@ -119,6 +123,9 @@ cmd:
 				},
 			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
 
+			mockRedisClient.EXPECT().
+				Set(models.GlobalPortsPoolKey, "40000-50000", 0*time.Second).
+				Return(goredis.NewStatusResult("", nil)).Times(2)
 			mockRedisClient.EXPECT().
 				Eval(gomock.Any(), gomock.Any(), startPortRange, endPortRange).
 				Return(goredis.NewCmdResult(nil, nil))
@@ -232,6 +239,14 @@ cmd:
 				{"room-1", int32(start + 1)},
 			}
 
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name IN (?)", gomock.Any()).
+				Do(func(schedulers *[]models.Scheduler, q string, i types.ValueAppender) {
+					*schedulers = []models.Scheduler{
+						{Name: "room-0"},
+					}
+				})
+
 			mockRedisClient.EXPECT().
 				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(goredis.NewBoolResult(true, nil))
@@ -269,6 +284,85 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		It("should retrieve ports to scheduler pool", func() {
+			var start, end int = 5000, 5010
+			redisKey := "maestro:updated:free:ports"
+			schedulerNames := []string{"room-0"}
+			pods := []struct {
+				Name string
+				Port int32
+			}{
+				{"room-0", int32(start)},
+				{"room-1", int32(start + 1)},
+			}
+
+			yamlStr := `name: room-0
+portRange:
+  start: 6000
+  end: 6010`
+			configYaml, _ := models.NewConfigYAML(yamlStr)
+
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name IN (?)", gomock.Any()).
+				Do(func(schedulers *[]models.Scheduler, q string, i types.ValueAppender) {
+					*schedulers = []models.Scheduler{
+						{
+							Name: "room-0",
+							YAML: yamlStr,
+						},
+					}
+				})
+
+			mockRedisClient.EXPECT().
+				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(goredis.NewBoolResult(true, nil))
+
+			for _, pod := range pods {
+				kubePod := &v1.Pod{}
+				kubePod.SetName(pod.Name)
+				kubePod.Spec.Containers = []v1.Container{
+					{
+						Ports: []v1.ContainerPort{
+							{HostPort: pod.Port, Name: "TCP"},
+						},
+					},
+				}
+				_, err := clientset.CoreV1().Pods(schedulerNames[0]).Create(kubePod)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			{ // global pool
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				for i := start; i <= end; i++ {
+					mockPipeline.EXPECT().SAdd(redisKey, i)
+				}
+
+				mockPipeline.EXPECT().Rename(redisKey, models.FreePortsRedisKey())
+				mockPipeline.EXPECT().Exec()
+				mockRedisClient.EXPECT().
+					Eval(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(goredis.NewCmdResult(nil, nil))
+			}
+
+			{ // scheduler pool
+				schedulerPoolKey := configYaml.PortsPoolRedisKey()
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				for i := configYaml.PortRange.Start; i <= configYaml.PortRange.End; i++ {
+					mockPipeline.EXPECT().SAdd(redisKey, i)
+				}
+
+				for _, pod := range pods {
+					mockPipeline.EXPECT().SRem(redisKey, pod.Port)
+				}
+
+				mockPipeline.EXPECT().Rename(redisKey, schedulerPoolKey)
+				mockPipeline.EXPECT().Exec()
+			}
+
+			err := w.RetrieveFreePorts(start, end, schedulerNames)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("should sleep and retry if can't get lock", func() {
 			var w *worker.Worker
 			timeout := 1
@@ -280,12 +374,12 @@ cmd:
 			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
+			var start, end int = 5000, 5010
+			schedulerNames := []string{"room-0"}
+
 			mockRedisClient.EXPECT().
 				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(goredis.NewBoolResult(false, nil))
-
-			var start, end int = 5000, 5010
-			schedulerNames := []string{"room-0"}
 
 			startTime := time.Now()
 			err = w.RetrieveFreePorts(start, end, schedulerNames)
@@ -309,12 +403,12 @@ cmd:
 			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
+			var start, end int = 5000, 5010
+			schedulerNames := []string{"room-0"}
+
 			mockRedisClient.EXPECT().
 				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(goredis.NewBoolResult(false, errors.New("error on redis")))
-
-			var start, end int = 5000, 5010
-			schedulerNames := []string{"room-0"}
 
 			startTime := time.Now()
 			err = w.RetrieveFreePorts(start, end, schedulerNames)

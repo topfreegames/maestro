@@ -83,6 +83,12 @@ func (n *Namespace) DeletePods(clientset kubernetes.Interface,
 	if err != nil {
 		return errors.NewKubernetesError("delete namespace pods error", err)
 	}
+
+	configYaml, err := NewConfigYAML(s.YAML)
+	if err != nil {
+		return err
+	}
+
 	for _, pod := range pods.Items {
 		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
 			reportersConstants.TagGame:      s.Game,
@@ -90,7 +96,7 @@ func (n *Namespace) DeletePods(clientset kubernetes.Interface,
 			reportersConstants.TagReason:    reportersConstants.ReasonNamespaceDeletion,
 		})
 		for _, container := range pod.Spec.Containers {
-			err := RetrieveV1Ports(redisClient, container.Ports)
+			err := RetrieveV1Ports(redisClient, container.Ports, configYaml)
 			if err != nil {
 				//TODO: try again?
 			}

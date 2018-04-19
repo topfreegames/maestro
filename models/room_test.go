@@ -341,6 +341,17 @@ var _ = Describe("Room", func() {
 			}
 			shutdownTimeout := 180
 
+			configYaml := &models.ConfigYAML{
+				Name:            namespace,
+				Game:            game,
+				Image:           image,
+				Limits:          limits,
+				Requests:        requests,
+				ShutdownTimeout: shutdownTimeout,
+				Ports:           ports,
+				Cmd:             command,
+			}
+
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
 				Return(goredis.NewStringResult("5000", nil))
@@ -352,20 +363,7 @@ var _ = Describe("Room", func() {
 				reportersConstants.TagGame:      "pong",
 				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
-			pod, err := models.NewPod(
-				game,
-				image,
-				name,
-				namespace,
-				limits,
-				requests,
-				shutdownTimeout,
-				ports,
-				command,
-				env,
-				mockClientset,
-				mockRedisClient,
-			)
+			pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())

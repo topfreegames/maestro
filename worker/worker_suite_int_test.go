@@ -104,7 +104,8 @@ var _ = AfterEach(func() {
 	err = cmd.Err()
 	Expect(err).NotTo(HaveOccurred())
 
-	err = models.InitAvailablePorts(app.RedisClient, startPortRange, endPortRange)
+	err = models.InitAvailablePorts(app.RedisClient, models.FreePortsRedisKey(), startPortRange, endPortRange)
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {

@@ -1508,6 +1508,7 @@ toleration: ""
 occupiedTimeout: 0
 forwarders: {}
 authorizedUsers: []
+portRange: null
 image: ""
 ports: []
 limits: null
@@ -1565,6 +1566,7 @@ containers:
   requests: null
   env: []
   cmd: []
+portRange: null
 `))
 			})
 
@@ -1730,6 +1732,8 @@ ports:
 				_, err = clientset.CoreV1().Pods(schedulerName).Create(pod)
 				Expect(err).NotTo(HaveOccurred())
 
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
+
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), port).AnyTimes()
 				mockPipeline.EXPECT().Exec()
@@ -1878,6 +1882,8 @@ ports:
 					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 					mockPipeline.EXPECT().Exec()
 
+					mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
+
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any())
 					mockPipeline.EXPECT().Exec()
@@ -1973,6 +1979,8 @@ ports:
 					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), room.ID)
 					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 					mockPipeline.EXPECT().Exec()
+
+					mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
 
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), gomock.Any())

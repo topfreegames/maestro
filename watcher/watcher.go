@@ -313,23 +313,29 @@ func (w *Watcher) RemoveDeadRooms() {
 			"rooms": fmt.Sprintf("%v", roomsNoPingSince),
 		}).Info("rooms that are not pinging")
 
-		err := controller.DeleteUnavailableRooms(
-			logger,
-			w.MetricsReporter,
-			w.RedisClient.Client,
-			w.KubernetesClient,
-			w.SchedulerName,
-			w.GameName,
-			roomsNoPingSince,
-			reportersConstants.ReasonPingTimeout,
-		)
+		scheduler := models.NewScheduler(w.SchedulerName, "", "")
+		err := scheduler.Load(w.DB)
 		if err != nil {
-			logger.WithError(err).Error("error removing dead rooms")
+			logger.WithError(err).Error("error accessing db while removing dead rooms")
 		} else {
-			logger.WithFields(logrus.Fields{
-				"rooms": fmt.Sprintf("%v", roomsNoPingSince),
-			}).Info("successfully deleted rooms that were not pinging")
+			err := controller.DeleteUnavailableRooms(
+				logger,
+				w.MetricsReporter,
+				w.RedisClient.Client,
+				w.KubernetesClient,
+				scheduler,
+				roomsNoPingSince,
+				reportersConstants.ReasonPingTimeout,
+			)
+			if err != nil {
+				logger.WithError(err).Error("error removing dead rooms")
+			} else {
+				logger.WithFields(logrus.Fields{
+					"rooms": fmt.Sprintf("%v", roomsNoPingSince),
+				}).Info("successfully deleted rooms that were not pinging")
+			}
 		}
+
 	}
 
 	if w.OccupiedTimeout > 0 {
@@ -363,18 +369,23 @@ func (w *Watcher) RemoveDeadRooms() {
 					models.RoomTerminated, map[string]interface{}{}, nil, w.Logger)
 			}
 
-			err = controller.DeleteUnavailableRooms(
-				logger,
-				w.MetricsReporter,
-				w.RedisClient.Client,
-				w.KubernetesClient,
-				w.SchedulerName,
-				w.GameName,
-				roomsOnOccupiedTimeout,
-				reportersConstants.ReasonOccupiedTimeout,
-			)
+			scheduler := models.NewScheduler(w.SchedulerName, "", "")
+			err := scheduler.Load(w.DB)
 			if err != nil {
-				logger.WithError(err).Error("error removing old occupied rooms")
+				logger.WithError(err).Error("error accessing db while removing occupied timeout rooms")
+			} else {
+				err = controller.DeleteUnavailableRooms(
+					logger,
+					w.MetricsReporter,
+					w.RedisClient.Client,
+					w.KubernetesClient,
+					scheduler,
+					roomsOnOccupiedTimeout,
+					reportersConstants.ReasonOccupiedTimeout,
+				)
+				if err != nil {
+					logger.WithError(err).Error("error removing old occupied rooms")
+				}
 			}
 		}
 	}
