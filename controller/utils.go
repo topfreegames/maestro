@@ -48,7 +48,7 @@ func replacePodsAndWait(
 	for _, pod := range podsToDelete {
 		logger.Debugf("deleting pod %s", pod.GetName())
 
-		err := deletePodAndRoom(logger, mr, clientset, redisClient,
+		err := DeletePodAndRoom(logger, mr, clientset, redisClient,
 			configYAML, pod.GetName(), reportersConstants.ReasonUpdate)
 		if err == nil || strings.Contains(err.Error(), "redis") {
 			deletedPods = append(deletedPods, pod)
@@ -121,7 +121,7 @@ func rollback(
 				pod := createdPodChunks[i][j]
 				logger.Debugf("deleting pod %s", pod.GetName())
 
-				err = deletePodAndRoom(logger, mr, clientset, redisClient,
+				err = DeletePodAndRoom(logger, mr, clientset, redisClient,
 					configYaml, pod.GetName(), reportersConstants.ReasonUpdate)
 				if err != nil {
 					logger.WithError(err).
@@ -366,7 +366,8 @@ func waitCreatingPods(
 	return false, false
 }
 
-func deletePodAndRoom(
+// DeletePodAndRoom deletes the pod and removes the room from redis
+func DeletePodAndRoom(
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,

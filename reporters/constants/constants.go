@@ -21,6 +21,7 @@ const (
 	ReasonUpdate            = "update"
 	ReasonUpdateError       = "update_error"
 	ReasonNamespaceDeletion = "namespace_deletion"
+	ReasonInvalidPod        = "invalid_pod"
 )
 
 //Tag{...} represents datadog tags

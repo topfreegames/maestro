@@ -16,18 +16,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
-	"github.com/spf13/viper"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
-	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -40,6 +42,7 @@ type gracefulShutdown struct {
 type Watcher struct {
 	AutoScalingPeriod         int
 	RoomsStatusesReportPeriod int
+	EnsureCorrectRoomsPeriod  time.Duration
 	Config                    *viper.Viper
 	DB                        pginterfaces.DB
 	KubernetesClient          kubernetes.Interface
@@ -91,6 +94,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("scaleUpTimeoutSeconds", 300)
 	w.Config.SetDefault("watcher.autoScalingPeriod", 10)
 	w.Config.SetDefault("watcher.roomsStatusesReportPeriod", 10)
+	w.Config.SetDefault("watcher.ensureCorrectRoomsPeriod", 10*time.Minute)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
 	w.Config.SetDefault("watcher.gracefulShutdownTimeout", 300)
@@ -101,6 +105,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 func (w *Watcher) configure() error {
 	w.AutoScalingPeriod = w.Config.GetInt("watcher.autoScalingPeriod")
 	w.RoomsStatusesReportPeriod = w.Config.GetInt("watcher.roomsStatusesReportPeriod")
+	w.EnsureCorrectRoomsPeriod = w.Config.GetDuration("watcher.ensureCorrectRoomsPeriod")
 	w.LockKey = controller.GetLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
 	var wg sync.WaitGroup
@@ -168,6 +173,8 @@ func (w *Watcher) Start() {
 	defer ticker.Stop()
 	tickerRs := time.NewTicker(time.Duration(w.RoomsStatusesReportPeriod) * time.Second)
 	defer tickerRs.Stop()
+	tickerEnsure := time.NewTicker(w.EnsureCorrectRoomsPeriod)
+	defer tickerEnsure.Stop()
 
 	for w.Run == true {
 		select {
@@ -175,6 +182,8 @@ func (w *Watcher) Start() {
 			w.WithRedisLock(l, w.watchRooms)
 		case <-tickerRs.C:
 			w.WithRedisLock(l, w.ReportRoomsStatuses)
+		case <-tickerEnsure.C:
+			w.WithRedisLock(l, w.EnsureCorrectRooms)
 		case sig := <-sigchan:
 			l.Warnf("caught signal %v: terminating\n", sig)
 			w.Run = false
@@ -610,4 +619,88 @@ func (w *Watcher) checkState(
 	}
 
 	return shouldScaleUp, shouldScaleDown, changedState, nil
+}
+
+// EnsureCorrectRooms walks through the pods on the namespace and
+// delete those that have incorrect version and those pods that
+// are not registered on Maestro
+func (w *Watcher) EnsureCorrectRooms() error {
+	w.gracefulShutdown.wg.Add(1)
+	defer w.gracefulShutdown.wg.Done()
+
+	logger := w.Logger.WithField("operation", "EnsureCorrectRooms")
+	logger.Info("loading scheduler from database")
+
+	scheduler := models.NewScheduler(w.SchedulerName, "", "")
+	err := scheduler.Load(w.DB)
+	if err != nil {
+		logger.WithError(err).Error("failed to load scheduler from database")
+		return err
+	}
+
+	configYaml, err := models.NewConfigYAML(scheduler.YAML)
+	if err != nil {
+		logger.WithError(err).Error("failed to unmarshal config yaml")
+		return err
+	}
+
+	podsToDelete := []string{}
+	concat := func(podNames []string, err error) error {
+		if err != nil {
+			return err
+		}
+		podsToDelete = append(podsToDelete, podNames...)
+		return nil
+	}
+
+	logger.Info("searching for invalid pods")
+
+	err = concat(w.podsOfIncorrectVersion(scheduler))
+	if err != nil {
+		return err
+	}
+
+	err = concat(w.podsNotRegistered())
+	if err != nil {
+		return err
+	}
+
+	if len(podsToDelete) > 0 {
+		logger.WithField("podsToDelete", podsToDelete).Info("deleting invalid pods")
+	} else {
+		logger.Info("no invalid pods to delete")
+	}
+
+	for _, podName := range podsToDelete {
+		err = controller.DeletePodAndRoom(logger, w.MetricsReporter,
+			w.KubernetesClient, w.RedisClient.Client, configYaml,
+			podName, reportersConstants.ReasonInvalidPod)
+		if err != nil {
+			logger.WithError(err).WithField("podName", podName).Error("failed to delete pod")
+		}
+	}
+
+	return nil
+}
+
+func (w *Watcher) podsNotRegistered() ([]string, error) {
+	return nil, nil
+}
+
+func (w *Watcher) podsOfIncorrectVersion(scheduler *models.Scheduler) ([]string, error) {
+	logger := w.Logger.WithField("method", "ensureCorrectVersionPods")
+	pods, err := w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
+	if err != nil {
+		logger.WithError(err).Error("failed to list pods on namespace")
+		return nil, err
+	}
+
+	podNames := []string{}
+	for _, pod := range pods.Items {
+		if pod.Labels["version"] != scheduler.Version {
+			podNames = append(podNames, pod.GetName())
+		}
+	}
+
+	return podNames, nil
 }
