@@ -110,30 +110,22 @@ func GetAllRegisteredRooms(
 	results := make(map[string]*redis.StringSliceCmd)
 
 	pipe := redisClient.TxPipeline()
+	for _, status := range []string{
+		StatusCreating, StatusReady,
+		StatusOccupied, StatusTerminating,
+	} {
+		key := GetRoomStatusSetRedisKey(schedulerName, status)
+		results[status] = pipe.SMembers(key)
+	}
 
-	key := GetRoomStatusSetRedisKey(schedulerName, StatusCreating)
-	results[StatusCreating] = pipe.SMembers(key)
-
-	key = GetRoomStatusSetRedisKey(schedulerName, StatusReady)
-	results[StatusReady] = pipe.SMembers(key)
-
-	key = GetRoomStatusSetRedisKey(schedulerName, StatusOccupied)
-	results[StatusOccupied] = pipe.SMembers(key)
-
-	key = GetRoomStatusSetRedisKey(schedulerName, StatusTerminating)
-	results[StatusTerminating] = pipe.SMembers(key)
-
-	pipe.Exec()
+	_, err := pipe.Exec()
+	if err != nil {
+		return nil, err
+	}
 
 	registeredRooms := map[string]struct{}{}
-
 	for _, result := range results {
-		rooms, err := result.Result()
-		if err != nil {
-			return nil, err
-		}
-
-		for _, room := range rooms {
+		for _, room := range result.Val() {
 			registeredRooms[RoomFromRedisKey(room)] = struct{}{}
 		}
 	}

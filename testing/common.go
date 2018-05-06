@@ -3,20 +3,20 @@ package testing
 import (
 	"time"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/onsi/gomega"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-
 	goredis "github.com/go-redis/redis"
-	"github.com/golang/mock/gomock"
-	"github.com/topfreegames/extensions/pg"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	yaml "gopkg.in/yaml.v2"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/golang/mock/gomock"
+	"github.com/onsi/gomega"
+	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
 	"gopkg.in/pg.v5/types"
-	yaml "gopkg.in/yaml.v2"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 // MockSelectScheduler selects a scheduler on database
@@ -813,4 +813,28 @@ return "OK"
 		Return(goredis.NewCmdResult(nil, err)))
 
 	return
+}
+
+// MockGetRegisteredRooms mocks the call that gets all rooms on redis
+func MockGetRegisteredRooms(
+	mockRedis *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	schedulerName string,
+	results [][]string,
+	err error,
+) {
+	mockRedis.EXPECT().TxPipeline().Return(mockPipeline)
+	for idx, status := range []string{
+		models.StatusCreating, models.StatusReady,
+		models.StatusOccupied, models.StatusTerminating,
+	} {
+		result := []string{}
+		if idx < len(results) {
+			result = results[idx]
+		}
+		key := models.GetRoomStatusSetRedisKey(schedulerName, status)
+		mockPipeline.EXPECT().SMembers(key).Return(
+			goredis.NewStringSliceResult(result, nil))
+	}
+	mockPipeline.EXPECT().Exec().Return(nil, err)
 }

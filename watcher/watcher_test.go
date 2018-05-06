@@ -15,26 +15,27 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/topfreegames/extensions/pg"
-	yaml "gopkg.in/yaml.v2"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-
-	"github.com/go-redis/redis"
-	goredis "github.com/go-redis/redis"
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	goredis "github.com/go-redis/redis"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
+	reportersMocks "github.com/topfreegames/maestro/reporters/mocks"
+	yaml "gopkg.in/yaml.v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/go-redis/redis"
+	"github.com/golang/mock/gomock"
+	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
-	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
-	reportersMocks "github.com/topfreegames/maestro/reporters/mocks"
 	"github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/watcher"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
@@ -1545,6 +1546,134 @@ var _ = Describe("Watcher", func() {
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("error listing rooms with no occupied timeout"))
+		})
+	})
+
+	Describe("EnsureCorrectRooms", func() {
+		var configYaml1 models.ConfigYAML
+		var w *watcher.Watcher
+
+		BeforeEach(func() {
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+			mockDb.EXPECT().Query(
+				gomock.Any(),
+				"SELECT * FROM schedulers WHERE name = ?",
+				configYaml1.Name,
+			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				scheduler.YAML = yaml1
+			})
+			w = watcher.NewWatcher(
+				config, logger, mr, mockDb, redisClient, clientset,
+				configYaml1.Name, configYaml1.Game, occupiedTimeout,
+				[]*eventforwarder.Info{})
+			Expect(w).NotTo(BeNil())
+		})
+
+		It("should return error if fail to get scheduler", func() {
+			testing.MockSelectScheduler(yaml1, mockDb, errDB)
+			err := w.EnsureCorrectRooms()
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(errDB))
+		})
+
+		It("should return error if fail to unmarshal yaml", func() {
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", w.SchedulerName).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					*scheduler = *models.NewScheduler(w.SchedulerName, "", "}\":{}")
+				}).Return(pg.NewTestResult(nil, 1), nil)
+
+			err := w.EnsureCorrectRooms()
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("yaml: did not find expected node content"))
+		})
+
+		It("should return error if fail to read rooms from redis", func() {
+			testing.MockSelectScheduler(yaml1, mockDb, nil)
+			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
+				w.SchedulerName, [][]string{}, errDB)
+
+			err := w.EnsureCorrectRooms()
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(errDB))
+		})
+
+		It("should log error and not return if fail to delete pod", func() {
+			podNames := []string{"room-1", "room-2"}
+			room := models.NewRoom(podNames[0], w.SchedulerName)
+
+			testing.MockSelectScheduler(yaml1, mockDb, nil)
+			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
+				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
+
+			for _, podName := range podNames {
+				pod := &v1.Pod{}
+				pod.SetName(podName)
+				pod.SetNamespace(w.SchedulerName)
+				pod.SetLabels(map[string]string{"version": "v1.0"})
+				_, err := clientset.CoreV1().Pods(w.SchedulerName).Create(pod)
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			room = models.NewRoom(podNames[1], w.SchedulerName)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for _, status := range allStatus {
+				mockPipeline.EXPECT().
+					SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status),
+						room.GetRoomRedisKey())
+				mockPipeline.EXPECT().
+					ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status),
+						room.ID)
+			}
+			mockPipeline.EXPECT().
+				ZRem(models.GetRoomPingRedisKey(w.SchedulerName), room.ID)
+			mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+			mockPipeline.EXPECT().Exec().Return(nil, errDB)
+
+			err := w.EnsureCorrectRooms()
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(hook.LastEntry().Message).To(Equal("failed to delete pod"))
+		})
+
+		It("should delete invalid pods", func() {
+			podNames := []string{"room-1", "room-2"}
+			room := models.NewRoom(podNames[0], w.SchedulerName)
+
+			testing.MockSelectScheduler(yaml1, mockDb, nil)
+			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
+				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
+
+			for _, podName := range podNames {
+				pod := &v1.Pod{}
+				pod.SetName(podName)
+				pod.SetNamespace(w.SchedulerName)
+				pod.SetLabels(map[string]string{"version": "v1.0"})
+				_, err := clientset.CoreV1().Pods(w.SchedulerName).Create(pod)
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			room = models.NewRoom(podNames[1], w.SchedulerName)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for _, status := range allStatus {
+				mockPipeline.EXPECT().
+					SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status),
+						room.GetRoomRedisKey())
+				mockPipeline.EXPECT().
+					ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status),
+						room.ID)
+			}
+			mockPipeline.EXPECT().
+				ZRem(models.GetRoomPingRedisKey(w.SchedulerName), room.ID)
+			mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+			mockPipeline.EXPECT().Exec()
+
+			err := w.EnsureCorrectRooms()
+
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })
