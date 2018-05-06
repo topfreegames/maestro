@@ -101,3 +101,42 @@ func RedisResultToRoomsCount(results map[string]*redis.IntCmd) *RoomsStatusCount
 
 	return countByStatus
 }
+
+// GetAllRegisteredRooms returns the array of registered pods on redis
+func GetAllRegisteredRooms(
+	redisClient interfaces.RedisClient,
+	schedulerName string,
+) (map[string]struct{}, error) {
+	results := make(map[string]*redis.StringSliceCmd)
+
+	pipe := redisClient.TxPipeline()
+
+	key := GetRoomStatusSetRedisKey(schedulerName, StatusCreating)
+	results[StatusCreating] = pipe.SMembers(key)
+
+	key = GetRoomStatusSetRedisKey(schedulerName, StatusReady)
+	results[StatusReady] = pipe.SMembers(key)
+
+	key = GetRoomStatusSetRedisKey(schedulerName, StatusOccupied)
+	results[StatusOccupied] = pipe.SMembers(key)
+
+	key = GetRoomStatusSetRedisKey(schedulerName, StatusTerminating)
+	results[StatusTerminating] = pipe.SMembers(key)
+
+	pipe.Exec()
+
+	registeredRooms := map[string]struct{}{}
+
+	for _, result := range results {
+		rooms, err := result.Result()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, room := range rooms {
+			registeredRooms[RoomFromRedisKey(room)] = struct{}{}
+		}
+	}
+
+	return registeredRooms, nil
+}

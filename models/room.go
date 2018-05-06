@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -68,6 +69,18 @@ func NewRoom(id, schedulerName string) *Room {
 // GetRoomRedisKey gets the key that will keep the room state in redis
 func (r *Room) GetRoomRedisKey() string {
 	return fmt.Sprintf("scheduler:%s:rooms:%s", r.SchedulerName, r.ID)
+}
+
+// RoomFromRedisKey gets the room name from redis key
+func RoomFromRedisKey(key string) string {
+	splits := strings.Split(key, ":")
+	len := len(splits)
+	for idx, split := range splits {
+		if split == "rooms" && idx+1 < len {
+			return splits[idx+1]
+		}
+	}
+	return ""
 }
 
 // Create creates a room in and update redis

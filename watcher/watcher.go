@@ -31,6 +31,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 type gracefulShutdown struct {
@@ -644,6 +645,13 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		return err
 	}
 
+	pods, err := w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(
+		metav1.ListOptions{})
+	if err != nil {
+		logger.WithError(err).Error("failed to list pods on namespace")
+		return err
+	}
+
 	podsToDelete := []string{}
 	concat := func(podNames []string, err error) error {
 		if err != nil {
@@ -655,12 +663,12 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	logger.Info("searching for invalid pods")
 
-	err = concat(w.podsOfIncorrectVersion(scheduler))
+	err = concat(w.podsOfIncorrectVersion(pods, scheduler))
 	if err != nil {
 		return err
 	}
 
-	err = concat(w.podsNotRegistered())
+	err = concat(w.podsNotRegistered(pods))
 	if err != nil {
 		return err
 	}
@@ -683,24 +691,33 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	return nil
 }
 
-func (w *Watcher) podsNotRegistered() ([]string, error) {
-	return nil, nil
-}
-
-func (w *Watcher) podsOfIncorrectVersion(scheduler *models.Scheduler) ([]string, error) {
-	logger := w.Logger.WithField("method", "ensureCorrectVersionPods")
-	pods, err := w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
+func (w *Watcher) podsNotRegistered(
+	pods *v1.PodList,
+) ([]string, error) {
+	registered, err := models.GetAllRegisteredRooms(w.RedisClient.Client,
+		w.SchedulerName)
 	if err != nil {
-		logger.WithError(err).Error("failed to list pods on namespace")
 		return nil, err
 	}
 
+	notRegistered := []string{}
+	for _, pod := range pods.Items {
+		if _, ok := registered[pod.Name]; !ok {
+			notRegistered = append(notRegistered, pod.Name)
+		}
+	}
+	return notRegistered, nil
+}
+
+func (w *Watcher) podsOfIncorrectVersion(
+	pods *v1.PodList,
+	scheduler *models.Scheduler,
+) ([]string, error) {
 	podNames := []string{}
 	for _, pod := range pods.Items {
 		if pod.Labels["version"] != scheduler.Version {
 			podNames = append(podNames, pod.GetName())
 		}
 	}
-
 	return podNames, nil
 }
