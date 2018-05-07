@@ -19,9 +19,10 @@ spec:
       containers:
         - name: maestro-worker
           command:
-            - "/bin/sh"
-            - "-c"
-            - "/app/maestro worker --incluster --json"
+            - /app/maestro
+            - worker
+            - --incluster
+            - --json
           image: quay.io/tfgco/maestro:v{{ .Chart.Version }}
           imagePullPolicy: Always
           volumeMounts:
@@ -57,3 +58,4 @@ spec:
                   key: newrelickey
             {{- end}}
             {{- end}}
+      terminationGracePeriodSeconds: 600

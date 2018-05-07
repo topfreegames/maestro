@@ -34,9 +34,12 @@ spec:
       containers:
         - name: maestro-api
           command:
-            - "/bin/sh"
-            - "-c"
-            - "/app/maestro migrate && /app/maestro start -p 80 --incluster --json"
+            - /app/maestro
+            - start
+            - -p
+            - "80"
+            - --incluster
+            - --json
           image: quay.io/tfgco/maestro:v{{ .Chart.Version }}
           imagePullPolicy: Always
           ports:
@@ -86,3 +89,4 @@ spec:
                   key: newrelickey
             {{- end}}
             {{- end}}
+      terminationGracePeriodSeconds: 3600
