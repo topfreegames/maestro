@@ -44,6 +44,7 @@ type Watcher struct {
 	AutoScalingPeriod         int
 	RoomsStatusesReportPeriod int
 	EnsureCorrectRoomsPeriod  time.Duration
+	PodStatesCountPeriod      time.Duration
 	Config                    *viper.Viper
 	DB                        pginterfaces.DB
 	KubernetesClient          kubernetes.Interface
@@ -96,6 +97,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("watcher.autoScalingPeriod", 10)
 	w.Config.SetDefault("watcher.roomsStatusesReportPeriod", 10)
 	w.Config.SetDefault("watcher.ensureCorrectRoomsPeriod", 10*time.Minute)
+	w.Config.SetDefault("watcher.podStatesCountPeriod", 1*time.Minute)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
 	w.Config.SetDefault("watcher.gracefulShutdownTimeout", 300)
@@ -107,6 +109,7 @@ func (w *Watcher) configure() error {
 	w.AutoScalingPeriod = w.Config.GetInt("watcher.autoScalingPeriod")
 	w.RoomsStatusesReportPeriod = w.Config.GetInt("watcher.roomsStatusesReportPeriod")
 	w.EnsureCorrectRoomsPeriod = w.Config.GetDuration("watcher.ensureCorrectRoomsPeriod")
+	w.PodStatesCountPeriod = w.Config.GetDuration("watcher.podStatesCountPeriod")
 	w.LockKey = controller.GetLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
 	var wg sync.WaitGroup
@@ -176,6 +179,8 @@ func (w *Watcher) Start() {
 	defer tickerRs.Stop()
 	tickerEnsure := time.NewTicker(w.EnsureCorrectRoomsPeriod)
 	defer tickerEnsure.Stop()
+	tickerStateCount := time.NewTicker(w.PodStatesCountPeriod)
+	defer tickerStateCount.Stop()
 
 	for w.Run == true {
 		select {
@@ -185,6 +190,8 @@ func (w *Watcher) Start() {
 			w.WithRedisLock(l, w.ReportRoomsStatuses)
 		case <-tickerEnsure.C:
 			w.WithRedisLock(l, w.EnsureCorrectRooms)
+		case <-tickerStateCount.C:
+			w.PodStatesCount()
 		case sig := <-sigchan:
 			l.Warnf("caught signal %v: terminating\n", sig)
 			w.Run = false
@@ -720,4 +727,47 @@ func (w *Watcher) podsOfIncorrectVersion(
 		}
 	}
 	return podNames, nil
+}
+
+func hasTerminationState(status *v1.ContainerStatus) bool {
+	state := status.LastTerminationState
+	return state.Terminated != nil && state.Terminated.Reason != ""
+}
+
+// PodStatesCount sends metrics of pod states to statsd
+func (w *Watcher) PodStatesCount() {
+	if !reporters.HasReporters() {
+		return
+	}
+
+	logger := w.Logger.WithField("method", "PodStateStatistics")
+
+	logger.Info("listing pods on namespace")
+	pods, err := w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
+	if err != nil {
+		logger.WithError(err).Error("failed to list pods")
+		return
+	}
+
+	restartCount := map[string]int{}
+
+	for _, pod := range pods.Items {
+		for _, status := range pod.Status.ContainerStatuses {
+			if hasTerminationState(&status) {
+				reason := status.LastTerminationState.Terminated.Reason
+				restartCount[reason] = restartCount[reason] + 1
+			}
+		}
+	}
+
+	for reason, count := range restartCount {
+		reporters.Report(reportersConstants.EventPodLastStatus, map[string]string{
+			reportersConstants.TagGame:      w.GameName,
+			reportersConstants.TagScheduler: w.SchedulerName,
+			reportersConstants.TagReason:    reason,
+			reportersConstants.ValueGauge:   fmt.Sprintf("%d", count),
+		})
+	}
+
+	return
 }

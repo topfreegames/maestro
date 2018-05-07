@@ -11,6 +11,9 @@ const (
 	EventRPCDuration = "rpc.duration"
 
 	EventHTTPResponseTime = "http.response.time"
+
+	EventPodStatus     = "pod.status"
+	EventPodLastStatus = "pod.last_status"
 )
 
 //Reason{...} represents reasons for a pod/gru being deleted

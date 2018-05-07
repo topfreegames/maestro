@@ -1676,4 +1676,63 @@ var _ = Describe("Watcher", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
+
+	Describe("PodStatesCount", func() {
+		var configYaml models.ConfigYAML
+		var mockReporter *reportersMocks.MockReporter
+
+		BeforeEach(func() {
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
+			Expect(err).NotTo(HaveOccurred())
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					scheduler.YAML = yaml1
+				})
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient,
+				clientset, configYaml.Name, configYaml.Game, occupiedTimeout,
+				[]*eventforwarder.Info{})
+			Expect(w).NotTo(BeNil())
+
+			r := reporters.GetInstance()
+			mockReporter = reportersMocks.NewMockReporter(mockCtrl)
+			r.SetReporter("mockReporter", mockReporter)
+		})
+
+		AfterEach(func() {
+			r := reporters.GetInstance()
+			r.UnsetReporter("mockReporter")
+		})
+
+		It("should send to statsd reason of pods to restart", func() {
+			nPods := 3
+			reason := "bug"
+
+			for idx := 1; idx <= nPods; idx++ {
+				pod := &v1.Pod{}
+				pod.SetName(fmt.Sprintf("pod-%d", idx))
+				pod.SetNamespace(w.SchedulerName)
+				pod.Status = v1.PodStatus{
+					ContainerStatuses: []v1.ContainerStatus{{
+						LastTerminationState: v1.ContainerState{
+							Terminated: &v1.ContainerStateTerminated{
+								Reason: reason,
+							},
+						},
+					}},
+				}
+
+				_, err := clientset.CoreV1().Pods(w.SchedulerName).Create(pod)
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			mockReporter.EXPECT().Report(reportersConstants.EventPodLastStatus, map[string]string{
+				reportersConstants.TagGame:      w.GameName,
+				reportersConstants.TagScheduler: w.SchedulerName,
+				reportersConstants.TagReason:    reason,
+				reportersConstants.ValueGauge:   fmt.Sprintf("%d", nPods),
+			})
+
+			w.PodStatesCount()
+		})
+	})
 })

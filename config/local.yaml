@@ -15,6 +15,7 @@ watcher:
   autoScalingPeriod: 10
   roomsStatusesReportPeriod: 10
   ensureCorrectRoomsPeriod: 1m
+  podStatesCountPeriod: 10s
   lockKey: "maestro-lock-key"
   lockTimeoutMs: 180000
   gracefulShutdownTimeout: 300
