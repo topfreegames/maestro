@@ -164,6 +164,9 @@ func (g *SchedulerUpdateHandler) update(
 	configYaml *models.ConfigYAML,
 	operationManager *models.OperationManager,
 ) (status int, description string, err error) {
+	g.App.gracefulShutdown.wg.Add(1)
+	defer g.App.gracefulShutdown.wg.Done()
+
 	status, description, err =
 		updateSchedulerConfigCommon(r, g.App, logger, mr, configYaml, operationManager)
 	if err != nil {
@@ -181,6 +184,9 @@ func (g *SchedulerUpdateHandler) update(
 
 // ServeHTTP method
 func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	g.App.gracefulShutdown.wg.Add(1)
+	defer g.App.gracefulShutdown.wg.Done()
+
 	l := loggerFromContext(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
@@ -644,6 +650,9 @@ func (g *SchedulerImageHandler) update(
 	maxSurge int,
 	operationManager *models.OperationManager,
 ) (status int, description string, err error) {
+	g.App.gracefulShutdown.wg.Add(1)
+	defer g.App.gracefulShutdown.wg.Done()
+
 	status = http.StatusOK
 
 	redisClient, err := redis.NewClient("extensions.redis", g.App.Config, g.App.RedisClient)
@@ -675,6 +684,9 @@ func (g *SchedulerImageHandler) update(
 
 // ServeHTTP method
 func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	g.App.gracefulShutdown.wg.Add(1)
+	defer g.App.gracefulShutdown.wg.Done()
+
 	l := loggerFromContext(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
@@ -743,6 +755,9 @@ func (g *SchedulerUpdateMinHandler) update(
 	schedulerMin int,
 	operationManager *models.OperationManager,
 ) (status int, description string, err error) {
+	g.App.gracefulShutdown.wg.Add(1)
+	defer g.App.gracefulShutdown.wg.Done()
+
 	redisClient, err := redis.NewClient("extensions.redis", g.App.Config, g.App.RedisClient)
 	if err != nil {
 		logger.WithError(err).Error("error getting redisClient")
@@ -776,6 +791,9 @@ func (g *SchedulerUpdateMinHandler) update(
 
 // ServeHTTP method
 func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	g.App.gracefulShutdown.wg.Add(1)
+	defer g.App.gracefulShutdown.wg.Done()
+
 	l := loggerFromContext(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())

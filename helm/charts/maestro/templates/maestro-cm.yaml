@@ -74,3 +74,5 @@ data:
     schedulerCache:
       defaultExpiration: 5m
       cleanupInterval: 10m
+    api:
+      gracefulShutdownTimeout: 1h

@@ -8,31 +8,41 @@
 package api
 
 import (
+	"context"
 	e "errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/pprof"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
+
+	raven "github.com/getsentry/raven-go"
+	newrelic "github.com/newrelic/go-agent"
+	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	logininterfaces "github.com/topfreegames/maestro/login/interfaces"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
-	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/login"
-	logininterfaces "github.com/topfreegames/maestro/login/interfaces"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
-
-	raven "github.com/getsentry/raven-go"
-	newrelic "github.com/newrelic/go-agent"
 )
+
+type gracefulShutdown struct {
+	wg      *sync.WaitGroup
+	timeout time.Duration
+}
 
 //App is our API application
 type App struct {
@@ -51,6 +61,7 @@ type App struct {
 	EmailDomains     []string
 	Forwarders       []*eventforwarder.Info
 	SchedulerCache   *models.SchedulerCache
+	gracefulShutdown *gracefulShutdown
 }
 
 //NewApp ctor
@@ -74,6 +85,13 @@ func NewApp(
 		EmailDomains:   config.GetStringSlice("oauth.acceptedDomains"),
 		Forwarders:     []*eventforwarder.Info{},
 	}
+
+	var wg sync.WaitGroup
+	a.gracefulShutdown = &gracefulShutdown{
+		wg:      &wg,
+		timeout: a.Config.GetDuration("api.gracefulShutdownTimeout"),
+	}
+
 	err := a.configureApp(dbOrNil, redisClientOrNil, kubernetesClientOrNil, showProfile)
 	if err != nil {
 		return nil, err
@@ -503,16 +521,45 @@ func (a *App) HandleError(w http.ResponseWriter, status int, msg string, err int
 
 //ListenAndServe requests
 func (a *App) ListenAndServe() (io.Closer, error) {
+	logger := a.Logger.WithField("operation", "ListenAndServe")
+
+	logger.Info("listening on tcp address")
 	listener, err := net.Listen("tcp", a.Address)
 	if err != nil {
 		return nil, err
 	}
 
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		logger.Info("capturing SIGINT and SIGTERM")
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+		<-sig
+
+		logger.Info("captured termination signal")
+
+		logger.Info("waiting for updates to finish")
+		extensions.GracefulShutdown(logger, a.gracefulShutdown.wg, a.gracefulShutdown.timeout)
+
+		if err := a.Server.Shutdown(context.Background()); err != nil {
+			logger.Infof("HTTP server Shutdown: %v", err)
+		}
+
+		close(idleConnsClosed)
+	}()
+
 	err = a.Server.Serve(listener)
-	if err != nil {
+	if err != nil && err != http.ErrServerClosed {
 		listener.Close()
 		return nil, err
 	}
+
+	logger.Info("waiting to gracefully shutdown api")
+
+	logger.Info("waiting for connections to close")
+	<-idleConnsClosed
+
+	logger.Info("all connections are closed, shutting down api")
 
 	return listener, nil
 }
