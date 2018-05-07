@@ -76,7 +76,7 @@ wait-for-pg:
 	@sleep 2
 
 wait-for-test-pg:
-	@until docker exec maestrotest_postgres_1 pg_isready; do echo 'Waiting for Postgres...' && sleep 1; done
+	@until docker exec maestro_test_postgres_1 pg_isready; do echo 'Waiting for Postgres...' && sleep 1; done
 	@sleep 2
 
 deps-test: start-deps-test wait-for-test-pg drop-test migrate-test minikube
