@@ -25,10 +25,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/extensions/pg"
 	yaml "gopkg.in/yaml.v2"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/api/core/v1"
 )
 
 const (
@@ -5814,6 +5814,16 @@ containers:
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
 			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).Return(goredis.NewStringResult("5000", nil)).Times(scaleUpAmount * len(configYaml1.Ports))
 			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+
+			key := fmt.Sprintf("maestro:panic:lock:%s", room.SchedulerName)
+			mockRedisClient.EXPECT().HGetAll(key).
+				Return(goredis.NewStringStringMapResult(nil, nil))
+			mockPipeline.EXPECT().HMSet(key, gomock.Any())
+			mockPipeline.EXPECT().Expire(key, 1*time.Minute)
+			mockPipeline.EXPECT().Exec()
+			mockRedisClient.EXPECT().Del(key).Return(goredis.NewIntResult(0, nil))
 
 			err := controller.SetRoomStatus(
 				logger,

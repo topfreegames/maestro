@@ -30,8 +30,8 @@ import (
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 type gracefulShutdown struct {
@@ -740,7 +740,7 @@ func (w *Watcher) PodStatesCount() {
 		return
 	}
 
-	logger := w.Logger.WithField("method", "PodStateStatistics")
+	logger := w.Logger.WithField("method", "PodStatesCount")
 
 	logger.Info("listing pods on namespace")
 	pods, err := w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})

@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"time"
 
-	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/go-redis/redis"
 	goredis "github.com/go-redis/redis"
@@ -297,7 +297,7 @@ var _ = Describe("Room", func() {
 			room := models.NewRoom(name, scheduler)
 			_, err := room.GetAddresses(clientset)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(`Pod "pong-free-for-all-0" not found`))
+			Expect(err.Error()).To(Equal(`pods "pong-free-for-all-0" not found`))
 		})
 
 		It("should return no address if no node assigned to the room", func() {
@@ -429,7 +429,7 @@ var _ = Describe("Room", func() {
 
 			_, err = room.GetAddresses(clientset)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Node \"node-name\" not found"))
+			Expect(err.Error()).To(Equal("nodes \"node-name\" not found"))
 		})
 	})
 

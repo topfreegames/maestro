@@ -63,3 +63,5 @@ users:
   admin: admin1@example.com,admin2@example.com,admin3@example.com
 api:
   gracefulShutdownTimeout: 30s
+  limitManager:
+    keyTimeout: 1h

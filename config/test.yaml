@@ -53,3 +53,7 @@ schedulers:
     toKeep: 10
 users:
   admin: user@example.com
+api:
+  gracefulShutdownTimeout: 30s
+  limitManager:
+    keyTimeout: 1m

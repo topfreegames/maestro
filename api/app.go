@@ -381,12 +381,12 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("deleteTimeoutSeconds", 150)
 	a.Config.SetDefault("deleteTimeoutSeconds", 150)
 	a.Config.SetDefault("watcher.maxSurge", 25)
-	a.Config.SetDefault("watcher.maxSurge", 25)
 	a.Config.SetDefault("schedulerCache.defaultExpiration", "5m")
 	a.Config.SetDefault("schedulerCache.cleanupInterval", "10m")
 	a.Config.SetDefault("schedulers.versions.toKeep", 100)
 	a.Config.SetDefault("oauth.enabled", true)
 	a.Config.SetDefault("forwarders.grpc.matchmaking.timeout", 1*time.Second)
+	a.Config.SetDefault("api.limitManager.keyTimeout", 1*time.Minute)
 }
 
 func (a *App) configureCache() {

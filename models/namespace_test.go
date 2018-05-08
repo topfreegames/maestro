@@ -53,7 +53,7 @@ var _ = Describe("Namespace", func() {
 
 			err = namespace.Create(clientset)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(fmt.Sprintf("Namespace \"%s\" already exists", name)))
+			Expect(err.Error()).To(Equal(fmt.Sprintf("namespaces \"%s\" already exists", name)))
 		})
 	})
 

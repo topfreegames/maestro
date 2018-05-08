@@ -28,10 +28,10 @@ import (
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/models"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/api/core/v1"
 )
 
 var getOptions = metav1.GetOptions{}
@@ -1232,8 +1232,21 @@ func SetRoomStatus(
 		return err
 	}
 
-	if status == models.StatusOccupied {
-		if roomsCountByStatus.Total()*cachedScheduler.ConfigYAML.AutoScaling.Up.Trigger.Limit < 100*roomsCountByStatus.Occupied {
+	if status != models.StatusOccupied {
+		return nil
+	}
+
+	limitManager := models.NewLimitManager(logger, redisClient, config)
+
+	limit := roomsCountByStatus.Total() * cachedScheduler.ConfigYAML.AutoScaling.Up.Trigger.Limit
+	occupied := 100 * roomsCountByStatus.Occupied
+	if occupied > limit {
+		isLocked, err := limitManager.IsLocked(room)
+		if err != nil {
+			return err
+		}
+
+		if !isLocked {
 			scaleUpLog := log.WithFields(logrus.Fields{
 				"scheduler":  room.SchedulerName,
 				"readyRooms": roomsCountByStatus.Ready,
@@ -1241,7 +1254,14 @@ func SetRoomStatus(
 			})
 			scaleUpLog.Info("few ready rooms, scaling up")
 			go func() {
-				err := ScaleUp(
+				err := limitManager.Lock(room, cachedScheduler.ConfigYAML)
+				if err != nil {
+					log.WithError(err).Error(err)
+					return
+				}
+				defer limitManager.Unlock(room)
+
+				err = ScaleUp(
 					logger,
 					mr,
 					db,

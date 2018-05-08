@@ -1004,7 +1004,7 @@ forwarders:
 			err = json.Unmarshal(recorder.Body.Bytes(), &obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj).To(HaveKeyWithValue("code", "MAE-000"))
-			Expect(obj).To(HaveKeyWithValue("description", "Pod \"roomName\" not found"))
+			Expect(obj).To(HaveKeyWithValue("description", "pods \"roomName\" not found"))
 			Expect(obj).To(HaveKeyWithValue("error", "Address handler error"))
 			Expect(obj).To(HaveKeyWithValue("success", false))
 		})

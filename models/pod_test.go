@@ -16,8 +16,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/models"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("Pod", func() {
@@ -554,7 +554,7 @@ var _ = Describe("Pod", func() {
 
 			_, err = pod.Create(mockClientset)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(fmt.Sprintf("Pod \"%s\" already exists", name)))
+			Expect(err.Error()).To(Equal(fmt.Sprintf("pods \"%s\" already exists", name)))
 		})
 	})
 
@@ -594,7 +594,7 @@ var _ = Describe("Pod", func() {
 			Expect(err).NotTo(HaveOccurred())
 			err = pod.Delete(mockClientset, mockRedisClient, "deletion_reason", configYaml)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Pod \"pong-free-for-all-0\" not found"))
+			Expect(err.Error()).To(Equal("pods \"pong-free-for-all-0\" not found"))
 		})
 	})
 
