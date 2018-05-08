@@ -12,7 +12,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
 
 	"testing"
 

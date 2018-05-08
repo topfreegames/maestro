@@ -14,14 +14,20 @@ import (
 	"text/template"
 
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
-	"github.com/topfreegames/maestro/errors"
-	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/reporters"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
 )
+
+var scheme = runtime.NewScheme()
+var codecs = serializer.NewCodecFactory(scheme)
 
 // TODO: setup livenessProbe
 const podYaml = `
@@ -223,24 +229,17 @@ func (p *Pod) Create(clientset kubernetes.Interface) (*v1.Pod, error) {
 		return nil, err
 	}
 
-	decoder := api.Codecs.UniversalDecoder()
-	obj, _, err := decoder.Decode(buf.Bytes(), nil, nil)
+	k8sPod := v1.Pod{}
+	err = yaml.NewYAMLOrJSONDecoder(bytes.NewReader(buf.Bytes()), len(buf.Bytes())).Decode(&k8sPod)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewKubernetesError("error unmarshaling pod", err)
 	}
 
-	src := obj.(*api.Pod)
-	dst := &v1.Pod{}
-
-	err = api.Scheme.Convert(src, dst, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	pod, err := clientset.CoreV1().Pods(p.Namespace).Create(dst)
+	pod, err := clientset.CoreV1().Pods(p.Namespace).Create(&k8sPod)
 	if err != nil {
 		return nil, errors.NewKubernetesError("create pod error", err)
 	}
+
 	return pod, nil
 }
 
@@ -348,4 +347,20 @@ func PodExists(
 		return false, nil
 	}
 	return false, err
+}
+
+// IsPodReady returns true if pod is ready
+func IsPodReady(pod *v1.Pod) bool {
+	status := &pod.Status
+	if status == nil {
+		return false
+	}
+
+	for _, condition := range status.Conditions {
+		if condition.Type == v1.PodReady {
+			return condition.Status == v1.ConditionTrue
+		}
+	}
+
+	return false
 }

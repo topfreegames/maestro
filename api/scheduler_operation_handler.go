@@ -10,7 +10,6 @@ import (
 	"github.com/topfreegames/maestro/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 // SchedulerOperationHandler returns the current status on scheduler operation
@@ -92,7 +91,7 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 	for _, pod := range podsMinorVersion.Items {
-		if v1.IsPodReady(&pod) {
+		if models.IsPodReady(&pod) {
 			news = news + 1.0
 		}
 	}
@@ -105,7 +104,7 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 	for _, pod := range podsMajorVersion.Items {
-		if v1.IsPodReady(&pod) {
+		if models.IsPodReady(&pod) {
 			news = news + 1.0
 		}
 	}

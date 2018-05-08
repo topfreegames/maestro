@@ -35,7 +35,7 @@ import (
 	"github.com/topfreegames/maestro/watcher"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
 )
 
 const (

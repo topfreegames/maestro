@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
 
 	redis "github.com/go-redis/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
@@ -125,7 +125,7 @@ func portIsInGlobalRange(start, end int, port int32) bool {
 	return portInt >= start && portInt <= end
 }
 
-//RetrieveV1Ports s a wrapper of RetrievePorts by extracting HostPort from each element of a list of k8s.io/client-go/pkg/api/v1.ContainerPort
+//RetrieveV1Ports s a wrapper of RetrievePorts by extracting HostPort from each element of a list of k8s.io/api/core/v1.ContainerPort
 func RetrieveV1Ports(redisClient redisinterfaces.RedisClient, v1ports []v1.ContainerPort, c *ConfigYAML) error {
 	if v1ports == nil || len(v1ports) == 0 {
 		return nil

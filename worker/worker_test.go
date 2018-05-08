@@ -23,7 +23,7 @@ import (
 	"github.com/topfreegames/maestro/watcher"
 	"github.com/topfreegames/maestro/worker"
 	"gopkg.in/pg.v5/types"
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
 )
 
 var _ = Describe("Worker", func() {

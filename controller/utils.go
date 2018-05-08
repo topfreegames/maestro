@@ -16,10 +16,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
 
 	clockinterfaces "github.com/topfreegames/extensions/clock/interfaces"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
@@ -347,7 +347,7 @@ func waitCreatingPods(
 					break
 				}
 
-				if !v1.IsPodReady(createdPod) {
+				if !models.IsPodReady(createdPod) {
 					exit = false
 					break
 				}

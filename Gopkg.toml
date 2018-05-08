@@ -51,12 +51,12 @@
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "=3.0.0-beta.0"
+  version = "7.0.0"
 
 [[override]]
   name = "k8s.io/apimachinery"
-  revision = "75b8dd260ef0469d96d578705a87cffd0e09dab8"
+  version = "kubernetes-1.9.7"
 
 [[constraint]]
   name = "github.com/topfreegames/extensions"
-  version = "=v5.1.0"
+  version = "=v5.18.1"
