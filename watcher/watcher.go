@@ -753,6 +753,7 @@ func (w *Watcher) PodStatesCount() {
 
 	for _, pod := range pods.Items {
 		for _, status := range pod.Status.ContainerStatuses {
+			logger.Debugf("termination state: %+v", status)
 			if hasTerminationState(&status) {
 				reason := status.LastTerminationState.Terminated.Reason
 				restartCount[reason] = restartCount[reason] + 1

@@ -8,7 +8,7 @@
 package metadata
 
 //Version of Maestro
-var Version = "4.11.0"
+var Version = "4.11.1"
 
 //KubeVersion is the desired Kubernetes version
 var KubeVersion = "v1.7.5"
