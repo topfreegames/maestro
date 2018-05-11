@@ -761,6 +761,8 @@ func (w *Watcher) PodStatesCount() {
 		}
 	}
 
+	logger.Debugf("sending result do statsd: %+v", restartCount)
+
 	for reason, count := range restartCount {
 		reporters.Report(reportersConstants.EventPodLastStatus, map[string]string{
 			reportersConstants.TagGame:      w.GameName,
