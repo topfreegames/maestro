@@ -761,9 +761,10 @@ func (w *Watcher) PodStatesCount() {
 		}
 	}
 
-	logger.Debugf("sending result do statsd: %+v", restartCount)
+	logger.Debug("reporting to statsd")
 
 	for reason, count := range restartCount {
+		logger.Debugf("sending result to statsd: {%s:%d}", reason, count)
 		reporters.Report(reportersConstants.EventPodLastStatus, map[string]string{
 			reportersConstants.TagGame:      w.GameName,
 			reportersConstants.TagScheduler: w.SchedulerName,
