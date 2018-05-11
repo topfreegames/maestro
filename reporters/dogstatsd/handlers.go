@@ -24,6 +24,7 @@ var handlers = map[string]interface{}{
 	constants.EventRPCStatus:        GruIncrHandler,
 	constants.EventRPCDuration:      GruTimingHandler,
 	constants.EventHTTPResponseTime: HTTPTimingHandler,
+	constants.EventPodLastStatus:    GaugeHandler,
 }
 
 // Find looks for a matching handler to a given event
@@ -103,5 +104,23 @@ func HTTPTimingHandler(c dogstatsd.Client, event string,
 		constants.TagHTTPStatus, constants.TagHostname})
 	duration, _ := time.ParseDuration(opts[constants.TagResponseTime])
 	c.Timing(constants.EventHTTPResponseTime, duration, tags, 1)
+	return nil
+}
+
+// GaugeHandler calls dogstatsd.Client.Gauge with tags formatted as key:value
+func GaugeHandler(
+	c dogstatsd.Client,
+	event string,
+	opts map[string]string,
+) error {
+	tags := createAllowedTags(opts, []string{
+		constants.TagGame, constants.TagScheduler, constants.TagRegion,
+		constants.TagReason,
+	})
+	gauge, err := strconv.ParseFloat(opts["gauge"], 64)
+	if err != nil {
+		return err
+	}
+	c.Gauge(constants.EventPodLastStatus, gauge, tags, 1)
 	return nil
 }
