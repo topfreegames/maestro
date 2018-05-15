@@ -270,10 +270,15 @@ func (c *ConfigYAML) Diff(o *ConfigYAML) string {
 	return whatChanged
 }
 
-// PortsPoolRedisKey returns the redis key used to access ports pool for this scheduler
-func (c *ConfigYAML) PortsPoolRedisKey() string {
-	if !c.PortRange.IsSet() {
-		return FreePortsRedisKey()
+// HasPorts returns true if config has ports on global level or in any container level
+func (c *ConfigYAML) HasPorts() bool {
+	if len(c.Ports) > 0 {
+		return true
 	}
-	return FreeSchedulerPortsRedisKey(c.Name)
+	for _, container := range c.Containers {
+		if len(container.Ports) > 0 {
+			return true
+		}
+	}
+	return false
 }

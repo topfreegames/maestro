@@ -8,7 +8,6 @@
 package worker
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -204,15 +203,7 @@ func (w *Worker) Start(startHostPortRange, endHostPortRange int, showProfile boo
 	ticker := time.NewTicker(time.Duration(w.SyncPeriod) * time.Second)
 	defer ticker.Stop()
 
-	retrieveFreePortsPeriod := w.Config.GetInt("worker.retrieveFreePortsPeriod")
-	retrieveFreePortsTicker := time.NewTicker(time.Duration(retrieveFreePortsPeriod) * time.Second)
-	defer retrieveFreePortsTicker.Stop()
-
 	err := w.savePortRangeOnRedis(startHostPortRange, endHostPortRange)
-	if err != nil {
-		return err
-	}
-	err = models.InitAvailablePorts(w.RedisClient.Client, models.FreePortsRedisKey(), startHostPortRange, endHostPortRange)
 	if err != nil {
 		return err
 	}
@@ -236,17 +227,6 @@ func (w *Worker) Start(startHostPortRange, endHostPortRange int, showProfile boo
 
 			l.Infof("number of goroutines: %d", runtime.NumGoroutine())
 			l.Infof("number of watchers: %d", len(w.Watchers))
-		case <-retrieveFreePortsTicker.C:
-			l.Info("worker checking host port consistency on Redis")
-			schedulerNames, err := controller.ListSchedulersNames(l, w.MetricsReporter, w.DB)
-			if err != nil {
-				l.WithError(err).Error("error listing schedulers")
-				return err
-			}
-			err = w.RetrieveFreePorts(startHostPortRange, endHostPortRange, schedulerNames)
-			if err != nil {
-				l.WithError(err).Error("error retrieveing free host ports")
-			}
 		case sig := <-sigchan:
 			l.Warnf("caught signal %v: terminating\n", sig)
 			w.Run = false
@@ -325,85 +305,4 @@ func (w *Worker) RemoveDeadWatchers() {
 			delete(w.Watchers, schedulerName)
 		}
 	}
-}
-
-// RetrieveFreePorts walks through all pods of all schedulers and adds
-//  to Redis set all ports that should be free there but aren't
-func (w *Worker) RetrieveFreePorts(
-	start, end int,
-	schedulerNames []string,
-) error {
-	watcherLockPrefix := w.Config.GetString("watcher.lockKey")
-	timeout := time.NewTimer(time.Duration(w.getLocksTimeout) * time.Second)
-	defer timeout.Stop()
-	sleepDurationIfError := 1 * time.Second
-
-	l := w.Logger.WithFields(logrus.Fields{
-		"operation": "RetrieveFreePorts",
-	})
-
-	l.Info("getting all scheduler locks")
-
-	for _, schedulerName := range schedulerNames {
-	schedulersLoop:
-		for {
-			select {
-			case <-timeout.C:
-				return errors.New("error getting locks, trying again next period")
-			default:
-				lock, err := w.RedisClient.EnterCriticalSection(
-					w.RedisClient.Client,
-					controller.GetLockKey(watcherLockPrefix, schedulerName),
-					time.Duration(w.lockTimeoutMs)*time.Millisecond,
-					0, 0,
-				)
-				if err != nil || lock == nil || !lock.IsLocked() {
-					if err != nil {
-						l.WithError(err).Errorf("error getting watcher %s lock", schedulerName)
-					}
-					if lock == nil || !lock.IsLocked() {
-						l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
-					}
-					time.Sleep(sleepDurationIfError)
-					continue
-				}
-				defer w.RedisClient.LeaveCriticalSection(lock)
-				break schedulersLoop
-			}
-		}
-	}
-
-	// The errors are ignored but logged, so we try to retrieve on all pools
-	l.Info("starting to retrieve ports on worker")
-
-	schedulersWithGlobalRange := []string{}
-	configsWithOwnRange := []*models.ConfigYAML{}
-
-	l.Info("reading scheduler configs from database")
-	schedulers, err := models.LoadSchedulers(w.DB, schedulerNames)
-	if err != nil {
-		return err
-	}
-
-	l.Info("getting configs yaml from schedulers")
-	for _, scheduler := range schedulers {
-		configYaml, err := models.NewConfigYAML(scheduler.YAML)
-		if err != nil {
-			l.WithError(err).Error("failed to unmarshal scheduler %s", scheduler.Name)
-			return err
-		}
-
-		if configYaml.PortRange.IsSet() {
-			configsWithOwnRange = append(configsWithOwnRange, configYaml)
-		} else {
-			schedulersWithGlobalRange = append(schedulersWithGlobalRange, scheduler.Name)
-		}
-	}
-
-	retrievePorts(w, start, end, true, schedulersWithGlobalRange...)
-	for _, c := range configsWithOwnRange {
-		retrievePorts(w, c.PortRange.Start, c.PortRange.End, false, c.Name)
-	}
-
-	return nil
 }

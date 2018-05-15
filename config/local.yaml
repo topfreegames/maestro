@@ -26,7 +26,6 @@ watcher:
 worker:
   syncPeriod: 5
   gracefulShutdownTimeout: 300
-  retrieveFreePortsPeriod: 86400
   getLocksTimeout: 300
   lockTimeoutMs: 180000
 reporters:

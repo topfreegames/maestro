@@ -9,29 +9,36 @@
 package models_test
 
 import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
+	"github.com/go-redis/redis"
+	"github.com/golang/mock/gomock"
+	"github.com/topfreegames/maestro/models"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"github.com/go-redis/redis"
 	goredis "github.com/go-redis/redis"
-	"github.com/golang/mock/gomock"
 	uuid "github.com/satori/go.uuid"
-	"github.com/topfreegames/maestro/models"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Room", func() {
-	var clientset *fake.Clientset
-	schedulerName := uuid.NewV4().String()
-	name := uuid.NewV4().String()
-	configYaml := &models.ConfigYAML{Game: "game-name"}
+	var (
+		clientset *fake.Clientset
+
+		portStart     = 5000
+		portEnd       = 6000
+		portRange     = fmt.Sprintf("%d-%d", portStart, portEnd)
+		schedulerName = uuid.NewV4().String()
+		name          = uuid.NewV4().String()
+		configYaml    = &models.ConfigYAML{Game: "game-name"}
+	)
 
 	reportStatus := func(scheduler, status, roomKey, statusKey string) {
 		mockRedisClient.EXPECT().HGetAll(roomKey).
@@ -352,12 +359,9 @@ var _ = Describe("Room", func() {
 				Cmd:             command,
 			}
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5000", nil))
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5001", nil))
-			mockPipeline.EXPECT().Exec()
+			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
+				Return(goredis.NewStringResult(portRange, nil))
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
 
 			mr.EXPECT().Report("gru.new", map[string]string{
 				reportersConstants.TagGame:      "pong",

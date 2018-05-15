@@ -57,6 +57,10 @@ var _ = BeforeSuite(func() {
 
 	kubeConfig, err := mtesting.MinikubeConfig()
 	clientset, err = kubernetes.NewForConfig(kubeConfig)
+})
 
-	models.InitAvailablePorts(redisClient.Client, models.FreePortsRedisKey(), 40000, 60000)
+var _ = BeforeEach(func() {
+	portRange := models.NewPortRange(40000, 60000).String()
+	err := redisClient.Client.Set(models.GlobalPortsPoolKey, portRange, 0).Err()
+	Expect(err).NotTo(HaveOccurred())
 })

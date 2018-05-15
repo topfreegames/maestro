@@ -249,19 +249,11 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 	reason string,
 	configYaml *ConfigYAML,
 ) error {
-	kubePod, err := clientset.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
-	if err != nil {
-		return errors.NewKubernetesError("error getting pod to delete", err)
-	}
-
-	err = clientset.CoreV1().Pods(p.Namespace).Delete(p.Name, &metav1.DeleteOptions{})
+	err := clientset.CoreV1().Pods(p.Namespace).Delete(p.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		return errors.NewKubernetesError("delete pod error", err)
 	}
 
-	for _, container := range kubePod.Spec.Containers {
-		RetrieveV1Ports(redisClient, container.Ports, configYaml)
-	}
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
 			reportersConstants.TagGame:      p.Game,
@@ -312,13 +304,28 @@ func (p *Pod) configureHostPorts(
 		return nil
 	}
 
-	//pod not found, so give new ports
+	//pod not found, so give new ports if necessary
+	podHasPorts := false
+
 	for _, container := range p.Containers {
-		ports, err := GetFreePorts(redisClient, len(container.Ports), configYaml.PortsPoolRedisKey())
-		if err != nil {
-			return fmt.Errorf("error getting ports from redis, check if there is enough ports: %s", err.Error())
+		if container.Ports != nil && len(container.Ports) > 0 {
+			podHasPorts = true
+			break
 		}
-		containerPorts := make([]*Port, len(ports))
+	}
+
+	if !podHasPorts {
+		return nil
+	}
+
+	start, end, err := GetPortRange(configYaml, redisClient)
+	if err != nil {
+		return fmt.Errorf("error reading global port range from redis: %s", err.Error())
+	}
+
+	for _, container := range p.Containers {
+		ports := GetRandomPorts(start, end, len(container.Ports))
+		containerPorts := make([]*Port, len(container.Ports))
 		for i, port := range ports {
 			containerPorts[i] = &Port{
 				ContainerPort: container.Ports[i].ContainerPort,
@@ -363,4 +370,22 @@ func IsPodReady(pod *v1.Pod) bool {
 	}
 
 	return false
+}
+
+// PodPending returns true if pod is with status Pending.
+// In this case, also returns reason for being pending and message.
+func PodPending(pod *v1.Pod) (isPending bool, reason, message string) {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Status == v1.ConditionFalse {
+			return true, condition.Reason, condition.Message
+		}
+	}
+
+	return false, "", ""
+}
+
+// IsUnitTest returns true if pod was created using fake client-go
+// and is not running in a kubernetes cluster.
+func IsUnitTest(pod *v1.Pod) bool {
+	return len(pod.Status.Phase) == 0
 }

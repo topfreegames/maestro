@@ -273,7 +273,8 @@ func waitTerminatingPods(
 				)
 
 				if err == nil || !strings.Contains(err.Error(), "not found") {
-					logger.WithField("pod", pod.GetName()).Debugf("pod still exists")
+					logger.WithField("pod", pod.GetName()).Debugf("pod still exists, deleting again")
+					err = clientset.CoreV1().Pods(namespace).Delete(pod.GetName(), deleteOptions)
 					exit = false
 					break
 				}
@@ -348,6 +349,7 @@ func waitCreatingPods(
 				}
 
 				if !models.IsPodReady(createdPod) {
+					logger.WithField("pod", createdPod.GetName()).Debug("pod not ready yet, waiting...")
 					exit = false
 					break
 				}
@@ -466,7 +468,9 @@ func waitForPods(
 		exit := true
 		select {
 		case <-timeoutTimer.C:
-			return errors.New("timeout waiting for rooms to be created")
+			msg := "timeout waiting for rooms to be created"
+			l.Error(msg)
+			return errors.New(msg)
 		case <-ticker.C:
 			for i := range pods {
 				if pods[i] != nil {
@@ -481,18 +485,33 @@ func waitForPods(
 							l.WithError(err).Errorf("error recreating pod %s", pods[i].GetName())
 						}
 					} else {
-						if len(pod.Status.Phase) == 0 {
-							break // TODO: HACK!!!  Trying to detect if we are running unit tests
-						}
-						if pod.Status.Phase != v1.PodRunning {
-							exit = false
+						if models.IsUnitTest(pod) {
 							break
 						}
-						for _, containerStatus := range pod.Status.ContainerStatuses {
-							if !containerStatus.Ready {
+
+						if pod.Status.Phase != v1.PodRunning {
+							isPending, reason, message := models.PodPending(pod)
+							if isPending && strings.Contains(message, models.PodNotFitsHostPorts) {
+								l.WithFields(logrus.Fields{
+									"reason":  reason,
+									"message": message,
+								}).Error("pod's host port is not available in any node of the pool, watcher will delete it soon")
+								continue
+							} else {
+								l.WithFields(logrus.Fields{
+									"pod":     pod.GetName(),
+									"pending": isPending,
+									"reason":  reason,
+									"message": message,
+								}).Warn("pod is not running yet")
 								exit = false
 								break
 							}
+						}
+
+						if !models.IsPodReady(pod) {
+							exit = false
+							break
 						}
 					}
 				}
@@ -504,7 +523,6 @@ func waitForPods(
 			break
 		}
 	}
-
 	return nil
 }
 
@@ -587,36 +605,36 @@ func checkPortRange(
 	log logrus.FieldLogger,
 	db pginterfaces.DB,
 	redis redisinterfaces.RedisClient,
-) (changedPortRange, deleteOldPool bool, err error) {
+) (changedPortRange bool, err error) {
 	isCreatingScheduler := oldConfig == nil
 
 	if isCreatingScheduler {
 		if !newConfig.PortRange.IsSet() {
-			return false, false, nil
+			return false, nil
 		}
 	} else {
 		if !oldConfig.PortRange.IsSet() && !newConfig.PortRange.IsSet() {
-			return false, false, nil
+			return false, nil
 		}
 
 		if oldConfig.PortRange.IsSet() && !newConfig.PortRange.IsSet() {
-			return true, true, nil
+			return true, nil
 		}
 
 		if oldConfig.PortRange.Equals(newConfig.PortRange) {
 			log.Info("old scheduler contains new port range, skipping port check")
-			return false, false, nil
+			return false, nil
 		}
 
 		if !newConfig.PortRange.IsValid() {
-			return false, false, errors.New("port range is invalid")
+			return false, errors.New("port range is invalid")
 		}
 	}
 
 	log.Info("update changed ports pool, getting all used ports range")
 	ranges, err := getSchedulersAndGlobalPortRanges(db, redis, log)
 	if err != nil {
-		return true, false, err
+		return true, err
 	}
 
 	log.WithField("pool", newConfig.PortRange.String()).Info("checking if new pool has intersection with other ones")
@@ -625,23 +643,9 @@ func checkPortRange(
 			continue
 		}
 		if portRange.HasIntersection(newConfig.PortRange) {
-			return true, false, fmt.Errorf("scheduler trying to use ports used by pool '%s'", schedulerName)
+			return true, fmt.Errorf("scheduler trying to use ports used by pool '%s'", schedulerName)
 		}
 	}
 
-	log.Info("pool is valid, populating set on redis")
-	err = newConfig.PortRange.PopulatePool(redis, newConfig.Name)
-	if err != nil {
-		log.WithError(err).Error("error populating set on redis")
-		return true, false, err
-	}
-
-	return true, false, nil
-}
-
-func deletePortPool(redis redisinterfaces.RedisClient, schedulerName string) error {
-	tx := redis.TxPipeline()
-	tx.Del(models.FreeSchedulerPortsRedisKey(schedulerName))
-	_, err := tx.Exec()
-	return err
+	return true, nil
 }

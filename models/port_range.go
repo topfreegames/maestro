@@ -1,16 +1,17 @@
 package models
 
-import (
-	"fmt"
-
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
-)
+import "fmt"
 
 // PortRange represents the port range that maestro can use
 // to give ports to a scheduler.
 type PortRange struct {
 	Start int
 	End   int
+}
+
+// NewPortRange is the PortRange constructor
+func NewPortRange(start, end int) *PortRange {
+	return &PortRange{start, end}
 }
 
 // IsSet returns true if the start port and end port are valids
@@ -40,20 +41,6 @@ func (p *PortRange) Equals(pr *PortRange) bool {
 func (p *PortRange) PortIsInRange(port int32) bool {
 	portInt := int(port)
 	return portInt >= p.Start && portInt <= p.End
-}
-
-// PopulatePool starts the set on redis with ports from start to end
-func (p *PortRange) PopulatePool(redis redisinterfaces.RedisClient, schedulerName string) error {
-	setKey := FreeSchedulerPortsRedisKey(schedulerName)
-
-	pipe := redis.TxPipeline()
-	pipe.Del(setKey)
-	_, err := pipe.Exec()
-	// continue even if an error occurrs
-
-	err = InitAvailablePorts(redis, FreeSchedulerPortsRedisKey(schedulerName), p.Start, p.End)
-
-	return err
 }
 
 // HasIntersection returns true if the port ranges have intersection with each other.

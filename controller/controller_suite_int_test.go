@@ -9,22 +9,22 @@
 package controller_test
 
 import (
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/redis"
-	"k8s.io/client-go/kubernetes"
 
 	"testing"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
-	"github.com/topfreegames/maestro/models"
-
 	mtesting "github.com/topfreegames/maestro/testing"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus/hooks/test"
+	"github.com/golang/mock/gomock"
+	"github.com/spf13/viper"
+	"github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/maestro/models"
+	"k8s.io/client-go/kubernetes"
 )
 
 var (

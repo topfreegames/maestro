@@ -20,7 +20,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/go-redis/redis"
-	goredis "github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -72,7 +71,6 @@ forwarders:
 			Name:  namespace,
 			Game:  "game",
 			Image: "img",
-			Ports: []*models.Port{&models.Port{ContainerPort: 1234, Name: "port1", Protocol: "UDP"}},
 		}
 
 		pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
@@ -250,11 +248,6 @@ forwarders:
 			var app *api.App
 			game := "somegame"
 			BeforeEach(func() {
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-					Return(goredis.NewStringResult("5000", nil))
-				mockPipeline.EXPECT().Exec()
-
 				createNamespace(namespace, clientset)
 				err := createPod(roomName, namespace, clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -466,11 +459,6 @@ forwarders:
 				var app *api.App
 				game := "somegame"
 				BeforeEach(func() {
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-					mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-						Return(goredis.NewStringResult("5000", nil))
-					mockPipeline.EXPECT().Exec()
-
 					createNamespace(namespace, clientset)
 					err := createPod(roomName, namespace, clientset)
 					Expect(err).NotTo(HaveOccurred())
@@ -777,11 +765,6 @@ forwarders:
 		var app *api.App
 
 		BeforeEach(func() {
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5000", nil))
-			mockPipeline.EXPECT().Exec()
-
 			createNamespace(namespace, clientset)
 			err := createPod("roomName", namespace, clientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -915,12 +898,7 @@ forwarders:
 			image     = "pong/pong:v123"
 			name      = "roomName"
 			namespace = "schedulerName"
-			ports     = []*models.Port{
-				{
-					ContainerPort: 5050,
-				},
-			}
-			limits = &models.Resources{
+			limits    = &models.Resources{
 				CPU:    "2",
 				Memory: "128974848",
 			}
@@ -934,7 +912,6 @@ forwarders:
 				Name:            namespace,
 				Game:            game,
 				Image:           image,
-				Ports:           ports,
 				Limits:          limits,
 				Requests:        requests,
 				ShutdownTimeout: shutdownTimeout,
@@ -944,11 +921,6 @@ forwarders:
 			ns := models.NewNamespace(namespace)
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5000", nil))
-			mockPipeline.EXPECT().Exec()
 
 			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())
@@ -977,11 +949,6 @@ forwarders:
 			ns := models.NewNamespace(namespace)
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5000", nil))
-			mockPipeline.EXPECT().Exec()
 
 			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
 			Expect(err).NotTo(HaveOccurred())

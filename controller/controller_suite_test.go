@@ -9,24 +9,24 @@
 package controller_test
 
 import (
-	"time"
-
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/redis"
 
 	"testing"
+	"time"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	clockmocks "github.com/topfreegames/extensions/clock/mocks"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
-	"github.com/topfreegames/maestro/models"
-
 	mtesting "github.com/topfreegames/maestro/testing"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus/hooks/test"
+	"github.com/golang/mock/gomock"
+	"github.com/spf13/viper"
+	"github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/maestro/mocks"
+	"github.com/topfreegames/maestro/models"
 )
 
 var (
@@ -38,9 +38,11 @@ var (
 	mockPipeline    *redismocks.MockPipeliner
 	mockRedisClient *redismocks.MockRedisClient
 	mockClock       *clockmocks.MockClock
+	mockPortChooser *mocks.MockPortChooser
 	redisClient     *redis.Client
 	mr              *models.MixedMetricsReporter
 	schedulerCache  *models.SchedulerCache
+	err             error
 	allStatus       = []string{
 		models.StatusCreating,
 		models.StatusReady,
@@ -56,13 +58,11 @@ func TestController(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	var err error
 	config, err = mtesting.GetDefaultConfig()
 	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = BeforeEach(func() {
-	var err error
 	logger, hook = test.NewNullLogger()
 	logger.Level = logrus.DebugLevel
 
@@ -76,6 +76,9 @@ var _ = BeforeEach(func() {
 
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
+
+	mockPortChooser = mocks.NewMockPortChooser(mockCtrl)
+	models.ThePortChooser = mockPortChooser
 
 	mockRedisClient.EXPECT().Ping()
 	redisClient, err = redis.NewClient("extensions.redis", config, mockRedisClient)

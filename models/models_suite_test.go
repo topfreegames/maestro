@@ -9,21 +9,23 @@
 package models_test
 
 import (
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/kubernetes/fake"
 
 	"testing"
 
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
-	"github.com/topfreegames/maestro/models"
-	"github.com/topfreegames/maestro/reporters"
 	reportersmocks "github.com/topfreegames/maestro/reporters/mocks"
 	mtesting "github.com/topfreegames/maestro/testing"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus/hooks/test"
+	"github.com/golang/mock/gomock"
+	"github.com/topfreegames/maestro/mocks"
+	"github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/reporters"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 var (
@@ -32,6 +34,7 @@ var (
 	mockRedisClient *redismocks.MockRedisClient
 	mockClientset   *fake.Clientset
 	mockPipeline    *redismocks.MockPipeliner
+	mockPortChooser *mocks.MockPortChooser
 	mmr             *models.MixedMetricsReporter
 	mr              *reportersmocks.MockReporter
 	singleton       *reporters.Reporters
@@ -52,6 +55,10 @@ var _ = BeforeEach(func() {
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
 	mockClientset = fake.NewSimpleClientset()
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
+
+	mockPortChooser = mocks.NewMockPortChooser(mockCtrl)
+	models.ThePortChooser = mockPortChooser
+
 	mr = reportersmocks.NewMockReporter(mockCtrl)
 	singleton = reporters.GetInstance()
 	singleton.SetReporter("mockReporter", mr)

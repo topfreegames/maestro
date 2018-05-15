@@ -93,6 +93,12 @@ var _ = BeforeSuite(func() {
 	go w.Start(startPortRange, endPortRange, false)
 })
 
+var _ = BeforeEach(func() {
+	portRange := models.NewPortRange(startPortRange, endPortRange).String()
+	err := app.RedisClient.Set(models.GlobalPortsPoolKey, portRange, 0).Err()
+	Expect(err).NotTo(HaveOccurred())
+})
+
 var _ = AfterEach(func() {
 	_, err := app.DB.Exec("DELETE FROM schedulers")
 	Expect(err).NotTo(HaveOccurred())
@@ -102,9 +108,6 @@ var _ = AfterEach(func() {
 	_, err = pipe.Exec()
 	Expect(err).NotTo(HaveOccurred())
 	err = cmd.Err()
-	Expect(err).NotTo(HaveOccurred())
-
-	err = models.InitAvailablePorts(app.RedisClient, models.FreePortsRedisKey(), startPortRange, endPortRange)
 	Expect(err).NotTo(HaveOccurred())
 })
 

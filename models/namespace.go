@@ -14,9 +14,9 @@ import (
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/api/core/v1"
 )
 
 // Namespace represents a namespace
@@ -84,23 +84,12 @@ func (n *Namespace) DeletePods(clientset kubernetes.Interface,
 		return errors.NewKubernetesError("delete namespace pods error", err)
 	}
 
-	configYaml, err := NewConfigYAML(s.YAML)
-	if err != nil {
-		return err
-	}
-
-	for _, pod := range pods.Items {
+	for range pods.Items {
 		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
 			reportersConstants.TagGame:      s.Game,
 			reportersConstants.TagScheduler: s.Name,
 			reportersConstants.TagReason:    reportersConstants.ReasonNamespaceDeletion,
 		})
-		for _, container := range pod.Spec.Containers {
-			err := RetrieveV1Ports(redisClient, container.Ports, configYaml)
-			if err != nil {
-				//TODO: try again?
-			}
-		}
 	}
 	return nil
 }

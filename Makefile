@@ -163,7 +163,7 @@ minikube-ci:
 	@MAESTRO_TEST_CI=true /bin/bash ./scripts/start-minikube-if-not-yet.sh
 
 work:
-	@go run main.go worker
+	@go run main.go worker -v3
 
 clean-int-tests:
 	@echo 'deleting maestro-test-* namespaces'
@@ -184,3 +184,9 @@ plugins-linux:
 
 plugins:
 	@docker run -v $$(pwd)/:/go/src/github.com/topfreegames/maestro -ti golang bash -c "cd /go/src/github.com/topfreegames/maestro && go get github.com/golang/protobuf/protoc-gen-go google.golang.org/grpc golang.org/x/net/context && go build -o bin/grpc.so -buildmode=plugin plugins/grpc/forwarder.go"
+
+.PHONY: mocks
+
+mocks:
+	@mockgen github.com/topfreegames/maestro/models PortChooser | sed 's/mock_models/mocks/' > mocks/port_chooser.go
+	@echo 'port chooser mock on ./mocks/port_chooser.go'

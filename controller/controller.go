@@ -35,6 +35,7 @@ import (
 )
 
 var getOptions = metav1.GetOptions{}
+var deleteOptions = &metav1.DeleteOptions{}
 
 // CreateScheduler creates a new scheduler from a yaml configuration
 func CreateScheduler(
@@ -109,7 +110,7 @@ func CreateScheduler(
 	}
 
 	logger.Info("creating ports pool if necessary")
-	usesPortRange, _, err := checkPortRange(nil, configYAML, logger, db, redisClient)
+	usesPortRange, err := checkPortRange(nil, configYAML, logger, db, redisClient)
 	if err != nil {
 		logger.WithError(err).Error("error checking port range, deleting scheduler")
 		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
@@ -135,13 +136,6 @@ func CreateScheduler(
 
 		if usesPortRange {
 			logger.Info("deleting newly created ports pool due to scheduler creation error")
-			poolDeletionErr := deletePortPool(redisClient, scheduler.Name)
-			if poolDeletionErr != nil {
-				logger.WithError(poolDeletionErr).Errorf(
-					"error deleting newly created port pool, you can delete it by hand on redis: %s",
-					models.FreeSchedulerPortsRedisKey(scheduler.Name),
-				)
-			}
 		}
 
 		return err
@@ -600,7 +594,7 @@ waitForLock:
 
 	currentVersion := scheduler.Version
 
-	changedPortRange, shouldDeleteOldPool, err := checkPortRange(&oldConfig, configYAML, l, db, redisClient.Client)
+	changedPortRange, err := checkPortRange(&oldConfig, configYAML, l, db, redisClient.Client)
 	if err != nil {
 		return err
 	}
@@ -685,14 +679,6 @@ waitForLock:
 		l.Info("updated configYaml on database")
 	} else {
 		l.Info("config yaml is the same, skipping")
-	}
-
-	if shouldDeleteOldPool {
-		l.Infof("not using scheduler port range anymore, deleting old pool: %s", models.FreeSchedulerPortsRedisKey(configYAML.Name))
-		err = deletePortPool(redisClient.Client, configYAML.Name)
-		if err != nil {
-			l.WithError(err).Errorf("error deleting old pool of '%s', must delete it by hand on redis if you are ABSOLUTELY CERTAIN that this port pool is not being used anymore. If you are not COMPLETELY SURE that the pool is not being used, leave it there.", configYAML.Name)
-		}
 	}
 
 	return nil
@@ -792,11 +778,6 @@ func deleteSchedulerHelper(
 	if err != nil {
 		logger.WithError(err).Error("failed to delete scheduler from database while deleting scheduler")
 		return err
-	}
-
-	if configYAML.PortRange.IsSet() {
-		err = deletePortPool(redisClient, configYAML.Name)
-		logger.WithError(err).Error("failed to delete old ports pool")
 	}
 
 	return nil

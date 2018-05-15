@@ -9,16 +9,18 @@
 package api_test
 
 import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"testing"
 	"time"
+
+	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/login"
 	"github.com/topfreegames/maestro/login/mocks"
@@ -80,7 +82,10 @@ var _ = BeforeSuite(func() {
 	mockCtrl = gomock.NewController(GinkgoT())
 	mockLogin = mocks.NewMockLogin(mockCtrl)
 	app.Login = mockLogin
+})
 
-	err = models.InitAvailablePorts(app.RedisClient, models.FreePortsRedisKey(), 40000, 60000)
+var _ = BeforeEach(func() {
+	portRange := models.NewPortRange(40000, 60000).String()
+	err := app.RedisClient.Set(models.GlobalPortsPoolKey, portRange, 0).Err()
 	Expect(err).NotTo(HaveOccurred())
 })

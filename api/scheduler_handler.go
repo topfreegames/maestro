@@ -15,13 +15,13 @@ import (
 	"strings"
 	"time"
 
+	maestroErrors "github.com/topfreegames/maestro/errors"
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/extensions/clock"
 	"github.com/topfreegames/extensions/redis"
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/topfreegames/maestro/controller"
-	maestroErrors "github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 )
@@ -63,7 +63,8 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
 		err := mr.WithSegment(models.SegmentController, func() error {
-			return controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, payload, timeoutSec)
+			return controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient,
+				g.App.KubernetesClient, payload, timeoutSec)
 		})
 
 		if err != nil {

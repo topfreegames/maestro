@@ -9,20 +9,20 @@
 package controller_test
 
 import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"errors"
-	"math/rand"
-	"strconv"
 	"time"
 
 	goredis "github.com/go-redis/redis"
-	"github.com/golang/mock/gomock"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/topfreegames/maestro/controller"
-	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/golang/mock/gomock"
+	"github.com/topfreegames/maestro/controller"
+	"github.com/topfreegames/maestro/models"
 	"k8s.io/api/core/v1"
 )
 
@@ -30,10 +30,6 @@ var _ = Describe("Controller", func() {
 	var timeoutSec int
 	var configYaml1 models.ConfigYAML
 	var jsonStr string
-	randomPort := func(min, max int) string {
-		rand.Seed(time.Now().UnixNano())
-		return strconv.Itoa(rand.Intn(max-min) + min)
-	}
 
 	BeforeEach(func() {
 		var err error
@@ -70,25 +66,8 @@ var _ = Describe("Controller", func() {
 			mtesting.MockUpdateSchedulerStatus(mockDb, errors.New("error updating state"), nil)
 			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().
-				SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult(randomPort(40000, 60000), nil))
-			mockPipeline.EXPECT().Exec()
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().
-				SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult(randomPort(40000, 60000), nil))
-			mockPipeline.EXPECT().Exec()
-
 			mockRedisClient.EXPECT().
 				Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("40000-60000", nil)).Times(2)
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
-			mockPipeline.EXPECT().
-				SAdd(models.FreePortsRedisKey(), gomock.Any()).Times(2)
-			mockPipeline.EXPECT().Exec().Times(2)
 
 			err := controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())

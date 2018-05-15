@@ -8,22 +8,20 @@
 package worker_test
 
 import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"errors"
 	"time"
 
 	goredis "github.com/go-redis/redis"
-	mtesting "github.com/topfreegames/maestro/testing"
 
 	"github.com/golang/mock/gomock"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/watcher"
 	"github.com/topfreegames/maestro/worker"
-	"gopkg.in/pg.v5/types"
-	"k8s.io/api/core/v1"
 )
 
 var _ = Describe("Worker", func() {
@@ -34,13 +32,6 @@ name: controller-name
 game: controller
 image: controller/controller:v123
 occupiedTimeout: 300
-ports:
-  - containerPort: 1234
-    protocol: UDP
-    name: port1
-  - containerPort: 7654
-    protocol: TCP
-    name: port2
 limits:
   memory: "66Mi"
   cpu: "2"
@@ -108,9 +99,6 @@ cmd:
 			mockRedisClient.EXPECT().
 				Set(models.GlobalPortsPoolKey, "40000-50000", 0*time.Second).
 				Return(goredis.NewStatusResult("", nil)).Times(2)
-			mockRedisClient.EXPECT().
-				Eval(gomock.Any(), gomock.Any(), startPortRange, endPortRange).
-				Return(goredis.NewCmdResult(nil, nil))
 
 			w.Start(startPortRange, endPortRange, false)
 		})
@@ -126,9 +114,6 @@ cmd:
 			mockRedisClient.EXPECT().
 				Set(models.GlobalPortsPoolKey, "40000-50000", 0*time.Second).
 				Return(goredis.NewStatusResult("", nil)).Times(2)
-			mockRedisClient.EXPECT().
-				Eval(gomock.Any(), gomock.Any(), startPortRange, endPortRange).
-				Return(goredis.NewCmdResult(nil, nil))
 
 			err := w.Start(startPortRange, endPortRange, false)
 			Expect(err).To(HaveOccurred())
@@ -214,211 +199,6 @@ cmd:
 			w.RemoveDeadWatchers()
 			Expect(w.Watchers).NotTo(HaveKey(schedulerNames[0]))
 			Expect(w.Watchers).To(HaveKey(schedulerNames[1]))
-		})
-	})
-
-	Describe("RetrieveFreePorts", func() {
-		var w *worker.Worker
-
-		BeforeEach(func() {
-			var err error
-			mockRedisClient.EXPECT().Ping()
-			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should remove two ports from set if there are two rooms with one hostPort each", func() {
-			var start, end int = 5000, 5010
-			redisKey := "maestro:updated:free:ports"
-			schedulerNames := []string{"room-0"}
-			pods := []struct {
-				Name string
-				Port int32
-			}{
-				{"room-0", int32(start)},
-				{"room-1", int32(start + 1)},
-			}
-
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name IN (?)", gomock.Any()).
-				Do(func(schedulers *[]models.Scheduler, q string, i types.ValueAppender) {
-					*schedulers = []models.Scheduler{
-						{Name: "room-0"},
-					}
-				})
-
-			mockRedisClient.EXPECT().
-				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(goredis.NewBoolResult(true, nil))
-
-			for _, pod := range pods {
-				kubePod := &v1.Pod{}
-				kubePod.SetName(pod.Name)
-				kubePod.Spec.Containers = []v1.Container{
-					{
-						Ports: []v1.ContainerPort{
-							{HostPort: pod.Port, Name: "TCP"},
-						},
-					},
-				}
-				_, err := clientset.CoreV1().Pods(schedulerNames[0]).Create(kubePod)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			for i := start; i <= end; i++ {
-				mockPipeline.EXPECT().SAdd(redisKey, i)
-			}
-
-			for _, pod := range pods {
-				mockPipeline.EXPECT().SRem(redisKey, pod.Port)
-			}
-
-			mockPipeline.EXPECT().Rename(redisKey, models.FreePortsRedisKey())
-			mockPipeline.EXPECT().Exec()
-			mockRedisClient.EXPECT().
-				Eval(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(goredis.NewCmdResult(nil, nil))
-
-			err := w.RetrieveFreePorts(start, end, schedulerNames)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should retrieve ports to scheduler pool", func() {
-			var start, end int = 5000, 5010
-			redisKey := "maestro:updated:free:ports"
-			schedulerNames := []string{"room-0"}
-			pods := []struct {
-				Name string
-				Port int32
-			}{
-				{"room-0", int32(start)},
-				{"room-1", int32(start + 1)},
-			}
-
-			yamlStr := `name: room-0
-portRange:
-  start: 6000
-  end: 6010`
-			configYaml, _ := models.NewConfigYAML(yamlStr)
-
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name IN (?)", gomock.Any()).
-				Do(func(schedulers *[]models.Scheduler, q string, i types.ValueAppender) {
-					*schedulers = []models.Scheduler{
-						{
-							Name: "room-0",
-							YAML: yamlStr,
-						},
-					}
-				})
-
-			mockRedisClient.EXPECT().
-				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(goredis.NewBoolResult(true, nil))
-
-			for _, pod := range pods {
-				kubePod := &v1.Pod{}
-				kubePod.SetName(pod.Name)
-				kubePod.Spec.Containers = []v1.Container{
-					{
-						Ports: []v1.ContainerPort{
-							{HostPort: pod.Port, Name: "TCP"},
-						},
-					},
-				}
-				_, err := clientset.CoreV1().Pods(schedulerNames[0]).Create(kubePod)
-				Expect(err).NotTo(HaveOccurred())
-			}
-
-			{ // global pool
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				for i := start; i <= end; i++ {
-					mockPipeline.EXPECT().SAdd(redisKey, i)
-				}
-
-				mockPipeline.EXPECT().Rename(redisKey, models.FreePortsRedisKey())
-				mockPipeline.EXPECT().Exec()
-				mockRedisClient.EXPECT().
-					Eval(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(goredis.NewCmdResult(nil, nil))
-			}
-
-			{ // scheduler pool
-				schedulerPoolKey := configYaml.PortsPoolRedisKey()
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				for i := configYaml.PortRange.Start; i <= configYaml.PortRange.End; i++ {
-					mockPipeline.EXPECT().SAdd(redisKey, i)
-				}
-
-				for _, pod := range pods {
-					mockPipeline.EXPECT().SRem(redisKey, pod.Port)
-				}
-
-				mockPipeline.EXPECT().Rename(redisKey, schedulerPoolKey)
-				mockPipeline.EXPECT().Exec()
-			}
-
-			err := w.RetrieveFreePorts(start, end, schedulerNames)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should sleep and retry if can't get lock", func() {
-			var w *worker.Worker
-			timeout := 1
-			config, err := mtesting.GetDefaultConfig()
-			Expect(err).NotTo(HaveOccurred())
-			config.Set("worker.getLocksTimeout", timeout)
-			config.Set("worker.lockTimeoutMS", 0)
-			mockRedisClient.EXPECT().Ping()
-			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
-			Expect(err).NotTo(HaveOccurred())
-
-			var start, end int = 5000, 5010
-			schedulerNames := []string{"room-0"}
-
-			mockRedisClient.EXPECT().
-				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(goredis.NewBoolResult(false, nil))
-
-			startTime := time.Now()
-			err = w.RetrieveFreePorts(start, end, schedulerNames)
-			elapsedTime := time.Now().Sub(startTime)
-			Expect(elapsedTime).To(BeNumerically(">=", time.Duration(timeout)*time.Second))
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("error getting locks, trying again next period"))
-			Expect(hook.Entries).To(mtesting.ContainLogMessage(
-				"unable to get watcher room-0 lock, maybe some other process has it...",
-			))
-		})
-
-		It("should sleep and retry if error getting lock", func() {
-			var w *worker.Worker
-			timeout := 1
-			config, err := mtesting.GetDefaultConfig()
-			Expect(err).NotTo(HaveOccurred())
-			config.Set("worker.getLocksTimeout", timeout)
-			config.Set("worker.lockTimeoutMS", 0)
-			mockRedisClient.EXPECT().Ping()
-			w, err = worker.NewWorker(config, logger, mr, false, "", mockDb, mockRedisClient, clientset)
-			Expect(err).NotTo(HaveOccurred())
-
-			var start, end int = 5000, 5010
-			schedulerNames := []string{"room-0"}
-
-			mockRedisClient.EXPECT().
-				SetNX(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(goredis.NewBoolResult(false, errors.New("error on redis")))
-
-			startTime := time.Now()
-			err = w.RetrieveFreePorts(start, end, schedulerNames)
-			elapsedTime := time.Now().Sub(startTime)
-			Expect(elapsedTime).To(BeNumerically(">=", time.Duration(timeout)*time.Second))
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("error getting locks, trying again next period"))
-			Expect(hook.Entries).To(mtesting.ContainLogMessage(
-				"error getting watcher room-0 lock",
-			))
 		})
 	})
 })

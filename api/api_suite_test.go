@@ -9,24 +9,25 @@
 package api_test
 
 import (
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/spf13/viper"
-	"k8s.io/client-go/kubernetes/fake"
 
 	"testing"
 
 	clockmocks "github.com/topfreegames/extensions/clock/mocks"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
-	"github.com/topfreegames/maestro/api"
 	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
+	mtesting "github.com/topfreegames/maestro/testing"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus/hooks/test"
+	"github.com/golang/mock/gomock"
+	"github.com/spf13/viper"
+	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/login/mocks"
 	"github.com/topfreegames/maestro/models"
-	mtesting "github.com/topfreegames/maestro/testing"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 var (

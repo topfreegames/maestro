@@ -102,3 +102,6 @@ const GlobalPortsPoolKey = "maestro:free:ports:global:range"
 
 // Global is the string global
 const Global = "global"
+
+// PodNotFitsHostPorts is a message when the pod's host port is no available in any node of the pool
+const PodNotFitsHostPorts = "PodFitsHostPorts"

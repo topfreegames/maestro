@@ -9,14 +9,16 @@
 package models_test
 
 import (
-	"fmt"
-
-	goredis "github.com/go-redis/redis"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"fmt"
+
 	"github.com/topfreegames/maestro/models"
-	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	"k8s.io/api/core/v1"
+
+	goredis "github.com/go-redis/redis"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -33,6 +35,10 @@ var _ = Describe("Pod", func() {
 		limits          *models.Resources
 		shutdownTimeout int
 		configYaml      *models.ConfigYAML
+
+		portStart = 5000
+		portEnd   = 6000
+		portRange = models.NewPortRange(portStart, portEnd).String()
 	)
 
 	createPod := func() (*models.Pod, error) {
@@ -103,12 +109,9 @@ var _ = Describe("Pod", func() {
 
 	Describe("NewPod", func() {
 		BeforeEach(func() {
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5000", nil))
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5001", nil))
-			mockPipeline.EXPECT().Exec()
+			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
+				Return(goredis.NewStringResult(portRange, nil))
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
 		})
 
 		It("should build correct pod struct", func() {
@@ -134,12 +137,6 @@ var _ = Describe("Pod", func() {
 			})
 
 			It("should report gru.delete on pod.Delete()", func() {
-				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5000)
-				mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
-				mockPipeline.EXPECT().Exec()
-
 				pod, err := createPod()
 
 				_, err = pod.Create(mockClientset)
@@ -158,16 +155,14 @@ var _ = Describe("Pod", func() {
 	})
 
 	Describe("NewPodWithContainers", func() {
-		It("should create pod with two containers", func() {
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5000", nil))
-			mockPipeline.EXPECT().Exec()
+		BeforeEach(func() {
+			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
+				Return(goredis.NewStringResult(portRange, nil))
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1).Return([]int{5000})
+		})
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5001", nil))
-			mockPipeline.EXPECT().Exec()
+		It("should create pod with two containers", func() {
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1).Return([]int{5001})
 
 			mr.EXPECT().Report("gru.new", map[string]string{
 				reportersConstants.TagGame:      "pong",
@@ -262,15 +257,7 @@ var _ = Describe("Pod", func() {
 				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5000", nil))
-			mockPipeline.EXPECT().Exec()
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5001", nil))
-			mockPipeline.EXPECT().Exec()
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1).Return([]int{5001})
 
 			mr.EXPECT().Report("gru.new", map[string]string{
 				reportersConstants.TagGame:      "pong",
@@ -389,12 +376,9 @@ var _ = Describe("Pod", func() {
 
 	Describe("Create", func() {
 		BeforeEach(func() {
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5000", nil))
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5001", nil))
-			mockPipeline.EXPECT().Exec()
+			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
+				Return(goredis.NewStringResult(portRange, nil))
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
 		})
 
 		It("should create a pod in kubernetes", func() {
@@ -560,21 +544,12 @@ var _ = Describe("Pod", func() {
 
 	Describe("Delete", func() {
 		BeforeEach(func() {
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5000", nil))
-			mockPipeline.EXPECT().SPop(models.FreePortsRedisKey()).
-				Return(goredis.NewStringResult("5001", nil))
-			mockPipeline.EXPECT().Exec()
+			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
+				Return(goredis.NewStringResult(portRange, nil))
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
 		})
 
 		It("should delete a pod from kubernetes", func() {
-			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("5000-6000", nil))
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5000)
-			mockPipeline.EXPECT().SAdd(models.FreePortsRedisKey(), 5001)
-			mockPipeline.EXPECT().Exec()
-
 			pod, err := createPod()
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(mockClientset)

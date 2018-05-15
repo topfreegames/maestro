@@ -23,10 +23,10 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/maestro/models"
 	mt "github.com/topfreegames/maestro/testing"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/api/core/v1"
 )
 
 var _ = Describe("Worker", func() {
@@ -104,19 +104,6 @@ var _ = Describe("Worker", func() {
 				list, _ := clientset.CoreV1().Pods(schedulerNames[0]).List(listOptions)
 				return len(list.Items)
 			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.AutoScaling.Min))
-
-			totalPorts := endPortRange - startPortRange + 1
-			takenPorts := yaml.AutoScaling.Min * len(yaml.Ports)
-			Eventually(func() (int, error) {
-				cmd := app.RedisClient.Eval(`return redis.call("SCARD", KEYS[1])`, []string{models.FreePortsRedisKey()})
-				amountInterface, err := cmd.Result()
-				var amount int64 = 0
-				if amountInterface != nil {
-					amount, _ = amountInterface.(int64)
-				}
-				return int(amount), err
-			}, 120*time.Second, 1*time.Second).
-				Should(BeNumerically("<=", totalPorts-takenPorts))
 		})
 	})
 
@@ -204,19 +191,6 @@ var _ = Describe("Worker", func() {
 				pods1, _ := clientset.CoreV1().Pods(yaml1.Name).List(listOptions)
 				return len(pods1.Items)
 			}, 120*time.Second, 1*time.Second).Should(BeNumerically(">=", yaml1.AutoScaling.Min))
-
-			totalPorts := endPortRange - startPortRange + 1
-			takenPorts := yaml.AutoScaling.Min*len(yaml.Ports) + yaml1.AutoScaling.Min*len(yaml1.Ports)
-			Eventually(func() (int, error) {
-				cmd := app.RedisClient.Eval(`return redis.call("SCARD", KEYS[1])`, []string{models.FreePortsRedisKey()})
-				amountInterface, err := cmd.Result()
-				var amount int64 = 0
-				if amountInterface != nil {
-					amount, _ = amountInterface.(int64)
-				}
-				return int(amount), err
-			}, 120*time.Second, 1*time.Second).
-				Should(BeNumerically("<=", totalPorts-takenPorts))
 		})
 
 		It("should scale up", func() {
@@ -259,19 +233,6 @@ var _ = Describe("Worker", func() {
 				pods, _ = clientset.CoreV1().Pods(yaml.Name).List(listOptions)
 				return len(pods.Items)
 			}, 120*time.Second, 1*time.Second).Should(BeNumerically(">=", yaml.AutoScaling.Min+yaml.AutoScaling.Up.Delta))
-
-			totalPorts := endPortRange - startPortRange + 1
-			takenPorts := (yaml.AutoScaling.Min + yaml.AutoScaling.Up.Delta) * len(yaml.Ports)
-			Eventually(func() (int, error) {
-				cmd := app.RedisClient.Eval(`return redis.call("SCARD", KEYS[1])`, []string{models.FreePortsRedisKey()})
-				amountInterface, err := cmd.Result()
-				var amount int64 = 0
-				if amountInterface != nil {
-					amount, _ = amountInterface.(int64)
-				}
-				return int(amount), err
-			}, 120*time.Second, 1*time.Second).
-				Should(BeNumerically("<=", totalPorts-takenPorts))
 		})
 
 		It("should delete rooms that timed out with occupied status", func() {
@@ -445,19 +406,6 @@ var _ = Describe("Worker", func() {
 				Expect(err).NotTo(HaveOccurred())
 				return len(keys)
 			}, 120*time.Second, 1*time.Second).Should(Equal(newRoomNumber))
-
-			totalPorts := endPortRange - startPortRange + 1
-			takenPorts := yaml.AutoScaling.Min * len(yaml.Ports)
-			Eventually(func() (int, error) {
-				cmd := app.RedisClient.Eval(`return redis.call("SCARD", KEYS[1])`, []string{models.FreePortsRedisKey()})
-				amountInterface, err := cmd.Result()
-				var amount int64 = 0
-				if amountInterface != nil {
-					amount, _ = amountInterface.(int64)
-				}
-				return int(amount), err
-			}, 120*time.Second, 1*time.Second).
-				Should(BeNumerically("<=", totalPorts-takenPorts))
 		})
 
 		It("should scale down to min if total - delta < min", func() {
@@ -545,19 +493,6 @@ var _ = Describe("Worker", func() {
 				Expect(err).NotTo(HaveOccurred())
 				return len(keys)
 			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.AutoScaling.Min))
-
-			totalPorts := endPortRange - startPortRange + 1
-			takenPorts := yaml.AutoScaling.Min * len(yaml.Ports)
-			Eventually(func() (int, error) {
-				cmd := app.RedisClient.Eval(`return redis.call("SCARD", KEYS[1])`, []string{models.FreePortsRedisKey()})
-				amountInterface, err := cmd.Result()
-				var amount int64 = 0
-				if amountInterface != nil {
-					amount, _ = amountInterface.(int64)
-				}
-				return int(amount), err
-			}, 120*time.Second, 1*time.Second).
-				Should(BeNumerically("<=", totalPorts-takenPorts))
 		})
 
 		It("should delete scheduler", func() {
