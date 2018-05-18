@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -716,13 +717,42 @@ func (w *Watcher) podsNotRegistered(
 	return notRegistered, nil
 }
 
+func (w *Watcher) splitedVersion(version string) (majorInt, minorInt int, err error) {
+	splitted := strings.Split(strings.TrimPrefix(version, "v"), ".")
+	major, minor := splitted[0], "0"
+	if len(splitted) > 1 {
+		minor = splitted[1]
+	}
+
+	minorInt, err = strconv.Atoi(minor)
+	if err != nil {
+		return
+	}
+	majorInt, err = strconv.Atoi(major)
+	if err != nil {
+		return
+	}
+
+	return majorInt, minorInt, nil
+}
+
 func (w *Watcher) podsOfIncorrectVersion(
 	pods *v1.PodList,
 	scheduler *models.Scheduler,
 ) ([]string, error) {
 	podNames := []string{}
 	for _, pod := range pods.Items {
-		if pod.Labels["version"] != scheduler.Version {
+		podMajorVersion, _, err := w.splitedVersion(pod.Labels["version"])
+		if err != nil {
+			return nil, err
+		}
+
+		schedulerMajorVersion, _, err := w.splitedVersion(scheduler.Version)
+		if err != nil {
+			return nil, err
+		}
+
+		if podMajorVersion != schedulerMajorVersion {
 			podNames = append(podNames, pod.GetName())
 		}
 	}
