@@ -74,7 +74,11 @@ func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status p
 	if meta, ok := infos["metadata"].(map[string]interface{}); ok {
 		m := make(map[string]string)
 		for key, value := range meta {
-			m[key] = value.(string)
+			if v, ok := value.(string); ok {
+				m[key] = v
+			} else {
+				m[key] = fmt.Sprintf("%v", value)
+			}
 		}
 		req.Room.Metadata = m
 	}
@@ -121,7 +125,11 @@ func (g *GRPCForwarder) roomEventRequest(infos map[string]interface{}, eventType
 	if meta, ok := infos["metadata"].(map[string]interface{}); ok {
 		m := make(map[string]string)
 		for key, value := range meta {
-			m[key] = value.(string)
+			if v, ok := value.(string); ok {
+				m[key] = v
+			} else {
+				m[key] = fmt.Sprintf("%v", value)
+			}
 		}
 		req.Room.Metadata = m
 	}
