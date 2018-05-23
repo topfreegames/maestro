@@ -21,6 +21,7 @@ func getOperationManager(
 	app *App,
 	schedulerName, opName string,
 	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
 ) (*models.OperationManager, error) {
 	timeoutSec := app.Config.GetInt("updateTimeoutSeconds")
 
@@ -34,8 +35,9 @@ func getOperationManager(
 		return nil, fmt.Errorf("operation key already in progress: %s", currOperation)
 	}
 
-	opManager.Start(time.Duration(timeoutSec)*time.Second, opName)
-
+	mr.WithSegment(models.SegmentPipeExec, func() error {
+		return opManager.Start(time.Duration(timeoutSec)*time.Second, opName)
+	})
 	logger.Infof("operation key: %s", opManager.GetOperationKey())
 	return opManager, nil
 }

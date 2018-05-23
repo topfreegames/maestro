@@ -23,6 +23,7 @@ func (g *SchedulerOperationCancelHandler) ServeHTTP(w http.ResponseWriter, r *ht
 	vars := mux.Vars(r)
 	schedulerName := vars["schedulerName"]
 	operationKey := vars["operationKey"]
+	mr := metricsReporterFromCtx(r.Context())
 
 	l := loggerFromContext(r.Context())
 	logger := l.WithFields(logrus.Fields{
@@ -35,7 +36,9 @@ func (g *SchedulerOperationCancelHandler) ServeHTTP(w http.ResponseWriter, r *ht
 	logger.Info("Starting scheduler operation cancel")
 
 	operationManager := models.NewOperationManager(schedulerName, g.App.RedisClient, logger)
-	err := operationManager.Cancel(operationKey)
+	err := mr.WithSegment(models.SegmentPipeExec, func() error {
+		return operationManager.Cancel(operationKey)
+	})
 	if err != nil {
 		logger.WithError(err).Error("error deleting operation key on redis")
 		g.App.HandleError(w, http.StatusInternalServerError, "error deleting operation key on redis", err)

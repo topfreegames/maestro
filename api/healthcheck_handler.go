@@ -11,7 +11,6 @@ import (
 	"net/http"
 
 	"github.com/topfreegames/maestro/errors"
-	"github.com/topfreegames/maestro/models"
 )
 
 //HealthcheckHandler handler
@@ -43,9 +42,6 @@ func (h *HealthcheckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusOK, `{"healthy": true}`)
-		return nil
-	})
+	Write(w, http.StatusOK, `{"healthy": true}`)
 	l.Debug("Healthcheck done.")
 }

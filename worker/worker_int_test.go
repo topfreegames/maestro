@@ -61,7 +61,7 @@ var _ = Describe("Worker", func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, pod := range pods.Items {
 			room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-			err = room.ClearAll(app.RedisClient)
+			err = room.ClearAll(app.RedisClient, mr)
 			Expect(err).NotTo(HaveOccurred())
 		}
 
@@ -532,7 +532,7 @@ var _ = Describe("Worker", func() {
 
 			for _, pod := range podsBefore.Items {
 				room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-				err = room.ClearAll(app.RedisClient)
+				err = room.ClearAll(app.RedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 			}
 		})
@@ -602,7 +602,7 @@ var _ = Describe("Worker", func() {
 
 			for _, pod := range podsBefore.Items {
 				room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-				err = room.ClearAll(app.RedisClient)
+				err = room.ClearAll(app.RedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 			}
 		})

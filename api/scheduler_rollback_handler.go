@@ -35,7 +35,9 @@ func (g *SchedulerRollbackHandler) update(
 			"status":      status,
 		}).Error("error updating scheduler config")
 	}
-	finishOpErr := operationManager.Finish(status, description, err)
+	finishOpErr := mr.WithSegment(models.SegmentPipeExec, func() error {
+		return operationManager.Finish(status, description, err)
+	})
 	if finishOpErr != nil {
 		logger.WithError(err).Error("error saving the results on redis")
 	}
@@ -77,7 +79,7 @@ func (g *SchedulerRollbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 
 	async := r.URL.Query().Get("async") == "true"
-	operationManager, err := getOperationManager(g.App, schedulerName, "SchedulerRollback", logger)
+	operationManager, err := getOperationManager(g.App, schedulerName, "SchedulerRollback", logger, mr)
 	if returnIfOperationManagerExists(g.App, w, err) {
 		logger.WithError(err).Error("Rollback scheduler failed")
 		return

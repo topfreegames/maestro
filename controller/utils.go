@@ -70,7 +70,7 @@ func replacePodsAndWait(
 	timeout = willTimeoutAt.Sub(clock.Now())
 	timedout, canceled = waitCreatingPods(
 		logger, clientset, timeout, configYAML.Name,
-		createdPods, operationManager)
+		createdPods, operationManager, mr)
 	if timedout || canceled {
 		return createdPods, deletedPods, timedout, canceled
 	}
@@ -137,6 +137,7 @@ func rollback(
 			err = waitTerminatingPods(
 				logger, clientset, waitTimeout, configYAML.Name,
 				createdPodChunks[i],
+				mr,
 			)
 			if err != nil {
 				return err
@@ -164,7 +165,7 @@ func rollback(
 
 			waitTimeout := willTimeoutAt.Sub(time.Now())
 			waitCreatingPods(logger, clientset, waitTimeout, configYAML.Name,
-				newlyCreatedPods, nil)
+				newlyCreatedPods, nil, mr)
 		}
 	}
 
@@ -208,7 +209,11 @@ func createPodsAsTheyAreDeleted(
 
 			for j := i; j < len(deletedPods); j++ {
 				pod := deletedPods[i]
-				_, err := clientset.CoreV1().Pods(configYAML.Name).Get(pod.GetName(), getOptions)
+				err := mr.WithSegment(models.SegmentPod, func() error {
+					var err error
+					_, err = clientset.CoreV1().Pods(configYAML.Name).Get(pod.GetName(), getOptions)
+					return err
+				})
 				if err == nil || !strings.Contains(err.Error(), "not found") {
 					logger.WithField("pod", pod.GetName()).Debugf("pod still exists")
 					exit = false
@@ -250,6 +255,7 @@ func waitTerminatingPods(
 	timeout time.Duration,
 	namespace string,
 	deletedPods []v1.Pod,
+	mr *models.MixedMetricsReporter,
 ) error {
 	logger := l.WithFields(logrus.Fields{
 		"operation": "controller.waitTerminatingPods",
@@ -268,13 +274,19 @@ func waitTerminatingPods(
 		select {
 		case <-ticker.C:
 			for _, pod := range deletedPods {
-				_, err := clientset.CoreV1().Pods(namespace).Get(
-					pod.GetName(), getOptions,
-				)
+				err := mr.WithSegment(models.SegmentPod, func() error {
+					var err error
+					_, err = clientset.CoreV1().Pods(namespace).Get(
+						pod.GetName(), getOptions,
+					)
+					return err
+				})
 
 				if err == nil || !strings.Contains(err.Error(), "not found") {
 					logger.WithField("pod", pod.GetName()).Debugf("pod still exists, deleting again")
-					err = clientset.CoreV1().Pods(namespace).Delete(pod.GetName(), deleteOptions)
+					err = mr.WithSegment(models.SegmentPod, func() error {
+						return clientset.CoreV1().Pods(namespace).Delete(pod.GetName(), deleteOptions)
+					})
 					exit = false
 					break
 				}
@@ -301,6 +313,7 @@ func waitCreatingPods(
 	namespace string,
 	createdPods []v1.Pod,
 	operationManager *models.OperationManager,
+	mr *models.MixedMetricsReporter,
 ) (timedout, wasCanceled bool) {
 	logger := l.WithFields(logrus.Fields{
 		"operation": "controller.waitCreatingPods",
@@ -322,9 +335,14 @@ func waitCreatingPods(
 			}
 
 			for _, pod := range createdPods {
-				createdPod, err := clientset.CoreV1().Pods(namespace).Get(
-					pod.GetName(), getOptions,
-				)
+				var createdPod *v1.Pod
+				err := mr.WithSegment(models.SegmentPod, func() error {
+					var err error
+					createdPod, err = clientset.CoreV1().Pods(namespace).Get(
+						pod.GetName(), getOptions,
+					)
+					return err
+				})
 				if err != nil && strings.Contains(err.Error(), "not found") {
 					exit = false
 					logger.
@@ -333,7 +351,11 @@ func waitCreatingPods(
 						Info("error creating pod, recreating...")
 
 					pod.ResourceVersion = ""
-					_, err = clientset.CoreV1().Pods(namespace).Create(&pod)
+					err = mr.WithSegment(models.SegmentPod, func() error {
+						var err error
+						_, err = clientset.CoreV1().Pods(namespace).Create(&pod)
+						return err
+					})
 					if err != nil {
 						logger.
 							WithError(err).
@@ -377,7 +399,12 @@ func DeletePodAndRoom(
 	configYaml *models.ConfigYAML,
 	name, reason string,
 ) error {
-	pod, err := models.NewPod(name, nil, configYaml, clientset, redisClient)
+	var pod *models.Pod
+	err := mr.WithSegment(models.SegmentPod, func() error {
+		var err error
+		pod, err = models.NewPod(name, nil, configYaml, clientset, redisClient)
+		return err
+	})
 	if err != nil {
 		return err
 	}
@@ -393,7 +420,7 @@ func DeletePodAndRoom(
 	}
 
 	room := models.NewRoom(pod.Name, configYaml.Name)
-	err = room.ClearAll(redisClient)
+	err = room.ClearAll(redisClient, mr)
 	if err != nil {
 		logger.
 			WithField("roomName", pod.Name).
@@ -474,13 +501,21 @@ func waitForPods(
 		case <-ticker.C:
 			for i := range pods {
 				if pods[i] != nil {
-					pod, err := clientset.CoreV1().Pods(namespace).Get(pods[i].GetName(), metav1.GetOptions{})
+					var pod *v1.Pod
+					err := mr.WithSegment(models.SegmentPod, func() error {
+						var err error
+						pod, err = clientset.CoreV1().Pods(namespace).Get(pods[i].GetName(), metav1.GetOptions{})
+						return err
+					})
 					if err != nil {
 						//The pod does not exist (not even on Pending or ContainerCreating state), so create again
 						exit = false
 						l.WithError(err).Infof("error creating pod %s, recreating...", pods[i].GetName())
 						pods[i].ResourceVersion = ""
-						_, err = clientset.CoreV1().Pods(namespace).Create(pods[i])
+						err = mr.WithSegment(models.SegmentPod, func() error {
+							_, err = clientset.CoreV1().Pods(namespace).Create(pods[i])
+							return err
+						})
 						if err != nil {
 							l.WithError(err).Errorf("error recreating pod %s", pods[i].GetName())
 						}
@@ -529,12 +564,18 @@ func waitForPods(
 func pendingPods(
 	clientset kubernetes.Interface,
 	namespace string,
+	mr *models.MixedMetricsReporter,
 ) (bool, error) {
 	listOptions := metav1.ListOptions{
 		LabelSelector: labels.Set{}.AsSelector().String(),
 		FieldSelector: fields.Everything().String(),
 	}
-	pods, err := clientset.CoreV1().Pods(namespace).List(listOptions)
+	var pods *v1.PodList
+	err := mr.WithSegment(models.SegmentPod, func() error {
+		var err error
+		pods, err = clientset.CoreV1().Pods(namespace).List(listOptions)
+		return err
+	})
 	if err != nil {
 		return false, maestroErrors.NewKubernetesError("error when listing pods", err)
 	}

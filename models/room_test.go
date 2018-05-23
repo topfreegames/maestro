@@ -462,7 +462,7 @@ var _ = Describe("Room", func() {
 			}
 			mockPipeline.EXPECT().Exec()
 
-			err := room.ClearAll(mockRedisClient)
+			err := room.ClearAll(mockRedisClient, mmr)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -482,7 +482,7 @@ var _ = Describe("Room", func() {
 			}
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
-			err := room.ClearAll(mockRedisClient)
+			err := room.ClearAll(mockRedisClient, mmr)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 		})
@@ -499,7 +499,7 @@ var _ = Describe("Room", func() {
 				pKey,
 				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
 			).Return(redis.NewStringSliceResult(expectedRooms, nil))
-			rooms, err := models.GetRoomsNoPingSince(mockRedisClient, scheduler, since)
+			rooms, err := models.GetRoomsNoPingSince(mockRedisClient, scheduler, since, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(rooms).To(Equal(expectedRooms))
 		})
@@ -513,7 +513,7 @@ var _ = Describe("Room", func() {
 				pKey,
 				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
 			).Return(redis.NewStringSliceResult([]string{}, errors.New("some error")))
-			_, err := models.GetRoomsNoPingSince(mockRedisClient, scheduler, since)
+			_, err := models.GetRoomsNoPingSince(mockRedisClient, scheduler, since, mmr)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error"))
 		})

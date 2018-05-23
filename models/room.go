@@ -120,7 +120,7 @@ func (r *Room) SetStatus(
 	r.LastPingAt = time.Now().Unix()
 
 	if status == StatusTerminated {
-		return nil, r.ClearAll(redisClient)
+		return nil, r.ClearAll(redisClient, mr)
 	}
 
 	lastStatusChangedKey := GetLastStatusRedisKey(r.SchedulerName, StatusOccupied)
@@ -157,7 +157,11 @@ func (r *Room) addStatusToRedisPipeAndExec(
 	prevStatus := "nil"
 
 	if reporters.HasReporters() {
-		rFields := redisClient.HGetAll(r.GetRoomRedisKey())
+		var rFields *redis.StringStringMapCmd
+		mr.WithSegment(SegmentHGetAll, func() error {
+			rFields = redisClient.HGetAll(r.GetRoomRedisKey())
+			return nil
+		})
 		val, prs := rFields.Val()["status"]
 		if prs {
 			prevStatus = val
@@ -179,7 +183,11 @@ func (r *Room) addStatusToRedisPipeAndExec(
 		results = GetRoomsCountByStatusWithPipe(r.SchedulerName, p)
 	}
 
-	_, err := p.Exec()
+	err := mr.WithSegment(SegmentPipeExec, func() error {
+		var err error
+		_, err = p.Exec()
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +209,11 @@ func (r *Room) reportStatus(
 	}
 	pipe := redisClient.TxPipeline()
 	nStatus := pipe.SCard(GetRoomStatusSetRedisKey(r.SchedulerName, status))
-	_, err := pipe.Exec()
+	err := mr.WithSegment(SegmentPipeExec, func() error {
+		var err error
+		_, err = pipe.Exec()
+		return err
+	})
 	if err != nil {
 		return err
 	}
@@ -232,10 +244,14 @@ func reportStatus(game, scheduler, status, gauge string) error {
 }
 
 // ClearAll removes all room keys from redis
-func (r *Room) ClearAll(redisClient interfaces.RedisClient) error {
+func (r *Room) ClearAll(redisClient interfaces.RedisClient, mr *MixedMetricsReporter) error {
 	pipe := redisClient.TxPipeline()
 	r.clearAllWithPipe(pipe)
-	_, err := pipe.Exec()
+	err := mr.WithSegment(SegmentPipeExec, func() error {
+		var err error
+		_, err = pipe.Exec()
+		return err
+	})
 	return err
 }
 
@@ -337,17 +353,29 @@ func (r *Room) GetAddresses(kubernetesClient kubernetes.Interface) (*RoomAddress
 }
 
 // GetRoomsNoPingSince returns a list of rooms ids that have lastPing < since
-func GetRoomsNoPingSince(redisClient interfaces.RedisClient, schedulerName string, since int64) ([]string, error) {
-	return redisClient.ZRangeByScore(
-		GetRoomPingRedisKey(schedulerName),
-		redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
-	).Result()
+func GetRoomsNoPingSince(redisClient interfaces.RedisClient, schedulerName string, since int64, mr *MixedMetricsReporter) ([]string, error) {
+	var result []string
+	err := mr.WithSegment(SegmentZRangeBy, func() error {
+		var err error
+		result, err = redisClient.ZRangeByScore(
+			GetRoomPingRedisKey(schedulerName),
+			redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+		).Result()
+		return err
+	})
+	return result, err
 }
 
 // GetRoomsOccupiedTimeout return a list of rooms ids that have been occupied since 'since'
-func GetRoomsOccupiedTimeout(redisClient interfaces.RedisClient, schedulerName string, since int64) ([]string, error) {
-	return redisClient.ZRangeByScore(
-		GetLastStatusRedisKey(schedulerName, StatusOccupied),
-		redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
-	).Result()
+func GetRoomsOccupiedTimeout(redisClient interfaces.RedisClient, schedulerName string, since int64, mr *MixedMetricsReporter) ([]string, error) {
+	var result []string
+	err := mr.WithSegment(SegmentZRangeBy, func() error {
+		var err error
+		result, err = redisClient.ZRangeByScore(
+			GetLastStatusRedisKey(schedulerName, StatusOccupied),
+			redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(since, 10)},
+		).Result()
+		return err
+	})
+	return result, err
 }

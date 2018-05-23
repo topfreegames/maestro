@@ -7,7 +7,9 @@
 
 package api
 
-import newrelic "github.com/newrelic/go-agent"
+import (
+	newrelic "github.com/newrelic/go-agent"
+)
 
 //NewRelicMetricsReporter reports metrics to new relic
 type NewRelicMetricsReporter struct {

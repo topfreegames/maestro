@@ -58,7 +58,8 @@ var _ = Describe("App", func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, pod := range pods.Items {
 			room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-			err = room.ClearAll(app.RedisClient)
+			mr := &models.MixedMetricsReporter{}
+			err = room.ClearAll(app.RedisClient, mr)
 			Expect(err).NotTo(HaveOccurred())
 		}
 

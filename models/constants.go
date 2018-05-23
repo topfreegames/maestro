@@ -7,15 +7,6 @@
 
 package models
 
-//SegmentPostgres represents a segment
-const SegmentPostgres = "PostgreSQL"
-
-//SegmentSerialization represents a segment
-const SegmentSerialization = "Serialization"
-
-//SegmentModel represents a segment
-const SegmentModel = "Model"
-
 //SegmentInsert represents a segment
 const SegmentInsert = "Database/Insert"
 
@@ -34,15 +25,6 @@ const SegmentSelect = "Database/Select"
 //SegmentGroupBy represents a segment
 const SegmentGroupBy = "Database/GroupBy"
 
-//SegmentController represents a segment
-const SegmentController = "Controller"
-
-//SegmentYaml represents a segment
-const SegmentYaml = "Yaml"
-
-//SegmentKubernetes represents a segment
-const SegmentKubernetes = "Kubernetes"
-
 //SegmentNamespace represents a segment
 const SegmentNamespace = "Kubernetes/Namespace"
 
@@ -60,6 +42,9 @@ const SegmentHMSet = "Redis/HMSet"
 
 //SegmentZRangeBy represents a segment
 const SegmentZRangeBy = "Redis/ZRangeBy"
+
+//SegmentPipeExec represents a segment
+const SegmentPipeExec = "Redis/Exec"
 
 //StateCreating represents a cluster state
 const StateCreating = "creating"

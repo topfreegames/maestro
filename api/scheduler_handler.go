@@ -62,11 +62,8 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 
 		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
-		err := mr.WithSegment(models.SegmentController, func() error {
-			return controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient,
-				g.App.KubernetesClient, payload, timeoutSec)
-		})
-
+		err := controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient,
+			g.App.KubernetesClient, payload, timeoutSec)
 		if err != nil {
 			status := http.StatusInternalServerError
 			if strings.Contains(err.Error(), "already exists") {
@@ -95,10 +92,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		logger.Debug("Create scheduler succeeded.")
 	}
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusCreated, `{"success": true}`)
-		return nil
-	})
+	Write(w, http.StatusCreated, `{"success": true}`)
 }
 
 // SchedulerDeleteHandler handler
@@ -126,10 +120,7 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger.Info("deleting scheduler")
 
 	timeoutSec := g.App.Config.GetInt("deleteTimeoutSeconds")
-	err := mr.WithSegment(models.SegmentController, func() error {
-		return controller.DeleteScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, params.SchedulerName, timeoutSec)
-	})
-
+	err := controller.DeleteScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, params.SchedulerName, timeoutSec)
 	if err != nil {
 		logger.WithError(err).Error("delete scheduler failed")
 		status := http.StatusInternalServerError
@@ -140,10 +131,7 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusOK, `{"success": true}`)
-		return nil
-	})
+	Write(w, http.StatusOK, `{"success": true}`)
 	logger.Info("finished deleting scheduler")
 }
 
@@ -176,7 +164,9 @@ func (g *SchedulerUpdateHandler) update(
 			"status":      status,
 		}).Error("error updating scheduler config")
 	}
-	finishOpErr := operationManager.Finish(status, description, err)
+	finishOpErr := mr.WithSegment(models.SegmentPipeExec, func() error {
+		return operationManager.Finish(status, description, err)
+	})
 	if finishOpErr != nil {
 		logger.WithError(err).Error("error saving the results on redis")
 	}
@@ -209,7 +199,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	operationManager, err := getOperationManager(g.App, payload.Name, "UpdateSchedulerConfig", logger)
+	operationManager, err := getOperationManager(g.App, payload.Name, "UpdateSchedulerConfig", logger, mr)
 	if returnIfOperationManagerExists(g.App, w, err) {
 		logger.WithError(err).Error("Update scheduler failed: error getting operation key")
 		return
@@ -353,10 +343,7 @@ func (g *SchedulerListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		WriteBytes(w, http.StatusOK, bts)
-		return nil
-	})
+	WriteBytes(w, http.StatusOK, bts)
 	logger.Debug("List scheduler succeeded.")
 }
 
@@ -425,10 +412,7 @@ func (g *SchedulerStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		WriteBytes(w, http.StatusOK, bts)
-		return nil
-	})
+	WriteBytes(w, http.StatusOK, bts)
 	logger.Debug("Status scheduler succeeded.")
 }
 
@@ -471,10 +455,7 @@ func (g *SchedulerStatusHandler) returnConfig(
 	}
 
 	bts := yamlConf.ToYAML()
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		WriteBytes(w, http.StatusOK, bts)
-		return nil
-	})
+	WriteBytes(w, http.StatusOK, bts)
 	logger.Debug("config scheduler succeeded.")
 }
 
@@ -493,11 +474,8 @@ func (g *SchedulerListHandler) returnInfo(
 	logger.Debugf("Getting schedulers infos")
 
 	if len(schedulersNames) == 0 {
-		mr.WithSegment(models.SegmentSerialization, func() error {
-			bts, _ := json.Marshal([]map[string]interface{}{})
-			WriteBytes(w, http.StatusOK, bts)
-			return nil
-		})
+		bts, _ := json.Marshal([]map[string]interface{}{})
+		WriteBytes(w, http.StatusOK, bts)
 		logger.Debug("get schedulers infos succeeded")
 		return
 	}
@@ -563,10 +541,7 @@ func (g *SchedulerListHandler) returnInfo(
 		return
 	}
 
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		WriteBytes(w, http.StatusOK, bts)
-		return nil
-	})
+	WriteBytes(w, http.StatusOK, bts)
 	logger.Debug("get schedulers infos succeeded")
 }
 
@@ -625,10 +600,7 @@ func (g *SchedulerScaleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		g.App.HandleError(w, status, "scale scheduler failed", err)
 		return
 	}
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusOK, `{"success": true}`)
-		return nil
-	})
+	Write(w, http.StatusOK, `{"success": true}`)
 	logger.Info("scheduler successfully scaled")
 }
 
@@ -675,7 +647,9 @@ func (g *SchedulerImageHandler) update(
 		description = "failed to update scheduler image"
 		logger.WithError(err).Error(description)
 	}
-	finishOpErr := operationManager.Finish(status, description, err)
+	finishOpErr := mr.WithSegment(models.SegmentPipeExec, func() error {
+		return operationManager.Finish(status, description, err)
+	})
 	if finishOpErr != nil {
 		logger.WithError(err).Error("error saving the results on redis")
 	}
@@ -713,7 +687,7 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	logger.Info("updating scheduler's image")
 
 	async := r.URL.Query().Get("async") == "true"
-	operationManager, err := getOperationManager(g.App, params.SchedulerName, "UpdateSchedulerImage", logger)
+	operationManager, err := getOperationManager(g.App, params.SchedulerName, "UpdateSchedulerImage", logger, mr)
 	if returnIfOperationManagerExists(g.App, w, err) {
 		logger.WithError(err).Error("Update scheduler image failed")
 		return
@@ -782,7 +756,9 @@ func (g *SchedulerUpdateMinHandler) update(
 	} else {
 		logger.Info("finished with success controllers update min")
 	}
-	finishOpErr := operationManager.Finish(status, description, err)
+	finishOpErr := mr.WithSegment(models.SegmentPipeExec, func() error {
+		return operationManager.Finish(status, description, err)
+	})
 	if finishOpErr != nil {
 		logger.WithError(err).Error("error saving the results on redis")
 	}
@@ -815,7 +791,7 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	async := r.URL.Query().Get("async") == "true"
 
-	operationManager, err := getOperationManager(g.App, params.SchedulerName, "UpdateSchedulerMin", logger)
+	operationManager, err := getOperationManager(g.App, params.SchedulerName, "UpdateSchedulerMin", logger, mr)
 	if returnIfOperationManagerExists(g.App, w, err) {
 		logger.WithError(err).Error("Update scheduler min failed")
 		return

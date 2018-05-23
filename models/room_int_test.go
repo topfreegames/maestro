@@ -25,7 +25,8 @@ var _ = Describe("Room", func() {
 	configYaml := &models.ConfigYAML{Game: "game-name"}
 
 	AfterEach(func() {
-		err := room.ClearAll(redisClient.Client)
+		mr := &models.MixedMetricsReporter{}
+		err := room.ClearAll(redisClient.Client, mr)
 		Expect(err).NotTo(HaveOccurred())
 	})
 

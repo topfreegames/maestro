@@ -76,10 +76,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.Logger,
 	)
 
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusOK, `{"success": true}`)
-		return nil
-	})
+	Write(w, http.StatusOK, `{"success": true}`)
 	logger.Debug("Ping successful.")
 }
 
@@ -97,7 +94,6 @@ func NewPlayerEventHandler(a *App) *PlayerEventHandler {
 // ServeHTTP method
 func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())
-	mr := metricsReporterFromCtx(r.Context())
 	params := roomParamsFromContext(r.Context())
 	payload := playerEventPayloadFromCtx(r.Context())
 
@@ -135,15 +131,11 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		resBytes, _ := json.Marshal(map[string]interface{}{
-			"success": true,
-			"message": resp.Message,
-		})
-		Write(w, http.StatusOK, string(resBytes))
-		return nil
+	resBytes, _ := json.Marshal(map[string]interface{}{
+		"success": true,
+		"message": resp.Message,
 	})
-
+	Write(w, http.StatusOK, string(resBytes))
 	logger.Debug("Performed player event forward.")
 }
 
@@ -161,7 +153,6 @@ func NewRoomEventHandler(a *App) *RoomEventHandler {
 // ServeHTTP method
 func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())
-	mr := metricsReporterFromCtx(r.Context())
 	params := roomParamsFromContext(r.Context())
 	payload := roomEventPayloadFromCtx(r.Context())
 
@@ -208,14 +199,11 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		resBytes, _ := json.Marshal(map[string]interface{}{
-			"success": true,
-			"message": resp.Message,
-		})
-		Write(w, http.StatusOK, string(resBytes))
-		return nil
+	resBytes, _ := json.Marshal(map[string]interface{}{
+		"success": true,
+		"message": resp.Message,
 	})
+	Write(w, http.StatusOK, string(resBytes))
 	logger.Debug("Performed room event forward.")
 }
 
@@ -271,10 +259,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.SchedulerCache,
 		g.App.Logger,
 	)
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		Write(w, http.StatusOK, `{"success": true}`)
-		return nil
-	})
+	Write(w, http.StatusOK, `{"success": true}`)
 	logger.Debug("Performed status update.")
 }
 
@@ -292,7 +277,6 @@ func NewRoomAddressHandler(a *App) *RoomAddressHandler {
 // ServerHTTP method
 func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := loggerFromContext(r.Context())
-	mr := metricsReporterFromCtx(r.Context())
 	params := roomParamsFromContext(r.Context())
 
 	logger := l.WithFields(logrus.Fields{
@@ -321,9 +305,6 @@ func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.App.HandleError(w, http.StatusInternalServerError, "Address handler error", err)
 		return
 	}
-	mr.WithSegment(models.SegmentSerialization, func() error {
-		WriteBytes(w, http.StatusOK, bytes)
-		return nil
-	})
+	WriteBytes(w, http.StatusOK, bytes)
 	logger.Debug("Performed address handler.")
 }

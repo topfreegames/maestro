@@ -14,6 +14,8 @@ const (
 
 	EventPodStatus     = "pod.status"
 	EventPodLastStatus = "pod.last_status"
+
+	EventResponseTime = "response.time"
 )
 
 //Reason{...} represents reasons for a pod/gru being deleted
@@ -38,6 +40,10 @@ const (
 	TagRoute        = "maestro-route"
 	TagResponseTime = "maestro-response-time"
 	TagHTTPStatus   = "maestro-http-status"
+	TagSegment      = "maestro-segment"
+	TagTable        = "maestro-table"
+	TagType         = "maestro-type"
+	TagError        = "maestro-error"
 )
 
 // Value{...} are values that reporters use

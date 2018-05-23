@@ -305,7 +305,7 @@ func DeleteUnavailableRooms(
 			}
 
 			room := models.NewRoom(roomName, scheduler.Name)
-			err = room.ClearAll(redisClient)
+			err = room.ClearAll(redisClient, mr)
 			if err != nil {
 				logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
 			}
@@ -334,7 +334,7 @@ func ScaleUp(
 	})
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 
-	existPendingPods, err := pendingPods(clientset, scheduler.Name)
+	existPendingPods, err := pendingPods(clientset, scheduler.Name, mr)
 	if err != nil {
 		return err
 	}
@@ -412,7 +412,11 @@ func ScaleDown(
 		// SPop returns a random room name that can already selected
 		roomSet[pipe.SPop(readyKey)] = true
 	}
-	_, err := pipe.Exec()
+	err := mr.WithSegment(models.SegmentPipeExec, func() error {
+		var err error
+		_, err = pipe.Exec()
+		return err
+	})
 	if err != nil {
 		l.WithError(err).WithFields(logrus.Fields{
 			"amount": int64(amount),
@@ -447,7 +451,7 @@ func ScaleDown(
 			deletionErr = err
 		} else {
 			room := models.NewRoom(roomName, scheduler.Name)
-			err = room.ClearAll(redisClient)
+			err = room.ClearAll(redisClient, mr)
 			if err != nil {
 				logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
 				return err
@@ -470,7 +474,11 @@ func ScaleDown(
 			return errors.New("timeout scaling down scheduler")
 		case <-ticker.C:
 			for _, name := range idleRooms {
-				_, err := clientset.CoreV1().Pods(scheduler.Name).Get(name, metav1.GetOptions{})
+				err := mr.WithSegment(models.SegmentPod, func() error {
+					var err error
+					_, err = clientset.CoreV1().Pods(scheduler.Name).Get(name, metav1.GetOptions{})
+					return err
+				})
 				if err == nil {
 					exit = false
 				} else if !strings.Contains(err.Error(), "not found") {
@@ -603,9 +611,14 @@ waitForLock:
 		scheduler.NextMajorVersion()
 		l.Info("pods must be recreated, starting process")
 
-		kubePods, err := clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
-			LabelSelector: labels.Set{}.AsSelector().String(),
-			FieldSelector: fields.Everything().String(),
+		var kubePods *v1.PodList
+		err := mr.WithSegment(models.SegmentPod, func() error {
+			var err error
+			kubePods, err = clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
+				LabelSelector: labels.Set{}.AsSelector().String(),
+				FieldSelector: fields.Everything().String(),
+			})
+			return err
 		})
 		if err != nil {
 			return maestroErrors.NewKubernetesError("error when listing pods", err)
@@ -712,7 +725,7 @@ func deleteSchedulerHelper(
 
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 	// Delete pods and wait for graceful termination before deleting the namespace
-	err = mr.WithSegment(models.SegmentNamespace, func() error {
+	err = mr.WithSegment(models.SegmentPod, func() error {
 		return namespace.DeletePods(clientset, redisClient, scheduler)
 	})
 	if err != nil {
@@ -731,7 +744,12 @@ func deleteSchedulerHelper(
 		case <-timeoutPods.C:
 			return errors.New("timeout deleting scheduler pods")
 		case <-ticker.C:
-			pods, listErr := clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
+			var pods *v1.PodList
+			listErr := mr.WithSegment(models.SegmentPod, func() error {
+				var err error
+				pods, err = clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
+				return err
+			})
 			if listErr != nil {
 				logger.WithError(listErr).Error("error listing pods")
 			} else if len(pods.Items) == 0 {
@@ -815,7 +833,11 @@ func createPod(
 	var pod *models.Pod
 	if configYAML.Version() == "v1" {
 		env := append(configYAML.Env, namesEnvVars...)
-		pod, err = models.NewPod(name, env, configYAML, clientset, redisClient)
+		err = mr.WithSegment(models.SegmentPod, func() error {
+			var err error
+			pod, err = models.NewPod(name, env, configYAML, clientset, redisClient)
+			return err
+		})
 	} else if configYAML.Version() == "v2" {
 		containers := make([]*models.Container, len(configYAML.Containers))
 		for i, container := range configYAML.Containers {
@@ -1148,9 +1170,14 @@ func ScaleScheduler(
 		)
 	} else {
 		logger.Infof("manually scaling scheduler %s to  %d GRUs", schedulerName, replicas)
-		pods, err := clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
-			LabelSelector: labels.Set{}.AsSelector().String(),
-			FieldSelector: fields.Everything().String(),
+		var pods *v1.PodList
+		err := mr.WithSegment(models.SegmentPod, func() error {
+			var err error
+			pods, err = clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
+				LabelSelector: labels.Set{}.AsSelector().String(),
+				FieldSelector: fields.Everything().String(),
+			})
+			return err
 		})
 		if err != nil {
 			msg := fmt.Sprintf("error listing pods for scheduler %s", schedulerName)
@@ -1235,7 +1262,9 @@ func SetRoomStatus(
 			})
 			scaleUpLog.Info("few ready rooms, scaling up")
 			go func() {
-				err := limitManager.Lock(room, cachedScheduler.ConfigYAML)
+				err := mr.WithSegment(models.SegmentPipeExec, func() error {
+					return limitManager.Lock(room, cachedScheduler.ConfigYAML)
+				})
 				if err != nil {
 					log.WithError(err).Error(err)
 					return

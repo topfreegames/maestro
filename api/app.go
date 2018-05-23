@@ -106,6 +106,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewLoggingMiddleware(a),
 		NewVersionMiddleware(),
 	)).Methods("GET").Name("healthcheck")
@@ -135,6 +136,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 	).ServeHTTP).Methods("GET").Name("schedulerList")
 
@@ -145,6 +147,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.ConfigYAML{} }),
 	).ServeHTTP).Methods("POST").Name("schedulerCreate")
@@ -157,6 +160,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.ConfigYAML{} }),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
@@ -170,6 +174,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("DELETE").Name("schedulerDelete")
@@ -182,6 +187,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerStatus")
@@ -191,6 +197,10 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerConfigs")
@@ -200,6 +210,10 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerConfigs")
@@ -209,6 +223,10 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulersDiff{} }),
 	).ServeHTTP).Methods("GET").Name("schedulersDiff")
@@ -218,6 +236,10 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulerVersion{} }),
 	).ServeHTTP).Methods("PUT").Name("schedulerRollback")
@@ -230,6 +252,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulerScaleParams{} }),
@@ -243,6 +266,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulerImageParams{} }),
@@ -256,6 +280,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulerMinParams{} }),
@@ -266,6 +291,10 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewLoggingMiddleware(a),
 		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 	).ServeHTTP).Methods("GET").Name("schedulersOperationStatus")
 
@@ -274,6 +303,10 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewLoggingMiddleware(a),
 		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 	).ServeHTTP).Methods("PUT").Name("schedulersOperationStatus")
 
@@ -284,6 +317,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.RoomStatusPayload{} }),
@@ -296,6 +330,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 	).ServeHTTP).Methods("GET").Name("address")
@@ -307,6 +342,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.RoomStatusPayload{} }),
@@ -319,6 +355,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.RoomEventPayload{} }),
@@ -331,6 +368,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
 		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.PlayerEventPayload{} }),

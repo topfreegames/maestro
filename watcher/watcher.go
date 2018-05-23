@@ -302,7 +302,7 @@ func (w *Watcher) RemoveDeadRooms() {
 	var roomsNoPingSince []string
 	err := w.MetricsReporter.WithSegment(models.SegmentZRangeBy, func() error {
 		var err error
-		roomsNoPingSince, err = models.GetRoomsNoPingSince(w.RedisClient.Client, w.SchedulerName, since)
+		roomsNoPingSince, err = models.GetRoomsNoPingSince(w.RedisClient.Client, w.SchedulerName, since, w.MetricsReporter)
 		return err
 	})
 
@@ -367,7 +367,7 @@ func (w *Watcher) RemoveDeadRooms() {
 		var roomsOnOccupiedTimeout []string
 		err := w.MetricsReporter.WithSegment(models.SegmentZRangeBy, func() error {
 			var err error
-			roomsOnOccupiedTimeout, err = models.GetRoomsOccupiedTimeout(w.RedisClient.Client, w.SchedulerName, since)
+			roomsOnOccupiedTimeout, err = models.GetRoomsOccupiedTimeout(w.RedisClient.Client, w.SchedulerName, since, w.MetricsReporter)
 			return err
 		})
 
