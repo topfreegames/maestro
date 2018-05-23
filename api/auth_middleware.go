@@ -68,7 +68,7 @@ func (m *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !isAuth(email, m.admins) {
 		schedulerName := mux.Vars(r)["schedulerName"]
 		scheduler := models.NewScheduler(schedulerName, "", "")
-		scheduler.Load(m.App.DB)
+		scheduler.Load(m.App.DBClient.WithContext(r.Context()))
 		configYaml, _ := models.NewConfigYAML(scheduler.YAML)
 		if !isAuth(email, configYaml.AuthorizedUsers) {
 			logger.Debug("not authorized user")

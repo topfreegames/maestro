@@ -61,7 +61,7 @@ func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	accessToken := r.Header.Get("Authorization")
 	accessToken = strings.TrimPrefix(accessToken, "Bearer ")
 
-	token, err := login.GetToken(accessToken, m.App.DB)
+	token, err := login.GetToken(accessToken, m.App.DBClient.WithContext(r.Context()))
 	if err != nil {
 		m.App.HandleError(w, http.StatusInternalServerError, "", err)
 		return
@@ -76,7 +76,7 @@ func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg, status, err := m.App.Login.Authenticate(token, m.App.DB)
+	msg, status, err := m.App.Login.Authenticate(token, m.App.DBClient.WithContext(r.Context()))
 	if err != nil {
 		logger.WithError(err).Error("error fetching googleapis")
 		m.App.HandleError(w, http.StatusInternalServerError, "Error fetching googleapis", err)

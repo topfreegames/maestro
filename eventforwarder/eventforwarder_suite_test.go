@@ -3,11 +3,11 @@ package eventforwarder_test
 import (
 	"time"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"

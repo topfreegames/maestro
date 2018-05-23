@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/extensions/pg"
@@ -36,18 +37,27 @@ var _ = Describe("Healthcheck Handler", func() {
 
 		Context("when all services are healthy", func() {
 			It("returns a status code of 200", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+				mockDb.EXPECT().Context().AnyTimes()
 				mockDb.EXPECT().Exec("select 1")
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(200))
 			})
 
 			It("returns working string", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+				mockDb.EXPECT().Context().AnyTimes()
 				mockDb.EXPECT().Exec("select 1")
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Body.String()).To(Equal(`{"healthy": true}`))
 			})
 
 			It("returns the version as a header", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+				mockDb.EXPECT().Context().AnyTimes()
 				mockDb.EXPECT().Exec("select 1")
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Header().Get("X-Maestro-Version")).To(Equal(metadata.Version))
@@ -56,6 +66,8 @@ var _ = Describe("Healthcheck Handler", func() {
 
 		Context("when postgres is down", func() {
 			It("returns status code of 500 if database is unavailable", func() {
+				mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+				mockDb.EXPECT().Context().AnyTimes()
 				mockDb.EXPECT().Exec("select 1").Return(pg.NewTestResult(errors.New("sql: database is closed"), 0), errors.New("sql: database is closed"))
 				app.Router.ServeHTTP(recorder, request)
 

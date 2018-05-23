@@ -16,7 +16,9 @@ import (
 	"reflect"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	opentracing "github.com/opentracing/opentracing-go"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/eventforwarder"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
@@ -370,7 +372,12 @@ func (g *GRPCForwarder) configure() error {
 		return fmt.Errorf("no grpc server address informed")
 	}
 	l.Infof("connecting to grpc server at: %s", g.serverAddress)
-	conn, err := grpc.Dial(g.serverAddress, grpc.WithInsecure())
+	tracer := opentracing.GlobalTracer()
+	conn, err := grpc.Dial(
+		g.serverAddress,
+		grpc.WithInsecure(),
+		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
+	)
 	if err != nil {
 		return err
 	}

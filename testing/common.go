@@ -8,14 +8,13 @@ import (
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/golang/mock/gomock"
 	"github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
-	"gopkg.in/pg.v5/types"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -102,7 +101,7 @@ func MockInsertIntoVersionsTable(
 ) (calls *Calls) {
 	calls = NewCalls()
 
-	query := `INSERT INTO scheduler_versions (name, version, yaml) 
+	query := `INSERT INTO scheduler_versions (name, version, yaml)
 	VALUES (?, ?, ?)`
 	calls.Add(mockDb.EXPECT().
 		Query(gomock.Any(), query, scheduler.Name, scheduler.Version, gomock.Any()).
@@ -146,7 +145,7 @@ func MockDeleteOldVersions(
 			SELECT id
 			FROM scheduler_versions
 			WHERE name = ?
-			ORDER BY created_at ASC 
+			ORDER BY created_at ASC
 			LIMIT ?
 		)`
 	calls.Add(
@@ -401,8 +400,8 @@ func MockInsertScheduler(
 
 	calls.Add(
 		mockDb.EXPECT().
-			Query(gomock.Any(), `INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at, version) 
-	VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?version) 
+			Query(gomock.Any(), `INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at, version)
+	VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?version)
 	RETURNING id`, gomock.Any()).
 			Return(pg.NewTestResult(nil, 1), errDB))
 
@@ -552,14 +551,14 @@ func MockSelectPreviousSchedulerVersion(
 
 	calls.Add(
 		mockDb.EXPECT().
-			Query(gomock.Any(), `SELECT * 
-	FROM scheduler_versions 
-	WHERE created_at < ( 
-		SELECT created_at 
-		FROM scheduler_versions 
+			Query(gomock.Any(), `SELECT *
+	FROM scheduler_versions
+	WHERE created_at < (
+		SELECT created_at
+		FROM scheduler_versions
 		WHERE name = ?name AND version = ?version
 	) AND name = ?name
-	ORDER BY created_at DESC 
+	ORDER BY created_at DESC
 	LIMIT 1`, gomock.Any()).
 			Do(func(rScheduler *models.Scheduler, _ string, _ *models.Scheduler) {
 				*rScheduler = *scheduler
@@ -703,7 +702,7 @@ func MockSelectConfigYamls(
 	calls.Add(
 		mockDb.EXPECT().
 			Query(gomock.Any(), "SELECT * FROM schedulers WHERE name IN (?)", gomock.Any()).
-			Do(func(schedulers *[]models.Scheduler, _ string, _ types.ValueAppender) {
+			Do(func(schedulers *[]models.Scheduler, _ string, _ ...interface{}) {
 				*schedulers = schedulersToReturn
 			}).
 			Return(pg.NewTestResult(nil, 1), errDB))

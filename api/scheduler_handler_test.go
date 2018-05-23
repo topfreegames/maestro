@@ -145,7 +145,8 @@ var _ = Describe("Scheduler Handler", func() {
 				Do(func(destToken *login.DestinationToken, query string, modifier string) {
 					destToken.RefreshToken = "refresh-token"
 				}).AnyTimes()
-			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DB).Return("user@example.com", http.StatusOK, nil).AnyTimes()
+			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DBClient.DB).Return("user@example.com", http.StatusOK, nil).AnyTimes()
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
 		})
 
 		Describe("GET /scheduler", func() {
@@ -268,6 +269,7 @@ var _ = Describe("Scheduler Handler", func() {
 			}
 
 			redisExpectations := func(f func()) {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().Ping().AnyTimes()
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				f()
@@ -315,6 +317,7 @@ var _ = Describe("Scheduler Handler", func() {
 
 			Context("when all services are healthy", func() {
 				It("returns a status code of 201 and success body", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 						func(schedulerName string, statusInfo map[string]interface{}) {
@@ -391,6 +394,7 @@ autoscaling:
 					request, err := http.NewRequest("POST", url, reader)
 					Expect(err).NotTo(HaveOccurred())
 
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 						func(schedulerName string, statusInfo map[string]interface{}) {
@@ -420,6 +424,7 @@ autoscaling:
 				})
 
 				It("should return 409 if namespace already exists", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					ns := models.NewNamespace("scheduler-name")
 					err := ns.Create(clientset)
 					Expect(err).NotTo(HaveOccurred())
@@ -477,6 +482,7 @@ autoscaling:
 
 			Context("when postgres is down", func() {
 				It("returns status code of 500 if database is unavailable", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					MockInsertScheduler(mockDb, errors.New("sql: database is closed"))
 					mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", gomock.Any())
 
@@ -495,6 +501,7 @@ autoscaling:
 
 			Context("when there is no nodes with affinity label", func() {
 				It("should return error code 422", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					MockInsertScheduler(mockDb, errors.New("node without label error"))
 
 					mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", gomock.Any())
@@ -523,6 +530,7 @@ autoscaling:
 				})
 
 				It("forwards scheduler event", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 						func(schedulerName string, statusInfo map[string]interface{}) {
@@ -565,6 +573,7 @@ autoscaling:
 
 			Context("when all services are healthy", func() {
 				It("returns a status code of 200 and success body", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", "schedulerName").Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlString
 					})
@@ -576,6 +585,7 @@ autoscaling:
 				})
 
 				It("should return 404 if scheduler is not found", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockDb.EXPECT().
 						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", "schedulerName").
 						Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -596,6 +606,7 @@ autoscaling:
 
 			Context("when postgres is down", func() {
 				It("returns status code of 500 if database is unavailable", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockDb.EXPECT().Query(
 						gomock.Any(),
 						"SELECT * FROM schedulers WHERE name = ?",
@@ -681,6 +692,7 @@ autoscaling:
 
 			Context("when all services are healthy", func() {
 				It("returns a status code of 200 and success body", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
 						logger, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
 
@@ -771,6 +783,7 @@ autoscaling:
 					err = yaml.Unmarshal([]byte(yamlString1), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 						func(schedulerName string, statusInfo map[string]interface{}) {
@@ -828,6 +841,7 @@ autoscaling:
 					request, err = http.NewRequest("PUT", url, reader)
 					Expect(err).NotTo(HaveOccurred())
 
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					opManager = models.NewOperationManager(configYaml2.Name, mockRedisClient, logger)
 					MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -872,6 +886,7 @@ autoscaling:
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 					MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -936,6 +951,7 @@ autoscaling:
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 					MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -973,6 +989,7 @@ autoscaling:
 				})
 
 				It("should asynchronously update scheduler", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
 						logger, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
 
@@ -1062,6 +1079,7 @@ autoscaling:
 				})
 
 				It("should asynchronously update scheduler and show error when occurred", func() {
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
 						logger, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
 
@@ -1158,6 +1176,7 @@ autoscaling:
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 					MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -1242,6 +1261,7 @@ autoscaling:
 					err = yaml.Unmarshal([]byte(yamlString1), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 						func(schedulerName string, statusInfo map[string]interface{}) {
@@ -1381,6 +1401,7 @@ forwarders:
 
 				schedulerName := configYaml.Name
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				for i := 0; i < configYaml.AutoScaling.Min; i++ {
 					room := models.NewRoom(fmt.Sprintf("room-%d", i), schedulerName)
 
@@ -1433,6 +1454,7 @@ forwarders:
 			})
 
 			It("should return error if scheduler doesn't exist", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				name := "other-scheduler-name"
 				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, name)
 				request, err := http.NewRequest("GET", url, nil)
@@ -1456,6 +1478,7 @@ forwarders:
 			})
 
 			It("should return error if db fails", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				name := "other-scheduler-name"
 				url := fmt.Sprintf("http://%s/scheduler/%s", app.Address, name)
 				request, err := http.NewRequest("GET", url, nil)
@@ -1629,7 +1652,7 @@ game: game-name
 				config, err := GetDefaultConfig()
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
-				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 			})
@@ -1648,6 +1671,7 @@ game: game-name
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
 					})
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
@@ -1697,6 +1721,7 @@ game: game-name
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
 					})
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().
 					SPop(models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)).
@@ -1746,6 +1771,7 @@ game: game-name
 						scheduler.YAML = yamlStr
 					})
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(replicas)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
@@ -1804,6 +1830,7 @@ game: game-name
 						scheduler.YAML = yamlStr
 					})
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(replicasBefore)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
@@ -1891,6 +1918,7 @@ game: game-name
 						scheduler.YAML = yamlStr
 					})
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(replicasBefore)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
@@ -1962,6 +1990,7 @@ game: game-name
 			})
 
 			It("should return 400 if scaleup and scaledown are both specified", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				body := map[string]interface{}{"scaledown": 1, "scaleup": 1}
 				bts, _ := json.Marshal(body)
 				reader := strings.NewReader(string(bts))
@@ -2067,6 +2096,7 @@ game: game-name
 			})
 
 			It("should return 500 if DB fails", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				body := map[string]interface{}{"scaledown": 1}
 				bts, _ := json.Marshal(body)
 				reader := strings.NewReader(string(bts))
@@ -2092,6 +2122,7 @@ game: game-name
 			})
 
 			It("should return 404 if scheduler does not exist", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				body := map[string]interface{}{"scaledown": 1}
 				bts, _ := json.Marshal(body)
 				reader := strings.NewReader(string(bts))
@@ -2135,6 +2166,7 @@ game: game-name
 			})
 
 			It("should update image", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2192,6 +2224,7 @@ game: game-name
 			})
 
 			It("should update image with max surge of 100%", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2273,6 +2306,7 @@ game: game-name
 			})
 
 			It("should fail with negative max surge parameter", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2305,6 +2339,7 @@ game: game-name
 			})
 
 			It("should fail with zero max surge parameter", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2337,6 +2372,7 @@ game: game-name
 			})
 
 			It("should return 500 if DB fails", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2375,6 +2411,7 @@ game: game-name
 				newSchedulerName := "new-scheduler"
 				newImageName := "new-image"
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				opManager = models.NewOperationManager(newSchedulerName, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2519,6 +2556,7 @@ game: game-name
 			})
 
 			It("should set image if basicauth is not sent and tryOauthIfUnset is true", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2529,7 +2567,7 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
 
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 				newImageName := "new-image"
@@ -2600,6 +2638,7 @@ game: game-name
 	}]
 }`
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
 					logger, mmr, jsonString, timeoutSec, nil, workerPortRange, portStart, portEnd)
 
@@ -2607,7 +2646,7 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
 
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 
@@ -2673,6 +2712,7 @@ game: game-name
 				var configYaml models.ConfigYAML
 				err = yaml.Unmarshal([]byte(yamlString), &configYaml)
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
 				MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
 
@@ -2759,6 +2799,7 @@ game: game-name
 				var configYaml models.ConfigYAML
 				err = yaml.Unmarshal([]byte(yamlString), &configYaml)
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
 
 				MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
@@ -2834,6 +2875,7 @@ game: game-name
 				err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
@@ -2870,6 +2912,7 @@ game: game-name
 			})
 
 			It("should update min", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2918,6 +2961,7 @@ game: game-name
 			})
 
 			It("should return 500 if DB fails", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2951,6 +2995,7 @@ game: game-name
 			})
 
 			It("should return 404 if scheduler does not exist", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				newSchedulerName := "new-scheduler"
 				newMin := configYaml1.AutoScaling.Min
 
@@ -3008,6 +3053,7 @@ game: game-name
 			})
 
 			It("should set min 0 if body is empty (default value is 0)", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -3108,12 +3154,13 @@ game: game-name
 			})
 
 			It("should set min if basicauth is not sent and tryOauthIfUnset is true", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
 				config, err := GetDefaultConfig()
 				config.Set("basicauth.tryOauthIfUnset", true)
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 
@@ -3163,6 +3210,7 @@ game: game-name
 			})
 
 			It("should update min asynchronously", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
 
@@ -3240,6 +3288,7 @@ game: game-name
 			})
 
 			It("should update min asynchronously and show error when occurred", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
 
@@ -3314,6 +3363,10 @@ game: game-name
 	})
 
 	Context("When authentication fails", func() {
+		BeforeEach(func() {
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+		})
+
 		It("should return status code 500 if db fails", func() {
 			mockDb.EXPECT().Query(gomock.Any(), `SELECT access_token, refresh_token, expiry, token_type
 						FROM users
@@ -3345,7 +3398,7 @@ game: game-name
 				}).
 				Return(nil, nil)
 
-			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DB).
+			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DBClient.DB).
 				Return("", 0, errors.New("authentication failed"))
 
 			url := fmt.Sprintf("http://%s/scheduler/scheduler-name", app.Address)
@@ -3373,7 +3426,7 @@ game: game-name
 				}).
 				Return(nil, nil)
 
-			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DB).
+			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DBClient.DB).
 				Return("not authorized", http.StatusUnauthorized, nil)
 
 			url := fmt.Sprintf("http://%s/scheduler/scheduler-name", app.Address)
@@ -3400,7 +3453,7 @@ game: game-name
 				}).
 				Return(nil, nil)
 
-			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DB).
+			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DBClient.DB).
 				Return("not authorized", http.StatusBadRequest, nil)
 
 			url := fmt.Sprintf("http://%s/scheduler/scheduler-name", app.Address)
@@ -3427,7 +3480,7 @@ game: game-name
 				}).
 				Return(nil, nil)
 
-			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DB).
+			mockLogin.EXPECT().Authenticate(gomock.Any(), app.DBClient.DB).
 				Return("user@notauthorized.com", http.StatusOK, nil)
 
 			url := fmt.Sprintf("http://%s/scheduler/scheduler-name", app.Address)

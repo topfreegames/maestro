@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/login"
@@ -67,7 +67,7 @@ var _ = BeforeSuite(func() {
 	config.Set("pingTimeout", 600)
 	config.Set("occupiedTimeout", 1)
 
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, clientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, nil, nil, clientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	user := &login.User{
@@ -78,32 +78,32 @@ var _ = BeforeSuite(func() {
 		TokenType:      "Bearer",
 		Email:          "user@example.com",
 	}
-	query := `INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email) 
+	query := `INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email)
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT (key_access_token) DO NOTHING`
-	_, err = app.DB.Query(user, query, user)
+	_, err = app.DBClient.DB.Query(user, query, user)
 	Expect(err).NotTo(HaveOccurred())
 
 	mockCtrl = gomock.NewController(GinkgoT())
 	mockLogin = mocks.NewMockLogin(mockCtrl)
 	app.Login = mockLogin
 
-	w, err = worker.NewWorker(config, logger, mr, false, "", app.DB, app.RedisClient, clientset)
+	w, err = worker.NewWorker(config, logger, mr, false, "", app.DBClient.DB, app.RedisClient.Client, clientset)
 	Expect(err).NotTo(HaveOccurred())
 	go w.Start(startPortRange, endPortRange, false)
 })
 
 var _ = BeforeEach(func() {
 	portRange := models.NewPortRange(startPortRange, endPortRange).String()
-	err := app.RedisClient.Set(models.GlobalPortsPoolKey, portRange, 0).Err()
+	err := app.RedisClient.Client.Set(models.GlobalPortsPoolKey, portRange, 0).Err()
 	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterEach(func() {
-	_, err := app.DB.Exec("DELETE FROM schedulers")
+	_, err := app.DBClient.DB.Exec("DELETE FROM schedulers")
 	Expect(err).NotTo(HaveOccurred())
 
-	pipe := app.RedisClient.TxPipeline()
+	pipe := app.RedisClient.Client.TxPipeline()
 	cmd := pipe.FlushAll()
 	_, err = pipe.Exec()
 	Expect(err).NotTo(HaveOccurred())
@@ -112,7 +112,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	err := app.DB.Close()
+	err := app.DBClient.DB.Close()
 	Expect(err).NotTo(HaveOccurred())
 
 	tx := w.RedisClient.Client.TxPipeline()

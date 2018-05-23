@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 
 	goredis "github.com/go-redis/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"

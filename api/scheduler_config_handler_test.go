@@ -20,7 +20,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/login"
 	"github.com/topfreegames/maestro/models"
 	. "github.com/topfreegames/maestro/testing"
@@ -36,6 +35,8 @@ var _ = Describe("SchedulerConfigHandler", func() {
 	// var errDB = errors.New("db failed")
 
 	BeforeEach(func() {
+		mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+		mockDb.EXPECT().Context().AnyTimes()
 		mockDb.EXPECT().Query(gomock.Any(), `SELECT access_token, refresh_token, expiry, token_type
 						FROM users
 						WHERE key_access_token = ?`, gomock.Any()).
@@ -43,7 +44,7 @@ var _ = Describe("SchedulerConfigHandler", func() {
 				destToken.RefreshToken = "refresh-token"
 			}).AnyTimes()
 		mockLogin.EXPECT().
-			Authenticate(gomock.Any(), app.DB).
+			Authenticate(gomock.Any(), app.DBClient.DB).
 			Return("user@example.com", http.StatusOK, nil).
 			AnyTimes()
 
@@ -78,9 +79,6 @@ var _ = Describe("SchedulerConfigHandler", func() {
 			config, err := GetDefaultConfig()
 			Expect(err).NotTo(HaveOccurred())
 			config.Set("basicauth.tryOauthIfUnset", true)
-
-			app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
-			Expect(err).NotTo(HaveOccurred())
 			app.Login = mockLogin
 
 			app.Router.ServeHTTP(recorder, request)

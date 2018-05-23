@@ -11,8 +11,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/onsi/gomega/types"
+	"github.com/sirupsen/logrus"
 )
 
 //ContainLogMessage validates that the specified log message exists in the given entries

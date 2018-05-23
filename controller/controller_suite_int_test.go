@@ -18,9 +18,9 @@ import (
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	mtesting "github.com/topfreegames/maestro/testing"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/models"

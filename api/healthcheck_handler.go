@@ -32,8 +32,18 @@ func (h *HealthcheckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l.Debug("Performing healthcheck...")
 
 	err := mr.WithDatastoreSegment("select 1", "select", func() error {
-		_, err := h.App.DB.Exec("select 1")
+		_, err := h.App.DBClient.WithContext(r.Context()).Exec("select 1")
 		return err
+	})
+	if err != nil {
+		l.WithError(err).Error("Database is offline")
+		vErr := errors.NewDatabaseError(err)
+		WriteBytes(w, http.StatusInternalServerError, vErr.Serialize())
+		return
+	}
+
+	err = mr.WithDatastoreSegment("ping", "ping", func() error {
+		return h.App.RedisClient.Trace(r.Context()).Ping().Err()
 	})
 	if err != nil {
 		l.WithError(err).Error("Database is offline")

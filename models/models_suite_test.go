@@ -19,9 +19,9 @@ import (
 	reportersmocks "github.com/topfreegames/maestro/reporters/mocks"
 	mtesting "github.com/topfreegames/maestro/testing"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"

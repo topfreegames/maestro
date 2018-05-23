@@ -17,9 +17,9 @@ import (
 
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/login"
@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	config, err = mTest.GetDefaultConfig()
 	Expect(err).NotTo(HaveOccurred())
 
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, clientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, nil, nil, clientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	user := &login.User{
@@ -73,10 +73,10 @@ var _ = BeforeSuite(func() {
 		TokenType:      "Bearer",
 		Email:          "user@example.com",
 	}
-	query := `INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email) 
+	query := `INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email)
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT (key_access_token) DO NOTHING`
-	_, err = app.DB.Query(user, query, user)
+	_, err = app.DBClient.DB.Query(user, query, user)
 	Expect(err).NotTo(HaveOccurred())
 
 	mockCtrl = gomock.NewController(GinkgoT())
@@ -86,6 +86,6 @@ var _ = BeforeSuite(func() {
 
 var _ = BeforeEach(func() {
 	portRange := models.NewPortRange(40000, 60000).String()
-	err := app.RedisClient.Set(models.GlobalPortsPoolKey, portRange, 0).Err()
+	err := app.RedisClient.Client.Set(models.GlobalPortsPoolKey, portRange, 0).Err()
 	Expect(err).NotTo(HaveOccurred())
 })

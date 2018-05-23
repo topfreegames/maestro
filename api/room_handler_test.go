@@ -100,6 +100,11 @@ forwarders:
 			"scheduler:schedulerName:status:terminated",
 		}
 
+		BeforeEach(func() {
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+			mockDb.EXPECT().Context().AnyTimes()
+		})
+
 		Context("when all services are healthy", func() {
 			It("returns a status code of 200 and success body", func() {
 				reader := JSONFor(JSON{
@@ -114,6 +119,7 @@ forwarders:
 						scheduler.Game = game
 					})
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
@@ -145,6 +151,7 @@ forwarders:
 						scheduler.Game = game
 					})
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
@@ -251,7 +258,7 @@ forwarders:
 				createNamespace(namespace, clientset)
 				err := createPod(roomName, namespace, clientset)
 				Expect(err).NotTo(HaveOccurred())
-				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Forwarders = []*eventforwarder.Info{
 					&eventforwarder.Info{
@@ -275,6 +282,7 @@ forwarders:
 						scheduler.Game = game
 					})
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
@@ -310,6 +318,7 @@ forwarders:
 						scheduler.Game = game
 					})
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
@@ -351,6 +360,11 @@ forwarders:
 			"scheduler:schedulerName:status:terminated",
 		}
 
+		BeforeEach(func() {
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+			mockDb.EXPECT().Context().AnyTimes()
+		})
+
 		//TODO ver se envia forward
 		Context("when all services are healthy", func() {
 			It("returns a status code of 200 and success body", func() {
@@ -366,6 +380,7 @@ forwarders:
 						scheduler.Game = game
 					})
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
@@ -462,7 +477,7 @@ forwarders:
 					createNamespace(namespace, clientset)
 					err := createPod(roomName, namespace, clientset)
 					Expect(err).NotTo(HaveOccurred())
-					app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+					app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
 					Expect(err).NotTo(HaveOccurred())
 					app.Forwarders = []*eventforwarder.Info{
 						&eventforwarder.Info{
@@ -500,6 +515,7 @@ forwarders:
 					})
 					request, _ = http.NewRequest("PUT", url, reader)
 
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 						"lastPing": time.Now().Unix(),
@@ -535,6 +551,7 @@ forwarders:
 					})
 					request, _ = http.NewRequest("PUT", url, reader)
 
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 						"lastPing": time.Now().Unix(),
@@ -590,6 +607,7 @@ forwarders:
 						scheduler.Game = game
 					})
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
@@ -621,7 +639,7 @@ forwarders:
 		var app *api.App
 		BeforeEach(func() {
 			var err error
-			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
 			Expect(err).NotTo(HaveOccurred())
 			app.Forwarders = []*eventforwarder.Info{
 				&eventforwarder.Info{
@@ -650,7 +668,11 @@ forwarders:
 					Forwarder: mockEventForwarder5,
 				},
 			}
+
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+			mockDb.EXPECT().Context().AnyTimes()
 		})
+
 		It("should error if event is nil", func() {
 			reader := JSONFor(JSON{
 				"roomId":    "somerid",
@@ -768,7 +790,7 @@ forwarders:
 			createNamespace(namespace, clientset)
 			err := createPod("roomName", namespace, clientset)
 			Expect(err).NotTo(HaveOccurred())
-			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
 			Expect(err).NotTo(HaveOccurred())
 			app.Forwarders = []*eventforwarder.Info{
 				&eventforwarder.Info{
@@ -777,6 +799,9 @@ forwarders:
 					Forwarder: mockEventForwarder1,
 				},
 			}
+
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+			mockDb.EXPECT().Context().AnyTimes()
 		})
 
 		It("should error if event is nil", func() {
@@ -917,6 +942,12 @@ forwarders:
 				ShutdownTimeout: shutdownTimeout,
 			}
 		)
+
+		BeforeEach(func() {
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+			mockDb.EXPECT().Context().AnyTimes()
+		})
+
 		It("should return addresses", func() {
 			ns := models.NewNamespace(namespace)
 			err := ns.Create(clientset)

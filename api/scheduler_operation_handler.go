@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -38,7 +38,7 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	logger.Info("Starting scheduler operation status")
 
-	operationManager := models.NewOperationManager(schedulerName, g.App.RedisClient, logger)
+	operationManager := models.NewOperationManager(schedulerName, g.App.RedisClient.Trace(r.Context()), logger)
 	status, err := operationManager.Get(operationKey)
 	if err != nil {
 		logger.WithError(err).Error("error accesssing operation key on redis")
@@ -63,7 +63,7 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 
 	scheduler := models.NewScheduler(schedulerName, "", "")
-	err = scheduler.Load(g.App.DB)
+	err = scheduler.Load(g.App.DBClient.WithContext(r.Context()))
 	if err != nil {
 		g.App.HandleError(w, http.StatusInternalServerError, "error getting scheduler for getting progress", err)
 		return

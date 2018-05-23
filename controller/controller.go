@@ -8,6 +8,7 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -18,15 +19,15 @@ import (
 	uuid "github.com/satori/go.uuid"
 	clockinterfaces "github.com/topfreegames/extensions/clock/interfaces"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -501,6 +502,7 @@ func ScaleDown(
 // Old pods are deleted and recreated with new config
 // Scale up and down are locked
 func UpdateSchedulerConfig(
+	ctx context.Context,
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
@@ -547,7 +549,7 @@ func UpdateSchedulerConfig(
 waitForLock:
 	for {
 		lock, err = redisClient.EnterCriticalSection(
-			redisClient.Client,
+			redisClient.Trace(ctx),
 			lockKey,
 			time.Duration(lockTimeoutMS)*time.Millisecond,
 			0, 0,
@@ -1009,6 +1011,7 @@ func MustUpdatePods(old, new *models.ConfigYAML) bool {
 
 // UpdateSchedulerImage is a UpdateSchedulerConfig sugar that updates only the image
 func UpdateSchedulerImage(
+	ctx context.Context,
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
@@ -1036,6 +1039,7 @@ func UpdateSchedulerImage(
 	}
 
 	return UpdateSchedulerConfig(
+		ctx,
 		logger,
 		mr,
 		db,
@@ -1052,6 +1056,7 @@ func UpdateSchedulerImage(
 
 // UpdateSchedulerMin is a UpdateSchedulerConfig sugar that updates only the image
 func UpdateSchedulerMin(
+	ctx context.Context,
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
@@ -1071,6 +1076,7 @@ func UpdateSchedulerMin(
 	}
 	configYaml.AutoScaling.Min = schedulerMin
 	return UpdateSchedulerConfig(
+		ctx,
 		logger,
 		mr,
 		db,

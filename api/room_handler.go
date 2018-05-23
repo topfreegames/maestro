@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
@@ -49,8 +49,8 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := controller.SetRoomStatus(
 		g.App.Logger,
-		g.App.RedisClient,
-		g.App.DB,
+		g.App.RedisClient.Trace(r.Context()),
+		g.App.DBClient.WithContext(r.Context()),
 		mr,
 		g.App.KubernetesClient,
 		payload.Status,
@@ -68,7 +68,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: consider sampling requests by scheduler name and only forwarding a few pings
 	eventforwarder.ForwardRoomEvent(
 		g.App.Forwarders,
-		g.App.DB,
+		g.App.DBClient.WithContext(r.Context()),
 		g.App.KubernetesClient,
 		room, fmt.Sprintf("ping%s", strings.Title(payload.Status)),
 		payload.Metadata,
@@ -109,7 +109,7 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := eventforwarder.ForwardPlayerEvent(
 		g.App.Forwarders,
-		g.App.DB,
+		g.App.DBClient.WithContext(r.Context()),
 		g.App.KubernetesClient,
 		room,
 		payload.Event,
@@ -177,7 +177,7 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := eventforwarder.ForwardRoomEvent(
 		g.App.Forwarders,
-		g.App.DB,
+		g.App.DBClient.WithContext(r.Context()),
 		g.App.KubernetesClient,
 		room,
 		"roomEvent",
@@ -236,8 +236,8 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := controller.SetRoomStatus(
 		g.App.Logger,
-		g.App.RedisClient,
-		g.App.DB,
+		g.App.RedisClient.Trace(r.Context()),
+		g.App.DBClient.WithContext(r.Context()),
 		mr,
 		g.App.KubernetesClient,
 		payload.Status,
@@ -252,7 +252,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	eventforwarder.ForwardRoomEvent(
 		g.App.Forwarders,
-		g.App.DB,
+		g.App.DBClient.WithContext(r.Context()),
 		g.App.KubernetesClient,
 		room, payload.Status,
 		payload.Metadata,

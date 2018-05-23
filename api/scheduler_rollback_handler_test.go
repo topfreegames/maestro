@@ -40,6 +40,8 @@ autoscaling:
 	var timeoutDur = time.Duration(300) * time.Second
 
 	BeforeEach(func() {
+		mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+		mockDb.EXPECT().Context().AnyTimes()
 		mockDb.EXPECT().Query(gomock.Any(), `SELECT access_token, refresh_token, expiry, token_type
 						FROM users
 						WHERE key_access_token = ?`, gomock.Any()).
@@ -47,7 +49,7 @@ autoscaling:
 				destToken.RefreshToken = "refresh-token"
 			}).AnyTimes()
 		mockLogin.EXPECT().
-			Authenticate(gomock.Any(), app.DB).
+			Authenticate(gomock.Any(), app.DBClient.DB).
 			Return("user@example.com", http.StatusOK, nil).
 			AnyTimes()
 
@@ -73,6 +75,7 @@ autoscaling:
 			scheduler1 := models.NewScheduler(configYaml.Name, configYaml.Game, yamlStringToRollbackTo)
 			lockKeyNs := fmt.Sprintf("%s-scheduler-name", lockKey)
 
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 			opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
 			MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -162,6 +165,7 @@ autoscaling:
 		})
 
 		It("should asynchronously rollback to previous version", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 			yamlStringToRollbackTo := `name: scheduler-name
 game: game
 autoscaling:
@@ -234,6 +238,7 @@ autoscaling:
 		})
 
 		It("should save error on redis if failed", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			mockRedisClient.EXPECT().Ping().AnyTimes()
 
 			yamlStringToRollbackTo := `name: scheduler-name

@@ -26,7 +26,7 @@ type User struct {
 
 //SaveToken writes the token parameters on DB
 func SaveToken(token *oauth2.Token, email, keyAccessToken string, db interfaces.DB) error {
-	query := `INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email) 
+	query := `INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email)
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
@@ -34,7 +34,7 @@ func SaveToken(token *oauth2.Token, email, keyAccessToken string, db interfaces.
 				refresh_token = excluded.refresh_token,
 				expiry = excluded.expiry`
 	if token.RefreshToken == "" {
-		query = `UPDATE users 
+		query = `UPDATE users
 		SET access_token = ?access_token,
 				expiry = ?expiry
 		WHERE email = ?email`

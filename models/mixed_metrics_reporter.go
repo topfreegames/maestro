@@ -33,8 +33,12 @@ func (m *MixedMetricsReporter) WithSegment(name string, f func() error) error {
 	}
 	defer func() {
 		for i, mr := range m.MetricsReporters {
-			data[i]["error"] = err != nil
-			mr.EndSegment(data[i], name)
+			if len(data) > i {
+				if v := data[i]; v != nil {
+					data[i]["error"] = err != nil
+					mr.EndSegment(data[i], name)
+				}
+			}
 		}
 	}()
 

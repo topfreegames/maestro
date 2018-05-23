@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
@@ -146,12 +146,12 @@ func (w *Worker) configureDatabase(dbOrNil pginterfaces.DB) error {
 		w.DB = dbOrNil
 		return nil
 	}
-	db, err := extensions.GetDB(w.Logger, w.Config)
+	dbClient, err := extensions.GetDB(w.Logger, w.Config, dbOrNil, nil)
 	if err != nil {
 		return err
 	}
 
-	w.DB = db
+	w.DB = dbClient.DB
 	return nil
 }
 

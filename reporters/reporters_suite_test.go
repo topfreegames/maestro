@@ -10,9 +10,9 @@ package reporters_test
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/reporters"
 	"github.com/topfreegames/maestro/reporters/mocks"

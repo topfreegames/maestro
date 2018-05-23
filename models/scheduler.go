@@ -222,8 +222,8 @@ func (c *Scheduler) NextMinorVersion() {
 
 // Create creates a scheduler in the database
 func (c *Scheduler) Create(db interfaces.DB) (err error) {
-	_, err = db.Query(c, `INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at, version) 
-	VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?version) 
+	_, err = db.Query(c, `INSERT INTO schedulers (name, game, yaml, state, state_last_changed_at, version)
+	VALUES (?name, ?game, ?yaml, ?state, ?state_last_changed_at, ?version)
 	RETURNING id`, c)
 	return err
 }
@@ -264,7 +264,7 @@ func (c *Scheduler) UpdateVersion(
 		return false, err
 	}
 
-	query = `INSERT INTO scheduler_versions (name, version, yaml) 
+	query = `INSERT INTO scheduler_versions (name, version, yaml)
 	VALUES (?, ?, ?)`
 	_, err = db.Query(c, query, c.Name, c.Version, c.YAML)
 	if err != nil {
@@ -284,7 +284,7 @@ func (c *Scheduler) UpdateVersion(
 			SELECT id
 			FROM scheduler_versions
 			WHERE name = ?
-			ORDER BY created_at ASC 
+			ORDER BY created_at ASC
 			LIMIT ?
 		)`
 		_, err = db.Exec(query, c.Name, count-maxVersions)
@@ -370,14 +370,14 @@ func ListSchedulerReleases(db interfaces.DB, schedulerName string) (
 func PreviousVersion(db interfaces.DB, schedulerName, version string) (*Scheduler, error) {
 	previousScheduler := NewScheduler(schedulerName, "", "")
 	previousScheduler.Version = version
-	_, err := db.Query(previousScheduler, `SELECT * 
-	FROM scheduler_versions 
-	WHERE created_at < ( 
-		SELECT created_at 
-		FROM scheduler_versions 
+	_, err := db.Query(previousScheduler, `SELECT *
+	FROM scheduler_versions
+	WHERE created_at < (
+		SELECT created_at
+		FROM scheduler_versions
 		WHERE name = ?name AND version = ?version
 	) AND name = ?name
-	ORDER BY created_at DESC 
+	ORDER BY created_at DESC
 	LIMIT 1`, previousScheduler)
 	return previousScheduler, err
 }

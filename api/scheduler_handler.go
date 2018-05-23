@@ -18,9 +18,8 @@ import (
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/clock"
-	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
@@ -49,7 +48,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	})
 
 	email := emailFromContext(r.Context())
-
+	db := g.App.DBClient.WithContext(r.Context())
 	for _, payload := range configs {
 		logger.Debug("Creating scheduler...")
 
@@ -62,8 +61,15 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 
 		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
-		err := controller.CreateScheduler(l, mr, g.App.DB, g.App.RedisClient,
-			g.App.KubernetesClient, payload, timeoutSec)
+		err := controller.CreateScheduler(
+			l,
+			mr,
+			db,
+			g.App.RedisClient.Trace(r.Context()),
+			g.App.KubernetesClient,
+			payload,
+			timeoutSec,
+		)
 		if err != nil {
 			status := http.StatusInternalServerError
 			if strings.Contains(err.Error(), "already exists") {
@@ -79,7 +85,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		// this forwards the metadata configured for each enabled forwarder
 		_, err = eventforwarder.ForwardRoomInfo(
 			g.App.Forwarders,
-			g.App.DB,
+			db,
 			g.App.KubernetesClient,
 			payload.Name,
 			g.App.SchedulerCache,
@@ -120,7 +126,16 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger.Info("deleting scheduler")
 
 	timeoutSec := g.App.Config.GetInt("deleteTimeoutSeconds")
-	err := controller.DeleteScheduler(l, mr, g.App.DB, g.App.RedisClient, g.App.KubernetesClient, params.SchedulerName, timeoutSec)
+	db := g.App.DBClient.WithContext(r.Context())
+	err := controller.DeleteScheduler(
+		l,
+		mr,
+		db,
+		g.App.RedisClient.Trace(r.Context()),
+		g.App.KubernetesClient,
+		params.SchedulerName,
+		timeoutSec,
+	)
 	if err != nil {
 		logger.WithError(err).Error("delete scheduler failed")
 		status := http.StatusInternalServerError
@@ -199,7 +214,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	operationManager, err := getOperationManager(g.App, payload.Name, "UpdateSchedulerConfig", logger, mr)
+	operationManager, err := getOperationManager(r.Context(), g.App, payload.Name, "UpdateSchedulerConfig", logger, mr)
 	if returnIfOperationManagerExists(g.App, w, err) {
 		logger.WithError(err).Error("Update scheduler failed: error getting operation key")
 		return
@@ -233,23 +248,19 @@ func updateSchedulerConfigCommon(
 	configYaml *models.ConfigYAML,
 	operationManager *models.OperationManager,
 ) (status int, description string, err error) {
-	redisClient, err := redis.NewClient("extensions.redis", app.Config, app.RedisClient)
-	if err != nil {
-		logger.WithError(err).Error("error getting redisClient")
-		return http.StatusInternalServerError, "error getting redisClient", err
-	}
-
 	maxSurge, err := getMaxSurge(app, r)
 	if err != nil {
 		return http.StatusBadRequest, "invalid maxsurge parameter", err
 	}
 
+	db := app.DBClient.WithContext(r.Context())
 	logger.WithField("time", time.Now()).Info("Starting update")
 	err = controller.UpdateSchedulerConfig(
+		r.Context(),
 		logger,
 		mr,
-		app.DB,
-		redisClient,
+		db,
+		app.RedisClient,
 		app.KubernetesClient,
 		configYaml,
 		maxSurge,
@@ -284,7 +295,7 @@ func updateSchedulerConfigCommon(
 	// this forwards the metadata configured for each enabled forwarder
 	_, err = eventforwarder.ForwardRoomInfo(
 		app.Forwarders,
-		app.DB,
+		db,
 		app.KubernetesClient,
 		configYaml.Name,
 		nil, // intentionally omit SchedulerCache to force reload since it is an update
@@ -318,7 +329,8 @@ func (g *SchedulerListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		"source":    "schedulerHandler",
 		"operation": "list",
 	})
-	names, err := controller.ListSchedulersNames(l, mr, g.App.DB)
+	db := g.App.DBClient.WithContext(r.Context())
+	names, err := controller.ListSchedulersNames(l, mr, db)
 	if err != nil {
 		status := http.StatusInternalServerError
 		logger.WithError(err).Error("List scheduler failed.")
@@ -376,13 +388,13 @@ func (g *SchedulerStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		"scheduler": params.SchedulerName,
 	})
 
+	db := g.App.DBClient.WithContext(r.Context())
 	logger.Debugf("Getting scheduler %s status", params.SchedulerName)
-
 	scheduler, _, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
 		l,
 		mr,
-		g.App.DB,
-		g.App.RedisClient,
+		db,
+		g.App.RedisClient.Trace(r.Context()),
 		params.SchedulerName,
 	)
 	if err != nil {
@@ -430,10 +442,11 @@ func (g *SchedulerStatusHandler) returnConfig(
 
 	logger.Debugf("Getting scheduler %s config", schedulerName)
 
+	db := g.App.DBClient.WithContext(r.Context())
 	var yamlStr string
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		var err error
-		yamlStr, err = models.LoadConfig(g.App.DB, schedulerName)
+		yamlStr, err = models.LoadConfig(db, schedulerName)
 		return err
 	})
 	if err != nil {
@@ -480,10 +493,11 @@ func (g *SchedulerListHandler) returnInfo(
 		return
 	}
 
+	db := g.App.DBClient.WithContext(r.Context())
 	var schedulers []models.Scheduler
 	err := mr.WithSegment(models.SegmentSelect, func() error {
 		var err error
-		schedulers, err = models.LoadSchedulers(g.App.DB, schedulersNames)
+		schedulers, err = models.LoadSchedulers(db, schedulersNames)
 		return err
 	})
 	if err != nil {
@@ -493,14 +507,10 @@ func (g *SchedulerListHandler) returnInfo(
 		return
 	}
 
-	redisClient, err := redis.NewClient("extensions.redis", g.App.Config, g.App.RedisClient)
-	if err != nil {
-		errStr := "failed to create redis client"
-		logger.WithError(err).Error(errStr)
-		g.App.HandleError(w, http.StatusInternalServerError, errStr, err)
-		return
-	}
-	roomsCounts, err := models.GetRoomsCountByStatusForSchedulers(redisClient.Client, schedulersNames)
+	roomsCounts, err := models.GetRoomsCountByStatusForSchedulers(
+		g.App.RedisClient.Trace(r.Context()),
+		schedulersNames,
+	)
 	if err != nil {
 		errStr := "failed to get rooms counts for schedulers"
 		logger.WithError(err).Error(errStr)
@@ -574,11 +584,12 @@ func (g *SchedulerScaleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	})
 	logger.Info("scaling scheduler")
 
+	db := g.App.DBClient.WithContext(r.Context())
 	err := controller.ScaleScheduler(
 		logger,
 		mr,
-		g.App.DB,
-		g.App.RedisClient,
+		db,
+		g.App.RedisClient.Trace(r.Context()),
 		g.App.KubernetesClient,
 		g.App.Config.GetInt("scaleUpTimeoutSeconds"), g.App.Config.GetInt("scaleDownTimeoutSeconds"),
 		scaleParams.ScaleUp, scaleParams.ScaleDown, scaleParams.Replicas,
@@ -616,6 +627,7 @@ func NewSchedulerImageHandler(a *App) *SchedulerImageHandler {
 }
 
 func (g *SchedulerImageHandler) update(
+	r *http.Request,
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 	schedulerName string,
@@ -628,13 +640,8 @@ func (g *SchedulerImageHandler) update(
 
 	status = http.StatusOK
 
-	redisClient, err := redis.NewClient("extensions.redis", g.App.Config, g.App.RedisClient)
-	if err != nil {
-		logger.WithError(err).Error("error getting redisClient")
-		return http.StatusInternalServerError, "Update scheduler failed", err
-	}
-
-	err = controller.UpdateSchedulerImage(logger, mr, g.App.DB, redisClient, g.App.KubernetesClient,
+	db := g.App.DBClient.WithContext(r.Context())
+	err = controller.UpdateSchedulerImage(r.Context(), logger, mr, db, g.App.RedisClient, g.App.KubernetesClient,
 		schedulerName, imageParams, maxSurge, &clock.Clock{}, g.App.Config, operationManager)
 	if err != nil {
 		status = http.StatusInternalServerError
@@ -687,14 +694,14 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	logger.Info("updating scheduler's image")
 
 	async := r.URL.Query().Get("async") == "true"
-	operationManager, err := getOperationManager(g.App, params.SchedulerName, "UpdateSchedulerImage", logger, mr)
+	operationManager, err := getOperationManager(r.Context(), g.App, params.SchedulerName, "UpdateSchedulerImage", logger, mr)
 	if returnIfOperationManagerExists(g.App, w, err) {
 		logger.WithError(err).Error("Update scheduler image failed")
 		return
 	}
 
 	if async {
-		go g.update(logger, mr, params.SchedulerName, schedulerImage, maxSurge, operationManager)
+		go g.update(r, logger, mr, params.SchedulerName, schedulerImage, maxSurge, operationManager)
 		WriteJSON(w, http.StatusOK, map[string]interface{}{
 			"success":      true,
 			"operationKey": operationManager.GetOperationKey(),
@@ -702,7 +709,7 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	status, description, err := g.update(logger, mr, params.SchedulerName, schedulerImage, maxSurge, operationManager)
+	status, description, err := g.update(r, logger, mr, params.SchedulerName, schedulerImage, maxSurge, operationManager)
 	if err != nil {
 		g.App.HandleError(w, status, description, err)
 		return
@@ -723,6 +730,7 @@ func NewSchedulerUpdateMinHandler(a *App) *SchedulerUpdateMinHandler {
 }
 
 func (g *SchedulerUpdateMinHandler) update(
+	r *http.Request,
 	w http.ResponseWriter,
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
@@ -733,18 +741,12 @@ func (g *SchedulerUpdateMinHandler) update(
 	g.App.gracefulShutdown.wg.Add(1)
 	defer g.App.gracefulShutdown.wg.Done()
 
-	redisClient, err := redis.NewClient("extensions.redis", g.App.Config, g.App.RedisClient)
-	if err != nil {
-		logger.WithError(err).Error("error getting redisClient")
-		g.App.HandleError(w, http.StatusInternalServerError, "Update scheduler failed", err)
-		return
-	}
-
 	status = http.StatusOK
 	description = ""
 
 	logger.Info("starting controllers update min")
-	err = controller.UpdateSchedulerMin(logger, mr, g.App.DB, redisClient, schedulerName,
+	db := g.App.DBClient.WithContext(r.Context())
+	err = controller.UpdateSchedulerMin(r.Context(), logger, mr, db, g.App.RedisClient, schedulerName,
 		schedulerMin, &clock.Clock{}, g.App.Config, operationManager)
 	if err != nil {
 		status = http.StatusInternalServerError
@@ -791,14 +793,14 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	async := r.URL.Query().Get("async") == "true"
 
-	operationManager, err := getOperationManager(g.App, params.SchedulerName, "UpdateSchedulerMin", logger, mr)
+	operationManager, err := getOperationManager(r.Context(), g.App, params.SchedulerName, "UpdateSchedulerMin", logger, mr)
 	if returnIfOperationManagerExists(g.App, w, err) {
 		logger.WithError(err).Error("Update scheduler min failed")
 		return
 	}
 
 	if async {
-		go g.update(w, logger, mr, params.SchedulerName, schedulerMin.Min, operationManager)
+		go g.update(r, w, logger, mr, params.SchedulerName, schedulerMin.Min, operationManager)
 		WriteJSON(w, http.StatusOK, map[string]interface{}{
 			"success":      true,
 			"operationKey": operationManager.GetOperationKey(),
@@ -806,7 +808,7 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	status, description, err := g.update(w, logger, mr, params.SchedulerName, schedulerMin.Min, operationManager)
+	status, description, err := g.update(r, w, logger, mr, params.SchedulerName, schedulerMin.Min, operationManager)
 	if err != nil {
 		g.App.HandleError(w, status, description, err)
 		return

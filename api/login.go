@@ -90,8 +90,9 @@ func (l *LoginAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	db := l.App.DBClient.WithContext(r.Context())
 	//If the last error didn't occur, then the error from Authenticate method won't happen
-	email, _, _ := l.App.Login.Authenticate(token, l.App.DB)
+	email, _, _ := l.App.Login.Authenticate(token, db)
 	if !verifyEmailDomain(email, l.App.EmailDomains) {
 		logger.WithError(err).Error("Invalid email")
 		err := errors.NewAccessError(
@@ -102,13 +103,13 @@ func (l *LoginAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = login.SaveToken(token, email, token.AccessToken, l.App.DB)
+	err = login.SaveToken(token, email, token.AccessToken, db)
 	if err != nil {
 		l.App.HandleError(w, http.StatusBadRequest, "", err)
 		return
 	}
 
-	keyAccessToken, err := login.GetKeyAccessToken(email, l.App.DB)
+	keyAccessToken, err := login.GetKeyAccessToken(email, db)
 
 	body := fmt.Sprintf(`{"token": "%s"}`, keyAccessToken)
 

@@ -50,7 +50,7 @@ var _ = Describe("App", func() {
 		jsonStr, err = mt.NextJsonStr()
 		Expect(err).NotTo(HaveOccurred())
 
-		mockLogin.EXPECT().Authenticate(gomock.Any(), app.DB).Return("user@example.com", http.StatusOK, nil).AnyTimes()
+		mockLogin.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return("user@example.com", http.StatusOK, nil).AnyTimes()
 	})
 
 	AfterEach(func() {
@@ -59,7 +59,7 @@ var _ = Describe("App", func() {
 		for _, pod := range pods.Items {
 			room := models.NewRoom(pod.GetName(), pod.GetNamespace())
 			mr := &models.MixedMetricsReporter{}
-			err = room.ClearAll(app.RedisClient, mr)
+			err = room.ClearAll(app.RedisClient.Client, mr)
 			Expect(err).NotTo(HaveOccurred())
 		}
 
@@ -99,7 +99,7 @@ var _ = Describe("App", func() {
 
 			ns := configYaml.Name
 			sch := &models.Scheduler{Name: ns}
-			err = sch.Load(app.DB)
+			err = sch.Load(app.DBClient.DB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sch.YAML).NotTo(HaveLen(0))
 
@@ -108,10 +108,10 @@ var _ = Describe("App", func() {
 				Expect(pod.Spec.Containers[0].Ports[0].HostPort).NotTo(BeZero())
 
 				room := models.NewRoom(pod.GetName(), ns)
-				err := room.Create(app.RedisClient, mockDb, mmr, configYaml)
+				err := room.Create(app.RedisClient.Client, mockDb, mmr, configYaml)
 				Expect(err).NotTo(HaveOccurred())
 
-				pipe := app.RedisClient.TxPipeline()
+				pipe := app.RedisClient.Client.TxPipeline()
 				roomStatuses := pipe.HMGet(room.GetRoomRedisKey(), "status", "lastPing")
 				roomIsCreating := pipe.SIsMember(models.GetRoomStatusSetRedisKey(ns, room.Status), room.GetRoomRedisKey())
 				roomLastPing := pipe.ZScore(models.GetRoomPingRedisKey(ns), room.ID)
@@ -208,7 +208,7 @@ var _ = Describe("App", func() {
 
 			ns := configYaml.Name
 			sch := &models.Scheduler{Name: ns}
-			err = sch.Load(app.DB)
+			err = sch.Load(app.DBClient.DB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sch.YAML).NotTo(HaveLen(0))
 
@@ -217,10 +217,10 @@ var _ = Describe("App", func() {
 				Expect(pod.Spec.Containers[0].Ports[0].HostPort).NotTo(BeZero())
 
 				room := models.NewRoom(pod.GetName(), ns)
-				err := room.Create(app.RedisClient, mockDb, mmr, configYaml)
+				err := room.Create(app.RedisClient.Client, mockDb, mmr, configYaml)
 				Expect(err).NotTo(HaveOccurred())
 
-				pipe := app.RedisClient.TxPipeline()
+				pipe := app.RedisClient.Client.TxPipeline()
 				roomStatuses := pipe.HMGet(room.GetRoomRedisKey(), "status", "lastPing")
 				roomIsCreating := pipe.SIsMember(models.GetRoomStatusSetRedisKey(ns, room.Status), room.GetRoomRedisKey())
 				roomLastPing := pipe.ZScore(models.GetRoomPingRedisKey(ns), room.ID)
@@ -244,10 +244,10 @@ var _ = Describe("App", func() {
 		})
 
 		It("should return code 500 if postgres is down", func() {
-			app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, clientset)
+			app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, nil, nil, clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = app.DB.Close()
+			err = app.DBClient.DB.Close()
 			Expect(err).NotTo(HaveOccurred())
 
 			body := strings.NewReader(jsonStr)
@@ -347,7 +347,7 @@ var _ = Describe("App", func() {
 			Expect(exists).To(BeFalse())
 
 			sch := &models.Scheduler{Name: ns}
-			err = sch.Load(app.DB)
+			err = sch.Load(app.DBClient.DB)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sch.YAML).To(HaveLen(0))
 		})
@@ -392,7 +392,7 @@ var _ = Describe("App", func() {
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 
 			scheduler := &models.Scheduler{Name: configYaml.Name}
-			err = scheduler.Load(app.DB)
+			err = scheduler.Load(app.DBClient.DB)
 			Expect(err).NotTo(HaveOccurred())
 
 			newConfigYaml, err := models.NewConfigYAML(scheduler.YAML)
@@ -502,7 +502,7 @@ var _ = Describe("App", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(pods.Items)).To(Equal(configYaml.AutoScaling.Min))
 
-			tx := app.RedisClient.TxPipeline()
+			tx := app.RedisClient.Client.TxPipeline()
 			tx.SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady), pods.Items[0].GetName())
 			tx.Exec()
 

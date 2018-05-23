@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -35,7 +35,7 @@ func (g *SchedulerOperationCancelHandler) ServeHTTP(w http.ResponseWriter, r *ht
 
 	logger.Info("Starting scheduler operation cancel")
 
-	operationManager := models.NewOperationManager(schedulerName, g.App.RedisClient, logger)
+	operationManager := models.NewOperationManager(schedulerName, g.App.RedisClient.Trace(r.Context()), logger)
 	err := mr.WithSegment(models.SegmentPipeExec, func() error {
 		return operationManager.Cancel(operationKey)
 	})

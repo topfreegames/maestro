@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -41,6 +42,7 @@ var _ = Describe("SchedulerOperationCancelHandler", func() {
 		})
 
 		It("should cancel operation", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			MockDeleteRedisKey(opManager, mockRedisClient, mockPipeline, nil)
 
 			app.Router.ServeHTTP(recorder, request)
@@ -52,6 +54,7 @@ var _ = Describe("SchedulerOperationCancelHandler", func() {
 		})
 
 		It("should return error if redis fails", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			MockDeleteRedisKey(opManager, mockRedisClient, mockPipeline, errors.New("redis error"))
 
 			app.Router.ServeHTTP(recorder, request)
@@ -67,6 +70,7 @@ var _ = Describe("SchedulerOperationCancelHandler", func() {
 		})
 
 		It("should return error if operation key is invalid", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			key := "invalid key"
 			url := fmt.Sprintf("http://%s/scheduler/%s/operations/%s/cancel",
 				app.Address, name, key)

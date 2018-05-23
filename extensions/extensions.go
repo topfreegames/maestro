@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/extensions/redis"
@@ -23,13 +23,13 @@ import (
 )
 
 // GetRedisClient returns a redis client
-func GetRedisClient(logger logrus.FieldLogger, config *viper.Viper) (*redis.Client, error) {
+func GetRedisClient(logger logrus.FieldLogger, config *viper.Viper, ifaces ...interface{}) (*redis.Client, error) {
 	l := logger.WithFields(logrus.Fields{
 		"operation": "configureRedisClient",
 	})
 
 	l.Debug("connecting to Redis...")
-	client, err := redis.NewClient("extensions.redis", config)
+	client, err := redis.NewClient("extensions.redis", config, ifaces...)
 	if err != nil {
 		l.WithError(err).Error("connection to redis failed")
 		return nil, err
@@ -39,20 +39,23 @@ func GetRedisClient(logger logrus.FieldLogger, config *viper.Viper) (*redis.Clie
 }
 
 // GetDB returns a postgres client
-func GetDB(logger logrus.FieldLogger, config *viper.Viper) (pginterfaces.DB, error) {
+func GetDB(logger logrus.FieldLogger, config *viper.Viper, dbOrNil pginterfaces.DB, dbCtxOrNil pginterfaces.CtxWrapper) (*pg.Client, error) {
 	l := logger.WithFields(logrus.Fields{
 		"operation": "configureDatabase",
 		"host":      config.GetString("extensions.pg.host"),
 		"port":      config.GetString("extensions.pg.port"),
 	})
 	l.Debug("connecting to DB...")
-	client, err := pg.NewClient("extensions.pg", config, nil, nil)
+	client, err := pg.NewClient("extensions.pg", config, dbOrNil, nil, dbCtxOrNil)
 	if err != nil {
 		l.WithError(err).Error("connection to database failed")
 		return nil, err
 	}
+	if dbOrNil != nil {
+		client.DB = dbOrNil
+	}
 	l.Info("successfully connected to database")
-	return client.DB, nil
+	return client, nil
 }
 
 // GetKubernetesClient returns a Kubernetes client

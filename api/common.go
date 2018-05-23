@@ -8,16 +8,18 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
 )
 
 func getOperationManager(
+	ctx context.Context,
 	app *App,
 	schedulerName, opName string,
 	logger logrus.FieldLogger,
@@ -25,7 +27,7 @@ func getOperationManager(
 ) (*models.OperationManager, error) {
 	timeoutSec := app.Config.GetInt("updateTimeoutSeconds")
 
-	opManager := models.NewOperationManager(schedulerName, app.RedisClient, logger)
+	opManager := models.NewOperationManager(schedulerName, app.RedisClient.Trace(ctx), logger)
 
 	currOperation, err := opManager.CurrentOperation()
 	if err != nil {

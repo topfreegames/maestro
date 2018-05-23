@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 
 	. "github.com/onsi/ginkgo"
@@ -81,6 +82,7 @@ var _ = Describe("AuthMiddleware", func() {
 			yamlStr := `name: scheduler-name
 authorizedUsers:
 - scheduler_user@example.com`
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
 			MockSelectScheduler(yamlStr, mockDb, nil)
 
 			authMiddleware.ServeHTTP(recorder, request)
@@ -97,6 +99,7 @@ authorizedUsers:
 			yamlStr := `name: scheduler-name
 authorizedUsers:
 - scheduler_user@example.com`
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
 			MockSelectScheduler(yamlStr, mockDb, nil)
 
 			authMiddleware.ServeHTTP(recorder, request)

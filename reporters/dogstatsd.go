@@ -10,7 +10,7 @@ package reporters
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/dogstatsd"
 	constants "github.com/topfreegames/maestro/reporters/constants"

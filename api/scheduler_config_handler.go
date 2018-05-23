@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -36,7 +36,11 @@ func (g *GetSchedulerConfigHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	var yamlStr string
 	var err error
-	yamlStr, err = models.LoadConfigWithVersion(g.App.DB, params.SchedulerName, version)
+	yamlStr, err = models.LoadConfigWithVersion(
+		g.App.DBClient.WithContext(r.Context()),
+		params.SchedulerName,
+		version,
+	)
 	if err != nil {
 		logger.WithError(err).Error("config scheduler failed.")
 		g.App.HandleError(w, http.StatusInternalServerError, "config scheduler failed", err)

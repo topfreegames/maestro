@@ -223,7 +223,7 @@ var _ = Describe("Login", func() {
 			}
 			mockOauth.EXPECT().TokenSource(oauth2.NoContext, token).Return(tokenSource)
 
-			mockDb.EXPECT().Query(gomock.Any(), `UPDATE users 
+			mockDb.EXPECT().Query(gomock.Any(), `UPDATE users
 		SET access_token = ?access_token,
 				expiry = ?expiry
 		WHERE email = ?email`, gomock.Any())
@@ -262,7 +262,7 @@ var _ = Describe("Login", func() {
 			}
 			mockOauth.EXPECT().TokenSource(oauth2.NoContext, token).Return(tokenSource)
 
-			mockDb.EXPECT().Query(gomock.Any(), `UPDATE users 
+			mockDb.EXPECT().Query(gomock.Any(), `UPDATE users
 		SET access_token = ?access_token,
 				expiry = ?expiry
 		WHERE email = ?email`, gomock.Any()).Return(nil, errors.New("error"))

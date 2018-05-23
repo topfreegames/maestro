@@ -9,6 +9,7 @@
 package controller_test
 
 import (
+	"context"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
@@ -178,6 +179,7 @@ var _ = Describe("Controller", func() {
 		_, err = clientset.CoreV1().Nodes().Create(node)
 		Expect(err).NotTo(HaveOccurred())
 
+		mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 		opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 	})
 
@@ -1740,7 +1742,7 @@ ports:
 limits:
   memory: "68Mi"
   cpu: "3"
-requests: 
+requests:
   memory: "70Mi"
   cpu: "1"
 shutdownTimeout: 20
@@ -3022,6 +3024,7 @@ cmd:
 			mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 			err = controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -3156,7 +3159,7 @@ portRange:
 				// Retrieve redis lock
 				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
-				err = controller.UpdateSchedulerConfig(logger, mr, mockDb, redisClient, clientset, &configYaml2,
+				err = controller.UpdateSchedulerConfig(context.Background(), logger, mr, mockDb, redisClient, clientset, &configYaml2,
 					maxSurge, &clock.Clock{}, nil, config, opManager)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -3324,7 +3327,7 @@ cmd:
 				// Retrieve redis lock
 				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
-				err = controller.UpdateSchedulerConfig(logger, mr, mockDb, redisClient,
+				err = controller.UpdateSchedulerConfig(context.Background(), logger, mr, mockDb, redisClient,
 					clientset, &configYaml2, maxSurge, &clock.Clock{}, nil, config, opManager)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -3392,7 +3395,8 @@ portRange:
   end: 20010
 `
 				var configYaml1 models.ConfigYAML
-				yaml.Unmarshal([]byte(yaml1), &configYaml1)
+				err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+				Expect(err).NotTo(HaveOccurred())
 
 				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 
@@ -3448,7 +3452,8 @@ portRange:
   end: 20020
 `
 				var configYaml2 models.ConfigYAML
-				yaml.Unmarshal([]byte(yaml2), &configYaml2)
+				err = yaml.Unmarshal([]byte(yaml2), &configYaml2)
+				Expect(err).NotTo(HaveOccurred())
 
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
@@ -3496,7 +3501,7 @@ portRange:
 				// Retrieve redis lock
 				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
-				err = controller.UpdateSchedulerConfig(logger, mr, mockDb, redisClient,
+				err = controller.UpdateSchedulerConfig(context.Background(), logger, mr, mockDb, redisClient,
 					clientset, &configYaml2, maxSurge, &clock.Clock{}, nil, config, opManager)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -3541,6 +3546,7 @@ portRange:
 			mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 			err = controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -3624,6 +3630,7 @@ cmd:
 			mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 			err = controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -3675,6 +3682,7 @@ cmd:
 				Return(pg.NewTestResult(errors.New("error on select"), 0), errors.New("error on select"))
 
 			err := controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -3699,6 +3707,7 @@ cmd:
 
 			config.Set("updateTimeoutSeconds", 0)
 			err := controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -3734,6 +3743,7 @@ cmd:
 
 			config.Set("updateTimeoutSeconds", 1)
 			err = controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -3757,6 +3767,7 @@ cmd:
 				Return(goredis.NewBoolResult(true, errors.New("error getting lock")))
 
 			err := controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -3819,6 +3830,7 @@ cmd:
 			calls.Finish()
 
 			err = controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -3980,6 +3992,7 @@ cmd:
 			calls.Finish()
 
 			err = controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -4083,6 +4096,7 @@ cmd:
 			calls.Finish()
 
 			err = controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -4159,6 +4173,7 @@ cmd:
 			mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 			err = controller.UpdateSchedulerConfig(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -4218,6 +4233,7 @@ cmd:
 				opManager.Cancel(opManager.GetOperationKey())
 
 				err = controller.UpdateSchedulerConfig(
+					context.Background(),
 					logger,
 					mr,
 					mockDb,
@@ -4337,6 +4353,7 @@ containers:
 				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				err = controller.UpdateSchedulerConfig(
+					context.Background(),
 					logger,
 					mr,
 					mockDb,
@@ -4471,6 +4488,7 @@ containers:
 				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				err = controller.UpdateSchedulerConfig(
+					context.Background(),
 					logger,
 					mr,
 					mockDb,
@@ -4668,6 +4686,7 @@ containers:
 			mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 			err = controller.UpdateSchedulerImage(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -4717,6 +4736,7 @@ containers:
 				})
 
 			err := controller.UpdateSchedulerImage(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -4762,6 +4782,7 @@ containers:
 				Return(pg.NewTestResult(errors.New("some error in db"), 0), errors.New("some error in db"))
 
 			err := controller.UpdateSchedulerImage(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -4787,6 +4808,7 @@ containers:
 				})
 
 			err := controller.UpdateSchedulerImage(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -4813,6 +4835,7 @@ containers:
 
 			imageParams.Image = configYaml1.Image
 			err := controller.UpdateSchedulerImage(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -4886,6 +4909,7 @@ containers:
 
 			imageParams.Container = "container1"
 			err = controller.UpdateSchedulerImage(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -4943,6 +4967,7 @@ containers:
 			imageParams.Container = configYaml.Containers[0].Name
 			imageParams.Image = configYaml.Containers[0].Image
 			err = controller.UpdateSchedulerImage(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -5000,6 +5025,7 @@ containers:
 			imageParams.Container = "invalid-container"
 			imageParams.Image = configYaml.Containers[0].Image
 			err = controller.UpdateSchedulerImage(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -5058,6 +5084,7 @@ containers:
 			imageParams.Container = ""
 			imageParams.Image = configYaml.Containers[0].Image
 			err = controller.UpdateSchedulerImage(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -5142,6 +5169,7 @@ containers:
 			mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 			err := controller.UpdateSchedulerMin(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -5187,6 +5215,7 @@ containers:
 				})
 
 			err := controller.UpdateSchedulerMin(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,
@@ -5208,6 +5237,7 @@ containers:
 				Return(pg.NewTestResult(errors.New("some error in db"), 0), errors.New("some error in db"))
 
 			err := controller.UpdateSchedulerMin(
+				context.Background(),
 				logger,
 				mr,
 				mockDb,

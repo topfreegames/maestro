@@ -35,6 +35,8 @@ image: image2`
 	// var errDB = errors.New("db failed")
 
 	BeforeEach(func() {
+		mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
+		mockDb.EXPECT().Context().AnyTimes()
 		mockDb.EXPECT().Query(gomock.Any(), `SELECT access_token, refresh_token, expiry, token_type
 						FROM users
 						WHERE key_access_token = ?`, gomock.Any()).
@@ -42,7 +44,7 @@ image: image2`
 				destToken.RefreshToken = "refresh-token"
 			}).AnyTimes()
 		mockLogin.EXPECT().
-			Authenticate(gomock.Any(), app.DB).
+			Authenticate(gomock.Any(), app.DBClient.DB).
 			Return("user@example.com", http.StatusOK, nil).
 			AnyTimes()
 

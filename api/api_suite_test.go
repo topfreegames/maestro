@@ -9,6 +9,7 @@
 package api_test
 
 import (
+	"github.com/go-redis/redis"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -20,9 +21,9 @@ import (
 	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
 	mtesting "github.com/topfreegames/maestro/testing"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/login/mocks"
@@ -31,25 +32,27 @@ import (
 )
 
 var (
-	app                 *api.App
-	clientset           *fake.Clientset
-	config              *viper.Viper
-	hook                *test.Hook
-	logger              *logrus.Logger
-	mockCtrl            *gomock.Controller
-	mockDb              *pgmocks.MockDB
-	mockPipeline        *redismocks.MockPipeliner
-	mockRedisClient     *redismocks.MockRedisClient
-	mockClientset       *fake.Clientset
-	mockEventForwarder1 *eventforwardermock.MockEventForwarder
-	mockEventForwarder2 *eventforwardermock.MockEventForwarder
-	mockEventForwarder3 *eventforwardermock.MockEventForwarder
-	mockEventForwarder4 *eventforwardermock.MockEventForwarder
-	mockEventForwarder5 *eventforwardermock.MockEventForwarder
-	mockLogin           *mocks.MockLogin
-	mockClock           *clockmocks.MockClock
-	mmr                 *models.MixedMetricsReporter
-	allStatus           = []string{
+	app                   *api.App
+	clientset             *fake.Clientset
+	config                *viper.Viper
+	hook                  *test.Hook
+	logger                *logrus.Logger
+	mockCtrl              *gomock.Controller
+	mockDb                *pgmocks.MockDB
+	mockCtxWrapper        *pgmocks.MockCtxWrapper
+	mockPipeline          *redismocks.MockPipeliner
+	mockRedisClient       *redismocks.MockRedisClient
+	mockRedisTraceWrapper *redismocks.MockTraceWrapper
+	mockClientset         *fake.Clientset
+	mockEventForwarder1   *eventforwardermock.MockEventForwarder
+	mockEventForwarder2   *eventforwardermock.MockEventForwarder
+	mockEventForwarder3   *eventforwardermock.MockEventForwarder
+	mockEventForwarder4   *eventforwardermock.MockEventForwarder
+	mockEventForwarder5   *eventforwardermock.MockEventForwarder
+	mockLogin             *mocks.MockLogin
+	mockClock             *clockmocks.MockClock
+	mmr                   *models.MixedMetricsReporter
+	allStatus             = []string{
 		models.StatusCreating,
 		models.StatusReady,
 		models.StatusOccupied,
@@ -73,7 +76,9 @@ var _ = BeforeEach(func() {
 	clientset = fake.NewSimpleClientset()
 	mockCtrl = gomock.NewController(GinkgoT())
 	mockDb = pgmocks.NewMockDB(mockCtrl)
+	mockCtxWrapper = pgmocks.NewMockCtxWrapper(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
+	mockRedisTraceWrapper = redismocks.NewMockTraceWrapper(mockCtrl)
 	mockEventForwarder1 = eventforwardermock.NewMockEventForwarder(mockCtrl)
 	mockEventForwarder2 = eventforwardermock.NewMockEventForwarder(mockCtrl)
 	mockEventForwarder3 = eventforwardermock.NewMockEventForwarder(mockCtrl)
@@ -91,7 +96,8 @@ var _ = BeforeEach(func() {
 	lockTimeoutMs = config.GetInt("watcher.lockTimeoutMs")
 	lockKey = config.GetString("watcher.lockKey")
 
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+	mockRedisClient.EXPECT().Ping().Return(redis.NewStatusResult("PONG", nil)).AnyTimes()
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	mockLogin = mocks.NewMockLogin(mockCtrl)

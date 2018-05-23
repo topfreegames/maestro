@@ -49,7 +49,7 @@ var _ = Describe("Worker", func() {
 		jsonStr, err = mt.NextJsonStr()
 		Expect(err).NotTo(HaveOccurred())
 
-		mockLogin.EXPECT().Authenticate(gomock.Any(), app.DB).Return("user@example.com", http.StatusOK, nil).AnyTimes()
+		mockLogin.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return("user@example.com", http.StatusOK, nil).AnyTimes()
 	})
 
 	AfterEach(func() {
@@ -61,7 +61,7 @@ var _ = Describe("Worker", func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, pod := range pods.Items {
 			room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-			err = room.ClearAll(app.RedisClient, mr)
+			err = room.ClearAll(app.RedisClient.Client, mr)
 			Expect(err).NotTo(HaveOccurred())
 		}
 
@@ -398,7 +398,7 @@ var _ = Describe("Worker", func() {
 			}, 120*time.Second, 1*time.Second).Should(Equal(newRoomNumber))
 
 			Eventually(func() int {
-				pipe := app.RedisClient.TxPipeline()
+				pipe := app.RedisClient.Client.TxPipeline()
 				cmd := pipe.Keys(fmt.Sprintf("scheduler:%s:rooms:*", yaml.Name))
 				_, err := pipe.Exec()
 				Expect(err).NotTo(HaveOccurred())
@@ -484,7 +484,7 @@ var _ = Describe("Worker", func() {
 			}, 120*time.Second, 1*time.Second).Should(Equal(yaml.AutoScaling.Min))
 
 			Eventually(func() int {
-				pipe := app.RedisClient.TxPipeline()
+				pipe := app.RedisClient.Client.TxPipeline()
 				key := fmt.Sprintf("scheduler:%s:rooms:*", yaml.Name)
 				cmd := pipe.Keys(key)
 				_, err := pipe.Exec()
@@ -532,7 +532,7 @@ var _ = Describe("Worker", func() {
 
 			for _, pod := range podsBefore.Items {
 				room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-				err = room.ClearAll(app.RedisClient, mr)
+				err = room.ClearAll(app.RedisClient.Client, mr)
 				Expect(err).NotTo(HaveOccurred())
 			}
 		})
@@ -602,7 +602,7 @@ var _ = Describe("Worker", func() {
 
 			for _, pod := range podsBefore.Items {
 				room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-				err = room.ClearAll(app.RedisClient, mr)
+				err = room.ClearAll(app.RedisClient.Client, mr)
 				Expect(err).NotTo(HaveOccurred())
 			}
 		})

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"

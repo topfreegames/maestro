@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -59,7 +59,11 @@ func (g *SchedulerRollbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 	logger.Info("Starting scheduler rollback")
 
-	yamlStr, err := models.LoadConfigWithVersion(g.App.DB, schedulerName, version)
+	yamlStr, err := models.LoadConfigWithVersion(
+		g.App.DBClient.WithContext(r.Context()),
+		schedulerName,
+		version,
+	)
 	if err != nil {
 		logger.WithError(err).Error("load scheduler with version error")
 		g.App.HandleError(w, http.StatusInternalServerError, "config scheduler failed", err)
@@ -79,7 +83,7 @@ func (g *SchedulerRollbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 
 	async := r.URL.Query().Get("async") == "true"
-	operationManager, err := getOperationManager(g.App, schedulerName, "SchedulerRollback", logger, mr)
+	operationManager, err := getOperationManager(r.Context(), g.App, schedulerName, "SchedulerRollback", logger, mr)
 	if returnIfOperationManagerExists(g.App, w, err) {
 		logger.WithError(err).Error("Rollback scheduler failed")
 		return

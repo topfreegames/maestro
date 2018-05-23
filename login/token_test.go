@@ -41,7 +41,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("should insert token if refresh token is not empty", func() {
-			mockDb.EXPECT().Query(gomock.Any(), `INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email) 
+			mockDb.EXPECT().Query(gomock.Any(), `INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email)
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
@@ -54,7 +54,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("should return error if db fails", func() {
-			mockDb.EXPECT().Query(gomock.Any(), `INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email) 
+			mockDb.EXPECT().Query(gomock.Any(), `INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email)
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
@@ -68,7 +68,7 @@ var _ = Describe("Token", func() {
 		})
 
 		It("should update user if refresh token is empty", func() {
-			mockDb.EXPECT().Query(gomock.Any(), `UPDATE users 
+			mockDb.EXPECT().Query(gomock.Any(), `UPDATE users
 		SET access_token = ?access_token,
 				expiry = ?expiry
 		WHERE email = ?email`, gomock.Any())

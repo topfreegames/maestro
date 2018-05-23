@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -46,7 +46,7 @@ func (g *SchedulerDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	if schedulersVersion.Version1 == "" {
 		scheduler = models.NewScheduler(schedulerName, "", "")
-		err = scheduler.Load(g.App.DB)
+		err = scheduler.Load(g.App.DBClient.WithContext(r.Context()))
 		if err != nil {
 			logger.WithError(err).Error("error accessing database")
 			g.App.HandleError(w, http.StatusInternalServerError, "schedulers diff failed", err)
@@ -59,7 +59,10 @@ func (g *SchedulerDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	if schedulersVersion.Version2 == "" {
 		schedulerVersion2, err := models.PreviousVersion(
-			g.App.DB, schedulerName, schedulersVersion.Version1)
+			g.App.DBClient.WithContext(r.Context()),
+			schedulerName,
+			schedulersVersion.Version1,
+		)
 		if err != nil {
 			logger.WithError(err).Errorf("error getting previous scheduler version")
 			g.App.HandleError(w, http.StatusBadRequest, "error getting previous scheduler version", err)
@@ -70,7 +73,11 @@ func (g *SchedulerDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	if yamlStr1 == "" {
-		yamlStr1, err = models.LoadConfigWithVersion(g.App.DB, schedulerName, schedulersVersion.Version1)
+		yamlStr1, err = models.LoadConfigWithVersion(
+			g.App.DBClient.WithContext(r.Context()),
+			schedulerName,
+			schedulersVersion.Version1,
+		)
 		if err != nil {
 			logger.WithError(err).Error("load scheduler with version error")
 			g.App.HandleError(w, http.StatusInternalServerError, "schedulers diff failed", err)
@@ -85,7 +92,11 @@ func (g *SchedulerDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	if yamlStr2 == "" {
-		yamlStr2, err = models.LoadConfigWithVersion(g.App.DB, schedulerName, schedulersVersion.Version2)
+		yamlStr2, err = models.LoadConfigWithVersion(
+			g.App.DBClient.WithContext(r.Context()),
+			schedulerName,
+			schedulersVersion.Version2,
+		)
 		if err != nil {
 			logger.WithError(err).Error("load scheduler with version error")
 			g.App.HandleError(w, http.StatusInternalServerError, "schedulers diff failed", err)

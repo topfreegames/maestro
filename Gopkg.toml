@@ -59,4 +59,8 @@
 
 [[constraint]]
   name = "github.com/topfreegames/extensions"
-  version = "=v5.18.1"
+  version = "6.2.2"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/grpc-ecosystem/grpc-opentracing"

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -30,7 +30,10 @@ func (g *GetSchedulerReleasesHandler) ServeHTTP(w http.ResponseWriter, r *http.R
 
 	logger.Debug("Getting scheduler releases")
 
-	releases, err := models.ListSchedulerReleases(g.App.DB, params.SchedulerName)
+	releases, err := models.ListSchedulerReleases(
+		g.App.DBClient.WithContext(r.Context()),
+		params.SchedulerName,
+	)
 	if err != nil {
 		logger.WithError(err).Error("error listing scheduler releases")
 		g.App.HandleError(w, http.StatusInternalServerError, "config releases failed", err)

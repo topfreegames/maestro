@@ -35,15 +35,6 @@
   revision = "bbf7a2afc14f93e1e0a5c06df524fbd75e5031e5"
 
 [[projects]]
-  name = "github.com/Sirupsen/logrus"
-  packages = [
-    ".",
-    "hooks/test"
-  ]
-  revision = "ba1b36c82c5e05c4f912a88eab0dcd91a171688f"
-  version = "v0.11.5"
-
-[[projects]]
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
   revision = "7b3beb6df3c42abd3509abfc3bcacc0fbfb7c877"
@@ -128,8 +119,8 @@
     "orm",
     "types"
   ]
-  revision = "c2c9b3c1cb6dcc2eac1269d1557aeee791312a1c"
-  version = "v6.6.6"
+  revision = "1e63a7fcab7d4389be48b02a4997c87771fcfae8"
+  version = "v6.13.2"
 
 [[projects]]
   name = "github.com/go-redis/redis"
@@ -216,6 +207,12 @@
   packages = ["."]
   revision = "53c1911da2b537f792e7cafcb446b05ffe33b996"
   version = "v1.6.1"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/grpc-ecosystem/grpc-opentracing"
+  packages = ["go/otgrpc"]
+  revision = "8e809c8a86450a29b90dcc9efbf062d0fe6d9746"
 
 [[projects]]
   branch = "master"
@@ -422,6 +419,15 @@
   version = "v1.0.0"
 
 [[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = [
+    ".",
+    "hooks/test"
+  ]
+  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
+  version = "v1.0.5"
+
+[[projects]]
   branch = "master"
   name = "github.com/spf13/afero"
   packages = [
@@ -469,16 +475,20 @@
     "dogstatsd",
     "dogstatsd/mocks",
     "jaeger",
+    "jaeger/pg",
     "jaeger/redis",
+    "middleware",
+    "oauth2",
     "pg",
     "pg/interfaces",
     "pg/mocks",
     "redis",
     "redis/interfaces",
-    "redis/mocks"
+    "redis/mocks",
+    "router"
   ]
-  revision = "6899921e24d80b91787fac4b8d1810bb1e557c27"
-  version = "v5.18.1"
+  revision = "b44e2ce0a636870d4c1a4a183a6dfbbb5321e2e4"
+  version = "v6.2.2"
 
 [[projects]]
   name = "github.com/topfreegames/protos"
@@ -627,16 +637,6 @@
   packages = ["."]
   revision = "3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4"
   version = "v0.9.0"
-
-[[projects]]
-  name = "gopkg.in/pg.v5"
-  packages = [
-    "internal",
-    "internal/parser",
-    "types"
-  ]
-  revision = "2246060a2a43f8282ad53295d56d780dbc930b7f"
-  version = "v5.3.3"
 
 [[projects]]
   branch = "v2"
@@ -817,6 +817,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7153189b885e1a43cfbff940cf15c0df65bf0bb7dfcdf25b99b1204bf37058e8"
+  inputs-digest = "11e26006aaa3fe9b971a5eb777b8234ae0d340b3febfcf65e7a8b3197322a3c7"
   solver-name = "gps-cdcl"
   solver-version = 1

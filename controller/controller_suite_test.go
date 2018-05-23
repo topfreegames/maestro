@@ -20,9 +20,9 @@ import (
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	mtesting "github.com/topfreegames/maestro/testing"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/mocks"
@@ -30,20 +30,21 @@ import (
 )
 
 var (
-	hook            *test.Hook
-	logger          *logrus.Logger
-	mockCtrl        *gomock.Controller
-	config          *viper.Viper
-	mockDb          *pgmocks.MockDB
-	mockPipeline    *redismocks.MockPipeliner
-	mockRedisClient *redismocks.MockRedisClient
-	mockClock       *clockmocks.MockClock
-	mockPortChooser *mocks.MockPortChooser
-	redisClient     *redis.Client
-	mr              *models.MixedMetricsReporter
-	schedulerCache  *models.SchedulerCache
-	err             error
-	allStatus       = []string{
+	hook                  *test.Hook
+	logger                *logrus.Logger
+	mockCtrl              *gomock.Controller
+	config                *viper.Viper
+	mockDb                *pgmocks.MockDB
+	mockPipeline          *redismocks.MockPipeliner
+	mockRedisClient       *redismocks.MockRedisClient
+	mockRedisTraceWrapper *redismocks.MockTraceWrapper
+	mockClock             *clockmocks.MockClock
+	mockPortChooser       *mocks.MockPortChooser
+	redisClient           *redis.Client
+	mr                    *models.MixedMetricsReporter
+	schedulerCache        *models.SchedulerCache
+	err                   error
+	allStatus             = []string{
 		models.StatusCreating,
 		models.StatusReady,
 		models.StatusOccupied,
@@ -75,13 +76,14 @@ var _ = BeforeEach(func() {
 	mockDb = pgmocks.NewMockDB(mockCtrl)
 
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
+	mockRedisTraceWrapper = redismocks.NewMockTraceWrapper(mockCtrl)
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 
 	mockPortChooser = mocks.NewMockPortChooser(mockCtrl)
 	models.ThePortChooser = mockPortChooser
 
 	mockRedisClient.EXPECT().Ping()
-	redisClient, err = redis.NewClient("extensions.redis", config, mockRedisClient)
+	redisClient, err = redis.NewClient("extensions.redis", config, mockRedisClient, mockRedisTraceWrapper)
 	Expect(err).NotTo(HaveOccurred())
 
 	mockClock = clockmocks.NewMockClock(mockCtrl)

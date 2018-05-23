@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/pmylund/go-cache"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
 )

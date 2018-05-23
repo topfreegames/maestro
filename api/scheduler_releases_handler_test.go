@@ -40,7 +40,7 @@ var _ = Describe("SchedulerReleasesHandler", func() {
 				destToken.RefreshToken = "refresh-token"
 			}).AnyTimes()
 		mockLogin.EXPECT().
-			Authenticate(gomock.Any(), app.DB).
+			Authenticate(gomock.Any(), app.DBClient.DB).
 			Return("user@example.com", http.StatusOK, nil).
 			AnyTimes()
 
@@ -52,6 +52,7 @@ var _ = Describe("SchedulerReleasesHandler", func() {
 
 	Describe("GET /scheduler/{schedulerName}/releases", func() {
 		It("should return scheduler releases", func() {
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
 			versions := []string{"v1.0", "v2.0", "v3.0"}
 			testing.MockSelectSchedulerVersions(yamlString, versions, mockDb, nil)
 
@@ -71,6 +72,7 @@ var _ = Describe("SchedulerReleasesHandler", func() {
 		})
 
 		It("should return error if db fails", func() {
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
 			versions := []string{"v1.0", "v2.0", "v3.0"}
 			testing.MockSelectSchedulerVersions(yamlString, versions, mockDb, errDB)
 
@@ -85,6 +87,7 @@ var _ = Describe("SchedulerReleasesHandler", func() {
 		})
 
 		It("should return error if scheduler not found", func() {
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
 			versions := []string{}
 			testing.MockSelectSchedulerVersions(yamlString, versions, mockDb, nil)
 

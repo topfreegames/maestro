@@ -13,11 +13,11 @@ import (
 
 	"github.com/topfreegames/extensions/redis"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/test"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	"github.com/topfreegames/maestro/extensions"

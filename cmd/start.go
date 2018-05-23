@@ -10,8 +10,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/mitchellh/go-homedir"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/reporters"
@@ -54,7 +54,7 @@ var startCmd = &cobra.Command{
 
 		cmdL.Info("starting maestro")
 
-		app, err := api.NewApp(bind, port, config, log, incluster, showProfile, kubeconfig, nil, nil, nil)
+		app, err := api.NewApp(bind, port, config, log, incluster, showProfile, kubeconfig, nil, nil, nil, nil, nil)
 		if err != nil {
 			cmdL.Fatal(err)
 		}

@@ -23,12 +23,16 @@ import (
 
 	raven "github.com/getsentry/raven-go"
 	newrelic "github.com/newrelic/go-agent"
+	"github.com/topfreegames/extensions/jaeger"
+	"github.com/topfreegames/extensions/pg"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	"github.com/topfreegames/extensions/router"
 	logininterfaces "github.com/topfreegames/maestro/login/interfaces"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/eventforwarder"
@@ -48,8 +52,8 @@ type gracefulShutdown struct {
 type App struct {
 	Address          string
 	Config           *viper.Viper
-	DB               pginterfaces.DB
-	RedisClient      redisinterfaces.RedisClient
+	DBClient         *pg.Client
+	RedisClient      *redis.Client
 	KubernetesClient kubernetes.Interface
 	Logger           logrus.FieldLogger
 	NewRelic         newrelic.Application
@@ -73,7 +77,9 @@ func NewApp(
 	incluster, showProfile bool,
 	kubeconfigPath string,
 	dbOrNil pginterfaces.DB,
+	dbCtxOrNil pginterfaces.CtxWrapper,
 	redisClientOrNil redisinterfaces.RedisClient,
+	redisTraceWrapperOrNil redisinterfaces.TraceWrapper,
 	kubernetesClientOrNil kubernetes.Interface,
 ) (*App, error) {
 	a := &App{
@@ -92,7 +98,12 @@ func NewApp(
 		timeout: a.Config.GetDuration("api.gracefulShutdownTimeout"),
 	}
 
-	err := a.configureApp(dbOrNil, redisClientOrNil, kubernetesClientOrNil, showProfile)
+	err := a.configureApp(
+		dbOrNil, dbCtxOrNil,
+		redisClientOrNil, redisTraceWrapperOrNil,
+		kubernetesClientOrNil,
+		showProfile,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +111,8 @@ func NewApp(
 }
 
 func (a *App) getRouter(showProfile bool) *mux.Router {
-	r := mux.NewRouter()
+	r := router.NewRouter()
+	// TODO: better middlewares
 	r.Handle("/healthcheck", Chain(
 		NewHealthcheckHandler(a),
 		NewMetricsReporterMiddleware(a),
@@ -377,17 +389,25 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 	return r
 }
 
-func (a *App) configureApp(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface, showProfile bool) error {
+func (a *App) configureApp(
+	dbOrNil pginterfaces.DB,
+	dbCtxOrNil pginterfaces.CtxWrapper,
+	redisClientOrNil redisinterfaces.RedisClient,
+	redisTraceWrapperOrNil redisinterfaces.TraceWrapper,
+	kubernetesClientOrNil kubernetes.Interface,
+	showProfile bool,
+) error {
 	a.loadConfigurationDefaults()
+	a.configureJaeger()
 	a.configureLogger()
 
 	a.configureForwarders()
-	err := a.configureDatabase(dbOrNil)
+	err := a.configureDatabase(dbOrNil, dbCtxOrNil)
 	if err != nil {
 		return err
 	}
 
-	err = a.configureRedisClient(redisClientOrNil)
+	err = a.configureRedisClient(redisClientOrNil, redisTraceWrapperOrNil)
 	if err != nil {
 		return err
 	}
@@ -425,6 +445,25 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("oauth.enabled", true)
 	a.Config.SetDefault("forwarders.grpc.matchmaking.timeout", 1*time.Second)
 	a.Config.SetDefault("api.limitManager.keyTimeout", 1*time.Minute)
+	a.Config.SetDefault("jaeger.disabled", true)
+	a.Config.SetDefault("jaeger.samplingProbability", 0.001)
+}
+
+func (a *App) configureJaeger() {
+	l := a.Logger.WithFields(logrus.Fields{
+		"operation": "configureJaeger",
+	})
+
+	opts := jaeger.Options{
+		Disabled:    a.Config.GetBool("jaeger.disabled"),
+		Probability: a.Config.GetFloat64("jaeger.samplingProbability"),
+		ServiceName: "maestro",
+	}
+
+	_, err := jaeger.Configure(opts)
+	if err != nil {
+		l.Error("failed to initalize jaeger")
+	}
 }
 
 func (a *App) configureCache() {
@@ -450,30 +489,22 @@ func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interfa
 	return nil
 }
 
-func (a *App) configureDatabase(dbOrNil pginterfaces.DB) error {
-	if dbOrNil != nil {
-		a.DB = dbOrNil
-		return nil
-	}
-	db, err := extensions.GetDB(a.Logger, a.Config)
+func (a *App) configureDatabase(dbOrNil pginterfaces.DB, dbCtxOrNil pginterfaces.CtxWrapper) error {
+	dbClient, err := extensions.GetDB(a.Logger, a.Config, dbOrNil, dbCtxOrNil)
 	if err != nil {
 		return err
 	}
 
-	a.DB = db
+	a.DBClient = dbClient
 	return nil
 }
 
-func (a *App) configureRedisClient(redisClientOrNil redisinterfaces.RedisClient) error {
-	if redisClientOrNil != nil {
-		a.RedisClient = redisClientOrNil
-		return nil
-	}
-	redisClient, err := extensions.GetRedisClient(a.Logger, a.Config)
+func (a *App) configureRedisClient(redisClientOrNil redisinterfaces.RedisClient, redisTraceWrapperOrNil redisinterfaces.TraceWrapper) error {
+	redisClient, err := extensions.GetRedisClient(a.Logger, a.Config, redisClientOrNil, redisTraceWrapperOrNil)
 	if err != nil {
 		return err
 	}
-	a.RedisClient = redisClient.Client
+	a.RedisClient = redisClient
 	return nil
 }
 

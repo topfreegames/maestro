@@ -103,10 +103,11 @@ var _ = Describe("Login", func() {
 				AccessToken:  "access-token",
 			}
 			mockLogin.EXPECT().GetAccessToken(code, "").Return(token, nil)
-			mockLogin.EXPECT().Authenticate(token, app.DB).Return("user@example.com", 0, nil)
+			mockLogin.EXPECT().Authenticate(token, app.DBClient.DB).Return("user@example.com", 0, nil)
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
 			mockDb.EXPECT().Query(
 				gomock.Any(),
-				`INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email) 
+				`INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email)
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
@@ -174,7 +175,8 @@ var _ = Describe("Login", func() {
 				AccessToken:  "access-token",
 			}
 			mockLogin.EXPECT().GetAccessToken(code, "").Return(token, nil)
-			mockLogin.EXPECT().Authenticate(token, app.DB).Return("user@invalidemail.com", 0, nil)
+			mockLogin.EXPECT().Authenticate(token, app.DBClient.DB).Return("user@invalidemail.com", 0, nil)
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
@@ -194,10 +196,11 @@ var _ = Describe("Login", func() {
 				AccessToken:  "access-token",
 			}
 			mockLogin.EXPECT().GetAccessToken(code, "").Return(token, nil)
-			mockLogin.EXPECT().Authenticate(token, app.DB).Return("user@example.com", 0, nil)
+			mockLogin.EXPECT().Authenticate(token, app.DBClient.DB).Return("user@example.com", 0, nil)
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
 			mockDb.EXPECT().Query(
 				gomock.Any(),
-				`INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email) 
+				`INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email)
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,
@@ -234,10 +237,11 @@ var _ = Describe("Login", func() {
 				AccessToken:  "access-token",
 			}
 			mockLogin.EXPECT().GetAccessToken(code, redirectURI).Return(token, nil)
-			mockLogin.EXPECT().Authenticate(token, app.DB).Return("user@example.com", 0, nil)
+			mockLogin.EXPECT().Authenticate(token, app.DBClient.DB).Return("user@example.com", 0, nil)
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
 			mockDb.EXPECT().Query(
 				gomock.Any(),
-				`INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email) 
+				`INSERT INTO users(key_access_token, access_token, refresh_token, expiry, token_type, email)
 	VALUES(?key_access_token, ?access_token, ?refresh_token, ?expiry, ?token_type, ?email)
 	ON CONFLICT(email) DO UPDATE
 		SET access_token = excluded.access_token,

@@ -354,7 +354,7 @@ var _ = Describe("Scheduler", func() {
 			query = "UPDATE schedulers SET (game, yaml, version) = (?game, ?yaml, ?version) WHERE id = ?id"
 			mockDb.EXPECT().Query(scheduler, query, scheduler).Return(pg.NewTestResult(nil, 1), nil)
 
-			query = `INSERT INTO scheduler_versions (name, version, yaml) 
+			query = `INSERT INTO scheduler_versions (name, version, yaml)
 	VALUES (?, ?, ?)`
 			mockDb.EXPECT().
 				Query(scheduler, query, name, scheduler.Version, yaml1).
@@ -481,14 +481,14 @@ var _ = Describe("Scheduler", func() {
 		It("should select previous scheduler on db", func() {
 			version := "v1.0"
 
-			mockDb.EXPECT().Query(gomock.Any(), `SELECT * 
-	FROM scheduler_versions 
-	WHERE created_at < ( 
-		SELECT created_at 
-		FROM scheduler_versions 
+			mockDb.EXPECT().Query(gomock.Any(), `SELECT *
+	FROM scheduler_versions
+	WHERE created_at < (
+		SELECT created_at
+		FROM scheduler_versions
 		WHERE name = ?name AND version = ?version
 	) AND name = ?name
-	ORDER BY created_at DESC 
+	ORDER BY created_at DESC
 	LIMIT 1`, gomock.Any())
 
 			scheduler, err := PreviousVersion(mockDb, name, version)

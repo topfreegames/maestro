@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
