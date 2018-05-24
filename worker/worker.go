@@ -181,7 +181,9 @@ func (w *Worker) configureLogger() {
 
 func (w *Worker) savePortRangeOnRedis(start, end int) error {
 	portsRange := fmt.Sprintf("%d-%d", start, end)
-	return w.RedisClient.Client.Set(models.GlobalPortsPoolKey, portsRange, 0).Err()
+	return w.MetricsReporter.WithSegment(models.SegmentSet, func() error {
+		return w.RedisClient.Client.Set(models.GlobalPortsPoolKey, portsRange, 0).Err()
+	})
 }
 
 // Start starts the worker
@@ -257,7 +259,12 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 			var configYaml *models.ConfigYAML
 			var gameName string
 
-			configYamlStr, err := models.LoadConfig(w.DB, schedulerName)
+			var configYamlStr string
+			err := w.MetricsReporter.WithSegment(models.SegmentSelect, func() error {
+				var err error
+				configYamlStr, err = models.LoadConfig(w.DB, schedulerName)
+				return err
+			})
 			if err == nil {
 				configYaml, err = models.NewConfigYAML(configYamlStr)
 				if err == nil {

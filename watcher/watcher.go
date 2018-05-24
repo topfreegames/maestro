@@ -133,6 +133,11 @@ func (w *Watcher) configure() error {
 	w.configureLogger()
 	w.configureTimeout(configYaml)
 	w.configureAutoScale(configYaml)
+
+	w.MetricsReporter.AddReporter(&models.DogStatsdMetricsReporter{
+		Scheduler: w.SchedulerName,
+		Route:     "watcher",
+	})
 	return nil
 }
 

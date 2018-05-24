@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/topfreegames/maestro/models"
 )
 
 //DogStatsdMiddleware handles logging
@@ -31,8 +32,7 @@ func (m *DogStatsdMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if mr != nil {
 		schedulerName := mux.Vars(r)["schedulerName"]
 		routeName, _ := mux.CurrentRoute(r).GetPathTemplate()
-		mr.AddReporter(&DogStatsdMetricsReporter{
-			App:       m.App,
+		mr.AddReporter(&models.DogStatsdMetricsReporter{
 			Scheduler: schedulerName,
 			Route:     routeName,
 		})

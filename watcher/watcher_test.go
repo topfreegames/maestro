@@ -454,6 +454,10 @@ var _ = Describe("Watcher", func() {
 					"gauge":                         "3",
 				},
 			)
+			mockReporter.EXPECT().Report(
+				reportersConstants.EventResponseTime,
+				gomock.Any(),
+			)
 
 			r := reporters.GetInstance()
 			r.SetReporter("mockReporter", mockReporter)

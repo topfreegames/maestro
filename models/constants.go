@@ -46,6 +46,9 @@ const SegmentZRangeBy = "Redis/ZRangeBy"
 //SegmentPipeExec represents a segment
 const SegmentPipeExec = "Redis/Exec"
 
+//SegmentSet represents a segment
+const SegmentSet = "Redis/Set"
+
 //StateCreating represents a cluster state
 const StateCreating = "creating"
 

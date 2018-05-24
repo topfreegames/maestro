@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license
 // Copyright © 2017 Top Free Games <backend@tfgco.com>
 
-package api
+package models
 
 import (
 	"fmt"
@@ -18,7 +18,6 @@ import (
 
 //DogStatsdMetricsReporter reports metrics to new relic
 type DogStatsdMetricsReporter struct {
-	App       *App
 	Scheduler string
 	Route     string
 }
