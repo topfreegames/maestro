@@ -115,7 +115,7 @@ func TimingHandler(c dogstatsd.Client, event string,
 		constants.TagResponseTime, constants.TagScheduler, constants.TagRegion,
 		constants.TagSegment, constants.TagRoute, constants.TagType, constants.TagTable, constants.TagError})
 	duration, _ := time.ParseDuration(opts[constants.TagResponseTime])
-	c.Timing(constants.EventHTTPResponseTime, duration, tags, 1)
+	c.Timing(constants.EventResponseTime, duration, tags, 1)
 	return nil
 }
 
