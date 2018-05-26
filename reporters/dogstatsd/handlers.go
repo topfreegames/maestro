@@ -112,7 +112,7 @@ func HTTPTimingHandler(c dogstatsd.Client, event string,
 func TimingHandler(c dogstatsd.Client, event string,
 	opts map[string]string) error {
 	tags := createAllowedTags(opts, []string{
-		constants.TagResponseTime, constants.TagScheduler, constants.TagRegion,
+		constants.TagScheduler, constants.TagRegion,
 		constants.TagSegment, constants.TagRoute, constants.TagType, constants.TagTable, constants.TagError})
 	duration, _ := time.ParseDuration(opts[constants.TagResponseTime])
 	c.Timing(constants.EventResponseTime, duration, tags, 1)
