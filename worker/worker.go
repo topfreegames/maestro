@@ -20,7 +20,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
-	redis "github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/extensions"
@@ -30,6 +29,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	redis "github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 )
 
@@ -179,13 +179,6 @@ func (w *Worker) configureLogger() {
 	})
 }
 
-func (w *Worker) savePortRangeOnRedis(start, end int) error {
-	portsRange := fmt.Sprintf("%d-%d", start, end)
-	return w.MetricsReporter.WithSegment(models.SegmentSet, func() error {
-		return w.RedisClient.Client.Set(models.GlobalPortsPoolKey, portsRange, 0).Err()
-	})
-}
-
 // Start starts the worker
 func (w *Worker) Start(startHostPortRange, endHostPortRange int, showProfile bool) error {
 	l := w.Logger.WithFields(logrus.Fields{
@@ -239,6 +232,22 @@ func (w *Worker) Start(startHostPortRange, endHostPortRange int, showProfile boo
 	return nil
 }
 
+func (w *Worker) savePortRangeOnRedis(start, end int) error {
+	w.gracefulShutdown.wg.Add(1)
+	defer w.gracefulShutdown.wg.Done()
+
+	portsRange := fmt.Sprintf("%d-%d", start, end)
+	return w.RedisClient.Client.Set(models.GlobalPortsPoolKey, portsRange, 0).Err()
+}
+
+func (w *Worker) startWatcher(watcher *watcher.Watcher) {
+	w.gracefulShutdown.wg.Add(1)
+	go func() {
+		defer w.gracefulShutdown.wg.Done()
+		watcher.Start()
+	}()
+}
+
 // EnsureRunningWatchers ensures all schedulers have running watchers
 func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 	w.gracefulShutdown.wg.Add(1)
@@ -252,7 +261,7 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 			// ensure schedulers in the database have running watchers
 			if !schedulerWatcher.Run {
 				schedulerWatcher.Run = true
-				go schedulerWatcher.Start()
+				w.startWatcher(schedulerWatcher)
 			}
 		} else {
 			var occupiedTimeout int64
@@ -291,7 +300,7 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 				w.Forwarders,
 			)
 			w.Watchers[schedulerName].Run = true // Avoids race condition
-			go w.Watchers[schedulerName].Start()
+			w.startWatcher(w.Watchers[schedulerName])
 			l.WithField("name", schedulerName).Info("started watcher for scheduler")
 		}
 	}

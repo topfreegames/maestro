@@ -86,11 +86,13 @@ func GetKubernetesClient(logger logrus.FieldLogger, inCluster bool, kubeConfigPa
 // WaitTimeout waits for the waitgroup for the specified max timeout.
 // Returns true if waiting timed out.
 // got from http://stackoverflow.com/a/32843750/3987733
-func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration, log logrus.FieldLogger) bool {
 	c := make(chan struct{})
 	go func() {
 		defer close(c)
+		log.Info("waiting for WaitGroup")
 		wg.Wait()
+		log.Info("finished waiting for WaitGroup")
 	}()
 	select {
 	case <-c:
@@ -104,7 +106,7 @@ func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 func GracefulShutdown(logger logrus.FieldLogger, wg *sync.WaitGroup, timeout time.Duration) {
 	if wg != nil {
 		logger.Info("waiting for graceful shutdown...")
-		e := WaitTimeout(wg, timeout)
+		e := WaitTimeout(wg, timeout, logger)
 		if e {
 			logger.Warn("exited because of graceful shutdown timeout")
 		} else {
