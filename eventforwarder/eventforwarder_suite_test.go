@@ -11,8 +11,8 @@ import (
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
-	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"testing"
 
@@ -101,7 +101,7 @@ var _ = BeforeEach(func() {
 
 	node := &v1.Node{}
 	node.Status.Addresses = []v1.NodeAddress{
-		{Type: v1.NodeExternalIP, Address: nodeAddress},
+		{Type: v1.NodeExternalDNS, Address: nodeAddress},
 	}
 	node.Name = "node"
 	_, err = clientset.CoreV1().Nodes().Create(node)

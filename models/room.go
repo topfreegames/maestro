@@ -329,7 +329,7 @@ func (r *Room) GetAddresses(kubernetesClient kubernetes.Interface) (*RoomAddress
 		return nil, err
 	}
 	for _, address := range node.Status.Addresses {
-		if address.Type == v1.NodeExternalIP {
+		if address.Type == v1.NodeExternalDNS {
 			rAddresses.Host = address.Address
 			break
 		}

@@ -383,15 +383,15 @@ var _ = Describe("Room", func() {
 			schedulerName := "pong-free-for-all"
 			nodeName := "node-name"
 			room := models.NewRoom(name, schedulerName)
-			ip := "192.168.10.11"
+			host := "hostname.com"
 			var port int32 = 1234
 
 			node := &v1.Node{}
 			node.SetName(nodeName)
 			node.Status.Addresses = []v1.NodeAddress{
 				v1.NodeAddress{
-					Type:    v1.NodeExternalIP,
-					Address: ip,
+					Type:    v1.NodeExternalDNS,
+					Address: host,
 				},
 			}
 			_, err = clientset.CoreV1().Nodes().Create(node)
@@ -410,7 +410,7 @@ var _ = Describe("Room", func() {
 
 			roomAddresses, err := room.GetAddresses(clientset)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(roomAddresses.Host).To(Equal(ip))
+			Expect(roomAddresses.Host).To(Equal(host))
 			Expect(roomAddresses.Ports).To(HaveLen(1))
 			Expect(roomAddresses.Ports[0]).To(Equal(
 				&models.RoomPort{
