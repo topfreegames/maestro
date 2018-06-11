@@ -15,7 +15,6 @@ import (
 	"net/http/httptest"
 
 	yaml "gopkg.in/yaml.v2"
-	ghodssYaml "github.com/ghodss/yaml"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -77,7 +76,9 @@ var _ = Describe("SchedulerConfigHandler", func() {
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 
-			yamlBytes, _ := ghodssYaml.JSONToYAML(recorder.Body.Bytes())
+			var schedulerConfig map[string]interface{}
+			json.Unmarshal(recorder.Body.Bytes(), &schedulerConfig)
+			yamlBytes, _ := json.Marshal(schedulerConfig)
 			var yamlResp map[string]interface{}
 			yaml.Unmarshal(yamlBytes, &yamlResp)
 			Expect(yamlResp["name"]).To(Equal(configYaml.Name))
