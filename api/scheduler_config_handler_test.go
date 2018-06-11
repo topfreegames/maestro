@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/login"
 	"github.com/topfreegames/maestro/models"
 	. "github.com/topfreegames/maestro/testing"
@@ -41,6 +42,10 @@ var _ = Describe("SchedulerConfigHandler", func() {
 			Do(func(destToken *login.DestinationToken, query string, modifier string) {
 				destToken.RefreshToken = "refresh-token"
 			}).AnyTimes()
+		mockLogin.EXPECT().
+			Authenticate(gomock.Any(), app.DB).
+			Return("user@example.com", http.StatusOK, nil).
+			AnyTimes()
 
 		recorder = httptest.NewRecorder()
 
@@ -67,11 +72,30 @@ var _ = Describe("SchedulerConfigHandler", func() {
 			Expect(yamlResp["name"]).To(Equal(configYaml.Name))
 		})
 
+		It("should return config yaml of current version with oauth", func() {
+			MockSelectYaml(yamlString, mockDb, nil)
+
+			config, err := GetDefaultConfig()
+			Expect(err).NotTo(HaveOccurred())
+			config.Set("basicauth.tryOauthIfUnset", true)
+
+			app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+			Expect(err).NotTo(HaveOccurred())
+			app.Login = mockLogin
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var response map[string]interface{}
+			json.Unmarshal(recorder.Body.Bytes(), &response)
+			var yamlResp map[string]interface{}
+			yaml.Unmarshal([]byte(response["yaml"].(string)), &yamlResp)
+			Expect(yamlResp["name"]).To(Equal(configYaml.Name))
+		})
+
 		It("should return config json of current version", func() {
 			MockSelectYaml(yamlString, mockDb, nil)
 
-			request, _ = http.NewRequest("GET", url, nil)
-			request.SetBasicAuth(user, pass)
 			request.Header.Add("Accept", "application/json")
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
