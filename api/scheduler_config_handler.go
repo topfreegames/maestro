@@ -6,6 +6,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
+	ghodssYaml "github.com/ghodss/yaml"
 )
 
 // GetSchedulerConfigHandler handler returns the scheduler config
@@ -44,6 +45,20 @@ func (g *GetSchedulerConfigHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	if len(yamlStr) == 0 {
 		logger.Error("config scheduler not found.")
 		g.App.HandleError(w, http.StatusNotFound, "get config error", errors.New("config scheduler not found"))
+		return
+	}
+
+	// json support
+	acceptHeader := r.Header.Get("Accept")
+	if acceptHeader == "application/json" {
+		jsonBytes, err := ghodssYaml.YAMLToJSON([]byte(yamlStr))
+		if err != nil {
+			logger.WithError(err).Error("config scheduler failed.")
+			g.App.HandleError(w, http.StatusInternalServerError, "config scheduler failed", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		WriteBytes(w, http.StatusOK, jsonBytes)
+		logger.Debug("config scheduler succeeded.")
 		return
 	}
 
