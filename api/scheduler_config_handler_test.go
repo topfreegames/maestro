@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/login"
 	"github.com/topfreegames/maestro/models"
 	. "github.com/topfreegames/maestro/testing"
@@ -31,6 +32,7 @@ var _ = Describe("SchedulerConfigHandler", func() {
 	var url string
 	var configYaml *models.ConfigYAML
 	var yamlString = `name: scheduler-name`
+	var user, pass string
 	// var errDB = errors.New("db failed")
 
 	BeforeEach(func() {
@@ -51,6 +53,9 @@ var _ = Describe("SchedulerConfigHandler", func() {
 
 		url = fmt.Sprintf("http://%s/scheduler/%s/config", app.Address, configYaml.Name)
 		request, _ = http.NewRequest("GET", url, nil)
+		user = app.Config.GetString("basicauth.username")
+		pass = app.Config.GetString("basicauth.password")
+		request.SetBasicAuth(user, pass)
 	})
 
 	Describe("GET /scheduler/{schedulerName}/config", func() {
@@ -67,6 +72,42 @@ var _ = Describe("SchedulerConfigHandler", func() {
 			Expect(yamlResp["name"]).To(Equal(configYaml.Name))
 		})
 
+		It("should return config yaml of current version with oauth", func() {
+			MockSelectYaml(yamlString, mockDb, nil)
+
+			config, err := GetDefaultConfig()
+			Expect(err).NotTo(HaveOccurred())
+			config.Set("basicauth.tryOauthIfUnset", true)
+
+			app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockRedisClient, clientset)
+			Expect(err).NotTo(HaveOccurred())
+			app.Login = mockLogin
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var response map[string]interface{}
+			json.Unmarshal(recorder.Body.Bytes(), &response)
+			var yamlResp map[string]interface{}
+			yaml.Unmarshal([]byte(response["yaml"].(string)), &yamlResp)
+			Expect(yamlResp["name"]).To(Equal(configYaml.Name))
+		})
+
+		It("should return config json of current version", func() {
+			MockSelectYaml(yamlString, mockDb, nil)
+
+			request.Header.Add("Accept", "application/json")
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var schedulerConfig map[string]interface{}
+			json.Unmarshal(recorder.Body.Bytes(), &schedulerConfig)
+			yamlBytes, _ := json.Marshal(schedulerConfig)
+			var yamlResp map[string]interface{}
+			yaml.Unmarshal(yamlBytes, &yamlResp)
+			Expect(yamlResp["name"]).To(Equal(configYaml.Name))
+		})
+
 		It("should return config yaml of specified version", func() {
 			version := "v1.0"
 			MockSelectYamlWithVersion(yamlString, version, mockDb, nil)
@@ -74,6 +115,7 @@ var _ = Describe("SchedulerConfigHandler", func() {
 			url = fmt.Sprintf("http://%s/scheduler/%s/config?version=%s",
 				app.Address, configYaml.Name, version)
 			request, _ = http.NewRequest("GET", url, nil)
+			request.SetBasicAuth(user, pass)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -99,6 +141,7 @@ var _ = Describe("SchedulerConfigHandler", func() {
 			url = fmt.Sprintf("http://%s/scheduler/%s/config?version=%s",
 				app.Address, configYaml.Name, version)
 			request, _ = http.NewRequest("GET", url, nil)
+			request.SetBasicAuth(user, pass)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusNotFound))
