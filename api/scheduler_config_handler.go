@@ -5,8 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
 )
@@ -53,12 +51,18 @@ func (g *GetSchedulerConfigHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	// json support
 	acceptHeader := r.Header.Get("Accept")
 	if acceptHeader == "application/json" {
-		var schedulerConfig map[string]interface{}
-		yaml.Unmarshal([]byte(yamlStr), &schedulerConfig)
-		jsonBytes, err := json.Marshal(schedulerConfig)
+		configYaml, err := models.NewConfigYAML(yamlStr)
+		if err != nil {
+			logger.WithError(err).Error("failed to unmarshal yaml")
+			g.App.HandleError(w, http.StatusInternalServerError, "failed to unmarshal yam", err)
+			return
+		}
+
+		jsonBytes, err := json.Marshal(configYaml)
 		if err != nil {
 			logger.WithError(err).Error("config scheduler failed.")
 			g.App.HandleError(w, http.StatusInternalServerError, "config scheduler failed", err)
+			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		WriteBytes(w, http.StatusOK, jsonBytes)
