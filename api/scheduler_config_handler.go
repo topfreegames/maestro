@@ -1,14 +1,12 @@
 package api
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
+	"github.com/ghodss/yaml"
 )
 
 // GetSchedulerConfigHandler handler returns the scheduler config
@@ -53,9 +51,7 @@ func (g *GetSchedulerConfigHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	// json support
 	acceptHeader := r.Header.Get("Accept")
 	if acceptHeader == "application/json" {
-		var schedulerConfig map[string]interface{}
-		yaml.Unmarshal([]byte(yamlStr), &schedulerConfig)
-		jsonBytes, err := json.Marshal(schedulerConfig)
+		jsonBytes, err := yaml.YAMLToJSON([]byte(yamlStr))
 		if err != nil {
 			logger.WithError(err).Error("config scheduler failed.")
 			g.App.HandleError(w, http.StatusInternalServerError, "config scheduler failed", err)
