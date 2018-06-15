@@ -23,3 +23,5 @@ reporters:
     host: ""
     prefix: ""
     region: ""
+jaeger_disabled: "true"
+jaeger_samplingprobability: "0.001"
