@@ -10,6 +10,7 @@ package main
 import "C"
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,7 +23,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/eventforwarder"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
-	context "golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
