@@ -8,6 +8,7 @@
 package watcher
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -325,7 +326,7 @@ func (w *Watcher) RemoveDeadRooms() {
 				ID:            roomName,
 				SchedulerName: w.SchedulerName,
 			}
-			_, err := eventforwarder.ForwardRoomEvent(w.EventForwarders, w.DB, w.KubernetesClient, room,
+			_, err := eventforwarder.ForwardRoomEvent(context.Background(), w.EventForwarders, w.DB, w.KubernetesClient, room,
 				models.RoomTerminated, map[string]interface{}{}, nil, w.Logger)
 			if err != nil {
 				logger.WithError(err).Error("event forwarder failed")
@@ -388,7 +389,7 @@ func (w *Watcher) RemoveDeadRooms() {
 					ID:            roomName,
 					SchedulerName: w.SchedulerName,
 				}
-				eventforwarder.ForwardRoomEvent(w.EventForwarders, w.DB, w.KubernetesClient, room,
+				eventforwarder.ForwardRoomEvent(context.Background(), w.EventForwarders, w.DB, w.KubernetesClient, room,
 					models.RoomTerminated, map[string]interface{}{}, nil, w.Logger)
 			}
 

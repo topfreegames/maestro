@@ -9,6 +9,7 @@
 package watcher_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -1378,8 +1379,8 @@ var _ = Describe("Watcher", func() {
 				mockPipeline.EXPECT().Exec().Times(2)
 			}
 
-			mockEventForwarder.EXPECT().Forward(models.RoomTerminated, gomock.Any(), gomock.Any()).Do(
-				func(status string, infos, fwdMetadata map[string]interface{}) {
+			mockEventForwarder.EXPECT().Forward(gomock.Any(), models.RoomTerminated, gomock.Any(), gomock.Any()).Do(
+				func(ctx context.Context, status string, infos, fwdMetadata map[string]interface{}) {
 					Expect(status).To(Equal(models.RoomTerminated))
 					Expect(infos["game"]).To(Equal(schedulerName))
 					Expect(expectedRooms).To(ContainElement(infos["roomId"]))

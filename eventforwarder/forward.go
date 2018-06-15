@@ -1,6 +1,7 @@
 package eventforwarder
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -49,6 +50,7 @@ func getEnabledForwarders(
 
 // ForwardRoomEvent forwards room event to app eventforwarders
 func ForwardRoomEvent(
+	ctx context.Context,
 	forwarders []*Info,
 	db interfaces.DB,
 	kubernetesClient kubernetes.Interface,
@@ -109,7 +111,7 @@ func ForwardRoomEvent(
 				infos["metadata"] = metadata
 				eventWasForwarded = true
 
-				return ForwardEventToForwarders(enabledForwarders, status, infos, l)
+				return ForwardEventToForwarders(ctx, enabledForwarders, status, infos, l)
 			}
 		}
 	}
@@ -121,6 +123,7 @@ func ForwardRoomEvent(
 
 // ForwardRoomInfo forwards room info to app eventforwarders
 func ForwardRoomInfo(
+	ctx context.Context,
 	forwarders []*Info,
 	db interfaces.DB,
 	kubernetesClient kubernetes.Interface,
@@ -165,7 +168,7 @@ func ForwardRoomInfo(
 			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
 				eventWasForwarded = true
-				return ForwardEventToForwarders(enabledForwarders, "schedulerEvent", infos, l)
+				return ForwardEventToForwarders(ctx, enabledForwarders, "schedulerEvent", infos, l)
 			}
 		}
 	}
@@ -175,6 +178,7 @@ func ForwardRoomInfo(
 
 // ForwardPlayerEvent forwards player event to app eventforwarders
 func ForwardPlayerEvent(
+	ctx context.Context,
 	forwarders []*Info,
 	db interfaces.DB,
 	kubernetesClient kubernetes.Interface,
@@ -221,7 +225,7 @@ func ForwardPlayerEvent(
 			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
 				eventWasForwarded = true
-				return ForwardEventToForwarders(enabledForwarders, event, metadata, l)
+				return ForwardEventToForwarders(ctx, enabledForwarders, event, metadata, l)
 			}
 		}
 	}
@@ -231,6 +235,7 @@ func ForwardPlayerEvent(
 
 // ForwardEventToForwarders forwards
 func ForwardEventToForwarders(
+	ctx context.Context,
 	forwarders []*Forwarder,
 	event string,
 	infos map[string]interface{},
@@ -244,7 +249,7 @@ func ForwardEventToForwarders(
 	respCode := 0
 	respMessage := []string{}
 	for _, f := range forwarders {
-		code, message, err := f.Func.Forward(event, infos, f.Metadata)
+		code, message, err := f.Func.Forward(ctx, event, infos, f.Metadata)
 		if err != nil {
 			return nil, err
 		}

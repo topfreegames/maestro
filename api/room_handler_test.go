@@ -9,6 +9,7 @@
 package api_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -296,7 +297,7 @@ forwarders:
 				}
 				mockPipeline.EXPECT().Exec()
 
-				mockEventForwarder1.EXPECT().Forward(fmt.Sprintf("ping%s", strings.Title(status)), gomock.Any(), gomock.Any())
+				mockEventForwarder1.EXPECT().Forward(gomock.Any(), fmt.Sprintf("ping%s", strings.Title(status)), gomock.Any(), gomock.Any())
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(200))
@@ -533,8 +534,8 @@ forwarders:
 							scheduler.YAML = yamlStr
 							scheduler.Game = game
 						})
-					mockEventForwarder1.EXPECT().Forward(status, gomock.Any(), gomock.Any())
-					mockEventForwarder2.EXPECT().Forward(status, gomock.Any(), gomock.Any())
+					mockEventForwarder1.EXPECT().Forward(gomock.Any(), status, gomock.Any(), gomock.Any())
+					mockEventForwarder2.EXPECT().Forward(gomock.Any(), status, gomock.Any(), gomock.Any())
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -569,16 +570,16 @@ forwarders:
 							scheduler.YAML = yamlStr
 							scheduler.Game = game
 						})
-					mockEventForwarder1.EXPECT().Forward(status, gomock.Any(), gomock.Any()).Do(
-						func(status string, infos, fwdMetadata map[string]interface{}) {
+					mockEventForwarder1.EXPECT().Forward(gomock.Any(), status, gomock.Any(), gomock.Any()).Do(
+						func(ctx context.Context, status string, infos, fwdMetadata map[string]interface{}) {
 							Expect(infos["game"]).To(Equal(game))
 							Expect(infos["roomId"]).To(Equal(roomName))
 							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]interface{}{
 								"type": "sometype",
 							}))
 						})
-					mockEventForwarder2.EXPECT().Forward(status, gomock.Any(), gomock.Any()).Do(
-						func(status string, infos, fwdMetadata map[string]interface{}) {
+					mockEventForwarder2.EXPECT().Forward(gomock.Any(), status, gomock.Any(), gomock.Any()).Do(
+						func(ctx context.Context, status string, infos, fwdMetadata map[string]interface{}) {
 							Expect(infos["game"]).To(Equal(game))
 							Expect(infos["roomId"]).To(Equal(roomName))
 							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]interface{}{
@@ -708,7 +709,7 @@ forwarders:
 				scheduler.Game = game
 			})
 
-			mockEventForwarder1.EXPECT().Forward(event, gomock.Any(), gomock.Any()).Return(int32(500), "", errors.New("no playerId specified"))
+			mockEventForwarder1.EXPECT().Forward(gomock.Any(), event, gomock.Any(), gomock.Any()).Return(int32(500), "", errors.New("no playerId specified"))
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(500))
@@ -738,8 +739,8 @@ forwarders:
 				scheduler.Game = game
 			})
 
-			mockEventForwarder1.EXPECT().Forward(event, gomock.Any(), gomock.Any()).Return(int32(403), "UNAUTHORIZED", nil)
-			mockEventForwarder2.EXPECT().Forward(event, gomock.Any(), gomock.Any()).Return(int32(200), "", nil)
+			mockEventForwarder1.EXPECT().Forward(gomock.Any(), event, gomock.Any(), gomock.Any()).Return(int32(403), "UNAUTHORIZED", nil)
+			mockEventForwarder2.EXPECT().Forward(gomock.Any(), event, gomock.Any(), gomock.Any()).Return(int32(200), "", nil)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(403))
@@ -769,8 +770,8 @@ forwarders:
 				scheduler.Game = game
 			})
 
-			mockEventForwarder1.EXPECT().Forward(event, gomock.Any(), gomock.Any()).Return(int32(200), "resp1", nil)
-			mockEventForwarder2.EXPECT().Forward(event, gomock.Any(), gomock.Any()).Return(int32(200), "resp2", nil)
+			mockEventForwarder1.EXPECT().Forward(gomock.Any(), event, gomock.Any(), gomock.Any()).Return(int32(200), "resp1", nil)
+			mockEventForwarder2.EXPECT().Forward(gomock.Any(), event, gomock.Any(), gomock.Any()).Return(int32(200), "resp2", nil)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(200))
@@ -839,7 +840,7 @@ forwarders:
 				scheduler.Game = game
 			})
 
-			mockEventForwarder1.EXPECT().Forward("roomEvent", gomock.Any(), gomock.Any()).Return(
+			mockEventForwarder1.EXPECT().Forward(gomock.Any(), "roomEvent", gomock.Any(), gomock.Any()).Return(
 				int32(500), "", errors.New("some error occurred"),
 			)
 
@@ -871,7 +872,7 @@ forwarders:
 				scheduler.Game = game
 			})
 
-			mockEventForwarder1.EXPECT().Forward("roomEvent", gomock.Any(), gomock.Any()).Return(
+			mockEventForwarder1.EXPECT().Forward(gomock.Any(), "roomEvent", gomock.Any(), gomock.Any()).Return(
 				int32(500), "nice error reason", nil,
 			)
 
@@ -903,7 +904,7 @@ forwarders:
 				scheduler.Game = game
 			})
 
-			mockEventForwarder1.EXPECT().Forward("roomEvent", gomock.Any(), gomock.Any()).Return(
+			mockEventForwarder1.EXPECT().Forward(gomock.Any(), "roomEvent", gomock.Any(), gomock.Any()).Return(
 				int32(200), "all went well", nil,
 			)
 

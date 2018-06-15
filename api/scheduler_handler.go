@@ -84,6 +84,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		// this forwards the metadata configured for each enabled forwarder
 		_, err = eventforwarder.ForwardRoomInfo(
+			r.Context(),
 			g.App.Forwarders,
 			db,
 			g.App.KubernetesClient,
@@ -294,6 +295,7 @@ func updateSchedulerConfigCommon(
 
 	// this forwards the metadata configured for each enabled forwarder
 	_, err = eventforwarder.ForwardRoomInfo(
+		r.Context(),
 		app.Forwarders,
 		db,
 		app.KubernetesClient,

@@ -551,7 +551,7 @@ autoscaling:
 						scheduler.Game = "game-name"
 					})
 
-					mockEventForwarder1.EXPECT().Forward("schedulerEvent", gomock.Any(), gomock.Any())
+					mockEventForwarder1.EXPECT().Forward(gomock.Any(), "schedulerEvent", gomock.Any(), gomock.Any())
 
 					MockInsertScheduler(mockDb, nil)
 					MockUpdateSchedulerStatus(mockDb, nil, nil)
@@ -1382,8 +1382,8 @@ forwarders:
 						scheduler.Game = "game"
 					})
 
-					mockEventForwarder1.EXPECT().Forward("schedulerEvent", gomock.Any(), gomock.Any())
-					mockEventForwarder2.EXPECT().Forward("schedulerEvent", gomock.Any(), gomock.Any())
+					mockEventForwarder1.EXPECT().Forward(gomock.Any(), "schedulerEvent", gomock.Any(), gomock.Any())
+					mockEventForwarder2.EXPECT().Forward(gomock.Any(), "schedulerEvent", gomock.Any(), gomock.Any())
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)

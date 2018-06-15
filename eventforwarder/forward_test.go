@@ -1,6 +1,7 @@
 package eventforwarder_test
 
 import (
+	"context"
 	"errors"
 
 	"github.com/golang/mock/gomock"
@@ -16,7 +17,9 @@ import (
 var _ = Describe("Forward", func() {
 	Describe("ForwardRoomEvent", func() {
 		It("should forward room event", func() {
+			ctx := context.Background()
 			mockEventForwarder.EXPECT().Forward(
+				ctx,
 				models.StatusReady,
 				map[string]interface{}{
 					"host":     nodeAddress,
@@ -39,6 +42,7 @@ var _ = Describe("Forward", func() {
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			response, err := ForwardRoomEvent(
+				ctx,
 				mockForwarders,
 				mockDB,
 				clientset,
@@ -56,7 +60,9 @@ var _ = Describe("Forward", func() {
 
 		It("should report fail if event forward fails", func() {
 			errMsg := "event forward failed"
+			ctx := context.Background()
 			mockEventForwarder.EXPECT().Forward(
+				ctx,
 				models.StatusReady,
 				map[string]interface{}{
 					"host":     nodeAddress,
@@ -80,6 +86,7 @@ var _ = Describe("Forward", func() {
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			response, err := ForwardRoomEvent(
+				ctx,
 				mockForwarders,
 				mockDB,
 				clientset,
@@ -96,7 +103,9 @@ var _ = Describe("Forward", func() {
 
 		It("should not send reporter if reporter is not set", func() {
 			errMsg := "event forward failed"
+			ctx := context.Background()
 			mockEventForwarder.EXPECT().Forward(
+				ctx,
 				models.StatusReady,
 				map[string]interface{}{
 					"host":     nodeAddress,
@@ -112,6 +121,7 @@ var _ = Describe("Forward", func() {
 			r.UnsetReporter("mockReporter")
 
 			_, err := ForwardRoomEvent(
+				ctx,
 				mockForwarders,
 				mockDB,
 				clientset,
@@ -138,6 +148,7 @@ game: game
 			Expect(err).NotTo(HaveOccurred())
 
 			response, err := ForwardRoomEvent(
+				context.Background(),
 				mockForwarders,
 				mockDB,
 				clientset,
@@ -156,7 +167,9 @@ game: game
 	Describe("ForwardPlayerEvent", func() {
 		It("should forward player event", func() {
 			playerEvent := "player-event"
+			ctx := context.Background()
 			mockEventForwarder.EXPECT().Forward(
+				ctx,
 				playerEvent,
 				map[string]interface{}{
 					"roomId": roomName,
@@ -176,6 +189,7 @@ game: game
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			response, err := ForwardPlayerEvent(
+				ctx,
 				mockForwarders,
 				mockDB,
 				clientset,
@@ -193,7 +207,9 @@ game: game
 		It("should report fail if event forward fails", func() {
 			errMsg := "event forward failed"
 			playerEvent := "player-event"
+			ctx := context.Background()
 			mockEventForwarder.EXPECT().Forward(
+				ctx,
 				playerEvent,
 				map[string]interface{}{
 					"roomId": roomName,
@@ -214,6 +230,7 @@ game: game
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			_, err := ForwardPlayerEvent(
+				ctx,
 				mockForwarders,
 				mockDB,
 				clientset,
@@ -230,7 +247,9 @@ game: game
 
 	Describe("ForwardRoomInfo", func() {
 		It("should forward rooms infos", func() {
+			ctx := context.Background()
 			mockEventForwarder.EXPECT().Forward(
+				ctx,
 				"schedulerEvent",
 				map[string]interface{}{
 					"game": gameName,
@@ -249,6 +268,7 @@ game: game
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			response, err := ForwardRoomInfo(
+				ctx,
 				mockForwarders,
 				mockDB,
 				clientset,
@@ -263,7 +283,9 @@ game: game
 
 		It("should report fail if event forward fails", func() {
 			errMsg := "event forward failed"
+			ctx := context.Background()
 			mockEventForwarder.EXPECT().Forward(
+				ctx,
 				"schedulerEvent",
 				map[string]interface{}{
 					"game": gameName,
@@ -283,6 +305,7 @@ game: game
 			})
 
 			_, err := ForwardRoomInfo(
+				ctx,
 				mockForwarders,
 				mockDB,
 				clientset,

@@ -67,6 +67,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: consider sampling requests by scheduler name and only forwarding a few pings
 	eventforwarder.ForwardRoomEvent(
+		r.Context(),
 		g.App.Forwarders,
 		g.App.DBClient.WithContext(r.Context()),
 		g.App.KubernetesClient,
@@ -108,6 +109,7 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	room := models.NewRoom(params.Name, params.Scheduler)
 
 	resp, err := eventforwarder.ForwardPlayerEvent(
+		r.Context(),
 		g.App.Forwarders,
 		g.App.DBClient.WithContext(r.Context()),
 		g.App.KubernetesClient,
@@ -176,6 +178,7 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := eventforwarder.ForwardRoomEvent(
+		r.Context(),
 		g.App.Forwarders,
 		g.App.DBClient.WithContext(r.Context()),
 		g.App.KubernetesClient,
@@ -251,6 +254,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	eventforwarder.ForwardRoomEvent(
+		r.Context(),
 		g.App.Forwarders,
 		g.App.DBClient.WithContext(r.Context()),
 		g.App.KubernetesClient,

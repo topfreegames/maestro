@@ -37,10 +37,10 @@ type GRPCForwarder struct {
 // ForwarderFunc is the type of functions in GRPCForwarder
 type ForwarderFunc func(client pb.GRPCForwarderClient, infos, fwdMetadata map[string]interface{}) (int32, string, error)
 
-func (g *GRPCForwarder) roomPing(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
+func (g *GRPCForwarder) roomPing(ctx context.Context, infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
 	req := g.roomStatusRequest(infos, roomStatus)
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.config.GetDuration("timeout"))
+	ctx, cancel := context.WithTimeout(ctx, g.config.GetDuration("timeout"))
 	defer cancel()
 
 	response, err := g.client.SendRoomPing(ctx, req)
@@ -87,10 +87,10 @@ func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status p
 	return req
 }
 
-func (g *GRPCForwarder) roomStatus(infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
+func (g *GRPCForwarder) roomStatus(ctx context.Context, infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
 	req := g.roomStatusRequest(infos, roomStatus)
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.config.GetDuration("timeout"))
+	ctx, cancel := context.WithTimeout(ctx, g.config.GetDuration("timeout"))
 	defer cancel()
 
 	response, err := g.client.SendRoomStatus(ctx, req)
@@ -138,10 +138,10 @@ func (g *GRPCForwarder) roomEventRequest(infos map[string]interface{}, eventType
 	return req
 }
 
-func (g *GRPCForwarder) sendRoomEvent(infos map[string]interface{}, eventType string) (status int32, message string, err error) {
+func (g *GRPCForwarder) sendRoomEvent(ctx context.Context, infos map[string]interface{}, eventType string) (status int32, message string, err error) {
 	req := g.roomEventRequest(infos, eventType)
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.config.GetDuration("timeout"))
+	ctx, cancel := context.WithTimeout(ctx, g.config.GetDuration("timeout"))
 	defer cancel()
 
 	response, err := g.client.SendRoomEvent(ctx, req)
@@ -168,7 +168,7 @@ func (g *GRPCForwarder) playerEventRequest(infos map[string]interface{}, event p
 	return req
 }
 
-func (g *GRPCForwarder) playerEvent(infos map[string]interface{}, playerEvent pb.PlayerEvent_PlayerEventType) (status int32, message string, err error) {
+func (g *GRPCForwarder) playerEvent(ctx context.Context, infos map[string]interface{}, playerEvent pb.PlayerEvent_PlayerEventType) (status int32, message string, err error) {
 	_, ok := infos["playerId"].(string)
 	if !ok {
 		return 500, "", errors.New("no playerId specified in metadata")
@@ -179,7 +179,7 @@ func (g *GRPCForwarder) playerEvent(infos map[string]interface{}, playerEvent pb
 	}
 	req := g.playerEventRequest(infos, playerEvent)
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.config.GetDuration("timeout"))
+	ctx, cancel := context.WithTimeout(ctx, g.config.GetDuration("timeout"))
 	defer cancel()
 
 	response, err := g.client.SendPlayerEvent(ctx, req)
@@ -246,13 +246,13 @@ func (g *GRPCForwarder) roomInfoRequest(infos map[string]interface{}) (*pb.RoomI
 	return &req, nil
 }
 
-func (g *GRPCForwarder) sendRoomInfo(infos map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) sendRoomInfo(ctx context.Context, infos map[string]interface{}) (status int32, message string, err error) {
 	req, err := g.roomInfoRequest(infos)
 	if err != nil {
 		return 500, "", err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.config.GetDuration("timeout"))
+	ctx, cancel := context.WithTimeout(ctx, g.config.GetDuration("timeout"))
 	defer cancel()
 
 	response, err := g.client.SendRoomInfo(ctx, req)
@@ -263,83 +263,83 @@ func (g *GRPCForwarder) sendRoomInfo(infos map[string]interface{}) (status int32
 }
 
 // Ready status
-func (g *GRPCForwarder) Ready(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) Ready(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomStatus(infos, pb.RoomStatus_ready)
+	return g.roomStatus(ctx, infos, pb.RoomStatus_ready)
 }
 
 // Occupied status
-func (g *GRPCForwarder) Occupied(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) Occupied(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomStatus(infos, pb.RoomStatus_occupied)
+	return g.roomStatus(ctx, infos, pb.RoomStatus_occupied)
 }
 
 // Terminating status
-func (g *GRPCForwarder) Terminating(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) Terminating(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomStatus(infos, pb.RoomStatus_terminating)
+	return g.roomStatus(ctx, infos, pb.RoomStatus_terminating)
 }
 
 // Terminated status
-func (g *GRPCForwarder) Terminated(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) Terminated(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomStatus(infos, pb.RoomStatus_terminated)
+	return g.roomStatus(ctx, infos, pb.RoomStatus_terminated)
 }
 
 // PingReady status
-func (g *GRPCForwarder) PingReady(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PingReady(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomPing(infos, pb.RoomStatus_ready)
+	return g.roomPing(ctx, infos, pb.RoomStatus_ready)
 }
 
 // PingOccupied status
-func (g *GRPCForwarder) PingOccupied(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PingOccupied(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomPing(infos, pb.RoomStatus_occupied)
+	return g.roomPing(ctx, infos, pb.RoomStatus_occupied)
 }
 
 // PingTerminating status
-func (g *GRPCForwarder) PingTerminating(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PingTerminating(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomPing(infos, pb.RoomStatus_terminating)
+	return g.roomPing(ctx, infos, pb.RoomStatus_terminating)
 }
 
 // PingTerminated status
-func (g *GRPCForwarder) PingTerminated(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PingTerminated(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomPing(infos, pb.RoomStatus_terminated)
+	return g.roomPing(ctx, infos, pb.RoomStatus_terminated)
 }
 
 // PlayerJoin event
-func (g *GRPCForwarder) PlayerJoin(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PlayerJoin(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergePlayerInfos(infos, fwdMetadata)
-	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_JOINED)
+	return g.playerEvent(ctx, infos, pb.PlayerEvent_PLAYER_JOINED)
 }
 
 // PlayerLeft event
-func (g *GRPCForwarder) PlayerLeft(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) PlayerLeft(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergePlayerInfos(infos, fwdMetadata)
-	return g.playerEvent(infos, pb.PlayerEvent_PLAYER_LEFT)
+	return g.playerEvent(ctx, infos, pb.PlayerEvent_PLAYER_LEFT)
 }
 
 // RoomEvent sends a generic room event
-func (g *GRPCForwarder) RoomEvent(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) RoomEvent(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
 	eventType := infos["metadata"].(map[string]interface{})["eventType"].(string)
 	delete(infos["metadata"].(map[string]interface{}), "eventType")
-	return g.sendRoomEvent(infos, eventType)
+	return g.sendRoomEvent(ctx, infos, eventType)
 }
 
 // SchedulerEvent sends a scheduler event
-func (g *GRPCForwarder) SchedulerEvent(infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) SchedulerEvent(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	for k, v := range fwdMetadata {
 		infos[k] = v
 	}
-	return g.sendRoomInfo(infos)
+	return g.sendRoomInfo(ctx, infos)
 }
 
 //Forward send room or player status to specified server
-func (g *GRPCForwarder) Forward(event string, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
+func (g *GRPCForwarder) Forward(ctx context.Context, event string, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	l := g.logger.WithFields(log.Fields{
 		"op":          "Forward",
 		"source":      "plugin/grpc",
@@ -353,7 +353,7 @@ func (g *GRPCForwarder) Forward(event string, infos, fwdMetadata map[string]inte
 	if !f.IsValid() {
 		return 500, "", fmt.Errorf("error calling method %s in plugin", event)
 	}
-	ret := f.Call([]reflect.Value{reflect.ValueOf(infos), reflect.ValueOf(fwdMetadata)})
+	ret := f.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(infos), reflect.ValueOf(fwdMetadata)})
 	err, ok := ret[2].Interface().(error)
 	if ok {
 		l.WithError(err).Error("forward event failed")
