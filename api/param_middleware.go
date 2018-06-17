@@ -14,6 +14,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/models"
 )
@@ -54,7 +55,7 @@ func roomParamsFromContext(ctx context.Context) *models.RoomParams {
 
 func (m *ParamMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params := m.GetParams()
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	b, err := json.Marshal(mux.Vars(r))
 	if err != nil {
 		l.WithError(err).Error("Params could not be decoded.")

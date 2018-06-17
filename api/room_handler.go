@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
@@ -33,7 +34,7 @@ func NewRoomPingHandler(a *App) *RoomPingHandler {
 
 // ServeHTTP method
 func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := roomParamsFromContext(r.Context())
 	payload := statusPayloadFromCtx(r.Context())
@@ -94,7 +95,7 @@ func NewPlayerEventHandler(a *App) *PlayerEventHandler {
 
 // ServeHTTP method
 func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	params := roomParamsFromContext(r.Context())
 	payload := playerEventPayloadFromCtx(r.Context())
 
@@ -154,7 +155,7 @@ func NewRoomEventHandler(a *App) *RoomEventHandler {
 
 // ServeHTTP method
 func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	params := roomParamsFromContext(r.Context())
 	payload := roomEventPayloadFromCtx(r.Context())
 
@@ -223,7 +224,7 @@ func NewRoomStatusHandler(a *App) *RoomStatusHandler {
 
 // ServeHTTP method
 func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := roomParamsFromContext(r.Context())
 	payload := statusPayloadFromCtx(r.Context())
@@ -280,7 +281,7 @@ func NewRoomAddressHandler(a *App) *RoomAddressHandler {
 
 // ServerHTTP method
 func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	params := roomParamsFromContext(r.Context())
 
 	logger := l.WithFields(logrus.Fields{

@@ -10,6 +10,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/errors"
 )
 
@@ -26,7 +27,7 @@ func NewHealthcheckHandler(a *App) *HealthcheckHandler {
 
 //ServeHTTP method
 func (h *HealthcheckHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 
 	l.Debug("Performing healthcheck...")

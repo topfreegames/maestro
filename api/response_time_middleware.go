@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
@@ -32,7 +33,7 @@ func NewResponseTimeMiddleware(a *App) *ResponseTimeMiddleware {
 
 //ServeHTTP methods
 func (m *ResponseTimeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := loggerFromContext(r.Context())
+	logger := middleware.GetLogger(r.Context())
 	logger.Debug("response time middleware")
 
 	start := time.Now()

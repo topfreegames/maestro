@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -48,7 +49,7 @@ func (g *SchedulerRollbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	schedulerName := mux.Vars(r)["schedulerName"]
 	version := schedulerVersionParamsFromContext(r.Context()).Version
 
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	logger := l.WithFields(logrus.Fields{
 		"source":                       "schedulerRollback",
 		"operation":                    "scheduler rollback",

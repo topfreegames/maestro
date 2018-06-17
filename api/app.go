@@ -24,6 +24,7 @@ import (
 	raven "github.com/getsentry/raven-go"
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/topfreegames/extensions/jaeger"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/extensions/pg"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis"
@@ -112,15 +113,15 @@ func NewApp(
 
 func (a *App) getRouter(showProfile bool) *mux.Router {
 	r := router.NewRouter()
-	// TODO: better middlewares
+	r.Use(middleware.Version(metadata.Version))
+	r.Use(middleware.Logging(a.Logger))
+
 	r.Handle("/healthcheck", Chain(
 		NewHealthcheckHandler(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewLoggingMiddleware(a),
-		NewVersionMiddleware(),
 	)).Methods("GET").Name("healthcheck")
 
 	if showProfile {
@@ -131,257 +132,215 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 
 	r.Handle("/login", Chain(
 		NewLoginUrlHandler(a),
-		NewLoggingMiddleware(a),
-		NewVersionMiddleware(),
 	)).Methods("GET").Name("oauth")
 
 	r.Handle("/access", Chain(
 		NewLoginAccessHandler(a),
-		NewLoggingMiddleware(a),
-		NewVersionMiddleware(),
 	)).Methods("GET").Name("oauth")
 
 	r.HandleFunc("/scheduler", Chain(
 		NewSchedulerListHandler(a),
-		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 	).ServeHTTP).Methods("GET").Name("schedulerList")
 
 	r.HandleFunc("/scheduler", Chain(
 		NewSchedulerCreateHandler(a),
-		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.ConfigYAML{} }),
 	).ServeHTTP).Methods("POST").Name("schedulerCreate")
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerUpdateHandler(a),
-		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.ConfigYAML{} }),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("PUT").Name("schedulerUpdate")
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerDeleteHandler(a),
-		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("DELETE").Name("schedulerDelete")
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerStatusHandler(a),
-		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerStatus")
 
 	r.HandleFunc("/scheduler/{schedulerName}/config", Chain(
 		NewGetSchedulerConfigHandler(a),
-		NewLoggingMiddleware(a),
 		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerConfigs")
 
 	r.HandleFunc("/scheduler/{schedulerName}/releases", Chain(
 		NewGetSchedulerReleasesHandler(a),
-		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerConfigs")
 
 	r.HandleFunc("/scheduler/{schedulerName}/diff", Chain(
 		NewSchedulerDiffHandler(a),
-		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulersDiff{} }),
 	).ServeHTTP).Methods("GET").Name("schedulersDiff")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rollback", Chain(
 		NewSchedulerRollbackHandler(a),
-		NewLoggingMiddleware(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulerVersion{} }),
 	).ServeHTTP).Methods("PUT").Name("schedulerRollback")
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerScaleHandler(a),
-		NewLoggingMiddleware(a),
 		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulerScaleParams{} }),
 	).ServeHTTP).Methods("POST").Name("schedulerScale")
 
 	r.HandleFunc("/scheduler/{schedulerName}/image", Chain(
 		NewSchedulerImageHandler(a),
-		NewLoggingMiddleware(a),
 		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulerImageParams{} }),
 	).ServeHTTP).Methods("PUT").Name("schedulerImage")
 
 	r.HandleFunc("/scheduler/{schedulerName}/min", Chain(
 		NewSchedulerUpdateMinHandler(a),
-		NewLoggingMiddleware(a),
 		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.SchedulerMinParams{} }),
 	).ServeHTTP).Methods("PUT").Name("schedulerMin")
 
 	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/status", Chain(
 		NewSchedulerOperationHandler(a),
-		NewLoggingMiddleware(a),
 		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 	).ServeHTTP).Methods("GET").Name("schedulersOperationStatus")
 
 	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/cancel", Chain(
 		NewSchedulerOperationCancelHandler(a),
-		NewLoggingMiddleware(a),
 		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 	).ServeHTTP).Methods("PUT").Name("schedulersOperationStatus")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),
-		NewLoggingMiddleware(a),
 		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.RoomStatusPayload{} }),
 	).ServeHTTP).Methods("PUT").Name("ping")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/address", Chain(
 		NewRoomAddressHandler(a),
-		NewLoggingMiddleware(a),
 		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 	).ServeHTTP).Methods("GET").Name("address")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/status", Chain(
 		NewRoomStatusHandler(a),
-		NewLoggingMiddleware(a),
 		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.RoomStatusPayload{} }),
 	).ServeHTTP).Methods("PUT").Name("status")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/roomevent", Chain(
 		NewRoomEventHandler(a),
-		NewLoggingMiddleware(a),
 		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.RoomEventPayload{} }),
 	).ServeHTTP).Methods("POST").Name("roomEvent")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/playerevent", Chain(
 		NewPlayerEventHandler(a),
-		NewLoggingMiddleware(a),
 		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewVersionMiddleware(),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 		NewValidationMiddleware(func() interface{} { return &models.PlayerEventPayload{} }),
 	).ServeHTTP).Methods("POST").Name("playerEvent")
@@ -445,8 +404,8 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("oauth.enabled", true)
 	a.Config.SetDefault("forwarders.grpc.matchmaking.timeout", 1*time.Second)
 	a.Config.SetDefault("api.limitManager.keyTimeout", 1*time.Minute)
-	a.Config.SetDefault("jaeger.disabled", true)
-	a.Config.SetDefault("jaeger.samplingProbability", 0.001)
+	a.Config.SetDefault("jaeger.disabled", false)
+	a.Config.SetDefault("jaeger.samplingProbability", 1.0)
 }
 
 func (a *App) configureJaeger() {
@@ -557,7 +516,10 @@ func (a *App) configureNewRelic() error {
 
 func (a *App) configureServer(showProfile bool) {
 	a.Router = a.getRouter(showProfile)
-	a.Server = &http.Server{Addr: a.Address, Handler: wrapHandlerWithResponseWriter(a.Router)}
+	a.Server = &http.Server{
+		Addr:    a.Address,
+		Handler: wrapHandlerWithCors(middleware.UseResponseWriter(a.Router)),
+	}
 }
 
 func (a *App) configureLogin() {

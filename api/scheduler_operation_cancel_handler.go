@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -25,7 +26,7 @@ func (g *SchedulerOperationCancelHandler) ServeHTTP(w http.ResponseWriter, r *ht
 	operationKey := vars["operationKey"]
 	mr := metricsReporterFromCtx(r.Context())
 
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	logger := l.WithFields(logrus.Fields{
 		"source":       "SchedulerOperationCancelHandler",
 		"operation":    "scheduler operation cancel",

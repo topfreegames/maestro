@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/login"
 )
@@ -55,7 +56,7 @@ func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger := loggerFromContext(r.Context())
+	logger := middleware.GetLogger(r.Context())
 	logger.Debug("Checking access token")
 
 	accessToken := r.Header.Get("Authorization")

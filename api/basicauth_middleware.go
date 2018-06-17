@@ -10,6 +10,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+
+	"github.com/topfreegames/extensions/middleware"
 )
 
 //BasicAuthMiddleware guarantees that the user is logged
@@ -44,7 +46,7 @@ func isBasicAuthOkFromContext(ctx context.Context) bool {
 
 //ServeHTTP methods
 func (m *BasicAuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := loggerFromContext(r.Context())
+	logger := middleware.GetLogger(r.Context())
 	logger.Debug("checking basic auth")
 
 	basicAuthUser := m.App.Config.GetString("basicauth.username")

@@ -17,6 +17,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/models"
 )
@@ -153,7 +154,7 @@ func schedulersDiffParamsFromContext(ctx context.Context) *models.SchedulersDiff
 
 //ServeHTTP method
 func (m *ValidationMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	listParams := []interface{}{}
 
 	if r.Body != nil {

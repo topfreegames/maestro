@@ -17,11 +17,6 @@ import (
 	"github.com/rs/cors"
 )
 
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
 //Write to the response and with the status code
 func Write(w http.ResponseWriter, status int, text string) {
 	WriteBytes(w, status, []byte(text))
@@ -38,15 +33,6 @@ func WriteBytes(w http.ResponseWriter, status int, text []byte) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	w.Write(text)
-}
-
-func newResponseWriter(w http.ResponseWriter) *responseWriter {
-	return &responseWriter{w, http.StatusOK}
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
 }
 
 func corsAllowedFallback(envvar, fallback string) []string {
@@ -69,7 +55,7 @@ func corsAllowedHeaders() []string {
 	return corsAllowedFallback("CORS_ALLOWED_HEADERS", "authorization")
 }
 
-func wrapHandlerWithResponseWriter(wrappedHandler http.Handler) http.Handler {
+func wrapHandlerWithCors(wrappedHandler http.Handler) http.Handler {
 	c := cors.New(cors.Options{
 		AllowedOrigins: corsAllowedOrigins(),
 		AllowedMethods: corsAllowedMethods(),
@@ -77,17 +63,8 @@ func wrapHandlerWithResponseWriter(wrappedHandler http.Handler) http.Handler {
 	})
 
 	return c.Handler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		rw := newResponseWriter(w)
-		wrappedHandler.ServeHTTP(rw, req)
+		wrappedHandler.ServeHTTP(w, req)
 	}))
-}
-
-func getStatusFromResponseWriter(w http.ResponseWriter) int {
-	rw, ok := w.(*responseWriter)
-	if ok {
-		return rw.statusCode
-	}
-	return -1
 }
 
 func getMaxSurge(app *App, r *http.Request) (int, error) {

@@ -59,7 +59,7 @@
 
 [[constraint]]
   name = "github.com/topfreegames/extensions"
-  version = "6.2.2"
+  version = "6.4.0"
 
 [[constraint]]
   branch = "master"

@@ -20,6 +20,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/clock"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
@@ -38,7 +39,7 @@ func NewSchedulerCreateHandler(a *App) *SchedulerCreateHandler {
 
 // ServeHTTP method
 func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	configs := configYamlFromCtx(r.Context())
 
@@ -115,7 +116,7 @@ func NewSchedulerDeleteHandler(a *App) *SchedulerDeleteHandler {
 
 // ServeHTTP method
 func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
 	logger := l.WithFields(logrus.Fields{
@@ -194,7 +195,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	g.App.gracefulShutdown.wg.Add(1)
 	defer g.App.gracefulShutdown.wg.Done()
 
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
 	payload := configYamlFromCtx(r.Context())[0]
@@ -325,7 +326,7 @@ func NewSchedulerListHandler(a *App) *SchedulerListHandler {
 
 // ServeHTTP method
 func (g *SchedulerListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
@@ -374,7 +375,7 @@ func NewSchedulerStatusHandler(a *App) *SchedulerStatusHandler {
 
 // ServeHTTP method
 func (g *SchedulerStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
 
@@ -570,7 +571,7 @@ func NewSchedulerScaleHandler(a *App) *SchedulerScaleHandler {
 
 // ServeHTTP method
 func (g *SchedulerScaleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
 	scaleParams := schedulerScaleParamsFromCtx(r.Context())
@@ -671,7 +672,7 @@ func (g *SchedulerImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	g.App.gracefulShutdown.wg.Add(1)
 	defer g.App.gracefulShutdown.wg.Done()
 
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
 
@@ -775,7 +776,7 @@ func (g *SchedulerUpdateMinHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	g.App.gracefulShutdown.wg.Add(1)
 	defer g.App.gracefulShutdown.wg.Done()
 
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
 

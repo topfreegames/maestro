@@ -60,7 +60,7 @@ var _ = Describe("Healthcheck Handler", func() {
 				mockDb.EXPECT().Context().AnyTimes()
 				mockDb.EXPECT().Exec("select 1")
 				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Header().Get("X-Maestro-Version")).To(Equal(metadata.Version))
+				Expect(recorder.Header().Get("X-Version")).To(Equal(metadata.Version))
 			})
 		})
 

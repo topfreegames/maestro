@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/sirupsen/logrus"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -21,7 +22,7 @@ func NewGetSchedulerReleasesHandler(a *App) *GetSchedulerReleasesHandler {
 
 func (g *GetSchedulerReleasesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params := schedulerParamsFromContext(r.Context())
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	logger := l.WithFields(logrus.Fields{
 		"source":    "getSchedulerReleases",
 		"operation": "get releases",

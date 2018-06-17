@@ -14,6 +14,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -33,7 +34,7 @@ func (g *SchedulerDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	schedulerName := mux.Vars(r)["schedulerName"]
 	schedulersVersion := schedulersDiffParamsFromContext(r.Context())
 
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulersDiff",
 		"operation": "schedulers diff",

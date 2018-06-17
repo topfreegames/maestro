@@ -130,10 +130,12 @@
     "internal/consistenthash",
     "internal/hashtag",
     "internal/pool",
-    "internal/proto"
+    "internal/proto",
+    "internal/singleflight",
+    "internal/util"
   ]
-  revision = "d0f86971b5d61de9cebd2616b932acb7ba14d957"
-  version = "v6.7.3"
+  revision = "83fb42932f6145ce52df09860384a4653d2d332a"
+  version = "v6.12.0"
 
 [[projects]]
   name = "github.com/gogo/protobuf"
@@ -487,8 +489,8 @@
     "redis/mocks",
     "router"
   ]
-  revision = "b44e2ce0a636870d4c1a4a183a6dfbbb5321e2e4"
-  version = "v6.2.2"
+  revision = "93d8d3815c98908f0fbb0e3050fdadd135bf9ede"
+  version = "v6.4.0"
 
 [[projects]]
   name = "github.com/topfreegames/protos"
@@ -817,6 +819,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "11e26006aaa3fe9b971a5eb777b8234ae0d340b3febfcf65e7a8b3197322a3c7"
+  inputs-digest = "d8de4cf3f93e849388a611ed779699d1581b643486f5649fd25e96f7f03ff993"
   solver-name = "gps-cdcl"
   solver-version = 1

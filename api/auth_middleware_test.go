@@ -18,6 +18,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/topfreegames/extensions/middleware"
 	. "github.com/topfreegames/maestro/api"
 	. "github.com/topfreegames/maestro/testing"
 )
@@ -33,8 +34,7 @@ var _ = Describe("AuthMiddleware", func() {
 		authMiddleware.SetNext(dummyMiddleware)
 
 		request, _ = http.NewRequest("GET", "/scheduler/{schedulerName}/any/route", nil)
-		request = request.WithContext(
-			NewContextWithRequestIDAndLogger(request.Context(), logger))
+		request = request.WithContext(middleware.SetLogger(request.Context(), logger))
 
 		recorder = httptest.NewRecorder()
 	})

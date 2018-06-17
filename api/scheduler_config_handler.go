@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/sirupsen/logrus"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -22,7 +23,7 @@ func NewGetSchedulerConfigHandler(a *App) *GetSchedulerConfigHandler {
 
 func (g *GetSchedulerConfigHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params := schedulerParamsFromContext(r.Context())
-	l := loggerFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
 	logger := l.WithFields(logrus.Fields{
 		"source":    "getSchedulerConfig",
 		"operation": "get config",

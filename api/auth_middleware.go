@@ -13,6 +13,7 @@ import (
 	e "errors"
 
 	"github.com/gorilla/mux"
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/models"
 )
@@ -39,7 +40,7 @@ func NewAuthMiddleware(a *App) *AuthMiddleware {
 
 //ServeHTTP methods
 func (m *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := loggerFromContext(r.Context())
+	logger := middleware.GetLogger(r.Context())
 
 	if !m.enabled {
 		logger.Debug("oauth disabled")

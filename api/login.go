@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/login"
 )
@@ -30,7 +31,7 @@ func NewLoginUrlHandler(a *App) *LoginUrlHandler {
 
 //ServeHTTP method
 func (l *LoginUrlHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := loggerFromContext(r.Context())
+	logger := middleware.GetLogger(r.Context())
 	logger.Debug("Generating log in URL")
 
 	oauthState := r.FormValue("state")
@@ -74,7 +75,7 @@ func NewLoginAccessHandler(a *App) *LoginAccessHandler {
 
 //ServeHTTP method
 func (l *LoginAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := loggerFromContext(r.Context())
+	logger := middleware.GetLogger(r.Context())
 	logger.Debug("Getting access token")
 
 	authCode := r.FormValue("code")
