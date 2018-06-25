@@ -49,10 +49,38 @@ func NewContextWithEmail(ctx context.Context, email string) context.Context {
 	return c
 }
 
+func basicAuthWithXForwardedUserEmail(
+	basicAuthUser, basicAuthPass string, r *http.Request,
+) (string, bool) {
+	if basicAuthUser == "" && basicAuthPass == "" {
+		return "", false
+	}
+	user, pass, ok := r.BasicAuth()
+	if !ok || user != basicAuthUser || pass != basicAuthPass {
+		return "", false
+	}
+	email := r.Header.Get("x-forwarded-user-email")
+	if email == "" {
+		return "", false
+	}
+	return email, true
+}
+
 //ServeHTTP methods
 func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !m.enabled {
 		m.next.ServeHTTP(w, r)
+		return
+	}
+
+	// checking basic auth in case of x-forwarded-user-email
+	basicAuthUser := m.App.Config.GetString("basicauth.username")
+	basicAuthPass := m.App.Config.GetString("basicauth.password")
+	if email, ok := basicAuthWithXForwardedUserEmail(
+		basicAuthUser, basicAuthPass, r,
+	); ok {
+		ctx := NewContextWithEmail(r.Context(), email)
+		m.next.ServeHTTP(w, r.WithContext(ctx))
 		return
 	}
 
