@@ -87,7 +87,7 @@ func migrations0001CreateschedulertableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0001-CreateSchedulerTable.sql", size: 716, mode: os.FileMode(420), modTime: time.Unix(1523637341, 0)}
+	info := bindataFileInfo{name: "migrations/0001-CreateSchedulerTable.sql", size: 716, mode: os.FileMode(420), modTime: time.Unix(1529934313, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -107,7 +107,7 @@ func migrations0002CreateusertableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0002-CreateUserTable.sql", size: 658, mode: os.FileMode(420), modTime: time.Unix(1523637341, 0)}
+	info := bindataFileInfo{name: "migrations/0002-CreateUserTable.sql", size: 658, mode: os.FileMode(420), modTime: time.Unix(1529934313, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -127,7 +127,7 @@ func migrations0003CreateschedulerversionstableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0003-CreateSchedulerVersionsTable.sql", size: 664, mode: os.FileMode(420), modTime: time.Unix(1523637341, 0)}
+	info := bindataFileInfo{name: "migrations/0003-CreateSchedulerVersionsTable.sql", size: 664, mode: os.FileMode(420), modTime: time.Unix(1529934313, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -147,7 +147,7 @@ func migrations0004AlterschedulertableaddversionSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0004-AlterSchedulerTableAddVersion.sql", size: 243, mode: os.FileMode(420), modTime: time.Unix(1523637341, 0)}
+	info := bindataFileInfo{name: "migrations/0004-AlterSchedulerTableAddVersion.sql", size: 243, mode: os.FileMode(420), modTime: time.Unix(1529934313, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -167,7 +167,7 @@ func migrations0005AlterversiontypeSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0005-AlterVersionType.sql", size: 333, mode: os.FileMode(420), modTime: time.Unix(1523637341, 0)}
+	info := bindataFileInfo{name: "migrations/0005-AlterVersionType.sql", size: 333, mode: os.FileMode(420), modTime: time.Unix(1529934313, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
