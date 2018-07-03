@@ -148,6 +148,10 @@ var _ = Describe("SchedulerOperationHandler", func() {
 				Get(opManager.BuildCurrOpKey()).
 				Return(goredis.NewStringResult(opKey, nil))
 
+			mockRedisTraceWrapper.EXPECT().WithContext(
+				gomock.Any(), mockRedisClient,
+			).Return(mockRedisClient)
+
 			status := map[string]string{
 				"status":   "200",
 				"success":  "true",
@@ -173,6 +177,10 @@ var _ = Describe("SchedulerOperationHandler", func() {
 			mockRedisClient.EXPECT().
 				Get(opManager.BuildCurrOpKey()).
 				Return(goredis.NewStringResult(opKey, nil))
+
+			mockRedisTraceWrapper.EXPECT().WithContext(
+				gomock.Any(), mockRedisClient,
+			).Return(mockRedisClient)
 
 			status := map[string]string{
 				"progress": "running",

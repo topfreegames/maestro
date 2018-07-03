@@ -69,6 +69,50 @@ func getRollingProgress(
 	return 100.0 * new / total, "", nil
 }
 
+// OperationNotFoundError happens when opManager.Get(key) doesn't
+// find an associated operation
+type OperationNotFoundError struct{}
+
+// NewOperationNotFoundError ctor
+func NewOperationNotFoundError() *OperationNotFoundError {
+	return &OperationNotFoundError{}
+}
+
+func (e *OperationNotFoundError) Error() string {
+	return "scheduler with operation key not found"
+}
+
+func getOperationStatus(
+	ctx context.Context, app *App, logger logrus.FieldLogger,
+	schedulerName, operationKey string,
+) (map[string]string, string, error) {
+	var empty map[string]string
+
+	operationManager := models.NewOperationManager(
+		schedulerName, app.RedisClient.Trace(ctx), logger,
+	)
+	status, err := operationManager.Get(operationKey)
+	if err != nil {
+		return empty, "error accesssing operation key on redis", err
+	}
+
+	if status == nil || len(status) == 0 {
+		return empty, "scheduler with operation key not found",
+			NewOperationNotFoundError()
+	}
+
+	if _, ok := status["status"]; ok {
+		return status, "", nil
+	}
+
+	progress, errorMsg, err := getRollingProgress(ctx, app, schedulerName)
+	if err != nil {
+		return empty, errorMsg, err
+	}
+	status["progress"] = fmt.Sprintf("%.2f%%", progress)
+	return status, "", nil
+}
+
 // SchedulerOperationHandler returns the current status on scheduler operation
 type SchedulerOperationHandler struct {
 	App *App
@@ -95,41 +139,24 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	logger.Info("Starting scheduler operation status")
 
-	operationManager := models.NewOperationManager(
-		schedulerName, g.App.RedisClient.Trace(r.Context()), logger,
+	status, errorMsg, err := getOperationStatus(
+		r.Context(), g.App, logger, schedulerName, operationKey,
 	)
-	status, err := operationManager.Get(operationKey)
 	if err != nil {
-		logger.WithError(err).Error("error accesssing operation key on redis")
-		g.App.HandleError(
-			w, http.StatusInternalServerError,
-			"error accesssing operation key on redis", err,
-		)
+		if _, ok := err.(*OperationNotFoundError); ok {
+			logger.Error(errorMsg)
+			WriteJSON(w, http.StatusNotFound, map[string]interface{}{
+				"success":     false,
+				"description": errorMsg,
+			})
+		} else {
+			logger.WithError(err).Error(errorMsg)
+			g.App.HandleError(
+				w, http.StatusInternalServerError, errorMsg, err,
+			)
+		}
 		return
 	}
-
-	if status == nil || len(status) == 0 {
-		logger.Error("scheduler with operation key not found")
-		WriteJSON(w, http.StatusNotFound, map[string]interface{}{
-			"success":     false,
-			"description": "scheduler with operation key not found",
-		})
-		return
-	}
-
-	if _, ok := status["status"]; ok {
-		bts, _ := json.Marshal(status)
-		WriteBytes(w, http.StatusOK, bts)
-		logger.Info("Successfully wrote status response")
-		return
-	}
-
-	progress, errorMsg, err := getRollingProgress(r.Context(), g.App, schedulerName)
-	if err != nil {
-		g.App.HandleError(w, http.StatusInternalServerError, errorMsg, err)
-		return
-	}
-	status["progress"] = fmt.Sprintf("%.2f%%", progress)
 
 	bts, _ := json.Marshal(status)
 	WriteBytes(w, http.StatusOK, bts)
@@ -185,31 +212,26 @@ func (g *SchedulerOperationCurrentStatusHandler) ServeHTTP(
 		return
 	}
 
-	status, err := operationManager.Get(currOperation)
+	status, errorMsg, err := getOperationStatus(
+		r.Context(), g.App, logger, schedulerName, currOperation,
+	)
 	if err != nil {
-		logger.WithError(err).Error("error accesssing operation key on redis")
-		g.App.HandleError(
-			w, http.StatusInternalServerError,
-			"error accesssing operation key on redis", err,
-		)
+		if _, ok := err.(*OperationNotFoundError); ok {
+			logger.Error(errorMsg)
+			WriteJSON(w, http.StatusNotFound, map[string]interface{}{
+				"success":     false,
+				"description": errorMsg,
+			})
+		} else {
+			logger.WithError(err).Error(errorMsg)
+			g.App.HandleError(
+				w, http.StatusInternalServerError, errorMsg, err,
+			)
+		}
 		return
 	}
-
-	// finished
-	if _, ok := status["status"]; ok {
-		bts, _ := json.Marshal(status)
-		WriteBytes(w, http.StatusOK, bts)
-		return
-	}
-
-	// in progress
-	progress, errorMsg, err := getRollingProgress(r.Context(), g.App, schedulerName)
-	if err != nil {
-		g.App.HandleError(w, http.StatusInternalServerError, errorMsg, err)
-		return
-	}
-	status["progress"] = fmt.Sprintf("%.2f%%", progress)
 
 	bts, _ := json.Marshal(status)
 	WriteBytes(w, http.StatusOK, bts)
+	logger.Info("Successfully wrote status response")
 }
