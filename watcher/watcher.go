@@ -182,19 +182,17 @@ func (w *Watcher) Start() {
 
 	ticker := time.NewTicker(time.Duration(w.AutoScalingPeriod) * time.Second)
 	defer ticker.Stop()
-	tickerRs := time.NewTicker(time.Duration(w.RoomsStatusesReportPeriod) * time.Second)
-	defer tickerRs.Stop()
 	tickerEnsure := time.NewTicker(w.EnsureCorrectRoomsPeriod)
 	defer tickerEnsure.Stop()
 	tickerStateCount := time.NewTicker(w.PodStatesCountPeriod)
 	defer tickerStateCount.Stop()
 
+	go w.reportRoomsStatusesRoutine()
+
 	for w.Run == true {
 		select {
 		case <-ticker.C:
 			w.WithRedisLock(l, w.watchRooms)
-		case <-tickerRs.C:
-			w.WithRedisLock(l, w.ReportRoomsStatuses)
 		case <-tickerEnsure.C:
 			w.WithRedisLock(l, w.EnsureCorrectRooms)
 		case <-tickerStateCount.C:
@@ -205,6 +203,21 @@ func (w *Watcher) Start() {
 		}
 	}
 	extensions.GracefulShutdown(l, w.gracefulShutdown.wg, w.gracefulShutdown.timeout)
+}
+
+func (w *Watcher) reportRoomsStatusesRoutine() {
+	w.gracefulShutdown.wg.Add(1)
+	defer w.gracefulShutdown.wg.Done()
+
+	tickerRs := time.NewTicker(time.Duration(w.RoomsStatusesReportPeriod) * time.Second)
+	defer tickerRs.Stop()
+
+	for w.Run == true {
+		select {
+		case <-tickerRs.C:
+			w.ReportRoomsStatuses()
+		}
+	}
 }
 
 func (w *Watcher) watchRooms() error {
