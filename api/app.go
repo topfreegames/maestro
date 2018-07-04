@@ -291,6 +291,16 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewDogStatsdMiddleware(a),
 	).ServeHTTP).Methods("GET").Name("schedulersOperationStatus")
 
+	r.HandleFunc("/scheduler/{schedulerName}/operations/current/cancel", Chain(
+		NewSchedulerOperationCancelCurrentHandler(a),
+		NewBasicAuthMiddleware(a),
+		NewAuthMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
+	).ServeHTTP).Methods("PUT").Name("schedulersOperationCancelCurrent")
+
 	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/cancel", Chain(
 		NewSchedulerOperationCancelHandler(a),
 		NewBasicAuthMiddleware(a),
@@ -299,7 +309,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-	).ServeHTTP).Methods("PUT").Name("schedulersOperationStatus")
+	).ServeHTTP).Methods("PUT").Name("schedulersOperationCancel")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),

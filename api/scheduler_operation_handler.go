@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func getRollingProgress(
+func getOperationRollingProgress(
 	ctx context.Context, app *App, schedulerName string,
 ) (float64, string, error) {
 	scheduler := models.NewScheduler(schedulerName, "", "")
@@ -105,7 +105,7 @@ func getOperationStatus(
 		return status, "", nil
 	}
 
-	progress, errorMsg, err := getRollingProgress(ctx, app, schedulerName)
+	progress, errorMsg, err := getOperationRollingProgress(ctx, app, schedulerName)
 	if err != nil {
 		return empty, errorMsg, err
 	}
