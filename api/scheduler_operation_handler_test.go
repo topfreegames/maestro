@@ -52,18 +52,18 @@ var _ = Describe("SchedulerOperationHandler", func() {
 		clientset.CoreV1().Pods(schedulerName).Create(pod)
 	}
 
-	BeforeEach(func() {
-		opManager = models.NewOperationManager(schedulerName, mockRedisClient, logger)
-
-		recorder = httptest.NewRecorder()
-
-		url = fmt.Sprintf("http://%s/scheduler/%s/operations/%s/status",
-			app.Address, schedulerName, opManager.GetOperationKey())
-		request, _ = http.NewRequest("GET", url, nil)
-		request.SetBasicAuth("user", "pass")
-	})
-
 	Describe("GET /scheduler/{schedulerName}/operations/{operationKey}/status", func() {
+		BeforeEach(func() {
+			opManager = models.NewOperationManager(schedulerName, mockRedisClient, logger)
+
+			recorder = httptest.NewRecorder()
+
+			url = fmt.Sprintf("http://%s/scheduler/%s/operations/%s/status",
+				app.Address, schedulerName, opManager.GetOperationKey())
+			request, _ = http.NewRequest("GET", url, nil)
+			request.SetBasicAuth("user", "pass")
+		})
+
 		It("should return status completed if so", func() {
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			status := map[string]string{
@@ -89,6 +89,109 @@ var _ = Describe("SchedulerOperationHandler", func() {
 			mockGetStatusFromRedis(status, nil)
 
 			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
+
+			// Select current scheduler
+			MockSelectScheduler(yamlString, mockDb, nil)
+
+			// Create half of the pods in version v1.0 and half in v2.0
+			createPod("pod1", schedulerName, "v1.0")
+			createPod("pod2", schedulerName, "v2.0")
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var response map[string]interface{}
+			json.Unmarshal(recorder.Body.Bytes(), &response)
+			Expect(response).To(HaveKeyWithValue("progress", "50.00%"))
+		})
+	})
+
+	Describe("GET /scheduler/{schedulerName}/operations/status", func() {
+		var opKey string
+
+		BeforeEach(func() {
+			opKey = "opmanager:scheduler-name:some-random-token"
+			opManager = models.NewOperationManager(schedulerName, mockRedisClient, logger)
+
+			recorder = httptest.NewRecorder()
+
+			url = fmt.Sprintf("http://%s/scheduler/%s/operations/current/status",
+				app.Address, schedulerName)
+			request, _ = http.NewRequest("GET", url, nil)
+			request.SetBasicAuth("user", "pass")
+		})
+
+		It("should return operating: false when there isn't current operation", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(
+				gomock.Any(), mockRedisClient,
+			).Return(mockRedisClient)
+			var err error
+			MockGetCurrentOperationKey(opManager, mockRedisClient, err)
+			status := map[string]string{
+				"operating": "false",
+			}
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var response map[string]string
+			json.Unmarshal(recorder.Body.Bytes(), &response)
+			Expect(response).To(Equal(status))
+		})
+
+		It("should return status completed if so, for current operation", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(
+				gomock.Any(), mockRedisClient,
+			).Return(mockRedisClient)
+
+			mockRedisClient.EXPECT().
+				Get(opManager.BuildCurrOpKey()).
+				Return(goredis.NewStringResult(opKey, nil))
+
+			mockRedisTraceWrapper.EXPECT().WithContext(
+				gomock.Any(), mockRedisClient,
+			).Return(mockRedisClient)
+
+			status := map[string]string{
+				"status":   "200",
+				"success":  "true",
+				"progress": "100%",
+			}
+			mockRedisClient.EXPECT().
+				HGetAll(opKey).
+				Return(goredis.NewStringStringMapResult(status, nil))
+
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var response map[string]string
+			json.Unmarshal(recorder.Body.Bytes(), &response)
+			Expect(response).To(Equal(status))
+		})
+
+		It("should return progress when not completed", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(
+				gomock.Any(), mockRedisClient,
+			).Return(mockRedisClient)
+
+			mockRedisClient.EXPECT().
+				Get(opManager.BuildCurrOpKey()).
+				Return(goredis.NewStringResult(opKey, nil))
+
+			mockRedisTraceWrapper.EXPECT().WithContext(
+				gomock.Any(), mockRedisClient,
+			).Return(mockRedisClient)
+
+			status := map[string]string{
+				"progress": "running",
+			}
+			mockRedisClient.EXPECT().
+				HGetAll(opKey).
+				Return(goredis.NewStringStringMapResult(status, nil))
+
+			mockCtxWrapper.EXPECT().WithContext(
+				gomock.Any(), app.DBClient.DB,
+			).Return(app.DBClient.DB)
 
 			// Select current scheduler
 			MockSelectScheduler(yamlString, mockDb, nil)

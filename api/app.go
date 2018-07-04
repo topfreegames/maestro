@@ -271,6 +271,16 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewValidationMiddleware(func() interface{} { return &models.SchedulerMinParams{} }),
 	).ServeHTTP).Methods("PUT").Name("schedulerMin")
 
+	r.HandleFunc("/scheduler/{schedulerName}/operations/current/status", Chain(
+		NewSchedulerOperationCurrentStatusHandler(a),
+		NewBasicAuthMiddleware(a),
+		NewAuthMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
+	).ServeHTTP).Methods("GET").Name("schedulersOperationCurrentStatus")
+
 	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/status", Chain(
 		NewSchedulerOperationHandler(a),
 		NewBasicAuthMiddleware(a),
@@ -281,6 +291,16 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewDogStatsdMiddleware(a),
 	).ServeHTTP).Methods("GET").Name("schedulersOperationStatus")
 
+	r.HandleFunc("/scheduler/{schedulerName}/operations/current/cancel", Chain(
+		NewSchedulerOperationCancelCurrentHandler(a),
+		NewBasicAuthMiddleware(a),
+		NewAuthMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
+	).ServeHTTP).Methods("PUT").Name("schedulersOperationCancelCurrent")
+
 	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/cancel", Chain(
 		NewSchedulerOperationCancelHandler(a),
 		NewBasicAuthMiddleware(a),
@@ -289,7 +309,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-	).ServeHTTP).Methods("PUT").Name("schedulersOperationStatus")
+	).ServeHTTP).Methods("PUT").Name("schedulersOperationCancel")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),
@@ -528,7 +548,9 @@ func (a *App) configureLogin() {
 }
 
 //HandleError writes an error response with message and status
-func (a *App) HandleError(w http.ResponseWriter, status int, msg string, err interface{}) {
+func (a *App) HandleError(
+	w http.ResponseWriter, status int, msg string, err interface{},
+) {
 	w.WriteHeader(status)
 	var sErr errors.SerializableError
 	val, ok := err.(errors.SerializableError)

@@ -71,10 +71,12 @@ func (m *BasicAuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	ctx := NewContextWithBasicAuthOK(r.Context())
+	email := r.Header.Get("x-forwarded-user-email")
+	ctxWithEmail := NewContextWithEmail(r.Context(), email)
+	ctxWithBasicAuth := NewContextWithBasicAuthOK(ctxWithEmail)
 
 	// Call the next middleware/handler in chain
-	m.next.ServeHTTP(w, r.WithContext(ctx))
+	m.next.ServeHTTP(w, r.WithContext(ctxWithBasicAuth))
 }
 
 //SetNext middleware
