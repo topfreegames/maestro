@@ -525,7 +525,7 @@ func MockSelectSchedulerVersions(
 		mockDb.EXPECT().
 			Query(
 				gomock.Any(),
-				"SELECT version, created_at FROM scheduler_versions WHERE name = ?",
+				"SELECT version, created_at FROM scheduler_versions WHERE name = ? ORDER BY created_at ASC",
 				configYaml.Name).
 			Do(func(rVersions *[]*models.SchedulerVersion, query string, name string) {
 				*rVersions = make([]*models.SchedulerVersion, len(versions))

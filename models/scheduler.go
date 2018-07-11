@@ -356,7 +356,7 @@ func ListSchedulerReleases(db interfaces.DB, schedulerName string) (
 ) {
 	_, err = db.Query(
 		&versions,
-		"SELECT version, created_at FROM scheduler_versions WHERE name = ?",
+		"SELECT version, created_at FROM scheduler_versions WHERE name = ? ORDER BY created_at ASC",
 		schedulerName,
 	)
 	if err != nil {
