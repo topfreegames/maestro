@@ -56,6 +56,7 @@ type App struct {
 	DBClient         *pg.Client
 	RedisClient      *redis.Client
 	KubernetesClient kubernetes.Interface
+	RoomAddrGetter   models.AddrGetter
 	Logger           logrus.FieldLogger
 	NewRelic         newrelic.Application
 	Router           *mux.Router
@@ -409,6 +410,8 @@ func (a *App) configureApp(
 
 	a.configureServer(showProfile)
 
+	a.configureRoomAddrGetter()
+
 	return nil
 }
 
@@ -539,6 +542,14 @@ func (a *App) configureServer(showProfile bool) {
 	a.Server = &http.Server{
 		Addr:    a.Address,
 		Handler: wrapHandlerWithCors(middleware.UseResponseWriter(a.Router)),
+	}
+}
+
+func (a *App) configureRoomAddrGetter() {
+	if a.Config.GetString("environment") != "development" {
+		a.RoomAddrGetter = &models.RoomAddressesFromHostPort{}
+	} else {
+		a.RoomAddrGetter = &models.RoomAddressesFromNodePort{}
 	}
 }
 
