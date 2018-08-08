@@ -90,25 +90,27 @@ type Forwarder struct {
 
 // Container represents a container inside a pod
 type Container struct {
-	Name     string     `yaml:"name" json:"name" valid:"required"`
-	Image    string     `yaml:"image" json:"image" valid:"required"`
-	Ports    []*Port    `yaml:"ports" json:"ports"`
-	Limits   *Resources `yaml:"limits" json:"limits"`
-	Requests *Resources `yaml:"requests" json:"requests"`
-	Env      []*EnvVar  `yaml:"env" json:"env"`
-	Command  []string   `yaml:"cmd" json:"cmd"`
+	Name            string     `yaml:"name" json:"name" valid:"required"`
+	Image           string     `yaml:"image" json:"image" valid:"required"`
+	ImagePullPolicy string     `yaml:"imagePullPolicy" json:"imagePullPolicy"`
+	Ports           []*Port    `yaml:"ports" json:"ports"`
+	Limits          *Resources `yaml:"limits" json:"limits"`
+	Requests        *Resources `yaml:"requests" json:"requests"`
+	Env             []*EnvVar  `yaml:"env" json:"env"`
+	Command         []string   `yaml:"cmd" json:"cmd"`
 }
 
 // NewWithCopiedEnvs copy all container properties and create new envs with same values as c
 func (c *Container) NewWithCopiedEnvs() *Container {
 	new := &Container{
-		Name:     c.Name,
-		Image:    c.Image,
-		Ports:    c.Ports,
-		Limits:   c.Limits,
-		Requests: c.Requests,
-		Command:  c.Command,
-		Env:      make([]*EnvVar, len(c.Env)),
+		Name:            c.Name,
+		Image:           c.Image,
+		ImagePullPolicy: c.ImagePullPolicy,
+		Ports:           c.Ports,
+		Limits:          c.Limits,
+		Requests:        c.Requests,
+		Command:         c.Command,
+		Env:             make([]*EnvVar, len(c.Env)),
 	}
 
 	for i, env := range c.Env {
