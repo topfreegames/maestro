@@ -35,3 +35,10 @@ _testmain.go
 .*.swo
 
 .DS_Store
+
+# IDE files
+.vscode
+
+# Python
+__pycache__
+env

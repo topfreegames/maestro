@@ -429,6 +429,7 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("api.limitManager.keyTimeout", 1*time.Minute)
 	a.Config.SetDefault("jaeger.disabled", false)
 	a.Config.SetDefault("jaeger.samplingProbability", 1.0)
+	a.Config.SetDefault(EnvironmentConfig, ProdEnvironment)
 }
 
 func (a *App) configureJaeger() {
@@ -546,7 +547,7 @@ func (a *App) configureServer(showProfile bool) {
 }
 
 func (a *App) configureRoomAddrGetter() {
-	if a.Config.GetString("environment") != "development" {
+	if a.Config.GetString(EnvironmentConfig) != DevEnvironment {
 		a.RoomAddrGetter = &models.RoomAddressesFromHostPort{}
 	} else {
 		a.RoomAddrGetter = &models.RoomAddressesFromNodePort{}

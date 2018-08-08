@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/maestro/api"
+	"github.com/topfreegames/maestro/models"
 )
 
 var _ = Describe("App", func() {
@@ -31,6 +32,13 @@ var _ = Describe("App", func() {
 			Expect(application.Server).NotTo(BeNil())
 			Expect(application.InCluster).To(BeFalse())
 			Expect(application.KubeconfigPath).To(HaveLen(0))
+			Expect(application.RoomAddrGetter).To(BeAssignableToTypeOf(&models.RoomAddressesFromHostPort{}))
+
+			// should use development environment
+			config.Set(api.EnvironmentConfig, api.DevEnvironment)
+			application, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(application.RoomAddrGetter).To(BeAssignableToTypeOf(&models.RoomAddressesFromNodePort{}))
 		})
 
 		It("should fail if some error occurred", func() {
