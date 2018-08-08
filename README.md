@@ -134,11 +134,20 @@ To run on dev:
 
 1) Start [Minikube](https://kubernetes.io/docs/tutorials/stateless-application/hello-minikube/)
 
-2) Start dependencies
+2) Build dev-room docker image on Minikube env. (optional)
+```
+eval $(minikube docker-env)
+make build-dev-room
+eval $(minikube docker-env -u)
+```
+
+This image contain a simple Python API to simulate room behaviour. Its code can be found [here](/dev-room).
+
+3) Start dependencies
 ```
 make deps
 make drop
-make migration
+make migrate
 ```
 
 3) Start worker with `make work` and api with `make run-dev`
