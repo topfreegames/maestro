@@ -1,4 +1,4 @@
-environment: "development"
+environment: "production"
 extensions:
   pg:
     host: "localhost"
