@@ -292,7 +292,7 @@ func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("Address handler called")
 
 	room := models.NewRoom(params.Name, params.Scheduler)
-	roomAddresses, err := room.GetAddresses(h.App.KubernetesClient)
+	roomAddresses, err := h.App.RoomAddrGetter.Get(room, h.App.KubernetesClient)
 
 	if err != nil {
 		status := http.StatusInternalServerError

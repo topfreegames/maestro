@@ -56,6 +56,7 @@ type App struct {
 	DBClient         *pg.Client
 	RedisClient      *redis.Client
 	KubernetesClient kubernetes.Interface
+	RoomAddrGetter   models.AddrGetter
 	Logger           logrus.FieldLogger
 	NewRelic         newrelic.Application
 	Router           *mux.Router
@@ -409,6 +410,8 @@ func (a *App) configureApp(
 
 	a.configureServer(showProfile)
 
+	a.configureRoomAddrGetter()
+
 	return nil
 }
 
@@ -426,6 +429,7 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("api.limitManager.keyTimeout", 1*time.Minute)
 	a.Config.SetDefault("jaeger.disabled", false)
 	a.Config.SetDefault("jaeger.samplingProbability", 1.0)
+	a.Config.SetDefault(EnvironmentConfig, ProdEnvironment)
 }
 
 func (a *App) configureJaeger() {
@@ -539,6 +543,14 @@ func (a *App) configureServer(showProfile bool) {
 	a.Server = &http.Server{
 		Addr:    a.Address,
 		Handler: wrapHandlerWithCors(middleware.UseResponseWriter(a.Router)),
+	}
+}
+
+func (a *App) configureRoomAddrGetter() {
+	if a.Config.GetString(EnvironmentConfig) != DevEnvironment {
+		a.RoomAddrGetter = &models.RoomAddressesFromHostPort{}
+	} else {
+		a.RoomAddrGetter = &models.RoomAddressesFromNodePort{}
 	}
 }
 

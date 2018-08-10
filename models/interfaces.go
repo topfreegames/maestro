@@ -7,6 +7,8 @@
 
 package models
 
+import "k8s.io/client-go/kubernetes"
+
 //MetricsReporter is a contract for reporters of metrics
 type MetricsReporter interface {
 	StartSegment(string) map[string]interface{}
@@ -28,4 +30,9 @@ type ContainerIface interface {
 	GetRequests() *Resources
 	GetCmd() []string
 	GetEnv() []*EnvVar
+}
+
+// AddrGetter return IP and ports of a room
+type AddrGetter interface {
+	Get(room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error)
 }
