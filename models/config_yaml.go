@@ -23,12 +23,13 @@ type ConfigYAMLv1 struct {
 	PortRange       *PortRange                       `yaml:"portRange"`
 
 	// Container level, to keep compatibility
-	Image    string     `yaml:"image" json:"image"`
-	Ports    []*Port    `yaml:"ports" json:"ports"`
-	Limits   *Resources `yaml:"limits" json:"limits"`
-	Requests *Resources `yaml:"requests" json:"requests"`
-	Env      []*EnvVar  `yaml:"env" json:"env"`
-	Cmd      []string   `yaml:"cmd" json:"cmd"`
+	Image           string     `yaml:"image" json:"image"`
+	ImagePullPolicy string     `yaml:"imagePullPolicy" json:"imagePullPolicy"`
+	Ports           []*Port    `yaml:"ports" json:"ports"`
+	Limits          *Resources `yaml:"limits" json:"limits"`
+	Requests        *Resources `yaml:"requests" json:"requests"`
+	Env             []*EnvVar  `yaml:"env" json:"env"`
+	Cmd             []string   `yaml:"cmd" json:"cmd"`
 }
 
 // ConfigYAMLv2 is the ConfigYAML after refactor to n containers per pod
@@ -61,12 +62,13 @@ type ConfigYAML struct {
 	PortRange       *PortRange                       `yaml:"portRange"`
 
 	// Container level, to keep compatibility
-	Image    string     `yaml:"image" json:"image"`
-	Ports    []*Port    `yaml:"ports" json:"ports"`
-	Limits   *Resources `yaml:"limits" json:"limits"`
-	Requests *Resources `yaml:"requests" json:"requests"`
-	Env      []*EnvVar  `yaml:"env" json:"env"`
-	Cmd      []string   `yaml:"cmd" json:"cmd"`
+	Image           string     `yaml:"image" json:"image"`
+	ImagePullPolicy string     `yaml:"imagePullPolicy" json:"imagePullPolicy"`
+	Ports           []*Port    `yaml:"ports" json:"ports"`
+	Limits          *Resources `yaml:"limits" json:"limits"`
+	Requests        *Resources `yaml:"requests" json:"requests"`
+	Env             []*EnvVar  `yaml:"env" json:"env"`
+	Cmd             []string   `yaml:"cmd" json:"cmd"`
 
 	// Container level, for schedulers with more than one container per pod
 	Containers []*Container `yaml:"containers" json:"containers"`
@@ -96,6 +98,7 @@ func (c *ConfigYAML) ToYAML() []byte {
 			NodeToleration:  c.NodeToleration,
 			OccupiedTimeout: c.OccupiedTimeout,
 			Forwarders:      c.Forwarders,
+			ImagePullPolicy: c.ImagePullPolicy,
 			Image:           c.Image,
 			Ports:           c.Ports,
 			Limits:          c.Limits,
@@ -174,6 +177,10 @@ func (c *ConfigYAML) EnsureDefaultValues() {
 
 	if c.AutoScaling.Up.Trigger.Limit == 0 {
 		c.AutoScaling.Up.Trigger.Limit = 90
+	}
+
+	if c.ImagePullPolicy == "" {
+		c.ImagePullPolicy = "Always"
 	}
 }
 
