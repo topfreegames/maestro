@@ -50,6 +50,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := controller.SetRoomStatus(
 		g.App.Logger,
+		g.App.RoomManager,
 		g.App.RedisClient.Trace(r.Context()),
 		g.App.DBClient.WithContext(r.Context()),
 		mr,
@@ -240,6 +241,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := controller.SetRoomStatus(
 		g.App.Logger,
+		g.App.RoomManager,
 		g.App.RedisClient.Trace(r.Context()),
 		g.App.DBClient.WithContext(r.Context()),
 		mr,

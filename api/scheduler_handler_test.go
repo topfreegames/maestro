@@ -694,7 +694,7 @@ autoscaling:
 				It("returns a status code of 200 and success body", func() {
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-						logger, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
+						logger, app.RoomManager, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
 
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml)
 					Expect(err).NotTo(HaveOccurred())
@@ -991,7 +991,7 @@ autoscaling:
 				It("should asynchronously update scheduler", func() {
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-						logger, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
+						logger, app.RoomManager, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
 
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml)
 					Expect(err).NotTo(HaveOccurred())
@@ -1081,7 +1081,7 @@ autoscaling:
 				It("should asynchronously update scheduler and show error when occurred", func() {
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-						logger, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
+						logger, app.RoomManager, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
 
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml)
 					Expect(err).NotTo(HaveOccurred())
@@ -1535,6 +1535,7 @@ forwarders: {}
 authorizedUsers: []
 portRange: null
 image: ""
+imagePullPolicy: ""
 ports: []
 limits: null
 requests: null
@@ -1583,6 +1584,7 @@ authorizedUsers: []
 containers:
 - name: container1
   image: image/image
+  imagePullPolicy: ""
   ports:
   - containerPort: 8080
     protocol: TCP
@@ -2157,7 +2159,7 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 
 				MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-					logger, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
+					logger, app.RoomManager, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
 
 				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 
@@ -2640,7 +2642,7 @@ game: game-name
 
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-					logger, mmr, jsonString, timeoutSec, nil, workerPortRange, portStart, portEnd)
+					logger, app.RoomManager, mmr, jsonString, timeoutSec, nil, workerPortRange, portStart, portEnd)
 
 				err := json.Unmarshal([]byte(jsonString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())

@@ -150,7 +150,7 @@ make drop
 make migrate
 ```
 
-4) Start worker with `make work` and api with `make run-dev`
+4) Start worker with `make work-dev` and api with `make run-dev`
 
 5) With [maestro-cli](https://github.com/topfreegames/maestro-cli), access maestro with context `local`. For example:
 

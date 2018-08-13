@@ -798,7 +798,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
 			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
 
-			err = controller.ScaleUp(logger, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
 			Expect(err).NotTo(HaveOccurred())
 
 			// check scale infos and if should scale

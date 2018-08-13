@@ -31,6 +31,7 @@ import (
 
 func replacePodsAndWait(
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
 	db pginterfaces.DB,
@@ -48,7 +49,7 @@ func replacePodsAndWait(
 	for _, pod := range podsToDelete {
 		logger.Debugf("deleting pod %s", pod.GetName())
 
-		err := DeletePodAndRoom(logger, mr, clientset, redisClient,
+		err := DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
 			configYAML, pod.GetName(), reportersConstants.ReasonUpdate)
 		if err == nil || strings.Contains(err.Error(), "redis") {
 			deletedPods = append(deletedPods, pod)
@@ -61,7 +62,7 @@ func replacePodsAndWait(
 	now := clock.Now()
 	timeout := willTimeoutAt.Sub(now)
 	createdPods, timedout, canceled = createPodsAsTheyAreDeleted(
-		logger, mr, clientset, db, redisClient, timeout, configYAML,
+		logger, roomManager, mr, clientset, db, redisClient, timeout, configYAML,
 		deletedPods, scheduler, operationManager)
 	if timedout || canceled {
 		return createdPods, deletedPods, timedout, canceled
@@ -82,6 +83,7 @@ func replacePodsAndWait(
 // restore old deleted pods to come back to previous state
 func rollback(
 	l logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
 	redisClient redisinterfaces.RedisClient,
@@ -121,7 +123,7 @@ func rollback(
 				pod := createdPodChunks[i][j]
 				logger.Debugf("deleting pod %s", pod.GetName())
 
-				err = DeletePodAndRoom(logger, mr, clientset, redisClient,
+				err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
 					configYaml, pod.GetName(), reportersConstants.ReasonUpdate)
 				if err != nil {
 					logger.WithError(err).
@@ -151,7 +153,7 @@ func rollback(
 				pod := deletedPodChunks[i][j]
 				logger.Debugf("creating new pod to substitute %s", pod.GetName())
 
-				newPod, err := createPod(logger, mr, redisClient,
+				newPod, err := roomManager.Create(logger, mr, redisClient,
 					db, clientset, configYAML, scheduler)
 				if err != nil {
 					logger.WithError(err).Debug("error creating new pod")
@@ -174,6 +176,7 @@ func rollback(
 
 func createPodsAsTheyAreDeleted(
 	l logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
 	db pginterfaces.DB,
@@ -220,7 +223,7 @@ func createPodsAsTheyAreDeleted(
 					break
 				}
 
-				newPod, err := createPod(logger, mr, redisClient,
+				newPod, err := roomManager.Create(logger, mr, redisClient,
 					db, clientset, configYAML, scheduler)
 				if err != nil {
 					exit = false
@@ -393,6 +396,7 @@ func waitCreatingPods(
 // DeletePodAndRoom deletes the pod and removes the room from redis
 func DeletePodAndRoom(
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
@@ -409,7 +413,7 @@ func DeletePodAndRoom(
 		return err
 	}
 
-	err = deletePod(logger, mr, clientset, redisClient, configYaml,
+	err = roomManager.Delete(logger, mr, clientset, redisClient, configYaml,
 		pod.Name, reportersConstants.ReasonUpdate)
 	if err != nil {
 		logger.

@@ -32,6 +32,7 @@ var (
 	config             *viper.Viper
 	hook               *test.Hook
 	logger             *logrus.Logger
+	roomManager        models.RoomManager
 	mockCtrl           *gomock.Controller
 	mockDb             *pgmocks.MockDB
 	mockPipeline       *redismocks.MockPipeliner
@@ -66,6 +67,7 @@ var _ = BeforeEach(func() {
 	mockRedisClient.EXPECT().Ping()
 	redisClient, err = redis.NewClient("extensions.redis", config, mockRedisClient)
 	Expect(err).NotTo(HaveOccurred())
+	roomManager = &models.GameRoom{}
 })
 
 var _ = AfterEach(func() {

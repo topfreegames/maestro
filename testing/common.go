@@ -287,6 +287,7 @@ func MockCreateScheduler(
 	mockPipeline *redismocks.MockPipeliner,
 	mockDb *pgmocks.MockDB,
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	yamlStr string,
 	timeoutSec int,
@@ -337,7 +338,7 @@ func MockCreateScheduler(
 	calls.Append(
 		MockUpdateSchedulerStatus(mockDb, nil, nil))
 
-	err = controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml, timeoutSec)
+	err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml, timeoutSec)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return calls
