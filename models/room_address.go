@@ -85,7 +85,6 @@ func getRoomAddresses(IsNodePort bool, room *Room, kubernetesClient kubernetes.I
 				}
 			}
 		}
-
 	}
 	if len(rAddresses.Ports) == 0 {
 		return nil, maestroErrors.NewKubernetesError("no ports found", errors.New("no node port found to host room"))
