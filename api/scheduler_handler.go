@@ -64,6 +64,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
 		err := controller.CreateScheduler(
 			l,
+			g.App.RoomManager,
 			mr,
 			db,
 			g.App.RedisClient.Trace(r.Context()),
@@ -260,6 +261,7 @@ func updateSchedulerConfigCommon(
 	err = controller.UpdateSchedulerConfig(
 		r.Context(),
 		logger,
+		app.RoomManager,
 		mr,
 		db,
 		app.RedisClient,
@@ -590,6 +592,7 @@ func (g *SchedulerScaleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	db := g.App.DBClient.WithContext(r.Context())
 	err := controller.ScaleScheduler(
 		logger,
+		g.App.RoomManager,
 		mr,
 		db,
 		g.App.RedisClient.Trace(r.Context()),
@@ -644,7 +647,7 @@ func (g *SchedulerImageHandler) update(
 	status = http.StatusOK
 
 	db := g.App.DBClient.WithContext(r.Context())
-	err = controller.UpdateSchedulerImage(r.Context(), logger, mr, db, g.App.RedisClient, g.App.KubernetesClient,
+	err = controller.UpdateSchedulerImage(r.Context(), logger, g.App.RoomManager, mr, db, g.App.RedisClient, g.App.KubernetesClient,
 		schedulerName, imageParams, maxSurge, &clock.Clock{}, g.App.Config, operationManager)
 	if err != nil {
 		status = http.StatusInternalServerError
@@ -749,7 +752,7 @@ func (g *SchedulerUpdateMinHandler) update(
 
 	logger.Info("starting controllers update min")
 	db := g.App.DBClient.WithContext(r.Context())
-	err = controller.UpdateSchedulerMin(r.Context(), logger, mr, db, g.App.RedisClient, schedulerName,
+	err = controller.UpdateSchedulerMin(r.Context(), logger, g.App.RoomManager, mr, db, g.App.RedisClient, schedulerName,
 		schedulerMin, &clock.Clock{}, g.App.Config, operationManager)
 	if err != nil {
 		status = http.StatusInternalServerError

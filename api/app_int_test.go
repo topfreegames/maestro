@@ -377,6 +377,7 @@ var _ = Describe("App", func() {
 			// Update the scheduler
 			configYaml.AutoScaling.Min = 5
 			configYaml.Image = "nginx:latest"
+			configYaml.ImagePullPolicy = "Always"
 			bts, err := json.Marshal(configYaml)
 			Expect(err).NotTo(HaveOccurred())
 			bodyRdr := bytes.NewReader(bts)

@@ -30,6 +30,7 @@ var _ = Describe("Controller", func() {
 	var timeoutSec int
 	var configYaml1 models.ConfigYAML
 	var jsonStr string
+	var roomManager models.RoomManager
 
 	BeforeEach(func() {
 		var err error
@@ -47,6 +48,8 @@ var _ = Describe("Controller", func() {
 
 		_, err = clientset.CoreV1().Nodes().Create(node)
 		Expect(err).NotTo(HaveOccurred())
+
+		roomManager = &models.GameRoom{}
 	})
 
 	Describe("CreateScheduler", func() {
@@ -69,7 +72,7 @@ var _ = Describe("Controller", func() {
 			mockRedisClient.EXPECT().
 				Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("40000-60000", nil)).Times(2)
 
-			err := controller.CreateScheduler(logger, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err := controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error updating status on schedulers: error updating state"))
 

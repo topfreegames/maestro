@@ -48,23 +48,21 @@ func getRoomAddresses(IsNodePort bool, room *Room, kubernetesClient kubernetes.I
 		return nil, err
 	}
 
-	for _, address := range node.Status.Addresses {
-		if address.Type == v1.NodeInternalIP {
-			rAddresses.Host = address.Address
-			break
-		}
-	}
-
-	if rAddresses.Host == "" {
-		return nil, maestroErrors.NewKubernetesError("no host found", errors.New("no node found to host room"))
-	}
-
 	if IsNodePort {
+		for _, address := range node.Status.Addresses {
+			if address.Type == v1.NodeInternalIP {
+				rAddresses.Host = address.Address
+				break
+			}
+		}
+		if rAddresses.Host == "" {
+			return nil, maestroErrors.NewKubernetesError("no host found", errors.New("no node found to host room"))
+		}
+
 		roomSvc, err := kubernetesClient.CoreV1().Services(room.SchedulerName).Get(room.ID, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-
 		for _, port := range roomSvc.Spec.Ports {
 			if port.NodePort != 0 {
 				rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
@@ -74,9 +72,17 @@ func getRoomAddresses(IsNodePort bool, room *Room, kubernetesClient kubernetes.I
 			}
 		}
 	} else {
+		for _, address := range node.Status.Addresses {
+			if address.Type == v1.NodeExternalDNS {
+				rAddresses.Host = address.Address
+				break
+			}
+		}
+		if rAddresses.Host == "" {
+			return nil, maestroErrors.NewKubernetesError("no host found", errors.New("no node found to host room"))
+		}
 		for _, container := range roomPod.Spec.Containers {
 			for _, port := range container.Ports {
-				//TODO: check if port.HostPort is available (another process not using it)
 				if port.HostPort != 0 {
 					rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
 						Name: port.Name,

@@ -36,7 +36,6 @@ build-docker:
 
 build-dev-room:
 	@cd dev-room && docker build -t maestro-dev-room .
-	@eval $(minikube docker-env -u)
 
 delete-dev-room:
 	@docker rmi -f maestro-dev-room
@@ -73,7 +72,7 @@ run:
 
 run-dev:
 	@echo "serverUrl: http://localhost:8080" > ~/.maestro/config-local.yaml
-	@env MAESTRO_OAUTH_ENABLED=false go run main.go start -v3
+	@env MAESTRO_OAUTH_ENABLED=false MAESTRO_ENVIRONMENT=development go run main.go start -v3
 
 stop-deps:
 	@env MY_IP=${MY_IP} docker-compose --project-name maestro down
@@ -97,7 +96,8 @@ drop:
 
 drop-test:
 	@-docker exec maestro_test_postgres_1 psql -d postgres -h localhost -p 5432 -U postgres -c "SELECT pg_terminate_backend(pid.pid) FROM pg_stat_activity, (SELECT pid FROM pg_stat_activity where pid <> pg_backend_pid()) pid WHERE datname='maestro_test';"
-	@docker exec maestro_test_postgres_1 psql -d postgres -h localhost -p 5432 -U postgres -f scripts/drop-test.sql > /dev/null
+	@docker cp scripts/drop-test.sql maestro_test_postgres_1:.
+	@docker exec maestro_test_postgres_1 psql -d postgres -h localhost -p 5432 -U postgres -f drop-test.sql > /dev/null
 	@echo "Test Database created successfully!"
 
 unit: unit-board clear-coverage-profiles unit-run gather-unit-profiles
@@ -171,6 +171,9 @@ minikube-ci:
 
 work:
 	@go run main.go worker -v3
+
+work-dev:
+	@env MAESTRO_ENVIRONMENT=development go run main.go worker -v3
 
 clean-int-tests:
 	@echo 'deleting maestro-test-* namespaces'
