@@ -1,0 +1,47 @@
+{
+   "name": "scheduler-name",
+   "game": "game-name",
+   "image": "maestro-dev-room:latest",
+   "imagePullPolicy": "Never",
+   "ports": [
+      {
+         "containerPort": 8080,
+         "protocol": "TCP",
+         "name": "tcp"
+      }
+   ],
+   "limits": {
+      "memory": "128Mi",
+      "cpu": "20m"
+   },
+   "shutdownTimeout": 10,
+   "autoscaling": {
+      "min": 4,
+      "up": {
+         "delta": 1,
+         "trigger": {
+            "usage": 70,
+            "time": 1
+         },
+         "cooldown": 1
+      },
+      "down": {
+         "delta": 1,
+         "trigger": {
+            "usage": 50,
+            "time": 1
+         },
+         "cooldown": 1
+      }
+   },
+   "env": [
+       {
+          "name": "MAESTRO_HOST_PORT",
+          "value": "192.168.64.1:8080"
+       },
+       {
+          "name": "POLLING_INTERVAL_IN_SECONDS",
+          "value": "20"
+       }
+   ]
+}

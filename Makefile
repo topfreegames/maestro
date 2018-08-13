@@ -34,6 +34,13 @@ build:
 build-docker:
 	@docker build -t maestro .
 
+build-dev-room:
+	@cd dev-room && docker build -t maestro-dev-room .
+	@eval $(minikube docker-env -u)
+
+delete-dev-room:
+	@docker rmi -f maestro-dev-room
+
 cross-build-linux-amd64:
 	@env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ./bin/maestro-linux-amd64
 	@chmod a+x ./bin/maestro-linux-amd64
@@ -84,13 +91,13 @@ deps-test: start-deps-test wait-for-test-pg drop-test migrate-test minikube
 deps-test-ci: deps drop-test migrate-test minikube-ci
 
 drop:
-	@-psql -d postgres -h localhost -p 8765 -U postgres -c "SELECT pg_terminate_backend(pid.pid) FROM pg_stat_activity, (SELECT pid FROM pg_stat_activity where pid <> pg_backend_pid()) pid WHERE datname='maestro';"
-	@psql -d postgres -h localhost -p 8765 -U postgres -f scripts/drop.sql > /dev/null
+	@-docker exec maestro_postgres_1 psql -d postgres -h localhost -p 5432 -U postgres -c "SELECT pg_terminate_backend(pid.pid) FROM pg_stat_activity, (SELECT pid FROM pg_stat_activity where pid <> pg_backend_pid()) pid WHERE datname='maestro';"
+	@docker exec maestro_postgres_1 psql -d postgres -h localhost -p 5432 -U postgres -f scripts/drop.sql > /dev/null
 	@echo "Database created successfully!"
 
 drop-test:
-	@-psql -d postgres -h localhost -p 8585 -U postgres -c "SELECT pg_terminate_backend(pid.pid) FROM pg_stat_activity, (SELECT pid FROM pg_stat_activity where pid <> pg_backend_pid()) pid WHERE datname='maestro_test';"
-	@psql -d postgres -h localhost -p 8585 -U postgres -f scripts/drop-test.sql > /dev/null
+	@-docker exec maestro_test_postgres_1 psql -d postgres -h localhost -p 5432 -U postgres -c "SELECT pg_terminate_backend(pid.pid) FROM pg_stat_activity, (SELECT pid FROM pg_stat_activity where pid <> pg_backend_pid()) pid WHERE datname='maestro_test';"
+	@docker exec maestro_test_postgres_1 psql -d postgres -h localhost -p 5432 -U postgres -f scripts/drop-test.sql > /dev/null
 	@echo "Test Database created successfully!"
 
 unit: unit-board clear-coverage-profiles unit-run gather-unit-profiles

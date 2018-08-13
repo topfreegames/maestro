@@ -65,6 +65,7 @@ spec:
   {{range .Containers}}
   - name: {{.Name}}
     image: {{.Image}}
+    imagePullPolicy: {{.ImagePullPolicy}}
     hostNetwork: "true"
     ports:
       {{range .Ports}}
@@ -143,11 +144,12 @@ func NewPod(
 	}
 
 	container := &Container{
-		Image:   configYaml.Image,
-		Name:    name,
-		Env:     envs,
-		Ports:   configYaml.Ports,
-		Command: configYaml.Cmd,
+		Image:           configYaml.Image,
+		ImagePullPolicy: configYaml.ImagePullPolicy,
+		Name:            name,
+		Env:             envs,
+		Ports:           configYaml.Ports,
+		Command:         configYaml.Cmd,
 	}
 
 	if configYaml.Limits != nil {
