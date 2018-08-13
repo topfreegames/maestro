@@ -13,8 +13,8 @@ import (
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/maestro/models"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -114,7 +114,6 @@ var _ = Describe("Pod", func() {
 			Expect(podv1.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
 			Expect(podv1.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 			Expect(*podv1.Spec.TerminationGracePeriodSeconds).To(BeEquivalentTo(shutdownTimeout))
-			Expect(podv1.Spec.Tolerations).To(HaveLen(1))
 			Expect(podv1.Spec.Tolerations[0].Key).To(Equal("dedicated"))
 			Expect(podv1.Spec.Tolerations[0].Operator).To(Equal(v1.TolerationOpEqual))
 			Expect(podv1.Spec.Tolerations[0].Value).To(Equal(game))

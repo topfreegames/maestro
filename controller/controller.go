@@ -41,6 +41,7 @@ var deleteOptions = &metav1.DeleteOptions{}
 // CreateScheduler creates a new scheduler from a yaml configuration
 func CreateScheduler(
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
 	redisClient redisinterfaces.RedisClient,
@@ -122,7 +123,7 @@ func CreateScheduler(
 	}
 
 	logger.Info("creating pods of new scheduler")
-	err = ScaleUp(logger, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true)
+	err = ScaleUp(logger, roomManager, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true)
 	if err != nil {
 		logger.WithError(err).Error("error scaling up scheduler, deleting it")
 		if scheduler.LastScaleOpAt == int64(0) {
@@ -278,6 +279,7 @@ func ListSchedulersNames(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 // DeleteUnavailableRooms delete rooms that are not available
 func DeleteUnavailableRooms(
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	redisClient redisinterfaces.RedisClient,
 	clientset kubernetes.Interface,
@@ -297,7 +299,7 @@ func DeleteUnavailableRooms(
 
 	logger.Info("deleting unvavailable pods")
 	for _, roomName := range roomNames {
-		err := deletePod(logger, mr, clientset, redisClient, configYaml, roomName, reason)
+		err := roomManager.Delete(logger, mr, clientset, redisClient, configYaml, roomName, reason)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithFields(logrus.Fields{"roomName": roomName, "function": "DeleteUnavailableRooms"}).WithError(err).Error("error deleting room")
 		} else {
@@ -320,6 +322,7 @@ func DeleteUnavailableRooms(
 // ScaleUp scales up a scheduler using its config
 func ScaleUp(
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
 	redisClient redisinterfaces.RedisClient,
@@ -345,12 +348,11 @@ func ScaleUp(
 
 	pods := make([]*v1.Pod, amount)
 	var creationErr error
-
 	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
 
 	j := 0
 	for i := 0; i < amount; i++ {
-		pod, err := createPod(l, mr, redisClient, db, clientset, configYAML, scheduler)
+		pod, err := roomManager.Create(l, mr, redisClient, db, clientset, configYAML, scheduler)
 		if err != nil {
 			l.WithError(err).Error("scale up error")
 			if initalOp {
@@ -388,6 +390,7 @@ func ScaleUp(
 // ScaleDown scales down the number of rooms
 func ScaleDown(
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
 	redisClient redisinterfaces.RedisClient,
@@ -446,7 +449,7 @@ func ScaleDown(
 	}
 
 	for _, roomName := range idleRooms {
-		err := deletePod(logger, mr, clientset, redisClient, configYaml, roomName, reportersConstants.ReasonScaleDown)
+		err := roomManager.Delete(logger, mr, clientset, redisClient, configYaml, roomName, reportersConstants.ReasonScaleDown)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
 			deletionErr = err
@@ -504,6 +507,7 @@ func ScaleDown(
 func UpdateSchedulerConfig(
 	ctx context.Context,
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
 	redisClient *redis.Client,
@@ -634,7 +638,7 @@ waitForLock:
 			l.Debugf("deleting chunk %d: %v", i, names(chunk))
 
 			newlyCreatedPods, newlyDeletedPods, timedout, canceled := replacePodsAndWait(
-				l, mr, clientset, db, redisClient.Client,
+				l, roomManager, mr, clientset, db, redisClient.Client,
 				willTimeoutAt, clock, configYAML, chunk,
 				scheduler, operationManager,
 			)
@@ -649,7 +653,7 @@ waitForLock:
 
 				l.Debug(errMsg)
 				rollErr := rollback(
-					l, mr, db, redisClient.Client, clientset,
+					l, roomManager, mr, db, redisClient.Client, clientset,
 					&oldConfig, maxSurge, 2*timeoutDur, createdPods, deletedPods,
 					scheduler, currentVersion)
 				if rollErr != nil {
@@ -803,104 +807,6 @@ func deleteSchedulerHelper(
 	return nil
 }
 
-func createPod(
-	logger logrus.FieldLogger,
-	mr *models.MixedMetricsReporter,
-	redisClient redisinterfaces.RedisClient,
-	db pginterfaces.DB,
-	clientset kubernetes.Interface,
-	configYAML *models.ConfigYAML,
-	scheduler *models.Scheduler,
-) (*v1.Pod, error) {
-	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
-	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
-	room := models.NewRoom(name, configYAML.Name)
-	err := mr.WithSegment(models.SegmentInsert, func() error {
-		return room.Create(redisClient, db, mr, configYAML)
-	})
-	if err != nil {
-		return nil, err
-	}
-	namesEnvVars := []*models.EnvVar{
-		{
-			Name:  "MAESTRO_SCHEDULER_NAME",
-			Value: configYAML.Name,
-		},
-		{
-			Name:  "MAESTRO_ROOM_ID",
-			Value: name,
-		},
-	}
-
-	var pod *models.Pod
-	if configYAML.Version() == "v1" {
-		env := append(configYAML.Env, namesEnvVars...)
-		err = mr.WithSegment(models.SegmentPod, func() error {
-			var err error
-			pod, err = models.NewPod(name, env, configYAML, clientset, redisClient)
-			return err
-		})
-	} else if configYAML.Version() == "v2" {
-		containers := make([]*models.Container, len(configYAML.Containers))
-		for i, container := range configYAML.Containers {
-			containers[i] = container.NewWithCopiedEnvs()
-			containers[i].Env = append(containers[i].Env, namesEnvVars...)
-		}
-
-		pod, err = models.NewPodWithContainers(name, containers, configYAML, clientset, redisClient)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	if configYAML.NodeAffinity != "" {
-		pod.SetAffinity(configYAML.NodeAffinity)
-	}
-	if configYAML.NodeToleration != "" {
-		pod.SetToleration(configYAML.NodeToleration)
-	}
-
-	pod.SetVersion(scheduler.Version)
-
-	var kubePod *v1.Pod
-	err = mr.WithSegment(models.SegmentPod, func() error {
-		kubePod, err = pod.Create(clientset)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	nodeName := kubePod.Spec.NodeName
-	logger.WithFields(logrus.Fields{
-		"node": nodeName,
-		"name": name,
-	}).Info("Created GRU (pod) successfully.")
-
-	return kubePod, nil
-}
-
-func deletePod(
-	logger logrus.FieldLogger,
-	mr *models.MixedMetricsReporter,
-	clientset kubernetes.Interface,
-	redisClient redisinterfaces.RedisClient,
-	configYaml *models.ConfigYAML,
-	name, reason string,
-) error {
-	pod := &models.Pod{
-		Name:      name,
-		Game:      configYaml.Game,
-		Namespace: configYaml.Name,
-	}
-	err := mr.WithSegment(models.SegmentPod, func() error {
-		return pod.Delete(clientset, redisClient, reason, configYaml)
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // MustUpdatePods returns true if it's necessary to delete old pod and create a new one
 //  so this have the new configuration.
 func MustUpdatePods(old, new *models.ConfigYAML) bool {
@@ -1013,6 +919,7 @@ func MustUpdatePods(old, new *models.ConfigYAML) bool {
 func UpdateSchedulerImage(
 	ctx context.Context,
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
 	redisClient *redis.Client,
@@ -1041,6 +948,7 @@ func UpdateSchedulerImage(
 	return UpdateSchedulerConfig(
 		ctx,
 		logger,
+		roomManager,
 		mr,
 		db,
 		redisClient,
@@ -1058,6 +966,7 @@ func UpdateSchedulerImage(
 func UpdateSchedulerMin(
 	ctx context.Context,
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
 	redisClient *redis.Client,
@@ -1078,6 +987,7 @@ func UpdateSchedulerMin(
 	return UpdateSchedulerConfig(
 		ctx,
 		logger,
+		roomManager,
 		mr,
 		db,
 		redisClient,
@@ -1124,6 +1034,7 @@ func schedulerAndConfigFromName(
 // ScaleScheduler scale up or down, depending on what parameters are passed
 func ScaleScheduler(
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
 	redisClient redisinterfaces.RedisClient,
@@ -1153,6 +1064,7 @@ func ScaleScheduler(
 		logger.Infof("manually scaling up scheduler %s in %d GRUs", schedulerName, amountUp)
 		err = ScaleUp(
 			logger,
+			roomManager,
 			mr,
 			db,
 			redisClient,
@@ -1166,6 +1078,7 @@ func ScaleScheduler(
 		logger.Infof("manually scaling down scheduler %s in %d GRUs", schedulerName, amountDown)
 		err = ScaleDown(
 			logger,
+			roomManager,
 			mr,
 			db,
 			redisClient,
@@ -1196,6 +1109,7 @@ func ScaleScheduler(
 		if replicas > nPods {
 			err = ScaleUp(
 				logger,
+				roomManager,
 				mr,
 				db,
 				redisClient,
@@ -1208,6 +1122,7 @@ func ScaleScheduler(
 		} else if replicas < nPods {
 			err = ScaleDown(
 				logger,
+				roomManager,
 				mr,
 				db,
 				redisClient,
@@ -1224,6 +1139,7 @@ func ScaleScheduler(
 // SetRoomStatus updates room status and scales up if necessary
 func SetRoomStatus(
 	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
 	redisClient redisinterfaces.RedisClient,
 	db pginterfaces.DB,
 	mr *models.MixedMetricsReporter,
@@ -1279,6 +1195,7 @@ func SetRoomStatus(
 
 				err = ScaleUp(
 					logger,
+					roomManager,
 					mr,
 					db,
 					redisClient,

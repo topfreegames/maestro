@@ -51,6 +51,7 @@ type Watcher struct {
 	DB                        pginterfaces.DB
 	KubernetesClient          kubernetes.Interface
 	Logger                    logrus.FieldLogger
+	RoomManager               models.RoomManager
 	MetricsReporter           *models.MixedMetricsReporter
 	RedisClient               *redis.Client
 	LockKey                   string
@@ -105,6 +106,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("watcher.gracefulShutdownTimeout", 300)
 	w.Config.SetDefault("pingTimeout", 30)
 	w.Config.SetDefault("occupiedTimeout", 60*60)
+	w.Config.SetDefault(EnvironmentConfig, ProdEnvironment)
 }
 
 func (w *Watcher) configure() error {
@@ -134,6 +136,7 @@ func (w *Watcher) configure() error {
 	w.configureLogger()
 	w.configureTimeout(configYaml)
 	w.configureAutoScale(configYaml)
+	w.configureRoomManager()
 
 	w.MetricsReporter.AddReporter(&models.DogStatsdMetricsReporter{
 		Scheduler: w.SchedulerName,
@@ -168,6 +171,18 @@ func (w *Watcher) configureAutoScale(configYaml *models.ConfigYAML) {
 		capacity = 1
 	}
 	w.ScaleDownInfo = models.NewScaleDownInfo(capacity, w.RedisClient.Client)
+}
+
+func (w *Watcher) configureRoomManager() {
+	w.RoomManager = &models.GameRoom{}
+
+	if w.Config.GetString(EnvironmentConfig) == DevEnvironment {
+		w.RoomManager = &models.GameRoomWithService{}
+		w.Logger.Info("development environment")
+		return
+	}
+
+	w.Logger.Info("production environment")
 }
 
 // Start starts the watcher
@@ -357,6 +372,7 @@ func (w *Watcher) RemoveDeadRooms() {
 		} else {
 			err := controller.DeleteUnavailableRooms(
 				logger,
+				w.RoomManager,
 				w.MetricsReporter,
 				w.RedisClient.Client,
 				w.KubernetesClient,
@@ -413,6 +429,7 @@ func (w *Watcher) RemoveDeadRooms() {
 			} else {
 				err = controller.DeleteUnavailableRooms(
 					logger,
+					w.RoomManager,
 					w.MetricsReporter,
 					w.RedisClient.Client,
 					w.KubernetesClient,
@@ -516,6 +533,7 @@ func (w *Watcher) AutoScale() {
 
 		err = controller.ScaleUp(
 			logger,
+			w.RoomManager,
 			w.MetricsReporter,
 			w.DB,
 			w.RedisClient.Client,
@@ -543,6 +561,7 @@ func (w *Watcher) AutoScale() {
 
 		err = controller.ScaleDown(
 			logger,
+			w.RoomManager,
 			w.MetricsReporter,
 			w.DB,
 			w.RedisClient.Client,
@@ -707,7 +726,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	}
 
 	for _, podName := range podsToDelete {
-		err = controller.DeletePodAndRoom(logger, w.MetricsReporter,
+		err = controller.DeletePodAndRoom(logger, w.RoomManager, w.MetricsReporter,
 			w.KubernetesClient, w.RedisClient.Client, configYaml,
 			podName, reportersConstants.ReasonInvalidPod)
 		if err != nil {
