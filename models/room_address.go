@@ -74,15 +74,18 @@ func getRoomAddresses(IsNodePort bool, room *Room, kubernetesClient kubernetes.I
 			}
 		}
 	} else {
-		for _, port := range roomPod.Spec.Containers[0].Ports {
-			//TODO: check if port.HostPort is available (another process not using it)
-			if port.HostPort != 0 {
-				rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
-					Name: port.Name,
-					Port: port.HostPort,
-				})
+		for _, container := range roomPod.Spec.Containers {
+			for _, port := range container.Ports {
+				//TODO: check if port.HostPort is available (another process not using it)
+				if port.HostPort != 0 {
+					rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
+						Name: port.Name,
+						Port: port.HostPort,
+					})
+				}
 			}
 		}
+
 	}
 	if len(rAddresses.Ports) == 0 {
 		return nil, maestroErrors.NewKubernetesError("no ports found", errors.New("no node port found to host room"))

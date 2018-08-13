@@ -150,9 +150,9 @@ make drop
 make migrate
 ```
 
-3) Start worker with `make work` and api with `make run-dev`
+5) Start worker with `make work` and api with `make run-dev`
 
-4) With [maestro-cli](https://github.com/topfreegames/maestro-cli), access maestro with context `local`. For example:
+6) With [maestro-cli](https://github.com/topfreegames/maestro-cli), access maestro with context `local`. For example:
 
 ```
 maestro -c local create manifests/scheduler-config-1.yaml
