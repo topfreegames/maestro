@@ -48,9 +48,11 @@ var _ = Describe("Forward", func() {
 				clientset,
 				room,
 				models.StatusReady,
+				"",
 				nil,
 				cache,
 				logger,
+				roomAddrGetter,
 			)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -92,9 +94,11 @@ var _ = Describe("Forward", func() {
 				clientset,
 				room,
 				models.StatusReady,
+				"",
 				nil,
 				cache,
 				logger,
+				roomAddrGetter,
 			)
 
 			Expect(err).To(HaveOccurred())
@@ -127,9 +131,11 @@ var _ = Describe("Forward", func() {
 				clientset,
 				room,
 				models.StatusReady,
+				"",
 				nil,
 				cache,
 				logger,
+				roomAddrGetter,
 			)
 
 			Expect(err.Error()).To(Equal(errMsg))
@@ -154,9 +160,11 @@ game: game
 				clientset,
 				room,
 				models.StatusReady,
+				"",
 				nil,
 				cache,
 				logger,
+				roomAddrGetter,
 			)
 
 			Expect(err).NotTo(HaveOccurred())

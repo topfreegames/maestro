@@ -13,15 +13,12 @@ import (
 	. "github.com/onsi/gomega"
 
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	"github.com/topfreegames/maestro/models"
-	"k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes/fake"
 
 	goredis "github.com/go-redis/redis"
 	uuid "github.com/satori/go.uuid"
@@ -30,11 +27,6 @@ import (
 
 var _ = Describe("Room", func() {
 	var (
-		clientset *fake.Clientset
-
-		portStart     = 5000
-		portEnd       = 6000
-		portRange     = fmt.Sprintf("%d-%d", portStart, portEnd)
 		schedulerName = uuid.NewV4().String()
 		name          = uuid.NewV4().String()
 		configYaml    = &models.ConfigYAML{Game: "game-name"}
@@ -57,10 +49,6 @@ var _ = Describe("Room", func() {
 			"gauge":                         "5",
 		})
 	}
-
-	BeforeEach(func() {
-		clientset = fake.NewSimpleClientset()
-	})
 
 	Describe("NewRoom", func() {
 		It("should build correct room struct", func() {
@@ -294,146 +282,6 @@ var _ = Describe("Room", func() {
 			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, mmr, status, configYaml, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(roomsCountByStatus.Total()).To(Equal(10))
-		})
-	})
-
-	Describe("GetAddresses", func() {
-		It("should not crash if pod does not exist", func() {
-			name := "pong-free-for-all-0"
-			scheduler := "pong-free-for-all"
-			room := models.NewRoom(name, scheduler)
-			_, err := room.GetAddresses(clientset)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal(`pods "pong-free-for-all-0" not found`))
-		})
-
-		It("should return no address if no node assigned to the room", func() {
-			command := []string{
-				"./room-binary",
-				"-serverType",
-				"6a8e136b-2dc1-417e-bbe8-0f0a2d2df431",
-			}
-			env := []*models.EnvVar{
-				{
-					Name:  "EXAMPLE_ENV_VAR",
-					Value: "examplevalue",
-				},
-				{
-					Name:  "ANOTHER_ENV_VAR",
-					Value: "anothervalue",
-				},
-			}
-			game := "pong"
-			image := "pong/pong:v123"
-			name := "pong-free-for-all-0"
-			namespace := "pong-free-for-all"
-			ports := []*models.Port{
-				{
-					ContainerPort: 5050,
-					HostPort:      5000,
-				},
-				{
-					ContainerPort: 8888,
-					HostPort:      5001,
-				},
-			}
-
-			requests := &models.Resources{
-				CPU:    "2",
-				Memory: "128974848",
-			}
-			limits := &models.Resources{
-				CPU:    "1",
-				Memory: "64487424",
-			}
-			shutdownTimeout := 180
-
-			configYaml := &models.ConfigYAML{
-				Name:            namespace,
-				Game:            game,
-				Image:           image,
-				Limits:          limits,
-				Requests:        requests,
-				ShutdownTimeout: shutdownTimeout,
-				Ports:           ports,
-				Cmd:             command,
-			}
-
-			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
-				Return(goredis.NewStringResult(portRange, nil))
-			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
-
-			mr.EXPECT().Report("gru.new", map[string]string{
-				reportersConstants.TagGame:      "pong",
-				reportersConstants.TagScheduler: "pong-free-for-all",
-			})
-			pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient)
-			Expect(err).NotTo(HaveOccurred())
-			_, err = pod.Create(clientset)
-			Expect(err).NotTo(HaveOccurred())
-			room := models.NewRoom(name, namespace)
-			addresses, err := room.GetAddresses(clientset)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(len(addresses.Ports)).To(Equal(0))
-		})
-
-		It("should return room address", func() {
-			var err error
-			name := "pong-free-for-all-0"
-			schedulerName := "pong-free-for-all"
-			nodeName := "node-name"
-			room := models.NewRoom(name, schedulerName)
-			host := "hostname.com"
-			var port int32 = 1234
-
-			node := &v1.Node{}
-			node.SetName(nodeName)
-			node.Status.Addresses = []v1.NodeAddress{
-				v1.NodeAddress{
-					Type:    v1.NodeExternalDNS,
-					Address: host,
-				},
-			}
-			_, err = clientset.CoreV1().Nodes().Create(node)
-			Expect(err).NotTo(HaveOccurred())
-
-			pod := &v1.Pod{}
-			pod.Spec.NodeName = nodeName
-			pod.SetName(name)
-			pod.Spec.Containers = []v1.Container{
-				{Ports: []v1.ContainerPort{
-					{HostPort: port, Name: "TCP"},
-				}},
-			}
-			_, err = clientset.CoreV1().Pods(schedulerName).Create(pod)
-			Expect(err).NotTo(HaveOccurred())
-
-			roomAddresses, err := room.GetAddresses(clientset)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(roomAddresses.Host).To(Equal(host))
-			Expect(roomAddresses.Ports).To(HaveLen(1))
-			Expect(roomAddresses.Ports[0]).To(Equal(
-				&models.RoomPort{
-					Name: "TCP",
-					Port: port,
-				}))
-		})
-
-		It("should return error if there is no node", func() {
-			name := "pong-free-for-all-0"
-			schedulerName := "pong-free-for-all"
-			nodeName := "node-name"
-			room := models.NewRoom(name, schedulerName)
-
-			pod := &v1.Pod{}
-			pod.SetName(name)
-			pod.Spec.NodeName = nodeName
-			_, err := clientset.CoreV1().Pods(schedulerName).Create(pod)
-			Expect(err).NotTo(HaveOccurred())
-
-			_, err = room.GetAddresses(clientset)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("nodes \"node-name\" not found"))
 		})
 	})
 

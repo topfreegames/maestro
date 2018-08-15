@@ -5155,7 +5155,6 @@ containers:
 
 	Describe("UpdateSchedulerMin", func() {
 		var configYaml1 models.ConfigYAML
-		var imageParams *models.SchedulerImageParams
 		var scheduler1 *models.Scheduler
 
 		BeforeEach(func() {
@@ -5166,10 +5165,6 @@ containers:
 			Expect(err).NotTo(HaveOccurred())
 
 			scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
-
-			imageParams = &models.SchedulerImageParams{
-				Image: "new-image",
-			}
 		})
 
 		It("should update min", func() {

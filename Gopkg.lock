@@ -223,6 +223,7 @@
     ".",
     "hcl/ast",
     "hcl/parser",
+    "hcl/printer",
     "hcl/scanner",
     "hcl/strconv",
     "hcl/token",
@@ -379,16 +380,10 @@
   version = "v1.0.2"
 
 [[projects]]
-  name = "github.com/pelletier/go-buffruneio"
-  packages = ["."]
-  revision = "c37440a7cf42ac63b919c752ca73a85067e05992"
-  version = "v0.2.0"
-
-[[projects]]
   name = "github.com/pelletier/go-toml"
   packages = ["."]
-  revision = "13d49d4606eb801b8f01ae542b4afc4c6ee3d84a"
-  version = "v0.5.0"
+  revision = "c01d1270ff3e442a8a57cddc1c92dc1138598194"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -465,8 +460,8 @@
 [[projects]]
   name = "github.com/spf13/viper"
   packages = ["."]
-  revision = "25b30aa063fc18e48662b86996252eabdcf2f0c7"
-  version = "v1.0.0"
+  revision = "907c19d40d9a6c9bb55f040ff4ae45271a4754b9"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/topfreegames/extensions"
@@ -819,6 +814,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d8de4cf3f93e849388a611ed779699d1581b643486f5649fd25e96f7f03ff993"
+  inputs-digest = "c44c45205ca3d0df3ba19dd766e189ffc08b7fc370fd4e4e0bd1dc812942e64f"
   solver-name = "gps-cdcl"
   solver-version = 1

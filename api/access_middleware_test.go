@@ -26,7 +26,6 @@ var _ = Describe("AccessMiddleware", func() {
 	var (
 		recorder   *httptest.ResponseRecorder
 		yamlString string
-		lockKeyNs  string
 	)
 
 	yamlString = `{
@@ -106,8 +105,6 @@ var _ = Describe("AccessMiddleware", func() {
 		})
 		_, err := clientset.CoreV1().Nodes().Create(node)
 		Expect(err).NotTo(HaveOccurred())
-
-		lockKeyNs = fmt.Sprintf("%s-scheduler-name", lockKey)
 
 		mockRedisClient.EXPECT().Ping().AnyTimes()
 	})

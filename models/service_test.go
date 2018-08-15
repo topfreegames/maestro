@@ -21,7 +21,6 @@ import (
 var _ = Describe("Service", func() {
 	var (
 		command         []string
-		env             []*models.EnvVar
 		game            string
 		image           string
 		name            string
@@ -38,16 +37,6 @@ var _ = Describe("Service", func() {
 			"./room-binary",
 			"-serverType",
 			"6a8e136b-2dc1-417e-bbe8-0f0a2d2df431",
-		}
-		env = []*models.EnvVar{
-			{
-				Name:  "EXAMPLE_ENV_VAR",
-				Value: "examplevalue",
-			},
-			{
-				Name:  "ANOTHER_ENV_VAR",
-				Value: "anothervalue",
-			},
 		}
 		game = "pong"
 		image = "pong/pong:v123"

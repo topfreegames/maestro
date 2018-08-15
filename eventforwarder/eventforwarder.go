@@ -11,7 +11,6 @@ import (
 	"context"
 	"fmt"
 	"plugin"
-	"runtime"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -33,39 +32,36 @@ type EventForwarder interface {
 // LoadEventForwardersFromConfig returns a slice of configured eventforwarders
 func LoadEventForwardersFromConfig(config *viper.Viper, logger logrus.FieldLogger) []*Info {
 	forwarders := []*Info{}
-	if runtime.GOOS == "linux" {
-		forwardersConfig := config.GetStringMap("forwarders")
-		if len(forwardersConfig) > 0 {
-			for plugin, v := range forwardersConfig {
-				logger.Infof("loading plugin: %s", plugin)
-				p, err := ex.LoadPlugin(plugin, "./bin")
-				if err != nil {
-					logger.Errorf("error loading plugin %s: %s", plugin, err.Error())
-					continue
-				}
-				forwarderConfigMap, ok := v.(map[string]interface{})
-				if ok {
-					for name := range forwarderConfigMap {
-						logger.Infof("loading forwarder %s.%s", plugin, name)
-						cfg := config.Sub(fmt.Sprintf("forwarders.%s.%s", plugin, name))
-						forwarder, err := LoadForwarder(p, cfg, logger)
-						if err != nil {
-							logger.Error(err)
-							continue
-						}
-						info := &Info{
-							Plugin:    plugin,
-							Name:      name,
-							Forwarder: forwarder,
-						}
-						forwarders = append(forwarders, info)
+	forwardersConfig := config.GetStringMap("forwarders")
+	if len(forwardersConfig) > 0 {
+		for plugin, v := range forwardersConfig {
+			logger.Infof("loading plugin: %s", plugin)
+			p, err := ex.LoadPlugin(plugin, "./bin")
+			if err != nil {
+				logger.Errorf("error loading plugin %s: %s", plugin, err.Error())
+				continue
+			}
+			forwarderConfigMap, ok := v.(map[string]interface{})
+			if ok {
+				for name := range forwarderConfigMap {
+					logger.Infof("loading forwarder %s.%s", plugin, name)
+					cfg := config.Sub(fmt.Sprintf("forwarders.%s.%s", plugin, name))
+					forwarder, err := LoadForwarder(p, cfg, logger)
+					if err != nil {
+						logger.Error(err)
+						continue
 					}
+					info := &Info{
+						Plugin:    plugin,
+						Name:      name,
+						Forwarder: forwarder,
+					}
+					forwarders = append(forwarders, info)
 				}
 			}
 		}
-	} else {
-		logger.Warn("not loading any forwarder plugin because not running on linux")
 	}
+
 	return forwarders
 }
 

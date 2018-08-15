@@ -6,3 +6,9 @@ const (
 	RouteRoomInfo    = "forwardRoomInfo"
 	RouteRoomEvent   = "forwardRoomEvent"
 )
+
+// EventTypes
+const (
+	PingTimeoutEvent     = "pingTimeout"
+	OccupiedTimeoutEvent = "occupiedTimeout"
+)
