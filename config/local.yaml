@@ -1,3 +1,8 @@
+forwarders:
+  grpc:
+    matchmaking: 
+      address: "localhost:10000"
+      timeout: 1s
 environment: "production"
 extensions:
   pg:

@@ -38,7 +38,6 @@ var _ = Describe("Service", func() {
 			"-serverType",
 			"6a8e136b-2dc1-417e-bbe8-0f0a2d2df431",
 		}
-
 		game = "pong"
 		image = "pong/pong:v123"
 		name = "pong-free-for-all-0"
