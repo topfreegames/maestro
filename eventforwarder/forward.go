@@ -56,9 +56,11 @@ func ForwardRoomEvent(
 	kubernetesClient kubernetes.Interface,
 	room *models.Room,
 	status string,
+	eventType string,
 	metadata map[string]interface{},
 	schedulerCache *models.SchedulerCache,
 	logger logrus.FieldLogger,
+	addrGetter models.AddrGetter,
 ) (res *Response, err error) {
 	var eventWasForwarded bool
 	startTime := time.Now()
@@ -102,10 +104,16 @@ func ForwardRoomEvent(
 			}).Debug("got enabled forwarders")
 
 			if len(enabledForwarders) > 0 {
-				infos, err := room.GetRoomInfos(db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler)
-				if err != nil {
-					l.WithError(err).Error("error getting room info from redis")
-					return nil, err
+				infos := map[string]interface{}{
+					"roomId": room.ID,
+					"game":   room.SchedulerName,
+				}
+				if eventType != PingTimeoutEvent {
+					infos, err = room.GetRoomInfos(db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler, addrGetter)
+					if err != nil {
+						l.WithError(err).Error("error getting room info from redis")
+						return nil, err
+					}
 				}
 
 				infos["metadata"] = metadata

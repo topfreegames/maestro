@@ -29,6 +29,7 @@ func TestEventforwarder(t *testing.T) {
 var (
 	hook               *test.Hook
 	logger             *logrus.Logger
+	roomAddrGetter     models.AddrGetter
 	mockCtrl           *gomock.Controller
 	mockDB             *pgmocks.MockDB
 	mockEventForwarder *eventforwardermock.MockEventForwarder
@@ -107,4 +108,5 @@ var _ = BeforeEach(func() {
 	_, err = clientset.CoreV1().Nodes().Create(node)
 
 	room = models.NewRoom(roomName, schedulerName)
+	roomAddrGetter = &models.RoomAddressesFromHostPort{}
 })

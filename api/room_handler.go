@@ -74,9 +74,11 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.DBClient.WithContext(r.Context()),
 		g.App.KubernetesClient,
 		room, fmt.Sprintf("ping%s", strings.Title(payload.Status)),
+		"",
 		payload.Metadata,
 		g.App.SchedulerCache,
 		g.App.Logger,
+		g.App.RoomAddrGetter,
 	)
 
 	Write(w, http.StatusOK, `{"success": true}`)
@@ -186,9 +188,11 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.KubernetesClient,
 		room,
 		"roomEvent",
+		"",
 		payload.Metadata,
 		g.App.SchedulerCache,
 		g.App.Logger,
+		g.App.RoomAddrGetter,
 	)
 
 	if err != nil {
@@ -261,10 +265,11 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.Forwarders,
 		g.App.DBClient.WithContext(r.Context()),
 		g.App.KubernetesClient,
-		room, payload.Status,
+		room, payload.Status, "",
 		payload.Metadata,
 		g.App.SchedulerCache,
 		g.App.Logger,
+		g.App.RoomAddrGetter,
 	)
 	Write(w, http.StatusOK, `{"success": true}`)
 	logger.Debug("Performed status update.")

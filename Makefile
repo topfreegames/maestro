@@ -25,7 +25,7 @@ setup-ci:
 	@go get github.com/onsi/ginkgo/ginkgo
 	@go get -u github.com/wadey/gocovmerge
 	@go get -u github.com/jteeuwen/go-bindata/...
-	@dep ensure
+	@dep ensure -v
 	@dep ensure -update github.com/topfreegames/extensions
 
 build:

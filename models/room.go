@@ -8,7 +8,6 @@
 package models
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -17,11 +16,8 @@ import (
 	"github.com/go-redis/redis"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis/interfaces"
-	maestroErrors "github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -283,6 +279,7 @@ func (r *Room) GetRoomInfos(
 	kubernetesClient kubernetes.Interface,
 	schedulerCache *SchedulerCache,
 	scheduler *Scheduler,
+	addrGetter AddrGetter,
 ) (map[string]interface{}, error) {
 	if scheduler == nil {
 		cachedScheduler, err := schedulerCache.LoadScheduler(db, r.SchedulerName, true)
@@ -291,7 +288,7 @@ func (r *Room) GetRoomInfos(
 		}
 		scheduler = cachedScheduler.Scheduler
 	}
-	address, err := r.GetAddresses(kubernetesClient)
+	address, err := addrGetter.Get(r, kubernetesClient)
 	if err != nil {
 		return nil, err
 	}
@@ -310,46 +307,6 @@ func (r *Room) GetRoomInfos(
 		"host":   address.Host,
 		"port":   selectedPort,
 	}, nil
-}
-
-// GetAddresses gets room public addresses
-func (r *Room) GetAddresses(kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
-	rAddresses := &RoomAddresses{}
-	roomPod, err := kubernetesClient.CoreV1().Pods(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	if len(roomPod.Spec.NodeName) == 0 {
-		return rAddresses, nil
-	}
-
-	node, err := kubernetesClient.CoreV1().Nodes().Get(roomPod.Spec.NodeName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	for _, address := range node.Status.Addresses {
-		if address.Type == v1.NodeExternalDNS {
-			rAddresses.Host = address.Address
-			break
-		}
-	}
-	if rAddresses.Host == "" {
-		return nil, maestroErrors.NewKubernetesError("no host found", errors.New("no node found to host room"))
-	}
-	for _, port := range roomPod.Spec.Containers[0].Ports {
-		//TODO: check if port.HostPort is available (another process not using it)
-		if port.HostPort != 0 {
-			rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
-				Name: port.Name,
-				Port: port.HostPort,
-			})
-		}
-	}
-	if len(rAddresses.Ports) == 0 {
-		return nil, maestroErrors.NewKubernetesError("no ports found", errors.New("no node port found to host room"))
-	}
-	return rAddresses, nil
 }
 
 // GetRoomsNoPingSince returns a list of rooms ids that have lastPing < since

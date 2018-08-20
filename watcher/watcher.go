@@ -52,6 +52,7 @@ type Watcher struct {
 	KubernetesClient          kubernetes.Interface
 	Logger                    logrus.FieldLogger
 	RoomManager               models.RoomManager
+	RoomAddrGetter            models.AddrGetter
 	MetricsReporter           *models.MixedMetricsReporter
 	RedisClient               *redis.Client
 	LockKey                   string
@@ -136,7 +137,7 @@ func (w *Watcher) configure() error {
 	w.configureLogger()
 	w.configureTimeout(configYaml)
 	w.configureAutoScale(configYaml)
-	w.configureRoomManager()
+	w.configureEnvironment()
 
 	w.MetricsReporter.AddReporter(&models.DogStatsdMetricsReporter{
 		Scheduler: w.SchedulerName,
@@ -173,10 +174,12 @@ func (w *Watcher) configureAutoScale(configYaml *models.ConfigYAML) {
 	w.ScaleDownInfo = models.NewScaleDownInfo(capacity, w.RedisClient.Client)
 }
 
-func (w *Watcher) configureRoomManager() {
+func (w *Watcher) configureEnvironment() {
+	w.RoomAddrGetter = &models.RoomAddressesFromHostPort{}
 	w.RoomManager = &models.GameRoom{}
 
 	if w.Config.GetString(EnvironmentConfig) == DevEnvironment {
+		w.RoomAddrGetter = &models.RoomAddressesFromNodePort{}
 		w.RoomManager = &models.GameRoomWithService{}
 		w.Logger.Info("development environment")
 		return
@@ -355,7 +358,7 @@ func (w *Watcher) RemoveDeadRooms() {
 				SchedulerName: w.SchedulerName,
 			}
 			_, err := eventforwarder.ForwardRoomEvent(context.Background(), w.EventForwarders, w.DB, w.KubernetesClient, room,
-				models.RoomTerminated, map[string]interface{}{}, nil, w.Logger)
+				models.RoomTerminated, eventforwarder.PingTimeoutEvent, map[string]interface{}{}, nil, w.Logger, w.RoomAddrGetter)
 			if err != nil {
 				logger.WithError(err).Error("event forwarder failed")
 			}
@@ -419,7 +422,7 @@ func (w *Watcher) RemoveDeadRooms() {
 					SchedulerName: w.SchedulerName,
 				}
 				eventforwarder.ForwardRoomEvent(context.Background(), w.EventForwarders, w.DB, w.KubernetesClient, room,
-					models.RoomTerminated, map[string]interface{}{}, nil, w.Logger)
+					models.RoomTerminated, eventforwarder.OccupiedTimeoutEvent, map[string]interface{}{}, nil, w.Logger, w.RoomAddrGetter)
 			}
 
 			scheduler := models.NewScheduler(w.SchedulerName, "", "")

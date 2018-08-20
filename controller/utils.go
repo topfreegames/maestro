@@ -620,7 +620,7 @@ func getSchedulersAndGlobalPortRanges(
 	for _, scheduler := range schedulers {
 		configYaml, err := models.NewConfigYAML(scheduler.YAML)
 		if err != nil {
-			log.WithError(err).Error("failed to unmarshal scheduler %s", scheduler.Name)
+			log.WithError(err).Errorf("failed to unmarshal scheduler %s", scheduler.Name)
 			return nil, err
 		}
 
