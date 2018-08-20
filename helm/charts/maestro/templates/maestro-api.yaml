@@ -98,9 +98,9 @@ spec:
             - name: MAESTRO_BASICAUTH_TRYOAUTHIFUNSET
               value: "true"
             - name: MAESTRO_JAEGER_DISABLED
-              value: {{ .Values.jaeger_disabled }}
+              value: "{{ .Values.jaeger_disabled }}"
             - name: MAESTRO_JAEGER_SAMPLINGPROBABILITY
-              value: {{ .Values.jaeger_samplingprobability }}
+              value: "{{ .Values.jaeger_samplingprobability }}"
             {{- if ne .Values.newrelic_app "" }}
             {{- if ne .Values.newrelic_key "" }}
             - name: MAESTRO_NEWRELIC_APP
