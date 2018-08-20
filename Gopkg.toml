@@ -64,3 +64,11 @@
 [[constraint]]
   branch = "master"
   name = "github.com/grpc-ecosystem/grpc-opentracing"
+
+[[override]]
+  name = "github.com/pelletier/go-toml"
+  version = "v1.2.0"
+
+[[constraint]]
+  name = "github.com/spf13/viper"
+  version = "v1.1.0"

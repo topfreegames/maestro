@@ -11,7 +11,7 @@ TEST_PACKAGES=`find . -type f -name "*.go" ! \( -path "*vendor*" \) | sed -En "s
 .PHONY: plugins
 
 setup: setup-hooks
-	@go get -u github.com/golang/dep...
+	@go get -u github.com/golang/dep/cmd/dep
 	@go get -u github.com/jteeuwen/go-bindata/...
 	@go get -u github.com/wadey/gocovmerge
 	@dep ensure
