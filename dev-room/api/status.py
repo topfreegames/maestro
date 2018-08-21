@@ -22,6 +22,7 @@ class Status (object):
             app.logger.debug("request to {}/{} with status={}".format(constant.MAESTRO_ADDR, constant.ROOM_STATUS_ENDPOINT, status))
             r = requests.put("{}/{}".format(constant.MAESTRO_ADDR, constant.ROOM_STATUS_ENDPOINT), json={"timestamp": int(time.time()), "status": status})
             if r.status_code == 200:
+                app.status = status
                 resp.status = falcon.HTTP_200
                 resp.body = r.text
 
