@@ -6175,6 +6175,17 @@ containers:
 			mockPipeline.EXPECT().Exec()
 			mockRedisClient.EXPECT().Del(key).Return(goredis.NewIntResult(0, nil))
 
+			err = mt.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
 			err = controller.SetRoomStatus(
 				logger,
 				roomManager,
@@ -6186,17 +6197,6 @@ containers:
 				config,
 				room,
 				schedulerCache,
-			)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = mt.MockSetScallingAmountWithRoomStatusCount(
-				mockRedisClient,
-				mockPipeline,
-				mockDb,
-				clientset,
-				&configYaml1,
-				expC,
-				yaml1,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
