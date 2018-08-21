@@ -53,6 +53,12 @@ func CreateScheduler(
 
 	configYAML.EnsureDefaultValues()
 
+	// min number of rooms cannot be greater than max
+	if configYAML.AutoScaling.Max > 0 && configYAML.AutoScaling.Min > configYAML.AutoScaling.Max {
+		logger.Error("autoscaling min is greater than max")
+		return fmt.Errorf("autoscaling min is greater than max")
+	}
+
 	logger.Info("unmarshalling config yaml")
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {
@@ -346,6 +352,21 @@ func ScaleUp(
 		return errors.New("there are pending pods, check if there are enough CPU and memory to allocate new rooms")
 	}
 
+	amount, err = SetScalingAmount(
+		logger,
+		mr,
+		db,
+		redisClient,
+		scheduler,
+		configYAML.AutoScaling.Max,
+		configYAML.AutoScaling.Min,
+		amount,
+		false,
+	)
+	if err != nil {
+		return err
+	}
+
 	pods := make([]*v1.Pod, amount)
 	var creationErr error
 	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
@@ -411,12 +432,32 @@ func ScaleDown(
 	roomSet := make(map[*goredis.StringCmd]bool)
 	readyKey := models.GetRoomStatusSetRedisKey(scheduler.Name, models.StatusReady)
 	pipe := redisClient.TxPipeline()
+	configYAML, err := models.NewConfigYAML(scheduler.YAML)
+	if err != nil {
+		return err
+	}
+
+	amount, err = SetScalingAmount(
+		logger,
+		mr,
+		db,
+		redisClient,
+		scheduler,
+		configYAML.AutoScaling.Max,
+		configYAML.AutoScaling.Min,
+		amount,
+		true,
+	)
+	if err != nil {
+		return err
+	}
+
 	for i := 0; i < amount; i++ {
 		// It is not guaranteed that maestro will delete 'amount' rooms
 		// SPop returns a random room name that can already selected
 		roomSet[pipe.SPop(readyKey)] = true
 	}
-	err := mr.WithSegment(models.SegmentPipeExec, func() error {
+	err = mr.WithSegment(models.SegmentPipeExec, func() error {
 		var err error
 		_, err = pipe.Exec()
 		return err
@@ -443,13 +484,8 @@ func ScaleDown(
 
 	var deletionErr error
 
-	configYaml, err := models.NewConfigYAML(scheduler.YAML)
-	if err != nil {
-		return err
-	}
-
 	for _, roomName := range idleRooms {
-		err := roomManager.Delete(logger, mr, clientset, redisClient, configYaml, roomName, reportersConstants.ReasonScaleDown)
+		err := roomManager.Delete(logger, mr, clientset, redisClient, configYAML, roomName, reportersConstants.ReasonScaleDown)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
 			deletionErr = err

@@ -16,7 +16,8 @@
   },
   "shutdownTimeout": 10,
   "autoscaling": {
-      "min": 4,
+      "min": 2,
+      "max": 10,
       "up": {
         "delta": 1,
         "trigger": {

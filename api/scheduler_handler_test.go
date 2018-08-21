@@ -336,6 +336,21 @@ var _ = Describe("Scheduler Handler", func() {
 						Return(goredis.NewStringResult(workerPortRange, nil)).
 						Times(100)
 
+					var configYaml1 models.ConfigYAML
+					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = MockSetScallingAmount(
+						mockRedisClient,
+						mockPipeline,
+						mockDb,
+						clientset,
+						&configYaml1,
+						0,
+						yamlString,
+					)
+					Expect(err).NotTo(HaveOccurred())
+
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(http.StatusCreated))
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -417,6 +432,24 @@ autoscaling:
 					MockUpdateSchedulerStatus(mockDb, nil, nil)
 					mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 						Return(goredis.NewStringResult(workerPortRange, nil))
+
+					var configYaml1 models.ConfigYAML
+					err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
+					Expect(err).NotTo(HaveOccurred())
+
+					for i := 0; i < 2; i++ {
+						configYaml1.Name = fmt.Sprintf("%s-%s-%d", strings.Split(configYaml1.Name, "-")[0], strings.Split(configYaml1.Name, "-")[1], i+1)
+						err = MockSetScallingAmount(
+							mockRedisClient,
+							mockPipeline,
+							mockDb,
+							clientset,
+							&configYaml1,
+							0,
+							yamlString,
+						)
+						Expect(err).NotTo(HaveOccurred())
+					}
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -557,6 +590,21 @@ autoscaling:
 					MockUpdateSchedulerStatus(mockDb, nil, nil)
 					mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 						Return(goredis.NewStringResult(workerPortRange, nil)).Times(100)
+
+					var configYaml1 models.ConfigYAML
+					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = MockSetScallingAmount(
+						mockRedisClient,
+						mockPipeline,
+						mockDb,
+						clientset,
+						&configYaml1,
+						0,
+						yamlString,
+					)
+					Expect(err).NotTo(HaveOccurred())
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(201))
@@ -803,6 +851,17 @@ autoscaling:
 
 					MockInsertScheduler(mockDb, nil)
 					MockUpdateSchedulerStatus(mockDb, nil, nil)
+
+					err = MockSetScallingAmount(
+						mockRedisClient,
+						mockPipeline,
+						mockDb,
+						clientset,
+						&configYaml1,
+						0,
+						yamlString1,
+					)
+					Expect(err).NotTo(HaveOccurred())
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -1291,6 +1350,17 @@ autoscaling:
 						scheduler.Game = "game"
 					})
 
+					err = MockSetScallingAmount(
+						mockRedisClient,
+						mockPipeline,
+						mockDb,
+						clientset,
+						&configYaml1,
+						0,
+						yamlString1,
+					)
+					Expect(err).NotTo(HaveOccurred())
+
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(http.StatusCreated))
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -1644,14 +1714,36 @@ portRange: null
 
 		Describe("POST /scheduler/{schedulerName}", func() {
 			var app *api.App
+			var configYaml1 models.ConfigYAML
 			schedulerName := "scheduler-name"
 			yamlStr := `
 name: scheduler-name
 game: game-name
+"autoscaling": {
+    "min": 0,
+    "up": {
+      "delta": 10,
+      "trigger": {
+        "usage": 70,
+        "time": 600
+      },
+      "cooldown": 300
+    },
+    "down": {
+      "delta": 2,
+      "trigger": {
+        "usage": 50,
+        "time": 900
+      },
+      "cooldown": 300
+    }
+  }
 `
 
 			BeforeEach(func() {
 				config, err := GetDefaultConfig()
+				Expect(err).NotTo(HaveOccurred())
+				err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
 				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
@@ -1686,6 +1778,17 @@ game: game-name
 				mockPipeline.EXPECT().
 					SAdd(models.GetRoomStatusSetRedisKey(schedulerName, "creating"), gomock.Any())
 				mockPipeline.EXPECT().Exec()
+
+				err = MockSetScallingAmount(
+					mockRedisClient,
+					mockPipeline,
+					mockDb,
+					clientset,
+					&configYaml1,
+					0,
+					yamlStr,
+				)
+				Expect(err).NotTo(HaveOccurred())
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -1752,6 +1855,17 @@ game: game-name
 				_, err = clientset.CoreV1().Pods(schedulerName).Create(pod)
 				Expect(err).NotTo(HaveOccurred())
 
+				err = MockSetScallingAmount(
+					mockRedisClient,
+					mockPipeline,
+					mockDb,
+					clientset,
+					&configYaml1,
+					0,
+					yamlStr,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -1784,6 +1898,17 @@ game: game-name
 				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(replicas)
 				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(replicas)
 				mockPipeline.EXPECT().Exec().Times(replicas)
+
+				err = MockSetScallingAmount(
+					mockRedisClient,
+					mockPipeline,
+					mockDb,
+					clientset,
+					&configYaml1,
+					0,
+					yamlStr,
+				)
+				Expect(err).NotTo(HaveOccurred())
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -1844,6 +1969,17 @@ game: game-name
 				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(replicasBefore)
 				mockPipeline.EXPECT().Exec().Times(replicasBefore)
 
+				err = MockSetScallingAmount(
+					mockRedisClient,
+					mockPipeline,
+					mockDb,
+					clientset,
+					&configYaml1,
+					0,
+					yamlStr,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -1893,6 +2029,17 @@ game: game-name
 				request, err = http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
+				err = MockSetScallingAmount(
+					mockRedisClient,
+					mockPipeline,
+					mockDb,
+					clientset,
+					&configYaml1,
+					replicasBefore,
+					yamlStr,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -1932,13 +2079,24 @@ game: game-name
 				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(replicasBefore)
 				mockPipeline.EXPECT().Exec().Times(replicasBefore)
 
+				err = MockSetScallingAmount(
+					mockRedisClient,
+					mockPipeline,
+					mockDb,
+					clientset,
+					&configYaml1,
+					0,
+					yamlStr,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
 
 				pods, err := clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(replicasBefore))
+				Expect(len(pods.Items)).To(Equal(replicasBefore))
 
 				//scale down
 				replicasAfter := 0
@@ -1979,6 +2137,17 @@ game: game-name
 
 				url = fmt.Sprintf("http://%s/scheduler/%s", app.Address, schedulerName)
 				request, err = http.NewRequest("POST", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = MockSetScallingAmount(
+					mockRedisClient,
+					mockPipeline,
+					mockDb,
+					clientset,
+					&configYaml1,
+					replicasBefore,
+					yamlStr,
+				)
 				Expect(err).NotTo(HaveOccurred())
 
 				recorder = httptest.NewRecorder()
@@ -2629,7 +2798,12 @@ game: game-name
   "name": "scheduler-name-2",
   "game": "game-name",
 	"autoscaling": {
-    "min": 1
+		"min": 1,
+		"up": {
+			"trigger": {
+				"limit": 10
+			}
+		}
 	},
 	"containers": [{
 		"name": "container1",
@@ -2904,6 +3078,17 @@ game: game-name
 				MockUpdateSchedulerStatus(mockDb, nil, nil)
 
 				mockRedisClient.EXPECT().Ping().AnyTimes()
+
+				err = MockSetScallingAmount(
+					mockRedisClient,
+					mockPipeline,
+					mockDb,
+					clientset,
+					&configYaml1,
+					0,
+					yamlString,
+				)
+				Expect(err).NotTo(HaveOccurred())
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusCreated))

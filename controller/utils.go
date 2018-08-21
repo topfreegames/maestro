@@ -694,3 +694,65 @@ func checkPortRange(
 
 	return true, nil
 }
+
+// SetScalingAmount check the max and min limits and adjust the amount to scale accordingly
+func SetScalingAmount(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	scheduler *models.Scheduler,
+	max, min, amount int,
+	isScaleDown bool,
+) (int, error) {
+	currentRooms, err := models.GetRoomsCountByStatus(redisClient, scheduler.Name)
+	if err != nil {
+		return 0, err
+	}
+
+	if isScaleDown == true {
+		return setScaleDownAmount(logger, amount, currentRooms.Available(), max, min), nil
+	}
+
+	return setScaleUpAmount(logger, amount, currentRooms.Available(), max, min), nil
+}
+
+func setScaleUpAmount(logger logrus.FieldLogger, amount, currentRooms, max, min int) int {
+	if max > 0 {
+		if currentRooms >= max {
+			return 0
+		}
+
+		if currentRooms+amount > max {
+			logger.Warnf("amount to scale is higher than max. Maestro will scale up to the max of %d", max)
+			return max - currentRooms
+		}
+	}
+
+	if currentRooms+amount < min {
+		logger.Warnf("amount to scale is lower than min. Maestro will scale up to the min of %d", min)
+		return min - currentRooms
+	}
+
+	return amount
+}
+
+func setScaleDownAmount(logger logrus.FieldLogger, amount, currentRooms, max, min int) int {
+	if min > 0 {
+		if currentRooms <= min {
+			return 0
+		}
+
+		if currentRooms-amount < min {
+			logger.Warnf("amount to scale is higher than min. Maestro will scale up to the min of %d", min)
+			return currentRooms - min
+		}
+	}
+
+	if max > 0 && currentRooms-amount > max {
+		logger.Warnf("amount to scale is higher than max. Maestro will scale up to the max of %d", max)
+		return currentRooms - max
+	}
+
+	return amount
+}
