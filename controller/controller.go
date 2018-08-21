@@ -574,7 +574,7 @@ func UpdateSchedulerConfig(
 		return errors.New("invalid parameter: maxsurge must be greater than 0")
 	}
 
-	if configYAML.AutoScaling.Min > configYAML.AutoScaling.Max {
+	if configYAML.AutoScaling.Max > 0 && configYAML.AutoScaling.Min > configYAML.AutoScaling.Max {
 		return errors.New("invalid parameter: autoscaling max must be greater than min")
 	}
 
