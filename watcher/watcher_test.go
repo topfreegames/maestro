@@ -1306,10 +1306,10 @@ var _ = Describe("Watcher", func() {
 			expC := &models.RoomsStatusCount{0, 7, 3, 0} // creating,occupied,ready,terminating
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(0), nil))
-			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(3), nil))
-			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(7), nil))
-			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(0), nil))
+			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
 			err := testing.MockSetScallingAmountWithRoomStatusCount(
