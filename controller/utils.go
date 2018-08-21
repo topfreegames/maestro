@@ -720,6 +720,7 @@ func SetScalingAmount(
 func setScaleUpAmount(logger logrus.FieldLogger, amount, currentRooms, max, min int) int {
 	if max > 0 {
 		if currentRooms >= max {
+			logger.Warn("scale already at max. Not scaling up any rooms")
 			return 0
 		}
 
@@ -740,17 +741,18 @@ func setScaleUpAmount(logger logrus.FieldLogger, amount, currentRooms, max, min 
 func setScaleDownAmount(logger logrus.FieldLogger, amount, currentRooms, max, min int) int {
 	if min > 0 {
 		if currentRooms <= min {
+			logger.Warn("scale already at min. Not scaling down any rooms")
 			return 0
 		}
 
 		if currentRooms-amount < min {
-			logger.Warnf("amount to scale is higher than min. Maestro will scale up to the min of %d", min)
+			logger.Warnf("amount to scale is lower than min. Maestro will scale down to the min of %d", min)
 			return currentRooms - min
 		}
 	}
 
 	if max > 0 && currentRooms-amount > max {
-		logger.Warnf("amount to scale is higher than max. Maestro will scale up to the max of %d", max)
+		logger.Warnf("amount to scale is lower than max. Maestro will scale down to the max of %d", max)
 		return currentRooms - max
 	}
 

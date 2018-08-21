@@ -574,6 +574,10 @@ func UpdateSchedulerConfig(
 		return errors.New("invalid parameter: maxsurge must be greater than 0")
 	}
 
+	if configYAML.AutoScaling.Min > configYAML.AutoScaling.Max {
+		return errors.New("invalid parameter: autoscaling max must be greater than min")
+	}
+
 	// Lock watchers so they don't scale up or down and the scheduler is not
 	//  overwritten with older version on database
 	var lock *redisLock.Lock

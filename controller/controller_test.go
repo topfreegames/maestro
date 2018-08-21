@@ -5628,6 +5628,32 @@ containers:
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		It("should not update if min is greater than max", func() {
+			newMin := 10
+			// Update scheduler
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlWithLimit)
+				})
+
+			err := controller.UpdateSchedulerMin(
+				context.Background(),
+				logger,
+				roomManager,
+				mr,
+				mockDb,
+				redisClient,
+				configYaml1.Name,
+				newMin,
+				&clock.Clock{},
+				config,
+				opManager,
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("invalid parameter: autoscaling max must be greater than min"))
+		})
+
 		It("should return error if DB fails", func() {
 			newMin := configYaml1.AutoScaling.Min
 			// Update scheduler
