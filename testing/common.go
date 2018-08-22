@@ -301,6 +301,9 @@ func MockCreateScheduler(
 	err := yaml.Unmarshal([]byte(yamlStr), &configYaml)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
+	err = MockSetScallingAmount(mockRedisClient, mockPipeline, mockDb, clientset, &configYaml, 0, yamlStr)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 	calls.Append(
 		MockInsertScheduler(mockDb, nil))
 
@@ -756,4 +759,56 @@ func MockGetRegisteredRooms(
 			goredis.NewStringSliceResult(result, nil))
 	}
 	mockPipeline.EXPECT().Exec().Return(nil, err)
+}
+
+// MockSetScallingAmount mocks the call to adjust the scaling amount based on min and max limits
+func MockSetScallingAmount(
+	mockRedis *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	mockDb *pgmocks.MockDB,
+	clientset kubernetes.Interface,
+	configYaml *models.ConfigYAML,
+	currrentRooms int,
+	yamlString string,
+) error {
+	mockRedis.EXPECT().TxPipeline().Return(mockPipeline)
+
+	creating := models.GetRoomStatusSetRedisKey(configYaml.Name, "creating")
+	ready := models.GetRoomStatusSetRedisKey(configYaml.Name, "ready")
+	occupied := models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied")
+	terminating := models.GetRoomStatusSetRedisKey(configYaml.Name, "terminating")
+
+	mockPipeline.EXPECT().SCard(creating).Return(goredis.NewIntResult(int64(0), nil))
+	mockPipeline.EXPECT().SCard(ready).Return(goredis.NewIntResult(int64(currrentRooms), nil))
+	mockPipeline.EXPECT().SCard(occupied).Return(goredis.NewIntResult(int64(0), nil))
+	mockPipeline.EXPECT().SCard(terminating).Return(goredis.NewIntResult(int64(0), nil))
+	mockPipeline.EXPECT().Exec()
+
+	return nil
+}
+
+// MockSetScallingAmountWithRoomStatusCount mocks the call to adjust the scaling amount based on min and max limits
+func MockSetScallingAmountWithRoomStatusCount(
+	mockRedis *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	mockDb *pgmocks.MockDB,
+	clientset kubernetes.Interface,
+	configYaml *models.ConfigYAML,
+	expC *models.RoomsStatusCount,
+	yamlString string,
+) error {
+	mockRedis.EXPECT().TxPipeline().Return(mockPipeline)
+
+	creating := models.GetRoomStatusSetRedisKey(configYaml.Name, "creating")
+	ready := models.GetRoomStatusSetRedisKey(configYaml.Name, "ready")
+	occupied := models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied")
+	terminating := models.GetRoomStatusSetRedisKey(configYaml.Name, "terminating")
+
+	mockPipeline.EXPECT().SCard(creating).Return(goredis.NewIntResult(int64(expC.Creating), nil))
+	mockPipeline.EXPECT().SCard(ready).Return(goredis.NewIntResult(int64(expC.Ready), nil))
+	mockPipeline.EXPECT().SCard(occupied).Return(goredis.NewIntResult(int64(expC.Occupied), nil))
+	mockPipeline.EXPECT().SCard(terminating).Return(goredis.NewIntResult(int64(expC.Terminating), nil))
+	mockPipeline.EXPECT().Exec()
+
+	return nil
 }

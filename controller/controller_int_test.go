@@ -72,7 +72,10 @@ var _ = Describe("Controller", func() {
 			mockRedisClient.EXPECT().
 				Get(models.GlobalPortsPoolKey).Return(goredis.NewStringResult("40000-60000", nil)).Times(2)
 
-			err := controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err := mtesting.MockSetScallingAmount(mockRedisClient, mockPipeline, mockDb, clientset, &configYaml1, 0, jsonStr)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error updating status on schedulers: error updating state"))
 

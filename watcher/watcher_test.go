@@ -516,6 +516,17 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
+			err := testing.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
 			// check scale infos and if should scale
 			buildRedisScaleInfo(90, 50)
 
@@ -565,6 +576,17 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
 			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
+
+			err := testing.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
 
 			// ScaleUp
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
@@ -798,6 +820,17 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
 			mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
 
+			err = testing.MockSetScallingAmount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC.Ready,
+				yamlWithUpLimit,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
 			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -836,6 +869,17 @@ var _ = Describe("Watcher", func() {
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
 				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
 			}, mockDb, nil, nil)
+
+			err = testing.MockSetScallingAmount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC.Ready+scaleUpAmount,
+				yamlWithUpLimit,
+			)
+			Expect(err).NotTo(HaveOccurred())
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is overdimensioned, should scale down"))
@@ -1046,6 +1090,17 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
+			err := testing.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
 			// check scale infos and if should scale
 			buildRedisScaleInfo(90, 50)
 
@@ -1126,6 +1181,17 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
+			err := testing.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
 			// check scale infos and if should scale
 			buildRedisScaleInfo(50, 90)
 
@@ -1189,6 +1255,17 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
+			err := testing.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
 			// ScaleUp
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
@@ -1227,12 +1304,24 @@ var _ = Describe("Watcher", func() {
 			occupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
 			terminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
 			expC := &models.RoomsStatusCount{0, 7, 3, 0} // creating,occupied,ready,terminating
+
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
 			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil))
 			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
 			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
+
+			err := testing.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
 
 			// ScaleUp
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
