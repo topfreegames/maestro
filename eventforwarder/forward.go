@@ -106,7 +106,7 @@ func ForwardRoomEvent(
 			if len(enabledForwarders) > 0 {
 				infos := map[string]interface{}{
 					"roomId": room.ID,
-					"game":   room.SchedulerName,
+					"game":   cachedScheduler.Scheduler.Game,
 				}
 				if eventType != PingTimeoutEvent {
 					infos, err = room.GetRoomInfos(db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler, addrGetter)
@@ -114,6 +114,9 @@ func ForwardRoomEvent(
 						l.WithError(err).Error("error getting room info from redis")
 						return nil, err
 					}
+				} else { // fill host and port with zero values when pingTimeout event so it won't break the GRPCForwarder
+					infos["host"] = ""
+					infos["port"] = int32(0)
 				}
 
 				infos["metadata"] = metadata

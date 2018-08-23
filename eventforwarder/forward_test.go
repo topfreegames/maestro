@@ -60,6 +60,50 @@ var _ = Describe("Forward", func() {
 			Expect(response.Message).To(Equal("success"))
 		})
 
+		It("should forward pingTimeout room event", func() {
+			ctx := context.Background()
+			mockEventForwarder.EXPECT().Forward(
+				ctx,
+				models.StatusReady,
+				map[string]interface{}{
+					"host":     "",
+					"port":     int32(0),
+					"roomId":   roomName,
+					"game":     gameName,
+					"metadata": metadata,
+				},
+				metadata,
+			).Return(int32(200), "success", nil)
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
+				reportersConstants.TagGame:      gameName,
+				reportersConstants.TagScheduler: schedulerName,
+				reportersConstants.TagHostname:  Hostname(),
+				reportersConstants.TagRoute:     RouteRoomEvent,
+				reportersConstants.TagStatus:    "success",
+			})
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
+
+			response, err := ForwardRoomEvent(
+				ctx,
+				mockForwarders,
+				mockDB,
+				clientset,
+				room,
+				models.StatusReady,
+				PingTimeoutEvent,
+				nil,
+				cache,
+				logger,
+				roomAddrGetter,
+			)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response.Code).To(Equal(200))
+			Expect(response.Message).To(Equal("success"))
+		})
+
 		It("should report fail if event forward fails", func() {
 			errMsg := "event forward failed"
 			ctx := context.Background()
