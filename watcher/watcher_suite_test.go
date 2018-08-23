@@ -50,7 +50,7 @@ func TestWatcher(t *testing.T) {
 
 var _ = BeforeEach(func() {
 	var err error
-	logger, hook = test.NewNullLogger()
+	logger, hook = test.NewTestLogger()
 	logger.Level = logrus.DebugLevel
 
 	fakeReporter := mtesting.FakeMetricsReporter{}

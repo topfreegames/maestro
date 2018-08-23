@@ -49,7 +49,10 @@ func NewScaleDownInfo(size int, redis redis.RedisClient) *ScaleInfo {
 }
 
 // Key returns the redis key from scheduler name
-func (s *ScaleInfo) Key(schedulerName string) string {
+func (s *ScaleInfo) Key(schedulerName, metric string) string {
+	if metric != "legacy" {
+		return fmt.Sprintf("maestro:scale:%s:%s:%s", metric, s.scaleType, schedulerName)
+	}
 	return fmt.Sprintf("maestro:scale:%s:%s", s.scaleType, schedulerName)
 }
 
@@ -63,7 +66,7 @@ func (s *ScaleInfo) Size() int {
 // If this list of usages has a % of points above threshold,
 // returns true.
 func (s *ScaleInfo) SendUsageAndReturnStatus(
-	schedulerName string,
+	schedulerName, metric string,
 	size, point, total,
 	threshold int,
 	usage float32,
@@ -73,13 +76,15 @@ func (s *ScaleInfo) SendUsageAndReturnStatus(
 		s.size = size64
 	}
 
-	key := s.Key(schedulerName)
+	key := s.Key(schedulerName, metric)
 	pipe := s.redis.TxPipeline()
 
 	currentUsage := float32(0)
 	if total > 0 {
 		currentUsage = float32(point) / float32(total)
 	}
+
+	fmt.Printf("\nkey: %v |total: %v | point: %v | currentUsage: %v\n", key, total, point, currentUsage)
 
 	s.pushToCircularList(pipe, key, currentUsage)
 	usagesRedis := s.returnCircularList(pipe, key)
@@ -105,11 +110,13 @@ func (s *ScaleInfo) returnCircularList(pipe goredis.Pipeliner, key string) *gore
 
 func (s *ScaleInfo) isAboveThreshold(usages []float32, usage float32, threshold int) bool {
 	pointsAboveUsage := 0
+	fmt.Printf("\nusages: %v\n", usages)
 	for _, usageFromArr := range usages {
 		if usageFromArr > usage {
 			pointsAboveUsage = pointsAboveUsage + 1
 		}
 	}
+	fmt.Printf("\npointsAboveUsage: %v | thresholdPoints: %v | usage: %v\n", pointsAboveUsage, threshold*int(s.size)/100, usage)
 	return pointsAboveUsage*100 > threshold*int(s.size)
 }
 

@@ -60,6 +60,7 @@ var _ = Describe("ScaleInfo", func() {
 
 		isAboveThreshold, err := scaleInfo.SendUsageAndReturnStatus(
 			schedulerName,
+			"legacy",
 			size, currUsage.AbsUsage, currUsage.AbsTotal,
 			threshold,
 			usage,
@@ -80,6 +81,7 @@ var _ = Describe("ScaleInfo", func() {
 		)
 		isAboveThreshold, err := scaleInfo.SendUsageAndReturnStatus(
 			schedulerName,
+			"legacy",
 			size, currUsage.AbsUsage, currUsage.AbsTotal,
 			threshold,
 			usage,

@@ -455,11 +455,17 @@ func ScaleDown(
 	for i := 0; i < amount; i++ {
 		// It is not guaranteed that maestro will delete 'amount' rooms
 		// SPop returns a random room name that can already selected
+		fmt.Printf("\nreadyKey: %v\n", readyKey)
+		popCmd := redisClient.SPopN(readyKey, 1)
+		key, erro := popCmd.Result()
+		fmt.Printf("\npopCmd: %v\n", popCmd)
+		fmt.Printf("\nredisKeyPopped: %v %v\n", key, erro)
 		roomSet[pipe.SPop(readyKey)] = true
 	}
 	err = mr.WithSegment(models.SegmentPipeExec, func() error {
 		var err error
 		_, err = pipe.Exec()
+		fmt.Printf("\nSPop: %v\n", err)
 		return err
 	})
 	if err != nil {

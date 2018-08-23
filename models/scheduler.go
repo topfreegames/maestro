@@ -68,11 +68,23 @@ type ScalingPolicyTrigger struct {
 	Limit     int `yaml:"limit" json:"limit" valid:"int64"`
 }
 
+// ScalingPolicyMetricsTrigger has the configuration for a scaling policy trigger
+// that uses generic metrics like room usage, cluster cpu or mem.
+// This will trigger a scale up or scale down.
+type ScalingPolicyMetricsTrigger struct {
+	Metric    string `yaml:"metric" json:"metric" valid:"required"`
+	Time      int    `yaml:"time" json:"time" valid:"int64"`
+	Usage     int    `yaml:"usage" json:"usage" valid:"int64"`
+	Threshold int    `yaml:"threshold" json:"threshold" valid:"int64"`
+	Limit     int    `yaml:"limit" json:"limit" valid:"int64"`
+}
+
 // ScalingPolicy has the configuration for a scaling policy
 type ScalingPolicy struct {
-	Cooldown int                   `yaml:"cooldown" json:"cooldown" valid:"int64"`
-	Delta    int                   `yaml:"delta" json:"delta" valid:"int64"`
-	Trigger  *ScalingPolicyTrigger `yaml:"trigger" json:"trigger"`
+	Cooldown       int                            `yaml:"cooldown" json:"cooldown" valid:"int64"`
+	Delta          int                            `yaml:"delta" json:"delta" valid:"int64"`
+	Trigger        *ScalingPolicyTrigger          `yaml:"trigger" json:"trigger"`
+	MetricsTrigger []*ScalingPolicyMetricsTrigger `yaml:"metricsTrigger" json:"metricsTrigger"`
 }
 
 // AutoScaling has the configuration for the GRU's auto scaling
