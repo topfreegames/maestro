@@ -1,4 +1,6 @@
 # External deps
+import sys
+import signal
 import time
 import requests
 import falcon
@@ -14,6 +16,15 @@ fileConfig('logging_config.ini')
 logger = logging.getLogger()
 
 status = "ready"
+
+def sigterm_handler(signal, frame):
+    global status
+    print('Terminating room')
+    status = "terminating"
+
+signal.signal(signal.SIGTERM, sigterm_handler)
+signal.signal(signal.SIGINT, sigterm_handler)
+
 
 def ping():
     while True:
@@ -37,6 +48,7 @@ while True:
     except Exception as ex:
         print(str(ex))
         pass
+        break
     time.sleep(constant.POLLING_INTERVAL_IN_SECONDS)
 
 threading.Thread(target=ping).start()
