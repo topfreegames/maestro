@@ -24,12 +24,12 @@ import (
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	yaml "gopkg.in/yaml.v2"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/models"
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -455,17 +455,11 @@ func ScaleDown(
 	for i := 0; i < amount; i++ {
 		// It is not guaranteed that maestro will delete 'amount' rooms
 		// SPop returns a random room name that can already selected
-		fmt.Printf("\nreadyKey: %v\n", readyKey)
-		popCmd := redisClient.SPopN(readyKey, 1)
-		key, erro := popCmd.Result()
-		fmt.Printf("\npopCmd: %v\n", popCmd)
-		fmt.Printf("\nredisKeyPopped: %v %v\n", key, erro)
 		roomSet[pipe.SPop(readyKey)] = true
 	}
 	err = mr.WithSegment(models.SegmentPipeExec, func() error {
 		var err error
 		_, err = pipe.Exec()
-		fmt.Printf("\nSPop: %v\n", err)
 		return err
 	})
 	if err != nil {

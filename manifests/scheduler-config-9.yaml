@@ -22,6 +22,12 @@ env:
     secretKeyRef:
       name: ""
       key: ""
+- name: PING_INTERVAL_IN_SECONDS
+  value: "10"
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
 autoscaling:
   min: 2
   max: 10

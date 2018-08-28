@@ -242,38 +242,24 @@ func reportStatus(game, scheduler, status, gauge string) error {
 // ClearAll removes all room keys from redis
 func (r *Room) ClearAll(redisClient interfaces.RedisClient, mr *MixedMetricsReporter) error {
 	pipe := redisClient.TxPipeline()
-	intCmd := r.clearAllWithPipe(pipe)
-
-	for range []int{0, 0} {
-		err := mr.WithSegment(SegmentPipeExec, func() error {
-			var err error
-			_, err = pipe.Exec()
-			fmt.Printf("intCmdErr: %v", intCmd.Err())
-			return err
-		})
-		fmt.Printf("\nAll Clear: %v\n", err)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	r.clearAllWithPipe(pipe)
+	err := mr.WithSegment(SegmentPipeExec, func() error {
+		_, err := pipe.Exec()
+		return err
+	})
+	return err
 }
 
 func (r *Room) clearAllWithPipe(
 	pipe redis.Pipeliner,
-) (intCmd *redis.IntCmd) {
+) {
 	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
-	fmt.Printf("\nroomRedis: %v\n", r.GetRoomRedisKey())
 	for _, st := range allStatus {
-		fmt.Printf("\nGetRoomStatusSetRedisKey: %v\n", GetRoomStatusSetRedisKey(r.SchedulerName, st))
-		println(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
-		intCmd = pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
+		pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
 		pipe.ZRem(GetLastStatusRedisKey(r.SchedulerName, st), r.ID)
 	}
 	pipe.ZRem(GetRoomPingRedisKey(r.SchedulerName), r.ID)
 	pipe.Del(r.GetRoomRedisKey())
-
-	return intCmd
 }
 
 // GetRoomPingRedisKey gets the key for the sortedset that keeps the rooms ping timestamp in redis

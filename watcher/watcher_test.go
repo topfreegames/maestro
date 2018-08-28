@@ -53,7 +53,7 @@ limits:
   cpu: "2"
 shutdownTimeout: 20
 autoscaling:
-  min: 3
+  min: 2
   up:
     delta: 2
     trigger:
@@ -185,6 +185,142 @@ forwarders:
   plugin:
     name:
       enabled: true
+`
+	yamlWithLegacyDownAndMetricsUpTrigger = `
+name: controller-name
+game: controller
+image: maestro-dev-room:latest
+imagePullPolicy: Never
+occupiedTimeout: 3600
+ports:
+- containerPort: 8080
+  protocol: TCP
+  name: tcp
+shutdownTimeout: 10
+env:
+- name: MAESTRO_HOST_PORT
+  value: 192.168.64.1:8080
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+- name: POLLING_INTERVAL_IN_SECONDS
+  value: "20"
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+autoscaling:
+  min: 2
+  max: 10
+  up:
+    delta: 1
+    trigger:
+      usage: 70
+      time: 10
+    metricsTrigger:
+    - metric: room
+      usage: 50
+      time: 10
+    cooldown: 30
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 10
+    cooldown: 60
+`
+	yamlWithLegacyUpAndMetricsDownTrigger = `
+name: controller-name
+game: controller
+image: maestro-dev-room:latest
+imagePullPolicy: Never
+occupiedTimeout: 3600
+ports:
+- containerPort: 8080
+  protocol: TCP
+  name: tcp
+shutdownTimeout: 10
+env:
+- name: MAESTRO_HOST_PORT
+  value: 192.168.64.1:8080
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+- name: POLLING_INTERVAL_IN_SECONDS
+  value: "20"
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+autoscaling:
+  min: 2
+  max: 10
+  up:
+    delta: 1
+    trigger:
+      usage: 70
+      time: 10
+    metricsTrigger:
+    - metric: room
+      usage: 50
+      time: 10
+    cooldown: 30
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 10
+    cooldown: 60
+`
+	yamlWithRoomMetricsTrigger = `
+name: controller-name
+game: controller
+image: controller/controller:v123
+imagePullPolicy: Never
+occupiedTimeout: 3600
+ports:
+- containerPort: 8080
+  protocol: TCP
+  name: tcp
+shutdownTimeout: 10
+env:
+- name: MAESTRO_HOST_PORT
+  value: 192.168.64.1:8080
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+- name: POLLING_INTERVAL_IN_SECONDS
+  value: "20"
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+- name: PING_INTERVAL_IN_SECONDS
+  value: "10"
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+autoscaling:
+  min: 2
+  max: 10
+  up:
+    metricsTrigger:
+    - metric: room
+      threshold: 20
+      usage: 50
+      time: 100
+    cooldown: 30
+  down:
+    metricsTrigger:
+    - metric: room
+      threshold: 50
+      usage: 20
+      time: 100
+    cooldown: 60
 `
 	occupiedTimeout = 300
 )
@@ -1288,6 +1424,12 @@ var _ = Describe("Watcher", func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
+			// mock send usage
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
+			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any()).Times(2)
+			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+			mockPipeline.EXPECT().Exec().Times(2)
+
 			// ScaleUp
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
@@ -1345,6 +1487,12 @@ var _ = Describe("Watcher", func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
+			// mock send usage
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
+			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any()).Times(2)
+			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+			mockPipeline.EXPECT().Exec().Times(2)
+
 			// ScaleUp
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
@@ -1368,39 +1516,6 @@ var _ = Describe("Watcher", func() {
 			fmt.Sprintf("%v \n", hook.Entries)
 			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
 		})
-
-		// FIt("should scale up if min is 0 (scheduler is disabled)", func() {
-		// 	lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
-		// 	lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Cooldown+1) * time.Second)
-		// 	mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
-		// 		scheduler.State = models.StateSubdimensioned
-		// 		scheduler.StateLastChangedAt = lastChangedAt.Unix()
-		// 		scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
-		// 		scheduler.YAML = yamlWithMinZero
-		// 	})
-		// 	creating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
-		// 	ready := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
-		// 	occupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
-		// 	terminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
-		// 	expC := &models.RoomsStatusCount{0, 0, 0, 0} // creating,occupied,ready,terminating
-		// 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-		// 	mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
-		// 	mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil))
-		// 	mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
-		// 	mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
-		// 	mockPipeline.EXPECT().Exec()
-
-		// 	// check scale infos and if should scale
-		// 	buildRedisScaleInfo(0, 0)
-
-		// 	// UpdateScheduler
-		// 	testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
-		// 		Expect(scheduler.State).To(Equal("in-sync"))
-		// 	}, mockDb, nil, nil)
-
-		// 	Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-		// 	Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
-		// })
 	})
 
 	Describe("RemoveDeadRooms", func() {

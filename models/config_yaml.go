@@ -181,7 +181,6 @@ func (c *ConfigYAML) EnsureDefaultValues() {
 
 	if len(c.AutoScaling.Up.MetricsTrigger) > 0 {
 		for _, trigger := range c.AutoScaling.Up.MetricsTrigger {
-			fmt.Printf("\ntrigger: %v\n", trigger)
 			if trigger.Limit == 0 {
 				trigger.Limit = 90
 			}

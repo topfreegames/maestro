@@ -524,9 +524,6 @@ func (w *Watcher) AutoScale() {
 		return
 	}
 
-	fmt.Printf("\ndelta: %v | shouldScaleUp: %v | shouldScaleDown: %v | changedState: %v | state: %v\n",
-		delta, shouldScaleUp, shouldScaleDown, changedState, scheduler.State)
-
 	if shouldScaleUp {
 		l.Info("scheduler is subdimensioned, scaling up")
 		timeoutSec := w.Config.GetInt("scaleUpTimeoutSeconds")
@@ -592,9 +589,10 @@ func (w *Watcher) checkState(
 	scheduler *models.Scheduler,
 	nowTimestamp int64,
 ) (int, bool, bool, bool, error) { //delta, shouldScaleUp, shouldScaleDown, changedState
-	var shouldScaleUp, shouldScaleDown, changedState, inSync bool
+	var shouldScaleUp, shouldScaleDown, changedState bool
 	var delta int
 	var err error
+	inSync := true
 
 	// Creating or Terminating state
 	if scheduler.State == models.StateCreating || scheduler.State == models.StateTerminating {
@@ -610,7 +608,7 @@ func (w *Watcher) checkState(
 	}
 
 	// Up
-	if roomCount.Total() < autoScalingInfo.Max {
+	if (roomCount.Total() < autoScalingInfo.Max && autoScalingInfo.Max > 0) || autoScalingInfo.Max == 0 {
 		if len(autoScalingInfo.Up.MetricsTrigger) > 0 {
 			delta, shouldScaleUp, changedState, inSync, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Up, w.ScaleUpInfo, roomCount, scheduler, nowTimestamp)
 		} else {
@@ -624,6 +622,20 @@ func (w *Watcher) checkState(
 			delta, shouldScaleDown, changedState, inSync, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Down, w.ScaleDownInfo, roomCount, scheduler, nowTimestamp)
 		} else {
 			delta, shouldScaleDown, changedState, inSync, err = w.checkLegacyTrigger(autoScalingInfo, autoScalingInfo.Down, w.ScaleDownInfo, roomCount, scheduler, nowTimestamp)
+		}
+	} else if inSync == true { // always send current usage
+		if len(autoScalingInfo.Down.MetricsTrigger) > 0 {
+			for _, trigger := range autoScalingInfo.Down.MetricsTrigger {
+				w.ScaleDownInfo.SendUsage(
+					w.SchedulerName, trigger.Metric,
+					roomCount.Ready, roomCount.Total(),
+				)
+			}
+		} else {
+			w.ScaleDownInfo.SendUsage(
+				w.SchedulerName, "legacy",
+				roomCount.Ready, roomCount.Total(),
+			)
 		}
 	}
 
@@ -651,22 +663,12 @@ func (w *Watcher) checkMetricsTrigger(
 	inSync := true
 	delta := 0
 
-	fmt.Printf("\nState: %v\n", scheduler.State)
-
-	if isDown {
-		fmt.Printf("\nMetrics Trigger (Down)\n")
-	} else {
-		fmt.Printf("\nMetrics Trigger (Up)\n")
-	}
-
 	for _, trigger := range scalingPolicy.MetricsTrigger {
 		threshold := trigger.Threshold
 		usage := float32(trigger.Usage) / 100
 		capacity := trigger.Time / w.AutoScalingPeriod
 		point := roomCount.Occupied
 		unbalancedState = models.StateSubdimensioned
-
-		fmt.Printf("\ntrigger: %v | threshold: %v | time: %v | watcherPeriod: %v | capacity: %v | limit: %v\n", trigger.Metric, threshold, trigger.Time, w.AutoScalingPeriod, capacity, trigger.Limit)
 
 		if isDown {
 			usage = 1 - usage
@@ -686,6 +688,10 @@ func (w *Watcher) checkMetricsTrigger(
 			if err != nil {
 				return 0, false, false, true, err
 			}
+			scaleInfo.SendUsage(
+				w.SchedulerName,
+				trigger.Metric, point, roomCount.Total(),
+			)
 			return delta, shouldScaleUpOrDown, changedState, inSync, nil
 		}
 
@@ -707,8 +713,6 @@ func (w *Watcher) checkMetricsTrigger(
 				shouldScaleUpOrDown = true
 			}
 		}
-
-		fmt.Printf("\nisAboveThreshold: %v\n", isAboveThreshold)
 
 		if shouldScaleUpOrDown == true {
 			delta, err = dynamicDelta(trigger, roomCount)
@@ -749,19 +753,18 @@ func (w *Watcher) checkLegacyTrigger(
 	point := roomCount.Occupied
 	unbalancedState := models.StateSubdimensioned
 
-	fmt.Printf("\nState: %v\n", scheduler.State)
-
 	if isDown {
-		fmt.Printf("\nLegacy Trigger (Down)\n")
 		usage = 1 - usage
 		point = roomCount.Ready
 		unbalancedState = models.StateOverdimensioned
-	} else {
-		fmt.Printf("\nLegacy Trigger (Up)\n")
 	}
 
 	// If usage is above limit, scale up.
 	if 100*roomCount.Occupied >= roomCount.Total()*autoScalingInfo.Up.Trigger.Limit {
+		scaleInfo.SendUsage(
+			w.SchedulerName,
+			"legacy", point, roomCount.Total(),
+		)
 		return autoScalingInfo.Up.Delta, true, false, inSync, nil
 	}
 

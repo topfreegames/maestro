@@ -84,8 +84,6 @@ func (s *ScaleInfo) SendUsageAndReturnStatus(
 		currentUsage = float32(point) / float32(total)
 	}
 
-	fmt.Printf("\nkey: %v |total: %v | point: %v | currentUsage: %v\n", key, total, point, currentUsage)
-
 	s.pushToCircularList(pipe, key, currentUsage)
 	usagesRedis := s.returnCircularList(pipe, key)
 
@@ -99,6 +97,25 @@ func (s *ScaleInfo) SendUsageAndReturnStatus(
 	return s.isAboveThreshold(usages, usage, threshold), nil
 }
 
+// SendUsage saves a new usage percentage on Redis
+func (s *ScaleInfo) SendUsage(
+	schedulerName, metric string,
+	point, total int,
+) error {
+	key := s.Key(schedulerName, metric)
+	pipe := s.redis.TxPipeline()
+
+	currentUsage := float32(0)
+	if total > 0 {
+		currentUsage = float32(point) / float32(total)
+	}
+
+	s.pushToCircularList(pipe, key, currentUsage)
+	_, err := pipe.Exec()
+
+	return err
+}
+
 func (s *ScaleInfo) pushToCircularList(pipe goredis.Pipeliner, key string, usage float32) {
 	pipe.LPush(key, usage)
 	pipe.LTrim(key, int64(0), s.size)
@@ -110,13 +127,11 @@ func (s *ScaleInfo) returnCircularList(pipe goredis.Pipeliner, key string) *gore
 
 func (s *ScaleInfo) isAboveThreshold(usages []float32, usage float32, threshold int) bool {
 	pointsAboveUsage := 0
-	fmt.Printf("\nusages: %v\n", usages)
 	for _, usageFromArr := range usages {
 		if usageFromArr > usage {
 			pointsAboveUsage = pointsAboveUsage + 1
 		}
 	}
-	fmt.Printf("\npointsAboveUsage: %v | thresholdPoints: %v | usage: %v\n", pointsAboveUsage, threshold*int(s.size)/100, usage)
 	return pointsAboveUsage*100 > threshold*int(s.size)
 }
 
