@@ -38,55 +38,120 @@ var _ = Describe("ScaleInfo", func() {
 		size, currentAbsoluteUsage, currentAbsoluteTotal int,
 		prevUsagesOnRedis []string,
 		key string,
+		sendAndReturn bool,
 	) {
 		size64 := int64(size)
 		currentUsage := float32(currentAbsoluteUsage) / float32(currentAbsoluteTotal)
-		currentUsageStr := fmt.Sprint(currentUsage)
 
 		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 		mockPipeline.EXPECT().LPush(key, currentUsage)
 		mockPipeline.EXPECT().LTrim(key, zero64, size64)
-		mockPipeline.EXPECT().LRange(key, zero64, size64).Return(goredis.NewStringSliceResult(
-			append([]string{currentUsageStr}, prevUsagesOnRedis...), nil,
-		))
+
+		if sendAndReturn {
+			currentUsageStr := fmt.Sprint(currentUsage)
+			mockPipeline.EXPECT().LRange(key, zero64, size64).Return(goredis.NewStringSliceResult(
+				append([]string{currentUsageStr}, prevUsagesOnRedis...), nil,
+			))
+		}
 		mockPipeline.EXPECT().Exec()
 	}
 
-	It("should add point into redis and return false", func() {
-		currUsage := UsageTest{5, 10}
+	Describe("SendUsageAndReturnStatus", func() {
+		It("should add point into redis and return false", func() {
+			currUsage := UsageTest{5, 10}
 
-		scaleInfo := NewScaleUpInfo(size, mockRedisClient)
-		pushToList(size, currUsage.AbsUsage, currUsage.AbsTotal, nil, upKey)
+			scaleInfo := NewScaleUpInfo(size, mockRedisClient)
+			pushToList(size, currUsage.AbsUsage, currUsage.AbsTotal, nil, upKey, true)
 
-		isAboveThreshold, err := scaleInfo.SendUsageAndReturnStatus(
-			schedulerName,
-			"legacy",
-			size, currUsage.AbsUsage, currUsage.AbsTotal,
-			threshold,
-			usage,
-		)
+			isAboveThreshold, err := scaleInfo.SendUsageAndReturnStatus(
+				schedulerName,
+				"legacy",
+				size, currUsage.AbsUsage, currUsage.AbsTotal,
+				threshold,
+				usage,
+			)
 
-		Expect(err).NotTo(HaveOccurred())
-		Expect(isAboveThreshold).To(BeFalse())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(isAboveThreshold).To(BeFalse())
+		})
+
+		It("should add points into redis and return true", func() {
+			currUsage := UsageTest{9, 10}
+			size := 4
+			scaleInfo := NewScaleDownInfo(size, mockRedisClient)
+
+			pushToList(
+				size, currUsage.AbsUsage, currUsage.AbsTotal,
+				[]string{"0.5", "0.9", "0.9"}, downKey, true,
+			)
+			isAboveThreshold, err := scaleInfo.SendUsageAndReturnStatus(
+				schedulerName,
+				"legacy",
+				size, currUsage.AbsUsage, currUsage.AbsTotal,
+				threshold,
+				usage,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(isAboveThreshold).To(BeTrue())
+		})
 	})
 
-	It("should add points into redis and return true", func() {
-		currUsage := UsageTest{9, 10}
-		size := 4
-		scaleInfo := NewScaleDownInfo(size, mockRedisClient)
+	Describe("SendUsage", func() {
+		It("should add point into redis", func() {
+			currUsage := UsageTest{5, 10}
 
-		pushToList(
-			size, currUsage.AbsUsage, currUsage.AbsTotal,
-			[]string{"0.5", "0.9", "0.9"}, downKey,
-		)
-		isAboveThreshold, err := scaleInfo.SendUsageAndReturnStatus(
-			schedulerName,
-			"legacy",
-			size, currUsage.AbsUsage, currUsage.AbsTotal,
-			threshold,
-			usage,
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(isAboveThreshold).To(BeTrue())
+			scaleInfo := NewScaleUpInfo(size, mockRedisClient)
+			pushToList(size, currUsage.AbsUsage, currUsage.AbsTotal, nil, upKey, false)
+
+			err := scaleInfo.SendUsage(
+				schedulerName,
+				"legacy",
+				currUsage.AbsUsage, currUsage.AbsTotal,
+			)
+
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should add points into redis", func() {
+			currUsage := UsageTest{9, 10}
+			size := 4
+			scaleInfo := NewScaleDownInfo(size, mockRedisClient)
+
+			pushToList(
+				size, currUsage.AbsUsage, currUsage.AbsTotal,
+				[]string{"0.5", "0.9", "0.9"}, downKey, false,
+			)
+			err := scaleInfo.SendUsage(
+				schedulerName,
+				"legacy",
+				currUsage.AbsUsage, currUsage.AbsTotal,
+			)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("Key", func() {
+		It("should return the redis key from scheduler for legacy metrics", func() {
+			scaleInfo := NewScaleUpInfo(4, mockRedisClient)
+			key := scaleInfo.Key("scheduler-name", "legacy")
+
+			Expect(key).To(Equal("maestro:scale:up:scheduler-name"))
+		})
+
+		It("should return the redis key from scheduler for legacy metrics", func() {
+			scaleInfo := NewScaleUpInfo(4, mockRedisClient)
+			key := scaleInfo.Key("scheduler-name", "room")
+
+			Expect(key).To(Equal("maestro:scale:room:up:scheduler-name"))
+		})
+	})
+
+	Describe("Size", func() {
+		It("should return scale info size", func() {
+			size := 7
+			scaleInfo := NewScaleUpInfo(size, mockRedisClient)
+
+			Expect(scaleInfo.Size()).To(Equal(size))
+		})
 	})
 })
