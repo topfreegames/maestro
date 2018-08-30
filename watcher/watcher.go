@@ -67,6 +67,11 @@ type Watcher struct {
 	ScaleDownInfo             *models.ScaleInfo
 }
 
+type scaling struct {
+	ChangedState, InSync bool
+	Delta                int
+}
+
 // NewWatcher is the watcher constructor
 func NewWatcher(
 	config *viper.Viper,
@@ -165,13 +170,13 @@ func (w *Watcher) configureAutoScale(configYaml *models.ConfigYAML) {
 	if capacity <= 0 {
 		capacity = 1
 	}
-	w.ScaleUpInfo = models.NewScaleUpInfo(capacity, w.RedisClient.Client)
+	w.ScaleUpInfo = models.NewScaleInfo(capacity, w.RedisClient.Client)
 
 	capacity = configYaml.AutoScaling.Down.Trigger.Time / w.AutoScalingPeriod
 	if capacity <= 0 {
 		capacity = 1
 	}
-	w.ScaleDownInfo = models.NewScaleDownInfo(capacity, w.RedisClient.Client)
+	w.ScaleDownInfo = models.NewScaleInfo(capacity, w.RedisClient.Client)
 }
 
 func (w *Watcher) configureEnvironment() {
@@ -513,7 +518,8 @@ func (w *Watcher) AutoScale() {
 	}
 
 	nowTimestamp := time.Now().Unix()
-	delta, shouldScaleUp, shouldScaleDown, changedState, err := w.checkState(
+
+	scaling, err := w.checkState(
 		autoScalingInfo,
 		roomCountByStatus,
 		scheduler,
@@ -524,7 +530,7 @@ func (w *Watcher) AutoScale() {
 		return
 	}
 
-	if shouldScaleUp {
+	if scaling.Delta > 0 {
 		l.Info("scheduler is subdimensioned, scaling up")
 		timeoutSec := w.Config.GetInt("scaleUpTimeoutSeconds")
 
@@ -536,17 +542,17 @@ func (w *Watcher) AutoScale() {
 			w.RedisClient.Client,
 			w.KubernetesClient,
 			scheduler,
-			delta,
+			scaling.Delta,
 			timeoutSec,
 			false,
 		)
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
-		changedState = true
+		scaling.ChangedState = true
 		if err == nil {
 			scheduler.LastScaleOpAt = nowTimestamp
 		}
-	} else if shouldScaleDown {
+	} else if scaling.Delta < 0 {
 		l.Info("scheduler is overdimensioned, should scale down")
 		timeoutSec := w.Config.GetInt("scaleDownTimeoutSeconds")
 
@@ -558,12 +564,12 @@ func (w *Watcher) AutoScale() {
 			w.RedisClient.Client,
 			w.KubernetesClient,
 			scheduler,
-			delta,
+			-scaling.Delta,
 			timeoutSec,
 		)
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
-		changedState = true
+		scaling.ChangedState = true
 		if err == nil {
 			scheduler.LastScaleOpAt = nowTimestamp
 		}
@@ -575,7 +581,7 @@ func (w *Watcher) AutoScale() {
 		logger.WithError(err).Error("error scaling scheduler")
 	}
 
-	if changedState {
+	if scaling.ChangedState {
 		err = controller.UpdateScheduler(logger, w.MetricsReporter, w.DB, scheduler)
 		if err != nil {
 			logger.WithError(err).Error("failed to update scheduler info")
@@ -588,64 +594,69 @@ func (w *Watcher) checkState(
 	roomCount *models.RoomsStatusCount,
 	scheduler *models.Scheduler,
 	nowTimestamp int64,
-) (int, bool, bool, bool, error) { //delta, shouldScaleUp, shouldScaleDown, changedState
-	var shouldScaleUp, shouldScaleDown, changedState bool
-	var delta int
+) (*scaling, error) { //delta, shouldScaleUp, shouldScaleDown, changedState
 	var err error
-	inSync := true
+	scaling := &scaling{
+		Delta:        0,
+		ChangedState: false,
+		InSync:       true,
+	}
 
 	// Creating or Terminating state
 	if scheduler.State == models.StateCreating || scheduler.State == models.StateTerminating {
-		return 0, false, false, changedState, nil
+		return scaling, nil
 	}
 	// Rooms below Min
 	if roomCount.Total() < autoScalingInfo.Min {
-		return 0, true, false, changedState, nil
+		scaling.Delta = autoScalingInfo.Min - roomCount.Total()
+		return scaling, nil
 	}
 	// Rooms above Max
 	if autoScalingInfo.Max > 0 && roomCount.Total() > autoScalingInfo.Max {
-		return 0, false, true, changedState, nil
+		scaling.Delta = autoScalingInfo.Max - roomCount.Total()
+		return scaling, nil
+	}
+
+	// Send current usage
+	if len(autoScalingInfo.Down.MetricsTrigger) > 0 {
+		for _, trigger := range autoScalingInfo.Down.MetricsTrigger {
+			w.ScaleDownInfo.SendUsage(
+				w.SchedulerName, trigger.Metric,
+				roomCount.Occupied, roomCount.Total(),
+			)
+		}
+	} else {
+		w.ScaleDownInfo.SendUsage(
+			w.SchedulerName, models.MetricTypeLegacy,
+			roomCount.Occupied, roomCount.Total(),
+		)
 	}
 
 	// Up
 	if (roomCount.Total() < autoScalingInfo.Max && autoScalingInfo.Max > 0) || autoScalingInfo.Max == 0 {
 		if len(autoScalingInfo.Up.MetricsTrigger) > 0 {
-			delta, shouldScaleUp, changedState, inSync, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Up, w.ScaleUpInfo, roomCount, scheduler, nowTimestamp)
+			scaling, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Up, w.ScaleUpInfo, roomCount, scheduler, nowTimestamp)
 		} else {
-			delta, shouldScaleUp, changedState, inSync, err = w.checkLegacyTrigger(autoScalingInfo, autoScalingInfo.Up, w.ScaleUpInfo, roomCount, scheduler, nowTimestamp)
+			scaling, err = w.checkLegacyTrigger(autoScalingInfo, autoScalingInfo.Up, w.ScaleUpInfo, roomCount, scheduler, nowTimestamp)
 		}
 	}
 
-	if shouldScaleUp == false && inSync == true && roomCount.Total() > autoScalingInfo.Min {
-		// Down
+	// Down
+	if scaling.Delta == 0 && scaling.InSync && roomCount.Total() > autoScalingInfo.Min {
 		if len(autoScalingInfo.Down.MetricsTrigger) > 0 {
-			delta, shouldScaleDown, changedState, inSync, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Down, w.ScaleDownInfo, roomCount, scheduler, nowTimestamp)
+			scaling, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Down, w.ScaleDownInfo, roomCount, scheduler, nowTimestamp)
 		} else {
-			delta, shouldScaleDown, changedState, inSync, err = w.checkLegacyTrigger(autoScalingInfo, autoScalingInfo.Down, w.ScaleDownInfo, roomCount, scheduler, nowTimestamp)
-		}
-	} else if inSync == true { // always send current usage
-		if len(autoScalingInfo.Down.MetricsTrigger) > 0 {
-			for _, trigger := range autoScalingInfo.Down.MetricsTrigger {
-				w.ScaleDownInfo.SendUsage(
-					w.SchedulerName, trigger.Metric,
-					roomCount.Ready, roomCount.Total(),
-				)
-			}
-		} else {
-			w.ScaleDownInfo.SendUsage(
-				w.SchedulerName, "legacy",
-				roomCount.Ready, roomCount.Total(),
-			)
+			scaling, err = w.checkLegacyTrigger(autoScalingInfo, autoScalingInfo.Down, w.ScaleDownInfo, roomCount, scheduler, nowTimestamp)
 		}
 	}
 
-	if inSync && scheduler.State != models.StateInSync {
+	if scaling.InSync && scheduler.State != models.StateInSync {
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
-		changedState = true
+		scaling.ChangedState = true
 	}
 
-	return delta, shouldScaleUp, shouldScaleDown, changedState, err
+	return scaling, err
 }
 
 func (w *Watcher) checkMetricsTrigger(
@@ -655,83 +666,65 @@ func (w *Watcher) checkMetricsTrigger(
 	roomCount *models.RoomsStatusCount,
 	scheduler *models.Scheduler,
 	nowTimestamp int64,
-) (int, bool, bool, bool, error) { // delta, shouldScaleUpOrDown, changedState, inSync
+) (*scaling, error) {
 	isDown := autoScalingInfo.Down == scalingPolicy
 	unbalancedState := models.StateSubdimensioned
-	shouldScaleUpOrDown := false
-	changedState := false
-	inSync := true
-	delta := 0
+	scaleType := models.ScaleTypeUp
+	scaling := &scaling{
+		Delta:        0,
+		ChangedState: false,
+		InSync:       true,
+	}
+
+	if isDown {
+		scaleType = models.ScaleTypeDown
+		unbalancedState = models.StateOverdimensioned
+	}
 
 	for _, trigger := range scalingPolicy.MetricsTrigger {
 		threshold := trigger.Threshold
 		usage := float32(trigger.Usage) / 100
 		capacity := trigger.Time / w.AutoScalingPeriod
-		point := roomCount.Occupied
-		unbalancedState = models.StateSubdimensioned
 
-		if isDown {
-			usage = 1 - usage
-			point = roomCount.Ready
-			unbalancedState = models.StateOverdimensioned
-		}
-
-		// If usage is above limit, scale up.
-		if isDown == false && 100*roomCount.Occupied >= roomCount.Total()*trigger.Limit {
-			w.Logger.Debug("Usage is above limit. Should scale up")
-			inSync = false
-			changedState = true
-			shouldScaleUpOrDown = true
-			scheduler.State = unbalancedState
-			scheduler.StateLastChangedAt = nowTimestamp
-			delta, err := dynamicDelta(trigger, roomCount)
+		// Limit define a threshold that if surpassed should trigger scale up no matter what.
+		if !isDown {
+			isAboveLimit, err := w.checkIfUsageIsAboveLimit(trigger, roomCount, scheduler, scaling, unbalancedState, trigger.Limit, nowTimestamp)
 			if err != nil {
-				return 0, false, false, true, err
+				return scaling, err
 			}
-			scaleInfo.SendUsage(
-				w.SchedulerName,
-				trigger.Metric, point, roomCount.Total(),
-			)
-			return delta, shouldScaleUpOrDown, changedState, inSync, nil
+			if isAboveLimit {
+				return scaling, nil
+			}
 		}
 
-		isAboveThreshold, err := scaleInfo.SendUsageAndReturnStatus(
+		isAboveThreshold, err := scaleInfo.ReturnStatus(
 			w.SchedulerName,
 			trigger.Metric,
-			capacity, point, roomCount.Total(),
+			scaleType,
+			capacity, roomCount.Total(),
 			threshold, usage,
 		)
 		if err != nil {
-			return 0, shouldScaleUpOrDown, changedState, inSync, err
+			return scaling, err
 		}
 
 		if isAboveThreshold {
-			inSync = false
+			scaling.InSync = false
 			if scheduler.State != unbalancedState {
-				changedState = true
-			} else if nowTimestamp-scheduler.LastScaleOpAt > int64(scalingPolicy.Cooldown) {
-				shouldScaleUpOrDown = true
+				scaling.ChangedState = true
+				scheduler.State = unbalancedState
+				scheduler.StateLastChangedAt = nowTimestamp
 			}
-		}
 
-		if shouldScaleUpOrDown == true {
-			delta, err = dynamicDelta(trigger, roomCount)
-			if err != nil {
-				return 0, false, false, true, err
+			// changed state or not in cooldown window
+			if scaling.ChangedState || nowTimestamp-scheduler.LastScaleOpAt > int64(scalingPolicy.Cooldown) {
+				scaling.Delta, err = dynamicDelta(trigger, roomCount)
+				return scaling, err
 			}
-			if isDown {
-				delta = -delta
-			}
-			break
 		}
 	}
 
-	if changedState == true {
-		scheduler.State = unbalancedState
-		scheduler.StateLastChangedAt = nowTimestamp
-	}
-
-	return delta, shouldScaleUpOrDown, changedState, inSync, nil
+	return scaling, nil
 }
 
 func (w *Watcher) checkLegacyTrigger(
@@ -741,55 +734,66 @@ func (w *Watcher) checkLegacyTrigger(
 	roomCount *models.RoomsStatusCount,
 	scheduler *models.Scheduler,
 	nowTimestamp int64,
-) (int, bool, bool, bool, error) { // delta, shouldScaleUpOrDown, changedState, inSync
+) (*scaling, error) {
 	isDown := autoScalingInfo.Down == scalingPolicy
-	shouldScaleUpOrDown := false
-	changedState := false
-	inSync := true
+	scaling := &scaling{
+		Delta:        0,
+		ChangedState: false,
+		InSync:       true,
+	}
 
 	threshold := scalingPolicy.Trigger.Threshold
 	usage := float32(scalingPolicy.Trigger.Usage) / 100
 	capacity := scalingPolicy.Trigger.Time / w.AutoScalingPeriod
-	point := roomCount.Occupied
 	unbalancedState := models.StateSubdimensioned
+	scaleType := models.ScaleTypeUp
 
 	if isDown {
-		usage = 1 - usage
-		point = roomCount.Ready
+		scaleType = models.ScaleTypeDown
 		unbalancedState = models.StateOverdimensioned
 	}
 
-	// If usage is above limit, scale up.
-	if 100*roomCount.Occupied >= roomCount.Total()*autoScalingInfo.Up.Trigger.Limit {
-		scaleInfo.SendUsage(
-			w.SchedulerName,
-			"legacy", point, roomCount.Total(),
-		)
-		return autoScalingInfo.Up.Delta, true, false, inSync, nil
-	}
-
-	isAboveThreshold, err := scaleInfo.SendUsageAndReturnStatus(
-		w.SchedulerName,
-		"legacy",
-		capacity, point, roomCount.Total(),
-		threshold, usage,
-	)
-	if err != nil {
-		return 0, shouldScaleUpOrDown, changedState, inSync, err
-	}
-
-	if isAboveThreshold {
-		inSync = false
-		if scheduler.State != unbalancedState {
-			scheduler.State = unbalancedState
-			scheduler.StateLastChangedAt = nowTimestamp
-			changedState = true
-		} else if nowTimestamp-scheduler.LastScaleOpAt > int64(scalingPolicy.Cooldown) {
-			shouldScaleUpOrDown = true
+	// Limit define a threshold that if surpassed should trigger scale up no matter what.
+	if !isDown {
+		isAboveLimit, err := w.checkIfUsageIsAboveLimit(autoScalingInfo.Up, roomCount, scheduler, scaling, unbalancedState, autoScalingInfo.Up.Trigger.Limit, nowTimestamp)
+		if err != nil {
+			return scaling, err
+		}
+		if isAboveLimit {
+			return scaling, nil
 		}
 	}
 
-	return scalingPolicy.Delta, shouldScaleUpOrDown, changedState, inSync, nil
+	isAboveThreshold, err := scaleInfo.ReturnStatus(
+		w.SchedulerName,
+		models.MetricTypeLegacy,
+		scaleType,
+		capacity, roomCount.Total(),
+		threshold, usage,
+	)
+	if err != nil {
+		return scaling, err
+	}
+
+	if isAboveThreshold {
+		scaling.InSync = false
+		if scheduler.State != unbalancedState {
+			scaling.ChangedState = true
+			scheduler.State = unbalancedState
+			scheduler.StateLastChangedAt = nowTimestamp
+		}
+
+		// changed state or not in cooldown window
+		if scaling.ChangedState || nowTimestamp-scheduler.LastScaleOpAt > int64(scalingPolicy.Cooldown) {
+			scaling.Delta = scalingPolicy.Delta
+			if isDown {
+				scaling.Delta = -scaling.Delta
+			}
+			return scaling, err
+		}
+	}
+
+	return scaling, nil
 }
 
 // EnsureCorrectRooms walks through the pods on the namespace and
@@ -966,4 +970,34 @@ func (w *Watcher) PodStatesCount() {
 	}
 
 	return
+}
+
+func (w *Watcher) checkIfUsageIsAboveLimit(
+	trigger interface{},
+	roomCount *models.RoomsStatusCount,
+	scheduler *models.Scheduler,
+	scaling *scaling,
+	unbalancedState string,
+	limit int,
+	nowTimestamp int64,
+) (bool, error) { // isAboveLimit
+	var err error
+	if 100*roomCount.Occupied >= roomCount.Total()*limit {
+		w.Logger.Debug("Usage is above limit. Should scale up")
+		scheduler.State = unbalancedState
+		scheduler.StateLastChangedAt = nowTimestamp
+		scaling.InSync = false
+		scaling.ChangedState = true
+		if triggerObj, ok := trigger.(*models.ScalingPolicyMetricsTrigger); ok {
+			scaling.Delta, err = dynamicDelta(triggerObj, roomCount)
+			if err != nil {
+				return false, err
+			}
+		} else {
+			scaling.Delta = trigger.(*models.ScalingPolicy).Delta
+		}
+
+		return true, nil
+	}
+	return false, nil
 }

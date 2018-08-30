@@ -17,6 +17,15 @@ import (
 	"github.com/topfreegames/extensions/pg/interfaces"
 )
 
+type metricType string
+
+const (
+	// MetricTypeLegacy defines legacy usage metric type
+	MetricTypeLegacy metricType = "legacy"
+	// RoomMetric defines room usage metric type
+	MetricTypeRoom metricType = "room"
+)
+
 // Scheduler is the struct that defines a maestro scheduler
 type Scheduler struct {
 	ID                 string      `db:"id"`
@@ -72,11 +81,11 @@ type ScalingPolicyTrigger struct {
 // that uses generic metrics like room usage, cluster cpu or mem.
 // This will trigger a scale up or scale down.
 type ScalingPolicyMetricsTrigger struct {
-	Metric    string `yaml:"metric" json:"metric" valid:"required"`
-	Time      int    `yaml:"time" json:"time" valid:"int64"`
-	Usage     int    `yaml:"usage" json:"usage" valid:"int64"`
-	Threshold int    `yaml:"threshold" json:"threshold" valid:"int64"`
-	Limit     int    `yaml:"limit" json:"limit" valid:"int64"`
+	Metric    metricType `yaml:"metric" json:"metric" valid:"required"`
+	Time      int        `yaml:"time" json:"time" valid:"int64"`
+	Usage     int        `yaml:"usage" json:"usage" valid:"int64"`
+	Threshold int        `yaml:"threshold" json:"threshold" valid:"int64"`
+	Limit     int        `yaml:"limit" json:"limit" valid:"int64"`
 }
 
 // ScalingPolicy has the configuration for a scaling policy

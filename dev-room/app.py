@@ -48,7 +48,6 @@ while True:
     except Exception as ex:
         print(str(ex))
         pass
-        break
     time.sleep(constant.POLLING_INTERVAL_IN_SECONDS)
 
 threading.Thread(target=ping).start()

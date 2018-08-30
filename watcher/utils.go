@@ -9,6 +9,7 @@ package watcher
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/topfreegames/maestro/models"
 )
@@ -18,7 +19,7 @@ func dynamicDelta(
 	roomCount *models.RoomsStatusCount,
 ) (int, error) {
 	switch metricTrigger.Metric {
-	case "room":
+	case models.MetricTypeRoom:
 		return roomDynamicDelta(metricTrigger, roomCount), nil
 	default:
 		// TODO: implement default to deal with kubernetes metrics
@@ -30,6 +31,12 @@ func roomDynamicDelta(
 	metricTrigger *models.ScalingPolicyMetricsTrigger,
 	roomCount *models.RoomsStatusCount,
 ) int { // delta
-	usageThreshold := float32(metricTrigger.Usage) / 100
-	return int(float32(float32(roomCount.Occupied)-float32(usageThreshold*float32(roomCount.Total()))) / usageThreshold)
+	// [Occupied / (Total + Delta)] = Usage/100
+	occupied := float64(roomCount.Occupied)
+	total := float64(roomCount.Total())
+	threshold := float64(metricTrigger.Usage) / 100
+	delta := occupied - threshold*total
+	delta = delta / threshold
+
+	return int(math.Round(float64(delta)))
 }

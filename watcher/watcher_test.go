@@ -332,9 +332,44 @@ var _ = Describe("Watcher", func() {
 	buildRedisScaleInfo := func(
 		percentageAboveUp, percentageAboveDown int,
 	) {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(3)
+		mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
+		mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
+		mockPipeline.EXPECT().Exec().Times(3)
+
+		mid := (w.ScaleUpInfo.Size() * percentageAboveUp) / 100
+		usages := make([]string, w.ScaleUpInfo.Size())
+		for idx := range usages {
+			if idx < mid {
+				usages[idx] = "0.9"
+			} else {
+				usages[idx] = "0.3"
+			}
+		}
+		mockPipeline.EXPECT().LRange("maestro:scale:controller-name", gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+			usages, nil,
+		))
+
+		mid = (w.ScaleDownInfo.Size() * percentageAboveDown) / 100
+		usages = make([]string, w.ScaleDownInfo.Size())
+		for idx := range usages {
+			if idx < mid {
+				usages[idx] = "0.2"
+			} else {
+				usages[idx] = "0.9"
+			}
+		}
+		mockPipeline.EXPECT().LRange("maestro:scale:controller-name", gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+			usages, nil,
+		))
+	}
+
+	buildRedisScaleUpInfo := func(
+		percentageAboveUp int,
+	) {
 		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
-		mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any()).Times(2)
-		mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+		mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
+		mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
 		mockPipeline.EXPECT().Exec().Times(2)
 
 		mid := (w.ScaleUpInfo.Size() * percentageAboveUp) / 100
@@ -346,42 +381,7 @@ var _ = Describe("Watcher", func() {
 				usages[idx] = "0.3"
 			}
 		}
-		mockPipeline.EXPECT().LRange("maestro:scale:up:controller-name", gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
-			usages, nil,
-		))
-
-		mid = (w.ScaleDownInfo.Size() * percentageAboveDown) / 100
-		usages = make([]string, w.ScaleDownInfo.Size())
-		for idx := range usages {
-			if idx < mid {
-				usages[idx] = "0.9"
-			} else {
-				usages[idx] = "0.3"
-			}
-		}
-		mockPipeline.EXPECT().LRange("maestro:scale:down:controller-name", gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
-			usages, nil,
-		))
-	}
-
-	buildRedisScaleUpInfo := func(
-		percentageAboveUp int,
-	) {
-		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-		mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
-		mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
-		mockPipeline.EXPECT().Exec()
-
-		mid := (w.ScaleUpInfo.Size() * percentageAboveUp) / 100
-		usages := make([]string, w.ScaleUpInfo.Size())
-		for idx := range usages {
-			if idx < mid {
-				usages[idx] = "0.9"
-			} else {
-				usages[idx] = "0.3"
-			}
-		}
-		mockPipeline.EXPECT().LRange("maestro:scale:up:controller-name", gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+		mockPipeline.EXPECT().LRange("maestro:scale:controller-name", gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
 			usages, nil,
 		))
 	}
@@ -454,9 +454,6 @@ var _ = Describe("Watcher", func() {
 				SetNX(lockKey, gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).
 				AnyTimes()
 
-			// check scale infos and if should scale
-			buildRedisScaleUpInfo(90)
-
 			// DeleteRoomsNoPingSince
 			pKey := models.GetRoomPingRedisKey(configYaml1.Name)
 			// DeleteRoomsNoPingSince
@@ -481,12 +478,38 @@ var _ = Describe("Watcher", func() {
 			occupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
 			terminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
 			expC := &models.RoomsStatusCount{4, 3, 20, 1}
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
-			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil)).AnyTimes()
-			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil)).AnyTimes()
-			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil)).AnyTimes()
-			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil)).AnyTimes()
-			mockPipeline.EXPECT().Exec().AnyTimes()
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
+			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil))
+			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil))
+			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
+			mockPipeline.EXPECT().Exec()
+
+			err = testing.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			// check scale infos and if should scale
+			buildRedisScaleUpInfo(90)
+
+			// ScaleUp
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal("creating"))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
 
 			// UpdateScheduler
 			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -771,7 +794,7 @@ var _ = Describe("Watcher", func() {
 			os.Unsetenv("CONTROLLER_NAME_ENABLE_INFO")
 		})
 
-		It("should change state and not scale if first state change - subdimensioned", func() {
+		It("should change state and scale if first state change - subdimensioned", func() {
 			// GetSchedulerScalingInfo
 			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
@@ -796,18 +819,41 @@ var _ = Describe("Watcher", func() {
 			// check scale infos and if should scale
 			buildRedisScaleUpInfo(90)
 
+			err := testing.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			// ScaleUp
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal("creating"))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
 			// UpdateScheduler
 			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
-				Expect(scheduler.State).To(Equal("subdimensioned"))
+				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
-				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
-			}, mockDb, nil, nil)
+				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
+			}, mockDb, errDB, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
 		})
 
-		It("should change state and not scale if first state change - overdimensioned", func() {
+		It("should change state and scale if first state change - overdimensioned", func() {
 			// GetSchedulerScalingInfo
 			lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
 			lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
@@ -832,15 +878,54 @@ var _ = Describe("Watcher", func() {
 			// check scale infos and if should scale
 			buildRedisScaleInfo(50, 90)
 
-			// UpdateScheduler
+			err := testing.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			for i := 0; i < 5; i++ {
+				pod := &v1.Pod{}
+				pod.Name = fmt.Sprintf("room-%d", i)
+				pod.Spec.Containers = []v1.Container{
+					{Ports: []v1.ContainerPort{
+						{HostPort: int32(5000 + i), Name: "TCP"},
+					}},
+				}
+				pod.Status.Phase = v1.PodPending
+				_, err := clientset.CoreV1().Pods(configYaml1.Name).Create(pod)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult("room-0", nil))
+			mockPipeline.EXPECT().Exec()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			for range allStatus {
+				mockPipeline.EXPECT().
+					SRem(gomock.Any(), gomock.Any())
+				mockPipeline.EXPECT().
+					ZRem(gomock.Any(), gomock.Any())
+			}
+			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
+			mockPipeline.EXPECT().Del(gomock.Any())
+			mockPipeline.EXPECT().Exec()
+
 			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
-				Expect(scheduler.State).To(Equal("overdimensioned"))
-				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
-				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
+				Expect(scheduler.State).To(Equal("in-sync"))
+				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
 			}, mockDb, nil, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is overdimensioned, should scale down"))
 		})
 
 		It("should change state and not scale if in-sync but wrong state reported", func() {
@@ -1156,11 +1241,34 @@ var _ = Describe("Watcher", func() {
 			// check scale infos and if should scale
 			buildRedisScaleUpInfo(90)
 
+			err := testing.MockSetScallingAmountWithRoomStatusCount(
+				mockRedisClient,
+				mockPipeline,
+				mockDb,
+				clientset,
+				&configYaml1,
+				expC,
+				yaml1,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			// ScaleUp
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+				func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal("creating"))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				},
+			).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+
 			// UpdateScheduler
 			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
-				Expect(scheduler.State).To(Equal("subdimensioned"))
+				Expect(scheduler.State).To(Equal("in-sync"))
 				Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1))
-				Expect(scheduler.LastScaleOpAt).To(Equal(lastScaleOpAt.Unix()))
+				Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
 			}, mockDb, errDB, nil)
 
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
@@ -1189,10 +1297,10 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil))
 			mockPipeline.EXPECT().Exec()
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
-			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any()).Times(2)
-			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-			mockPipeline.EXPECT().Exec().Times(2)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(3)
+			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
+			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
+			mockPipeline.EXPECT().Exec().Times(3)
 
 			usages := make([]string, w.ScaleUpInfo.Size())
 			for idx := range usages {
@@ -1425,10 +1533,10 @@ var _ = Describe("Watcher", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// mock send usage
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
-			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any()).Times(2)
-			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-			mockPipeline.EXPECT().Exec().Times(2)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
+			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
+			mockPipeline.EXPECT().Exec()
 
 			// ScaleUp
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
@@ -1488,10 +1596,10 @@ var _ = Describe("Watcher", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// mock send usage
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
-			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any()).Times(2)
-			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
-			mockPipeline.EXPECT().Exec().Times(2)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
+			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
+			mockPipeline.EXPECT().Exec()
 
 			// ScaleUp
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
