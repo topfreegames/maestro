@@ -333,8 +333,13 @@ func (c *Scheduler) Delete(db interfaces.DB) error {
 // GetAutoScalingPolicy returns the scheduler auto scaling policy
 func (c *Scheduler) GetAutoScalingPolicy() *AutoScaling {
 	configYAML, _ := NewConfigYAML(c.YAML)
-	if configYAML.AutoScaling.Up.Trigger.Limit <= 0 {
+	if configYAML.AutoScaling.Up.Trigger != nil && configYAML.AutoScaling.Up.Trigger.Limit <= 0 {
 		configYAML.AutoScaling.Up.Trigger.Limit = 90
+	}
+	for _, trigger := range configYAML.AutoScaling.Up.MetricsTrigger {
+		if trigger.Limit <= 0 {
+			trigger.Limit = 90
+		}
 	}
 	return configYAML.AutoScaling
 }

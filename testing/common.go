@@ -1,6 +1,8 @@
 package testing
 
 import (
+	"fmt"
+	"strconv"
 	"time"
 
 	goredis "github.com/go-redis/redis"
@@ -811,4 +813,179 @@ func MockSetScallingAmountWithRoomStatusCount(
 	mockPipeline.EXPECT().Exec()
 
 	return nil
+}
+
+// MockRoomDistribution mocks the existence of rooms with various status (creating, ready, occupied and terminating)
+func MockRoomDistribution(
+	configYaml *models.ConfigYAML,
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	expC *models.RoomsStatusCount,
+) {
+	creating := models.GetRoomStatusSetRedisKey(configYaml.Name, "creating")
+	ready := models.GetRoomStatusSetRedisKey(configYaml.Name, "ready")
+	occupied := models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied")
+	terminating := models.GetRoomStatusSetRedisKey(configYaml.Name, "terminating")
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().SCard(creating).Return(goredis.NewIntResult(int64(expC.Creating), nil))
+	mockPipeline.EXPECT().SCard(ready).Return(goredis.NewIntResult(int64(expC.Ready), nil))
+	mockPipeline.EXPECT().SCard(occupied).Return(goredis.NewIntResult(int64(expC.Occupied), nil))
+	mockPipeline.EXPECT().SCard(terminating).Return(goredis.NewIntResult(int64(expC.Terminating), nil))
+	mockPipeline.EXPECT().Exec()
+}
+
+// MockSendUsage mocks SendUsage method. This method sends current usage percentage to redis set
+func MockSendUsage(mockPipeline *redismocks.MockPipeliner, mockRedisClient *redismocks.MockRedisClient, autoScaling *models.AutoScaling) {
+	metricSent := map[string]bool{}
+
+	for _, trigger := range autoScaling.Up.MetricsTrigger {
+		metricSent[string(trigger.Metric)] = true
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
+		mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
+		mockPipeline.EXPECT().Exec()
+	}
+
+	for _, trigger := range autoScaling.Down.MetricsTrigger {
+		if !metricSent[string(trigger.Metric)] {
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
+			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
+			mockPipeline.EXPECT().Exec()
+		}
+	}
+
+	if len(autoScaling.Up.MetricsTrigger) == 0 || len(autoScaling.Down.MetricsTrigger) == 0 {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
+		mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
+		mockPipeline.EXPECT().Exec()
+	}
+}
+
+// MockGetUsages mockes the return of usage percentages from redis
+func MockGetUsages(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	key string,
+	size, usageUp, usageDown, percentageAboveUp, percentageAboveDown int,
+) {
+	// Up
+	if usageUp > 0 {
+		mid := size * percentageAboveUp / 100
+		usages := make([]string, size)
+		for idx := range usages {
+			if idx < mid {
+				usages[idx] = strconv.FormatFloat(float64(usageUp)/100+0.1, 'f', 1, 32)
+			} else {
+				usages[idx] = strconv.FormatFloat(float64(usageUp)/100-0.1, 'f', 1, 32)
+			}
+		}
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().LRange(key, gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+			usages, nil,
+		))
+		mockPipeline.EXPECT().Exec()
+	}
+
+	// Down
+	if usageDown > 0 {
+		mid := size * percentageAboveDown / 100
+		usages := make([]string, size)
+		for idx := range usages {
+			if idx < mid {
+				usages[idx] = strconv.FormatFloat(float64(usageDown)/100-0.1, 'f', 1, 32)
+			} else {
+				usages[idx] = strconv.FormatFloat(float64(usageDown)/100+0.1, 'f', 1, 32)
+			}
+		}
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().LRange(key, gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+			usages, nil,
+		))
+		mockPipeline.EXPECT().Exec()
+	}
+}
+
+// MockGetScheduler mocks the retrieval of a scheduler
+func MockGetScheduler(
+	mockDb *pgmocks.MockDB,
+	configYaml *models.ConfigYAML,
+	state, yamlString string,
+	lastChangedAt, lastScaleOpAt time.Time,
+	times int,
+) {
+	// Mock scheduler
+	mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+		scheduler.State = state
+		scheduler.StateLastChangedAt = lastChangedAt.Unix()
+		scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
+		scheduler.YAML = yamlString
+	}).Times(times)
+}
+
+// MockRedisReadyPop mocks removal from redis ready set
+func MockRedisReadyPop(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	amount int,
+) {
+	readyKey := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)
+	for i := 0; i < amount; i++ {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(fmt.Sprintf("room-%d", i), nil))
+		mockPipeline.EXPECT().Exec()
+	}
+}
+
+// MockClearAll mocks models.Room.ClearAll method
+func MockClearAll(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	amount int,
+) {
+	allStatus := []string{
+		models.StatusCreating,
+		models.StatusReady,
+		models.StatusOccupied,
+		models.StatusTerminating,
+		models.StatusTerminated,
+	}
+
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().Exec()
+
+	for i := 0; i < amount; i++ {
+		room := models.NewRoom(fmt.Sprintf("room-%d", i), schedulerName)
+
+		for _, status := range allStatus {
+			mockPipeline.EXPECT().
+				SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey())
+			mockPipeline.EXPECT().
+				ZRem(models.GetLastStatusRedisKey(schedulerName, status), room.ID)
+		}
+		mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), room.ID)
+		mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+	}
+}
+
+// MockScaleUp mocks all Scale Up operations on redis
+func MockScaleUp(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	times int,
+) {
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(times)
+	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+		func(schedulerName string, statusInfo map[string]interface{}) {
+			gomega.Expect(statusInfo["status"]).To(gomega.Equal("creating"))
+			gomega.Expect(statusInfo["lastPing"]).To(gomega.BeNumerically("~", time.Now().Unix(), 1))
+		},
+	).Times(times)
+	mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(schedulerName), gomock.Any()).Times(times)
+	mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(schedulerName, "creating"), gomock.Any()).Times(times)
+	mockPipeline.EXPECT().Exec().Times(times)
 }

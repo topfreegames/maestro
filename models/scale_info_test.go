@@ -118,7 +118,7 @@ var _ = Describe("ScaleInfo", func() {
 			err := scaleInfo.SendUsage(
 				schedulerName,
 				MetricTypeLegacy,
-				currUsage.AbsUsage, currUsage.AbsTotal,
+				float32(currUsage.AbsUsage)/float32(currUsage.AbsTotal),
 			)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -136,7 +136,7 @@ var _ = Describe("ScaleInfo", func() {
 			err := scaleInfo.SendUsage(
 				schedulerName,
 				MetricTypeLegacy,
-				currUsage.AbsUsage, currUsage.AbsTotal,
+				float32(currUsage.AbsUsage)/float32(currUsage.AbsTotal),
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})

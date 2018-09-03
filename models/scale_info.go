@@ -84,28 +84,13 @@ func (s *ScaleInfo) ReturnStatus(
 func (s *ScaleInfo) SendUsage(
 	schedulerName string,
 	metric metricType,
-	point, total int,
+	currentUsage float32,
 ) error {
 	key := s.Key(schedulerName, metric)
-	pipe := s.buildPipeToSendUsage(schedulerName, key, metric, point, total)
+	pipe := s.redis.TxPipeline()
+	s.pushToCircularList(pipe, key, currentUsage)
 	_, err := pipe.Exec()
 	return err
-}
-
-func (s *ScaleInfo) buildPipeToSendUsage(
-	schedulerName, key string,
-	metric metricType,
-	point, total int,
-) goredis.Pipeliner {
-	pipe := s.redis.TxPipeline()
-
-	currentUsage := float32(0)
-	if total > 0 {
-		currentUsage = float32(point) / float32(total)
-	}
-
-	s.pushToCircularList(pipe, key, currentUsage)
-	return pipe
 }
 
 func (s *ScaleInfo) pushToCircularList(pipe goredis.Pipeliner, key string, usage float32) {

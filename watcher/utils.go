@@ -40,3 +40,17 @@ func roomDynamicDelta(
 
 	return int(math.Round(float64(delta)))
 }
+
+// Get current usage
+func getCurrentUsageFromMetric(
+	metricTrigger *models.ScalingPolicyMetricsTrigger,
+	roomCount *models.RoomsStatusCount,
+) float32 {
+	switch metricTrigger.Metric {
+	case models.MetricTypeRoom:
+		if roomCount.Total() > 0 {
+			return float32(roomCount.Occupied) / float32(roomCount.Total())
+		}
+	}
+	return 0
+}
