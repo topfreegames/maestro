@@ -6204,11 +6204,8 @@ containers:
 			err = mt.MockSetScallingAmountWithRoomStatusCount(
 				mockRedisClient,
 				mockPipeline,
-				mockDb,
-				clientset,
 				&configYaml1,
 				expC,
-				yaml1,
 			)
 			Expect(err).NotTo(HaveOccurred())
 

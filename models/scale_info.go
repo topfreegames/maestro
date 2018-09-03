@@ -40,8 +40,8 @@ func NewScaleInfo(size int, redis redis.RedisClient) *ScaleInfo {
 }
 
 // Key returns the redis key from scheduler name
-func (s *ScaleInfo) Key(schedulerName string, metric metricType) string {
-	if metric != MetricTypeLegacy {
+func (s *ScaleInfo) Key(schedulerName string, metric AutoScalingPolicyType) string {
+	if metric != LegacyAutoScalingPolicyType {
 		return fmt.Sprintf("maestro:scale:%s:%s", metric, schedulerName)
 	}
 	return fmt.Sprintf("maestro:scale:%s", schedulerName)
@@ -57,7 +57,7 @@ func (s *ScaleInfo) Size() int {
 // returns true.
 func (s *ScaleInfo) ReturnStatus(
 	schedulerName string,
-	metric metricType,
+	metric AutoScalingPolicyType,
 	scaleType scaleType,
 	size, total, threshold int,
 	usage float32,
@@ -83,7 +83,7 @@ func (s *ScaleInfo) ReturnStatus(
 // SendUsage saves a new usage percentage on Redis
 func (s *ScaleInfo) SendUsage(
 	schedulerName string,
-	metric metricType,
+	metric AutoScalingPolicyType,
 	currentUsage float32,
 ) error {
 	key := s.Key(schedulerName, metric)

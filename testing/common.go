@@ -793,11 +793,8 @@ func MockSetScallingAmount(
 func MockSetScallingAmountWithRoomStatusCount(
 	mockRedis *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
-	mockDb *pgmocks.MockDB,
-	clientset kubernetes.Interface,
 	configYaml *models.ConfigYAML,
 	expC *models.RoomsStatusCount,
-	yamlString string,
 ) error {
 	mockRedis.EXPECT().TxPipeline().Return(mockPipeline)
 
@@ -839,7 +836,7 @@ func MockSendUsage(mockPipeline *redismocks.MockPipeliner, mockRedisClient *redi
 	metricSent := map[string]bool{}
 
 	for _, trigger := range autoScaling.Up.MetricsTrigger {
-		metricSent[string(trigger.Metric)] = true
+		metricSent[string(trigger.Type)] = true
 		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 		mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
 		mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
@@ -847,7 +844,7 @@ func MockSendUsage(mockPipeline *redismocks.MockPipeliner, mockRedisClient *redi
 	}
 
 	for _, trigger := range autoScaling.Down.MetricsTrigger {
-		if !metricSent[string(trigger.Metric)] {
+		if !metricSent[string(trigger.Type)] {
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
 			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())

@@ -31,7 +31,7 @@ autoscaling:
       usage: 70
       time: 10
     metricsTrigger:
-    - metric: room
+    - type: room
       usage: 50
       time: 10
     cooldown: 30

@@ -72,7 +72,7 @@ var _ = Describe("ScaleInfo", func() {
 
 			isAboveThreshold, err := scaleInfo.ReturnStatus(
 				schedulerName,
-				MetricTypeLegacy,
+				LegacyAutoScalingPolicyType,
 				ScaleTypeDown,
 				size,
 				currUsage.AbsTotal,
@@ -96,7 +96,7 @@ var _ = Describe("ScaleInfo", func() {
 
 			isAboveThreshold, err := scaleInfo.ReturnStatus(
 				schedulerName,
-				MetricTypeLegacy,
+				LegacyAutoScalingPolicyType,
 				ScaleTypeDown,
 				size,
 				currUsage.AbsTotal,
@@ -117,7 +117,7 @@ var _ = Describe("ScaleInfo", func() {
 
 			err := scaleInfo.SendUsage(
 				schedulerName,
-				MetricTypeLegacy,
+				LegacyAutoScalingPolicyType,
 				float32(currUsage.AbsUsage)/float32(currUsage.AbsTotal),
 			)
 
@@ -135,7 +135,7 @@ var _ = Describe("ScaleInfo", func() {
 			)
 			err := scaleInfo.SendUsage(
 				schedulerName,
-				MetricTypeLegacy,
+				LegacyAutoScalingPolicyType,
 				float32(currUsage.AbsUsage)/float32(currUsage.AbsTotal),
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -145,7 +145,7 @@ var _ = Describe("ScaleInfo", func() {
 	Describe("Key", func() {
 		It("should return the redis key from scheduler for legacy metrics", func() {
 			scaleInfo := NewScaleInfo(4, mockRedisClient)
-			key := scaleInfo.Key("scheduler-name", MetricTypeLegacy)
+			key := scaleInfo.Key("scheduler-name", LegacyAutoScalingPolicyType)
 
 			Expect(key).To(Equal("maestro:scale:scheduler-name"))
 		})

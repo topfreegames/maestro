@@ -33,14 +33,14 @@ autoscaling:
   max: 10
   up:
     metricsTrigger:
-    - metric: room
+    - type: room
       threshold: 20
       usage: 50
       time: 100
     cooldown: 30
   down:
     metricsTrigger:
-    - metric: room
+    - type: room
       threshold: 50
       usage: 20
       time: 100

@@ -216,7 +216,7 @@ autoscaling:
       usage: 70
       time: 10
     metricsTrigger:
-    - metric: room
+    - type: room
       usage: 50
       time: 200
       limit: 85
@@ -263,7 +263,7 @@ autoscaling:
     cooldown: 30
   down:
     metricsTrigger:
-    - metric: room
+    - type: room
       usage: 30
       time: 100
       threshold: 80
@@ -300,14 +300,14 @@ autoscaling:
   max: 20
   up:
     metricsTrigger:
-    - metric: room
+    - type: room
       threshold: 80
       usage: 50
       time: 200
     cooldown: 30
   down:
     metricsTrigger:
-    - metric: room
+    - type: room
       threshold: 80
       usage: 30
       time: 200
@@ -426,11 +426,8 @@ var _ = Describe("Watcher", func() {
 			err = testing.MockSetScallingAmountWithRoomStatusCount(
 				mockRedisClient,
 				mockPipeline,
-				mockDb,
-				clientset,
 				&configYaml1,
 				expC,
-				yaml1,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -625,11 +622,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					&configYaml1,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -681,11 +675,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					&configYaml1,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -737,11 +728,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					&configYaml1,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -798,11 +786,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					&configYaml1,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1131,11 +1116,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					&configYaml1,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1206,11 +1188,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					&configYaml1,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1294,11 +1273,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					&configYaml1,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1370,11 +1346,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					&configYaml1,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1418,11 +1391,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					&configYaml1,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1519,11 +1489,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1531,7 +1498,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
 					)
 				}
@@ -1576,7 +1543,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
 					)
 				}
@@ -1608,7 +1575,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
 					)
 				}
@@ -1632,11 +1599,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1644,7 +1608,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
 					)
 				}
@@ -1690,7 +1654,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
 					)
 				}
@@ -1721,11 +1685,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1762,11 +1723,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1774,7 +1732,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
 					)
 				}
@@ -1822,7 +1780,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 75, 0,
 					)
 				}
@@ -1876,11 +1834,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1888,7 +1843,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
 					)
 				}
@@ -1928,7 +1883,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 85, 0,
 					)
 				}
@@ -1952,11 +1907,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -1993,11 +1945,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2049,11 +1998,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2068,7 +2014,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
 					)
 				}
@@ -2123,7 +2069,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 75,
 					)
 				}
@@ -2172,11 +2118,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yamlActive,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2191,7 +2134,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
 					)
 				}
@@ -2237,7 +2180,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
 					)
 				}
@@ -2261,11 +2204,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2302,11 +2242,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2358,7 +2295,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
 					)
 				}
@@ -2383,7 +2320,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
 					)
 				}
@@ -2407,11 +2344,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yamlActive,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2479,11 +2413,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2520,11 +2451,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2576,11 +2504,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2588,7 +2513,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
 					)
 				}
@@ -2597,7 +2522,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
 					)
 				}
@@ -2645,7 +2570,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
 					)
 				}
@@ -2654,7 +2579,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 75,
 					)
 				}
@@ -2679,7 +2604,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
 					)
 				}
@@ -2705,11 +2630,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yamlActive,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2717,7 +2639,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
 					)
 				}
@@ -2726,7 +2648,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
 					)
 				}
@@ -2765,7 +2687,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
 					)
 				}
@@ -2774,7 +2696,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
 					)
 				}
@@ -2798,11 +2720,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2839,11 +2758,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2851,7 +2767,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
 					)
 				}
@@ -2899,7 +2815,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 75, 0,
 					)
 				}
@@ -2908,7 +2824,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
 					)
 				}
@@ -2933,7 +2849,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
 					)
 				}
@@ -2957,11 +2873,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yamlActive,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -2969,7 +2882,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
 					)
 				}
@@ -3009,7 +2922,7 @@ var _ = Describe("Watcher", func() {
 				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
-						fmt.Sprintf("maestro:scale:%s:%s", trigger.Metric, configYaml.Name),
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 85, 0,
 					)
 				}
@@ -3033,11 +2946,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yaml1,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -3083,11 +2993,8 @@ var _ = Describe("Watcher", func() {
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					mockDb,
-					clientset,
 					configYaml,
 					expC,
-					yamlActive,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
