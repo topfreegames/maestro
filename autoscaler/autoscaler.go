@@ -60,7 +60,7 @@ func (sp *LegacyUsagePolicy) CalculateDelta(trigger *models.ScalingPolicyMetrics
 
 // GetUsagePercentage returns the current usage percentage
 func (sp *LegacyUsagePolicy) GetUsagePercentage(roomCount *models.RoomsStatusCount) float32 {
-	return float32(roomCount.Occupied) / float32(roomCount.Total())
+	return float32(roomCount.Occupied) / float32(roomCount.Available())
 }
 
 // RoomUsagePolicy comprehend the methods necessary to autoscale according to room usage
@@ -70,7 +70,7 @@ type RoomUsagePolicy struct{}
 func (sp *RoomUsagePolicy) CalculateDelta(trigger *models.ScalingPolicyMetricsTrigger, roomCount *models.RoomsStatusCount) int {
 	// [Occupied / (Total + Delta)] = Usage/100
 	occupied := float64(roomCount.Occupied)
-	total := float64(roomCount.Total())
+	total := float64(roomCount.Available())
 	threshold := float64(trigger.Usage) / 100
 	delta := occupied - threshold*total
 	delta = delta / threshold
@@ -80,5 +80,5 @@ func (sp *RoomUsagePolicy) CalculateDelta(trigger *models.ScalingPolicyMetricsTr
 
 // GetUsagePercentage returns the current usage percentage
 func (sp *RoomUsagePolicy) GetUsagePercentage(roomCount *models.RoomsStatusCount) float32 {
-	return float32(roomCount.Occupied) / float32(roomCount.Total())
+	return float32(roomCount.Occupied) / float32(roomCount.Available())
 }

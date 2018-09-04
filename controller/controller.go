@@ -1208,7 +1208,7 @@ func SetRoomStatus(
 
 	limitManager := models.NewLimitManager(logger, redisClient, config)
 
-	limit := roomsCountByStatus.Total() * cachedScheduler.ConfigYAML.AutoScaling.Up.Trigger.Limit
+	limit := roomsCountByStatus.Available() * cachedScheduler.ConfigYAML.AutoScaling.Up.Trigger.Limit
 	occupied := 100 * roomsCountByStatus.Occupied
 	if occupied > limit {
 		isLocked, err := limitManager.IsLocked(room)

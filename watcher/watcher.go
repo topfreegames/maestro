@@ -621,23 +621,23 @@ func (w *Watcher) checkState(
 		return scaling, nil
 	}
 	// Rooms below Min
-	if roomCount.Total() < autoScalingInfo.Min {
-		scaling.Delta = autoScalingInfo.Min - roomCount.Total()
+	if roomCount.Available() < autoScalingInfo.Min {
+		scaling.Delta = autoScalingInfo.Min - roomCount.Available()
 		return scaling, nil
 	}
 	// Rooms above Max
-	if autoScalingInfo.Max > 0 && roomCount.Total() > autoScalingInfo.Max {
-		scaling.Delta = autoScalingInfo.Max - roomCount.Total()
+	if autoScalingInfo.Max > 0 && roomCount.Available() > autoScalingInfo.Max {
+		scaling.Delta = autoScalingInfo.Max - roomCount.Available()
 		return scaling, nil
 	}
 
 	// Up
-	if (roomCount.Total() < autoScalingInfo.Max && autoScalingInfo.Max > 0) || autoScalingInfo.Max == 0 {
+	if (roomCount.Available() < autoScalingInfo.Max && autoScalingInfo.Max > 0) || autoScalingInfo.Max == 0 {
 		scaling, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Up, w.ScaleUpInfo, roomCount, scheduler, nowTimestamp)
 	}
 
 	// Down
-	if scaling.Delta == 0 && scaling.InSync && roomCount.Total() > autoScalingInfo.Min {
+	if scaling.Delta == 0 && scaling.InSync && roomCount.Available() > autoScalingInfo.Min {
 		scaling, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Down, w.ScaleDownInfo, roomCount, scheduler, nowTimestamp)
 	}
 
@@ -746,7 +746,7 @@ func (w *Watcher) checkMetricsTrigger(
 			w.SchedulerName,
 			trigger.Type, // distinct
 			scaleType,
-			capacity, roomCount.Total(),
+			capacity, roomCount.Available(),
 			threshold, usage,
 		)
 		if err != nil {
@@ -957,7 +957,7 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 	limit int,
 	nowTimestamp int64,
 ) bool { // isAboveLimit
-	if 100*roomCount.Occupied >= roomCount.Total()*limit {
+	if 100*roomCount.Occupied >= roomCount.Available()*limit {
 		w.Logger.Debug("Usage is above limit. Should scale up")
 		scheduler.State = unbalancedState
 		scheduler.StateLastChangedAt = nowTimestamp
