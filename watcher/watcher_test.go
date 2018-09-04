@@ -363,7 +363,8 @@ var _ = Describe("Watcher", func() {
 	})
 
 	Describe("Start", func() {
-		var configYaml1 models.ConfigYAML
+		var configYaml models.ConfigYAML
+		mockAutoScaling := &models.AutoScaling{}
 
 		BeforeEach(func() {
 			config.Set("watcher.autoScalingPeriod", 1)
@@ -371,50 +372,53 @@ var _ = Describe("Watcher", func() {
 
 		It("should start watcher", func() {
 			// Testing here if no scaling needs to be done
-			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Mock send usage percentage
-			testing.MockSendUsage(mockPipeline, mockRedisClient, configYaml1.AutoScaling)
+			testing.CopyAutoScaling(configYaml.AutoScaling, mockAutoScaling)
+			testing.TransformLegacyInMetricsTrigger(mockAutoScaling)
 
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+			// Mock send usage percentage
+			testing.MockSendUsage(mockPipeline, mockRedisClient, mockAutoScaling)
+
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
 
 			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset,
-				configYaml1.Name, configYaml1.Game, occupiedTimeout, []*eventforwarder.Info{})
+				configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 
 			// EnterCriticalSection (lock done by redis-lock)
-			lockKey := fmt.Sprintf("maestro-lock-key-%s", configYaml1.Name)
+			lockKey := fmt.Sprintf("maestro-lock-key-%s", configYaml.Name)
 			mockRedisClient.EXPECT().
 				SetNX(lockKey, gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).
 				AnyTimes()
 
 			// DeleteRoomsNoPingSince
-			pKey := models.GetRoomPingRedisKey(configYaml1.Name)
+			pKey := models.GetRoomPingRedisKey(configYaml.Name)
 			// DeleteRoomsNoPingSince
 			mockRedisClient.EXPECT().ZRangeByScore(
 				pKey, gomock.Any(),
 			).Return(redis.NewStringSliceResult([]string{}, nil))
 
 			//DeleteRoomsOccupiedTimeout
-			lKey := models.GetLastStatusRedisKey(configYaml1.Name, models.StatusOccupied)
+			lKey := models.GetLastStatusRedisKey(configYaml.Name, models.StatusOccupied)
 			mockRedisClient.EXPECT().ZRangeByScore(
 				lKey,
 				gomock.Any(),
 			).Return(redis.NewStringSliceResult([]string{}, nil))
 
 			// GetSchedulerScalingInfo
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yaml1
 				scheduler.State = models.StateInSync
 			}).AnyTimes()
-			creating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating")
-			ready := models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready")
-			occupied := models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied")
-			terminating := models.GetRoomStatusSetRedisKey(configYaml1.Name, "terminating")
+			creating := models.GetRoomStatusSetRedisKey(configYaml.Name, "creating")
+			ready := models.GetRoomStatusSetRedisKey(configYaml.Name, "ready")
+			occupied := models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied")
+			terminating := models.GetRoomStatusSetRedisKey(configYaml.Name, "terminating")
 			expC := &models.RoomsStatusCount{4, 3, 20, 1}
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil))
@@ -426,29 +430,31 @@ var _ = Describe("Watcher", func() {
 			err = testing.MockSetScallingAmountWithRoomStatusCount(
 				mockRedisClient,
 				mockPipeline,
-				&configYaml1,
+				&configYaml,
 				expC,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Mock LegacyTrigger Up get usage percentagess
-			testing.MockGetUsages(
-				mockPipeline, mockRedisClient,
-				fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-				w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 90, 0,
-			)
+			// Mock MetricsTrigger Up get usage percentages
+			for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+				testing.MockGetUsages(
+					mockPipeline, mockRedisClient,
+					fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+					trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+				)
+			}
 
 			// ScaleUp
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 				func(schedulerName string, statusInfo map[string]interface{}) {
 					Expect(statusInfo["status"]).To(Equal("creating"))
 					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 				},
-			).Times(configYaml1.AutoScaling.Up.Delta)
-			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+			).Times(configYaml.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+			mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
 
 			// UpdateScheduler
 			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -504,16 +510,16 @@ var _ = Describe("Watcher", func() {
 
 	Describe("ReportRoomsStatuses", func() {
 		It("Should report all 4 statuses", func() {
-			var configYaml1 models.ConfigYAML
-			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			var configYaml models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
 
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, configYaml1.Game, occupiedTimeout, []*eventforwarder.Info{})
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 
 			mockCtrl = gomock.NewController(GinkgoT())
@@ -590,61 +596,66 @@ var _ = Describe("Watcher", func() {
 	Describe("AutoScale", func() {
 
 		Context("Legacy", func() {
-			var configYaml1 models.ConfigYAML
+			var configYaml models.ConfigYAML
+			mockAutoScaling := &models.AutoScaling{}
 
 			BeforeEach(func() {
-				err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+				err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yaml1
 					})
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, configYaml1.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
+				testing.CopyAutoScaling(configYaml.AutoScaling, mockAutoScaling)
+				testing.TransformLegacyInMetricsTrigger(mockAutoScaling)
 
 				// Mock send usage percentage
-				testing.MockSendUsage(mockPipeline, mockRedisClient, configYaml1.AutoScaling)
+				testing.MockSendUsage(mockPipeline, mockRedisClient, mockAutoScaling)
 			})
 
 			It("should scale up and update scheduler state", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 1, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					&configYaml1,
+					&configYaml,
 					expC,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 90, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+					)
+				}
 
 				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
 						Expect(statusInfo["status"]).To(Equal("creating"))
 						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 					},
-				).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+				).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
@@ -661,21 +672,21 @@ var _ = Describe("Watcher", func() {
 				os.Setenv("CONTROLLER_NAME_ENABLE_INFO", "true")
 
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
-				expC := &models.RoomsStatusCount{0, 0, configYaml1.AutoScaling.Min - 1, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				expC := &models.RoomsStatusCount{0, 0, configYaml.AutoScaling.Min - 1, 0} // creating,occupied,ready,terminating
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					&configYaml1,
+					&configYaml,
 					expC,
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -688,8 +699,8 @@ var _ = Describe("Watcher", func() {
 						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 					},
 				)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any())
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any())
 				mockPipeline.EXPECT().Exec()
 
 				// UpdateScheduler
@@ -707,43 +718,45 @@ var _ = Describe("Watcher", func() {
 
 			It("should change state and scale if first state change - subdimensioned", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 1, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 90, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+					)
+				}
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					&configYaml1,
+					&configYaml,
 					expC,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
 				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
 						Expect(statusInfo["status"]).To(Equal("creating"))
 						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 					},
-				).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+				).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -758,35 +771,39 @@ var _ = Describe("Watcher", func() {
 
 			It("should change state and scale if first state change - overdimensioned", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 100, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml1.AutoScaling.Down.Trigger.Usage, 0, 90,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+					)
+				}
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					&configYaml1,
+					&configYaml,
 					expC,
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -800,11 +817,11 @@ var _ = Describe("Watcher", func() {
 						}},
 					}
 					pod.Status.Phase = v1.PodPending
-					_, err := clientset.CoreV1().Pods(configYaml1.Name).Create(pod)
+					_, err := clientset.CoreV1().Pods(configYaml.Name).Create(pod)
 					Expect(err).NotTo(HaveOccurred())
 				}
 
-				readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+				readyKey := models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult("room-0", nil))
 				mockPipeline.EXPECT().Exec()
@@ -816,7 +833,7 @@ var _ = Describe("Watcher", func() {
 					mockPipeline.EXPECT().
 						ZRem(gomock.Any(), gomock.Any())
 				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
 				mockPipeline.EXPECT().Del(gomock.Any())
 				mockPipeline.EXPECT().Exec()
 
@@ -832,30 +849,34 @@ var _ = Describe("Watcher", func() {
 
 			It("should change state and not scale if in-sync but wrong state reported", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateOverdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 4, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml1.AutoScaling.Down.Trigger.Usage, 0, 50,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+					)
+				}
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -870,23 +891,25 @@ var _ = Describe("Watcher", func() {
 
 			It("should do nothing if in cooldown - subdimensioned", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now()
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 1, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 90, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+					)
+				}
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -894,30 +917,34 @@ var _ = Describe("Watcher", func() {
 
 			It("should do nothing if in cooldown - overdimensioned", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now()
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateOverdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 100, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml1.AutoScaling.Down.Trigger.Usage, 0, 90,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+					)
+				}
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -925,9 +952,9 @@ var _ = Describe("Watcher", func() {
 
 			It("should warn if scale down is required", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateOverdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -935,14 +962,14 @@ var _ = Describe("Watcher", func() {
 				})
 
 				expC := &models.RoomsStatusCount{0, 2, 100, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				// Create rooms (ScaleUp)
 				timeoutSec := 1000
-				var configYaml1 models.ConfigYAML
-				err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+				var configYaml models.ConfigYAML
+				err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
-				scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+				scheduler := models.NewScheduler(configYaml.Name, configYaml.Game, yaml1)
 				scaleUpAmount := 5
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
@@ -951,8 +978,8 @@ var _ = Describe("Watcher", func() {
 						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 					},
 				).Times(scaleUpAmount)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(scaleUpAmount)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(scaleUpAmount)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
 				mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
 
 				err = testing.MockSetScallingAmount(
@@ -960,7 +987,7 @@ var _ = Describe("Watcher", func() {
 					mockPipeline,
 					mockDb,
 					clientset,
-					&configYaml1,
+					&configYaml,
 					expC.Ready,
 					yamlWithUpLimit,
 				)
@@ -969,26 +996,30 @@ var _ = Describe("Watcher", func() {
 				err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml1.AutoScaling.Down.Trigger.Usage, 0, 90,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+					)
+				}
 
 				// ScaleDown
-				scaleDownAmount := configYaml1.AutoScaling.Down.Delta
+				scaleDownAmount := configYaml.AutoScaling.Down.Delta
 				names, err := controller.GetPodNames(scaleDownAmount, scheduler.Name, clientset)
 				Expect(err).NotTo(HaveOccurred())
 
-				readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+				readyKey := models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				for _, name := range names {
 					mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
@@ -1021,7 +1052,7 @@ var _ = Describe("Watcher", func() {
 					mockPipeline,
 					mockDb,
 					clientset,
-					&configYaml1,
+					&configYaml,
 					expC.Ready+scaleUpAmount,
 					yamlWithUpLimit,
 				)
@@ -1038,30 +1069,34 @@ var _ = Describe("Watcher", func() {
 
 			It("should do nothing if state is expected", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 4, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml1.AutoScaling.Down.Trigger.Usage, 0, 50,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+					)
+				}
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -1069,12 +1104,12 @@ var _ = Describe("Watcher", func() {
 
 			It("should do nothing if state is creating", func() {
 				// GetSchedulerScalingInfo
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateCreating
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 4, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -1082,12 +1117,12 @@ var _ = Describe("Watcher", func() {
 
 			It("should do nothing if state is terminating", func() {
 				// GetSchedulerScalingInfo
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateTerminating
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 4, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -1095,43 +1130,45 @@ var _ = Describe("Watcher", func() {
 
 			It("should not panic and log error if failed to change state info", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 1, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 90, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+					)
+				}
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					&configYaml1,
+					&configYaml,
 					expC,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
 				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
 						Expect(statusInfo["status"]).To(Equal("creating"))
 						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 					},
-				).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+				).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1146,23 +1183,34 @@ var _ = Describe("Watcher", func() {
 
 			It("should not scale up if half of the points are below threshold", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 8, 4, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, configYaml1.AutoScaling.Down.Trigger.Usage, 50, 50,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
+
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+					)
+				}
 
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				}, mockDb, nil, nil)
@@ -1173,44 +1221,46 @@ var _ = Describe("Watcher", func() {
 
 			It("should scale up if 90% of the points are above threshold", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Up.Cooldown+1) * time.Second)
-				w.AutoScalingPeriod = configYaml1.AutoScaling.Up.Trigger.Time / 10
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
+				w.AutoScalingPeriod = configYaml.AutoScaling.Up.Trigger.Time / 10
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 4, 1, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					&configYaml1,
+					&configYaml,
 					expC,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 90, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+					)
+				}
 
 				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
 						Expect(statusInfo["status"]).To(Equal("creating"))
 						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 					},
-				).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+				).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1225,30 +1275,34 @@ var _ = Describe("Watcher", func() {
 
 			It("should not scale down if half of the points are below threshold", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 2, 1, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml1.AutoScaling.Down.Trigger.Usage, 0, 50,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+					)
+				}
 
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				}, mockDb, nil, nil)
@@ -1259,38 +1313,42 @@ var _ = Describe("Watcher", func() {
 
 			It("should scale down if 90% of the points are above threshold", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml1.AutoScaling.Down.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateOverdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 1, 4, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					&configYaml1,
+					&configYaml,
 					expC,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Mock LegacyTrigger Up get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleUpInfo.Size(), configYaml1.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml1.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml1.AutoScaling.Down.Trigger.Usage, 0, 90,
-				)
+				// Mock MetricsTrigger Down get usage percenta9es
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+					)
+				}
 
 				for i := 0; i < 5; i++ {
 					pod := &v1.Pod{}
@@ -1301,11 +1359,11 @@ var _ = Describe("Watcher", func() {
 						}},
 					}
 					pod.Status.Phase = v1.PodPending
-					_, err := clientset.CoreV1().Pods(configYaml1.Name).Create(pod)
+					_, err := clientset.CoreV1().Pods(configYaml.Name).Create(pod)
 					Expect(err).NotTo(HaveOccurred())
 				}
 
-				readyKey := models.GetRoomStatusSetRedisKey(configYaml1.Name, models.StatusReady)
+				readyKey := models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult("room-0", nil))
 				mockPipeline.EXPECT().Exec()
@@ -1317,7 +1375,7 @@ var _ = Describe("Watcher", func() {
 					mockPipeline.EXPECT().
 						ZRem(gomock.Any(), gomock.Any())
 				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
 				mockPipeline.EXPECT().Del(gomock.Any())
 				mockPipeline.EXPECT().Exec()
 
@@ -1334,34 +1392,34 @@ var _ = Describe("Watcher", func() {
 			It("should scale up, even if lastScaleOpAt is now, if usage is above 90% (default)", func() {
 				lastChangedAt := time.Now()
 				lastScaleOpAt := time.Now()
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yaml1
 				})
 				expC := &models.RoomsStatusCount{0, 9, 1, 0} // creating,occupied,ready,terminating
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					&configYaml1,
+					&configYaml,
 					expC,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
 				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
 						Expect(statusInfo["status"]).To(Equal("creating"))
 						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 					},
-				).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+				).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1378,7 +1436,7 @@ var _ = Describe("Watcher", func() {
 			It("should scale up, even if lastScaleOpAt is now, if usage is above 70% (from scheduler)", func() {
 				lastChangedAt := time.Now()
 				lastScaleOpAt := time.Now()
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1386,27 +1444,27 @@ var _ = Describe("Watcher", func() {
 				})
 				expC := &models.RoomsStatusCount{0, 7, 3, 0} // creating,occupied,ready,terminating
 
-				testing.MockRoomDistribution(&configYaml1, mockPipeline, mockRedisClient, expC)
+				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
-					&configYaml1,
+					&configYaml,
 					expC,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
 				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Up.Delta)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
 						Expect(statusInfo["status"]).To(Equal("creating"))
 						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 					},
-				).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()).Times(configYaml1.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Up.Delta)
+				).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
+				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1422,17 +1480,20 @@ var _ = Describe("Watcher", func() {
 		})
 
 		Context("Legacy error", func() {
-			var configYaml1 models.ConfigYAML
+			var configYaml models.ConfigYAML
+			mockAutoScaling := &models.AutoScaling{}
 
 			BeforeEach(func() {
-				err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+				err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yaml1
 					})
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml1.Name, configYaml1.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
+				testing.CopyAutoScaling(configYaml.AutoScaling, mockAutoScaling)
+				testing.TransformLegacyInMetricsTrigger(mockAutoScaling)
 			})
 
 			It("should terminate watcher if scheduler is not in database", func() {
@@ -1440,7 +1501,7 @@ var _ = Describe("Watcher", func() {
 				mockDb.EXPECT().Query(
 					gomock.Any(),
 					"SELECT * FROM schedulers WHERE name = ?",
-					configYaml1.Name,
+					configYaml.Name,
 				).Return(pg.NewTestResult(fmt.Errorf("scheduler not found"), 0), fmt.Errorf("scheduler not found"))
 
 				w.Run = true
@@ -1450,7 +1511,7 @@ var _ = Describe("Watcher", func() {
 
 			It("should not panic and exit if error retrieving scheduler scaling info", func() {
 				// GetSchedulerScalingInfo
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				}).Return(pg.NewTestResult(nil, 0), errors.New("some cool error in pg"))
 
@@ -1463,14 +1524,17 @@ var _ = Describe("Watcher", func() {
 		Context("LegacyTrigger Down And MetricsTrigger Up", func() {
 			var configYaml *models.ConfigYAML
 			var yamlActive string
+			mockAutoScaling := &models.AutoScaling{}
 
 			BeforeEach(func() {
 				yamlActive = yamlWithLegacyDownAndMetricsUpTrigger
 				err := yaml.Unmarshal([]byte(yamlActive), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
+				testing.CopyAutoScaling(configYaml.AutoScaling, mockAutoScaling)
+				testing.TransformLegacyInMetricsTrigger(mockAutoScaling)
 
 				// Mock send usage percentage
-				testing.MockSendUsage(mockPipeline, mockRedisClient, configYaml.AutoScaling)
+				testing.MockSendUsage(mockPipeline, mockRedisClient, mockAutoScaling)
 			})
 
 			// Down
@@ -1495,7 +1559,7 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				// Mock MetricsTrigger Up get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -1503,12 +1567,14 @@ var _ = Describe("Watcher", func() {
 					)
 				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml.AutoScaling.Down.Trigger.Usage, 0, 90,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+					)
+				}
 
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Down.Delta)
@@ -1540,7 +1606,7 @@ var _ = Describe("Watcher", func() {
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -1548,12 +1614,14 @@ var _ = Describe("Watcher", func() {
 					)
 				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml.AutoScaling.Down.Trigger.Usage, 0, 75,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 75,
+					)
+				}
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -1572,7 +1640,7 @@ var _ = Describe("Watcher", func() {
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -1605,7 +1673,7 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				// Mock MetricsTrigger Up get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -1613,12 +1681,14 @@ var _ = Describe("Watcher", func() {
 					)
 				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml.AutoScaling.Down.Trigger.Usage, 0, 90,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+					)
+				}
 
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
@@ -1651,7 +1721,7 @@ var _ = Describe("Watcher", func() {
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -1659,12 +1729,14 @@ var _ = Describe("Watcher", func() {
 					)
 				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml.AutoScaling.Down.Trigger.Usage, 0, 90,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+					)
+				}
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -1729,7 +1801,7 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				// Mock MetricsTrigger Up get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -1777,7 +1849,7 @@ var _ = Describe("Watcher", func() {
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -1785,12 +1857,14 @@ var _ = Describe("Watcher", func() {
 					)
 				}
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml.AutoScaling.Down.Trigger.Usage, 0, 50,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+					)
+				}
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -1808,12 +1882,14 @@ var _ = Describe("Watcher", func() {
 				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
-				// Mock LegacyTrigger Down get usage percentagess
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleDownInfo.Size(), 0, configYaml.AutoScaling.Down.Trigger.Usage, 0, 50,
-				)
+				// Mock MetricsTrigger Down get usage percentages
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+					)
+				}
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -1840,7 +1916,7 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				// Mock MetricsTrigger Up get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -1880,7 +1956,7 @@ var _ = Describe("Watcher", func() {
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Up.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -1972,14 +2048,17 @@ var _ = Describe("Watcher", func() {
 		Context("LegacyTrigger Up And MetricsTrigger Down", func() {
 			var configYaml *models.ConfigYAML
 			var yamlActive string
+			mockAutoScaling := &models.AutoScaling{}
 
 			BeforeEach(func() {
 				yamlActive = yamlWithLegacyUpAndMetricsDownTrigger
 				err := yaml.Unmarshal([]byte(yamlActive), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
+				testing.CopyAutoScaling(configYaml.AutoScaling, mockAutoScaling)
+				testing.TransformLegacyInMetricsTrigger(mockAutoScaling)
 
 				// Mock send usage percentage
-				testing.MockSendUsage(mockPipeline, mockRedisClient, configYaml.AutoScaling)
+				testing.MockSendUsage(mockPipeline, mockRedisClient, mockAutoScaling)
 			})
 
 			// Down
@@ -2003,15 +2082,17 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Mock LegacyTrigger Up get usage percentages
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleUpInfo.Size(), configYaml.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
 				// Mock MetricsTrigger Down get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -2058,15 +2139,17 @@ var _ = Describe("Watcher", func() {
 				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
-				// Mock LegacyTrigger Up get usage percentages
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleUpInfo.Size(), configYaml.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
 				// Mock MetricsTrigger Down get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -2090,12 +2173,14 @@ var _ = Describe("Watcher", func() {
 				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
-				// Mock LegacyTrigger Up get usage percentages
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleUpInfo.Size(), configYaml.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -2123,15 +2208,17 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Mock LegacyTrigger Up get usage percentages
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleUpInfo.Size(), configYaml.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
 				// Mock MetricsTrigger Down get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -2169,15 +2256,17 @@ var _ = Describe("Watcher", func() {
 				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
-				// Mock LegacyTrigger Up get usage percentages
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleUpInfo.Size(), configYaml.AutoScaling.Up.Trigger.Usage, 0, 50, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+					)
+				}
 
 				// Mock MetricsTrigger Down get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -2247,12 +2336,14 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Mock LegacyTrigger Up get usage percentages
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleUpInfo.Size(), configYaml.AutoScaling.Up.Trigger.Usage, 0, 90, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+					)
+				}
 
 				// ScaleUp
 				testing.MockScaleUp(
@@ -2284,15 +2375,17 @@ var _ = Describe("Watcher", func() {
 				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
-				// Mock LegacyTrigger Up get usage percentages
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleUpInfo.Size(), configYaml.AutoScaling.Up.Trigger.Usage, 0, 75, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 75, 0,
+					)
+				}
 
 				// Mock MetricsTrigger Down get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -2317,7 +2410,7 @@ var _ = Describe("Watcher", func() {
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Down get usage percentages
-				for _, trigger := range configYaml.AutoScaling.Down.MetricsTrigger {
+				for _, trigger := range mockAutoScaling.Down.MetricsTrigger {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
@@ -2349,12 +2442,14 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Mock LegacyTrigger Up get usage percentages
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleUpInfo.Size(), configYaml.AutoScaling.Up.Trigger.Usage, 0, 90, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+					)
+				}
 
 				// ScaleUp
 				testing.MockScaleUp(
@@ -2387,12 +2482,14 @@ var _ = Describe("Watcher", func() {
 				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
-				// Mock LegacyTrigger Up and get usage percentages
-				testing.MockGetUsages(
-					mockPipeline, mockRedisClient,
-					fmt.Sprintf("maestro:scale:%s", configYaml.Name),
-					w.ScaleUpInfo.Size(), configYaml.AutoScaling.Up.Trigger.Usage, 0, 85, 0,
-				)
+				// Mock MetricsTrigger Up get usage percentages
+				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 85, 0,
+					)
+				}
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler 'controller-name': state is as expected"))
@@ -3020,7 +3117,7 @@ var _ = Describe("Watcher", func() {
 	})
 
 	Describe("RemoveDeadRooms", func() {
-		var configYaml1 models.ConfigYAML
+		var configYaml models.ConfigYAML
 		var w *watcher.Watcher
 		createNamespace := func(name string, clientset kubernetes.Interface) error {
 			return models.NewNamespace(name).Create(clientset)
@@ -3039,15 +3136,15 @@ var _ = Describe("Watcher", func() {
 			return err
 		}
 		BeforeEach(func() {
-			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 			Expect(err).NotTo(HaveOccurred())
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
 			w = watcher.NewWatcher(
 				config, logger, mr, mockDb, redisClient, clientset,
-				configYaml1.Name, configYaml1.Game, occupiedTimeout,
+				configYaml.Name, configYaml.Game, occupiedTimeout,
 				[]*eventforwarder.Info{
 					&eventforwarder.Info{
 						Plugin:    "plugin",
@@ -3060,7 +3157,7 @@ var _ = Describe("Watcher", func() {
 		})
 
 		It("should call controller DeleteRoomsNoPingSince and DeleteRoomsOccupiedTimeout", func() {
-			schedulerName := configYaml1.Name
+			schedulerName := configYaml.Name
 			pKey := models.GetRoomPingRedisKey(schedulerName)
 			lKey := models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied)
 			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
@@ -3112,7 +3209,7 @@ var _ = Describe("Watcher", func() {
 					Expect(infos["game"]).To(Equal(schedulerName))
 					Expect(expectedRooms).To(ContainElement(infos["roomId"]))
 				}).Times(len(expectedRooms))
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 					scheduler.Game = schedulerName
@@ -3122,7 +3219,7 @@ var _ = Describe("Watcher", func() {
 		})
 
 		It("should log and not panic in case of no ping since error", func() {
-			schedulerName := configYaml1.Name
+			schedulerName := configYaml.Name
 			pKey := models.GetRoomPingRedisKey(schedulerName)
 			lKey := models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied)
 			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
@@ -3150,7 +3247,7 @@ var _ = Describe("Watcher", func() {
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
 			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
 
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				}).Times(4)
@@ -3172,7 +3269,7 @@ var _ = Describe("Watcher", func() {
 		})
 
 		It("should log and not panic in case of occupied error", func() {
-			schedulerName := configYaml1.Name
+			schedulerName := configYaml.Name
 			pKey := models.GetRoomPingRedisKey(schedulerName)
 			lKey := models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied)
 			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
@@ -3206,22 +3303,22 @@ var _ = Describe("Watcher", func() {
 	})
 
 	Describe("EnsureCorrectRooms", func() {
-		var configYaml1 models.ConfigYAML
+		var configYaml models.ConfigYAML
 		var w *watcher.Watcher
 
 		BeforeEach(func() {
-			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 			Expect(err).NotTo(HaveOccurred())
 			mockDb.EXPECT().Query(
 				gomock.Any(),
 				"SELECT * FROM schedulers WHERE name = ?",
-				configYaml1.Name,
+				configYaml.Name,
 			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yaml1
 			})
 			w = watcher.NewWatcher(
 				config, logger, mr, mockDb, redisClient, clientset,
-				configYaml1.Name, configYaml1.Game, occupiedTimeout,
+				configYaml.Name, configYaml.Game, occupiedTimeout,
 				[]*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 		})

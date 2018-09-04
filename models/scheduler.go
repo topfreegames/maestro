@@ -73,6 +73,7 @@ type ScalingPolicyTrigger struct {
 // This will trigger a scale up or scale down.
 type ScalingPolicyMetricsTrigger struct {
 	Type      AutoScalingPolicyType `yaml:"type" json:"type" valid:"required"`
+	Delta     int                   `yaml:"delta" json:"delta" valid:"int64"`
 	Time      int                   `yaml:"time" json:"time" valid:"int64"`
 	Usage     int                   `yaml:"usage" json:"usage" valid:"int64"`
 	Threshold int                   `yaml:"threshold" json:"threshold" valid:"int64"`

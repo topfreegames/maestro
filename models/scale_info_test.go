@@ -24,7 +24,7 @@ var _ = Describe("ScaleInfo", func() {
 		size          = 10
 		threshold     = 70
 		usage         = float32(0.8)
-		key           = "maestro:scale:scheduler"
+		key           = "maestro:scale:legacy:scheduler"
 		zero64        = int64(0)
 	)
 
@@ -147,7 +147,7 @@ var _ = Describe("ScaleInfo", func() {
 			scaleInfo := NewScaleInfo(4, mockRedisClient)
 			key := scaleInfo.Key("scheduler-name", LegacyAutoScalingPolicyType)
 
-			Expect(key).To(Equal("maestro:scale:scheduler-name"))
+			Expect(key).To(Equal("maestro:scale:legacy:scheduler-name"))
 		})
 
 		It("should return the redis key from scheduler for legacy metrics", func() {

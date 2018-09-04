@@ -24,7 +24,8 @@ type AutoScaler struct {
 func NewAutoScaler(usageDataSource ...interface{}) *AutoScaler {
 	a := &AutoScaler{
 		AutoScalingPoliciesMap: map[models.AutoScalingPolicyType]AutoScalingPolicy{
-			models.RoomAutoScalingPolicyType: &RoomUsagePolicy{}, // roomUsagePolicy
+			models.LegacyAutoScalingPolicyType: &LegacyUsagePolicy{}, // legacyPolicy
+			models.RoomAutoScalingPolicyType:   &RoomUsagePolicy{},   // roomUsagePolicy
 		},
 	}
 	return a
@@ -48,6 +49,19 @@ func (a *AutoScaler) CurrentUsagePercentage(
 
 // AutoScalingPolicies implementations
 // ------------------------------------------------------------
+
+// LegacyUsagePolicy implements the legacy autoscaler
+type LegacyUsagePolicy struct{}
+
+// CalculateDelta returns the room delta to scale up or down in order to maintain the usage percentage
+func (sp *LegacyUsagePolicy) CalculateDelta(trigger *models.ScalingPolicyMetricsTrigger, roomCount *models.RoomsStatusCount) int {
+	return trigger.Delta
+}
+
+// GetUsagePercentage returns the current usage percentage
+func (sp *LegacyUsagePolicy) GetUsagePercentage(roomCount *models.RoomsStatusCount) float32 {
+	return float32(roomCount.Occupied) / float32(roomCount.Total())
+}
 
 // RoomUsagePolicy comprehend the methods necessary to autoscale according to room usage
 type RoomUsagePolicy struct{}

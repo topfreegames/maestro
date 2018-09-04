@@ -851,13 +851,6 @@ func MockSendUsage(mockPipeline *redismocks.MockPipeliner, mockRedisClient *redi
 			mockPipeline.EXPECT().Exec()
 		}
 	}
-
-	if len(autoScaling.Up.MetricsTrigger) == 0 || len(autoScaling.Down.MetricsTrigger) == 0 {
-		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-		mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
-		mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
-		mockPipeline.EXPECT().Exec()
-	}
 }
 
 // MockGetUsages mockes the return of usage percentages from redis
@@ -985,4 +978,63 @@ func MockScaleUp(
 	mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(schedulerName), gomock.Any()).Times(times)
 	mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(schedulerName, "creating"), gomock.Any()).Times(times)
 	mockPipeline.EXPECT().Exec().Times(times)
+}
+
+// CopyAutoScaling copies an autoscaling struct to a new one
+func CopyAutoScaling(original, clone *models.AutoScaling) {
+	clone.Up = &models.ScalingPolicy{}
+	clone.Up.MetricsTrigger = original.Up.MetricsTrigger
+	if original.Up.Trigger != nil {
+		clone.Up.Cooldown = original.Up.Cooldown
+		clone.Up.Delta = original.Up.Delta
+		clone.Up.Trigger = &models.ScalingPolicyTrigger{}
+		clone.Up.Trigger.Limit = original.Up.Trigger.Limit
+		clone.Up.Trigger.Threshold = original.Up.Trigger.Threshold
+		clone.Up.Trigger.Time = original.Up.Trigger.Time
+		clone.Up.Trigger.Usage = original.Up.Trigger.Usage
+	}
+	
+	clone.Down = &models.ScalingPolicy{}
+	clone.Down.MetricsTrigger = original.Down.MetricsTrigger
+	if original.Down.Trigger != nil {
+		clone.Down.Cooldown = original.Down.Cooldown
+		clone.Down.Delta = original.Down.Delta
+		clone.Down.Trigger = &models.ScalingPolicyTrigger{}
+		clone.Down.Trigger.Limit = original.Down.Trigger.Limit
+		clone.Down.Trigger.Threshold = original.Down.Trigger.Threshold
+		clone.Down.Trigger.Time = original.Down.Trigger.Time
+		clone.Down.Trigger.Usage = original.Down.Trigger.Usage
+	}
+}
+
+// TransformLegacyInMetricsTrigger maps legacy to metrics trigger
+func TransformLegacyInMetricsTrigger(autoScalingInfo *models.AutoScaling) {
+	// Up
+	if len(autoScalingInfo.Up.MetricsTrigger) == 0 {
+		autoScalingInfo.Up.MetricsTrigger = append(
+			autoScalingInfo.Up.MetricsTrigger,
+			&models.ScalingPolicyMetricsTrigger{
+				Type: models.LegacyAutoScalingPolicyType,
+				Usage: autoScalingInfo.Up.Trigger.Usage,
+				Limit: autoScalingInfo.Up.Trigger.Limit,
+				Threshold: autoScalingInfo.Up.Trigger.Threshold,
+				Time: autoScalingInfo.Up.Trigger.Time,
+				Delta: autoScalingInfo.Up.Delta,
+			},
+		)
+	}
+	// Down
+	if len(autoScalingInfo.Down.MetricsTrigger) == 0 {
+		autoScalingInfo.Down.MetricsTrigger = append(
+			autoScalingInfo.Down.MetricsTrigger,
+			&models.ScalingPolicyMetricsTrigger{
+				Type: models.LegacyAutoScalingPolicyType,
+				Usage: autoScalingInfo.Down.Trigger.Usage,
+				Limit: autoScalingInfo.Down.Trigger.Limit,
+				Threshold: autoScalingInfo.Down.Trigger.Threshold,
+				Time: autoScalingInfo.Down.Trigger.Time,
+				Delta: -autoScalingInfo.Down.Delta,
+			},
+		)
+	}
 }

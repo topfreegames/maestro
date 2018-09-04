@@ -24,7 +24,8 @@ var _ = Describe("AutoScaler", func() {
 		It("should return configured new autoscaler", func() {
 			expectedAutoScaler := &AutoScaler{
 				AutoScalingPoliciesMap: map[models.AutoScalingPolicyType]AutoScalingPolicy{
-					models.RoomAutoScalingPolicyType: &RoomUsagePolicy{}, // roomUsagePolicy
+					models.LegacyAutoScalingPolicyType: &LegacyUsagePolicy{}, // LegacyUsagePolicy
+					models.RoomAutoScalingPolicyType:   &RoomUsagePolicy{},   // RoomUsagePolicy
 				},
 			}
 

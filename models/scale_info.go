@@ -41,10 +41,7 @@ func NewScaleInfo(size int, redis redis.RedisClient) *ScaleInfo {
 
 // Key returns the redis key from scheduler name
 func (s *ScaleInfo) Key(schedulerName string, metric AutoScalingPolicyType) string {
-	if metric != LegacyAutoScalingPolicyType {
-		return fmt.Sprintf("maestro:scale:%s:%s", metric, schedulerName)
-	}
-	return fmt.Sprintf("maestro:scale:%s", schedulerName)
+	return fmt.Sprintf("maestro:scale:%s:%s", metric, schedulerName)
 }
 
 // Size returns the circular list size that holds usages
