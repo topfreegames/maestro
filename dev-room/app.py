@@ -21,6 +21,8 @@ def sigterm_handler(signal, frame):
     global status
     print('Terminating room')
     status = "terminating"
+    requests.put("{}/{}".format(constant.MAESTRO_ADDR, constant.ROOM_PING_ENDPOINT), json={"timestamp": int(time.time()), "status": status})
+    exit()
 
 signal.signal(signal.SIGTERM, sigterm_handler)
 signal.signal(signal.SIGINT, sigterm_handler)
