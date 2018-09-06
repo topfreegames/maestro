@@ -15,4 +15,8 @@ const (
 	LegacyAutoScalingPolicyType AutoScalingPolicyType = "legacy"
 	// RoomAutoScalingPolicyType defines room usage autoscaling policys type
 	RoomAutoScalingPolicyType AutoScalingPolicyType = "room"
+	// CPUAutoScalingPolicyType defines CPU usage autoscaling policys type
+	CPUAutoScalingPolicyType AutoScalingPolicyType = "cpu"
+	// MemAutoScalingPolicyType defines memory usage autoscaling policys type
+	MemAutoScalingPolicyType AutoScalingPolicyType = "mem"
 )

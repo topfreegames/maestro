@@ -160,7 +160,7 @@ cmd:
 						scheduler.YAML = yaml1
 					})
 			}
-			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0], "", occupiedTimeout, []*eventforwarder.Info{})
+			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, schedulerNames[0], "", occupiedTimeout, []*eventforwarder.Info{})
 			w.Watchers[watcher1.SchedulerName] = watcher1
 			Expect(w.Watchers[schedulerNames[0]].Run).To(BeFalse())
 
@@ -188,10 +188,10 @@ cmd:
 						scheduler.YAML = yaml1
 					})
 			}
-			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[0], "", occupiedTimeout, []*eventforwarder.Info{})
+			watcher1 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, schedulerNames[0], "", occupiedTimeout, []*eventforwarder.Info{})
 			w.Watchers[watcher1.SchedulerName] = watcher1
 			Expect(w.Watchers[schedulerNames[0]].Run).To(BeFalse())
-			watcher2 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, schedulerNames[1], "", occupiedTimeout, []*eventforwarder.Info{})
+			watcher2 := watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, schedulerNames[1], "", occupiedTimeout, []*eventforwarder.Info{})
 			watcher2.Run = true
 			w.Watchers[watcher2.SchedulerName] = watcher2
 			Expect(w.Watchers[schedulerNames[1]].Run).To(BeTrue())

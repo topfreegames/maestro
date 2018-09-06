@@ -66,7 +66,7 @@ var _ = Describe("AutoScaler", func() {
 			})
 
 			It("should get current usage percentage", func() {
-				usagePercentage := autoScaler.CurrentUsagePercentage(trigger, roomCount)
+				usagePercentage := autoScaler.CurrentUtilization(trigger, roomCount)
 				Expect(fmt.Sprintf("%.1f", usagePercentage)).To(Equal("0.8"))
 			})
 		})
@@ -82,7 +82,7 @@ var _ = Describe("AutoScaler", func() {
 			})
 
 			It("should get current usage percentage", func() {
-				usagePercentage := autoScaler.CurrentUsagePercentage(trigger, roomCount)
+				usagePercentage := autoScaler.CurrentUtilization(trigger, roomCount)
 				Expect(fmt.Sprintf("%.1f", usagePercentage)).To(Equal("0.8"))
 			})
 		})

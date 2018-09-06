@@ -27,6 +27,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/watcher"
 	"k8s.io/client-go/kubernetes"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
@@ -40,21 +41,22 @@ type gracefulShutdown struct {
 
 // Worker struct for worker
 type Worker struct {
-	Config           *viper.Viper
-	DB               pginterfaces.DB
-	InCluster        bool
-	KubeconfigPath   string
-	KubernetesClient kubernetes.Interface
-	Logger           logrus.FieldLogger
-	MetricsReporter  *models.MixedMetricsReporter
-	RedisClient      *redis.Client
-	Run              bool
-	SyncPeriod       int
-	Watchers         map[string]*watcher.Watcher
-	gracefulShutdown *gracefulShutdown
-	Forwarders       []*eventforwarder.Info
-	getLocksTimeout  int
-	lockTimeoutMs    int
+	Config                  *viper.Viper
+	DB                      pginterfaces.DB
+	InCluster               bool
+	KubeconfigPath          string
+	KubernetesClient        kubernetes.Interface
+	KubernetesMetricsClient metricsClient.Interface
+	Logger                  logrus.FieldLogger
+	MetricsReporter         *models.MixedMetricsReporter
+	RedisClient             *redis.Client
+	Run                     bool
+	SyncPeriod              int
+	Watchers                map[string]*watcher.Watcher
+	gracefulShutdown        *gracefulShutdown
+	Forwarders              []*eventforwarder.Info
+	getLocksTimeout         int
+	lockTimeoutMs           int
 }
 
 // NewWorker is the worker constructor
@@ -133,11 +135,12 @@ func (w *Worker) configureKubernetesClient(kubernetesClientOrNil kubernetes.Inte
 		w.KubernetesClient = kubernetesClientOrNil
 		return nil
 	}
-	clientset, err := extensions.GetKubernetesClient(w.Logger, w.InCluster, w.KubeconfigPath)
+	clientset, metricsClientset, err := extensions.GetKubernetesClient(w.Logger, w.InCluster, w.KubeconfigPath)
 	if err != nil {
 		return err
 	}
 	w.KubernetesClient = clientset
+	w.KubernetesMetricsClient = metricsClientset
 	return nil
 }
 
@@ -294,6 +297,7 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 				w.DB,
 				w.RedisClient,
 				w.KubernetesClient,
+				w.KubernetesMetricsClient,
 				schedulerName,
 				gameName,
 				occupiedTimeout,

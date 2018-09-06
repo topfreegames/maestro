@@ -4,6 +4,9 @@ game: game-name
 image: maestro-dev-room:latest
 imagePullPolicy: Never
 occupiedTimeout: 3600
+requests:
+  cpu: 500m
+  memory: 600Mi
 ports:
 - containerPort: 8080
   protocol: TCP

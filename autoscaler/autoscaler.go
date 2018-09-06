@@ -8,7 +8,8 @@
 package autoscaler
 
 import (
-	"math"
+	"k8s.io/client-go/kubernetes"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 
 	"github.com/topfreegames/maestro/models"
 )
@@ -21,14 +22,31 @@ type AutoScaler struct {
 }
 
 // NewAutoScaler returns a Autoscaler instance
-func NewAutoScaler(usageDataSource ...interface{}) *AutoScaler {
-	a := &AutoScaler{
+func NewAutoScaler(schedulerName string, usageDataSource ...interface{}) *AutoScaler {
+	return &AutoScaler{
 		AutoScalingPoliciesMap: map[models.AutoScalingPolicyType]AutoScalingPolicy{
-			models.LegacyAutoScalingPolicyType: &LegacyUsagePolicy{}, // legacyPolicy
-			models.RoomAutoScalingPolicyType:   &RoomUsagePolicy{},   // roomUsagePolicy
+
+			// legacyPolicy
+			models.LegacyAutoScalingPolicyType: newLegacyUsagePolicy(),
+
+			// roomUsagePolicy
+			models.RoomAutoScalingPolicyType: newRoomUsagePolicy(),
+
+			// cpuUsagePolicy
+			models.CPUAutoScalingPolicyType: newCPUUsagePolicy(
+				usageDataSource[0].(kubernetes.Interface),
+				usageDataSource[1].(metricsClient.Interface),
+				schedulerName,
+			),
+
+			// memUsagePolicy
+			models.MemAutoScalingPolicyType: newMemUsagePolicy(
+				usageDataSource[0].(kubernetes.Interface),
+				usageDataSource[1].(metricsClient.Interface),
+				schedulerName,
+			),
 		},
 	}
-	return a
 }
 
 // Delta fetches the correct policy on the AutoScaler policies map and calculate the scaling delta
@@ -39,46 +57,10 @@ func (a *AutoScaler) Delta(
 	return a.AutoScalingPoliciesMap[trigger.Type].CalculateDelta(trigger, roomCount)
 }
 
-// CurrentUsagePercentage fetches the correct policy on the AutoScaler policies map and returns the current usage percentage
-func (a *AutoScaler) CurrentUsagePercentage(
+// CurrentUtilization fetches the correct policy on the AutoScaler policies map and returns the current usage percentage
+func (a *AutoScaler) CurrentUtilization(
 	trigger *models.ScalingPolicyMetricsTrigger,
 	roomCount *models.RoomsStatusCount,
 ) float32 {
-	return a.AutoScalingPoliciesMap[trigger.Type].GetUsagePercentage(roomCount)
-}
-
-// AutoScalingPolicies implementations
-// ------------------------------------------------------------
-
-// LegacyUsagePolicy implements the legacy autoscaler
-type LegacyUsagePolicy struct{}
-
-// CalculateDelta returns the room delta to scale up or down in order to maintain the usage percentage
-func (sp *LegacyUsagePolicy) CalculateDelta(trigger *models.ScalingPolicyMetricsTrigger, roomCount *models.RoomsStatusCount) int {
-	return trigger.Delta
-}
-
-// GetUsagePercentage returns the current usage percentage
-func (sp *LegacyUsagePolicy) GetUsagePercentage(roomCount *models.RoomsStatusCount) float32 {
-	return float32(roomCount.Occupied) / float32(roomCount.Available())
-}
-
-// RoomUsagePolicy comprehend the methods necessary to autoscale according to room usage
-type RoomUsagePolicy struct{}
-
-// CalculateDelta returns the room delta to scale up or down in order to maintain the usage percentage
-func (sp *RoomUsagePolicy) CalculateDelta(trigger *models.ScalingPolicyMetricsTrigger, roomCount *models.RoomsStatusCount) int {
-	// [Occupied / (Total + Delta)] = Usage/100
-	occupied := float64(roomCount.Occupied)
-	total := float64(roomCount.Available())
-	threshold := float64(trigger.Usage) / 100
-	delta := occupied - threshold*total
-	delta = delta / threshold
-
-	return int(math.Round(float64(delta)))
-}
-
-// GetUsagePercentage returns the current usage percentage
-func (sp *RoomUsagePolicy) GetUsagePercentage(roomCount *models.RoomsStatusCount) float32 {
-	return float32(roomCount.Occupied) / float32(roomCount.Available())
+	return a.AutoScalingPoliciesMap[trigger.Type].GetCurrentUtilization(roomCount)
 }

@@ -12,5 +12,5 @@ import "github.com/topfreegames/maestro/models"
 //AutoScalingPolicy is a contract for multiple autoscaling algorithms
 type AutoScalingPolicy interface {
 	CalculateDelta(trigger *models.ScalingPolicyMetricsTrigger, roomCount *models.RoomsStatusCount) int
-	GetUsagePercentage(roomCount *models.RoomsStatusCount) float32
+	GetCurrentUtilization(roomCount *models.RoomsStatusCount) float32
 }

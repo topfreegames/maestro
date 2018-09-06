@@ -26,15 +26,16 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/topfreegames/maestro/autoscaler"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
-	"github.com/topfreegames/maestro/autoscaler"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
 type gracefulShutdown struct {
@@ -51,6 +52,7 @@ type Watcher struct {
 	Config                    *viper.Viper
 	DB                        pginterfaces.DB
 	KubernetesClient          kubernetes.Interface
+	KubernetesMetricsClient   metricsClient.Interface
 	Logger                    logrus.FieldLogger
 	RoomManager               models.RoomManager
 	RoomAddrGetter            models.AddrGetter
@@ -82,21 +84,23 @@ func NewWatcher(
 	db pginterfaces.DB,
 	redisClient *redis.Client,
 	clientset kubernetes.Interface,
+	metricsClientset metricsClient.Interface,
 	schedulerName, gameName string,
 	occupiedTimeout int64,
 	eventForwarders []*eventforwarder.Info,
 ) *Watcher {
 	w := &Watcher{
-		Config:           config,
-		Logger:           logger,
-		DB:               db,
-		RedisClient:      redisClient,
-		KubernetesClient: clientset,
-		MetricsReporter:  mr,
-		SchedulerName:    schedulerName,
-		GameName:         gameName,
-		OccupiedTimeout:  occupiedTimeout,
-		EventForwarders:  eventForwarders,
+		Config:                  config,
+		Logger:                  logger,
+		DB:                      db,
+		RedisClient:             redisClient,
+		KubernetesClient:        clientset,
+		KubernetesMetricsClient: metricsClientset,
+		MetricsReporter:         mr,
+		SchedulerName:           schedulerName,
+		GameName:                gameName,
+		OccupiedTimeout:         occupiedTimeout,
+		EventForwarders:         eventForwarders,
 	}
 	w.loadConfigurationDefaults()
 	w.configure()
@@ -185,8 +189,8 @@ func (w *Watcher) configureAutoScale(configYaml *models.ConfigYAML) {
 		capacity = 1
 	}
 	w.ScaleDownInfo = models.NewScaleInfo(capacity, w.RedisClient.Client)
-	
-	w.AutoScaler = autoscaler.NewAutoScaler()
+
+	w.AutoScaler = autoscaler.NewAutoScaler(w.SchedulerName, w.KubernetesClient, w.KubernetesMetricsClient)
 }
 
 func (w *Watcher) configureEnvironment() {
@@ -479,7 +483,6 @@ func (w *Watcher) AutoScale() {
 	w.gracefulShutdown.wg.Add(1)
 	defer w.gracefulShutdown.wg.Done()
 
-
 	logger := w.Logger.WithFields(logrus.Fields{
 		"executionID": uuid.NewV4().String(),
 		"operation":   "autoScale",
@@ -656,12 +659,12 @@ func (w *Watcher) transformLegacyInMetricsTrigger(autoScalingInfo *models.AutoSc
 		autoScalingInfo.Up.MetricsTrigger = append(
 			autoScalingInfo.Up.MetricsTrigger,
 			&models.ScalingPolicyMetricsTrigger{
-				Type: models.LegacyAutoScalingPolicyType,
-				Usage: autoScalingInfo.Up.Trigger.Usage,
-				Limit: autoScalingInfo.Up.Trigger.Limit,
+				Type:      models.LegacyAutoScalingPolicyType,
+				Usage:     autoScalingInfo.Up.Trigger.Usage,
+				Limit:     autoScalingInfo.Up.Trigger.Limit,
 				Threshold: autoScalingInfo.Up.Trigger.Threshold,
-				Time: autoScalingInfo.Up.Trigger.Time,
-				Delta: autoScalingInfo.Up.Delta,
+				Time:      autoScalingInfo.Up.Trigger.Time,
+				Delta:     autoScalingInfo.Up.Delta,
 			},
 		)
 	}
@@ -670,12 +673,12 @@ func (w *Watcher) transformLegacyInMetricsTrigger(autoScalingInfo *models.AutoSc
 		autoScalingInfo.Down.MetricsTrigger = append(
 			autoScalingInfo.Down.MetricsTrigger,
 			&models.ScalingPolicyMetricsTrigger{
-				Type: models.LegacyAutoScalingPolicyType,
-				Usage: autoScalingInfo.Down.Trigger.Usage,
-				Limit: autoScalingInfo.Down.Trigger.Limit,
+				Type:      models.LegacyAutoScalingPolicyType,
+				Usage:     autoScalingInfo.Down.Trigger.Usage,
+				Limit:     autoScalingInfo.Down.Trigger.Limit,
 				Threshold: autoScalingInfo.Down.Trigger.Threshold,
-				Time: autoScalingInfo.Down.Trigger.Time,
-				Delta: -autoScalingInfo.Down.Delta,
+				Time:      autoScalingInfo.Down.Trigger.Time,
+				Delta:     -autoScalingInfo.Down.Delta,
 			},
 		)
 	}
@@ -684,7 +687,7 @@ func (w *Watcher) transformLegacyInMetricsTrigger(autoScalingInfo *models.AutoSc
 func (w *Watcher) sendUsages(
 	roomCount *models.RoomsStatusCount,
 	autoScalingInfo *models.AutoScaling,
-	) {
+) {
 	metricSent := map[string]bool{}
 
 	// Send current up metrics trigger usage
@@ -692,7 +695,7 @@ func (w *Watcher) sendUsages(
 		metricSent[string(trigger.Type)] = true
 		w.ScaleUpInfo.SendUsage(
 			w.SchedulerName, trigger.Type,
-			w.AutoScaler.CurrentUsagePercentage(trigger, roomCount),
+			w.AutoScaler.CurrentUtilization(trigger, roomCount),
 		)
 	}
 	// Send current down metrics trigger usage
@@ -700,7 +703,7 @@ func (w *Watcher) sendUsages(
 		if !metricSent[string(trigger.Type)] {
 			w.ScaleDownInfo.SendUsage(
 				w.SchedulerName, trigger.Type,
-				w.AutoScaler.CurrentUsagePercentage(trigger, roomCount),
+				w.AutoScaler.CurrentUtilization(trigger, roomCount),
 			)
 		}
 	}
@@ -736,7 +739,7 @@ func (w *Watcher) checkMetricsTrigger(
 		// Limit define a threshold that if surpassed should trigger scale up no matter what.
 		if !isDown {
 			isAboveLimit := w.checkIfUsageIsAboveLimit(trigger, roomCount, scheduler, scaling, unbalancedState, trigger.Limit, nowTimestamp)
-	
+
 			if isAboveLimit {
 				return scaling, nil
 			}

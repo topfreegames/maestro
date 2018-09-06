@@ -57,6 +57,10 @@
   name = "k8s.io/apimachinery"
   version = "kubernetes-1.9.7"
 
+[[override]]
+  name = "k8s.io/metrics"
+  version = "kubernetes-1.11.2"
+
 [[constraint]]
   name = "github.com/topfreegames/extensions"
   version = "6.4.0"

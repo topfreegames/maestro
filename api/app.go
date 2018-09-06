@@ -42,6 +42,7 @@ import (
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
 type gracefulShutdown struct {
@@ -56,6 +57,7 @@ type App struct {
 	DBClient         *pg.Client
 	RedisClient      *redis.Client
 	KubernetesClient kubernetes.Interface
+	KubernetesMetricsClient metricsClient.Interface
 	RoomAddrGetter   models.AddrGetter
 	RoomManager      models.RoomManager
 	Logger           logrus.FieldLogger
@@ -465,11 +467,12 @@ func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interfa
 		a.KubernetesClient = kubernetesClientOrNil
 		return nil
 	}
-	clientset, err := extensions.GetKubernetesClient(a.Logger, a.InCluster, a.KubeconfigPath)
+	clientset, metricsClientset, err := extensions.GetKubernetesClient(a.Logger, a.InCluster, a.KubeconfigPath)
 	if err != nil {
 		return err
 	}
 	a.KubernetesClient = clientset
+	a.KubernetesMetricsClient = metricsClientset
 	return nil
 }
 
