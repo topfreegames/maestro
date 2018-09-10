@@ -21,10 +21,10 @@ import (
 
 // ResourceUsagePolicy comprehend the methods necessary to autoscale according to resource usage (cpu, mem...)
 type ResourceUsagePolicy struct {
-	schedulerName                   string
-	clientset                       kubernetes.Interface
-	metricsClientset                metricsClient.Interface
-	resourceGetUsageAndRequestsFunc func(usage, requests v1.ResourceList) (float32, float32)
+	SchedulerName                   string
+	Clientset                       kubernetes.Interface
+	MetricsClientset                metricsClient.Interface
+	ResourceGetUsageAndRequestsFunc func(usage, requests v1.ResourceList) (float32, float32)
 }
 
 func newCPUUsagePolicy(
@@ -33,16 +33,17 @@ func newCPUUsagePolicy(
 	schedulerName string,
 ) *ResourceUsagePolicy {
 	return &ResourceUsagePolicy{
-		clientset:                       clientset,
-		metricsClientset:                metricsClientset,
-		schedulerName:                   schedulerName,
-		resourceGetUsageAndRequestsFunc: getCPUUsageAndRequests,
+		Clientset:                       clientset,
+		MetricsClientset:                metricsClientset,
+		SchedulerName:                   schedulerName,
+		ResourceGetUsageAndRequestsFunc: getCPUUsageAndRequests,
 	}
 }
 
 func getCPUUsageAndRequests(usage, requests v1.ResourceList) (float32, float32) {
 	resourceRequests := float32(requests.Cpu().ScaledValue(-3))
 	resourceUsage := float32(usage.Cpu().ScaledValue(-3))
+	fmt.Printf("\nCPUrequests: %v | CPUusage: %v\n", resourceRequests, resourceUsage)
 	return resourceUsage, resourceRequests
 }
 
@@ -52,10 +53,10 @@ func newMemUsagePolicy(
 	schedulerName string,
 ) *ResourceUsagePolicy {
 	return &ResourceUsagePolicy{
-		clientset:                       clientset,
-		metricsClientset:                metricsClientset,
-		schedulerName:                   schedulerName,
-		resourceGetUsageAndRequestsFunc: getMemUsageAndRequests,
+		Clientset:                       clientset,
+		MetricsClientset:                metricsClientset,
+		SchedulerName:                   schedulerName,
+		ResourceGetUsageAndRequestsFunc: getMemUsageAndRequests,
 	}
 }
 
@@ -71,7 +72,7 @@ func getMemUsageAndRequests(usage, requests v1.ResourceList) (float32, float32) 
 func (sp *ResourceUsagePolicy) CalculateDelta(trigger *models.ScalingPolicyMetricsTrigger, roomCount *models.RoomsStatusCount) int {
 	// Delta = ceil( (currentUtilization / targetUtilization) * roomCount.Available() ) - roomCount.Available()
 	currentUtilization := sp.GetCurrentUtilization(roomCount)
-	usageRatio := currentUtilization / float32(trigger.Usage) / 100
+	usageRatio := currentUtilization / (float32(trigger.Usage) / 100)
 	delta := int(math.Ceil(float64(usageRatio)*float64(roomCount.Available()))) - roomCount.Available()
 
 	fmt.Printf("\ncurrentUtilization: %v | usageRatio: %v | roomCount: %v | delta: %v\n", currentUtilization, usageRatio, roomCount.Available(), delta)
@@ -83,21 +84,25 @@ func (sp *ResourceUsagePolicy) GetCurrentUtilization(roomCount *models.RoomsStat
 	var resourceUsagePerPodList []float32
 	var resourceRequestsPerPodList []float32
 
-	podList, _ := sp.metricsClientset.Metrics().PodMetricses(sp.schedulerName).List(metav1.ListOptions{})
+	podList, _ := sp.MetricsClientset.Metrics().PodMetricses(sp.SchedulerName).List(metav1.ListOptions{})
 
-	for _, pod := range podList.Items {
-		for i, container := range pod.Containers {
-			if container.Name == pod.Name { // Get game room container
-				podFromClientset, _ := sp.clientset.CoreV1().Pods(sp.schedulerName).Get(pod.Name, metav1.GetOptions{})
+	if podList != nil {
+		for _, pod := range podList.Items {
+			for i, container := range pod.Containers {
+				if container.Name == pod.Name { // TODO: Get game room container
+					podFromClientset, _ := sp.Clientset.CoreV1().Pods(sp.SchedulerName).Get(pod.Name, metav1.GetOptions{})
 
-				resourceUsage, resourceRequests := sp.resourceGetUsageAndRequestsFunc(container.Usage, podFromClientset.Spec.Containers[i].Resources.Requests)
+					resourceUsage, resourceRequests := sp.ResourceGetUsageAndRequestsFunc(container.Usage, podFromClientset.Spec.Containers[i].Resources.Requests)
 
-				resourceUsagePerPodList = append(resourceUsagePerPodList, resourceUsage)
-				resourceRequestsPerPodList = append(resourceRequestsPerPodList, resourceRequests)
-				break
+					resourceUsagePerPodList = append(resourceUsagePerPodList, resourceUsage)
+					resourceRequestsPerPodList = append(resourceRequestsPerPodList, resourceRequests)
+					break
+				}
 			}
 		}
 	}
+
+	fmt.Printf("\nrequestsSum: %v | usagesSum: %v\n", sum(resourceRequestsPerPodList), sum(resourceUsagePerPodList))
 
 	return sum(resourceUsagePerPodList) / sum(resourceRequestsPerPodList)
 }

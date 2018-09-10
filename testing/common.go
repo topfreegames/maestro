@@ -10,6 +10,11 @@ import (
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	yaml "gopkg.in/yaml.v2"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/testing"
+	metricsapi "k8s.io/metrics/pkg/apis/metrics/v1beta1"
+	fakeMetricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
+
 	"github.com/golang/mock/gomock"
 	"github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -18,6 +23,8 @@ import (
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -993,7 +1000,7 @@ func CopyAutoScaling(original, clone *models.AutoScaling) {
 		clone.Up.Trigger.Time = original.Up.Trigger.Time
 		clone.Up.Trigger.Usage = original.Up.Trigger.Usage
 	}
-	
+
 	clone.Down = &models.ScalingPolicy{}
 	clone.Down.MetricsTrigger = original.Down.MetricsTrigger
 	if original.Down.Trigger != nil {
@@ -1014,12 +1021,12 @@ func TransformLegacyInMetricsTrigger(autoScalingInfo *models.AutoScaling) {
 		autoScalingInfo.Up.MetricsTrigger = append(
 			autoScalingInfo.Up.MetricsTrigger,
 			&models.ScalingPolicyMetricsTrigger{
-				Type: models.LegacyAutoScalingPolicyType,
-				Usage: autoScalingInfo.Up.Trigger.Usage,
-				Limit: autoScalingInfo.Up.Trigger.Limit,
+				Type:      models.LegacyAutoScalingPolicyType,
+				Usage:     autoScalingInfo.Up.Trigger.Usage,
+				Limit:     autoScalingInfo.Up.Trigger.Limit,
 				Threshold: autoScalingInfo.Up.Trigger.Threshold,
-				Time: autoScalingInfo.Up.Trigger.Time,
-				Delta: autoScalingInfo.Up.Delta,
+				Time:      autoScalingInfo.Up.Trigger.Time,
+				Delta:     autoScalingInfo.Up.Delta,
 			},
 		)
 	}
@@ -1028,13 +1035,48 @@ func TransformLegacyInMetricsTrigger(autoScalingInfo *models.AutoScaling) {
 		autoScalingInfo.Down.MetricsTrigger = append(
 			autoScalingInfo.Down.MetricsTrigger,
 			&models.ScalingPolicyMetricsTrigger{
-				Type: models.LegacyAutoScalingPolicyType,
-				Usage: autoScalingInfo.Down.Trigger.Usage,
-				Limit: autoScalingInfo.Down.Trigger.Limit,
+				Type:      models.LegacyAutoScalingPolicyType,
+				Usage:     autoScalingInfo.Down.Trigger.Usage,
+				Limit:     autoScalingInfo.Down.Trigger.Limit,
 				Threshold: autoScalingInfo.Down.Trigger.Threshold,
-				Time: autoScalingInfo.Down.Trigger.Time,
-				Delta: -autoScalingInfo.Down.Delta,
+				Time:      autoScalingInfo.Down.Trigger.Time,
+				Delta:     -autoScalingInfo.Down.Delta,
 			},
 		)
 	}
+}
+
+// MockCPUAndMemoryMetricsClient returns a metricsClientset with reactor to PodMetricses call
+func MockCPUAndMemoryMetricsClient(cpuUsage, memUsage, memScale resource.Scale, schedulerName string) *fakeMetricsClient.Clientset {
+	myFakeMetricsClient := &fakeMetricsClient.Clientset{}
+	// fakeMetricsClient.discovery = &fakediscovery.FakeDiscovery{Fake: &fakeMetricsClient.Fake}
+	myFakeMetricsClient.AddReactor("list", "pods", func(action testing.Action) (handled bool, ret runtime.Object, err error) {
+		metrics := &metricsapi.PodMetricsList{}
+		podMetric := metricsapi.PodMetrics{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s", schedulerName),
+				Namespace: schedulerName,
+			},
+			Timestamp: metav1.Time{Time: time.Now()},
+			Window:    metav1.Duration{Duration: time.Minute},
+			Containers: []metricsapi.ContainerMetrics{
+				{
+					Name: schedulerName,
+					Usage: v1.ResourceList{
+						v1.ResourceCPU: *resource.NewMilliQuantity(
+							int64(cpuUsage),
+							resource.DecimalSI),
+						v1.ResourceMemory: *resource.NewScaledQuantity(
+							int64(memUsage),
+							memScale),
+					},
+				},
+			},
+		}
+		metrics.Items = append(metrics.Items, podMetric)
+
+		return true, metrics, nil
+	})
+
+	return myFakeMetricsClient
 }
