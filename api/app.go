@@ -52,25 +52,25 @@ type gracefulShutdown struct {
 
 //App is our API application
 type App struct {
-	Address          string
-	Config           *viper.Viper
-	DBClient         *pg.Client
-	RedisClient      *redis.Client
-	KubernetesClient kubernetes.Interface
+	Address                 string
+	Config                  *viper.Viper
+	DBClient                *pg.Client
+	RedisClient             *redis.Client
+	KubernetesClient        kubernetes.Interface
 	KubernetesMetricsClient metricsClient.Interface
-	RoomAddrGetter   models.AddrGetter
-	RoomManager      models.RoomManager
-	Logger           logrus.FieldLogger
-	NewRelic         newrelic.Application
-	Router           *mux.Router
-	Server           *http.Server
-	InCluster        bool
-	KubeconfigPath   string
-	Login            logininterfaces.Login
-	EmailDomains     []string
-	Forwarders       []*eventforwarder.Info
-	SchedulerCache   *models.SchedulerCache
-	gracefulShutdown *gracefulShutdown
+	RoomAddrGetter          models.AddrGetter
+	RoomManager             models.RoomManager
+	Logger                  logrus.FieldLogger
+	NewRelic                newrelic.Application
+	Router                  *mux.Router
+	Server                  *http.Server
+	InCluster               bool
+	KubeconfigPath          string
+	Login                   logininterfaces.Login
+	EmailDomains            []string
+	Forwarders              []*eventforwarder.Info
+	SchedulerCache          *models.SchedulerCache
+	gracefulShutdown        *gracefulShutdown
 }
 
 //NewApp ctor
