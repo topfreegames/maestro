@@ -3400,7 +3400,7 @@ var _ = Describe("Watcher", func() {
 			})
 		})
 
-		FContext("Resource Metrics Trigger", func() {
+		Context("Resource Metrics Trigger", func() {
 			var configYaml *models.ConfigYAML
 			var yamlActive string
 
