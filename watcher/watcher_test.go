@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -313,8 +315,84 @@ autoscaling:
       time: 200
     cooldown: 60
 `
+	yamlWithCPUAndMemoryMetricsTrigger = `
+name: controller-name
+game: controller
+image: controller/controller:v123
+imagePullPolicy: Never
+requests:
+  cpu: 1000m
+  memory: 1Gi
+occupiedTimeout: 3600
+shutdownTimeout: 10
+env:
+- name: MAESTRO_HOST_PORT
+  value: 192.168.64.1:8080
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+- name: POLLING_INTERVAL_IN_SECONDS
+  value: "20"
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+- name: PING_INTERVAL_IN_SECONDS
+  value: "10"
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+autoscaling:
+  min: 2
+  max: 20
+  up:
+    metricsTrigger:
+    - type: cpu
+      threshold: 80
+      usage: 50
+      time: 200
+    - type: mem
+      threshold: 80
+      usage: 50
+      time: 200
+    cooldown: 30
+  down:
+    metricsTrigger:
+    - type: mem
+      threshold: 80
+      usage: 30
+      time: 200
+    - type: cpu
+      threshold: 80
+      usage: 30
+      time: 200
+    cooldown: 60
+`
 	occupiedTimeout = 300
 )
+
+type triggerSpec struct {
+	targetUsagePercent          int
+	pointsAboveThresholdPercent int
+	limit                       int
+	time                        int
+	triggerType                 models.AutoScalingPolicyType
+}
+
+type simulationSpec struct {
+	up                                                                                                        []triggerSpec
+	down                                                                                                      []triggerSpec
+	lastChangedAt                                                                                             time.Time
+	lastScaleOpAt                                                                                             time.Time
+	roomCount                                                                                                 *models.RoomsStatusCount
+	metricTypeToScale                                                                                         models.AutoScalingPolicyType
+	logMessages                                                                                               []string
+	shouldScaleUp, shouldScaleDown, shouldCheckMetricsTriggerUp, shouldCheckMetricsTriggerDown, isDownscaling bool
+	percentageOfPointsAboveTargetUsage, currentRawUsage, deltaExpected                                        int
+	memScale                                                                                                  resource.Scale
+}
 
 var _ = Describe("Watcher", func() {
 	var w *watcher.Watcher
@@ -335,7 +413,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w.AutoScalingPeriod).To(Equal(autoScalingPeriod))
 			Expect(w.Config).To(Equal(config))
 			Expect(w.DB).To(Equal(mockDb))
@@ -355,7 +433,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w.AutoScalingPeriod).To(Equal(10))
 			Expect(w.LockKey).To(Equal("maestro-lock-key-my-scheduler"))
 			Expect(w.LockTimeoutMS).To(Equal(180000))
@@ -386,7 +464,7 @@ var _ = Describe("Watcher", func() {
 					scheduler.YAML = yaml1
 				})
 
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil,
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset,
 				configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 
@@ -440,7 +518,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockGetUsages(
 					mockPipeline, mockRedisClient,
 					fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-					trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+					trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 				)
 			}
 
@@ -473,7 +551,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 			defer func() { w.Run = false }()
 
@@ -493,7 +571,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 			defer func() { w.Run = false }()
 
@@ -519,7 +597,7 @@ var _ = Describe("Watcher", func() {
 					scheduler.YAML = yaml1
 				})
 
-			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 
 			mockCtrl = gomock.NewController(GinkgoT())
@@ -595,6 +673,214 @@ var _ = Describe("Watcher", func() {
 
 	Describe("AutoScale", func() {
 
+		// createTriggerSpecs populate the lists of triggers in the simulation spec to
+		// mock GetUsage() for each of the triggers
+		createTriggerSpecs := func(
+			upTriggers, downTriggers []*models.ScalingPolicyMetricsTrigger,
+			simSpec simulationSpec,
+			triggerType models.AutoScalingPolicyType,
+			percentageAbove int,
+			isDownscaling bool,
+		) (up, down []triggerSpec) {
+			var triggerMap map[models.AutoScalingPolicyType]triggerSpec
+			triggerMap = make(map[models.AutoScalingPolicyType]triggerSpec)
+
+			for _, trigger := range upTriggers {
+				pointsAbove := 20
+				if trigger.Limit == 0 {
+					trigger.Limit = 90
+				}
+				if trigger.Type == triggerType && !isDownscaling {
+					pointsAbove = percentageAbove
+					triggerMap[trigger.Type] = triggerSpec{
+						targetUsagePercent:          trigger.Usage,
+						pointsAboveThresholdPercent: pointsAbove,
+						limit:                       trigger.Limit,
+						time:                        trigger.Time,
+						triggerType:                 trigger.Type,
+					}
+				}
+				if _, exists := triggerMap[trigger.Type]; !exists {
+					triggerMap[trigger.Type] = triggerSpec{
+						targetUsagePercent:          trigger.Usage,
+						pointsAboveThresholdPercent: pointsAbove,
+						limit:                       trigger.Limit,
+						time:                        trigger.Time,
+						triggerType:                 trigger.Type,
+					}
+				}
+			}
+
+			for _, trigger := range downTriggers {
+				pointsAbove := 80
+				if trigger.Limit == 0 {
+					trigger.Limit = 90
+				}
+				if trigger.Type == triggerType && isDownscaling {
+					pointsAbove = percentageAbove
+					triggerMap[trigger.Type] = triggerSpec{
+						targetUsagePercent:          trigger.Usage,
+						pointsAboveThresholdPercent: 100 - pointsAbove,
+						limit:                       trigger.Limit,
+						time:                        trigger.Time,
+						triggerType:                 trigger.Type,
+					}
+				}
+				if _, exists := triggerMap[trigger.Type]; !exists {
+					triggerMap[trigger.Type] = triggerSpec{
+						targetUsagePercent:          trigger.Usage,
+						pointsAboveThresholdPercent: 100 - pointsAbove,
+						limit:                       trigger.Limit,
+						time:                        trigger.Time,
+						triggerType:                 trigger.Type,
+					}
+				}
+				down = append(down, triggerMap[trigger.Type])
+			}
+
+			for _, trigger := range upTriggers {
+				up = append(up, triggerMap[trigger.Type])
+			}
+
+			return up, down
+		}
+
+		// simulateMetricsAutoscaling run all the mockoing necessary to test autoscaling with all different types of triggers
+		simulateMetricsAutoscaling := func(simSpec simulationSpec, configYaml *models.ConfigYAML, yamlActive, state string) {
+			testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, simSpec.roomCount)
+			testing.MockGetScheduler(mockDb, configYaml, state, yamlActive, simSpec.lastChangedAt, simSpec.lastScaleOpAt, 2)
+
+			simSpec.up, simSpec.down = createTriggerSpecs(
+				configYaml.AutoScaling.Up.MetricsTrigger,
+				configYaml.AutoScaling.Down.MetricsTrigger,
+				simSpec,
+				simSpec.metricTypeToScale,
+				simSpec.percentageOfPointsAboveTargetUsage,
+				simSpec.isDownscaling,
+			)
+			if !simSpec.shouldCheckMetricsTriggerUp {
+				simSpec.up = []triggerSpec{}
+			}
+			if !simSpec.shouldCheckMetricsTriggerDown {
+				simSpec.down = []triggerSpec{}
+			}
+
+			// Mock pod metricses
+			containerMetrics := testing.BuildContainerMetricsArray(
+				[]testing.ContainerMetricsDefinition{
+					testing.ContainerMetricsDefinition{
+						Usage: map[models.AutoScalingPolicyType]int{
+							simSpec.metricTypeToScale: simSpec.currentRawUsage,
+						},
+						MemScale: simSpec.memScale,
+					},
+				},
+				configYaml.Name,
+			)
+			fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, simSpec.roomCount.Available(), configYaml.Name)
+
+			// create watcher
+			w = watcher.NewWatcher(
+				config,
+				logger,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				fakeMetricsClient,
+				configYaml.Name,
+				configYaml.Game,
+				occupiedTimeout,
+				[]*eventforwarder.Info{},
+			)
+			Expect(w).NotTo(BeNil())
+
+			// Mock get usages for each trigger
+			for _, up := range simSpec.up {
+				// mock GetUsage only if the currentUsage is not above limit or the test is not of this triggerType (cpu, mem...)
+				// If currentUsage is above limit, the autoscaler does not get the usage points from redis.
+				if (float32(simSpec.currentRawUsage)/1000) < float32(up.limit)/100 || simSpec.metricTypeToScale != up.triggerType {
+					testing.MockGetUsages(
+						mockPipeline, mockRedisClient,
+						fmt.Sprintf("maestro:scale:%s:%s", up.triggerType, configYaml.Name),
+						up.time/w.AutoScalingPeriod, up.targetUsagePercent, up.pointsAboveThresholdPercent, 1,
+					)
+				}
+				if simSpec.metricTypeToScale == up.triggerType && simSpec.shouldScaleUp {
+					break
+				}
+			}
+
+			if !simSpec.shouldScaleUp {
+				for _, down := range simSpec.down {
+					// mock GetUsage only if the currentUsage is not above limit or the test is not of this triggerType (cpu, mem...)
+					// If currentUsage is above limit, the autoscaler does not get the usage points from redis.
+					if (float32(simSpec.currentRawUsage)/1000) < float32(down.limit)/100 || simSpec.metricTypeToScale != down.triggerType {
+						testing.MockGetUsages(
+							mockPipeline, mockRedisClient,
+							fmt.Sprintf("maestro:scale:%s:%s", down.triggerType, configYaml.Name),
+							down.time/w.AutoScalingPeriod, down.targetUsagePercent, down.pointsAboveThresholdPercent, 1,
+						)
+					}
+					if simSpec.metricTypeToScale == down.triggerType && simSpec.shouldScaleDown {
+						break
+					}
+				}
+			}
+
+			if simSpec.shouldScaleUp {
+				err := testing.MockSetScallingAmountWithRoomStatusCount(
+					mockRedisClient,
+					mockPipeline,
+					configYaml,
+					simSpec.roomCount,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				// ScaleUp
+				testing.MockScaleUp(
+					mockPipeline, mockRedisClient,
+					configYaml.Name,
+					simSpec.deltaExpected,
+				)
+
+				// Mock UpdateScheduler
+				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
+					Expect(scheduler.State).To(Equal("in-sync"))
+					Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+					Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+				}, mockDb, nil, nil)
+			} else if simSpec.shouldScaleDown {
+
+				err := testing.MockSetScallingAmountWithRoomStatusCount(
+					mockRedisClient,
+					mockPipeline,
+					configYaml,
+					simSpec.roomCount,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Mock removal from redis ready set
+				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, simSpec.deltaExpected)
+
+				// Mock ClearAll
+				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, simSpec.deltaExpected)
+
+				// Mock UpdateScheduler
+				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
+					Expect(scheduler.State).To(Equal("in-sync"))
+					Expect(scheduler.StateLastChangedAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+					Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1*time.Second))
+				}, mockDb, nil, nil)
+			}
+
+			testing.MockSendUsage(mockPipeline, mockRedisClient, configYaml.AutoScaling)
+			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+			for _, logMessage := range simSpec.logMessages {
+				Expect(hook.Entries).To(testing.ContainLogMessage(logMessage))
+			}
+		}
+
 		Context("Legacy", func() {
 			var configYaml models.ConfigYAML
 			mockAutoScaling := &models.AutoScaling{}
@@ -606,7 +892,7 @@ var _ = Describe("Watcher", func() {
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yaml1
 					})
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 				testing.CopyAutoScaling(configYaml.AutoScaling, mockAutoScaling)
 				testing.TransformLegacyInMetricsTrigger(mockAutoScaling)
@@ -641,7 +927,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -734,7 +1020,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -787,7 +1073,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -796,7 +1082,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -865,7 +1151,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -874,7 +1160,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -907,7 +1193,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -933,7 +1219,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -942,7 +1228,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -1001,7 +1287,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1010,7 +1296,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -1085,7 +1371,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1094,7 +1380,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1146,7 +1432,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -1199,7 +1485,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1208,7 +1494,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1246,7 +1532,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -1291,7 +1577,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1300,7 +1586,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1337,7 +1623,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1346,7 +1632,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -1490,7 +1776,7 @@ var _ = Describe("Watcher", func() {
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yaml1
 					})
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 				testing.CopyAutoScaling(configYaml.AutoScaling, mockAutoScaling)
 				testing.TransformLegacyInMetricsTrigger(mockAutoScaling)
@@ -1547,7 +1833,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -1563,7 +1849,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1572,7 +1858,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -1602,7 +1888,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -1610,7 +1896,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1619,7 +1905,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 75,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 75, 1,
 					)
 				}
 
@@ -1636,7 +1922,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -1644,7 +1930,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1661,7 +1947,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -1677,7 +1963,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1686,7 +1972,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -1717,7 +2003,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateOverdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -1725,7 +2011,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1734,7 +2020,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -1751,7 +2037,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -1789,7 +2075,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -1805,7 +2091,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -1845,7 +2131,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -1853,7 +2139,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 75, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 75, 1,
 					)
 				}
 
@@ -1862,7 +2148,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1879,7 +2165,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Down get usage percentages
@@ -1887,7 +2173,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -1904,7 +2190,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -1920,7 +2206,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -1952,7 +2238,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateSubdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -1960,7 +2246,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 85, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 85, 1,
 					)
 				}
 
@@ -1977,7 +2263,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateSubdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2015,7 +2301,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateSubdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2071,7 +2357,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2087,7 +2373,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2096,7 +2382,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -2136,7 +2422,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -2144,7 +2430,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2153,7 +2439,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 75,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 75, 1,
 					)
 				}
 
@@ -2170,7 +2456,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -2178,7 +2464,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2197,7 +2483,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2213,7 +2499,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2222,7 +2508,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -2253,7 +2539,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateOverdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -2261,7 +2547,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2270,7 +2556,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -2287,7 +2573,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2325,7 +2611,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2341,7 +2627,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -2372,7 +2658,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -2380,7 +2666,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 75, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 75, 1,
 					)
 				}
 
@@ -2389,7 +2675,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2406,7 +2692,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Down get usage percentages
@@ -2414,7 +2700,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2431,7 +2717,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2447,7 +2733,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -2479,7 +2765,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateSubdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -2487,7 +2773,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 85, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 85, 1,
 					)
 				}
 
@@ -2504,7 +2790,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateSubdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2542,7 +2828,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateSubdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2595,7 +2881,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2611,7 +2897,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2620,7 +2906,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -2660,7 +2946,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -2668,7 +2954,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2677,7 +2963,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 75,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 75, 1,
 					)
 				}
 
@@ -2694,7 +2980,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -2702,7 +2988,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2721,7 +3007,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2737,7 +3023,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2746,7 +3032,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -2777,7 +3063,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateOverdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -2785,7 +3071,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 50, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2794,7 +3080,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 90,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 10, 1,
 					)
 				}
 
@@ -2811,7 +3097,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2849,7 +3135,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2865,7 +3151,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -2905,7 +3191,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -2913,7 +3199,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 75, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 75, 1,
 					)
 				}
 
@@ -2922,7 +3208,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2939,7 +3225,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Down get usage percentages
@@ -2947,7 +3233,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, 0, trigger.Usage, 0, 50,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 50, 1,
 					)
 				}
 
@@ -2964,7 +3250,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				testing.MockGetScheduler(mockDb, configYaml, models.StateInSync, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -2980,7 +3266,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 90, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
 
@@ -3012,7 +3298,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateSubdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -3020,7 +3306,7 @@ var _ = Describe("Watcher", func() {
 					testing.MockGetUsages(
 						mockPipeline, mockRedisClient,
 						fmt.Sprintf("maestro:scale:%s:%s", trigger.Type, configYaml.Name),
-						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 0, 85, 0,
+						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 85, 1,
 					)
 				}
 
@@ -3037,7 +3323,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateSubdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -3084,7 +3370,7 @@ var _ = Describe("Watcher", func() {
 				lastScaleOpAt := time.Now()
 				testing.MockGetScheduler(mockDb, configYaml, models.StateSubdimensioned, yamlActive, lastChangedAt, lastScaleOpAt, 2)
 
-				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, nil, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
+				w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 				Expect(w).NotTo(BeNil())
 
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
@@ -3111,6 +3397,480 @@ var _ = Describe("Watcher", func() {
 
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
 				Expect(hook.Entries).To(testing.ContainLogMessage("scheduler is subdimensioned, scaling up"))
+			})
+		})
+
+		FContext("Resource Metrics Trigger", func() {
+			var configYaml *models.ConfigYAML
+			var yamlActive string
+
+			calculateExpectedDelta := func(metricsTrigger *models.ScalingPolicyMetricsTrigger, simSpec simulationSpec, min, max int) int {
+				desiredUsage := float64(metricsTrigger.Usage) / 100
+				currentUsage := float64(simSpec.currentRawUsage) / 1000
+				roomsAvailable := simSpec.roomCount.Available()
+				usageRatio := currentUsage / desiredUsage
+				expectedDelta := int(math.Ceil(usageRatio*float64(roomsAvailable))) - roomsAvailable
+
+				if roomsAvailable+expectedDelta < min || roomsAvailable < min {
+					return int(math.Abs(float64(roomsAvailable - min)))
+				}
+
+				if roomsAvailable+expectedDelta > max || roomsAvailable > max {
+					return int(math.Abs(float64(max - roomsAvailable)))
+				}
+
+				return int(math.Abs(float64(expectedDelta)))
+			}
+
+			BeforeEach(func() {
+				yamlActive = yamlWithCPUAndMemoryMetricsTrigger
+				err := yaml.Unmarshal([]byte(yamlActive), &configYaml)
+				Expect(err).NotTo(HaveOccurred())
+
+				testing.CreatePod(clientset, "1.0", "1Gi", configYaml.Name)
+			})
+
+			// Down
+			It("should scale down if 90% of the points are above threshold", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					lastScaleOpAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					roomCount:                          &models.RoomsStatusCount{0, 1, 4, 0}, // creating,occupied,ready,terminatings
+					shouldScaleUp:                      false,
+					shouldScaleDown:                    true,
+					isDownscaling:                      true,
+					shouldCheckMetricsTriggerUp:        true,
+					shouldCheckMetricsTriggerDown:      true,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    200,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 90,
+					logMessages:                        []string{"scheduler is overdimensioned, should scale down"},
+				}
+
+				// CPU
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Down.MetricsTrigger[0],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Down.MetricsTrigger[1],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+			})
+
+			It("should not scale down if 75% of the points are above threshold", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					lastScaleOpAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					roomCount:                          &models.RoomsStatusCount{0, 1, 4, 0}, // creating,occupied,ready,terminatings
+					shouldScaleUp:                      false,
+					shouldScaleDown:                    false,
+					isDownscaling:                      true,
+					shouldCheckMetricsTriggerUp:        true,
+					shouldCheckMetricsTriggerDown:      true,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    200,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 75,
+					logMessages:                        []string{"scheduler 'controller-name': state is as expected"},
+				}
+
+				// CPU
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Down.MetricsTrigger[0],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Down.MetricsTrigger[1],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+			})
+
+			It("should not scale down if total rooms is equal min", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					lastScaleOpAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					roomCount:                          &models.RoomsStatusCount{0, 1, 1, 0}, // creating,occupied,ready,terminatings
+					shouldScaleUp:                      false,
+					shouldScaleDown:                    false,
+					isDownscaling:                      true,
+					shouldCheckMetricsTriggerUp:        true,
+					shouldCheckMetricsTriggerDown:      false,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    200,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 90,
+					logMessages:                        []string{"scheduler 'controller-name': state is as expected"},
+				}
+
+				// CPU
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+
+				// Mem
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+			})
+
+			It("should scale down to min if total rooms - delta is less than min", func() {
+				yamlActive = strings.Replace(yamlActive, "min: 2", "min: 4", 1)
+				configYaml.AutoScaling.Min = 4
+
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					lastScaleOpAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					roomCount:                          &models.RoomsStatusCount{0, 1, 4, 0}, // creating,occupied,ready,terminatings
+					shouldScaleUp:                      false,
+					shouldScaleDown:                    true,
+					isDownscaling:                      true,
+					shouldCheckMetricsTriggerUp:        true,
+					shouldCheckMetricsTriggerDown:      true,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    100,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 90,
+					logMessages: []string{
+						"scheduler is overdimensioned, should scale down",
+						fmt.Sprintf("amount to scale is lower than min. Maestro will scale down to the min of %d", configYaml.AutoScaling.Min),
+					},
+				}
+
+				// CPU
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Down.MetricsTrigger[0],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Down.MetricsTrigger[1],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+			})
+
+			It("should not scale down if in cooldown period", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now(),
+					lastScaleOpAt:                      time.Now(),
+					roomCount:                          &models.RoomsStatusCount{0, 1, 8, 0}, // creating,occupied,ready,terminatings
+					shouldScaleUp:                      false,
+					shouldScaleDown:                    false,
+					isDownscaling:                      true,
+					shouldCheckMetricsTriggerUp:        true,
+					shouldCheckMetricsTriggerDown:      true,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    200,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 90,
+					logMessages:                        []string{"scheduler 'controller-name': state is as expected"},
+				}
+
+				// CPU
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateOverdimensioned)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateOverdimensioned)
+			})
+
+			It("should scale down if total rooms above max", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					lastScaleOpAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					roomCount:                          &models.RoomsStatusCount{0, 20, 3, 0}, // creating,occupied,ready,terminatings
+					shouldScaleUp:                      false,
+					shouldScaleDown:                    true,
+					isDownscaling:                      true,
+					shouldCheckMetricsTriggerUp:        false,
+					shouldCheckMetricsTriggerDown:      false,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    900,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 20,
+					logMessages:                        []string{"scheduler is overdimensioned, should scale down"},
+				}
+
+				// CPU
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Down.MetricsTrigger[0],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Down.MetricsTrigger[1],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+			})
+
+			// Up
+			It("should scale up if 90% of the points are above threshold", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					lastScaleOpAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					roomCount:                          &models.RoomsStatusCount{0, 4, 1, 0}, // creating,occupied,ready,terminating
+					shouldScaleUp:                      true,
+					shouldScaleDown:                    false,
+					isDownscaling:                      false,
+					shouldCheckMetricsTriggerUp:        true,
+					shouldCheckMetricsTriggerDown:      false,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    600,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 90,
+					logMessages:                        []string{"scheduler is subdimensioned, scaling up"},
+				}
+
+				// CPU
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Up.MetricsTrigger[0],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Up.MetricsTrigger[1],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+			})
+
+			It("should not scale up if 75% of the points are above threshold", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					lastScaleOpAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					roomCount:                          &models.RoomsStatusCount{0, 4, 1, 0}, // creating,occupied,ready,terminating
+					shouldScaleUp:                      false,
+					shouldScaleDown:                    false,
+					isDownscaling:                      false,
+					shouldCheckMetricsTriggerUp:        true,
+					shouldCheckMetricsTriggerDown:      true,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    800,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 75,
+					logMessages:                        []string{"scheduler 'controller-name': state is as expected"},
+				}
+
+				// CPU
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Up.MetricsTrigger[0],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Up.MetricsTrigger[1],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+			})
+
+			It("should not scale up if total rooms is equal max", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					lastScaleOpAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					roomCount:                          &models.RoomsStatusCount{0, 19, 1, 0}, // creating,occupied,ready,terminatings
+					shouldScaleUp:                      false,
+					shouldScaleDown:                    false,
+					isDownscaling:                      false,
+					shouldCheckMetricsTriggerUp:        false,
+					shouldCheckMetricsTriggerDown:      true,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    800,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 90,
+					logMessages:                        []string{"scheduler 'controller-name': state is as expected"},
+				}
+
+				// CPU
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+			})
+
+			It("should scale up to max if total rooms + delta is greater than max", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					lastScaleOpAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					roomCount:                          &models.RoomsStatusCount{0, 12, 2, 0}, // creating,occupied,ready,terminating
+					shouldScaleUp:                      true,
+					shouldScaleDown:                    false,
+					isDownscaling:                      false,
+					shouldCheckMetricsTriggerUp:        true,
+					shouldCheckMetricsTriggerDown:      false,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    800,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 90,
+					logMessages: []string{
+						fmt.Sprintf("amount to scale is higher than max. Maestro will scale up to the max of %d", configYaml.AutoScaling.Max),
+						"scheduler is subdimensioned, scaling up",
+					},
+				}
+
+				// CPU
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Up.MetricsTrigger[0],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Up.MetricsTrigger[1],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+			})
+
+			It("should not scale up if in cooldown period and usage is below limit", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now(),
+					lastScaleOpAt:                      time.Now(),
+					roomCount:                          &models.RoomsStatusCount{0, 6, 2, 0}, // creating,occupied,ready,terminatings
+					shouldScaleUp:                      false,
+					shouldScaleDown:                    false,
+					isDownscaling:                      false,
+					shouldCheckMetricsTriggerUp:        true,
+					shouldCheckMetricsTriggerDown:      false,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    850,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 90,
+					logMessages:                        []string{"scheduler 'controller-name': state is as expected"},
+				}
+
+				// CPU
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateSubdimensioned)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateSubdimensioned)
+			})
+
+			It("should scale up if in cooldown period and usage is above limit", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now(),
+					lastScaleOpAt:                      time.Now(),
+					roomCount:                          &models.RoomsStatusCount{0, 10, 1, 0}, // creating,occupied,ready,terminatings
+					shouldScaleUp:                      true,
+					shouldScaleDown:                    false,
+					isDownscaling:                      false,
+					shouldCheckMetricsTriggerUp:        true,
+					shouldCheckMetricsTriggerDown:      false,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    980,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 20,
+					logMessages:                        []string{"scheduler is subdimensioned, scaling up"},
+				}
+
+				// CPU
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Up.MetricsTrigger[0],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateSubdimensioned)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Up.MetricsTrigger[1],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateSubdimensioned)
+			})
+
+			It("should scale up if total rooms below min", func() {
+				simSpec := simulationSpec{
+					lastChangedAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					lastScaleOpAt:                      time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second),
+					roomCount:                          &models.RoomsStatusCount{0, 0, 1, 0}, // creating,occupied,ready,terminatings
+					shouldScaleUp:                      true,
+					shouldScaleDown:                    false,
+					isDownscaling:                      false,
+					shouldCheckMetricsTriggerUp:        false,
+					shouldCheckMetricsTriggerDown:      false,
+					memScale:                           resource.Mega,
+					currentRawUsage:                    100,
+					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
+					percentageOfPointsAboveTargetUsage: 20,
+					logMessages:                        []string{"scheduler is subdimensioned, scaling up"},
+				}
+
+				// CPU
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Up.MetricsTrigger[0],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+
+				// Mem
+				simSpec.metricTypeToScale = models.MemAutoScalingPolicyType
+				simSpec.deltaExpected = calculateExpectedDelta(
+					configYaml.AutoScaling.Up.MetricsTrigger[1],
+					simSpec,
+					configYaml.AutoScaling.Min,
+					configYaml.AutoScaling.Max,
+				)
+				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
 			})
 		})
 
@@ -3143,7 +3903,7 @@ var _ = Describe("Watcher", func() {
 					scheduler.YAML = yaml1
 				})
 			w = watcher.NewWatcher(
-				config, logger, mr, mockDb, redisClient, clientset,
+				config, logger, mr, mockDb, redisClient, clientset, metricsClientset,
 				configYaml.Name, configYaml.Game, occupiedTimeout,
 				[]*eventforwarder.Info{
 					&eventforwarder.Info{
@@ -3317,7 +4077,7 @@ var _ = Describe("Watcher", func() {
 				scheduler.YAML = yaml1
 			})
 			w = watcher.NewWatcher(
-				config, logger, mr, mockDb, redisClient, clientset,
+				config, logger, mr, mockDb, redisClient, clientset, metricsClientset,
 				configYaml.Name, configYaml.Game, occupiedTimeout,
 				[]*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
@@ -3442,7 +4202,7 @@ var _ = Describe("Watcher", func() {
 					scheduler.YAML = yaml1
 				})
 			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient,
-				clientset, configYaml.Name, configYaml.Game, occupiedTimeout,
+				clientset, metricsClientset, configYaml.Name, configYaml.Game, occupiedTimeout,
 				[]*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 

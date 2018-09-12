@@ -960,18 +960,18 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 	limit int,
 	nowTimestamp int64,
 ) bool { // isAboveLimit
-	if 100*roomCount.Occupied >= roomCount.Available()*limit {
+	var currentUsage, limitUsage float32
+	triggerObj := trigger.(*models.ScalingPolicyMetricsTrigger)
+	currentUsage = w.AutoScaler.CurrentUtilization(triggerObj, roomCount)
+	limitUsage = float32(limit) / 100
+
+	if currentUsage >= limitUsage {
 		w.Logger.Debug("Usage is above limit. Should scale up")
 		scheduler.State = unbalancedState
 		scheduler.StateLastChangedAt = nowTimestamp
 		scaling.InSync = false
 		scaling.ChangedState = true
-		if triggerObj, ok := trigger.(*models.ScalingPolicyMetricsTrigger); ok {
-			scaling.Delta = w.AutoScaler.Delta(triggerObj, roomCount)
-		} else {
-			scaling.Delta = trigger.(*models.ScalingPolicy).Delta
-		}
-
+		scaling.Delta = w.AutoScaler.Delta(triggerObj, roomCount)
 		return true
 	}
 	return false

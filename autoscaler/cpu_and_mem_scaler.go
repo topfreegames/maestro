@@ -8,7 +8,6 @@
 package autoscaler
 
 import (
-	"fmt"
 	"math"
 
 	"k8s.io/api/core/v1"
@@ -25,6 +24,7 @@ type ResourceUsagePolicy struct {
 	Clientset                       kubernetes.Interface
 	MetricsClientset                metricsClient.Interface
 	ResourceGetUsageAndRequestsFunc func(usage, requests v1.ResourceList) (float32, float32)
+	currentUtilization              float32
 }
 
 func newCPUUsagePolicy(
@@ -43,7 +43,6 @@ func newCPUUsagePolicy(
 func getCPUUsageAndRequests(usage, requests v1.ResourceList) (float32, float32) {
 	resourceRequests := float32(requests.Cpu().ScaledValue(-3))
 	resourceUsage := float32(usage.Cpu().ScaledValue(-3))
-	fmt.Printf("\nCPUrequests: %v | CPUusage: %v\n", resourceRequests, resourceUsage)
 	return resourceUsage, resourceRequests
 }
 
@@ -63,19 +62,22 @@ func newMemUsagePolicy(
 func getMemUsageAndRequests(usage, requests v1.ResourceList) (float32, float32) {
 	resourceRequests := float32(requests.Memory().ScaledValue(0))
 	resourceUsage := float32(usage.Memory().ScaledValue(0))
-	fmt.Printf("\nrequests: %v | usage: %v\n", requests.Memory().Value(), usage.Memory().Value())
-	fmt.Printf("\nresourceRequests: %v | resourceUsage: %v\n", resourceRequests, resourceUsage)
 	return resourceUsage, resourceRequests
 }
 
 // CalculateDelta returns the room delta to scale up or down in order to maintain the usage percentage
 func (sp *ResourceUsagePolicy) CalculateDelta(trigger *models.ScalingPolicyMetricsTrigger, roomCount *models.RoomsStatusCount) int {
 	// Delta = ceil( (currentUtilization / targetUtilization) * roomCount.Available() ) - roomCount.Available()
-	currentUtilization := sp.GetCurrentUtilization(roomCount)
-	usageRatio := currentUtilization / (float32(trigger.Usage) / 100)
-	delta := int(math.Ceil(float64(usageRatio)*float64(roomCount.Available()))) - roomCount.Available()
+	if sp.currentUtilization == 0 {
+		sp.GetCurrentUtilization(roomCount)
+	}
+	targetUtilization := float64(trigger.Usage) / 100
+	usageRatio := float64(sp.currentUtilization) / targetUtilization
+	usageRatio = math.Round(usageRatio*100) / 100 // round to nearest with 2 decimal places
 
-	fmt.Printf("\ncurrentUtilization: %v | usageRatio: %v | roomCount: %v | delta: %v\n", currentUtilization, usageRatio, roomCount.Available(), delta)
+	delta := int(math.Ceil(usageRatio*float64(roomCount.Available()))) - roomCount.Available()
+
+	sp.currentUtilization = 0
 	return delta
 }
 
@@ -89,20 +91,17 @@ func (sp *ResourceUsagePolicy) GetCurrentUtilization(roomCount *models.RoomsStat
 	if podList != nil {
 		for _, pod := range podList.Items {
 			for i, container := range pod.Containers {
-				if container.Name == pod.Name { // TODO: Get game room container
-					podFromClientset, _ := sp.Clientset.CoreV1().Pods(sp.SchedulerName).Get(pod.Name, metav1.GetOptions{})
+				podFromClientset, _ := sp.Clientset.CoreV1().Pods(sp.SchedulerName).Get(pod.Name, metav1.GetOptions{})
 
-					resourceUsage, resourceRequests := sp.ResourceGetUsageAndRequestsFunc(container.Usage, podFromClientset.Spec.Containers[i].Resources.Requests)
+				resourceUsage, resourceRequests := sp.ResourceGetUsageAndRequestsFunc(container.Usage, podFromClientset.Spec.Containers[i].Resources.Requests)
 
-					resourceUsagePerPodList = append(resourceUsagePerPodList, resourceUsage)
-					resourceRequestsPerPodList = append(resourceRequestsPerPodList, resourceRequests)
-					break
-				}
+				resourceUsagePerPodList = append(resourceUsagePerPodList, resourceUsage)
+				resourceRequestsPerPodList = append(resourceRequestsPerPodList, resourceRequests)
 			}
 		}
 	}
 
-	fmt.Printf("\nrequestsSum: %v | usagesSum: %v\n", sum(resourceRequestsPerPodList), sum(resourceUsagePerPodList))
+	sp.currentUtilization = sum(resourceUsagePerPodList) / sum(resourceRequestsPerPodList)
 
-	return sum(resourceUsagePerPodList) / sum(resourceRequestsPerPodList)
+	return sp.currentUtilization
 }

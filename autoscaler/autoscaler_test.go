@@ -16,7 +16,6 @@ import (
 
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/testing"
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -150,33 +149,43 @@ var _ = Describe("AutoScaler", func() {
 					Occupied:    8,
 					Terminating: 0,
 				}
-				pod := &v1.Pod{
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{
-							{
-								Resources: v1.ResourceRequirements{
-									Requests: v1.ResourceList{
-										v1.ResourceCPU: resource.MustParse("1.0"),
-									},
-								},
-							},
-						},
-					},
-				}
-				pod.SetName(schedulerName)
-				clientset.CoreV1().Pods(schedulerName).Create(pod)
+				testing.CreatePod(clientset, "1.0", "0", schedulerName)
 			})
 
 			It("should return delta", func() {
 				// scale down
-				fakeMetricsClient := testing.MockCPUAndMemoryMetricsClient(500, 0, 0, schedulerName)
+				containerMetrics := testing.BuildContainerMetricsArray(
+					[]testing.ContainerMetricsDefinition{
+						testing.ContainerMetricsDefinition{
+							Usage: map[models.AutoScalingPolicyType]int{
+								models.CPUAutoScalingPolicyType: 500,
+								models.MemAutoScalingPolicyType: 0,
+							},
+							MemScale: 0,
+						},
+					},
+					schedulerName,
+				)
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				delta := autoScaler.Delta(trigger, roomCount)
 				Expect(delta).To(Equal(-2))
 
 				// scale up
-				fakeMetricsClient = testing.MockCPUAndMemoryMetricsClient(900, 0, 0, schedulerName)
+				containerMetrics = testing.BuildContainerMetricsArray(
+					[]testing.ContainerMetricsDefinition{
+						testing.ContainerMetricsDefinition{
+							Usage: map[models.AutoScalingPolicyType]int{
+								models.CPUAutoScalingPolicyType: 900,
+								models.MemAutoScalingPolicyType: 0,
+							},
+							MemScale: 0,
+						},
+					},
+					schedulerName,
+				)
+				fakeMetricsClient = testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler = NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				delta = autoScaler.Delta(trigger, roomCount)
@@ -184,7 +193,19 @@ var _ = Describe("AutoScaler", func() {
 			})
 
 			It("should get current usage percentage", func() {
-				fakeMetricsClient := testing.MockCPUAndMemoryMetricsClient(500, 0, 0, schedulerName)
+				containerMetrics := testing.BuildContainerMetricsArray(
+					[]testing.ContainerMetricsDefinition{
+						testing.ContainerMetricsDefinition{
+							Usage: map[models.AutoScalingPolicyType]int{
+								models.CPUAutoScalingPolicyType: 500,
+								models.MemAutoScalingPolicyType: 0,
+							},
+							MemScale: 0,
+						},
+					},
+					schedulerName,
+				)
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				usagePercentage := autoScaler.CurrentUtilization(trigger, roomCount)
@@ -207,33 +228,44 @@ var _ = Describe("AutoScaler", func() {
 					Occupied:    8,
 					Terminating: 0,
 				}
-				pod := &v1.Pod{
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{
-							{
-								Resources: v1.ResourceRequirements{
-									Requests: v1.ResourceList{
-										v1.ResourceMemory: resource.MustParse("1Gi"),
-									},
-								},
-							},
-						},
-					},
-				}
-				pod.SetName(schedulerName)
-				clientset.CoreV1().Pods(schedulerName).Create(pod)
+
+				testing.CreatePod(clientset, "0", "1Gi", schedulerName)
 			})
 
 			It("should return delta", func() {
 				// scale down
-				fakeMetricsClient := testing.MockCPUAndMemoryMetricsClient(0, 600, resource.Mega, schedulerName)
+				containerMetrics := testing.BuildContainerMetricsArray(
+					[]testing.ContainerMetricsDefinition{
+						testing.ContainerMetricsDefinition{
+							Usage: map[models.AutoScalingPolicyType]int{
+								models.CPUAutoScalingPolicyType: 0,
+								models.MemAutoScalingPolicyType: 600,
+							},
+							MemScale: resource.Mega,
+						},
+					},
+					schedulerName,
+				)
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				delta := autoScaler.Delta(trigger, roomCount)
 				Expect(delta).To(Equal(-2))
 
 				// scale up
-				fakeMetricsClient = testing.MockCPUAndMemoryMetricsClient(0, 950, resource.Mega, schedulerName)
+				containerMetrics = testing.BuildContainerMetricsArray(
+					[]testing.ContainerMetricsDefinition{
+						testing.ContainerMetricsDefinition{
+							Usage: map[models.AutoScalingPolicyType]int{
+								models.CPUAutoScalingPolicyType: 0,
+								models.MemAutoScalingPolicyType: 950,
+							},
+							MemScale: resource.Mega,
+						},
+					},
+					schedulerName,
+				)
+				fakeMetricsClient = testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler = NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				delta = autoScaler.Delta(trigger, roomCount)
@@ -241,7 +273,19 @@ var _ = Describe("AutoScaler", func() {
 			})
 
 			It("should get current usage percentage", func() {
-				fakeMetricsClient := testing.MockCPUAndMemoryMetricsClient(0, 500, resource.Mega, schedulerName)
+				containerMetrics := testing.BuildContainerMetricsArray(
+					[]testing.ContainerMetricsDefinition{
+						testing.ContainerMetricsDefinition{
+							Usage: map[models.AutoScalingPolicyType]int{
+								models.CPUAutoScalingPolicyType: 0,
+								models.MemAutoScalingPolicyType: 500,
+							},
+							MemScale: resource.Mega,
+						},
+					},
+					schedulerName,
+				)
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				usagePercentage := autoScaler.CurrentUtilization(trigger, roomCount)

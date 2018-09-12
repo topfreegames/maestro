@@ -11,6 +11,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/testing"
 	metricsapi "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	fakeMetricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
@@ -865,44 +866,67 @@ func MockGetUsages(
 	mockPipeline *redismocks.MockPipeliner,
 	mockRedisClient *redismocks.MockRedisClient,
 	key string,
-	size, usageUp, usageDown, percentageAboveUp, percentageAboveDown int,
+	size, usage, percentageOfPointsGreaterThanUsage, times int,
 ) {
-	// Up
-	if usageUp > 0 {
-		mid := size * percentageAboveUp / 100
-		usages := make([]string, size)
-		for idx := range usages {
-			if idx < mid {
-				usages[idx] = strconv.FormatFloat(float64(usageUp)/100+0.1, 'f', 1, 32)
-			} else {
-				usages[idx] = strconv.FormatFloat(float64(usageUp)/100-0.1, 'f', 1, 32)
-			}
+	mid := size * percentageOfPointsGreaterThanUsage / 100
+	usages := make([]string, size)
+	for idx := range usages {
+		if idx < mid {
+			usages[idx] = strconv.FormatFloat(float64(usage)/100+0.1, 'f', 1, 32)
+		} else {
+			usages[idx] = strconv.FormatFloat(float64(usage)/100-0.1, 'f', 1, 32)
 		}
-		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-		mockPipeline.EXPECT().LRange(key, gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
-			usages, nil,
-		))
-		mockPipeline.EXPECT().Exec()
 	}
-
-	// Down
-	if usageDown > 0 {
-		mid := size * percentageAboveDown / 100
-		usages := make([]string, size)
-		for idx := range usages {
-			if idx < mid {
-				usages[idx] = strconv.FormatFloat(float64(usageDown)/100-0.1, 'f', 1, 32)
-			} else {
-				usages[idx] = strconv.FormatFloat(float64(usageDown)/100+0.1, 'f', 1, 32)
-			}
-		}
-		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-		mockPipeline.EXPECT().LRange(key, gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
-			usages, nil,
-		))
-		mockPipeline.EXPECT().Exec()
-	}
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(times)
+	mockPipeline.EXPECT().LRange(key, gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+		usages, nil,
+	)).Times(times)
+	mockPipeline.EXPECT().Exec().Times(times)
 }
+
+// MockGetUsages mockes the return of usage percentages from redis
+// func MockGetUsages(
+// 	mockPipeline *redismocks.MockPipeliner,
+// 	mockRedisClient *redismocks.MockRedisClient,
+// 	key string,
+// 	size, usageUp, usageDown, percentageAboveUp, percentageAboveDown int,
+// ) {
+// 	// Up
+// 	if usageUp > 0 {
+// 		mid := size * percentageAboveUp / 100
+// 		usages := make([]string, size)
+// 		for idx := range usages {
+// 			if idx < mid {
+// 				usages[idx] = strconv.FormatFloat(float64(usageUp)/100+0.1, 'f', 1, 32)
+// 			} else {
+// 				usages[idx] = strconv.FormatFloat(float64(usageUp)/100-0.1, 'f', 1, 32)
+// 			}
+// 		}
+// 		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+// 		mockPipeline.EXPECT().LRange(key, gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+// 			usages, nil,
+// 		))
+// 		mockPipeline.EXPECT().Exec()
+// 	}
+
+// 	// Down
+// 	if usageDown > 0 {
+// 		mid := size * percentageAboveDown / 100
+// 		usages := make([]string, size)
+// 		for idx := range usages {
+// 			if idx < mid {
+// 				usages[idx] = strconv.FormatFloat(float64(usageDown)/100-0.1, 'f', 1, 32)
+// 			} else {
+// 				usages[idx] = strconv.FormatFloat(float64(usageDown)/100+0.1, 'f', 1, 32)
+// 			}
+// 		}
+// 		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+// 		mockPipeline.EXPECT().LRange(key, gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+// 			usages, nil,
+// 		))
+// 		mockPipeline.EXPECT().Exec()
+// 	}
+// }
 
 // MockGetScheduler mocks the retrieval of a scheduler
 func MockGetScheduler(
@@ -1046,34 +1070,72 @@ func TransformLegacyInMetricsTrigger(autoScalingInfo *models.AutoScaling) {
 	}
 }
 
-// MockCPUAndMemoryMetricsClient returns a metricsClientset with reactor to PodMetricses call
-func MockCPUAndMemoryMetricsClient(cpuUsage, memUsage, memScale resource.Scale, schedulerName string) *fakeMetricsClient.Clientset {
-	myFakeMetricsClient := &fakeMetricsClient.Clientset{}
-	// fakeMetricsClient.discovery = &fakediscovery.FakeDiscovery{Fake: &fakeMetricsClient.Fake}
-	myFakeMetricsClient.AddReactor("list", "pods", func(action testing.Action) (handled bool, ret runtime.Object, err error) {
-		metrics := &metricsapi.PodMetricsList{}
-		podMetric := metricsapi.PodMetrics{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s", schedulerName),
-				Namespace: schedulerName,
+// ContainerMetricsDefinition is a struct that stores the container metrics values to use on MockCPUAndMemoryMetricsClient
+type ContainerMetricsDefinition struct {
+	Usage    map[models.AutoScalingPolicyType]int
+	MemScale resource.Scale
+}
+
+// BuildContainerMetricsArray build an array of container metrics to use on MockCPUAndMemoryMetricsClient
+func BuildContainerMetricsArray(containerDefinitions []ContainerMetricsDefinition, schedulerName string) []metricsapi.ContainerMetrics {
+	var containerMetricsArr []metricsapi.ContainerMetrics
+	for _, container := range containerDefinitions {
+		containerMetricsArr = append(
+			containerMetricsArr,
+			metricsapi.ContainerMetrics{
+				Name: schedulerName,
+				Usage: v1.ResourceList{
+					v1.ResourceCPU: *resource.NewMilliQuantity(
+						int64(container.Usage[models.CPUAutoScalingPolicyType]),
+						resource.DecimalSI),
+					v1.ResourceMemory: *resource.NewScaledQuantity(
+						int64(container.Usage[models.MemAutoScalingPolicyType]), container.MemScale),
+				},
 			},
-			Timestamp: metav1.Time{Time: time.Now()},
-			Window:    metav1.Duration{Duration: time.Minute},
-			Containers: []metricsapi.ContainerMetrics{
+		)
+	}
+	return containerMetricsArr
+}
+
+// CreatePod mocks create pod method setting cpu and mem requests
+func CreatePod(clientset *fake.Clientset, cpuRequests, memRequests, schedulerName string) {
+	pod := &v1.Pod{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
 				{
-					Name: schedulerName,
-					Usage: v1.ResourceList{
-						v1.ResourceCPU: *resource.NewMilliQuantity(
-							int64(cpuUsage),
-							resource.DecimalSI),
-						v1.ResourceMemory: *resource.NewScaledQuantity(
-							int64(memUsage),
-							memScale),
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse(cpuRequests),
+							v1.ResourceMemory: resource.MustParse(memRequests),
+						},
 					},
 				},
 			},
+		},
+	}
+	pod.SetName(schedulerName)
+	clientset.CoreV1().Pods(schedulerName).Create(pod)
+}
+
+// CreatePodsMetricsList returns a fakeMetricsClientset with reactor to PodMetricses call
+// It will use the same array of containers for every pod
+func CreatePodsMetricsList(containers []metricsapi.ContainerMetrics, numPods int, schedulerName string) *fakeMetricsClient.Clientset {
+	myFakeMetricsClient := &fakeMetricsClient.Clientset{}
+
+	myFakeMetricsClient.AddReactor("list", "pods", func(action testing.Action) (handled bool, ret runtime.Object, err error) {
+		metrics := &metricsapi.PodMetricsList{}
+		for i := 0; i < numPods; i++ {
+			podMetric := metricsapi.PodMetrics{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      schedulerName,
+					Namespace: schedulerName,
+				},
+				Timestamp:  metav1.Time{Time: time.Now()},
+				Window:     metav1.Duration{Duration: time.Minute},
+				Containers: containers,
+			}
+			metrics.Items = append(metrics.Items, podMetric)
 		}
-		metrics.Items = append(metrics.Items, podMetric)
 
 		return true, metrics, nil
 	})
