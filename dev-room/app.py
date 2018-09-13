@@ -10,7 +10,7 @@ from logging.config import fileConfig
 
 # Internal deps 
 import constant
-from api import Healthcheck, Address, Status
+from api import Healthcheck, Address, Status, IncreaseCPUUsage, IncreaseMemUsage
 
 fileConfig('logging_config.ini')
 logger = logging.getLogger()
@@ -59,3 +59,5 @@ app = falcon.API()
 app.add_route('/healthcheck', Healthcheck())
 app.add_route('/address', Address())
 app.add_route('/status', Status())
+app.add_route('/increase_cpu', IncreaseCPUUsage())
+app.add_route('/increase_mem', IncreaseMemUsage())
