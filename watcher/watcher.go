@@ -735,12 +735,21 @@ func (w *Watcher) checkMetricsTrigger(
 		threshold := trigger.Threshold
 		usage := float32(trigger.Usage) / 100
 		capacity := trigger.Time / w.AutoScalingPeriod
+		currentUsage := w.AutoScaler.CurrentUtilization(trigger, roomCount)
 
 		// Limit define a threshold that if surpassed should trigger scale up no matter what.
 		if !isDown {
-			isAboveLimit := w.checkIfUsageIsAboveLimit(trigger, roomCount, scheduler, scaling, unbalancedState, trigger.Limit, nowTimestamp)
+			isAboveLimit := w.checkIfUsageIsAboveLimit(trigger, roomCount, scheduler, scaling, currentUsage, unbalancedState, trigger.Limit, nowTimestamp)
 
 			if isAboveLimit {
+				l := w.Logger.WithFields(logrus.Fields{
+					"scheduler":    scheduler.Name,
+					"currentUsage": currentUsage,
+					"targetUsage":  usage,
+					"triggerType":  trigger.Type,
+					"delta":        scaling.Delta,
+				})
+				l.Info("Usage is above limit")
 				return scaling, nil
 			}
 		}
@@ -767,8 +776,26 @@ func (w *Watcher) checkMetricsTrigger(
 			// not in cooldown window
 			if nowTimestamp-scheduler.LastScaleOpAt > int64(scalingPolicy.Cooldown) {
 				scaling.Delta = w.AutoScaler.Delta(trigger, roomCount)
+
+				l := w.Logger.WithFields(logrus.Fields{
+					"scheduler":    scheduler.Name,
+					"currentUsage": currentUsage,
+					"targetUsage":  usage,
+					"triggerType":  trigger.Type,
+					"delta":        scaling.Delta,
+				})
+				l.Info("Usage is above threshold")
+
 				return scaling, err
 			}
+			l := w.Logger.WithFields(logrus.Fields{
+				"scheduler":    scheduler.Name,
+				"currentUsage": currentUsage,
+				"targetUsage":  usage,
+				"triggerType":  trigger.Type,
+				"delta":        scaling.Delta,
+			})
+			l.Info("Still in cooldown period")
 		}
 	}
 
@@ -956,13 +983,13 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 	roomCount *models.RoomsStatusCount,
 	scheduler *models.Scheduler,
 	scaling *scaling,
+	currentUsage float32,
 	unbalancedState string,
 	limit int,
 	nowTimestamp int64,
 ) bool { // isAboveLimit
-	var currentUsage, limitUsage float32
+	var limitUsage float32
 	triggerObj := trigger.(*models.ScalingPolicyMetricsTrigger)
-	currentUsage = w.AutoScaler.CurrentUtilization(triggerObj, roomCount)
 	limitUsage = float32(limit) / 100
 
 	if currentUsage >= limitUsage {
