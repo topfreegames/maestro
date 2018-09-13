@@ -53,7 +53,7 @@ migrate: assets
 migrate-test: assets
 	@go run main.go migrate -c ./config/test.yaml
 
-deps: start-deps wait-for-pg 
+deps: start-deps wait-for-pg
 
 start-deps:
 	@echo "Starting dependencies using HOST IP of ${MY_IP}..."
@@ -91,7 +91,8 @@ deps-test-ci: deps drop-test migrate-test minikube-ci
 
 drop:
 	@-docker exec maestro_postgres_1 psql -d postgres -h localhost -p 5432 -U postgres -c "SELECT pg_terminate_backend(pid.pid) FROM pg_stat_activity, (SELECT pid FROM pg_stat_activity where pid <> pg_backend_pid()) pid WHERE datname='maestro';"
-	@docker exec maestro_postgres_1 psql -d postgres -h localhost -p 5432 -U postgres -f scripts/drop.sql > /dev/null
+	@docker cp scripts/drop.sql maestro_postgres_1:.
+	@docker exec maestro_postgres_1 psql -d postgres -h localhost -p 5432 -U postgres -f drop.sql > /dev/null
 	@echo "Database created successfully!"
 
 drop-test:
@@ -131,7 +132,7 @@ integration-run:
     MAESTRO_EXTENSIONS_REDIS_URL=redis://${MY_IP}:6333    \
     ginkgo -tags integration -cover -r                    \
       -randomizeAllSpecs -randomizeSuites                 \
-      -skipMeasurements worker api models controller; 		
+      -skipMeasurements worker api models controller;
 
 int-ci: integration-board clear-coverage-profiles deps-test-ci integration-run gather-integration-profiles
 
@@ -151,9 +152,9 @@ test-coverage-func coverage-func: merge-profiles
 	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
 	@go tool cover -func=_build/coverage-all.out | egrep -v "100.0[%]"
 
-test: unit int test-coverage-func 
+test: unit int test-coverage-func
 
-test-ci: unit test-coverage-func 
+test-ci: unit test-coverage-func
 
 test-coverage-html cover:
 	@go tool cover -html=_build/coverage-all.out
@@ -164,7 +165,7 @@ rtfd:
 	@open docs/_build/html/index.html
 
 minikube:
-	@/bin/bash ./scripts/start-minikube-if-not-yet.sh 
+	@/bin/bash ./scripts/start-minikube-if-not-yet.sh
 
 minikube-ci:
 	@MAESTRO_TEST_CI=true /bin/bash ./scripts/start-minikube-if-not-yet.sh
