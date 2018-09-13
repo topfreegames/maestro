@@ -58,7 +58,7 @@ Maestro receives a config file (yaml or json) for each scheduler.
 The config file must have the following information:
 
 - Docker image
-- Autoscaling policies
+- [Autoscaling policies](docs/autoscaling.md)
 - Manifest yaml template
   1. Default configuration (ENV VARS)
   2. Ports and protocols (UDP, TCP)
@@ -81,26 +81,31 @@ ports:
   - containerPort: 8888
     protocol: TCP
     name: websocket
+requests:                   # these will be the resources requests applied to the pods created in kubernetes
+  memory: 1Gi               # they are used to calculate resource(cpu and memory) usage and trigger autoscaling when metrics triggers are defined
+  cpu: 1000m                
 limits:                     # these will be the resources limits applied to the pods created in kubernetes
   memory: "128Mi"           # they are used to decide how many rooms can run in each node
   cpu: "1"                  # more info: https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-ram-container/
 shutdownTimeout: 180        # duration in seconds the pod needs to terminate gracefully
 autoscaling:
   min: 100                  # minimum amount of GRUs
+  max: 1000                 # maximum amount of GRUs
   up:
-    delta: 10               # how many GRUs will be created every time the scaling policy is triggered
-    trigger:
-      usage: 70             # minimum usage (percentage) that can trigger the scaling policy
-      time: 600             # duration in seconds to wait before scaling policy takes place
-      threshold: 80         # percentage of the points that are above 'usage' needed to trigger scale up
+    metricsTrigger:         # list of triggers that define the autoscaling behaviour
+      - type: room          # the triggers can be of type room, cpu or memory
+        threshold: 80       # percentage of the points that are above 'usage' needed to trigger scale up
+        usage: 70           # minimum usage (percentage) that can trigger the scaling policy
+        time: 600           # duration in seconds to wait before scaling policy takes place 
+        limit: 90           # usage percentage limit that triggers urgent scaling even if in cooldown period
     cooldown: 300           # duration in seconds to wait before consecutive scaling
   down:
-    delta: 2                # how many GRUs will be terminated every time the scaling policy is triggered
-    trigger:
-      usage: 50             # maximum usage (percentage) the can trigger the scaling policy
-      time: 900
-      threshold: 80        # percentage of the points that are above 'usage' needed to trigger scale down
-    cooldown: 300
+    metricsTrigger:
+      - type: cpu
+        threshold: 80       # percentage of the points that are above 'usage' needed to trigger scale down
+        usage: 50           # maximum usage (percentage) the can trigger the scaling policy
+        time: 900           # duration in seconds to wait before scaling policy takes place       
+    cooldown: 300           # duration in seconds to wait before consecutive scaling
 env:                        # environment variable to be passed on to the container
   - name: EXAMPLE_ENV_VAR
     value: examplevalue
