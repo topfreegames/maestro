@@ -178,6 +178,112 @@ env:
 cmd:
   - "./room"
 `
+	yamlWithoutRequests = `
+name: controller-name
+game: controller
+image: controller/controller:v123
+imagePullPolicy: Never
+occupiedTimeout: 3600
+shutdownTimeout: 10
+env:
+- name: MAESTRO_HOST_PORT
+  value: 192.168.64.1:8080
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+- name: POLLING_INTERVAL_IN_SECONDS
+  value: "20"
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+- name: PING_INTERVAL_IN_SECONDS
+  value: "10"
+  valueFrom:
+    secretKeyRef:
+      name: ""
+      key: ""
+autoscaling:
+  min: 2
+  max: 20
+  up:
+    metricsTrigger:
+    - type: cpu
+      threshold: 80
+      usage: 50
+      time: 200
+    - type: mem
+      threshold: 80
+      usage: 50
+      time: 200
+    cooldown: 30
+  down:
+    metricsTrigger:
+    - type: mem
+      threshold: 80
+      usage: 30
+      time: 200
+    - type: cpu
+      threshold: 80
+      usage: 30
+      time: 200
+    cooldown: 60
+`
+	yamlWithoutRequestsContainers = `
+name: controller-name
+game: controller
+containers:
+- name: game
+  image: controller/controller:v123
+  imagePullPolicy: Never
+  env:
+  - name: MAESTRO_HOST_PORT
+    value: 192.168.64.1:8080
+    valueFrom:
+      secretKeyRef:
+        name: ""
+        key: ""
+  - name: POLLING_INTERVAL_IN_SECONDS
+    value: "20"
+    valueFrom:
+      secretKeyRef:
+        name: ""
+        key: ""
+  - name: PING_INTERVAL_IN_SECONDS
+    value: "10"
+    valueFrom:
+      secretKeyRef:
+        name: ""
+        key: ""
+occupiedTimeout: 3600
+shutdownTimeout: 10
+autoscaling:
+  min: 2
+  max: 20
+  up:
+    metricsTrigger:
+    - type: cpu
+      threshold: 80
+      usage: 50
+      time: 200
+    - type: mem
+      threshold: 80
+      usage: 50
+      time: 200
+    cooldown: 30
+  down:
+    metricsTrigger:
+    - type: mem
+      threshold: 80
+      usage: 30
+      time: 200
+    - type: cpu
+      threshold: 80
+      usage: 30
+      time: 200
+    cooldown: 60
+`
 )
 
 var _ = Describe("Controller", func() {
@@ -536,6 +642,98 @@ portRange:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pods.Items).To(HaveLen(0))
 			})
+		})
+
+		It("should return error if autoscaling min > max", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+
+			configYaml1.AutoScaling.Max = 1
+			configYaml1.AutoScaling.Min = configYaml1.AutoScaling.Max + 1
+
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("autoscaling min is greater than max")))
+
+			pods, err := clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(0))
+		})
+
+		It("should return error if using resource autoscaling and requests is not set", func() {
+			var configYaml1 models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yamlWithoutRequests), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Empty Requests
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
+
+			// CPU Up
+			configYaml1.Requests = &models.Resources{}
+			configYaml1.Requests.CPU = ""
+
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
+
+			// CPU Down
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
+
+			// Mem Up
+			configYaml1.Requests = &models.Resources{}
+			configYaml1.Requests.CPU = "1"
+
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.memory in order to use mem autoscaling")))
+
+			// Mem Down
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.memory in order to use mem autoscaling")))
+
+			err = yaml.Unmarshal([]byte(yamlWithoutRequestsContainers), &configYaml1)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Empty Requests
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
+
+			// CPU Up
+			configYaml1.Containers[0].Requests = &models.Resources{}
+			configYaml1.Containers[0].Requests.CPU = ""
+
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
+
+			// CPU Down
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
+
+			// Mem Up
+			configYaml1.Containers[0].Requests = &models.Resources{}
+			configYaml1.Containers[0].Requests.CPU = "1"
+
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.memory in order to use mem autoscaling")))
+
+			// Mem Down
+			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.memory in order to use mem autoscaling")))
+
+			pods, err := clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(0))
 		})
 
 		It("should return error if namespace already exists", func() {
@@ -6204,11 +6402,8 @@ containers:
 			err = mt.MockSetScallingAmountWithRoomStatusCount(
 				mockRedisClient,
 				mockPipeline,
-				mockDb,
-				clientset,
 				&configYaml1,
 				expC,
-				yaml1,
 			)
 			Expect(err).NotTo(HaveOccurred())
 

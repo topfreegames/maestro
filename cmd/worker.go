@@ -55,7 +55,7 @@ var workerCmd = &cobra.Command{
 
 		// TODO: support new relic
 		mr := models.NewMixedMetricsReporter()
-		w, err := worker.NewWorker(config, log, mr, incluster, kubeconfig, nil, nil, nil)
+		w, err := worker.NewWorker(config, log, mr, incluster, kubeconfig, nil, nil, nil, nil)
 		if err != nil {
 			cmdL.Fatal(err)
 		}

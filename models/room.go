@@ -244,8 +244,7 @@ func (r *Room) ClearAll(redisClient interfaces.RedisClient, mr *MixedMetricsRepo
 	pipe := redisClient.TxPipeline()
 	r.clearAllWithPipe(pipe)
 	err := mr.WithSegment(SegmentPipeExec, func() error {
-		var err error
-		_, err = pipe.Exec()
+		_, err := pipe.Exec()
 		return err
 	})
 	return err

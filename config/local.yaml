@@ -1,4 +1,7 @@
 environment: "production"
+jaeger:
+  disabled: true
+  samplingProbability: 1.0
 extensions:
   pg:
     host: "localhost"

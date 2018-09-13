@@ -29,7 +29,7 @@ func (c *RoomsStatusCount) Total() int {
 
 // Available returns the total number of rooms excluding terminating rooms
 func (c *RoomsStatusCount) Available() int {
-	return c.Creating + c.Occupied + c.Ready + c.Terminating
+	return c.Creating + c.Occupied + c.Ready
 }
 
 // GetRoomStatusSetRedisKey gets the key for the set that will keep rooms in a determined state in redis

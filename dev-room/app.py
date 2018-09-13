@@ -1,4 +1,6 @@
 # External deps
+import sys
+import signal
 import time
 import requests
 import falcon
@@ -8,12 +10,23 @@ from logging.config import fileConfig
 
 # Internal deps 
 import constant
-from api import Healthcheck, Address, Status
+from api import Healthcheck, Address, Status, IncreaseCPUUsage, IncreaseMemUsage
 
 fileConfig('logging_config.ini')
 logger = logging.getLogger()
 
 status = "ready"
+
+def sigterm_handler(signal, frame):
+    global status
+    print('Terminating room')
+    status = "terminating"
+    requests.put("{}/{}".format(constant.MAESTRO_ADDR, constant.ROOM_PING_ENDPOINT), json={"timestamp": int(time.time()), "status": status})
+    exit()
+
+signal.signal(signal.SIGTERM, sigterm_handler)
+signal.signal(signal.SIGINT, sigterm_handler)
+
 
 def ping():
     while True:
@@ -46,3 +59,5 @@ app = falcon.API()
 app.add_route('/healthcheck', Healthcheck())
 app.add_route('/address', Address())
 app.add_route('/status', Status())
+app.add_route('/increase_cpu', IncreaseCPUUsage())
+app.add_route('/increase_mem', IncreaseMemUsage())

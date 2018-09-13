@@ -1,12 +1,20 @@
 package testing
 
 import (
+	"fmt"
+	"strconv"
 	"time"
 
 	goredis "github.com/go-redis/redis"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	yaml "gopkg.in/yaml.v2"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/testing"
+	metricsapi "k8s.io/metrics/pkg/apis/metrics/v1beta1"
+	fakeMetricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
 
 	"github.com/golang/mock/gomock"
 	"github.com/onsi/gomega"
@@ -16,6 +24,8 @@ import (
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -791,11 +801,8 @@ func MockSetScallingAmount(
 func MockSetScallingAmountWithRoomStatusCount(
 	mockRedis *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
-	mockDb *pgmocks.MockDB,
-	clientset kubernetes.Interface,
 	configYaml *models.ConfigYAML,
 	expC *models.RoomsStatusCount,
-	yamlString string,
 ) error {
 	mockRedis.EXPECT().TxPipeline().Return(mockPipeline)
 
@@ -811,4 +818,327 @@ func MockSetScallingAmountWithRoomStatusCount(
 	mockPipeline.EXPECT().Exec()
 
 	return nil
+}
+
+// MockRoomDistribution mocks the existence of rooms with various status (creating, ready, occupied and terminating)
+func MockRoomDistribution(
+	configYaml *models.ConfigYAML,
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	expC *models.RoomsStatusCount,
+) {
+	creating := models.GetRoomStatusSetRedisKey(configYaml.Name, "creating")
+	ready := models.GetRoomStatusSetRedisKey(configYaml.Name, "ready")
+	occupied := models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied")
+	terminating := models.GetRoomStatusSetRedisKey(configYaml.Name, "terminating")
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().SCard(creating).Return(goredis.NewIntResult(int64(expC.Creating), nil))
+	mockPipeline.EXPECT().SCard(ready).Return(goredis.NewIntResult(int64(expC.Ready), nil))
+	mockPipeline.EXPECT().SCard(occupied).Return(goredis.NewIntResult(int64(expC.Occupied), nil))
+	mockPipeline.EXPECT().SCard(terminating).Return(goredis.NewIntResult(int64(expC.Terminating), nil))
+	mockPipeline.EXPECT().Exec()
+}
+
+// MockSendUsage mocks SendUsage method. This method sends current usage percentage to redis set
+func MockSendUsage(mockPipeline *redismocks.MockPipeliner, mockRedisClient *redismocks.MockRedisClient, autoScaling *models.AutoScaling) {
+	metricSent := map[string]bool{}
+
+	for _, trigger := range autoScaling.Up.MetricsTrigger {
+		metricSent[string(trigger.Type)] = true
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
+		mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
+		mockPipeline.EXPECT().Exec()
+	}
+
+	for _, trigger := range autoScaling.Down.MetricsTrigger {
+		if !metricSent[string(trigger.Type)] {
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any())
+			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any())
+			mockPipeline.EXPECT().Exec()
+		}
+	}
+}
+
+// MockGetUsages mockes the return of usage percentages from redis
+func MockGetUsages(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	key string,
+	size, usage, percentageOfPointsGreaterThanUsage, times int,
+) {
+	mid := size * percentageOfPointsGreaterThanUsage / 100
+	usages := make([]string, size)
+	for idx := range usages {
+		if idx < mid {
+			usages[idx] = strconv.FormatFloat(float64(usage)/100+0.1, 'f', 1, 32)
+		} else {
+			usages[idx] = strconv.FormatFloat(float64(usage)/100-0.1, 'f', 1, 32)
+		}
+	}
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(times)
+	mockPipeline.EXPECT().LRange(key, gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+		usages, nil,
+	)).Times(times)
+	mockPipeline.EXPECT().Exec().Times(times)
+}
+
+// MockGetUsages mockes the return of usage percentages from redis
+// func MockGetUsages(
+// 	mockPipeline *redismocks.MockPipeliner,
+// 	mockRedisClient *redismocks.MockRedisClient,
+// 	key string,
+// 	size, usageUp, usageDown, percentageAboveUp, percentageAboveDown int,
+// ) {
+// 	// Up
+// 	if usageUp > 0 {
+// 		mid := size * percentageAboveUp / 100
+// 		usages := make([]string, size)
+// 		for idx := range usages {
+// 			if idx < mid {
+// 				usages[idx] = strconv.FormatFloat(float64(usageUp)/100+0.1, 'f', 1, 32)
+// 			} else {
+// 				usages[idx] = strconv.FormatFloat(float64(usageUp)/100-0.1, 'f', 1, 32)
+// 			}
+// 		}
+// 		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+// 		mockPipeline.EXPECT().LRange(key, gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+// 			usages, nil,
+// 		))
+// 		mockPipeline.EXPECT().Exec()
+// 	}
+
+// 	// Down
+// 	if usageDown > 0 {
+// 		mid := size * percentageAboveDown / 100
+// 		usages := make([]string, size)
+// 		for idx := range usages {
+// 			if idx < mid {
+// 				usages[idx] = strconv.FormatFloat(float64(usageDown)/100-0.1, 'f', 1, 32)
+// 			} else {
+// 				usages[idx] = strconv.FormatFloat(float64(usageDown)/100+0.1, 'f', 1, 32)
+// 			}
+// 		}
+// 		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+// 		mockPipeline.EXPECT().LRange(key, gomock.Any(), gomock.Any()).Return(goredis.NewStringSliceResult(
+// 			usages, nil,
+// 		))
+// 		mockPipeline.EXPECT().Exec()
+// 	}
+// }
+
+// MockGetScheduler mocks the retrieval of a scheduler
+func MockGetScheduler(
+	mockDb *pgmocks.MockDB,
+	configYaml *models.ConfigYAML,
+	state, yamlString string,
+	lastChangedAt, lastScaleOpAt time.Time,
+	times int,
+) {
+	// Mock scheduler
+	mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+		scheduler.State = state
+		scheduler.StateLastChangedAt = lastChangedAt.Unix()
+		scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
+		scheduler.YAML = yamlString
+	}).Times(times)
+}
+
+// MockRedisReadyPop mocks removal from redis ready set
+func MockRedisReadyPop(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	amount int,
+) {
+	readyKey := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)
+	for i := 0; i < amount; i++ {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(fmt.Sprintf("room-%d", i), nil))
+		mockPipeline.EXPECT().Exec()
+	}
+}
+
+// MockClearAll mocks models.Room.ClearAll method
+func MockClearAll(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	amount int,
+) {
+	allStatus := []string{
+		models.StatusCreating,
+		models.StatusReady,
+		models.StatusOccupied,
+		models.StatusTerminating,
+		models.StatusTerminated,
+	}
+
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().Exec()
+
+	for i := 0; i < amount; i++ {
+		room := models.NewRoom(fmt.Sprintf("room-%d", i), schedulerName)
+
+		for _, status := range allStatus {
+			mockPipeline.EXPECT().
+				SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey())
+			mockPipeline.EXPECT().
+				ZRem(models.GetLastStatusRedisKey(schedulerName, status), room.ID)
+		}
+		mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), room.ID)
+		mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+	}
+}
+
+// MockScaleUp mocks all Scale Up operations on redis
+func MockScaleUp(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	times int,
+) {
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(times)
+	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+		func(schedulerName string, statusInfo map[string]interface{}) {
+			gomega.Expect(statusInfo["status"]).To(gomega.Equal("creating"))
+			gomega.Expect(statusInfo["lastPing"]).To(gomega.BeNumerically("~", time.Now().Unix(), 1))
+		},
+	).Times(times)
+	mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(schedulerName), gomock.Any()).Times(times)
+	mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(schedulerName, "creating"), gomock.Any()).Times(times)
+	mockPipeline.EXPECT().Exec().Times(times)
+}
+
+// CopyAutoScaling copies an autoscaling struct to a new one
+func CopyAutoScaling(original, clone *models.AutoScaling) {
+	clone.Up = &models.ScalingPolicy{}
+	clone.Up.MetricsTrigger = original.Up.MetricsTrigger
+	if original.Up.Trigger != nil {
+		clone.Up.Cooldown = original.Up.Cooldown
+		clone.Up.Delta = original.Up.Delta
+		clone.Up.Trigger = &models.ScalingPolicyTrigger{}
+		clone.Up.Trigger.Limit = original.Up.Trigger.Limit
+		clone.Up.Trigger.Threshold = original.Up.Trigger.Threshold
+		clone.Up.Trigger.Time = original.Up.Trigger.Time
+		clone.Up.Trigger.Usage = original.Up.Trigger.Usage
+	}
+
+	clone.Down = &models.ScalingPolicy{}
+	clone.Down.MetricsTrigger = original.Down.MetricsTrigger
+	if original.Down.Trigger != nil {
+		clone.Down.Cooldown = original.Down.Cooldown
+		clone.Down.Delta = original.Down.Delta
+		clone.Down.Trigger = &models.ScalingPolicyTrigger{}
+		clone.Down.Trigger.Limit = original.Down.Trigger.Limit
+		clone.Down.Trigger.Threshold = original.Down.Trigger.Threshold
+		clone.Down.Trigger.Time = original.Down.Trigger.Time
+		clone.Down.Trigger.Usage = original.Down.Trigger.Usage
+	}
+}
+
+// TransformLegacyInMetricsTrigger maps legacy to metrics trigger
+func TransformLegacyInMetricsTrigger(autoScalingInfo *models.AutoScaling) {
+	// Up
+	if len(autoScalingInfo.Up.MetricsTrigger) == 0 {
+		autoScalingInfo.Up.MetricsTrigger = append(
+			autoScalingInfo.Up.MetricsTrigger,
+			&models.ScalingPolicyMetricsTrigger{
+				Type:      models.LegacyAutoScalingPolicyType,
+				Usage:     autoScalingInfo.Up.Trigger.Usage,
+				Limit:     autoScalingInfo.Up.Trigger.Limit,
+				Threshold: autoScalingInfo.Up.Trigger.Threshold,
+				Time:      autoScalingInfo.Up.Trigger.Time,
+				Delta:     autoScalingInfo.Up.Delta,
+			},
+		)
+	}
+	// Down
+	if len(autoScalingInfo.Down.MetricsTrigger) == 0 {
+		autoScalingInfo.Down.MetricsTrigger = append(
+			autoScalingInfo.Down.MetricsTrigger,
+			&models.ScalingPolicyMetricsTrigger{
+				Type:      models.LegacyAutoScalingPolicyType,
+				Usage:     autoScalingInfo.Down.Trigger.Usage,
+				Limit:     autoScalingInfo.Down.Trigger.Limit,
+				Threshold: autoScalingInfo.Down.Trigger.Threshold,
+				Time:      autoScalingInfo.Down.Trigger.Time,
+				Delta:     -autoScalingInfo.Down.Delta,
+			},
+		)
+	}
+}
+
+// ContainerMetricsDefinition is a struct that stores the container metrics values to use on MockCPUAndMemoryMetricsClient
+type ContainerMetricsDefinition struct {
+	Usage    map[models.AutoScalingPolicyType]int
+	MemScale resource.Scale
+}
+
+// BuildContainerMetricsArray build an array of container metrics to use on MockCPUAndMemoryMetricsClient
+func BuildContainerMetricsArray(containerDefinitions []ContainerMetricsDefinition, schedulerName string) []metricsapi.ContainerMetrics {
+	var containerMetricsArr []metricsapi.ContainerMetrics
+	for _, container := range containerDefinitions {
+		containerMetricsArr = append(
+			containerMetricsArr,
+			metricsapi.ContainerMetrics{
+				Name: schedulerName,
+				Usage: v1.ResourceList{
+					v1.ResourceCPU: *resource.NewMilliQuantity(
+						int64(container.Usage[models.CPUAutoScalingPolicyType]),
+						resource.DecimalSI),
+					v1.ResourceMemory: *resource.NewScaledQuantity(
+						int64(container.Usage[models.MemAutoScalingPolicyType]), container.MemScale),
+				},
+			},
+		)
+	}
+	return containerMetricsArr
+}
+
+// CreatePod mocks create pod method setting cpu and mem requests
+func CreatePod(clientset *fake.Clientset, cpuRequests, memRequests, schedulerName string) {
+	pod := &v1.Pod{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceCPU:    resource.MustParse(cpuRequests),
+							v1.ResourceMemory: resource.MustParse(memRequests),
+						},
+					},
+				},
+			},
+		},
+	}
+	pod.SetName(schedulerName)
+	clientset.CoreV1().Pods(schedulerName).Create(pod)
+}
+
+// CreatePodsMetricsList returns a fakeMetricsClientset with reactor to PodMetricses call
+// It will use the same array of containers for every pod
+func CreatePodsMetricsList(containers []metricsapi.ContainerMetrics, numPods int, schedulerName string) *fakeMetricsClient.Clientset {
+	myFakeMetricsClient := &fakeMetricsClient.Clientset{}
+
+	myFakeMetricsClient.AddReactor("list", "pods", func(action testing.Action) (handled bool, ret runtime.Object, err error) {
+		metrics := &metricsapi.PodMetricsList{}
+		for i := 0; i < numPods; i++ {
+			podMetric := metricsapi.PodMetrics{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      schedulerName,
+					Namespace: schedulerName,
+				},
+				Timestamp:  metav1.Time{Time: time.Now()},
+				Window:     metav1.Duration{Duration: time.Minute},
+				Containers: containers,
+			}
+			metrics.Items = append(metrics.Items, podMetric)
+		}
+
+		return true, metrics, nil
+	})
+
+	return myFakeMetricsClient
 }

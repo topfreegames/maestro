@@ -9,6 +9,7 @@ package models
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,10 +31,12 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   ports:
-    - port: {{.Port.ContainerPort}}
-      targetPort: {{.Port.ContainerPort}}
-      name: {{.Port.Name}}
-      protocol: {{.Port.Protocol}}
+    {{range .Ports}}
+    - port: {{.ContainerPort}}
+      targetPort: {{.ContainerPort}}
+      name: {{.Name}}
+      protocol: {{.Protocol}}
+    {{end}}
   selector:
     app: {{.Name}}
   type: NodePort
@@ -43,7 +46,7 @@ spec:
 type Service struct {
 	Name      string
 	Namespace string
-	Port      *Port
+	Ports     []*Port
 }
 
 // NewService is the service constructor
@@ -51,10 +54,21 @@ func NewService(
 	name string,
 	configYaml *ConfigYAML,
 ) *Service {
+	var ports []*Port
+	ports = configYaml.Ports
+	if len(configYaml.Ports) <= 0 && len(configYaml.Containers) > 0 {
+		for i, container := range configYaml.Containers {
+			for j, port := range container.Ports {
+				port.Name = fmt.Sprintf("%s-%d%d", port.Name, i, j)
+				ports = append(ports, port)
+			}
+		}
+	}
+
 	service := &Service{
 		Name:      name,
 		Namespace: configYaml.Name,
-		Port:      configYaml.Ports[0],
+		Ports:     ports,
 	}
 
 	return service

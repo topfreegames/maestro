@@ -402,9 +402,11 @@ var _ = Describe("App", func() {
 			newConfigYaml.Forwarders = nil
 			newConfigYaml.Containers = nil
 			newConfigYaml.AuthorizedUsers = nil
+			newConfigYaml.AutoScaling.Up.MetricsTrigger = nil
+			newConfigYaml.AutoScaling.Down.MetricsTrigger = nil
 			configYaml.Ports[0].HostPort = newConfigYaml.Ports[0].HostPort
 			Expect(err).NotTo(HaveOccurred())
-			Expect(newConfigYaml).To(Equal(configYaml))
+			Expect(newConfigYaml.AutoScaling.Up.MetricsTrigger).To(Equal(configYaml.AutoScaling.Up.MetricsTrigger))
 		})
 
 		It("should return error if updating nonexisting scheduler", func() {

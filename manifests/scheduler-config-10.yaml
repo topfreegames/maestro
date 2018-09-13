@@ -1,0 +1,60 @@
+---
+name: scheduler-with-metrics-trigger
+game: game-name
+occupiedTimeout: 3600
+containers:
+- name: game-container-0
+  image: maestro-dev-room:latest
+  imagePullPolicy: Never
+  requests:
+    cpu: 100m
+    memory: 100Mi
+  ports:
+  - containerPort: 8080
+    protocol: TCP
+    name: tcp
+  env:
+  - name: MAESTRO_HOST_PORT
+    value: 192.168.64.1:8080
+    valueFrom:
+      secretKeyRef:
+        name: ""
+        key: ""
+  - name: POLLING_INTERVAL_IN_SECONDS
+    value: "20"
+    valueFrom:
+      secretKeyRef:
+        name: ""
+        key: ""
+  - name: PING_INTERVAL_IN_SECONDS
+    value: "10"
+    valueFrom:
+      secretKeyRef:
+        name: ""
+        key: ""
+shutdownTimeout: 10
+autoscaling:
+  min: 2
+  max: 10
+  up:
+    metricsTrigger:
+    - type: mem
+      threshold: 20
+      usage: 70
+      time: 100
+    - type: cpu
+      threshold: 20
+      usage: 70
+      time: 100
+    cooldown: 30
+  down:
+    metricsTrigger:
+    - type: cpu
+      threshold: 50
+      usage: 20
+      time: 100
+    - type: mem
+      threshold: 50
+      usage: 20
+      time: 100
+    cooldown: 60

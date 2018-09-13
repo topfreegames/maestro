@@ -81,7 +81,7 @@ var _ = Describe("Service", func() {
 			service := models.NewService(name, configYaml)
 			Expect(service.Name).To(Equal(name))
 			Expect(service.Namespace).To(Equal(namespace))
-			Expect(service.Port).To(Equal(ports[0]))
+			Expect(service.Ports[0]).To(Equal(ports[0]))
 		})
 	})
 

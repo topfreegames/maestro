@@ -24,12 +24,12 @@ import (
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	yaml "gopkg.in/yaml.v2"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/models"
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -57,6 +57,12 @@ func CreateScheduler(
 	if configYAML.AutoScaling.Max > 0 && configYAML.AutoScaling.Min > configYAML.AutoScaling.Max {
 		logger.Error("autoscaling min is greater than max")
 		return fmt.Errorf("autoscaling min is greater than max")
+	}
+
+	// if using resource scaling (cpu, mem) requests must be set
+	err = validateMetricsTrigger(configYAML, logger)
+	if err != nil {
+		return err
 	}
 
 	logger.Info("unmarshalling config yaml")
@@ -1208,7 +1214,7 @@ func SetRoomStatus(
 
 	limitManager := models.NewLimitManager(logger, redisClient, config)
 
-	limit := roomsCountByStatus.Total() * cachedScheduler.ConfigYAML.AutoScaling.Up.Trigger.Limit
+	limit := roomsCountByStatus.Available() * cachedScheduler.ConfigYAML.AutoScaling.Up.Trigger.Limit
 	occupied := 100 * roomsCountByStatus.Occupied
 	if occupied > limit {
 		isLocked, err := limitManager.IsLocked(room)

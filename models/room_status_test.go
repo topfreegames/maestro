@@ -34,8 +34,8 @@ var _ = Describe("Room Status", func() {
 				Ready:       ready,
 				Terminating: terminating,
 			}
-			total := rStatusCount.Total()
-			Expect(total).To(Equal(creating + occupied + ready + terminating))
+			total := rStatusCount.Available()
+			Expect(total).To(Equal(creating + occupied + ready))
 		})
 	})
 

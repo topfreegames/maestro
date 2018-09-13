@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/redis"
 	"k8s.io/client-go/kubernetes/fake"
+	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
 
 	"testing"
 
@@ -27,16 +28,17 @@ import (
 )
 
 var (
-	clientset       *fake.Clientset
-	config          *viper.Viper
-	hook            *test.Hook
-	logger          *logrus.Logger
-	mockCtrl        *gomock.Controller
-	mockDb          *pgmocks.MockDB
-	mockPipeline    *redismocks.MockPipeliner
-	mockRedisClient *redismocks.MockRedisClient
-	mr              *models.MixedMetricsReporter
-	redisClient     *redis.Client
+	clientset        *fake.Clientset
+	metricsClientset *metricsFake.Clientset
+	config           *viper.Viper
+	hook             *test.Hook
+	logger           *logrus.Logger
+	mockCtrl         *gomock.Controller
+	mockDb           *pgmocks.MockDB
+	mockPipeline     *redismocks.MockPipeliner
+	mockRedisClient  *redismocks.MockRedisClient
+	mr               *models.MixedMetricsReporter
+	redisClient      *redis.Client
 )
 
 func TestWorker(t *testing.T) {
@@ -52,6 +54,7 @@ var _ = BeforeEach(func() {
 	mr = models.NewMixedMetricsReporter()
 	mr.AddReporter(fakeReporter)
 	clientset = fake.NewSimpleClientset()
+	metricsClientset = metricsFake.NewSimpleClientset()
 	mockCtrl = gomock.NewController(GinkgoT())
 	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)

@@ -179,6 +179,14 @@ func (c *ConfigYAML) EnsureDefaultValues() {
 		c.AutoScaling.Up.Trigger.Limit = 90
 	}
 
+	if len(c.AutoScaling.Up.MetricsTrigger) > 0 {
+		for _, trigger := range c.AutoScaling.Up.MetricsTrigger {
+			if trigger.Limit == 0 {
+				trigger.Limit = 90
+			}
+		}
+	}
+
 	if c.ImagePullPolicy == "" {
 		c.ImagePullPolicy = "Always"
 	}

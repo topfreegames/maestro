@@ -42,6 +42,7 @@ import (
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
 type gracefulShutdown struct {
@@ -51,24 +52,25 @@ type gracefulShutdown struct {
 
 //App is our API application
 type App struct {
-	Address          string
-	Config           *viper.Viper
-	DBClient         *pg.Client
-	RedisClient      *redis.Client
-	KubernetesClient kubernetes.Interface
-	RoomAddrGetter   models.AddrGetter
-	RoomManager      models.RoomManager
-	Logger           logrus.FieldLogger
-	NewRelic         newrelic.Application
-	Router           *mux.Router
-	Server           *http.Server
-	InCluster        bool
-	KubeconfigPath   string
-	Login            logininterfaces.Login
-	EmailDomains     []string
-	Forwarders       []*eventforwarder.Info
-	SchedulerCache   *models.SchedulerCache
-	gracefulShutdown *gracefulShutdown
+	Address                 string
+	Config                  *viper.Viper
+	DBClient                *pg.Client
+	RedisClient             *redis.Client
+	KubernetesClient        kubernetes.Interface
+	KubernetesMetricsClient metricsClient.Interface
+	RoomAddrGetter          models.AddrGetter
+	RoomManager             models.RoomManager
+	Logger                  logrus.FieldLogger
+	NewRelic                newrelic.Application
+	Router                  *mux.Router
+	Server                  *http.Server
+	InCluster               bool
+	KubeconfigPath          string
+	Login                   logininterfaces.Login
+	EmailDomains            []string
+	Forwarders              []*eventforwarder.Info
+	SchedulerCache          *models.SchedulerCache
+	gracefulShutdown        *gracefulShutdown
 }
 
 //NewApp ctor
@@ -465,11 +467,12 @@ func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interfa
 		a.KubernetesClient = kubernetesClientOrNil
 		return nil
 	}
-	clientset, err := extensions.GetKubernetesClient(a.Logger, a.InCluster, a.KubeconfigPath)
+	clientset, metricsClientset, err := extensions.GetKubernetesClient(a.Logger, a.InCluster, a.KubeconfigPath)
 	if err != nil {
 		return err
 	}
 	a.KubernetesClient = clientset
+	a.KubernetesMetricsClient = metricsClientset
 	return nil
 }
 
