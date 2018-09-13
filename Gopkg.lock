@@ -38,11 +38,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:03e7838c3debecdf07d90055e3d3bc66f6fd820ce778b5db124705456d86a546"
+  digest = "1:331a419049c2be691e5ba1d24342fc77c7e767a80c666a18fd8a9f7b82419c1c"
   name = "github.com/PuerkitoBio/urlesc"
   packages = ["."]
   pruneopts = ""
-  revision = "bbf7a2afc14f93e1e0a5c06df524fbd75e5031e5"
+  revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
   digest = "1:37251e285603dd429a07371891a251b036a1a84bc8beaf16e6a04adb1e3e8389"
@@ -77,15 +77,15 @@
   revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
 
 [[projects]]
-  digest = "1:88bd1a0c85b0edc86b4f53e3a1e59b3b0f98a77d80d10f4ff2397a338f32305d"
+  digest = "1:8a34d7a37b8f07239487752e14a5faafcbbc718fc385ad429a2c4ac6f27a207f"
   name = "github.com/emicklei/go-restful"
   packages = [
     ".",
     "log",
   ]
   pruneopts = ""
-  revision = "777bb3f19bcafe2575ffb2a3e46af92509ae9594"
-  version = "v1.2"
+  revision = "3eb9738c1697594ea6e71a7156a9bb32ed216cf0"
+  version = "v2.8.0"
 
 [[projects]]
   digest = "1:9f1e571696860f2b4f8a241b43ce91c6085e7aaed849ccca53f590a4dc7b95bd"
@@ -112,36 +112,36 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:1287439f7765209116509fffff2b8f853845e4b35572b41a1aadda42cbcffcc2"
+  digest = "1:e116a4866bffeec941056a1fcfd37e520fad1ee60e4e3579719f19a43c392e10"
   name = "github.com/go-openapi/jsonpointer"
   packages = ["."]
   pruneopts = ""
-  revision = "779f45308c19820f1a69e9a4cd965f496e0da10f"
+  revision = "3a0015ad55fa9873f41605d3e8f28cd279c32ab2"
+  version = "0.16.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:07ac8ac445f68b0bc063d11845d479fb7e09c906ead7a8c4165b59777df09d74"
+  digest = "1:3830527ef0f4f9b268d9286661c0f52f9115f8aefd9f45ee7352516f93489ac9"
   name = "github.com/go-openapi/jsonreference"
   packages = ["."]
   pruneopts = ""
-  revision = "36d33bfe519efae5632669801b180bf1a245da3b"
+  revision = "3fb327e6747da3043567ee86abd02bb6376b6be2"
+  version = "0.16.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:7d93f6a447f1f7fb643da6fcd39ef18454f6aee0dc17749876259edbcbb048a5"
+  digest = "1:222a38a6f9a0bac95fa14fb97b0bf4734dd652a3341306aa79dda33980d91f42"
   name = "github.com/go-openapi/spec"
   packages = ["."]
   pruneopts = ""
-  revision = "e51c28f07047ad90caff03f6450908720d337e0c"
+  revision = "384415f06ee238aae1df5caad877de6ceac3a5c4"
+  version = "0.16.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:a17d8b1c61da2e0e08aea9c7bef050a5f0bcc1d389d5e3b566a5ab03b589dfac"
+  digest = "1:a8255150a79fa9cc785561966bacda7ff5b386abed1b5f5a9a784660407df836"
   name = "github.com/go-openapi/swag"
   packages = ["."]
   pruneopts = ""
-  revision = "aa30237cf993e01e1a1e467eead45d1ce5ad155e"
+  revision = "becd2f08beafcca035645a8a101e0e3e18140458"
+  version = "0.16.0"
 
 [[projects]]
   digest = "1:9d3afdcb2bb84f114df864f13ab5ec02bb8249ecad9803fcdfb717052f9265b8"
@@ -356,7 +356,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8991b272c3491bdd5a3e9d956c5e81d254137cb7ec8496a5242ba09cb1923d24"
+  digest = "1:212bebc561f4f654a653225868b2a97353cd5e160dc0b0bbc7232b06608474ec"
   name = "github.com/mailru/easyjson"
   packages = [
     "buffer",
@@ -364,7 +364,7 @@
     "jwriter",
   ]
   pruneopts = ""
-  revision = "2af9a745a611440bab0528e5ac19b2805a1c50eb"
+  revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
 
 [[projects]]
   branch = "master"
@@ -963,11 +963,27 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a320dfb6d57c7f3c35c23137b64236fdf16ad25b1c518f6bbc2b4f3c20a3f236"
+  digest = "1:951bc2047eea6d316a17850244274554f26fd59189360e45f4056b424dadf2c1"
   name = "k8s.io/kube-openapi"
   packages = ["pkg/common"]
   pruneopts = ""
-  revision = "f08db293d3ef80052d6513ece19792642a289fea"
+  revision = "e3762e86a74c878ffed47484592986685639c2cd"
+
+[[projects]]
+  digest = "1:af9b52d2ef3646798c5c48da96e8aba11e612846366047d53d56c38cc555783f"
+  name = "k8s.io/metrics"
+  packages = [
+    "pkg/apis/metrics",
+    "pkg/apis/metrics/v1alpha1",
+    "pkg/apis/metrics/v1beta1",
+    "pkg/client/clientset_generated/clientset",
+    "pkg/client/clientset_generated/clientset/scheme",
+    "pkg/client/clientset_generated/clientset/typed/metrics/v1alpha1",
+    "pkg/client/clientset_generated/clientset/typed/metrics/v1beta1",
+  ]
+  pruneopts = ""
+  revision = "7afb501849915187f5b29c9727e106cbc6299d1c"
+  version = "kubernetes-1.11.2"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -1030,6 +1046,8 @@
     "k8s.io/client-go/rest",
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/clientcmd",
+    "k8s.io/metrics/pkg/apis/metrics",
+    "k8s.io/metrics/pkg/client/clientset_generated/clientset",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

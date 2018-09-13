@@ -6,9 +6,6 @@ containers:
 - name: game-container-0
   image: maestro-dev-room:latest
   imagePullPolicy: Never
-  requests:
-    cpu: 100m
-    memory: 100Mi
   ports:
   - containerPort: 8080
     protocol: TCP
