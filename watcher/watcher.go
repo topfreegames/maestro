@@ -764,8 +764,8 @@ func (w *Watcher) checkMetricsTrigger(
 				scheduler.StateLastChangedAt = nowTimestamp
 			}
 
-			// changed state or not in cooldown window
-			if scaling.ChangedState || nowTimestamp-scheduler.LastScaleOpAt > int64(scalingPolicy.Cooldown) {
+			// not in cooldown window
+			if nowTimestamp-scheduler.LastScaleOpAt > int64(scalingPolicy.Cooldown) {
 				scaling.Delta = w.AutoScaler.Delta(trigger, roomCount)
 				return scaling, err
 			}

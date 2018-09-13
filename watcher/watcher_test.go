@@ -1057,8 +1057,8 @@ var _ = Describe("Watcher", func() {
 
 			It("should change state and scale if first state change - overdimensioned", func() {
 				// GetSchedulerScalingInfo
-				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
-				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
+				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Trigger.Time+1) * time.Second)
+				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
