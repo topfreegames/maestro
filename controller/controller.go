@@ -59,6 +59,12 @@ func CreateScheduler(
 		return fmt.Errorf("autoscaling min is greater than max")
 	}
 
+	// if using resource scaling (cpu, mem) requests must be set
+	err = validateMetricsTrigger(configYAML, logger)
+	if err != nil {
+		return err
+	}
+
 	logger.Info("unmarshalling config yaml")
 	configBytes, err := yaml.Marshal(configYAML)
 	if err != nil {

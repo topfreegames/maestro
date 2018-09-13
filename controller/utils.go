@@ -758,3 +758,62 @@ func setScaleDownAmount(logger logrus.FieldLogger, amount, currentRooms, max, mi
 
 	return amount
 }
+
+func validateMetricsTrigger(configYAML *models.ConfigYAML, logger logrus.FieldLogger) error {
+	for _, trigger := range configYAML.AutoScaling.Up.MetricsTrigger {
+		if trigger.Type == models.CPUAutoScalingPolicyType {
+			if configYAML.Requests == nil || configYAML.Requests.CPU == "" {
+				logger.Error("must set requests.cpu in order to use cpu autoscaling")
+				return fmt.Errorf("must set requests.cpu in order to use cpu autoscaling")
+			}
+			for _, container := range configYAML.Containers {
+				if container.Requests == nil || container.Requests.CPU == "" {
+					logger.Error("must set requests.cpu in order to use cpu autoscaling")
+					return fmt.Errorf("must set requests.cpu in order to use cpu autoscaling")
+				}
+			}
+		}
+
+		if trigger.Type == models.MemAutoScalingPolicyType {
+			if configYAML.Requests == nil || configYAML.Requests.Memory == "" {
+				logger.Error("must set requests.memory in order to use mem autoscaling")
+				return fmt.Errorf("must set requests.memory in order to use mem autoscaling")
+			}
+			for _, container := range configYAML.Containers {
+				if container.Requests == nil || container.Requests.Memory == "" {
+					logger.Error("must set requests.memory in order to use mem autoscaling")
+					return fmt.Errorf("must set requests.memory in order to use mem autoscaling")
+				}
+			}
+		}
+	}
+
+	for _, trigger := range configYAML.AutoScaling.Down.MetricsTrigger {
+		if trigger.Type == models.CPUAutoScalingPolicyType {
+			if configYAML.Requests == nil || configYAML.Requests.CPU == "" {
+				logger.Error("must set requests.cpu in order to use cpu autoscaling")
+				return fmt.Errorf("must set requests.cpu in order to use cpu autoscaling")
+			}
+			for _, container := range configYAML.Containers {
+				if container.Requests == nil || container.Requests.CPU == "" {
+					logger.Error("must set requests.cpu in order to use cpu autoscaling")
+					return fmt.Errorf("must set requests.cpu in order to use cpu autoscaling")
+				}
+			}
+		}
+
+		if trigger.Type == models.MemAutoScalingPolicyType {
+			if configYAML.Requests == nil || configYAML.Requests.Memory == "" {
+				logger.Error("must set requests.memory in order to use mem autoscaling")
+				return fmt.Errorf("must set requests.memory in order to use mem autoscaling")
+			}
+			for _, container := range configYAML.Containers {
+				if container.Requests == nil || container.Requests.Memory == "" {
+					logger.Error("must set requests.memory in order to use mem autoscaling")
+					return fmt.Errorf("must set requests.memory in order to use mem autoscaling")
+				}
+			}
+		}
+	}
+	return nil
+}
