@@ -644,7 +644,7 @@ portRange:
 			})
 		})
 
-		FIt("should return error if autoscaling min > max", func() {
+		It("should return error if autoscaling min > max", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
@@ -661,7 +661,7 @@ portRange:
 			Expect(pods.Items).To(HaveLen(0))
 		})
 
-		FIt("should return error if using resource autoscaling and requests is not set", func() {
+		It("should return error if using resource autoscaling and requests is not set", func() {
 			var configYaml1 models.ConfigYAML
 			err := yaml.Unmarshal([]byte(yamlWithoutRequests), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
