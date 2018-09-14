@@ -127,6 +127,13 @@ func NewAutoScaler(schedulerName string, usageDataSource ...interface{}) *AutoSc
 				usageDataSource[0].(kubernetes.Interface),
 				usageDataSource[1].(metricsClient.Interface),
 				schedulerName,
+      ),
+      
+      // newTypeUsagePolicy
+			models.NewTypeAutoScalingPolicyType: newNewTypeUsagePolicy(
+        // Optional dataSources
+				usageDataSource[0].(kubernetes.Interface),
+				usageDataSource[1].(metricsClient.Interface),
 			),
 		},
 	}
@@ -140,12 +147,14 @@ type AutoScalingPolicyType string
 const (
 	// LegacyAutoScalingPolicyType defines legacy usage autoscaling policy type
 	LegacyAutoScalingPolicyType AutoScalingPolicyType = "legacy"
-	// RoomAutoScalingPolicyType defines room usage autoscaling policys type
+	// RoomAutoScalingPolicyType defines room usage autoscaling policy type
 	RoomAutoScalingPolicyType AutoScalingPolicyType = "room"
-	// CPUAutoScalingPolicyType defines CPU usage autoscaling policys type
+	// CPUAutoScalingPolicyType defines CPU usage autoscaling policy type
 	CPUAutoScalingPolicyType AutoScalingPolicyType = "cpu"
-	// MemAutoScalingPolicyType defines memory usage autoscaling policys type
-	MemAutoScalingPolicyType AutoScalingPolicyType = "mem"
+	// MemAutoScalingPolicyType defines memory usage autoscaling policy type
+  MemAutoScalingPolicyType AutoScalingPolicyType = "mem"
+  // NewType defines a new usage autoscaling policy type
+	NewTypeAutoScalingPolicyType AutoScalingPolicyType = "newType"
 )
 ```
 

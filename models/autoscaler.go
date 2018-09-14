@@ -13,10 +13,10 @@ type AutoScalingPolicyType string
 const (
 	// LegacyAutoScalingPolicyType defines legacy usage autoscaling policy type
 	LegacyAutoScalingPolicyType AutoScalingPolicyType = "legacy"
-	// RoomAutoScalingPolicyType defines room usage autoscaling policys type
+	// RoomAutoScalingPolicyType defines room usage autoscaling policy type
 	RoomAutoScalingPolicyType AutoScalingPolicyType = "room"
-	// CPUAutoScalingPolicyType defines CPU usage autoscaling policys type
+	// CPUAutoScalingPolicyType defines CPU usage autoscaling policy type
 	CPUAutoScalingPolicyType AutoScalingPolicyType = "cpu"
-	// MemAutoScalingPolicyType defines memory usage autoscaling policys type
+	// MemAutoScalingPolicyType defines memory usage autoscaling policy type
 	MemAutoScalingPolicyType AutoScalingPolicyType = "mem"
 )
