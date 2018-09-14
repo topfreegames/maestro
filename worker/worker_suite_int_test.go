@@ -25,21 +25,23 @@ import (
 	mtesting "github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/worker"
 	"k8s.io/client-go/kubernetes"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
 var (
-	clientset      kubernetes.Interface
-	config         *viper.Viper
-	hook           *test.Hook
-	logger         *logrus.Logger
-	mr             *models.MixedMetricsReporter
-	app            *api.App
-	w              *worker.Worker
-	mockLogin      *mocks.MockLogin
-	mockCtrl       *gomock.Controller
-	token          = "token"
-	startPortRange = 40000
-	endPortRange   = 40099
+	clientset        kubernetes.Interface
+	metricsClientset metricsClient.Interface
+	config           *viper.Viper
+	hook             *test.Hook
+	logger           *logrus.Logger
+	mr               *models.MixedMetricsReporter
+	app              *api.App
+	w                *worker.Worker
+	mockLogin        *mocks.MockLogin
+	mockCtrl         *gomock.Controller
+	token            = "token"
+	startPortRange   = 40000
+	endPortRange     = 40099
 )
 
 func TestIntWorker(t *testing.T) {
@@ -59,6 +61,9 @@ var _ = BeforeSuite(func() {
 	minikubeConfig, err := mtesting.MinikubeConfig()
 	Expect(err).NotTo(HaveOccurred())
 	clientset, err = kubernetes.NewForConfig(minikubeConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	metricsClientset, err = metricsClient.NewForConfig(minikubeConfig)
 	Expect(err).NotTo(HaveOccurred())
 
 	config, err = mtesting.GetDefaultConfig()
