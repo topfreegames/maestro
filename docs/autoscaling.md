@@ -93,3 +93,78 @@ autoscaling:
         time: 900           
     cooldown: 300           
 ```
+
+## Creating new autoscaler policies(types)
+In order to implement a new autoscaler type, it is required to implement the autoscaler interface:
+```go
+type AutoScalingPolicy interface {
+	CalculateDelta(trigger *models.ScalingPolicyMetricsTrigger, roomCount *models.RoomsStatusCount) int
+	GetCurrentUtilization(roomCount *models.RoomsStatusCount) float32
+}
+```
+
+You can find the policies on [autoscaler package directory](../autoscaler). Then add the new policy to the [autoscaler map of policies](../autoscaler/autoscaler.go) in the autoscaler instantiation function:
+```go
+func NewAutoScaler(schedulerName string, usageDataSource ...interface{}) *AutoScaler {
+	return &AutoScaler{
+		AutoScalingPoliciesMap: map[models.AutoScalingPolicyType]AutoScalingPolicy{
+
+			// legacyPolicy
+			models.LegacyAutoScalingPolicyType: newLegacyUsagePolicy(),
+
+			// roomUsagePolicy
+			models.RoomAutoScalingPolicyType: newRoomUsagePolicy(),
+
+			// cpuUsagePolicy
+			models.CPUAutoScalingPolicyType: newCPUUsagePolicy(
+				usageDataSource[0].(kubernetes.Interface),
+				usageDataSource[1].(metricsClient.Interface),
+				schedulerName,
+			),
+
+			// memUsagePolicy
+			models.MemAutoScalingPolicyType: newMemUsagePolicy(
+				usageDataSource[0].(kubernetes.Interface),
+				usageDataSource[1].(metricsClient.Interface),
+				schedulerName,
+      ),
+      
+      // newTypeUsagePolicy
+			models.NewTypeAutoScalingPolicyType: newNewTypeUsagePolicy(
+        // Optional dataSources
+				usageDataSource[0].(kubernetes.Interface),
+				usageDataSource[1].(metricsClient.Interface),
+			),
+		},
+	}
+}
+```
+
+And create the new type constant on [autoscaler model](../models/autoscaler.go):
+```go
+type AutoScalingPolicyType string
+
+const (
+	// LegacyAutoScalingPolicyType defines legacy usage autoscaling policy type
+	LegacyAutoScalingPolicyType AutoScalingPolicyType = "legacy"
+	// RoomAutoScalingPolicyType defines room usage autoscaling policy type
+	RoomAutoScalingPolicyType AutoScalingPolicyType = "room"
+	// CPUAutoScalingPolicyType defines CPU usage autoscaling policy type
+	CPUAutoScalingPolicyType AutoScalingPolicyType = "cpu"
+	// MemAutoScalingPolicyType defines memory usage autoscaling policy type
+  MemAutoScalingPolicyType AutoScalingPolicyType = "mem"
+  // NewType defines a new usage autoscaling policy type
+	NewTypeAutoScalingPolicyType AutoScalingPolicyType = "newType"
+)
+```
+
+After that, you can start using your new type on scheduler config:
+```yaml
+metricsTrigger:
+  - type: newType
+    threshold: 80       
+    usage: 50          
+    time: 900
+    limit: 90           
+cooldown: 300           
+```
