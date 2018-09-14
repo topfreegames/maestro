@@ -93,3 +93,58 @@ autoscaling:
         time: 900           
     cooldown: 300           
 ```
+
+## Creating new autoscaler policies(types)
+In order to implement a new autoscaler type, it is required to implement the autoscaler interface:
+```
+type AutoScalingPolicy interface {
+	CalculateDelta(trigger *models.ScalingPolicyMetricsTrigger, roomCount *models.RoomsStatusCount) int
+	GetCurrentUtilization(roomCount *models.RoomsStatusCount) float32
+}
+```
+
+You can find the policies on [autoscaler package directory](../autoscaler). Then add the new policy to the [autoscaler map of policies](../autoscaler/autoscaler.go) in the autoscaler instantiation function:
+```
+func NewAutoScaler(schedulerName string, usageDataSource ...interface{}) *AutoScaler {
+	return &AutoScaler{
+		AutoScalingPoliciesMap: map[models.AutoScalingPolicyType]AutoScalingPolicy{
+
+			// legacyPolicy
+			models.LegacyAutoScalingPolicyType: newLegacyUsagePolicy(),
+
+			// roomUsagePolicy
+			models.RoomAutoScalingPolicyType: newRoomUsagePolicy(),
+
+			// cpuUsagePolicy
+			models.CPUAutoScalingPolicyType: newCPUUsagePolicy(
+				usageDataSource[0].(kubernetes.Interface),
+				usageDataSource[1].(metricsClient.Interface),
+				schedulerName,
+			),
+
+			// memUsagePolicy
+			models.MemAutoScalingPolicyType: newMemUsagePolicy(
+				usageDataSource[0].(kubernetes.Interface),
+				usageDataSource[1].(metricsClient.Interface),
+				schedulerName,
+			),
+		},
+	}
+}
+```
+
+And create the new type constant on [autoscaler model](../models/autoscaler.go):
+```
+type AutoScalingPolicyType string
+
+const (
+	// LegacyAutoScalingPolicyType defines legacy usage autoscaling policy type
+	LegacyAutoScalingPolicyType AutoScalingPolicyType = "legacy"
+	// RoomAutoScalingPolicyType defines room usage autoscaling policys type
+	RoomAutoScalingPolicyType AutoScalingPolicyType = "room"
+	// CPUAutoScalingPolicyType defines CPU usage autoscaling policys type
+	CPUAutoScalingPolicyType AutoScalingPolicyType = "cpu"
+	// MemAutoScalingPolicyType defines memory usage autoscaling policys type
+	MemAutoScalingPolicyType AutoScalingPolicyType = "mem"
+)
+```
