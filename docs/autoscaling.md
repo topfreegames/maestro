@@ -96,7 +96,7 @@ autoscaling:
 
 ## Creating new autoscaler policies(types)
 In order to implement a new autoscaler type, it is required to implement the autoscaler interface:
-```
+```go
 type AutoScalingPolicy interface {
 	CalculateDelta(trigger *models.ScalingPolicyMetricsTrigger, roomCount *models.RoomsStatusCount) int
 	GetCurrentUtilization(roomCount *models.RoomsStatusCount) float32
@@ -104,7 +104,7 @@ type AutoScalingPolicy interface {
 ```
 
 You can find the policies on [autoscaler package directory](../autoscaler). Then add the new policy to the [autoscaler map of policies](../autoscaler/autoscaler.go) in the autoscaler instantiation function:
-```
+```go
 func NewAutoScaler(schedulerName string, usageDataSource ...interface{}) *AutoScaler {
 	return &AutoScaler{
 		AutoScalingPoliciesMap: map[models.AutoScalingPolicyType]AutoScalingPolicy{
@@ -134,7 +134,7 @@ func NewAutoScaler(schedulerName string, usageDataSource ...interface{}) *AutoSc
 ```
 
 And create the new type constant on [autoscaler model](../models/autoscaler.go):
-```
+```go
 type AutoScalingPolicyType string
 
 const (
