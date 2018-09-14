@@ -148,3 +148,14 @@ const (
 	MemAutoScalingPolicyType AutoScalingPolicyType = "mem"
 )
 ```
+
+After that, you can start using your new type on scheduler config:
+```yaml
+metricsTrigger:
+  - type: newType
+    threshold: 80       
+    usage: 50          
+    time: 900
+    limit: 90           
+cooldown: 300           
+```
