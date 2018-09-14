@@ -18,6 +18,7 @@ Contents:
    api
    cli
    testing
+   autoscaling
 
 Indices and tables
 ==================
