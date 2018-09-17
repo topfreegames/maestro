@@ -27,14 +27,12 @@ const (
 //ScaleInfo holds information about last time scheduler was verified if it needed to be scaled
 // and how many time it was above or below threshold
 type ScaleInfo struct {
-	size  int64
 	redis redis.RedisClient
 }
 
 // NewScaleInfo returns a new ScaleInfo
-func NewScaleInfo(size int, redis redis.RedisClient) *ScaleInfo {
+func NewScaleInfo(redis redis.RedisClient) *ScaleInfo {
 	return &ScaleInfo{
-		size:  int64(size),
 		redis: redis,
 	}
 }
@@ -44,9 +42,9 @@ func (s *ScaleInfo) Key(schedulerName string, metric AutoScalingPolicyType) stri
 	return fmt.Sprintf("maestro:scale:%s:%s", metric, schedulerName)
 }
 
-// Size returns the circular list size that holds usages
-func (s *ScaleInfo) Size() int {
-	return int(s.size)
+// Capacity calculates the number of points to store
+func (s *ScaleInfo) Capacity(triggerTime, autoScalingPeriod int) int {
+	return triggerTime / autoScalingPeriod
 }
 
 // ReturnStatus check the list of Usages.
@@ -60,12 +58,9 @@ func (s *ScaleInfo) ReturnStatus(
 	usage float32,
 ) (bool, error) {
 	size64 := int64(size)
-	if size64 != s.size {
-		s.size = size64
-	}
 	key := s.Key(schedulerName, metric)
 	pipe := s.redis.TxPipeline()
-	usagesRedis := s.returnCircularList(pipe, key)
+	usagesRedis := s.returnCircularList(pipe, key, size64)
 
 	_, err := pipe.Exec()
 	if err != nil {
@@ -74,7 +69,7 @@ func (s *ScaleInfo) ReturnStatus(
 
 	usages, _ := s.convertStringCmdToFloats(usagesRedis)
 
-	return s.isAboveThreshold(scaleType, usages, usage, threshold), nil
+	return s.isAboveThreshold(scaleType, usages, usage, threshold, size64), nil
 }
 
 // SendUsage saves a new usage percentage on Redis
@@ -82,24 +77,25 @@ func (s *ScaleInfo) SendUsage(
 	schedulerName string,
 	metric AutoScalingPolicyType,
 	currentUsage float32,
+	size int64,
 ) error {
 	key := s.Key(schedulerName, metric)
 	pipe := s.redis.TxPipeline()
-	s.pushToCircularList(pipe, key, currentUsage)
+	s.pushToCircularList(pipe, key, currentUsage, size)
 	_, err := pipe.Exec()
 	return err
 }
 
-func (s *ScaleInfo) pushToCircularList(pipe goredis.Pipeliner, key string, usage float32) {
+func (s *ScaleInfo) pushToCircularList(pipe goredis.Pipeliner, key string, usage float32, size int64) {
 	pipe.LPush(key, usage)
-	pipe.LTrim(key, int64(0), s.size)
+	pipe.LTrim(key, int64(0), size)
 }
 
-func (s *ScaleInfo) returnCircularList(pipe goredis.Pipeliner, key string) *goredis.StringSliceCmd {
-	return pipe.LRange(key, int64(0), s.size)
+func (s *ScaleInfo) returnCircularList(pipe goredis.Pipeliner, key string, size int64) *goredis.StringSliceCmd {
+	return pipe.LRange(key, int64(0), size)
 }
 
-func (s *ScaleInfo) isAboveThreshold(scaleType scaleType, usages []float32, usage float32, threshold int) bool {
+func (s *ScaleInfo) isAboveThreshold(scaleType scaleType, usages []float32, usage float32, threshold int, size int64) bool {
 	pointsAboveUsage := 0
 	for _, usageFromArr := range usages {
 		if scaleType == ScaleTypeUp && usageFromArr > usage {
@@ -108,7 +104,7 @@ func (s *ScaleInfo) isAboveThreshold(scaleType scaleType, usages []float32, usag
 			pointsAboveUsage = pointsAboveUsage + 1
 		}
 	}
-	return pointsAboveUsage*100 > threshold*int(s.size)
+	return pointsAboveUsage*100 > threshold*int(size)
 }
 
 func (s *ScaleInfo) convertStringCmdToFloats(usagesRedis *goredis.StringSliceCmd) ([]float32, error) {

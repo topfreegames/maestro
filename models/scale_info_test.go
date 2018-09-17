@@ -66,7 +66,7 @@ var _ = Describe("ScaleInfo", func() {
 	Describe("ReturnStatus", func() {
 		It("should return false", func() {
 			currUsage := UsageTest{5, 10}
-			scaleInfo := NewScaleInfo(size, mockRedisClient)
+			scaleInfo := NewScaleInfo(mockRedisClient)
 
 			returnList(size, currUsage.AbsUsage, currUsage.AbsTotal, nil, key)
 
@@ -87,7 +87,7 @@ var _ = Describe("ScaleInfo", func() {
 		It("should return true", func() {
 			currUsage := UsageTest{4, 10}
 			size := 4
-			scaleInfo := NewScaleInfo(size, mockRedisClient)
+			scaleInfo := NewScaleInfo(mockRedisClient)
 
 			returnList(
 				size, currUsage.AbsUsage, currUsage.AbsTotal,
@@ -112,13 +112,13 @@ var _ = Describe("ScaleInfo", func() {
 		It("should add point into redis", func() {
 			currUsage := UsageTest{5, 10}
 
-			scaleInfo := NewScaleInfo(size, mockRedisClient)
+			scaleInfo := NewScaleInfo(mockRedisClient)
 			pushToList(size, currUsage.AbsUsage, currUsage.AbsTotal, nil, key)
 
 			err := scaleInfo.SendUsage(
 				schedulerName,
 				LegacyAutoScalingPolicyType,
-				float32(currUsage.AbsUsage)/float32(currUsage.AbsTotal),
+				float32(currUsage.AbsUsage)/float32(currUsage.AbsTotal), int64(size),
 			)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -127,7 +127,7 @@ var _ = Describe("ScaleInfo", func() {
 		It("should add points into redis", func() {
 			currUsage := UsageTest{9, 10}
 			size := 4
-			scaleInfo := NewScaleInfo(size, mockRedisClient)
+			scaleInfo := NewScaleInfo(mockRedisClient)
 
 			pushToList(
 				size, currUsage.AbsUsage, currUsage.AbsTotal,
@@ -136,7 +136,7 @@ var _ = Describe("ScaleInfo", func() {
 			err := scaleInfo.SendUsage(
 				schedulerName,
 				LegacyAutoScalingPolicyType,
-				float32(currUsage.AbsUsage)/float32(currUsage.AbsTotal),
+				float32(currUsage.AbsUsage)/float32(currUsage.AbsTotal), int64(size),
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -144,26 +144,27 @@ var _ = Describe("ScaleInfo", func() {
 
 	Describe("Key", func() {
 		It("should return the redis key from scheduler for legacy metrics", func() {
-			scaleInfo := NewScaleInfo(4, mockRedisClient)
+			scaleInfo := NewScaleInfo(mockRedisClient)
 			key := scaleInfo.Key("scheduler-name", LegacyAutoScalingPolicyType)
 
 			Expect(key).To(Equal("maestro:scale:legacy:scheduler-name"))
 		})
 
 		It("should return the redis key from scheduler for legacy metrics", func() {
-			scaleInfo := NewScaleInfo(4, mockRedisClient)
+			scaleInfo := NewScaleInfo(mockRedisClient)
 			key := scaleInfo.Key("scheduler-name", "room")
 
 			Expect(key).To(Equal("maestro:scale:room:scheduler-name"))
 		})
 	})
 
-	Describe("Size", func() {
-		It("should return scale info size", func() {
-			size := 7
-			scaleInfo := NewScaleInfo(size, mockRedisClient)
+	Describe("Capacity", func() {
+		It("should return time / autoscalingPeriod", func() {
+			time := 120
+			autoscalingPeriod := 20
+			scaleInfo := NewScaleInfo(mockRedisClient)
 
-			Expect(scaleInfo.Size()).To(Equal(size))
+			Expect(scaleInfo.Capacity(time, autoscalingPeriod)).To(Equal(time / autoscalingPeriod))
 		})
 	})
 })

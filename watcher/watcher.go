@@ -66,8 +66,7 @@ type Watcher struct {
 	gracefulShutdown          *gracefulShutdown
 	OccupiedTimeout           int64
 	EventForwarders           []*eventforwarder.Info
-	ScaleUpInfo               *models.ScaleInfo
-	ScaleDownInfo             *models.ScaleInfo
+	ScaleInfo                 *models.ScaleInfo
 	AutoScaler                *autoscaler.AutoScaler
 }
 
@@ -170,26 +169,7 @@ func (w *Watcher) configureTimeout(configYaml *models.ConfigYAML) {
 }
 
 func (w *Watcher) configureAutoScale(configYaml *models.ConfigYAML) {
-	var capacity int
-
-	if configYaml.AutoScaling.Up.Trigger != nil {
-		capacity = configYaml.AutoScaling.Up.Trigger.Time / w.AutoScalingPeriod
-	}
-
-	if capacity <= 0 {
-		capacity = 1
-	}
-	w.ScaleUpInfo = models.NewScaleInfo(capacity, w.RedisClient.Client)
-
-	if configYaml.AutoScaling.Down.Trigger != nil {
-		capacity = configYaml.AutoScaling.Down.Trigger.Time / w.AutoScalingPeriod
-	}
-
-	if capacity <= 0 {
-		capacity = 1
-	}
-	w.ScaleDownInfo = models.NewScaleInfo(capacity, w.RedisClient.Client)
-
+	w.ScaleInfo = models.NewScaleInfo(w.RedisClient.Client)
 	w.AutoScaler = autoscaler.NewAutoScaler(w.SchedulerName, w.KubernetesClient, w.KubernetesMetricsClient)
 }
 
@@ -636,12 +616,12 @@ func (w *Watcher) checkState(
 
 	// Up
 	if (roomCount.Available() < autoScalingInfo.Max && autoScalingInfo.Max > 0) || autoScalingInfo.Max == 0 {
-		scaling, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Up, w.ScaleUpInfo, roomCount, scheduler, nowTimestamp)
+		scaling, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Up, roomCount, scheduler, nowTimestamp)
 	}
 
 	// Down
 	if scaling.Delta == 0 && scaling.InSync && roomCount.Available() > autoScalingInfo.Min {
-		scaling, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Down, w.ScaleDownInfo, roomCount, scheduler, nowTimestamp)
+		scaling, err = w.checkMetricsTrigger(autoScalingInfo, autoScalingInfo.Down, roomCount, scheduler, nowTimestamp)
 	}
 
 	if scaling.InSync && scheduler.State != models.StateInSync {
@@ -688,31 +668,38 @@ func (w *Watcher) sendUsages(
 	roomCount *models.RoomsStatusCount,
 	autoScalingInfo *models.AutoScaling,
 ) {
-	metricSent := map[string]bool{}
+	metricTypeMap := map[models.AutoScalingPolicyType]*models.ScalingPolicyMetricsTrigger{}
 
-	// Send current up metrics trigger usage
+	// populate metricTypeMap to send usage only one time when the same type is on both up and down
+	// and send the trigger with the larger time to store the sufficient amount of points for both triggers
+
+	// up
 	for _, trigger := range autoScalingInfo.Up.MetricsTrigger {
-		metricSent[string(trigger.Type)] = true
-		w.ScaleUpInfo.SendUsage(
+		metricTypeMap[trigger.Type] = trigger
+	}
+	// down
+	for _, trigger := range autoScalingInfo.Down.MetricsTrigger {
+		if t, ok := metricTypeMap[trigger.Type]; ok {
+			if trigger.Time > t.Time {
+				metricTypeMap[trigger.Type] = trigger
+				continue
+			}
+		}
+		metricTypeMap[trigger.Type] = trigger
+	}
+
+	for _, trigger := range metricTypeMap {
+		w.ScaleInfo.SendUsage(
 			w.SchedulerName, trigger.Type,
 			w.AutoScaler.CurrentUtilization(trigger, roomCount),
+			int64(w.ScaleInfo.Capacity(trigger.Time, w.AutoScalingPeriod)),
 		)
-	}
-	// Send current down metrics trigger usage
-	for _, trigger := range autoScalingInfo.Down.MetricsTrigger {
-		if !metricSent[string(trigger.Type)] {
-			w.ScaleDownInfo.SendUsage(
-				w.SchedulerName, trigger.Type,
-				w.AutoScaler.CurrentUtilization(trigger, roomCount),
-			)
-		}
 	}
 }
 
 func (w *Watcher) checkMetricsTrigger(
 	autoScalingInfo *models.AutoScaling,
 	scalingPolicy *models.ScalingPolicy,
-	scaleInfo *models.ScaleInfo,
 	roomCount *models.RoomsStatusCount,
 	scheduler *models.Scheduler,
 	nowTimestamp int64,
@@ -734,7 +721,7 @@ func (w *Watcher) checkMetricsTrigger(
 	for _, trigger := range scalingPolicy.MetricsTrigger {
 		threshold := trigger.Threshold
 		usage := float32(trigger.Usage) / 100
-		capacity := trigger.Time / w.AutoScalingPeriod
+		capacity := w.ScaleInfo.Capacity(trigger.Time, w.AutoScalingPeriod)
 		currentUsage := w.AutoScaler.CurrentUtilization(trigger, roomCount)
 
 		// Limit define a threshold that if surpassed should trigger scale up no matter what.
@@ -754,7 +741,7 @@ func (w *Watcher) checkMetricsTrigger(
 			}
 		}
 
-		isAboveThreshold, err := scaleInfo.ReturnStatus(
+		isAboveThreshold, err := w.ScaleInfo.ReturnStatus(
 			w.SchedulerName,
 			trigger.Type, // distinct
 			scaleType,
