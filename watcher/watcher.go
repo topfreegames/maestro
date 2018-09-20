@@ -753,36 +753,51 @@ func (w *Watcher) checkMetricsTrigger(
 		}
 
 		if isAboveThreshold {
-			scaling.InSync = false
-			if scheduler.State != unbalancedState {
-				scaling.ChangedState = true
-				scheduler.State = unbalancedState
-				scheduler.StateLastChangedAt = nowTimestamp
-			}
+			delta := w.AutoScaler.Delta(trigger, roomCount)
 
-			// not in cooldown window
-			if nowTimestamp-scheduler.LastScaleOpAt > int64(scalingPolicy.Cooldown) {
-				scaling.Delta = w.AutoScaler.Delta(trigger, roomCount)
+			// As Delta() is generic (works for both up and down scheduling)
+			// it is necessary to check if the direction of scaling is coherent with
+			// the delta signal, as it may occur that values lower than the up trigger usage
+			// give us a negative delta or vice-versa.
+			//
+			// Example:
+			// Current usage = 70%
+			// Up trigger usage = 75%
+			// Down trigger usage = 60%
+			//
+			// resulting in delta = -1 when checking up trigger
+			//
+			if (isDown && delta < 0) || (!isDown && delta > 0) {
+				scaling.InSync = false
+				if scheduler.State != unbalancedState {
+					scaling.ChangedState = true
+					scheduler.State = unbalancedState
+					scheduler.StateLastChangedAt = nowTimestamp
+				}
 
+				// not in cooldown window
+				if nowTimestamp-scheduler.LastScaleOpAt > int64(scalingPolicy.Cooldown) {
+					scaling.Delta = delta
+					l := w.Logger.WithFields(logrus.Fields{
+						"scheduler":    scheduler.Name,
+						"currentUsage": currentUsage,
+						"targetUsage":  usage,
+						"triggerType":  trigger.Type,
+						"delta":        scaling.Delta,
+					})
+					l.Info("Usage is above threshold")
+
+					return scaling, err
+				}
 				l := w.Logger.WithFields(logrus.Fields{
 					"scheduler":    scheduler.Name,
 					"currentUsage": currentUsage,
 					"targetUsage":  usage,
 					"triggerType":  trigger.Type,
-					"delta":        scaling.Delta,
+					"delta":        delta,
 				})
-				l.Info("Usage is above threshold")
-
-				return scaling, err
+				l.Info("Still in cooldown period")
 			}
-			l := w.Logger.WithFields(logrus.Fields{
-				"scheduler":    scheduler.Name,
-				"currentUsage": currentUsage,
-				"targetUsage":  usage,
-				"triggerType":  trigger.Type,
-				"delta":        scaling.Delta,
-			})
-			l.Info("Still in cooldown period")
 		}
 	}
 
