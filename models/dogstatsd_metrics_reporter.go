@@ -34,7 +34,7 @@ func (r *DogStatsdMetricsReporter) StartSegment(name string) map[string]interfac
 func (r *DogStatsdMetricsReporter) EndSegment(data map[string]interface{}, name string) {
 	elapsedTime := time.Now().Sub(data["startTime"].(time.Time)).String()
 	segment := data["segment"].(string)
-	tags := map[string]string{
+	tags := map[string]interface{}{
 		reportersConstants.TagResponseTime: elapsedTime,
 		reportersConstants.TagScheduler:    r.Scheduler,
 		reportersConstants.TagSegment:      segment,
@@ -66,7 +66,7 @@ func (r *DogStatsdMetricsReporter) EndDatastoreSegment(data map[string]interface
 	datastore := data["datastore"].(string)
 	operation := data["operation"].(string)
 	table := data["table"].(string)
-	tags := map[string]string{
+	tags := map[string]interface{}{
 		reportersConstants.TagResponseTime: elapsedTime,
 		reportersConstants.TagScheduler:    r.Scheduler,
 		reportersConstants.TagSegment:      strings.ToLower(fmt.Sprintf("%s/%s", datastore, operation)),
@@ -91,7 +91,7 @@ func (r *DogStatsdMetricsReporter) StartExternalSegment(url string) map[string]i
 //EndExternalSegment stops segment
 func (r *DogStatsdMetricsReporter) EndExternalSegment(data map[string]interface{}) {
 	elapsedTime := time.Now().Sub(data["startTime"].(time.Time)).String()
-	tags := map[string]string{
+	tags := map[string]interface{}{
 		reportersConstants.TagResponseTime: elapsedTime,
 		reportersConstants.TagScheduler:    r.Scheduler,
 		reportersConstants.TagSegment:      data["segment"].(string),

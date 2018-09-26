@@ -17,7 +17,7 @@ import (
 
 var _ = Describe("Reporters", func() {
 	It("Reporters.Report() must call Report on all children", func() {
-		opts := map[string]string{"game": "pong"}
+		opts := map[string]interface{}{"game": "pong"}
 
 		for _, mr := range mrs {
 			mr.EXPECT().Report(EventGruNew, opts)

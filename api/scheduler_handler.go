@@ -16,6 +16,8 @@ import (
 	"time"
 
 	maestroErrors "github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/reporters"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/sirupsen/logrus"
@@ -182,6 +184,11 @@ func (g *SchedulerUpdateHandler) update(
 			"status":      status,
 		}).Error("error updating scheduler config")
 	}
+	reporters.Report(reportersConstants.EventSchedulerUpdate, map[string]interface{}{
+		"name":  configYaml.Name,
+		"game":  configYaml.Game,
+		"error": err,
+	})
 	finishOpErr := mr.WithSegment(models.SegmentPipeExec, func() error {
 		return operationManager.Finish(status, description, err)
 	})

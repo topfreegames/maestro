@@ -42,6 +42,7 @@ func createTags(opts map[string]string) []string {
 	return tags
 }
 
+// func createAllowedTags(opts map[string]string, allowed []string) []string {
 func createAllowedTags(opts map[string]string, allowed []string) []string {
 	var tags []string
 	for _, tag := range allowed {

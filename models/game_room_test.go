@@ -159,13 +159,13 @@ var _ = Describe("GameRoomManagement", func() {
 				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
 					"not": "empty",
 				}, nil)).AnyTimes()
-				mr.EXPECT().Report("gru.status", map[string]string{
+				mr.EXPECT().Report("gru.status", map[string]interface{}{
 					reportersConstants.TagGame:      game,
 					reportersConstants.TagScheduler: namespace,
 					"status":                        models.StatusCreating,
 					"gauge":                         "2",
 				})
-				mr.EXPECT().Report("gru.new", map[string]string{
+				mr.EXPECT().Report("gru.new", map[string]interface{}{
 					reportersConstants.TagGame:      game,
 					reportersConstants.TagScheduler: namespace,
 				})
@@ -264,13 +264,13 @@ var _ = Describe("GameRoomManagement", func() {
 				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
 					"not": "empty",
 				}, nil)).AnyTimes()
-				mr.EXPECT().Report("gru.status", map[string]string{
+				mr.EXPECT().Report("gru.status", map[string]interface{}{
 					reportersConstants.TagGame:      game,
 					reportersConstants.TagScheduler: namespace,
 					"status":                        models.StatusCreating,
 					"gauge":                         "2",
 				})
-				mr.EXPECT().Report("gru.new", map[string]string{
+				mr.EXPECT().Report("gru.new", map[string]interface{}{
 					reportersConstants.TagGame:      game,
 					reportersConstants.TagScheduler: namespace,
 				})
@@ -286,7 +286,7 @@ var _ = Describe("GameRoomManagement", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				mr.EXPECT().Report("gru.delete", map[string]string{
+				mr.EXPECT().Report("gru.delete", map[string]interface{}{
 					reportersConstants.TagGame:      "pong",
 					reportersConstants.TagScheduler: "pong-free-for-all",
 					reportersConstants.TagReason:    "deletion_reason",
@@ -327,13 +327,13 @@ var _ = Describe("GameRoomManagement", func() {
 				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
 					"not": "empty",
 				}, nil)).AnyTimes()
-				mr.EXPECT().Report("gru.status", map[string]string{
+				mr.EXPECT().Report("gru.status", map[string]interface{}{
 					reportersConstants.TagGame:      game,
 					reportersConstants.TagScheduler: namespace,
 					"status":                        models.StatusCreating,
 					"gauge":                         "2",
 				})
-				mr.EXPECT().Report("gru.new", map[string]string{
+				mr.EXPECT().Report("gru.new", map[string]interface{}{
 					reportersConstants.TagGame:      game,
 					reportersConstants.TagScheduler: namespace,
 				})
@@ -436,17 +436,17 @@ var _ = Describe("GameRoomManagement", func() {
 				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
 					"not": "empty",
 				}, nil)).AnyTimes()
-				mr.EXPECT().Report("gru.status", map[string]string{
+				mr.EXPECT().Report("gru.status", map[string]interface{}{
 					reportersConstants.TagGame:      game,
 					reportersConstants.TagScheduler: namespace,
 					"status":                        models.StatusCreating,
 					"gauge":                         "2",
 				})
-				mr.EXPECT().Report("gru.new", map[string]string{
+				mr.EXPECT().Report("gru.new", map[string]interface{}{
 					reportersConstants.TagGame:      game,
 					reportersConstants.TagScheduler: namespace,
 				})
-				mr.EXPECT().Report("gru.delete", map[string]string{
+				mr.EXPECT().Report("gru.delete", map[string]interface{}{
 					reportersConstants.TagGame:      "pong",
 					reportersConstants.TagScheduler: "pong-free-for-all",
 					reportersConstants.TagReason:    "failed_to_create_service_for_pod",
@@ -496,13 +496,13 @@ var _ = Describe("GameRoomManagement", func() {
 				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
 					"not": "empty",
 				}, nil)).AnyTimes()
-				mr.EXPECT().Report("gru.status", map[string]string{
+				mr.EXPECT().Report("gru.status", map[string]interface{}{
 					reportersConstants.TagGame:      game,
 					reportersConstants.TagScheduler: namespace,
 					"status":                        models.StatusCreating,
 					"gauge":                         "2",
 				})
-				mr.EXPECT().Report("gru.new", map[string]string{
+				mr.EXPECT().Report("gru.new", map[string]interface{}{
 					reportersConstants.TagGame:      game,
 					reportersConstants.TagScheduler: namespace,
 				})
@@ -518,7 +518,7 @@ var _ = Describe("GameRoomManagement", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				mr.EXPECT().Report("gru.delete", map[string]string{
+				mr.EXPECT().Report("gru.delete", map[string]interface{}{
 					reportersConstants.TagGame:      "pong",
 					reportersConstants.TagScheduler: "pong-free-for-all",
 					reportersConstants.TagReason:    "deletion_reason",

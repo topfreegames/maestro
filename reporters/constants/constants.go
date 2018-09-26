@@ -7,6 +7,8 @@ const (
 	EventGruDelete = "gru.delete"
 	EventGruStatus = "gru.status"
 
+	EventSchedulerUpdate = "scheduler.update"
+
 	EventRPCStatus   = "rpc.status"
 	EventRPCDuration = "rpc.duration"
 

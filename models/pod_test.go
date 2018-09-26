@@ -42,7 +42,7 @@ var _ = Describe("Pod", func() {
 	)
 
 	createPod := func() (*models.Pod, error) {
-		mr.EXPECT().Report("gru.new", map[string]string{
+		mr.EXPECT().Report("gru.new", map[string]interface{}{
 			reportersConstants.TagGame:      "pong",
 			reportersConstants.TagScheduler: "pong-free-for-all",
 		})
@@ -142,7 +142,7 @@ var _ = Describe("Pod", func() {
 				_, err = pod.Create(mockClientset)
 				Expect(err).NotTo(HaveOccurred())
 
-				mr.EXPECT().Report("gru.delete", map[string]string{
+				mr.EXPECT().Report("gru.delete", map[string]interface{}{
 					reportersConstants.TagGame:      "pong",
 					reportersConstants.TagScheduler: "pong-free-for-all",
 					reportersConstants.TagReason:    "deletion_reason",
@@ -164,7 +164,7 @@ var _ = Describe("Pod", func() {
 		It("should create pod with two containers", func() {
 			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1).Return([]int{5001})
 
-			mr.EXPECT().Report("gru.new", map[string]string{
+			mr.EXPECT().Report("gru.new", map[string]interface{}{
 				reportersConstants.TagGame:      "pong",
 				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
@@ -252,14 +252,14 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should return correct ports if pod already exists", func() {
-			mr.EXPECT().Report("gru.new", map[string]string{
+			mr.EXPECT().Report("gru.new", map[string]interface{}{
 				reportersConstants.TagGame:      "pong",
 				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
 
 			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1).Return([]int{5001})
 
-			mr.EXPECT().Report("gru.new", map[string]string{
+			mr.EXPECT().Report("gru.new", map[string]interface{}{
 				reportersConstants.TagGame:      "pong",
 				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
@@ -433,7 +433,7 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should create pod without requests and limits", func() {
-			mr.EXPECT().Report("gru.new", map[string]string{
+			mr.EXPECT().Report("gru.new", map[string]interface{}{
 				reportersConstants.TagGame:      "pong",
 				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
@@ -555,7 +555,7 @@ var _ = Describe("Pod", func() {
 			_, err = pod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			mr.EXPECT().Report("gru.delete", map[string]string{
+			mr.EXPECT().Report("gru.delete", map[string]interface{}{
 				reportersConstants.TagGame:      "pong",
 				reportersConstants.TagScheduler: "pong-free-for-all",
 				reportersConstants.TagReason:    "deletion_reason",

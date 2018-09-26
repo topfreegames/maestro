@@ -42,7 +42,7 @@ var _ = Describe("Room", func() {
 		mockPipeline.EXPECT().SCard(statusKey).Return(redis.NewIntResult(int64(5), nil))
 		mockPipeline.EXPECT().Exec()
 
-		mr.EXPECT().Report("gru.status", map[string]string{
+		mr.EXPECT().Report("gru.status", map[string]interface{}{
 			reportersConstants.TagGame:      "game-name",
 			reportersConstants.TagScheduler: scheduler,
 			"status":                        status,

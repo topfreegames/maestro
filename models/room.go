@@ -224,14 +224,14 @@ func (r *Room) reportStatus(
 }
 
 func reportPing(game, scheduler string) error {
-	return reporters.Report(reportersConstants.EventGruPing, map[string]string{
+	return reporters.Report(reportersConstants.EventGruPing, map[string]interface{}{
 		reportersConstants.TagGame:      game,
 		reportersConstants.TagScheduler: scheduler,
 	})
 }
 
 func reportStatus(game, scheduler, status, gauge string) error {
-	return reporters.Report(reportersConstants.EventGruStatus, map[string]string{
+	return reporters.Report(reportersConstants.EventGruStatus, map[string]interface{}{
 		reportersConstants.TagGame:      game,
 		reportersConstants.TagScheduler: scheduler,
 		"status":                        status,

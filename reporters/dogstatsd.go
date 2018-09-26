@@ -24,23 +24,29 @@ type DogStatsD struct {
 	region string
 }
 
+func toMapStringString(o map[string]interface{}) map[string]string {
+	n := map[string]string{}
+	for k, v := range o {
+		if str, ok := v.(string); ok {
+			n[k] = str
+		}
+	}
+	return n
+}
+
 // Report finds a matching handler to some 'event' metric and delegates
 // further actions to it
-func (d *DogStatsD) Report(event string, opts map[string]string) error {
+func (d *DogStatsD) Report(event string, opts map[string]interface{}) error {
 	handlerI, prs := handlers.Find(event)
-
 	if prs == false {
 		return fmt.Errorf("reportHandler for %s doesn't exist", event)
 	}
-	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
-
 	opts[constants.TagRegion] = d.region
-
-	err := handler(d.client, event, opts)
+	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
+	err := handler(d.client, event, toMapStringString(opts))
 	if err != nil {
 		d.logger.Error(err)
 	}
-
 	return err
 }
 
@@ -53,7 +59,7 @@ func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger, r *Reporters) {
 	}
 }
 
-func loadDefaultConfigs(c *viper.Viper) {
+func loadDefaultDogStatsDConfigs(c *viper.Viper) {
 	c.SetDefault("reporters.dogstatsd.host", "localhost:8125")
 	c.SetDefault("reporters.dogstatsd.prefix", "test.")
 	c.SetDefault("reporters.dogstatsd.region", "test")
@@ -61,7 +67,7 @@ func loadDefaultConfigs(c *viper.Viper) {
 
 // NewDogStatsD creates a DogStatsD struct using host and prefix from config
 func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error) {
-	loadDefaultConfigs(config)
+	loadDefaultDogStatsDConfigs(config)
 	host := config.GetString("reporters.dogstatsd.host")
 	prefix := config.GetString("reporters.dogstatsd.prefix")
 	c, err := dogstatsd.New(host, prefix)

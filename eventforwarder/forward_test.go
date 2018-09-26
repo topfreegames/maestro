@@ -31,7 +31,7 @@ var _ = Describe("Forward", func() {
 				metadata,
 			).Return(int32(200), "success", nil)
 
-			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]interface{}{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
 				reportersConstants.TagHostname:  Hostname(),
@@ -75,7 +75,7 @@ var _ = Describe("Forward", func() {
 				metadata,
 			).Return(int32(200), "success", nil)
 
-			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]interface{}{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
 				reportersConstants.TagHostname:  Hostname(),
@@ -120,7 +120,7 @@ var _ = Describe("Forward", func() {
 				metadata,
 			).Return(int32(0), "", errors.New(errMsg))
 
-			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]interface{}{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
 				reportersConstants.TagHostname:  Hostname(),
@@ -230,7 +230,7 @@ game: game
 				metadata,
 			)
 
-			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]interface{}{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
 				reportersConstants.TagHostname:  Hostname(),
@@ -270,7 +270,7 @@ game: game
 				metadata,
 			).Return(int32(0), "", errors.New(errMsg))
 
-			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]interface{}{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
 				reportersConstants.TagHostname:  Hostname(),
@@ -309,7 +309,7 @@ game: game
 				metadata,
 			)
 
-			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]interface{}{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
 				reportersConstants.TagHostname:  Hostname(),
@@ -347,7 +347,7 @@ game: game
 
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
-			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]string{
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]interface{}{
 				reportersConstants.TagGame:      gameName,
 				reportersConstants.TagScheduler: schedulerName,
 				reportersConstants.TagHostname:  Hostname(),
