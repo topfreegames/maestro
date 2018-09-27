@@ -24,6 +24,14 @@ var _ = Describe("DogStatsD", func() {
 		opts map[string]string
 	)
 
+	toMapStringInterface := func(o map[string]string) map[string]interface{} {
+		n := map[string]interface{}{}
+		for k, v := range o {
+			n[k] = v
+		}
+		return n
+	}
+
 	BeforeEach(func() {
 		r = reporters.NewReporters()
 		c = mocks.NewMockClient(mockCtrl)
@@ -41,7 +49,6 @@ var _ = Describe("DogStatsD", func() {
 
 	It("GruIncrHandler should Incr event metric by 1", func() {
 		c.EXPECT().Incr("gru.new", []string{"game:pong"}, float64(1))
-
 		handlers.GruIncrHandler(c, "gru.new", opts)
 	})
 
@@ -56,9 +63,8 @@ var _ = Describe("DogStatsD", func() {
 
 	It("Report(gru.new, opts) should Incr gru.new", func() {
 		c.EXPECT().Incr("gru.new", gomock.Any(), float64(1))
-
 		d := reporters.NewDogStatsDFromClient(c, "test")
-		err := d.Report("gru.new", opts)
+		err := d.Report("gru.new", toMapStringInterface(opts))
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -69,7 +75,7 @@ var _ = Describe("DogStatsD", func() {
 		d := reporters.NewDogStatsDFromClient(c, "test")
 		opts["status"] = "creating"
 		opts["gauge"] = "5"
-		err := d.Report("gru.status", opts)
+		err := d.Report("gru.status", toMapStringInterface(opts))
 		Expect(err).NotTo(HaveOccurred())
 	})
 })

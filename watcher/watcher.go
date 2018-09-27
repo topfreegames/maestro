@@ -290,7 +290,7 @@ func (w *Watcher) ReportRoomsStatuses() error {
 	}
 
 	for _, r := range roomDataSlice {
-		reporters.Report(reportersConstants.EventGruStatus, map[string]string{
+		reporters.Report(reportersConstants.EventGruStatus, map[string]interface{}{
 			reportersConstants.TagGame:      w.GameName,
 			reportersConstants.TagScheduler: w.SchedulerName,
 			"status":                        r.Status,
@@ -969,7 +969,7 @@ func (w *Watcher) PodStatesCount() {
 
 	for reason, count := range restartCount {
 		logger.Debugf("sending result to statsd: {%s:%d}", reason, count)
-		reporters.Report(reportersConstants.EventPodLastStatus, map[string]string{
+		reporters.Report(reportersConstants.EventPodLastStatus, map[string]interface{}{
 			reportersConstants.TagGame:      w.GameName,
 			reportersConstants.TagScheduler: w.SchedulerName,
 			reportersConstants.TagReason:    reason,

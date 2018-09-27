@@ -17,7 +17,7 @@ import (
 // Reporter implementations are responsible for reporting
 // events to any sink that wants to consume them
 type Reporter interface {
-	Report(event string, opts map[string]string) error
+	Report(event string, opts map[string]interface{}) error
 }
 
 // Reporters hold a map of structs that implement the Reporter interface
@@ -42,7 +42,7 @@ func (r *Reporters) GetReporter(key string) (Reporter, bool) {
 }
 
 // Report is Reporters' implementation of the Reporter interface
-func (r *Reporters) Report(event string, opts map[string]string) error {
+func (r *Reporters) Report(event string, opts map[string]interface{}) error {
 	for _, reporter := range r.reporters {
 		reporter.Report(event, opts)
 	}
@@ -55,7 +55,7 @@ func HasReporters() bool {
 }
 
 // Report calls Report() in Reporters' singleton
-func Report(event string, opts map[string]string) error {
+func Report(event string, opts map[string]interface{}) error {
 	return GetInstance().Report(event, opts)
 }
 
@@ -63,6 +63,9 @@ func Report(event string, opts map[string]string) error {
 func MakeReporters(config *viper.Viper, logger *logrus.Logger) {
 	if config.IsSet("reporters.dogstatsd") {
 		MakeDogStatsD(config, logger, GetInstance())
+	}
+	if config.IsSet("reporters.http") {
+		MakeHTTP(config, logger, GetInstance())
 	}
 }
 

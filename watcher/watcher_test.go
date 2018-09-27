@@ -616,7 +616,7 @@ var _ = Describe("Watcher", func() {
 
 			mockReporter.EXPECT().Report(
 				reportersConstants.EventGruStatus,
-				map[string]string{
+				map[string]interface{}{
 					reportersConstants.TagGame:      w.GameName,
 					reportersConstants.TagScheduler: w.SchedulerName,
 					"status":                        models.StatusCreating,
@@ -625,7 +625,7 @@ var _ = Describe("Watcher", func() {
 			)
 			mockReporter.EXPECT().Report(
 				reportersConstants.EventGruStatus,
-				map[string]string{
+				map[string]interface{}{
 					reportersConstants.TagGame:      w.GameName,
 					reportersConstants.TagScheduler: w.SchedulerName,
 					"status":                        models.StatusReady,
@@ -634,7 +634,7 @@ var _ = Describe("Watcher", func() {
 			)
 			mockReporter.EXPECT().Report(
 				reportersConstants.EventGruStatus,
-				map[string]string{
+				map[string]interface{}{
 					reportersConstants.TagGame:      w.GameName,
 					reportersConstants.TagScheduler: w.SchedulerName,
 					"status":                        models.StatusOccupied,
@@ -643,7 +643,7 @@ var _ = Describe("Watcher", func() {
 			)
 			mockReporter.EXPECT().Report(
 				reportersConstants.EventGruStatus,
-				map[string]string{
+				map[string]interface{}{
 					reportersConstants.TagGame:      w.GameName,
 					reportersConstants.TagScheduler: w.SchedulerName,
 					"status":                        models.StatusTerminating,
@@ -652,7 +652,7 @@ var _ = Describe("Watcher", func() {
 			)
 			mockReporter.EXPECT().Report(
 				reportersConstants.EventGruStatus,
-				map[string]string{
+				map[string]interface{}{
 					reportersConstants.TagGame:      w.GameName,
 					reportersConstants.TagScheduler: w.SchedulerName,
 					"status":                        models.StatusReadyOrOccupied,
@@ -4238,7 +4238,7 @@ var _ = Describe("Watcher", func() {
 				Expect(err).ToNot(HaveOccurred())
 			}
 
-			mockReporter.EXPECT().Report(reportersConstants.EventPodLastStatus, map[string]string{
+			mockReporter.EXPECT().Report(reportersConstants.EventPodLastStatus, map[string]interface{}{
 				reportersConstants.TagGame:      w.GameName,
 				reportersConstants.TagScheduler: w.SchedulerName,
 				reportersConstants.TagReason:    reason,

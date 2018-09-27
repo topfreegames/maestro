@@ -44,7 +44,7 @@ func (m *ResponseTimeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	m.next.ServeHTTP(writerWrapper, r)
 
 	routeName, _ := mux.CurrentRoute(r).GetPathTemplate()
-	reporters.Report(reportersConstants.EventHTTPResponseTime, map[string]string{
+	reporters.Report(reportersConstants.EventHTTPResponseTime, map[string]interface{}{
 		reportersConstants.TagRoute:        routeName,
 		reportersConstants.TagResponseTime: time.Now().Sub(start).String(),
 		reportersConstants.TagHTTPStatus:   writerWrapper.Status(),

@@ -106,7 +106,7 @@ var _ = Describe("AddressGetter", func() {
 					Return(goredis.NewStringResult(portRange, nil))
 				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
 
-				mr.EXPECT().Report("gru.new", map[string]string{
+				mr.EXPECT().Report("gru.new", map[string]interface{}{
 					reportersConstants.TagGame:      "pong",
 					reportersConstants.TagScheduler: "pong-free-for-all",
 				})
@@ -206,7 +206,7 @@ var _ = Describe("AddressGetter", func() {
 					Return(goredis.NewStringResult(portRange, nil))
 				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
 
-				mr.EXPECT().Report("gru.new", map[string]string{
+				mr.EXPECT().Report("gru.new", map[string]interface{}{
 					reportersConstants.TagGame:      "pong",
 					reportersConstants.TagScheduler: "pong-free-for-all",
 				})

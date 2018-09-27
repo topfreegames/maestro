@@ -168,7 +168,7 @@ func NewPod(
 	err := pod.configureHostPorts(configYaml, clientset, redisClient)
 
 	if err == nil {
-		reporters.Report(reportersConstants.EventGruNew, map[string]string{
+		reporters.Report(reportersConstants.EventGruNew, map[string]interface{}{
 			reportersConstants.TagGame:      configYaml.Game,
 			reportersConstants.TagScheduler: configYaml.Name,
 		})
@@ -194,7 +194,7 @@ func NewPodWithContainers(
 	}
 	err := pod.configureHostPorts(configYaml, clientset, redisClient)
 	if err == nil {
-		reporters.Report(reportersConstants.EventGruNew, map[string]string{
+		reporters.Report(reportersConstants.EventGruNew, map[string]interface{}{
 			reportersConstants.TagGame:      configYaml.Game,
 			reportersConstants.TagScheduler: configYaml.Name,
 		})
@@ -257,7 +257,7 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 	}
 
 	if err == nil {
-		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
+		reporters.Report(reportersConstants.EventGruDelete, map[string]interface{}{
 			reportersConstants.TagGame:      p.Game,
 			reportersConstants.TagScheduler: p.Namespace,
 			reportersConstants.TagReason:    reason,

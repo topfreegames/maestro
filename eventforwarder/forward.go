@@ -313,7 +313,7 @@ func reportRPCStatus(
 
 	game := scheduler.ConfigYAML.Game
 
-	status := map[string]string{
+	status := map[string]interface{}{
 		reportersConstants.TagGame:      game,
 		reportersConstants.TagScheduler: schedulerName,
 		reportersConstants.TagHostname:  Hostname(),

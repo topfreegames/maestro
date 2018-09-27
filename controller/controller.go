@@ -22,6 +22,7 @@ import (
 	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
+	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
@@ -849,6 +850,11 @@ func deleteSchedulerHelper(
 		logger.WithError(err).Error("failed to delete scheduler from database while deleting scheduler")
 		return err
 	}
+
+	reporters.Report(reportersConstants.EventSchedulerDelete, map[string]interface{}{
+		"name": scheduler.Name,
+		"game": scheduler.Game,
+	})
 
 	return nil
 }

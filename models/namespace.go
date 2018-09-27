@@ -85,7 +85,7 @@ func (n *Namespace) DeletePods(clientset kubernetes.Interface,
 	}
 
 	for range pods.Items {
-		reporters.Report(reportersConstants.EventGruDelete, map[string]string{
+		reporters.Report(reportersConstants.EventGruDelete, map[string]interface{}{
 			reportersConstants.TagGame:      s.Game,
 			reportersConstants.TagScheduler: s.Name,
 			reportersConstants.TagReason:    reportersConstants.ReasonNamespaceDeletion,
