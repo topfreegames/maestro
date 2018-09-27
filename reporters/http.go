@@ -20,7 +20,7 @@ import (
 
 // HTTP reports metrics to an http endpoint
 type HTTP struct {
-	client *HTTPClient
+	client handlers.Client
 	region string
 	logger *logrus.Logger
 }
@@ -93,10 +93,11 @@ func (h *HTTP) Report(event string, opts map[string]interface{}) error {
 // MakeHTTP adds an HTTP struct to the Reporters' singleton
 func MakeHTTP(config *viper.Viper, logger *logrus.Logger, r *Reporters) {
 	httpR, err := NewHTTP(config, logger)
-
-	if err == nil {
-		r.SetReporter("http", httpR)
+	if err != nil {
+		logger.Error(err)
+		return
 	}
+	r.SetReporter("http", httpR)
 }
 
 func loadDefaultHTTPConfigs(c *viper.Viper) {
@@ -112,4 +113,14 @@ func NewHTTP(config *viper.Viper, logger *logrus.Logger) (*HTTP, error) {
 	client := NewHTTPClient(putURL)
 	httpR := &HTTP{client: client, region: region}
 	return httpR, nil
+}
+
+// MakeHTTPWithClient is the same as MakeHTTP with the flexibility of
+// setting any handlers.Client instead of depending only on the config
+func MakeHTTPWithClient(
+	client handlers.Client, config *viper.Viper,
+	logger *logrus.Logger, r *Reporters,
+) {
+	httpR := &HTTP{client: client, region: config.GetString("reporters.http.region")}
+	r.SetReporter("http", httpR)
 }
