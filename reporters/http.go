@@ -106,7 +106,7 @@ func MakeHTTP(config *viper.Viper, logger *logrus.Logger, r *Reporters) {
 func loadDefaultHTTPConfigs(c *viper.Viper) {
 	c.SetDefault("reporters.http.putURL", "http://localhost:8080")
 	c.SetDefault("reporters.http.region", "test")
-	c.SetDefault("reporters.http.timeoutMs", "5000")
+	c.SetDefault("reporters.http.timeout", "5s")
 }
 
 // NewHTTP creates an HTTP struct using putURL and region from config
@@ -114,8 +114,8 @@ func NewHTTP(config *viper.Viper, logger *logrus.Logger) (*HTTP, error) {
 	loadDefaultHTTPConfigs(config)
 	putURL := config.GetString("reporters.http.putURL")
 	region := config.GetString("reporters.http.region")
-	timeoutMs := config.GetInt64("reporters.http.timeoutMs")
-	client := NewHTTPClient(putURL, time.Duration(timeoutMs)*time.Millisecond)
+	timeout := config.GetDuration("reporters.http.timeout")
+	client := NewHTTPClient(putURL, timeout)
 	httpR := &HTTP{client: client, region: region}
 	return httpR, nil
 }
