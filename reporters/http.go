@@ -8,13 +8,15 @@
 package reporters
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	httpExtensions "github.com/topfreegames/extensions/http"
 	handlers "github.com/topfreegames/maestro/reporters/http"
 )
 
@@ -32,9 +34,11 @@ type HTTPClient struct {
 }
 
 // NewHTTPClient ctor
-func NewHTTPClient(putURL string) *HTTPClient {
+func NewHTTPClient(putURL string, timeout time.Duration) *HTTPClient {
+	client := httpExtensions.New()
+	client.Timeout = timeout
 	return &HTTPClient{
-		client: &http.Client{},
+		client: client,
 		putURL: putURL,
 	}
 }
@@ -49,7 +53,7 @@ func (c *HTTPClient) Send(opts map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPut, c.putURL, strings.NewReader(string(b)))
+	req, err := http.NewRequest(http.MethodPut, c.putURL, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -81,8 +85,7 @@ func (h *HTTP) Report(event string, opts map[string]interface{}) error {
 		}
 	}
 	opts["region"] = h.region
-	handler :=
-		handlerI.(func(handlers.Client, map[string]interface{}) error)
+	handler := handlerI.(func(handlers.Client, map[string]interface{}) error)
 	err := handler(h.client, opts)
 	if err != nil {
 		h.logger.Error(err)
@@ -103,6 +106,7 @@ func MakeHTTP(config *viper.Viper, logger *logrus.Logger, r *Reporters) {
 func loadDefaultHTTPConfigs(c *viper.Viper) {
 	c.SetDefault("reporters.http.putURL", "http://localhost:8080")
 	c.SetDefault("reporters.http.region", "test")
+	c.SetDefault("reporters.http.timeoutMs", "5000")
 }
 
 // NewHTTP creates an HTTP struct using putURL and region from config
@@ -110,7 +114,8 @@ func NewHTTP(config *viper.Viper, logger *logrus.Logger) (*HTTP, error) {
 	loadDefaultHTTPConfigs(config)
 	putURL := config.GetString("reporters.http.putURL")
 	region := config.GetString("reporters.http.region")
-	client := NewHTTPClient(putURL)
+	timeoutMs := config.GetInt64("reporters.http.timeoutMs")
+	client := NewHTTPClient(putURL, time.Duration(timeoutMs)*time.Millisecond)
 	httpR := &HTTP{client: client, region: region}
 	return httpR, nil
 }

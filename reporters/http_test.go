@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	"github.com/topfreegames/maestro/reporters"
 	"github.com/topfreegames/maestro/reporters/constants"
@@ -83,7 +84,7 @@ var _ = Describe("HTTP", func() {
 					w.WriteHeader(http.StatusCreated)
 				}),
 			)
-			client := reporters.NewHTTPClient(ts.URL)
+			client := reporters.NewHTTPClient(ts.URL, time.Duration(5000)*time.Millisecond)
 			reporters.MakeHTTPWithClient(client, config, logger, r)
 		})
 
