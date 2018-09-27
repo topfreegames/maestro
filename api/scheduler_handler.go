@@ -75,6 +75,11 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			timeoutSec,
 		)
 		if err != nil {
+			reporters.Report(reportersConstants.EventSchedulerCreate, map[string]interface{}{
+				"name":  payload.Name,
+				"game":  payload.Game,
+				"error": err,
+			})
 			status := http.StatusInternalServerError
 			if strings.Contains(err.Error(), "already exists") {
 				status = http.StatusConflict
@@ -85,6 +90,10 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			g.App.HandleError(w, status, "Create scheduler failed", err)
 			return
 		}
+		reporters.Report(reportersConstants.EventSchedulerCreate, map[string]interface{}{
+			"name": payload.Name,
+			"game": payload.Game,
+		})
 
 		// this forwards the metadata configured for each enabled forwarder
 		_, err = eventforwarder.ForwardRoomInfo(
