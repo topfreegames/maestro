@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/getlantern/deepcopy"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -43,10 +44,16 @@ func (r *Reporters) GetReporter(key string) (Reporter, bool) {
 	return v, p
 }
 
+func copyOpts(src map[string]interface{}) map[string]interface{} {
+	var dst map[string]interface{}
+	deepcopy.Copy(&dst, src)
+	return dst
+}
+
 // Report is Reporters' implementation of the Reporter interface
 func (r *Reporters) Report(event string, opts map[string]interface{}) error {
 	for _, reporter := range r.reporters {
-		reporter.Report(event, opts)
+		reporter.Report(event, copyOpts(opts))
 	}
 	return nil
 }

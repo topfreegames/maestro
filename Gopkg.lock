@@ -96,6 +96,14 @@
   version = "v1.4.2"
 
 [[projects]]
+  digest = "1:682dc7c0dd89949203b3f642f7babb121943ec36170c64ab69e2fe6de7647c59"
+  name = "github.com/getlantern/deepcopy"
+  packages = ["."]
+  pruneopts = ""
+  revision = "b923171e8640f94369e21e324b1b0465cb82ec9f"
+  version = "v1"
+
+[[projects]]
   branch = "master"
   digest = "1:b95c18f075c93b34bb91b5df675532915a19e3ca8e49bd684fb758f522f4d533"
   name = "github.com/getsentry/raven-go"
@@ -592,7 +600,9 @@
     "clock/mocks",
     "dogstatsd",
     "dogstatsd/mocks",
+    "http",
     "jaeger",
+    "jaeger/http",
     "jaeger/pg",
     "jaeger/redis",
     "middleware",
@@ -995,6 +1005,7 @@
     "github.com/GuiaBolso/darwin",
     "github.com/asaskevich/govalidator",
     "github.com/bsm/redis-lock",
+    "github.com/getlantern/deepcopy",
     "github.com/getsentry/raven-go",
     "github.com/go-pg/pg",
     "github.com/go-redis/redis",
@@ -1022,6 +1033,7 @@
     "github.com/topfreegames/extensions/clock/mocks",
     "github.com/topfreegames/extensions/dogstatsd",
     "github.com/topfreegames/extensions/dogstatsd/mocks",
+    "github.com/topfreegames/extensions/http",
     "github.com/topfreegames/extensions/jaeger",
     "github.com/topfreegames/extensions/middleware",
     "github.com/topfreegames/extensions/pg",
