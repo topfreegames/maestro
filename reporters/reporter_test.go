@@ -36,6 +36,8 @@ var _ = Describe("Reporters", func() {
 			singleton := reporters.GetInstance()
 			_, prs := singleton.GetReporter("dogstatsd")
 			Expect(prs).To(Equal(true))
+			_, prs = singleton.GetReporter("http")
+			Expect(prs).To(Equal(true))
 		})
 
 		It("must delete an existing reporter from singleton with UnsetReporter", func() {

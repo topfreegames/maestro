@@ -12,6 +12,8 @@ import (
 )
 
 var handlers = map[string]interface{}{
+	constants.EventSchedulerCreate: AnyHandler,
+	constants.EventSchedulerDelete: AnyHandler,
 	constants.EventSchedulerUpdate: AnyHandler,
 }
 

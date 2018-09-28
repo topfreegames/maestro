@@ -8,6 +8,8 @@
 package reporters
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -67,6 +69,11 @@ func MakeReporters(config *viper.Viper, logger *logrus.Logger) {
 	if config.IsSet("reporters.http") {
 		MakeHTTP(config, logger, GetInstance())
 	}
+	correctlySet := []string{}
+	for k := range GetInstance().reporters {
+		correctlySet = append(correctlySet, k)
+	}
+	logger.Info(fmt.Sprintf("Active reporters: %s", strings.Join(correctlySet, ", ")))
 }
 
 // NewReporters ctor
