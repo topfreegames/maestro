@@ -79,7 +79,12 @@ func (h *HTTP) Report(event string, opts map[string]interface{}) error {
 	if prs == false {
 		return fmt.Errorf("reportHandler for %s doesn't exist", event)
 	}
-	opts["tags"] = []string{"maestro", event, h.region}
+	tags := []string{"maestro", event, h.region}
+	if game, ok := opts["game"].(string); ok {
+		tags = append(tags, game)
+	}
+	delete(opts, "game")
+	opts["tags"] = tags
 	if opts["error"] != nil {
 		if err, ok := opts["error"].(error); ok {
 			opts["error"] = err.Error()

@@ -31,7 +31,7 @@ var _ = Describe("HTTP", func() {
 
 	BeforeEach(func() {
 		r = reporters.NewReporters()
-		opts = map[string]interface{}{"game": "pong"}
+		opts = map[string]interface{}{"something": "pong"}
 	})
 
 	It(`MakeHTTP should create a new HTTP instance and add it to the singleton
@@ -71,7 +71,7 @@ var _ = Describe("HTTP", func() {
 					var bodyMap map[string]interface{}
 					json.Unmarshal(bodyBytes, &bodyMap)
 					Expect(
-						bodyMap["metadata"].(map[string]interface{})["game"].(string),
+						bodyMap["metadata"].(map[string]interface{})["something"].(string),
 					).To(Equal("pong"))
 					Expect(
 						bodyMap["metadata"].(map[string]interface{})["region"].(string),
