@@ -116,7 +116,7 @@ func NewHTTP(config *viper.Viper, logger *logrus.Logger) (*HTTP, error) {
 	region := config.GetString("reporters.http.region")
 	timeout := config.GetDuration("reporters.http.timeout")
 	client := NewHTTPClient(putURL, timeout)
-	httpR := &HTTP{client: client, region: region}
+	httpR := &HTTP{client: client, region: region, logger: logger}
 	return httpR, nil
 }
 
@@ -126,6 +126,6 @@ func MakeHTTPWithClient(
 	client handlers.Client, config *viper.Viper,
 	logger *logrus.Logger, r *Reporters,
 ) {
-	httpR := &HTTP{client: client, region: config.GetString("reporters.http.region")}
+	httpR := &HTTP{client: client, region: config.GetString("reporters.http.region"), logger: logger}
 	r.SetReporter("http", httpR)
 }
