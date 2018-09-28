@@ -57,6 +57,7 @@ func (c *HTTPClient) Send(opts map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Content-Type", "application/json")
 	res, err := c.client.Do(req)
 	if err != nil {
 		return err
