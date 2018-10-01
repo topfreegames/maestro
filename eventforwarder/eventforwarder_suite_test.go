@@ -44,6 +44,8 @@ var (
 	roomName           = "room-id"
 	nodeAddress        = "1.2.3.4"
 	hostPort           = int32(50000)
+	ipv6Label          = "testIpv6"
+	nodeLabels         = map[string]string{models.Ipv6LabelKey: ipv6Label}
 	yaml               = `name: scheduler
 game: game
 forwarders:
@@ -101,6 +103,7 @@ var _ = BeforeEach(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	node := &v1.Node{}
+	node.SetLabels(nodeLabels)
 	node.Status.Addresses = []v1.NodeAddress{
 		{Type: v1.NodeExternalDNS, Address: nodeAddress},
 	}

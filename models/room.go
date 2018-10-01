@@ -30,6 +30,9 @@ const (
 	RoomTerminating = "terminating"
 	// RoomTerminated string representation
 	RoomTerminated = "terminated"
+
+	// Ipv6LabelKey is the label key on kubernetes
+	Ipv6LabelKey = "tfg.io/ipv6"
 )
 
 // Room is the struct that defines a room in maestro
@@ -42,8 +45,9 @@ type Room struct {
 
 // RoomAddresses struct
 type RoomAddresses struct {
-	Ports []*RoomPort `json:"ports"`
-	Host  string      `json:"host"`
+	Ports     []*RoomPort `json:"ports"`
+	Host      string      `json:"host"`
+	Ipv6Label string      `json:"Ipv6Label"`
 }
 
 // RoomPort struct
@@ -301,10 +305,11 @@ func (r *Room) GetRoomInfos(
 		}
 	}
 	return map[string]interface{}{
-		"game":   scheduler.Game,
-		"roomId": r.ID,
-		"host":   address.Host,
-		"port":   selectedPort,
+		"game":      scheduler.Game,
+		"roomId":    r.ID,
+		"host":      address.Host,
+		"ipv6Label": address.Ipv6Label,
+		"port":      selectedPort,
 	}, nil
 }
 

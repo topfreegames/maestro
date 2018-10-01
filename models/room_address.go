@@ -48,6 +48,11 @@ func getRoomAddresses(IsNodePort bool, room *Room, kubernetesClient kubernetes.I
 		return nil, err
 	}
 
+	// get IPv6 label from node
+	if ipv6Label, ok := node.GetLabels()[Ipv6LabelKey]; ok {
+		rAddresses.Ipv6Label = ipv6Label
+	}
+
 	if IsNodePort {
 		for _, address := range node.Status.Addresses {
 			if address.Type == v1.NodeInternalIP {
