@@ -79,13 +79,14 @@ var _ = Describe("AddressGetter", func() {
 			Ports:           ports,
 			Cmd:             command,
 		}
-		room       *models.Room
-		nodeName   = "node-name"
-		host       = "0.0.0.0"
-		port       = int32(1234)
-		nodePort   = int32(1234)
-		ipv6Label  = "testIpv6"
-		nodeLabels = map[string]string{models.Ipv6LabelKey: ipv6Label}
+		room                   *models.Room
+		nodeName               = "node-name"
+		host                   = "0.0.0.0"
+		port                   = int32(1234)
+		nodePort               = int32(1234)
+		ipv6KubernetesLabelKey = "test.io/ipv6"
+		ipv6Label              = "testIpv6"
+		nodeLabels             = map[string]string{ipv6KubernetesLabelKey: ipv6Label}
 	)
 
 	BeforeEach(func() {
@@ -94,7 +95,7 @@ var _ = Describe("AddressGetter", func() {
 	})
 
 	Context("When in development env", func() {
-		var addrGetter = &models.RoomAddressesFromNodePort{}
+		var addrGetter = models.NewRoomAddressesFromNodePort(ipv6KubernetesLabelKey)
 
 		Describe("Get", func() {
 			It("should not crash if pod does not exist", func() {
@@ -251,7 +252,7 @@ var _ = Describe("AddressGetter", func() {
 	})
 
 	Context("When in production env", func() {
-		var addrGetter = &models.RoomAddressesFromHostPort{}
+		var addrGetter = models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey)
 
 		Describe("Get", func() {
 			It("should not crash if pod does not exist", func() {

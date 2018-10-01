@@ -30,9 +30,6 @@ const (
 	RoomTerminating = "terminating"
 	// RoomTerminated string representation
 	RoomTerminated = "terminated"
-
-	// Ipv6LabelKey is the label key on kubernetes
-	Ipv6LabelKey = "tfg.io/ipv6"
 )
 
 // Room is the struct that defines a room in maestro
@@ -47,7 +44,7 @@ type Room struct {
 type RoomAddresses struct {
 	Ports     []*RoomPort `json:"ports"`
 	Host      string      `json:"host"`
-	Ipv6Label string      `json:"Ipv6Label"`
+	Ipv6Label string      `json:"ipv6Label"`
 }
 
 // RoomPort struct
