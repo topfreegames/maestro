@@ -42,8 +42,9 @@ type Room struct {
 
 // RoomAddresses struct
 type RoomAddresses struct {
-	Ports []*RoomPort `json:"ports"`
-	Host  string      `json:"host"`
+	Ports     []*RoomPort `json:"ports"`
+	Host      string      `json:"host"`
+	Ipv6Label string      `json:"ipv6Label"`
 }
 
 // RoomPort struct
@@ -301,10 +302,11 @@ func (r *Room) GetRoomInfos(
 		}
 	}
 	return map[string]interface{}{
-		"game":   scheduler.Game,
-		"roomId": r.ID,
-		"host":   address.Host,
-		"port":   selectedPort,
+		"game":      scheduler.Game,
+		"roomId":    r.ID,
+		"host":      address.Host,
+		"ipv6Label": address.Ipv6Label,
+		"port":      selectedPort,
 	}, nil
 }
 

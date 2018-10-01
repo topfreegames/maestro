@@ -116,6 +116,7 @@ func ForwardRoomEvent(
 					}
 				} else { // fill host and port with zero values when pingTimeout event so it won't break the GRPCForwarder
 					infos["host"] = ""
+					infos["ipv6Label"] = ""
 					infos["port"] = int32(0)
 				}
 

@@ -79,11 +79,14 @@ var _ = Describe("AddressGetter", func() {
 			Ports:           ports,
 			Cmd:             command,
 		}
-		room     *models.Room
-		nodeName = "node-name"
-		host     = "0.0.0.0"
-		port     = int32(1234)
-		nodePort = int32(1234)
+		room                   *models.Room
+		nodeName               = "node-name"
+		host                   = "0.0.0.0"
+		port                   = int32(1234)
+		nodePort               = int32(1234)
+		ipv6KubernetesLabelKey = "test.io/ipv6"
+		ipv6Label              = "testIpv6"
+		nodeLabels             = map[string]string{ipv6KubernetesLabelKey: ipv6Label}
 	)
 
 	BeforeEach(func() {
@@ -92,7 +95,7 @@ var _ = Describe("AddressGetter", func() {
 	})
 
 	Context("When in development env", func() {
-		var addrGetter = &models.RoomAddressesFromNodePort{}
+		var addrGetter = models.NewRoomAddressesFromNodePort(ipv6KubernetesLabelKey)
 
 		Describe("Get", func() {
 			It("should not crash if pod does not exist", func() {
@@ -124,6 +127,62 @@ var _ = Describe("AddressGetter", func() {
 			})
 
 			It("should return room address", func() {
+				node := &v1.Node{}
+				node.SetName(nodeName)
+				node.SetLabels(nodeLabels)
+				node.Status.Addresses = []v1.NodeAddress{
+					v1.NodeAddress{
+						Type:    v1.NodeInternalIP,
+						Address: host,
+					},
+				}
+				_, err := clientset.CoreV1().Nodes().Create(node)
+				Expect(err).NotTo(HaveOccurred())
+
+				pod := &v1.Pod{}
+				pod.Spec.NodeName = nodeName
+				pod.SetName(name)
+				pod.Spec.Containers = []v1.Container{
+					{Ports: []v1.ContainerPort{
+						{HostPort: port, Name: "TCP"},
+					}},
+				}
+				_, err = clientset.CoreV1().Pods(namespace).Create(pod)
+				Expect(err).NotTo(HaveOccurred())
+
+				service := &v1.Service{}
+				service.SetName(name)
+				service.Spec.Type = v1.ServiceTypeNodePort
+				service.Spec.Ports = []v1.ServicePort{
+					{
+						Port: port,
+						TargetPort: intstr.IntOrString{
+							IntVal: port,
+						},
+						Name:     "TCP",
+						Protocol: v1.ProtocolTCP,
+						NodePort: nodePort,
+					},
+				}
+				service.Spec.Selector = map[string]string{
+					"app": name,
+				}
+				_, err = clientset.CoreV1().Services(namespace).Create(service)
+				Expect(err).NotTo(HaveOccurred())
+
+				roomAddresses, err := addrGetter.Get(room, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(roomAddresses.Host).To(Equal(host))
+				Expect(roomAddresses.Ipv6Label).To(Equal(ipv6Label))
+				Expect(roomAddresses.Ports).To(HaveLen(1))
+				Expect(roomAddresses.Ports[0]).To(Equal(
+					&models.RoomPort{
+						Name: "TCP",
+						Port: port,
+					}))
+			})
+
+			It("should not return error if no Ipv6 label is defined", func() {
 				node := &v1.Node{}
 				node.SetName(nodeName)
 				node.Status.Addresses = []v1.NodeAddress{
@@ -169,6 +228,7 @@ var _ = Describe("AddressGetter", func() {
 				roomAddresses, err := addrGetter.Get(room, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(roomAddresses.Host).To(Equal(host))
+				Expect(roomAddresses.Ipv6Label).To(Equal(""))
 				Expect(roomAddresses.Ports).To(HaveLen(1))
 				Expect(roomAddresses.Ports[0]).To(Equal(
 					&models.RoomPort{
@@ -192,7 +252,7 @@ var _ = Describe("AddressGetter", func() {
 	})
 
 	Context("When in production env", func() {
-		var addrGetter = &models.RoomAddressesFromHostPort{}
+		var addrGetter = models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey)
 
 		Describe("Get", func() {
 			It("should not crash if pod does not exist", func() {

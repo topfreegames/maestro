@@ -551,11 +551,11 @@ func (a *App) configureServer(showProfile bool) {
 }
 
 func (a *App) configureEnvironment() {
-	a.RoomAddrGetter = &models.RoomAddressesFromHostPort{}
+	a.RoomAddrGetter = models.NewRoomAddressesFromHostPort(a.Config.GetString(Ipv6KubernetesLabelKey))
 	a.RoomManager = &models.GameRoom{}
 
 	if a.Config.GetString(EnvironmentConfig) == DevEnvironment {
-		a.RoomAddrGetter = &models.RoomAddressesFromNodePort{}
+		a.RoomAddrGetter = models.NewRoomAddressesFromNodePort(a.Config.GetString(Ipv6KubernetesLabelKey))
 		a.RoomManager = &models.GameRoomWithService{}
 		a.Logger.Info("development environment")
 		return

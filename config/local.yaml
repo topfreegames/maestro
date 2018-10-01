@@ -72,3 +72,4 @@ api:
   gracefulShutdownTimeout: 30s
   limitManager:
     keyTimeout: 1h
+ipv6KubernetesLabelKey: "local.io/ipv6"

@@ -17,22 +17,40 @@ import (
 )
 
 // RoomAddressesFromHostPort is the struct that defines room addresses in production (using node HostPort)
-type RoomAddressesFromHostPort struct{}
+type RoomAddressesFromHostPort struct {
+	ipv6KubernetesLabelKey string
+}
+
+// NewRoomAddressesFromHostPort is the RoomAddressesFromHostPort constructor
+func NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey string) *RoomAddressesFromHostPort {
+	return &RoomAddressesFromHostPort{
+		ipv6KubernetesLabelKey: ipv6KubernetesLabelKey,
+	}
+}
 
 // Get gets room public addresses
 func (r *RoomAddressesFromHostPort) Get(room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
-	return getRoomAddresses(false, room, kubernetesClient)
+	return getRoomAddresses(false, r.ipv6KubernetesLabelKey, room, kubernetesClient)
 }
 
 // RoomAddressesFromNodePort is the struct that defines room addresses in development (using NodePort service)
-type RoomAddressesFromNodePort struct{}
+type RoomAddressesFromNodePort struct {
+	ipv6KubernetesLabelKey string
+}
+
+// NewRoomAddressesFromNodePort is the RoomAddressesFromNodePort constructor
+func NewRoomAddressesFromNodePort(ipv6KubernetesLabelKey string) *RoomAddressesFromNodePort {
+	return &RoomAddressesFromNodePort{
+		ipv6KubernetesLabelKey: ipv6KubernetesLabelKey,
+	}
+}
 
 // Get gets room public addresses
 func (r *RoomAddressesFromNodePort) Get(room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
-	return getRoomAddresses(true, room, kubernetesClient)
+	return getRoomAddresses(true, r.ipv6KubernetesLabelKey, room, kubernetesClient)
 }
 
-func getRoomAddresses(IsNodePort bool, room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
+func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
 	rAddresses := &RoomAddresses{}
 	roomPod, err := kubernetesClient.CoreV1().Pods(room.SchedulerName).Get(room.ID, metav1.GetOptions{})
 	if err != nil {
@@ -46,6 +64,11 @@ func getRoomAddresses(IsNodePort bool, room *Room, kubernetesClient kubernetes.I
 	node, err := kubernetesClient.CoreV1().Nodes().Get(roomPod.Spec.NodeName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
+	}
+
+	// get IPv6 label from node
+	if ipv6Label, ok := node.GetLabels()[ipv6KubernetesLabelKey]; ok {
+		rAddresses.Ipv6Label = ipv6Label
 	}
 
 	if IsNodePort {

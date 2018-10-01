@@ -27,24 +27,27 @@ func TestEventforwarder(t *testing.T) {
 }
 
 var (
-	hook               *test.Hook
-	logger             *logrus.Logger
-	roomAddrGetter     models.AddrGetter
-	mockCtrl           *gomock.Controller
-	mockDB             *pgmocks.MockDB
-	mockEventForwarder *eventforwardermock.MockEventForwarder
-	mockForwarders     []*eventforwarder.Info
-	mockReporter       *reportermock.MockReporter
-	room               *models.Room
-	clientset          *fake.Clientset
-	cache              *models.SchedulerCache
-	metadata           map[string]interface{}
-	schedulerName      = "scheduler"
-	gameName           = "game"
-	roomName           = "room-id"
-	nodeAddress        = "1.2.3.4"
-	hostPort           = int32(50000)
-	yaml               = `name: scheduler
+	hook                   *test.Hook
+	logger                 *logrus.Logger
+	roomAddrGetter         models.AddrGetter
+	mockCtrl               *gomock.Controller
+	mockDB                 *pgmocks.MockDB
+	mockEventForwarder     *eventforwardermock.MockEventForwarder
+	mockForwarders         []*eventforwarder.Info
+	mockReporter           *reportermock.MockReporter
+	room                   *models.Room
+	clientset              *fake.Clientset
+	cache                  *models.SchedulerCache
+	metadata               map[string]interface{}
+	schedulerName          = "scheduler"
+	gameName               = "game"
+	roomName               = "room-id"
+	nodeAddress            = "1.2.3.4"
+	hostPort               = int32(50000)
+	ipv6KubernetesLabelKey = "test.io/ipv6"
+	ipv6Label              = "testIpv6"
+	nodeLabels             = map[string]string{ipv6KubernetesLabelKey: ipv6Label}
+	yaml                   = `name: scheduler
 game: game
 forwarders:
   mockplugin:
@@ -101,6 +104,7 @@ var _ = BeforeEach(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	node := &v1.Node{}
+	node.SetLabels(nodeLabels)
 	node.Status.Addresses = []v1.NodeAddress{
 		{Type: v1.NodeExternalDNS, Address: nodeAddress},
 	}
@@ -108,5 +112,5 @@ var _ = BeforeEach(func() {
 	_, err = clientset.CoreV1().Nodes().Create(node)
 
 	room = models.NewRoom(roomName, schedulerName)
-	roomAddrGetter = &models.RoomAddressesFromHostPort{}
+	roomAddrGetter = models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey)
 })
