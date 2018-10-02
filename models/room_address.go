@@ -8,6 +8,7 @@
 package models
 
 import (
+	"encoding/base64"
 	"errors"
 
 	maestroErrors "github.com/topfreegames/maestro/errors"
@@ -68,7 +69,11 @@ func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room
 
 	// get IPv6 label from node
 	if ipv6Label, ok := node.GetLabels()[ipv6KubernetesLabelKey]; ok {
-		rAddresses.Ipv6Label = ipv6Label
+		ipv6LabelBytes, err := base64.StdEncoding.DecodeString(ipv6Label)
+		if err != nil {
+			return nil, err
+		}
+		rAddresses.Ipv6Label = string(ipv6LabelBytes)
 	}
 
 	if IsNodePort {
