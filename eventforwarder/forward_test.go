@@ -41,12 +41,8 @@ var _ = Describe("Forward", func() {
 			})
 
 			mockReporter.EXPECT().Report(reportersConstants.EventNodeIpv6Status, map[string]interface{}{
-				reportersConstants.TagGame:      gameName,
-				reportersConstants.TagScheduler: schedulerName,
-				reportersConstants.TagNodeHost:  nodeAddress,
-				reportersConstants.TagHostname:  Hostname(),
-				reportersConstants.TagRoute:     RouteRoomEvent,
-				reportersConstants.TagStatus:    "success",
+				reportersConstants.TagNodeHost: nodeAddress,
+				reportersConstants.TagStatus:   "success",
 			})
 
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
@@ -143,12 +139,8 @@ var _ = Describe("Forward", func() {
 			})
 
 			mockReporter.EXPECT().Report(reportersConstants.EventNodeIpv6Status, map[string]interface{}{
-				reportersConstants.TagGame:      gameName,
-				reportersConstants.TagScheduler: schedulerName,
-				reportersConstants.TagNodeHost:  nodeAddress,
-				reportersConstants.TagHostname:  Hostname(),
-				reportersConstants.TagRoute:     RouteRoomEvent,
-				reportersConstants.TagStatus:    "failed",
+				reportersConstants.TagNodeHost: nodeAddress,
+				reportersConstants.TagStatus:   "failed",
 			})
 
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())

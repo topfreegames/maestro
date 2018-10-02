@@ -115,14 +115,7 @@ func ForwardRoomEvent(
 						return nil, err
 					}
 
-					reportIpv6Status(
-						infos,
-						room.SchedulerName, RouteRoomEvent,
-						db,
-						schedulerCache,
-						logger,
-						time.Now().Sub(startTime),
-					)
+					reportIpv6Status(infos, logger)
 
 				} else { // fill host and port with zero values when pingTimeout event so it won't break the GRPCForwarder
 					infos["host"] = ""
@@ -359,34 +352,15 @@ func reportRPCStatus(
 // ipv6 label and false otherwise
 func reportIpv6Status(
 	infos map[string]interface{},
-	schedulerName, forwardRoute string,
-	db interfaces.DB,
-	cache *models.SchedulerCache,
 	logger logrus.FieldLogger,
-	responseTime time.Duration,
 ) {
 	if !reporters.HasReporters() {
 		return
 	}
 
-	scheduler, err := cache.LoadScheduler(db, schedulerName, true)
-	if err != nil {
-		logger.
-			WithField("operation", "reportIpv6Status").
-			WithError(err).
-			Error("failed to report Ipv6 read status to StatsD")
-		return
-	}
-
-	game := scheduler.ConfigYAML.Game
-
 	status := map[string]interface{}{
-		reportersConstants.TagGame:      game,
-		reportersConstants.TagScheduler: schedulerName,
-		reportersConstants.TagNodeHost:  infos["host"].(string),
-		reportersConstants.TagHostname:  Hostname(),
-		reportersConstants.TagRoute:     forwardRoute,
-		reportersConstants.TagStatus:    "success",
+		reportersConstants.TagNodeHost: infos["host"].(string),
+		reportersConstants.TagStatus:   "success",
 	}
 
 	if infos["ipv6Label"] == nil || infos["ipv6Label"].(string) == "" {
@@ -397,7 +371,7 @@ func reportIpv6Status(
 	if reporterErr != nil {
 		logger.
 			WithField("operation", "reportIpv6Status").
-			WithError(err).
+			WithError(reporterErr).
 			Error("failed to report Ipv6 read status to StatsD")
 	}
 }

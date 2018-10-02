@@ -61,6 +61,14 @@
   version = "v6.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:56b87c786a316d6e9b9c7ba8f3dd64e3199ca3b33a55cc596c633023bed20264"
+  name = "github.com/btcsuite/btcutil"
+  packages = ["base58"]
+  pruneopts = ""
+  revision = "ab6388e0c60ae4834a1f57511e20c17b5f78be4b"
+
+[[projects]]
   digest = "1:73ec5e4a5b52be94cf0efee29713e78e229696eb733063f85bebdd8fce337b8b"
   name = "github.com/certifi/gocertifi"
   packages = ["."]
@@ -1005,6 +1013,7 @@
     "github.com/GuiaBolso/darwin",
     "github.com/asaskevich/govalidator",
     "github.com/bsm/redis-lock",
+    "github.com/btcsuite/btcutil/base58",
     "github.com/getlantern/deepcopy",
     "github.com/getsentry/raven-go",
     "github.com/go-pg/pg",

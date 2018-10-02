@@ -9,8 +9,9 @@
 package models_test
 
 import (
-	"encoding/base64"
 	"fmt"
+
+	"github.com/btcsuite/btcutil/base58"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -86,7 +87,7 @@ var _ = Describe("AddressGetter", func() {
 		port                   = int32(1234)
 		nodePort               = int32(1234)
 		ipv6KubernetesLabelKey = "test.io/ipv6"
-		ipv6Label              = base64.StdEncoding.EncodeToString([]byte("testIpv6"))
+		ipv6Label              = base58.Encode([]byte("testIpv6"))
 		nodeLabels             = map[string]string{ipv6KubernetesLabelKey: ipv6Label}
 	)
 
@@ -175,7 +176,7 @@ var _ = Describe("AddressGetter", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(roomAddresses.Host).To(Equal(host))
 
-				expectedIpv6Label, _ := base64.StdEncoding.DecodeString(ipv6Label)
+				expectedIpv6Label := base58.Decode(ipv6Label)
 				Expect(roomAddresses.Ipv6Label).To(Equal(string(expectedIpv6Label)))
 
 				Expect(roomAddresses.Ports).To(HaveLen(1))
