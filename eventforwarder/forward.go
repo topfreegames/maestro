@@ -114,6 +114,9 @@ func ForwardRoomEvent(
 						l.WithError(err).Error("error getting room info from redis")
 						return nil, err
 					}
+
+					reportIpv6Status(infos, logger)
+
 				} else { // fill host and port with zero values when pingTimeout event so it won't break the GRPCForwarder
 					infos["host"] = ""
 					infos["ipv6Label"] = ""
@@ -342,6 +345,34 @@ func reportRPCStatus(
 			WithField("operation", "reportRPCDuration").
 			WithError(err).
 			Error("failed to report RPC connection to StatsD")
+	}
+}
+
+// reportIpv6Status sends to StatsD success true if suceessfuly read
+// ipv6 label and false otherwise
+func reportIpv6Status(
+	infos map[string]interface{},
+	logger logrus.FieldLogger,
+) {
+	if !reporters.HasReporters() {
+		return
+	}
+
+	status := map[string]interface{}{
+		reportersConstants.TagNodeHost: infos["host"].(string),
+		reportersConstants.TagStatus:   "success",
+	}
+
+	if infos["ipv6Label"] == nil || infos["ipv6Label"].(string) == "" {
+		status[reportersConstants.TagStatus] = "failed"
+	}
+
+	reporterErr := reporters.Report(reportersConstants.EventNodeIpv6Status, status)
+	if reporterErr != nil {
+		logger.
+			WithField("operation", "reportIpv6Status").
+			WithError(reporterErr).
+			Error("failed to report Ipv6 read status to StatsD")
 	}
 }
 

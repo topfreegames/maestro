@@ -40,6 +40,11 @@ var _ = Describe("Forward", func() {
 				reportersConstants.TagStatus:    "success",
 			})
 
+			mockReporter.EXPECT().Report(reportersConstants.EventNodeIpv6Status, map[string]interface{}{
+				reportersConstants.TagNodeHost: nodeAddress,
+				reportersConstants.TagStatus:   "success",
+			})
+
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			response, err := ForwardRoomEvent(
@@ -109,12 +114,13 @@ var _ = Describe("Forward", func() {
 		It("should report fail if event forward fails", func() {
 			errMsg := "event forward failed"
 			ctx := context.Background()
+			noIpv6roomAddrGetter := models.NewRoomAddressesFromHostPort("")
 			mockEventForwarder.EXPECT().Forward(
 				ctx,
 				models.StatusReady,
 				map[string]interface{}{
 					"host":      nodeAddress,
-					"ipv6Label": ipv6Label,
+					"ipv6Label": "",
 					"port":      hostPort,
 					"roomId":    roomName,
 					"game":      gameName,
@@ -132,6 +138,11 @@ var _ = Describe("Forward", func() {
 				reportersConstants.TagReason:    errMsg,
 			})
 
+			mockReporter.EXPECT().Report(reportersConstants.EventNodeIpv6Status, map[string]interface{}{
+				reportersConstants.TagNodeHost: nodeAddress,
+				reportersConstants.TagStatus:   "failed",
+			})
+
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
 			response, err := ForwardRoomEvent(
@@ -145,7 +156,7 @@ var _ = Describe("Forward", func() {
 				nil,
 				cache,
 				logger,
-				roomAddrGetter,
+				noIpv6roomAddrGetter,
 			)
 
 			Expect(err).To(HaveOccurred())

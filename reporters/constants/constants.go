@@ -20,6 +20,8 @@ const (
 	EventPodLastStatus = "pod.last_status"
 
 	EventResponseTime = "response.time"
+
+	EventNodeIpv6Status = "nodeIpv6.status"
 )
 
 //Reason{...} represents reasons for a pod/gru being deleted
@@ -41,6 +43,7 @@ const (
 	TagReason       = "maestro-reason"
 	TagStatus       = "maestro-status"
 	TagHostname     = "maestro-hostname"
+	TagNodeHost     = "maestro-room-node"
 	TagRoute        = "maestro-route"
 	TagResponseTime = "maestro-response-time"
 	TagHTTPStatus   = "maestro-http-status"

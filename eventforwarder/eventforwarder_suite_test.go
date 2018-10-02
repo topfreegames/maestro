@@ -3,6 +3,8 @@ package eventforwarder_test
 import (
 	"time"
 
+	"github.com/btcsuite/btcutil/base58"
+
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -46,7 +48,7 @@ var (
 	hostPort               = int32(50000)
 	ipv6KubernetesLabelKey = "test.io/ipv6"
 	ipv6Label              = "testIpv6"
-	nodeLabels             = map[string]string{ipv6KubernetesLabelKey: ipv6Label}
+	nodeLabels             = map[string]string{ipv6KubernetesLabelKey: base58.Encode([]byte("testIpv6"))}
 	yaml                   = `name: scheduler
 game: game
 forwarders:

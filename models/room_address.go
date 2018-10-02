@@ -10,6 +10,8 @@ package models
 import (
 	"errors"
 
+	"github.com/btcsuite/btcutil/base58"
+
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,7 +70,8 @@ func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room
 
 	// get IPv6 label from node
 	if ipv6Label, ok := node.GetLabels()[ipv6KubernetesLabelKey]; ok {
-		rAddresses.Ipv6Label = ipv6Label
+		ipv6LabelBytes := base58.Decode(ipv6Label)
+		rAddresses.Ipv6Label = string(ipv6LabelBytes)
 	}
 
 	if IsNodePort {
