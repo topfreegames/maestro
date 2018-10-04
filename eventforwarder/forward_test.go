@@ -173,8 +173,7 @@ var _ = Describe("Forward", func() {
 				ctx,
 				models.StatusReady,
 				map[string]interface{}{
-					"host": nodeAddress,
-					// "ipv6Label": ipv6Label,
+					"host":   nodeAddress,
 					"port":   hostPort,
 					"roomId": roomName,
 					"game":   gameName,
