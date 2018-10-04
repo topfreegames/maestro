@@ -1,7 +1,7 @@
 name: maestro
 home: https://github.com/topfreegames/maestro
 description: Maestro api and worker
-version: 7.2.1
+version: 7.2.2
 maintainers:
   - name: TFGCo
     email: backend@tfgco.com
