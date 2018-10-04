@@ -22,12 +22,13 @@ var _ = Describe("Forward", func() {
 				ctx,
 				models.StatusReady,
 				map[string]interface{}{
-					"host":      nodeAddress,
-					"ipv6Label": ipv6Label,
-					"port":      hostPort,
-					"roomId":    roomName,
-					"game":      gameName,
-					"metadata":  metadata,
+					"host":   nodeAddress,
+					"port":   hostPort,
+					"roomId": roomName,
+					"game":   gameName,
+					"metadata": map[string]interface{}{
+						"ipv6Label": ipv6Label,
+					},
 				},
 				metadata,
 			).Return(int32(200), "success", nil)
@@ -72,12 +73,13 @@ var _ = Describe("Forward", func() {
 				ctx,
 				models.StatusReady,
 				map[string]interface{}{
-					"host":      "",
-					"ipv6Label": "",
-					"port":      int32(0),
-					"roomId":    roomName,
-					"game":      gameName,
-					"metadata":  metadata,
+					"host":   "",
+					"port":   int32(0),
+					"roomId": roomName,
+					"game":   gameName,
+					"metadata": map[string]interface{}{
+						"ipv6Label": "",
+					},
 				},
 				metadata,
 			).Return(int32(200), "success", nil)
@@ -119,12 +121,13 @@ var _ = Describe("Forward", func() {
 				ctx,
 				models.StatusReady,
 				map[string]interface{}{
-					"host":      nodeAddress,
-					"ipv6Label": "",
-					"port":      hostPort,
-					"roomId":    roomName,
-					"game":      gameName,
-					"metadata":  metadata,
+					"host":   nodeAddress,
+					"port":   hostPort,
+					"roomId": roomName,
+					"game":   gameName,
+					"metadata": map[string]interface{}{
+						"ipv6Label": "",
+					},
 				},
 				metadata,
 			).Return(int32(0), "", errors.New(errMsg))
@@ -170,12 +173,14 @@ var _ = Describe("Forward", func() {
 				ctx,
 				models.StatusReady,
 				map[string]interface{}{
-					"host":      nodeAddress,
-					"ipv6Label": ipv6Label,
-					"port":      hostPort,
-					"roomId":    roomName,
-					"game":      gameName,
-					"metadata":  metadata,
+					"host": nodeAddress,
+					// "ipv6Label": ipv6Label,
+					"port":   hostPort,
+					"roomId": roomName,
+					"game":   gameName,
+					"metadata": map[string]interface{}{
+						"ipv6Label": ipv6Label,
+					},
 				},
 				metadata,
 			).Return(int32(0), "", errors.New(errMsg))
