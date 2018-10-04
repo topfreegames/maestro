@@ -73,13 +73,11 @@ var _ = Describe("Forward", func() {
 				ctx,
 				models.StatusReady,
 				map[string]interface{}{
-					"host":   "",
-					"port":   int32(0),
-					"roomId": roomName,
-					"game":   gameName,
-					"metadata": map[string]interface{}{
-						"ipv6Label": "",
-					},
+					"host":     "",
+					"port":     int32(0),
+					"roomId":   roomName,
+					"game":     gameName,
+					"metadata": map[string]interface{}{},
 				},
 				metadata,
 			).Return(int32(200), "success", nil)

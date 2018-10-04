@@ -83,9 +83,7 @@ func ForwardRoomEvent(
 	})
 
 	if len(metadata) == 0 {
-		metadata = map[string]interface{}{
-			"ipv6Label": "",
-		}
+		metadata = map[string]interface{}{}
 	}
 
 	if len(forwarders) > 0 {
