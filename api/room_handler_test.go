@@ -547,7 +547,8 @@ forwarders:
 						"status":    status,
 						"timestamp": time.Now().Unix(),
 						"metadata": map[string]string{
-							"type": "sometype",
+							"type":      "sometype",
+							"ipv6Label": "",
 						},
 					})
 					request, _ = http.NewRequest("PUT", url, reader)
@@ -575,7 +576,8 @@ forwarders:
 							Expect(infos["game"]).To(Equal(game))
 							Expect(infos["roomId"]).To(Equal(roomName))
 							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]interface{}{
-								"type": "sometype",
+								"type":      "sometype",
+								"ipv6Label": "",
 							}))
 						})
 					mockEventForwarder2.EXPECT().Forward(gomock.Any(), status, gomock.Any(), gomock.Any()).Do(
@@ -583,7 +585,8 @@ forwarders:
 							Expect(infos["game"]).To(Equal(game))
 							Expect(infos["roomId"]).To(Equal(roomName))
 							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]interface{}{
-								"type": "sometype",
+								"type":      "sometype",
+								"ipv6Label": "",
 							}))
 						})
 
