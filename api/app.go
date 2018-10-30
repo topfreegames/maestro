@@ -598,11 +598,12 @@ func (a *App) HandleError(
 func (a *App) ListenAndServe() (io.Closer, error) {
 	logger := a.Logger.WithField("operation", "ListenAndServe")
 
-	logger.Info("listening on tcp address")
 	listener, err := net.Listen("tcp", a.Address)
 	if err != nil {
+		logger.WithError(err).Error("failed to listen on tcp address")
 		return nil, err
 	}
+	logger.Info("listening on tcp address")
 
 	idleConnsClosed := make(chan struct{})
 	go func() {
