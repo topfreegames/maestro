@@ -14,7 +14,7 @@ if [ ! $(which kubectl) ]; then
   elif [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
     echo "Installing kubectl on Linux"
     curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
-  else 
+  else
     echo "No support to that system"
     exit 1
   fi
@@ -45,14 +45,14 @@ if [ ! $(which minikube) ]; then
     sudo apt-get install libvirt-bin qemu-kvm
     echo Installing minikube on Linux
     curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-    chmod +x minikube 
+    chmod +x minikube
     sudo mv minikube /usr/local/bin/
-  else 
+  else
     echo No support to that system
     exit 1
   fi
-fi 
- 
+fi
+
 localKubeVersion=$(kubectl version --short=true | awk '/Server/{print $3}')
 desiredKubeVersion=$(cat ./metadata/version.go | grep "KubeVersion" | egrep -oh "v(\d+\.?)+")
 if [ "$localKubeVersion" != "$desiredKubeVersion" ]; then
@@ -64,7 +64,7 @@ echo Starting minikube
 if [ $(minikube ip) ]; then
   echo Minikube already started
 elif [ "$(uname)" = "Darwin" ]; then
-  minikube start --vm-driver=xhyve --kubernetes-version $desiredKubeVersion
+  minikube start --vm-driver hyperkit --kubernetes-version $desiredKubeVersion
 elif [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
   sudo minikube start --vm-driver=kvm
 else
