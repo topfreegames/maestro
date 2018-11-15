@@ -87,14 +87,19 @@ func (sp *ResourceUsagePolicy) GetCurrentUtilization(roomCount *models.RoomsStat
 	var resourceRequestsPerPodList []float32
 
 	podList, _ := sp.MetricsClientset.Metrics().PodMetricses(sp.SchedulerName).List(metav1.ListOptions{})
-
 	if podList != nil {
 		for _, pod := range podList.Items {
-			for i, container := range pod.Containers {
-				podFromClientset, _ := sp.Clientset.CoreV1().Pods(sp.SchedulerName).Get(pod.Name, metav1.GetOptions{})
+			usagePerContainer := map[string]v1.ResourceList{}
+			for _, container := range pod.Containers {
+				usagePerContainer[container.Name] = container.Usage
+			}
 
-				resourceUsage, resourceRequests := sp.ResourceGetUsageAndRequestsFunc(container.Usage, podFromClientset.Spec.Containers[i].Resources.Requests)
-
+			podFromClientset, _ := sp.Clientset.CoreV1().Pods(sp.SchedulerName).Get(pod.Name, metav1.GetOptions{})
+			for _, container := range podFromClientset.Spec.Containers {
+				resourceUsage, resourceRequests := sp.ResourceGetUsageAndRequestsFunc(
+					usagePerContainer[container.Name],
+					container.Resources.Requests,
+				)
 				resourceUsagePerPodList = append(resourceUsagePerPodList, resourceUsage)
 				resourceRequestsPerPodList = append(resourceRequestsPerPodList, resourceRequests)
 			}
@@ -102,6 +107,5 @@ func (sp *ResourceUsagePolicy) GetCurrentUtilization(roomCount *models.RoomsStat
 	}
 
 	sp.currentUtilization = sum(resourceUsagePerPodList) / sum(resourceRequestsPerPodList)
-
 	return sp.currentUtilization
 }
