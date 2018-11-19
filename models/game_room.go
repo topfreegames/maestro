@@ -145,7 +145,7 @@ func createPod(
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
 	room := NewRoom(name, configYAML.Name)
 	err := mr.WithSegment(SegmentInsert, func() error {
-		return room.Create(redisClient, db, mr, configYAML)
+		return room.Create(redisClient, db, mr, scheduler)
 	})
 	if err != nil {
 		return nil, err

@@ -9,6 +9,7 @@ package models
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -18,7 +19,9 @@ import (
 	"github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
 const (
@@ -85,11 +88,11 @@ func (r *Room) Create(
 	redisClient interfaces.RedisClient,
 	db pginterfaces.DB,
 	mr *MixedMetricsReporter,
-	configYaml *ConfigYAML,
+	scheduler *Scheduler,
 ) error {
 	r.LastPingAt = time.Now().Unix()
 	pipe := redisClient.TxPipeline()
-	_, err := r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, false, configYaml)
+	_, err := r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, false, scheduler)
 	return err
 }
 
@@ -107,9 +110,10 @@ return 'OK'
 func (r *Room) SetStatus(
 	redisClient interfaces.RedisClient,
 	db pginterfaces.DB,
+	metricsClientset metricsClient.Interface,
 	mr *MixedMetricsReporter,
 	status string,
-	configYaml *ConfigYAML,
+	scheduler *Scheduler,
 	returnRoomsCount bool,
 ) (*RoomsStatusCount, error) {
 	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
@@ -133,6 +137,7 @@ func (r *Room) SetStatus(
 		pipe.ZRem(lastStatusChangedKey, r.ID)
 	}
 
+	r.addUtilizationMetricsToRedis(metricsClientset, pipe, scheduler)
 	// remove from other statuses to be safe
 	for _, st := range allStatus {
 		if st != status {
@@ -140,7 +145,44 @@ func (r *Room) SetStatus(
 		}
 	}
 
-	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, returnRoomsCount, configYaml)
+	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, returnRoomsCount, scheduler)
+}
+
+func (r *Room) addUtilizationMetricsToRedis(
+	metricsClientset metricsClient.Interface,
+	pipe redis.Pipeliner,
+	scheduler *Scheduler,
+) {
+	sp := scheduler.GetAutoScalingPolicy()
+	metricsMap := map[AutoScalingPolicyType]bool{}
+	metricsTriggers := append(sp.Up.MetricsTrigger, sp.Down.MetricsTrigger...)
+	for _, trigger := range metricsTriggers {
+		if ResourcePolicyType(trigger.Type) {
+			metricsMap[trigger.Type] = true
+		}
+	}
+
+	pmetrics, err := metricsClientset.Metrics().PodMetricses(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
+	if err != nil && !strings.Contains(err.Error(), "not found") {
+		return
+	}
+
+	for metric := range metricsMap {
+		usage := int64(0)
+		if err != nil {
+			// add rooms with unavailable metrics to the end of the sorted set
+			usage = math.MaxInt64
+		} else {
+			for _, container := range pmetrics.Containers {
+				usage += GetResourceUsage(container.Usage, metric)
+			}
+		}
+
+		pipe.ZAdd(
+			GetRoomMetricsRedisKey(r.SchedulerName, string(metric)),
+			redis.Z{Member: r.ID, Score: float64(usage)},
+		)
+	}
 }
 
 func (r *Room) addStatusToRedisPipeAndExec(
@@ -149,7 +191,7 @@ func (r *Room) addStatusToRedisPipeAndExec(
 	mr *MixedMetricsReporter,
 	p redis.Pipeliner,
 	returnRoomsCount bool,
-	configYaml *ConfigYAML,
+	scheduler *Scheduler,
 ) (*RoomsStatusCount, error) {
 	prevStatus := "nil"
 
@@ -190,7 +232,7 @@ func (r *Room) addStatusToRedisPipeAndExec(
 	}
 
 	roomsCountByStatus := RedisResultToRoomsCount(results)
-	return roomsCountByStatus, r.reportStatus(redisClient, db, mr, r.Status, prevStatus != r.Status, configYaml)
+	return roomsCountByStatus, r.reportStatus(redisClient, db, mr, r.Status, prevStatus != r.Status, scheduler)
 }
 
 func (r *Room) reportStatus(
@@ -199,7 +241,7 @@ func (r *Room) reportStatus(
 	mr *MixedMetricsReporter,
 	status string,
 	statusChanged bool,
-	configYaml *ConfigYAML,
+	scheduler *Scheduler,
 ) error {
 	if !reporters.HasReporters() {
 		return nil
@@ -216,10 +258,10 @@ func (r *Room) reportStatus(
 	}
 
 	if statusChanged {
-		err = reportStatus(configYaml.Game, r.SchedulerName, status,
+		err = reportStatus(scheduler.Game, r.SchedulerName, status,
 			fmt.Sprint(float64(nStatus.Val())))
 	} else {
-		err = reportPing(configYaml.Game, r.SchedulerName)
+		err = reportPing(scheduler.Game, r.SchedulerName)
 	}
 	return err
 }
@@ -260,6 +302,11 @@ func (r *Room) clearAllWithPipe(
 		pipe.ZRem(GetLastStatusRedisKey(r.SchedulerName, st), r.ID)
 	}
 	pipe.ZRem(GetRoomPingRedisKey(r.SchedulerName), r.ID)
+	for _, policy := range GetAvailablePolicyTypes() {
+		if ResourcePolicyType(policy) {
+			pipe.ZRem(GetRoomMetricsRedisKey(r.SchedulerName, string(policy)), r.ID)
+		}
+	}
 	pipe.Del(r.GetRoomRedisKey())
 }
 
@@ -271,6 +318,11 @@ func GetRoomPingRedisKey(schedulerName string) string {
 // GetLastStatusRedisKey gets the key for the sortedset that keeps the last timestamp a room changed its status
 func GetLastStatusRedisKey(schedulerName, status string) string {
 	return fmt.Sprintf("scheduler:%s:last:status:%s", schedulerName, status)
+}
+
+// GetRoomMetricsRedisKey gets the key for the sortedset that keeps the rooms metrics in redis
+func GetRoomMetricsRedisKey(schedulerName string, metric string) string {
+	return fmt.Sprintf("scheduler:%s:metric:%s", schedulerName, metric)
 }
 
 // GetRoomInfos returns a map with room informations
@@ -335,5 +387,58 @@ func GetRoomsOccupiedTimeout(redisClient interfaces.RedisClient, schedulerName s
 		).Result()
 		return err
 	})
+	return result, err
+}
+
+func getReadyRooms(redisClient interfaces.RedisClient, schedulerName string, size int, mr *MixedMetricsReporter) ([]string, error) {
+	var result []string
+	tx := redisClient.TxPipeline()
+	rooms := tx.SScan(
+		GetRoomStatusSetRedisKey(schedulerName, StatusReady),
+		uint64(0),
+		"",
+		int64(size),
+	)
+	err := mr.WithSegment(SegmentSScan, func() error {
+		_, err := tx.Exec()
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	result, _, err = rooms.Result()
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]string, len(result))
+	for idx, s := range result {
+		a := strings.Split(s, ":")
+		res[idx] = a[len(a)-1]
+	}
+	return res, err
+}
+
+// GetRoomsByMetric returns a list of rooms ordered by metric
+func GetRoomsByMetric(redisClient interfaces.RedisClient, schedulerName string, metricName string, size int, mr *MixedMetricsReporter) ([]string, error) {
+	var result []string
+	// TODO hacky, one day add ZRange and SScan to redis interface
+	tx := redisClient.TxPipeline()
+	if metricName == string(RoomAutoScalingPolicyType) || metricName == string(LegacyAutoScalingPolicyType) {
+		return getReadyRooms(redisClient, schedulerName, size, mr)
+	}
+	rooms := tx.ZRange(
+		GetRoomMetricsRedisKey(schedulerName, metricName),
+		int64(0),
+		int64(size-1),
+	)
+	err := mr.WithSegment(SegmentZRangeBy, func() error {
+		_, err := tx.Exec()
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	result, err = rooms.Result()
 	return result, err
 }

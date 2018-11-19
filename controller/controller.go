@@ -27,6 +27,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -1196,6 +1197,7 @@ func SetRoomStatus(
 	db pginterfaces.DB,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
+	metricsClientset metricsClient.Interface,
 	status string,
 	config *viper.Viper,
 	room *models.Room,
@@ -1209,7 +1211,15 @@ func SetRoomStatus(
 	if err != nil {
 		return err
 	}
-	roomsCountByStatus, err := room.SetStatus(redisClient, db, mr, status, cachedScheduler.ConfigYAML, status == models.StatusOccupied)
+	roomsCountByStatus, err := room.SetStatus(
+		redisClient,
+		db,
+		metricsClientset,
+		mr,
+		status,
+		cachedScheduler.Scheduler,
+		status == models.StatusOccupied,
+	)
 	if err != nil {
 		return err
 	}

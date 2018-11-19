@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -55,6 +56,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.DBClient.WithContext(r.Context()),
 		mr,
 		g.App.KubernetesClient,
+		g.App.KubernetesMetricsClient,
 		payload.Status,
 		g.App.Config,
 		room,
@@ -250,6 +252,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.DBClient.WithContext(r.Context()),
 		mr,
 		g.App.KubernetesClient,
+		g.App.KubernetesMetricsClient,
 		payload.Status,
 		g.App.Config,
 		room,
@@ -319,4 +322,74 @@ func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteBytes(w, http.StatusOK, bytes)
 	logger.Debug("Performed address handler.")
+}
+
+// RoomListByMetricHandler handler
+type RoomListByMetricHandler struct {
+	App *App
+}
+
+// NewRoomListByMetricHandler creates a new address handler
+func NewRoomListByMetricHandler(a *App) *RoomListByMetricHandler {
+	m := &RoomListByMetricHandler{App: a}
+	return m
+}
+
+// ServerHTTP method
+func (h *RoomListByMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	l := middleware.GetLogger(r.Context())
+	mr := metricsReporterFromCtx(r.Context())
+	params := schedulerParamsFromContext(r.Context())
+	logger := l.WithFields(logrus.Fields{
+		"source":    "roomHandler",
+		"operation": "listByMetricHandler",
+	})
+
+	logger.Debug("list by metric handler called")
+
+	metric := "room"
+	if metricArray, ok := r.URL.Query()["metric"]; ok && len(metricArray) > 0 {
+		metric = metricArray[0]
+	}
+
+	if !models.ValidPolicyType(metric) {
+		err := fmt.Errorf("invalid metric %s", metric)
+		logger.WithError(err).Error("room list by metric failed")
+		h.App.HandleError(w, http.StatusBadRequest, "room list by metric failed", err)
+		return
+	}
+
+	limit := 5
+	if limitArray, ok := r.URL.Query()["limit"]; ok && len(limitArray) > 0 {
+		var err error
+		limit, err = strconv.Atoi(limitArray[0])
+		if err != nil {
+			logger.WithError(err).Error("room list by limit failed")
+			h.App.HandleError(w, http.StatusBadRequest, "room list by limit failed", err)
+			return
+		}
+	}
+
+	rooms, err := models.GetRoomsByMetric(
+		h.App.RedisClient.Trace(r.Context()),
+		params.SchedulerName,
+		metric,
+		limit,
+		mr,
+	)
+	if err != nil {
+		status := http.StatusInternalServerError
+		logger.WithError(err).Error("list by metrics handler failed")
+		h.App.HandleError(w, status, "list by metrics handler error", err)
+		return
+	}
+
+	bytes, err := json.Marshal(map[string]interface{}{"rooms": rooms})
+	if err != nil {
+		logger.WithError(err).Error("list by metrics handler failed")
+		h.App.HandleError(w, http.StatusInternalServerError, "list by metrics handler error", err)
+		return
+	}
+	WriteBytes(w, http.StatusOK, bytes)
+	logger.Debug("performed list by metrics handler")
 }
