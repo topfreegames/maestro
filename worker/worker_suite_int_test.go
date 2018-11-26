@@ -72,7 +72,7 @@ var _ = BeforeSuite(func() {
 	config.Set("pingTimeout", 600)
 	config.Set("occupiedTimeout", 1)
 
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, nil, nil, clientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, nil, nil, clientset, metricsClientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	user := &login.User{

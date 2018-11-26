@@ -182,6 +182,11 @@ func mockRemoveRoomsFromRedis(
 		models.StatusTerminated,
 	}
 
+	allMetrics := []string{
+		string(models.CPUAutoScalingPolicyType),
+		string(models.MemAutoScalingPolicyType),
+	}
+
 	for _, pod := range pods.Items {
 		room := models.NewRoom(pod.GetName(), pod.GetNamespace())
 		calls.Add(
@@ -199,6 +204,10 @@ func mockRemoveRoomsFromRedis(
 		calls.Add(
 			mockPipeline.EXPECT().
 				ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID))
+		for _, mt := range allMetrics {
+			calls.Add(
+				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), room.ID))
+		}
 		calls.Add(
 			mockPipeline.EXPECT().
 				Del(room.GetRoomRedisKey()))
@@ -974,6 +983,10 @@ func MockClearAll(
 		models.StatusTerminating,
 		models.StatusTerminated,
 	}
+	allMetrics := []string{
+		string(models.CPUAutoScalingPolicyType),
+		string(models.MemAutoScalingPolicyType),
+	}
 
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 	mockPipeline.EXPECT().Exec()
@@ -988,6 +1001,9 @@ func MockClearAll(
 				ZRem(models.GetLastStatusRedisKey(schedulerName, status), room.ID)
 		}
 		mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), room.ID)
+		for _, mt := range allMetrics {
+			mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(schedulerName, mt), room.ID)
+		}
 		mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 	}
 }

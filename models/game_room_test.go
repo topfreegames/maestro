@@ -133,6 +133,8 @@ var _ = Describe("GameRoomManagement", func() {
 		err := yaml.Unmarshal([]byte(schedulerYaml_game_room_test), &configYaml1)
 		Expect(err).NotTo(HaveOccurred())
 		scheduler = models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+		scheduler.Name = namespace
+		scheduler.Game = game
 	})
 
 	Context("GameRoom", func() {

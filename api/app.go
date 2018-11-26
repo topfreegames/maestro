@@ -86,6 +86,7 @@ func NewApp(
 	redisClientOrNil redisinterfaces.RedisClient,
 	redisTraceWrapperOrNil redisinterfaces.TraceWrapper,
 	kubernetesClientOrNil kubernetes.Interface,
+	metricsClientsetOrNil metricsClient.Interface,
 ) (*App, error) {
 	a := &App{
 		Config:         config,
@@ -107,6 +108,7 @@ func NewApp(
 		dbOrNil, dbCtxOrNil,
 		redisClientOrNil, redisTraceWrapperOrNil,
 		kubernetesClientOrNil,
+		metricsClientsetOrNil,
 		showProfile,
 	)
 	if err != nil {
@@ -388,6 +390,7 @@ func (a *App) configureApp(
 	redisClientOrNil redisinterfaces.RedisClient,
 	redisTraceWrapperOrNil redisinterfaces.TraceWrapper,
 	kubernetesClientOrNil kubernetes.Interface,
+	metricsClientsetOrNil metricsClient.Interface,
 	showProfile bool,
 ) error {
 	a.loadConfigurationDefaults()
@@ -405,7 +408,7 @@ func (a *App) configureApp(
 		return err
 	}
 
-	err = a.configureKubernetesClient(kubernetesClientOrNil)
+	err = a.configureKubernetesClient(kubernetesClientOrNil, metricsClientsetOrNil)
 	if err != nil {
 		return err
 	}
@@ -472,9 +475,12 @@ func (a *App) configureForwarders() {
 	a.Forwarders = eventforwarder.LoadEventForwardersFromConfig(a.Config, a.Logger)
 }
 
-func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interface) error {
+func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interface, metricsClientsetOrNil metricsClient.Interface) error {
 	if kubernetesClientOrNil != nil {
 		a.KubernetesClient = kubernetesClientOrNil
+		if metricsClientsetOrNil != nil {
+			a.KubernetesMetricsClient = metricsClientsetOrNil
+		}
 		return nil
 	}
 	clientset, metricsClientset, err := extensions.GetKubernetesClient(a.Logger, a.InCluster, a.KubeconfigPath)
