@@ -695,18 +695,18 @@ var _ = Describe("Watcher", func() {
 					triggerMap[trigger.Type] = triggerSpec{
 						targetUsagePercent:          trigger.Usage,
 						pointsAboveThresholdPercent: pointsAbove,
-						limit:                       trigger.Limit,
-						time:                        trigger.Time,
-						triggerType:                 trigger.Type,
+						limit:       trigger.Limit,
+						time:        trigger.Time,
+						triggerType: trigger.Type,
 					}
 				}
 				if _, exists := triggerMap[trigger.Type]; !exists {
 					triggerMap[trigger.Type] = triggerSpec{
 						targetUsagePercent:          trigger.Usage,
 						pointsAboveThresholdPercent: pointsAbove,
-						limit:                       trigger.Limit,
-						time:                        trigger.Time,
-						triggerType:                 trigger.Type,
+						limit:       trigger.Limit,
+						time:        trigger.Time,
+						triggerType: trigger.Type,
 					}
 				}
 			}
@@ -721,18 +721,18 @@ var _ = Describe("Watcher", func() {
 					triggerMap[trigger.Type] = triggerSpec{
 						targetUsagePercent:          trigger.Usage,
 						pointsAboveThresholdPercent: 100 - pointsAbove,
-						limit:                       trigger.Limit,
-						time:                        trigger.Time,
-						triggerType:                 trigger.Type,
+						limit:       trigger.Limit,
+						time:        trigger.Time,
+						triggerType: trigger.Type,
 					}
 				}
 				if _, exists := triggerMap[trigger.Type]; !exists {
 					triggerMap[trigger.Type] = triggerSpec{
 						targetUsagePercent:          trigger.Usage,
 						pointsAboveThresholdPercent: 100 - pointsAbove,
-						limit:                       trigger.Limit,
-						time:                        trigger.Time,
-						triggerType:                 trigger.Type,
+						limit:       trigger.Limit,
+						time:        trigger.Time,
+						triggerType: trigger.Type,
 					}
 				}
 				down = append(down, triggerMap[trigger.Type])
@@ -769,13 +769,13 @@ var _ = Describe("Watcher", func() {
 			containerMetrics := testing.BuildContainerMetricsArray(
 				[]testing.ContainerMetricsDefinition{
 					testing.ContainerMetricsDefinition{
+						Name: configYaml.Name,
 						Usage: map[models.AutoScalingPolicyType]int{
 							simSpec.metricTypeToScale: simSpec.currentRawUsage,
 						},
 						MemScale: simSpec.memScale,
 					},
 				},
-				configYaml.Name,
 			)
 			fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, simSpec.roomCount.Available(), configYaml.Name)
 
@@ -3427,7 +3427,7 @@ var _ = Describe("Watcher", func() {
 				err := yaml.Unmarshal([]byte(yamlActive), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
 
-				testing.CreatePod(clientset, "1.0", "1Gi", configYaml.Name)
+				testing.CreatePod(clientset, "1.0", "1Gi", configYaml.Name, configYaml.Name)
 			})
 
 			// Down

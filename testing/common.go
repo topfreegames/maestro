@@ -1074,16 +1074,17 @@ func TransformLegacyInMetricsTrigger(autoScalingInfo *models.AutoScaling) {
 type ContainerMetricsDefinition struct {
 	Usage    map[models.AutoScalingPolicyType]int
 	MemScale resource.Scale
+	Name     string
 }
 
 // BuildContainerMetricsArray build an array of container metrics to use on MockCPUAndMemoryMetricsClient
-func BuildContainerMetricsArray(containerDefinitions []ContainerMetricsDefinition, schedulerName string) []metricsapi.ContainerMetrics {
+func BuildContainerMetricsArray(containerDefinitions []ContainerMetricsDefinition) []metricsapi.ContainerMetrics {
 	var containerMetricsArr []metricsapi.ContainerMetrics
 	for _, container := range containerDefinitions {
 		containerMetricsArr = append(
 			containerMetricsArr,
 			metricsapi.ContainerMetrics{
-				Name: schedulerName,
+				Name: container.Name,
 				Usage: v1.ResourceList{
 					v1.ResourceCPU: *resource.NewMilliQuantity(
 						int64(container.Usage[models.CPUAutoScalingPolicyType]),
@@ -1098,11 +1099,12 @@ func BuildContainerMetricsArray(containerDefinitions []ContainerMetricsDefinitio
 }
 
 // CreatePod mocks create pod method setting cpu and mem requests
-func CreatePod(clientset *fake.Clientset, cpuRequests, memRequests, schedulerName string) {
+func CreatePod(clientset *fake.Clientset, cpuRequests, memRequests, schedulerName, containerName string) {
 	pod := &v1.Pod{
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
+					Name: containerName,
 					Resources: v1.ResourceRequirements{
 						Requests: v1.ResourceList{
 							v1.ResourceCPU:    resource.MustParse(cpuRequests),

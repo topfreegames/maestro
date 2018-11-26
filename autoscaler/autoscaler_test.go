@@ -13,6 +13,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/testing"
@@ -72,6 +73,7 @@ var _ = Describe("AutoScaler", func() {
 	})
 
 	Describe("AutoScaler", func() {
+		var containerName string
 		var autoScaler *AutoScaler
 		var trigger *models.ScalingPolicyMetricsTrigger
 		var roomCount *models.RoomsStatusCount
@@ -136,6 +138,7 @@ var _ = Describe("AutoScaler", func() {
 
 		Context("cpu type", func() {
 			BeforeEach(func() {
+				containerName = fmt.Sprintf("%s-%s", schedulerName, uuid.NewV4().String())
 				trigger = &models.ScalingPolicyMetricsTrigger{
 					Time:      100,
 					Usage:     70,
@@ -149,7 +152,7 @@ var _ = Describe("AutoScaler", func() {
 					Occupied:    8,
 					Terminating: 0,
 				}
-				testing.CreatePod(clientset, "1.0", "0", schedulerName)
+				testing.CreatePod(clientset, "1.0", "0", schedulerName, containerName)
 			})
 
 			It("should return delta", func() {
@@ -157,6 +160,7 @@ var _ = Describe("AutoScaler", func() {
 				containerMetrics := testing.BuildContainerMetricsArray(
 					[]testing.ContainerMetricsDefinition{
 						testing.ContainerMetricsDefinition{
+							Name: containerName,
 							Usage: map[models.AutoScalingPolicyType]int{
 								models.CPUAutoScalingPolicyType: 500,
 								models.MemAutoScalingPolicyType: 0,
@@ -164,7 +168,6 @@ var _ = Describe("AutoScaler", func() {
 							MemScale: 0,
 						},
 					},
-					schedulerName,
 				)
 				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
@@ -176,6 +179,7 @@ var _ = Describe("AutoScaler", func() {
 				containerMetrics = testing.BuildContainerMetricsArray(
 					[]testing.ContainerMetricsDefinition{
 						testing.ContainerMetricsDefinition{
+							Name: containerName,
 							Usage: map[models.AutoScalingPolicyType]int{
 								models.CPUAutoScalingPolicyType: 900,
 								models.MemAutoScalingPolicyType: 0,
@@ -183,7 +187,6 @@ var _ = Describe("AutoScaler", func() {
 							MemScale: 0,
 						},
 					},
-					schedulerName,
 				)
 				fakeMetricsClient = testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler = NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
@@ -196,6 +199,7 @@ var _ = Describe("AutoScaler", func() {
 				containerMetrics := testing.BuildContainerMetricsArray(
 					[]testing.ContainerMetricsDefinition{
 						testing.ContainerMetricsDefinition{
+							Name: containerName,
 							Usage: map[models.AutoScalingPolicyType]int{
 								models.CPUAutoScalingPolicyType: 500,
 								models.MemAutoScalingPolicyType: 0,
@@ -203,7 +207,6 @@ var _ = Describe("AutoScaler", func() {
 							MemScale: 0,
 						},
 					},
-					schedulerName,
 				)
 				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
@@ -215,6 +218,7 @@ var _ = Describe("AutoScaler", func() {
 
 		Context("mem type", func() {
 			BeforeEach(func() {
+				containerName = fmt.Sprintf("%s-%s", schedulerName, uuid.NewV4().String())
 				trigger = &models.ScalingPolicyMetricsTrigger{
 					Time:      100,
 					Usage:     70,
@@ -229,7 +233,7 @@ var _ = Describe("AutoScaler", func() {
 					Terminating: 0,
 				}
 
-				testing.CreatePod(clientset, "0", "1Gi", schedulerName)
+				testing.CreatePod(clientset, "0", "1Gi", schedulerName, containerName)
 			})
 
 			It("should return delta", func() {
@@ -237,6 +241,7 @@ var _ = Describe("AutoScaler", func() {
 				containerMetrics := testing.BuildContainerMetricsArray(
 					[]testing.ContainerMetricsDefinition{
 						testing.ContainerMetricsDefinition{
+							Name: containerName,
 							Usage: map[models.AutoScalingPolicyType]int{
 								models.CPUAutoScalingPolicyType: 0,
 								models.MemAutoScalingPolicyType: 600,
@@ -244,7 +249,6 @@ var _ = Describe("AutoScaler", func() {
 							MemScale: resource.Mega,
 						},
 					},
-					schedulerName,
 				)
 				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
@@ -256,6 +260,7 @@ var _ = Describe("AutoScaler", func() {
 				containerMetrics = testing.BuildContainerMetricsArray(
 					[]testing.ContainerMetricsDefinition{
 						testing.ContainerMetricsDefinition{
+							Name: containerName,
 							Usage: map[models.AutoScalingPolicyType]int{
 								models.CPUAutoScalingPolicyType: 0,
 								models.MemAutoScalingPolicyType: 950,
@@ -263,7 +268,6 @@ var _ = Describe("AutoScaler", func() {
 							MemScale: resource.Mega,
 						},
 					},
-					schedulerName,
 				)
 				fakeMetricsClient = testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler = NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
@@ -276,6 +280,7 @@ var _ = Describe("AutoScaler", func() {
 				containerMetrics := testing.BuildContainerMetricsArray(
 					[]testing.ContainerMetricsDefinition{
 						testing.ContainerMetricsDefinition{
+							Name: containerName,
 							Usage: map[models.AutoScalingPolicyType]int{
 								models.CPUAutoScalingPolicyType: 0,
 								models.MemAutoScalingPolicyType: 500,
@@ -283,7 +288,6 @@ var _ = Describe("AutoScaler", func() {
 							MemScale: resource.Mega,
 						},
 					},
-					schedulerName,
 				)
 				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
