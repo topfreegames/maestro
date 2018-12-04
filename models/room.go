@@ -8,6 +8,7 @@
 package models
 
 import (
+	e "errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -162,6 +163,7 @@ func (r *Room) addUtilizationMetricsToRedis(
 		}
 	}
 
+	requests := scheduler.GetResourcesRequests()
 	pmetrics, err := metricsClientset.Metrics().PodMetricses(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		return
@@ -176,6 +178,7 @@ func (r *Room) addUtilizationMetricsToRedis(
 			for _, container := range pmetrics.Containers {
 				usage += GetResourceUsage(container.Usage, metric)
 			}
+			reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
 		}
 
 		pipe.ZAdd(
@@ -279,6 +282,19 @@ func reportStatus(game, scheduler, status, gauge string) error {
 		reportersConstants.TagScheduler: scheduler,
 		"status":                        status,
 		"gauge":                         gauge,
+	})
+}
+
+func reportUsage(game, scheduler, metric string, requests, usage int64) error {
+	if requests == 0 {
+		return e.New("cannot divide by zero")
+	}
+	gauge := fmt.Sprintf("%.2f", float64(usage)/float64(requests))
+	return reporters.Report(reportersConstants.EventGruMetricUsage, map[string]interface{}{
+		reportersConstants.TagGame:      game,
+		reportersConstants.TagScheduler: scheduler,
+		reportersConstants.TagMetric:    metric,
+		"gauge": gauge,
 	})
 }
 

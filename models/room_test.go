@@ -61,7 +61,7 @@ cmd:
 	yamlRoom2 = `
 name: %s
 game: game-name
-limits:
+requests:
   memory: "128Mi"
   cpu: "1"
 autoscaling:
@@ -316,7 +316,7 @@ var _ = Describe("Room", func() {
 				mockPipeline.EXPECT().ZAdd(models.GetRoomMetricsRedisKey(schedulerName, "mem"), gomock.Any()).Do(
 					func(_ string, args redis.Z) {
 						Expect(args.Member).To(Equal(name))
-						Expect(args.Score).To(BeEquivalentTo(600))
+						Expect(args.Score).To(BeEquivalentTo(60000000))
 					})
 				mockSetStatusWithoutMetrics(room, lastStatus, status)
 				reportStatus(
@@ -325,13 +325,27 @@ var _ = Describe("Room", func() {
 					room.GetRoomRedisKey(),
 					models.GetRoomStatusSetRedisKey(schedulerName, status))
 
+				mr.EXPECT().Report("gru.metric", map[string]interface{}{
+					reportersConstants.TagGame:      scheduler.Game,
+					reportersConstants.TagScheduler: scheduler.Name,
+					reportersConstants.TagMetric:    "cpu",
+					"gauge": "0.70",
+				})
+
+				mr.EXPECT().Report("gru.metric", map[string]interface{}{
+					reportersConstants.TagGame:      scheduler.Game,
+					reportersConstants.TagScheduler: scheduler.Name,
+					reportersConstants.TagMetric:    "mem",
+					"gauge": "0.45",
+				})
+
 				containerMetrics := testing.BuildContainerMetricsArray(
 					[]testing.ContainerMetricsDefinition{
 						testing.ContainerMetricsDefinition{
 							Name: room.ID,
 							Usage: map[models.AutoScalingPolicyType]int{
 								models.CPUAutoScalingPolicyType: 500,
-								models.MemAutoScalingPolicyType: 400,
+								models.MemAutoScalingPolicyType: 40000000,
 							},
 							MemScale: 0,
 						},
@@ -339,7 +353,7 @@ var _ = Describe("Room", func() {
 							Name: room.ID,
 							Usage: map[models.AutoScalingPolicyType]int{
 								models.CPUAutoScalingPolicyType: 200,
-								models.MemAutoScalingPolicyType: 200,
+								models.MemAutoScalingPolicyType: 20000000,
 							},
 							MemScale: 0,
 						},
