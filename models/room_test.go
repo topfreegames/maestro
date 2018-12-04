@@ -178,10 +178,10 @@ var _ = Describe("Room", func() {
 
 	Describe("Get Room Redis Key", func() {
 		It("should build the redis key using the scheduler name and the id", func() {
-			room := models.NewRoom(name, schedulerName)
-			key := room.GetRoomRedisKey()
+			metric := uuid.NewV4().String()
+			key := models.GetRoomMetricsRedisKey(schedulerName, metric)
 			Expect(key).To(ContainSubstring(schedulerName))
-			Expect(key).To(ContainSubstring(room.ID))
+			Expect(key).To(ContainSubstring(metric))
 		})
 	})
 
@@ -599,6 +599,83 @@ var _ = Describe("Room", func() {
 			_, err := models.GetRoomsNoPingSince(mockRedisClient, scheduler, since, mmr)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error"))
+		})
+	})
+
+	Describe("GetRoomsByMetric", func() {
+		Context("for metric scaling policy", func() {
+			It("should call redis successfully", func() {
+				metric := "cpu"
+				scheduler := "pong-free-for-all"
+				size := 3
+				pKey := models.GetRoomMetricsRedisKey(scheduler, metric)
+
+				expectedRooms := []string{"room1", "room2", "room3"}
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().ZRange(pKey, int64(0), int64(size-1)).Return(
+					redis.NewStringSliceResult(expectedRooms, nil))
+				mockPipeline.EXPECT().Exec()
+
+				rooms, err := models.GetRoomsByMetric(mockRedisClient, scheduler, metric, size, mmr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rooms).To(Equal(expectedRooms))
+			})
+
+			It("should return an error if redis returns an error", func() {
+				metric := "cpu"
+				scheduler := "pong-free-for-all"
+				size := 3
+				pKey := models.GetRoomMetricsRedisKey(scheduler, metric)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().ZRange(pKey, int64(0), int64(size-1)).Return(
+					redis.NewStringSliceResult([]string{}, errors.New("some error")))
+				mockPipeline.EXPECT().Exec()
+
+				_, err := models.GetRoomsByMetric(mockRedisClient, scheduler, metric, size, mmr)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("some error"))
+			})
+		})
+
+		Context("for room or legacy scaling policy", func() {
+			It("should call redis successfully", func() {
+				metric := "room"
+				scheduler := "pong-free-for-all"
+				size := 3
+				pKey := models.GetRoomStatusSetRedisKey(scheduler, models.StatusReady)
+
+				expectedRooms := []string{"room1", "room2", "room3"}
+				expectedRet := make([]string, len(expectedRooms))
+				for idx, room := range expectedRooms {
+					r := &models.Room{SchedulerName: scheduler, ID: room}
+					expectedRet[idx] = r.GetRoomRedisKey()
+				}
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SScan(pKey, uint64(0), "", int64(size)).Return(
+					redis.NewScanCmdResult(expectedRet, 0, nil))
+				mockPipeline.EXPECT().Exec()
+
+				rooms, err := models.GetRoomsByMetric(mockRedisClient, scheduler, metric, size, mmr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rooms).To(Equal(expectedRooms))
+			})
+
+			It("should return an error if redis returns an error", func() {
+				metric := "room"
+				scheduler := "pong-free-for-all"
+				size := 3
+				pKey := models.GetRoomStatusSetRedisKey(scheduler, models.StatusReady)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SScan(pKey, uint64(0), "", int64(size)).Return(
+					redis.NewScanCmdResult([]string{}, 0, errors.New("some error")))
+				mockPipeline.EXPECT().Exec()
+
+				_, err := models.GetRoomsByMetric(mockRedisClient, scheduler, metric, size, mmr)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("some error"))
+			})
 		})
 	})
 })
