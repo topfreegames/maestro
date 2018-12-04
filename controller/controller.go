@@ -586,6 +586,12 @@ func UpdateSchedulerConfig(
 		return errors.New("invalid parameter: autoscaling max must be greater than min")
 	}
 
+	// if using resource scaling (cpu, mem) requests must be set
+	err := validateMetricsTrigger(configYAML, logger)
+	if err != nil {
+		return err
+	}
+
 	// Lock watchers so they don't scale up or down and the scheduler is not
 	//  overwritten with older version on database
 	var lock *redisLock.Lock
@@ -595,8 +601,6 @@ func UpdateSchedulerConfig(
 	defer ticker.Stop()
 	timeout := time.NewTimer(timeoutDur)
 	defer timeout.Stop()
-
-	var err error
 
 waitForLock:
 	for {
