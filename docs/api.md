@@ -294,6 +294,56 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
       }
     ```
 
+  ### List Rooms Ordered By Metric
+
+  `GET  /scheduler/:schedulerName/rooms`
+
+  This route returns an array of room ids ordered by metric in ascending order. If metric is "legacy" or "room" it will return available rooms (status ready).
+
+  * Optional query parameters
+    * *metric*: valid values are "cpu", "mem", "room" and "legacy". Default: "room".
+    * *limit*: number of rooms to be returned, must be an int greater than 0. Default: 5.
+
+  * Success Response
+    * Code: `200`
+    * Content:
+
+      ```
+        {
+          "rooms":  [roomID1, roomID2, roomID3]
+        }
+      ```
+
+  * Error Response
+
+    It will return an error if some error occurred.
+
+    * Code: `500`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
+    It will return an error if invalid metric or limit is sent.
+
+    * Code: `400`
+    * Content:
+
+    ```
+      {
+        "code":        [string]<error-code>,
+        "error":       [string]<error-message>,
+        "description": [string]<error-description>,
+        "success":     [bool]false
+      }
+    ```
+
 ## Scheduler Management:
 
   ### Create
@@ -602,7 +652,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
       }
     ```
 
-    It will return an error if image was not sent on body 
+    It will return an error if image was not sent on body
 
     * Code: `422`
     * Content:
@@ -670,7 +720,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
       }
     ```
 
-    It will return an error if min was not sent on body 
+    It will return an error if min was not sent on body
 
     * Code: `422`
     * Content:
@@ -922,7 +972,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
       }
     ```
 
-  ### Scale 
+  ### Scale
 
   `POST /scheduler/:schedulerName`
 
@@ -980,7 +1030,7 @@ All API responses include a `X-Maestro-Version` header with the current Maestro 
 
   `GET /scheduler/:schedulerName/releases`
 
-  Returns the releases (versions) of the scheduler. 
+  Returns the releases (versions) of the scheduler.
   A minor release means that the scheduler changed but the pods didn't need to be recreated. Every attribute related only to Maestro and not to the pods does that, e.g.: autoscaling values, forwarder configurations, etc. This means that the pod can have as label version=v1.0 and the scheduler is in version v1.1.
   A major relese means that the pods needed to be recreated in order to respect the new scheduler configuration, e.g.: new image, new ports, new env var, new command. In this case, the scheduler will go, for example, from v1.0 to v2.0 and all new pods must have label verion=v2.0.
 

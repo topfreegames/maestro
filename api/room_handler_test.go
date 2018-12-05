@@ -259,7 +259,7 @@ forwarders:
 				createNamespace(namespace, clientset)
 				err := createPod(roomName, namespace, clientset)
 				Expect(err).NotTo(HaveOccurred())
-				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
+				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Forwarders = []*eventforwarder.Info{
 					&eventforwarder.Info{
@@ -478,7 +478,7 @@ forwarders:
 					createNamespace(namespace, clientset)
 					err := createPod(roomName, namespace, clientset)
 					Expect(err).NotTo(HaveOccurred())
-					app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
+					app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 					Expect(err).NotTo(HaveOccurred())
 					app.Forwarders = []*eventforwarder.Info{
 						&eventforwarder.Info{
@@ -643,7 +643,7 @@ forwarders:
 		var app *api.App
 		BeforeEach(func() {
 			var err error
-			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
+			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 			Expect(err).NotTo(HaveOccurred())
 			app.Forwarders = []*eventforwarder.Info{
 				&eventforwarder.Info{
@@ -794,7 +794,7 @@ forwarders:
 			createNamespace(namespace, clientset)
 			err := createPod("roomName", namespace, clientset)
 			Expect(err).NotTo(HaveOccurred())
-			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
+			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 			Expect(err).NotTo(HaveOccurred())
 			app.Forwarders = []*eventforwarder.Info{
 				&eventforwarder.Info{
@@ -1008,6 +1008,115 @@ forwarders:
 			Expect(obj).To(HaveKeyWithValue("code", "MAE-000"))
 			Expect(obj).To(HaveKeyWithValue("description", "pods \"roomName\" not found"))
 			Expect(obj).To(HaveKeyWithValue("error", "Address handler error"))
+			Expect(obj).To(HaveKeyWithValue("success", false))
+		})
+	})
+
+	Describe("GET /scheduler/{schedulerName}/rooms", func() {
+		namespace := "schedulerName"
+
+		Describe("should return rooms", func() {
+			It("with default metric and limit", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				pKey := models.GetRoomStatusSetRedisKey(namespace, models.StatusReady)
+				expectedRooms := []string{"room1", "room2", "room3"}
+				expectedRet := make([]string, len(expectedRooms))
+				for idx, room := range expectedRooms {
+					r := &models.Room{SchedulerName: namespace, ID: room}
+					expectedRet[idx] = r.GetRoomRedisKey()
+				}
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().SRandMemberN(pKey, int64(5)).Return(redis.NewStringSliceResult(expectedRet, nil))
+				mockPipeline.EXPECT().Exec()
+
+				url := fmt.Sprintf("/scheduler/%s/rooms", namespace)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+				app.Router.ServeHTTP(recorder, request)
+
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+
+				var obj map[string]interface{}
+				err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(obj["rooms"]).To(HaveLen(len(expectedRooms)))
+				for idx, roomIface := range obj["rooms"].([]interface{}) {
+					Expect(roomIface.(string)).To(Equal(expectedRooms[idx]))
+				}
+			})
+
+			It("with custom metric and limit", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				pKey := models.GetRoomMetricsRedisKey(namespace, "cpu")
+				expectedRooms := []string{"room1", "room2", "room3"}
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().ZRange(pKey, int64(0), int64(123-1)).Return(
+					redis.NewStringSliceResult(expectedRooms, nil))
+				mockPipeline.EXPECT().Exec()
+
+				url := fmt.Sprintf("/scheduler/%s/rooms?metric=cpu&limit=123", namespace)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+				app.Router.ServeHTTP(recorder, request)
+
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+
+				var obj map[string]interface{}
+				err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(obj["rooms"]).To(HaveLen(len(expectedRooms)))
+				for idx, roomIface := range obj["rooms"].([]interface{}) {
+					Expect(roomIface.(string)).To(Equal(expectedRooms[idx]))
+				}
+			})
+		})
+
+		It("should return error if invalid metric", func() {
+			url := fmt.Sprintf("/scheduler/%s/rooms?metric=unknown", namespace)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+
+			var obj map[string]interface{}
+			err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj["description"]).To(Equal("invalid metric unknown"))
+		})
+
+		It("should return error if invalid limit", func() {
+			url := fmt.Sprintf("/scheduler/%s/rooms?limit=invalid", namespace)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+
+			var obj map[string]interface{}
+			err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj["description"]).To(Equal("strconv.Atoi: parsing \"invalid\": invalid syntax"))
+		})
+
+		It("should return error if GetRoomsByMetric failed", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+			pKey := models.GetRoomStatusSetRedisKey(namespace, models.StatusReady)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SRandMemberN(pKey, int64(5)).Return(
+				redis.NewStringSliceResult([]string{}, errors.New("something went wrong")))
+			mockPipeline.EXPECT().Exec()
+
+			url := fmt.Sprintf("/scheduler/%s/rooms", namespace)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+			var obj map[string]interface{}
+			err = json.Unmarshal(recorder.Body.Bytes(), &obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj).To(HaveKeyWithValue("code", "MAE-000"))
+			Expect(obj).To(HaveKeyWithValue("description", "something went wrong"))
+			Expect(obj).To(HaveKeyWithValue("error", "list by metrics handler error"))
 			Expect(obj).To(HaveKeyWithValue("success", false))
 		})
 	})

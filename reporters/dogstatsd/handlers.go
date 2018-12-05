@@ -26,6 +26,7 @@ var handlers = map[string]interface{}{
 	constants.EventHTTPResponseTime: HTTPTimingHandler,
 	constants.EventPodLastStatus:    GaugeHandler,
 	constants.EventResponseTime:     TimingHandler,
+	constants.EventGruMetricUsage:   GaugeHandler,
 }
 
 // Find looks for a matching handler to a given event
@@ -133,6 +134,6 @@ func GaugeHandler(
 	if err != nil {
 		return err
 	}
-	c.Gauge(constants.EventPodLastStatus, gauge, tags, 1)
+	c.Gauge(event, gauge, tags, 1)
 	return nil
 }

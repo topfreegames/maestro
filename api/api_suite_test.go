@@ -29,11 +29,13 @@ import (
 	"github.com/topfreegames/maestro/login/mocks"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes/fake"
+	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
 )
 
 var (
 	app                   *api.App
 	clientset             *fake.Clientset
+	metricsClientset      *metricsFake.Clientset
 	config                *viper.Viper
 	hook                  *test.Hook
 	logger                *logrus.Logger
@@ -59,6 +61,10 @@ var (
 		models.StatusTerminating,
 		models.StatusTerminated,
 	}
+	allMetrics = []string{
+		string(models.CPUAutoScalingPolicyType),
+		string(models.MemAutoScalingPolicyType),
+	}
 	lockTimeoutMs int
 	lockKey       string
 )
@@ -74,6 +80,7 @@ var _ = BeforeEach(func() {
 	logger.Level = logrus.DebugLevel
 
 	clientset = fake.NewSimpleClientset()
+	metricsClientset = metricsFake.NewSimpleClientset()
 	mockCtrl = gomock.NewController(GinkgoT())
 	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockCtxWrapper = pgmocks.NewMockCtxWrapper(mockCtrl)
@@ -97,7 +104,7 @@ var _ = BeforeEach(func() {
 	lockKey = config.GetString("watcher.lockKey")
 
 	mockRedisClient.EXPECT().Ping().Return(redis.NewStatusResult("PONG", nil)).AnyTimes()
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	mockLogin = mocks.NewMockLogin(mockCtrl)

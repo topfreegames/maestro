@@ -42,7 +42,17 @@ var (
 	mockEventForwarder *eventforwardermock.MockEventForwarder
 	mr                 *models.MixedMetricsReporter
 	redisClient        *redis.Client
-	allStatus          = []string{models.StatusCreating, models.StatusReady, models.StatusOccupied, models.StatusTerminating, models.StatusTerminated}
+	allStatus          = []string{
+		models.StatusCreating,
+		models.StatusReady,
+		models.StatusOccupied,
+		models.StatusTerminating,
+		models.StatusTerminated,
+	}
+	allMetrics = []string{
+		string(models.CPUAutoScalingPolicyType),
+		string(models.MemAutoScalingPolicyType),
+	}
 )
 
 func TestWatcher(t *testing.T) {

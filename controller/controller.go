@@ -27,6 +27,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -585,6 +586,12 @@ func UpdateSchedulerConfig(
 		return errors.New("invalid parameter: autoscaling max must be greater than min")
 	}
 
+	// if using resource scaling (cpu, mem) requests must be set
+	err := validateMetricsTrigger(configYAML, logger)
+	if err != nil {
+		return err
+	}
+
 	// Lock watchers so they don't scale up or down and the scheduler is not
 	//  overwritten with older version on database
 	var lock *redisLock.Lock
@@ -594,8 +601,6 @@ func UpdateSchedulerConfig(
 	defer ticker.Stop()
 	timeout := time.NewTimer(timeoutDur)
 	defer timeout.Stop()
-
-	var err error
 
 waitForLock:
 	for {
@@ -1196,6 +1201,7 @@ func SetRoomStatus(
 	db pginterfaces.DB,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
+	metricsClientset metricsClient.Interface,
 	status string,
 	config *viper.Viper,
 	room *models.Room,
@@ -1209,7 +1215,15 @@ func SetRoomStatus(
 	if err != nil {
 		return err
 	}
-	roomsCountByStatus, err := room.SetStatus(redisClient, db, mr, status, cachedScheduler.ConfigYAML, status == models.StatusOccupied)
+	roomsCountByStatus, err := room.SetStatus(
+		redisClient,
+		db,
+		metricsClientset,
+		mr,
+		status,
+		cachedScheduler.Scheduler,
+		status == models.StatusOccupied,
+	)
 	if err != nil {
 		return err
 	}

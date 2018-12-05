@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-pg/pg"
 	"github.com/topfreegames/extensions/pg/interfaces"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // Scheduler is the struct that defines a maestro scheduler
@@ -334,6 +335,40 @@ func (c *Scheduler) GetAutoScalingPolicy() *AutoScaling {
 		}
 	}
 	return configYAML.AutoScaling
+}
+
+// GetResourcesRequests returns the scheduler resources requests summed over all containers
+func (c *Scheduler) GetResourcesRequests() map[AutoScalingPolicyType]int64 {
+	res := map[AutoScalingPolicyType]int64{
+		CPUAutoScalingPolicyType: 0,
+		MemAutoScalingPolicyType: 0,
+	}
+	configYAML, _ := NewConfigYAML(c.YAML)
+	if len(configYAML.Containers) == 0 && configYAML.Requests != nil && configYAML.Requests.CPU != "" {
+		parsed := resource.MustParse(configYAML.Requests.CPU)
+		res[CPUAutoScalingPolicyType] += parsed.ScaledValue(-3)
+	} else {
+		for _, container := range configYAML.Containers {
+			if container.Requests != nil && container.Requests.CPU != "" {
+				parsed := resource.MustParse(container.Requests.CPU)
+				res[CPUAutoScalingPolicyType] += parsed.ScaledValue(-3)
+			}
+		}
+	}
+
+	if len(configYAML.Containers) == 0 && configYAML.Requests != nil && configYAML.Requests.Memory != "" {
+		parsed := resource.MustParse(configYAML.Requests.Memory)
+		res[MemAutoScalingPolicyType] += parsed.ScaledValue(0)
+	} else {
+		for _, container := range configYAML.Containers {
+			if container.Requests != nil && container.Requests.Memory != "" {
+				parsed := resource.MustParse(container.Requests.Memory)
+				res[MemAutoScalingPolicyType] += parsed.ScaledValue(0)
+			}
+		}
+	}
+
+	return res
 }
 
 // ListSchedulersNames list all schedulers names

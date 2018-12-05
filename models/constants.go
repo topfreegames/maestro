@@ -43,6 +43,9 @@ const SegmentHMSet = "Redis/HMSet"
 //SegmentZRangeBy represents a segment
 const SegmentZRangeBy = "Redis/ZRangeBy"
 
+//SegmentSRandMember represents a segment
+const SegmentSRandMember = "Redis/SegmentSRandMember"
+
 //SegmentPipeExec represents a segment
 const SegmentPipeExec = "Redis/Exec"
 

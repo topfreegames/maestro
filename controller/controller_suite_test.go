@@ -27,11 +27,13 @@ import (
 	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
+	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
 )
 
 var (
 	hook                  *test.Hook
 	logger                *logrus.Logger
+	metricsClientset      *metricsFake.Clientset
 	mockCtrl              *gomock.Controller
 	config                *viper.Viper
 	mockDb                *pgmocks.MockDB
@@ -50,6 +52,10 @@ var (
 		models.StatusOccupied,
 		models.StatusTerminating,
 		models.StatusTerminated,
+	}
+	allMetrics = []string{
+		string(models.CPUAutoScalingPolicyType),
+		string(models.MemAutoScalingPolicyType),
 	}
 )
 
@@ -71,6 +77,7 @@ var _ = BeforeEach(func() {
 	mr := models.NewMixedMetricsReporter()
 	mr.AddReporter(fakeReporter)
 
+	metricsClientset = metricsFake.NewSimpleClientset()
 	mockCtrl = gomock.NewController(GinkgoT())
 
 	mockDb = pgmocks.NewMockDB(mockCtrl)

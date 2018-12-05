@@ -1470,7 +1470,7 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 
 				schedulerName := configYaml.Name
-
+				scheduler := models.NewScheduler(configYaml.Name, configYaml.Game, yamlString)
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				for i := 0; i < configYaml.AutoScaling.Min; i++ {
 					room := models.NewRoom(fmt.Sprintf("room-%d", i), schedulerName)
@@ -1481,7 +1481,7 @@ forwarders:
 					mockPipeline.EXPECT().ZAdd(gomock.Any(), gomock.Any())
 					mockPipeline.EXPECT().Exec()
 
-					room.Create(mockRedisClient, mockDb, mmr, &configYaml)
+					room.Create(mockRedisClient, mockDb, mmr, scheduler)
 				}
 				url := fmt.Sprintf("http://%s/scheduler/scheduler-name", app.Address)
 				request, err := http.NewRequest("GET", url, nil)
@@ -1746,7 +1746,7 @@ game: game-name
 				err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
-				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
+				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 			})
@@ -1840,6 +1840,9 @@ game: game-name
 						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), gomock.Any())
 					mockPipeline.EXPECT().
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), gomock.Any())
+				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), gomock.Any())
 				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(room.SchedulerName), gomock.Any())
 				mockPipeline.EXPECT().Del(gomock.Any())
@@ -2020,6 +2023,9 @@ game: game-name
 						mockPipeline.EXPECT().
 							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 					}
+					for _, mt := range allMetrics {
+						mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), room.ID)
+					}
 					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), room.ID)
 					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 					mockPipeline.EXPECT().Exec()
@@ -2129,6 +2135,9 @@ game: game-name
 							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
 						mockPipeline.EXPECT().
 							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+					}
+					for _, mt := range allMetrics {
+						mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), room.ID)
 					}
 					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), room.ID)
 					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
@@ -2738,7 +2747,7 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
 
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 				newImageName := "new-image"
@@ -2822,7 +2831,7 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
 
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 
@@ -3347,7 +3356,7 @@ game: game-name
 
 				config, err := GetDefaultConfig()
 				config.Set("basicauth.tryOauthIfUnset", true)
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 

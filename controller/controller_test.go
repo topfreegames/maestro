@@ -32,6 +32,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes/fake"
+	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
 )
 
 const (
@@ -289,6 +290,7 @@ autoscaling:
 var _ = Describe("Controller", func() {
 	var (
 		clientset        *fake.Clientset
+		metricsClientset *metricsFake.Clientset
 		configYaml1      models.ConfigYAML
 		opManager        *models.OperationManager
 		roomManager      models.RoomManager
@@ -305,6 +307,7 @@ var _ = Describe("Controller", func() {
 
 	BeforeEach(func() {
 		clientset = fake.NewSimpleClientset()
+		metricsClientset = metricsFake.NewSimpleClientset()
 		err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1176,22 +1179,20 @@ cmd:
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				for _, st := range allStatus {
+					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(scheduler.Name, st), gomock.Any())
+					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(scheduler.Name, st), roomName)
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), roomName)
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
+				}
+				mockPipeline.EXPECT().Del(gomock.Any())
+				mockPipeline.EXPECT().Exec()
 			}
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(len(expectedRooms))
-			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().Del(gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().Exec().Times(len(expectedRooms))
 			err = controller.DeleteUnavailableRooms(logger, roomManager, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -1227,6 +1228,9 @@ cmd:
 					mockPipeline.EXPECT().
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
+				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
@@ -1253,6 +1257,9 @@ cmd:
 					mockPipeline.EXPECT().
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
+				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
@@ -1275,22 +1282,20 @@ cmd:
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				for _, st := range allStatus {
+					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(scheduler.Name, st), gomock.Any())
+					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(scheduler.Name, st), roomName)
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), roomName)
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
+				}
+				mockPipeline.EXPECT().Del(gomock.Any())
+				mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis error"))
 			}
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(len(expectedRooms))
-			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().SRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().Del(gomock.Any()).Times(len(expectedRooms))
-			mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis error")).Times(len(expectedRooms))
 			err = controller.DeleteUnavailableRooms(logger, roomManager, mr, mockRedisClient, clientset, scheduler, expectedRooms, "deletion_reason")
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -1785,6 +1790,9 @@ portRange:
 					mockPipeline.EXPECT().
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
+				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
@@ -1905,6 +1913,9 @@ portRange:
 					mockPipeline.EXPECT().
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
+				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
@@ -1999,6 +2010,9 @@ portRange:
 					SRem(gomock.Any(), gomock.Any())
 				mockPipeline.EXPECT().
 					ZRem(gomock.Any(), gomock.Any())
+			}
+			for _, mt := range allMetrics {
+				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
 			}
 			mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), gomock.Any())
 			mockPipeline.EXPECT().Del(gomock.Any())
@@ -2122,6 +2136,9 @@ portRange:
 						SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
 					mockPipeline.EXPECT().
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
 				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
@@ -4464,6 +4481,11 @@ cmd:
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 				}
 				calls.Add(mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID))
+				for _, mt := range allMetrics {
+					calls.Add(
+						mockPipeline.EXPECT().
+							ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), gomock.Any()))
+				}
 				calls.Add(mockPipeline.EXPECT().Del(room.GetRoomRedisKey()))
 				calls.Add(mockPipeline.EXPECT().Exec())
 				break
@@ -4522,6 +4544,11 @@ cmd:
 							SRem(gomock.Any(), gomock.Any()))
 					calls.Add(mockPipeline.EXPECT().
 						ZRem(gomock.Any(), gomock.Any()))
+				}
+				for range allMetrics {
+					calls.Add(
+						mockPipeline.EXPECT().
+							ZRem(gomock.Any(), gomock.Any()))
 				}
 				calls.Add(mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()))
 				calls.Add(mockPipeline.EXPECT().Del(gomock.Any()))
@@ -4626,6 +4653,9 @@ cmd:
 				calls.Add(
 					mockPipeline.EXPECT().
 						ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID))
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), gomock.Any())
+				}
 				calls.Add(
 					mockPipeline.EXPECT().
 						Del(room.GetRoomRedisKey()))
@@ -4910,6 +4940,9 @@ containers:
 						mockPipeline.EXPECT().ZRem(
 							models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 					}
+					for _, mt := range allMetrics {
+						mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), gomock.Any())
+					}
 					mockPipeline.EXPECT().
 						ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID)
 
@@ -5052,6 +5085,9 @@ containers:
 						mockPipeline.EXPECT().ZRem(
 							models.GetLastStatusRedisKey(configYaml.Name, status), gomock.Any())
 					}
+					for _, mt := range allMetrics {
+						mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any())
+					}
 					mockPipeline.EXPECT().ZRem(
 						models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
 					mockPipeline.EXPECT().Del(gomock.Any())
@@ -5067,6 +5103,9 @@ containers:
 							models.GetRoomStatusSetRedisKey(configYaml.Name, status), gomock.Any())
 						mockPipeline.EXPECT().ZRem(
 							models.GetLastStatusRedisKey(configYaml.Name, status), gomock.Any())
+					}
+					for _, mt := range allMetrics {
+						mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any())
 					}
 					mockPipeline.EXPECT().ZRem(
 						models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
@@ -5138,6 +5177,9 @@ containers:
 					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(scheduler.Name, status), room.GetRoomRedisKey())
 					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(scheduler.Name, status), roomName)
 				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
+				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), roomName)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
@@ -5189,6 +5231,9 @@ containers:
 					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(scheduler.Name, status), room.GetRoomRedisKey())
 					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(scheduler.Name, status), roomName)
 				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
+				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), roomName)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis error"))
@@ -5210,6 +5255,9 @@ containers:
 				for _, status := range allStatus {
 					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(scheduler.Name, status), room.GetRoomRedisKey())
 					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(scheduler.Name, status), roomName)
+				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
 				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), roomName)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
@@ -6071,6 +6119,9 @@ containers:
 					mockPipeline.EXPECT().
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
+				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
@@ -6237,6 +6288,9 @@ containers:
 					mockPipeline.EXPECT().
 						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
 				}
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, mt), gomock.Any())
+				}
 				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
 				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
 				mockPipeline.EXPECT().Exec()
@@ -6319,6 +6373,7 @@ containers:
 				mockDb,
 				mr,
 				clientset,
+				metricsClientset,
 				status,
 				config,
 				room,
@@ -6414,6 +6469,7 @@ containers:
 				mockDb,
 				mr,
 				clientset,
+				metricsClientset,
 				status,
 				config,
 				room,
@@ -6469,6 +6525,7 @@ containers:
 				mockDb,
 				mr,
 				clientset,
+				metricsClientset,
 				status,
 				config,
 				room,
@@ -6493,6 +6550,7 @@ containers:
 				mockDb,
 				mr,
 				clientset,
+				metricsClientset,
 				status,
 				config,
 				room,

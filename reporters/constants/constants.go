@@ -2,10 +2,11 @@ package constants
 
 // Constants for event metrics possible of being reported
 const (
-	EventGruNew    = "gru.new"
-	EventGruPing   = "gru.ping"
-	EventGruDelete = "gru.delete"
-	EventGruStatus = "gru.status"
+	EventGruNew         = "gru.new"
+	EventGruPing        = "gru.ping"
+	EventGruDelete      = "gru.delete"
+	EventGruStatus      = "gru.status"
+	EventGruMetricUsage = "gru.metric"
 
 	EventSchedulerCreate = "scheduler.create"
 	EventSchedulerUpdate = "scheduler.update"
@@ -51,6 +52,7 @@ const (
 	TagTable        = "maestro-table"
 	TagType         = "maestro-type"
 	TagError        = "maestro-error"
+	TagMetric       = "maestro-metric"
 )
 
 // Value{...} are values that reporters use

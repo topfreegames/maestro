@@ -28,19 +28,21 @@ import (
 
 	mTest "github.com/topfreegames/maestro/testing"
 	"k8s.io/client-go/kubernetes"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
 var (
-	clientset kubernetes.Interface
-	app       *api.App
-	hook      *test.Hook
-	logger    *logrus.Logger
-	config    *viper.Viper
-	mockDb    *pgmocks.MockDB
-	mockLogin *mocks.MockLogin
-	mockCtrl  *gomock.Controller
-	mmr       *models.MixedMetricsReporter
-	token     = "token"
+	clientset        kubernetes.Interface
+	metricsClientset metricsClient.Interface
+	app              *api.App
+	hook             *test.Hook
+	logger           *logrus.Logger
+	config           *viper.Viper
+	mockDb           *pgmocks.MockDB
+	mockLogin        *mocks.MockLogin
+	mockCtrl         *gomock.Controller
+	mmr              *models.MixedMetricsReporter
+	token            = "token"
 )
 
 func TestIntModels(t *testing.T) {
@@ -56,13 +58,16 @@ var _ = BeforeSuite(func() {
 	clientset, err = kubernetes.NewForConfig(minikubeConfig)
 	Expect(err).NotTo(HaveOccurred())
 
+	metricsClientset, err = metricsClient.NewForConfig(minikubeConfig)
+	Expect(err).NotTo(HaveOccurred())
+
 	logger, hook = test.NewNullLogger()
 	logger.Level = logrus.DebugLevel
 
 	config, err = mTest.GetDefaultConfig()
 	Expect(err).NotTo(HaveOccurred())
 
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, nil, nil, clientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, nil, nil, clientset, metricsClientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	user := &login.User{

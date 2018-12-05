@@ -79,6 +79,74 @@ forwarders:
         tags:
           score: score
 `
+	yamlReq = `
+name: pong-free-for-all
+game: pong
+image: pong/pong:v123
+ports:
+  - containerPort: 5050
+    protocol: UDP
+  - containerPort: 8888
+    protocol: TCP
+requests:
+  memory: "128Mi"
+  cpu: "1"
+autoscaling:
+  min: 100
+  up:
+    delta: 10
+    trigger:
+      usage: 70
+      time: 600
+    cooldown: 300
+  down:
+    delta: 2
+    trigger:
+      usage: 50
+      time: 900
+    cooldown: 300
+cmd:
+  - "./room-binary"
+`
+	yamlContReq = `
+name: pong-free-for-all
+game: pong
+image: pong/pong:v123
+ports:
+  - containerPort: 5050
+    protocol: UDP
+  - containerPort: 8888
+    protocol: TCP
+containers:
+- name: container1
+  image: image1
+  requests:
+    memory: "128Mi"
+    cpu: "1"
+  cmd:
+    - "./room-binary"
+- name: container2
+  image: image2
+  requests:
+    memory: "128Mi"
+    cpu: "1"
+  cmd:
+    - "./room-binary"
+autoscaling:
+  min: 100
+  up:
+    delta: 10
+    trigger:
+      usage: 70
+      time: 600
+    cooldown: 300
+  down:
+    delta: 2
+    trigger:
+      usage: 50
+      time: 900
+    cooldown: 300
+`
 )
 
 var _ = Describe("Scheduler", func() {
@@ -582,6 +650,29 @@ var _ = Describe("Container", func() {
 
 			newContainer := container.NewWithCopiedEnvs()
 			Expect(newContainer.Env).To(BeEmpty())
+		})
+	})
+
+	Describe("GetResourcesRequests", func() {
+		It("should return global request if no containers", func() {
+			scheduler := NewScheduler("pong-free-for-all", "pong", yamlReq)
+			req := scheduler.GetResourcesRequests()
+			Expect(req[CPUAutoScalingPolicyType]).To(BeEquivalentTo(1000))
+			Expect(req[MemAutoScalingPolicyType]).To(BeEquivalentTo(134217728))
+		})
+
+		It("should return summed container requests if containers", func() {
+			scheduler := NewScheduler("pong-free-for-all", "pong", yamlContReq)
+			req := scheduler.GetResourcesRequests()
+			Expect(req[CPUAutoScalingPolicyType]).To(BeEquivalentTo(2000))
+			Expect(req[MemAutoScalingPolicyType]).To(BeEquivalentTo(268435456))
+		})
+
+		It("should return 0 if no requests", func() {
+			scheduler := NewScheduler("pong-free-for-all", "pong", yaml1)
+			req := scheduler.GetResourcesRequests()
+			Expect(req[CPUAutoScalingPolicyType]).To(BeEquivalentTo(0))
+			Expect(req[MemAutoScalingPolicyType]).To(BeEquivalentTo(0))
 		})
 	})
 })
