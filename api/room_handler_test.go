@@ -1026,7 +1026,7 @@ forwarders:
 					expectedRet[idx] = r.GetRoomRedisKey()
 				}
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().SScan(pKey, uint64(0), "", int64(5)).Return(redis.NewScanCmdResult(expectedRet, 0, nil))
+				mockPipeline.EXPECT().SRandMemberN(pKey, int64(5)).Return(redis.NewStringSliceResult(expectedRet, nil))
 				mockPipeline.EXPECT().Exec()
 
 				url := fmt.Sprintf("/scheduler/%s/rooms", namespace)
@@ -1103,8 +1103,8 @@ forwarders:
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			pKey := models.GetRoomStatusSetRedisKey(namespace, models.StatusReady)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SScan(pKey, uint64(0), "", int64(5)).Return(
-				redis.NewScanCmdResult([]string{}, 0, errors.New("something went wrong")))
+			mockPipeline.EXPECT().SRandMemberN(pKey, int64(5)).Return(
+				redis.NewStringSliceResult([]string{}, errors.New("something went wrong")))
 			mockPipeline.EXPECT().Exec()
 
 			url := fmt.Sprintf("/scheduler/%s/rooms", namespace)

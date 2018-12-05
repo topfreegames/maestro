@@ -408,20 +408,18 @@ func GetRoomsOccupiedTimeout(redisClient interfaces.RedisClient, schedulerName s
 
 func getReadyRooms(tx redis.Pipeliner, schedulerName string, size int, mr *MixedMetricsReporter) ([]string, error) {
 	var result []string
-	rooms := tx.SScan(
+	rooms := tx.SRandMemberN(
 		GetRoomStatusSetRedisKey(schedulerName, StatusReady),
-		uint64(0),
-		"",
 		int64(size),
 	)
-	err := mr.WithSegment(SegmentSScan, func() error {
+	err := mr.WithSegment(SegmentSRandMember, func() error {
 		_, err := tx.Exec()
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	result, _, err = rooms.Result()
+	result, err = rooms.Result()
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +435,7 @@ func getReadyRooms(tx redis.Pipeliner, schedulerName string, size int, mr *Mixed
 // GetRoomsByMetric returns a list of rooms ordered by metric
 func GetRoomsByMetric(redisClient interfaces.RedisClient, schedulerName string, metricName string, size int, mr *MixedMetricsReporter) ([]string, error) {
 	var result []string
-	// TODO hacky, one day add ZRange and SScan to redis interface
+	// TODO hacky, one day add ZRange and SRandMember to redis interface
 	tx := redisClient.TxPipeline()
 	if metricName == string(RoomAutoScalingPolicyType) || metricName == string(LegacyAutoScalingPolicyType) {
 		return getReadyRooms(tx, schedulerName, size, mr)

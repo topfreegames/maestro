@@ -666,8 +666,8 @@ var _ = Describe("Room", func() {
 					expectedRet[idx] = r.GetRoomRedisKey()
 				}
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().SScan(pKey, uint64(0), "", int64(size)).Return(
-					redis.NewScanCmdResult(expectedRet, 0, nil))
+				mockPipeline.EXPECT().SRandMemberN(pKey, int64(size)).Return(
+					redis.NewStringSliceResult(expectedRet, nil))
 				mockPipeline.EXPECT().Exec()
 
 				rooms, err := models.GetRoomsByMetric(mockRedisClient, scheduler, metric, size, mmr)
@@ -682,8 +682,8 @@ var _ = Describe("Room", func() {
 				pKey := models.GetRoomStatusSetRedisKey(scheduler, models.StatusReady)
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().SScan(pKey, uint64(0), "", int64(size)).Return(
-					redis.NewScanCmdResult([]string{}, 0, errors.New("some error")))
+				mockPipeline.EXPECT().SRandMemberN(pKey, int64(size)).Return(
+					redis.NewStringSliceResult([]string{}, errors.New("some error")))
 				mockPipeline.EXPECT().Exec()
 
 				_, err := models.GetRoomsByMetric(mockRedisClient, scheduler, metric, size, mmr)
