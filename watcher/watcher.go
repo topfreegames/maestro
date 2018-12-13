@@ -304,6 +304,7 @@ func (w *Watcher) ReportRoomsStatuses() error {
 // WithRedisLock is a helper function that runs a block of code
 // that needs to hold a lock to redis
 func (w *Watcher) WithRedisLock(l *logrus.Entry, f func() error) {
+	executionID := uuid.NewV4().String()
 	lock, err := w.RedisClient.EnterCriticalSection(
 		w.RedisClient.Client, w.LockKey,
 		time.Duration(w.LockTimeoutMS)*time.Millisecond, 0, 0,
@@ -316,8 +317,9 @@ func (w *Watcher) WithRedisLock(l *logrus.Entry, f func() error) {
 		}
 	} else if lock.IsLocked() {
 		l.WithFields(logrus.Fields{
-			"lockKey":   w.LockKey,
-			"scheduler": w.SchedulerName,
+			"lockKey":     w.LockKey,
+			"scheduler":   w.SchedulerName,
+			"executionID": executionID,
 		}).Debug("lock acquired")
 		err = f()
 		if err != nil {
@@ -328,8 +330,9 @@ func (w *Watcher) WithRedisLock(l *logrus.Entry, f func() error) {
 			l.WithError(err).Error("LeaveCriticalSection failed to release lock")
 		} else {
 			l.WithFields(logrus.Fields{
-				"lockKey":   w.LockKey,
-				"scheduler": w.SchedulerName,
+				"lockKey":     w.LockKey,
+				"scheduler":   w.SchedulerName,
+				"executionID": executionID,
 			}).Debug("lock released")
 		}
 	}
