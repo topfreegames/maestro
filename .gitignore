@@ -38,6 +38,7 @@ _testmain.go
 
 # IDE files
 .vscode
+.history
 
 # Python
 __pycache__

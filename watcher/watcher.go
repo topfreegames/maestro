@@ -315,11 +315,23 @@ func (w *Watcher) WithRedisLock(l *logrus.Entry, f func() error) {
 			l.Warnf("unable to get watcher %s lock, maybe some other process has it...", w.SchedulerName)
 		}
 	} else if lock.IsLocked() {
+		l.WithFields(logrus.Fields{
+			"lockKey":   w.LockKey,
+			"scheduler": w.SchedulerName,
+		}).Debug("lock acquired")
 		err = f()
 		if err != nil {
 			l.WithError(err).Error("WithRedisLock block function failed")
 		}
-		w.RedisClient.LeaveCriticalSection(lock)
+		err = w.RedisClient.LeaveCriticalSection(lock)
+		if err != nil {
+			l.WithError(err).Error("LeaveCriticalSection failed to release lock")
+		} else {
+			l.WithFields(logrus.Fields{
+				"lockKey":   w.LockKey,
+				"scheduler": w.SchedulerName,
+			}).Debug("lock released")
+		}
 	}
 }
 
