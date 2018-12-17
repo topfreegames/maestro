@@ -22,6 +22,7 @@ import (
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
@@ -138,7 +139,7 @@ func (r *Room) SetStatus(
 		pipe.ZRem(lastStatusChangedKey, r.ID)
 	}
 
-	r.addUtilizationMetricsToRedis(metricsClientset, pipe, scheduler)
+	r.addUtilizationMetricsToRedis(metricsClientset, pipe, scheduler, mr)
 	// remove from other statuses to be safe
 	for _, st := range allStatus {
 		if st != status {
@@ -153,6 +154,7 @@ func (r *Room) addUtilizationMetricsToRedis(
 	metricsClientset metricsClient.Interface,
 	pipe redis.Pipeliner,
 	scheduler *Scheduler,
+	mr *MixedMetricsReporter,
 ) {
 	sp := scheduler.GetAutoScalingPolicy()
 	metricsMap := map[AutoScalingPolicyType]bool{}
@@ -164,7 +166,12 @@ func (r *Room) addUtilizationMetricsToRedis(
 	}
 
 	requests := scheduler.GetResourcesRequests()
-	pmetrics, err := metricsClientset.Metrics().PodMetricses(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
+	var pmetrics *v1beta1.PodMetrics
+	err := mr.WithSegment(SegmentMetrics, func() error {
+		var err error
+		pmetrics, err = metricsClientset.Metrics().PodMetricses(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
+		return err
+	})
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		return
 	}
