@@ -128,7 +128,7 @@ func GaugeHandler(
 ) error {
 	tags := createAllowedTags(opts, []string{
 		constants.TagGame, constants.TagScheduler, constants.TagRegion,
-		constants.TagReason,
+		constants.TagReason, constants.TagMetric,
 	})
 	gauge, err := strconv.ParseFloat(opts["gauge"], 64)
 	if err != nil {
