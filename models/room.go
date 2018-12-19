@@ -139,7 +139,10 @@ func (r *Room) SetStatus(
 		pipe.ZRem(lastStatusChangedKey, r.ID)
 	}
 
-	r.addUtilizationMetricsToRedis(metricsClientset, pipe, scheduler, mr)
+	mr.WithSegment("debug", func() error {
+		r.addUtilizationMetricsToRedis(metricsClientset, pipe, scheduler, mr)
+		return nil
+	})
 	// remove from other statuses to be safe
 	for _, st := range allStatus {
 		if st != status {
@@ -156,6 +159,7 @@ func (r *Room) addUtilizationMetricsToRedis(
 	scheduler *Scheduler,
 	mr *MixedMetricsReporter,
 ) {
+	fmt.Println("[DEBUG] entered addUtilizationMetricsToRedis")
 	sp := scheduler.GetAutoScalingPolicy()
 	metricsMap := map[AutoScalingPolicyType]bool{}
 	metricsTriggers := append(sp.Up.MetricsTrigger, sp.Down.MetricsTrigger...)
@@ -166,9 +170,11 @@ func (r *Room) addUtilizationMetricsToRedis(
 	}
 
 	if len(metricsMap) == 0 {
+		fmt.Println("[DEBUG] no metrics enabled, exit")
 		return
 	}
 
+	fmt.Println("[DEBUG] retrieving metrics")
 	requests := scheduler.GetResourcesRequests()
 	var pmetrics *v1beta1.PodMetrics
 	err := mr.WithSegment(SegmentMetrics, func() error {
