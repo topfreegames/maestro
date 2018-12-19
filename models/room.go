@@ -165,6 +165,10 @@ func (r *Room) addUtilizationMetricsToRedis(
 		}
 	}
 
+	if len(metricsMap) == 0 {
+		return
+	}
+
 	requests := scheduler.GetResourcesRequests()
 	var pmetrics *v1beta1.PodMetrics
 	err := mr.WithSegment(SegmentMetrics, func() error {
