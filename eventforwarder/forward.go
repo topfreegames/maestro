@@ -112,7 +112,7 @@ func ForwardRoomEvent(
 					"roomId": room.ID,
 					"game":   cachedScheduler.Scheduler.Game,
 				}
-				if eventType != PingTimeoutEvent {
+				if eventType != PingTimeoutEvent && eventType != OccupiedTimeoutEvent {
 					infos, err = room.GetRoomInfos(db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler, addrGetter)
 					metadata["ipv6Label"] = infos["ipv6Label"]
 
@@ -124,7 +124,7 @@ func ForwardRoomEvent(
 					reportIpv6Status(infos, logger)
 					delete(infos, "ipv6Label")
 
-				} else { // fill host and port with zero values when pingTimeout event so it won't break the GRPCForwarder
+				} else { // fill host and port with zero values when pingTimeout or occupiedTimeout event so it won't break the GRPCForwarder
 					infos["host"] = ""
 					infos["port"] = int32(0)
 				}
