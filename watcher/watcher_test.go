@@ -695,18 +695,18 @@ var _ = Describe("Watcher", func() {
 					triggerMap[trigger.Type] = triggerSpec{
 						targetUsagePercent:          trigger.Usage,
 						pointsAboveThresholdPercent: pointsAbove,
-						limit:       trigger.Limit,
-						time:        trigger.Time,
-						triggerType: trigger.Type,
+						limit:                       trigger.Limit,
+						time:                        trigger.Time,
+						triggerType:                 trigger.Type,
 					}
 				}
 				if _, exists := triggerMap[trigger.Type]; !exists {
 					triggerMap[trigger.Type] = triggerSpec{
 						targetUsagePercent:          trigger.Usage,
 						pointsAboveThresholdPercent: pointsAbove,
-						limit:       trigger.Limit,
-						time:        trigger.Time,
-						triggerType: trigger.Type,
+						limit:                       trigger.Limit,
+						time:                        trigger.Time,
+						triggerType:                 trigger.Type,
 					}
 				}
 			}
@@ -721,18 +721,18 @@ var _ = Describe("Watcher", func() {
 					triggerMap[trigger.Type] = triggerSpec{
 						targetUsagePercent:          trigger.Usage,
 						pointsAboveThresholdPercent: 100 - pointsAbove,
-						limit:       trigger.Limit,
-						time:        trigger.Time,
-						triggerType: trigger.Type,
+						limit:                       trigger.Limit,
+						time:                        trigger.Time,
+						triggerType:                 trigger.Type,
 					}
 				}
 				if _, exists := triggerMap[trigger.Type]; !exists {
 					triggerMap[trigger.Type] = triggerSpec{
 						targetUsagePercent:          trigger.Usage,
 						pointsAboveThresholdPercent: 100 - pointsAbove,
-						limit:       trigger.Limit,
-						time:        trigger.Time,
-						triggerType: trigger.Type,
+						limit:                       trigger.Limit,
+						time:                        trigger.Time,
+						triggerType:                 trigger.Type,
 					}
 				}
 				down = append(down, triggerMap[trigger.Type])
@@ -3980,7 +3980,8 @@ var _ = Describe("Watcher", func() {
 					Expect(status).To(Equal(models.RoomTerminated))
 					Expect(infos["game"]).To(Equal(schedulerName))
 					Expect(expectedRooms).To(ContainElement(infos["roomId"]))
-				}).Times(len(expectedRooms))
+				}).Times(len(expectedRooms) * 2)
+
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
@@ -4018,6 +4019,11 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
 			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
+
+			mockEventForwarder.EXPECT().Forward(gomock.Any(), models.RoomTerminated, gomock.Any(), gomock.Any()).Do(
+				func(ctx context.Context, status string, infos, fwdMetadata map[string]interface{}) {
+					Expect(status).To(Equal(models.RoomTerminated))
+				}).Times(len(expectedRooms))
 
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {

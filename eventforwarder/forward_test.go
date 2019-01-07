@@ -67,7 +67,7 @@ var _ = Describe("Forward", func() {
 			Expect(response.Message).To(Equal("success"))
 		})
 
-		It("should forward pingTimeout room event", func() {
+		It("should forward pingTimeout and occupiedTimeout room events", func() {
 			ctx := context.Background()
 			mockEventForwarder.EXPECT().Forward(
 				ctx,
@@ -88,9 +88,9 @@ var _ = Describe("Forward", func() {
 				reportersConstants.TagHostname:  Hostname(),
 				reportersConstants.TagRoute:     RouteRoomEvent,
 				reportersConstants.TagStatus:    "success",
-			})
+			}).Times(2)
 
-			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any()).Times(2)
 
 			response, err := ForwardRoomEvent(
 				ctx,
@@ -100,6 +100,47 @@ var _ = Describe("Forward", func() {
 				room,
 				models.StatusReady,
 				PingTimeoutEvent,
+				nil,
+				cache,
+				logger,
+				roomAddrGetter,
+			)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response.Code).To(Equal(200))
+			Expect(response.Message).To(Equal("success"))
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]interface{}{
+				reportersConstants.TagGame:      gameName,
+				reportersConstants.TagScheduler: schedulerName,
+				reportersConstants.TagHostname:  Hostname(),
+				reportersConstants.TagRoute:     RouteRoomEvent,
+				reportersConstants.TagStatus:    "success",
+			})
+
+			mockEventForwarder.EXPECT().Forward(
+				ctx,
+				models.StatusTerminated,
+				map[string]interface{}{
+					"host":     "",
+					"port":     int32(0),
+					"roomId":   roomName,
+					"game":     gameName,
+					"metadata": map[string]interface{}{},
+				},
+				metadata,
+			).Return(int32(200), "success", nil)
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
+
+			response, err = ForwardRoomEvent(
+				ctx,
+				mockForwarders,
+				mockDB,
+				clientset,
+				room,
+				models.StatusTerminated,
+				OccupiedTimeoutEvent,
 				nil,
 				cache,
 				logger,
