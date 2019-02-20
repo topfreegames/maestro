@@ -361,6 +361,50 @@ var _ = Describe("Scheduler", func() {
 		})
 	})
 
+	Describe("SavePodsMetricsUtilizationPipeAndExec", func() {
+		It("should save pods metricses", func() {
+			var rooms []*Room
+			var usages []float64
+
+			for i := 0; i < 5; i++ {
+				rooms = append(rooms, NewRoom(string(i), name))
+				usages = append(usages, float64(100))
+			}
+			scheduler := NewScheduler(name, game, yaml1)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().ZAdd(GetRoomMetricsRedisKey(name, string(CPUAutoScalingPolicyType)), gomock.Any()).Times(5)
+			mockPipeline.EXPECT().Exec()
+
+			scheduler.SavePodsMetricsUtilizationPipeAndExec(
+				mockRedisClient,
+				metricsClientset,
+				mmr,
+				CPUAutoScalingPolicyType,
+				rooms,
+				usages,
+			)
+			// Expect(autoScalingPolicy.Min).To(Equal(100))
+		})
+
+		It("should not error when no rooms", func() {
+			var rooms []*Room
+			var usages []float64
+
+			scheduler := NewScheduler(name, game, yaml1)
+
+			scheduler.SavePodsMetricsUtilizationPipeAndExec(
+				mockRedisClient,
+				metricsClientset,
+				mmr,
+				CPUAutoScalingPolicyType,
+				rooms,
+				usages,
+			)
+			// Expect(autoScalingPolicy.Min).To(Equal(100))
+		})
+	})
+
 	Describe("List Schedulers Names", func() {
 		It("should get schedulers names from the database", func() {
 			expectedNames := []string{"scheduler1", "scheduler2", "scheduler3"}

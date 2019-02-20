@@ -1071,7 +1071,7 @@ func BuildContainerMetricsArray(containerDefinitions []ContainerMetricsDefinitio
 }
 
 // CreatePod mocks create pod method setting cpu and mem requests
-func CreatePod(clientset *fake.Clientset, cpuRequests, memRequests, schedulerName, containerName string) {
+func CreatePod(clientset *fake.Clientset, cpuRequests, memRequests, schedulerName, podName, containerName string) {
 	pod := &v1.Pod{
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -1087,7 +1087,11 @@ func CreatePod(clientset *fake.Clientset, cpuRequests, memRequests, schedulerNam
 			},
 		},
 	}
-	pod.SetName(schedulerName)
+	if podName != "" {
+		pod.SetName(podName)
+	} else {
+		pod.SetName(schedulerName)
+	}
 	clientset.CoreV1().Pods(schedulerName).Create(pod)
 }
 
@@ -1116,10 +1120,13 @@ func CreatePodMetricsList(containers []metricsapi.ContainerMetrics, schedulerNam
 
 // CreatePodsMetricsList returns a fakeMetricsClientset with reactor to PodMetricses List call
 // It will use the same array of containers for every pod
-func CreatePodsMetricsList(containers []metricsapi.ContainerMetrics, numPods int, schedulerName string) *fakeMetricsClient.Clientset {
+func CreatePodsMetricsList(containers []metricsapi.ContainerMetrics, numPods int, schedulerName string, errArray ...error) *fakeMetricsClient.Clientset {
 	myFakeMetricsClient := &fakeMetricsClient.Clientset{}
 
 	myFakeMetricsClient.AddReactor("list", "pods", func(action testing.Action) (handled bool, ret runtime.Object, err error) {
+		if len(errArray) > 0 && errArray[0] != nil {
+			return true, nil, errArray[0]
+		}
 		metrics := &metricsapi.PodMetricsList{}
 		for i := 0; i < numPods; i++ {
 			podMetric := metricsapi.PodMetrics{

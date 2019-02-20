@@ -152,7 +152,7 @@ var _ = Describe("AutoScaler", func() {
 					Occupied:    8,
 					Terminating: 0,
 				}
-				testing.CreatePod(clientset, "1.0", "0", schedulerName, containerName)
+				testing.CreatePod(clientset, "1.0", "0", schedulerName, "", containerName)
 			})
 
 			It("should return delta", func() {
@@ -233,7 +233,7 @@ var _ = Describe("AutoScaler", func() {
 					Terminating: 0,
 				}
 
-				testing.CreatePod(clientset, "0", "1Gi", schedulerName, containerName)
+				testing.CreatePod(clientset, "0", "1Gi", schedulerName, "", containerName)
 			})
 
 			It("should return delta", func() {

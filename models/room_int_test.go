@@ -22,7 +22,8 @@ var _ = Describe("Room", func() {
 	schedulerName := uuid.NewV4().String()
 	name := uuid.NewV4().String()
 	var room *models.Room
-	configYaml := &models.ConfigYAML{Game: "game-name"}
+	// configYaml := &models.ConfigYAML{Game: "game-name"}
+	scheduler := models.NewScheduler(name, "game-name", "")
 
 	AfterEach(func() {
 		mr := &models.MixedMetricsReporter{}
@@ -34,7 +35,7 @@ var _ = Describe("Room", func() {
 		It("should set status ready", func() {
 			room = models.NewRoom(name, schedulerName)
 			now := time.Now().Unix()
-			_, err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady, configYaml, false)
+			_, err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady, scheduler, false)
 			Expect(err).NotTo(HaveOccurred())
 			pipe := redisClient.Client.TxPipeline()
 			status := pipe.HMGet(room.GetRoomRedisKey(), "status")
@@ -68,7 +69,7 @@ var _ = Describe("Room", func() {
 		It("should set status occupied", func() {
 			room = models.NewRoom(name, schedulerName)
 			now := time.Now().Unix()
-			_, err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusOccupied, configYaml, false)
+			_, err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusOccupied, scheduler, false)
 			Expect(err).NotTo(HaveOccurred())
 			pipe := redisClient.Client.TxPipeline()
 			status := pipe.HMGet(room.GetRoomRedisKey(), "status")
@@ -102,7 +103,7 @@ var _ = Describe("Room", func() {
 		It("should not update timestamp if status is still occupied", func() {
 			room = models.NewRoom(name, schedulerName)
 			now := time.Now().UnixNano()
-			_, err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady, configYaml, false)
+			_, err := room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady, scheduler, false)
 			Expect(err).NotTo(HaveOccurred())
 
 			pipe := redisClient.Client.TxPipeline()
@@ -117,7 +118,7 @@ var _ = Describe("Room", func() {
 
 			time.Sleep(100 * time.Millisecond)
 
-			_, err = room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady, configYaml, false)
+			_, err = room.SetStatus(redisClient.Client, mockDb, mmr, models.StatusReady, scheduler, false)
 			Expect(err).NotTo(HaveOccurred())
 
 			pipe = redisClient.Client.TxPipeline()

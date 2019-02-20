@@ -9,7 +9,9 @@ package watcher
 
 import (
 	"context"
+	e "errors"
 	"fmt"
+	"math"
 	"os"
 	"os/signal"
 	"strconv"
@@ -35,6 +37,7 @@ import (
 	"github.com/topfreegames/maestro/reporters"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
@@ -73,6 +76,19 @@ type Watcher struct {
 type scaling struct {
 	ChangedState, InSync bool
 	Delta                int
+}
+
+func reportUsage(game, scheduler, metric string, requests, usage int64) error {
+	if requests == 0 {
+		return e.New("cannot divide by zero")
+	}
+	gauge := fmt.Sprintf("%.2f", float64(usage)/float64(requests))
+	return reporters.Report(reportersConstants.EventGruMetricUsage, map[string]interface{}{
+		reportersConstants.TagGame:      game,
+		reportersConstants.TagScheduler: scheduler,
+		reportersConstants.TagMetric:    metric,
+		"gauge":                         gauge,
+	})
 }
 
 // NewWatcher is the watcher constructor
@@ -240,7 +256,111 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 func (w *Watcher) watchRooms() error {
 	w.RemoveDeadRooms()
 	w.AutoScale()
+	w.AddUtilizationMetricsToRedis()
 	return nil
+}
+
+// AddUtilizationMetricsToRedis store the pods usage metrics (cpu and mem) in a redis sorted set
+func (w *Watcher) AddUtilizationMetricsToRedis() {
+	logger := w.Logger.WithFields(logrus.Fields{
+		"executionID": uuid.NewV4().String(),
+		"operation":   "addUtilizationMetricsToRedis",
+		"scheduler":   w.SchedulerName,
+	})
+	logger.Info("starting to add utilization metrics to redis")
+
+	scheduler, _, _, err := controller.GetSchedulerScalingInfo(
+		logger,
+		w.MetricsReporter,
+		w.DB,
+		w.RedisClient.Client,
+		w.SchedulerName,
+	)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			w.Run = false
+			return
+		}
+		logger.WithError(err).Error("failed to get scheduler scaling info")
+		return
+	}
+
+	sp := scheduler.GetAutoScalingPolicy()
+	metricsMap := map[models.AutoScalingPolicyType]bool{}
+	metricsTriggers := append(sp.Up.MetricsTrigger, sp.Down.MetricsTrigger...)
+	for _, trigger := range metricsTriggers {
+		if models.ResourcePolicyType(trigger.Type) {
+			metricsMap[trigger.Type] = true
+		}
+	}
+
+	if len(metricsMap) == 0 {
+		return
+	}
+
+	requests := scheduler.GetResourcesRequests()
+	var pmetricsList *v1beta1.PodMetricsList
+	var pods *v1.PodList
+	err = w.MetricsReporter.WithSegment(models.SegmentMetrics, func() error {
+		var err error
+		pmetricsList, err = w.KubernetesMetricsClient.Metrics().PodMetricses(w.SchedulerName).List(metav1.ListOptions{})
+		return err
+	})
+	if err != nil {
+		logger.WithError(err).Error("failed to list pods metricses")
+		return
+	}
+
+	// cant get metrics from pods yet. List pods created and set usage=math.MaxInt64 for them
+	if err != nil || pmetricsList == nil || len(pmetricsList.Items) == 0 {
+		pods, err = w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(
+			metav1.ListOptions{})
+		if err != nil {
+			logger.WithError(err).Error("failed to list pods on namespace")
+			return
+		}
+	}
+
+	for metric := range metricsMap {
+		var usages []float64
+		var rooms []*models.Room
+		if (err != nil || pmetricsList == nil || len(pmetricsList.Items) == 0) && pods != nil {
+			usage := int64(math.MaxInt64)
+			for _, pod := range pods.Items {
+				room := &models.Room{
+					ID:            pod.Name,
+					SchedulerName: w.SchedulerName,
+				}
+				usages = append(usages, float64(usage))
+				rooms = append(rooms, room)
+				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
+			}
+		} else {
+			for _, pmetrics := range pmetricsList.Items {
+				usage := int64(0)
+				for _, container := range pmetrics.Containers {
+					usage += models.GetResourceUsage(container.Usage, metric)
+				}
+				room := &models.Room{
+					ID:            pmetrics.Name,
+					SchedulerName: w.SchedulerName,
+				}
+				usages = append(usages, float64(usage))
+				rooms = append(rooms, room)
+				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
+			}
+		}
+
+		scheduler.SavePodsMetricsUtilizationPipeAndExec(
+			w.RedisClient.Client,
+			w.KubernetesMetricsClient,
+			w.MetricsReporter,
+			metric,
+			rooms,
+			usages,
+		)
+	}
 }
 
 // ReportRoomsStatuses runs as a block of code inside WithRedisLock

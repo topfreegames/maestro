@@ -14,8 +14,11 @@ import (
 	"time"
 
 	"github.com/go-pg/pg"
+	"github.com/go-redis/redis"
 	"github.com/topfreegames/extensions/pg/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
 // Scheduler is the struct that defines a maestro scheduler
@@ -369,6 +372,39 @@ func (c *Scheduler) GetResourcesRequests() map[AutoScalingPolicyType]int64 {
 	}
 
 	return res
+}
+
+// SavePodsMetricsUtilizationPipeAndExec set a sorted set on redis with the usages of all pods from a scheduler
+func (c *Scheduler) SavePodsMetricsUtilizationPipeAndExec(
+	redisClient redisinterfaces.RedisClient,
+	metricsClientset metricsClient.Interface,
+	mr *MixedMetricsReporter,
+	metric AutoScalingPolicyType,
+	rooms []*Room,
+	usages []float64,
+) error {
+
+	if len(rooms) == 0 || len(usages) == 0 {
+		return nil
+	}
+
+	pipe := redisClient.TxPipeline()
+	for i, room := range rooms {
+		pipe.ZAdd(
+			GetRoomMetricsRedisKey(c.Name, string(metric)),
+			redis.Z{Member: room.ID, Score: float64(usages[i])},
+		)
+	}
+
+	err := mr.WithSegment(SegmentPipeExec, func() error {
+		var err error
+		_, err = pipe.Exec()
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ListSchedulersNames list all schedulers names
