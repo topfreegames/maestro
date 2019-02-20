@@ -313,7 +313,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 	}
 
 	// cant get metrics from pods yet. List pods created and set usage=math.MaxInt64 for them
-	if err != nil || pmetricsList == nil || len(pmetricsList.Items) == 0 {
+	if pmetricsList == nil || len(pmetricsList.Items) == 0 {
 		pods, err = w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(
 			metav1.ListOptions{})
 		if err != nil {
@@ -323,17 +323,16 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 	}
 
 	for metric := range metricsMap {
-		var usages []float64
-		var rooms []*models.Room
-		if (err != nil || pmetricsList == nil || len(pmetricsList.Items) == 0) && pods != nil {
+		var usages []map[string]interface{}
+		if (pmetricsList == nil || len(pmetricsList.Items) == 0) && pods != nil {
 			usage := int64(math.MaxInt64)
 			for _, pod := range pods.Items {
 				room := &models.Room{
 					ID:            pod.Name,
 					SchedulerName: w.SchedulerName,
 				}
-				usages = append(usages, float64(usage))
-				rooms = append(rooms, room)
+
+				usages = append(usages, map[string]interface{}{"value": float64(usage), "room": room})
 				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
 			}
 		} else {
@@ -346,8 +345,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 					ID:            pmetrics.Name,
 					SchedulerName: w.SchedulerName,
 				}
-				usages = append(usages, float64(usage))
-				rooms = append(rooms, room)
+				usages = append(usages, map[string]interface{}{"value": float64(usage), "room": room})
 				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
 			}
 		}
@@ -357,7 +355,6 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 			w.KubernetesMetricsClient,
 			w.MetricsReporter,
 			metric,
-			rooms,
 			usages,
 		)
 	}

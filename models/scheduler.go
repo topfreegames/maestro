@@ -380,19 +380,18 @@ func (c *Scheduler) SavePodsMetricsUtilizationPipeAndExec(
 	metricsClientset metricsClient.Interface,
 	mr *MixedMetricsReporter,
 	metric AutoScalingPolicyType,
-	rooms []*Room,
-	usages []float64,
+	usages []map[string]interface{},
 ) error {
 
-	if len(rooms) == 0 || len(usages) == 0 {
+	if len(usages) == 0 {
 		return nil
 	}
 
 	pipe := redisClient.TxPipeline()
-	for i, room := range rooms {
+	for _, usage := range usages {
 		pipe.ZAdd(
 			GetRoomMetricsRedisKey(c.Name, string(metric)),
-			redis.Z{Member: room.ID, Score: float64(usages[i])},
+			redis.Z{Member: usage["room"].(*Room).ID, Score: usage["value"].(float64)},
 		)
 	}
 
