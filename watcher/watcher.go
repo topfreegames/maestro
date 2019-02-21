@@ -349,6 +349,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 				roomUsages[roomUsagesIdxMap[pmetrics.Name]].Usage = float64(usage)
 				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
 			}
+		}
 
 		scheduler.SavePodsMetricsUtilizationPipeAndExec(
 			w.RedisClient.Client,
