@@ -54,6 +54,12 @@ type RoomPort struct {
 	Port int32  `json:"port"`
 }
 
+// RoomUsage struct
+type RoomUsage struct {
+	Name  string  `json:"name"`
+	Usage float64 `json:"usage"`
+}
+
 // NewRoom is the room constructor
 func NewRoom(id, schedulerName string) *Room {
 	return &Room{

@@ -323,7 +323,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 	}
 
 	for metric := range metricsMap {
-		var usages []map[string]interface{}
+		var roomUsages []*models.RoomUsage
 		if (pmetricsList == nil || len(pmetricsList.Items) == 0) && pods != nil {
 			usage := int64(math.MaxInt64)
 			for _, pod := range pods.Items {
@@ -332,7 +332,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 					SchedulerName: w.SchedulerName,
 				}
 
-				usages = append(usages, map[string]interface{}{"value": float64(usage), "room": room})
+				roomUsages = append(roomUsages, &models.RoomUsage{Name: room.ID, Usage: float64(usage)})
 				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
 			}
 		} else {
@@ -345,7 +345,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 					ID:            pmetrics.Name,
 					SchedulerName: w.SchedulerName,
 				}
-				usages = append(usages, map[string]interface{}{"value": float64(usage), "room": room})
+				roomUsages = append(roomUsages, &models.RoomUsage{Name: room.ID, Usage: float64(usage)})
 				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
 			}
 		}
@@ -355,7 +355,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 			w.KubernetesMetricsClient,
 			w.MetricsReporter,
 			metric,
-			usages,
+			roomUsages,
 		)
 	}
 }

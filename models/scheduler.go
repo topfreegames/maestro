@@ -380,28 +380,25 @@ func (c *Scheduler) SavePodsMetricsUtilizationPipeAndExec(
 	metricsClientset metricsClient.Interface,
 	mr *MixedMetricsReporter,
 	metric AutoScalingPolicyType,
-	usages []map[string]interface{},
+	roomUsages []*RoomUsage,
 ) error {
 
-	if len(usages) == 0 {
+	if len(roomUsages) == 0 {
 		return nil
 	}
 
 	pipe := redisClient.TxPipeline()
-	for _, usage := range usages {
+	for _, roomUsage := range roomUsages {
 		pipe.ZAdd(
 			GetRoomMetricsRedisKey(c.Name, string(metric)),
-			redis.Z{Member: usage["room"].(*Room).ID, Score: usage["value"].(float64)},
+			redis.Z{Member: roomUsage.Name, Score: roomUsage.Usage},
 		)
 	}
 
-	err := mr.WithSegment(SegmentPipeExec, func() error {
-		var err error
-		_, err = pipe.Exec()
+	return mr.WithSegment(SegmentPipeExec, func() error {
+		_, err := pipe.Exec()
 		return err
 	})
-
-	return nil
 }
 
 // ListSchedulersNames list all schedulers names
