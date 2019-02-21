@@ -1120,7 +1120,7 @@ func CreatePodMetricsList(containers []metricsapi.ContainerMetrics, schedulerNam
 
 // CreatePodsMetricsList returns a fakeMetricsClientset with reactor to PodMetricses List call
 // It will use the same array of containers for every pod
-func CreatePodsMetricsList(containers []metricsapi.ContainerMetrics, numPods int, schedulerName string, errArray ...error) *fakeMetricsClient.Clientset {
+func CreatePodsMetricsList(containers []metricsapi.ContainerMetrics, pods []string, schedulerName string, errArray ...error) *fakeMetricsClient.Clientset {
 	myFakeMetricsClient := &fakeMetricsClient.Clientset{}
 
 	myFakeMetricsClient.AddReactor("list", "pods", func(action testing.Action) (handled bool, ret runtime.Object, err error) {
@@ -1128,10 +1128,10 @@ func CreatePodsMetricsList(containers []metricsapi.ContainerMetrics, numPods int
 			return true, nil, errArray[0]
 		}
 		metrics := &metricsapi.PodMetricsList{}
-		for i := 0; i < numPods; i++ {
+		for _, pod := range pods {
 			podMetric := metricsapi.PodMetrics{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      schedulerName,
+					Name:      pod,
 					Namespace: schedulerName,
 				},
 				Timestamp:  metav1.Time{Time: time.Now()},

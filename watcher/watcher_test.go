@@ -777,7 +777,12 @@ var _ = Describe("Watcher", func() {
 					},
 				},
 			)
-			fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, simSpec.roomCount.Available(), configYaml.Name)
+
+			pods := make([]string, simSpec.roomCount.Available())
+			for i := 0; i < simSpec.roomCount.Available(); i++ {
+				pods[i] = configYaml.Name
+			}
+			fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, pods, configYaml.Name)
 
 			// create watcher
 			w = watcher.NewWatcher(
@@ -4123,7 +4128,35 @@ var _ = Describe("Watcher", func() {
 						},
 					},
 				)
-				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, expC.Total(), configYaml.Name)
+
+				pods := make([]string, expC.Total())
+				for i := 0; i < expC.Total(); i++ {
+					name := fmt.Sprintf("%s-%d", configYaml.Name, i)
+					pods[i] = name
+					mem := float64(memUsage * int(math.Pow10(int(memScale))))
+					cpu := float64(cpuUsage)
+					testing.CreatePod(clientset, "1.0", "1Gi", configYaml.Name, name, configYaml.Name)
+
+					mockPipeline.EXPECT().ZAdd(
+						models.GetRoomMetricsRedisKey(configYaml.Name, "cpu"),
+						redis.Z{Member: name, Score: cpu},
+					).Do(
+						func(_ string, args redis.Z) {
+							Expect(args.Member).To(Equal(name))
+							Expect(args.Score).To(BeEquivalentTo(cpu))
+						})
+
+					mockPipeline.EXPECT().ZAdd(
+						models.GetRoomMetricsRedisKey(configYaml.Name, "mem"),
+						redis.Z{Member: name, Score: mem},
+					).Do(
+						func(_ string, args redis.Z) {
+							Expect(args.Member).To(Equal(name))
+							Expect(args.Score).To(BeEquivalentTo(mem))
+						})
+				}
+
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, pods, configYaml.Name)
 
 				w = watcher.NewWatcher(config,
 					logger,
@@ -4138,18 +4171,6 @@ var _ = Describe("Watcher", func() {
 					[]*eventforwarder.Info{})
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
-
-				mockPipeline.EXPECT().ZAdd(models.GetRoomMetricsRedisKey(configYaml.Name, "cpu"), gomock.Any()).Do(
-					func(_ string, args redis.Z) {
-						Expect(args.Member).To(Equal(configYaml.Name))
-						Expect(args.Score).To(BeEquivalentTo(cpuUsage))
-					}).Times(expC.Total())
-
-				mockPipeline.EXPECT().ZAdd(models.GetRoomMetricsRedisKey(configYaml.Name, "mem"), gomock.Any()).Do(
-					func(_ string, args redis.Z) {
-						Expect(args.Member).To(Equal(configYaml.Name))
-						Expect(args.Score).To(BeEquivalentTo(memUsage * int(math.Pow10(int(memScale)))))
-					}).Times(expC.Total())
 				mockPipeline.EXPECT().Exec().Times(2)
 
 				Expect(func() { w.AddUtilizationMetricsToRedis() }).ShouldNot(Panic())
@@ -4185,10 +4206,32 @@ var _ = Describe("Watcher", func() {
 					},
 				)
 
-				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 0, configYaml.Name)
 				for i := 0; i < expC.Total(); i++ {
-					testing.CreatePod(clientset, "1.0", "1Gi", configYaml.Name, fmt.Sprintf("%s-%d", configYaml.Name, i), configYaml.Name)
+					name := fmt.Sprintf("%s-%d", configYaml.Name, i)
+					mem := float64(math.MaxInt64)
+					cpu := float64(math.MaxInt64)
+					testing.CreatePod(clientset, "1.0", "1Gi", configYaml.Name, name, configYaml.Name)
+
+					mockPipeline.EXPECT().ZAdd(
+						models.GetRoomMetricsRedisKey(configYaml.Name, "cpu"),
+						redis.Z{Member: name, Score: cpu},
+					).Do(
+						func(_ string, args redis.Z) {
+							Expect(args.Member).To(Equal(name))
+							Expect(args.Score).To(BeEquivalentTo(cpu))
+						})
+
+					mockPipeline.EXPECT().ZAdd(
+						models.GetRoomMetricsRedisKey(configYaml.Name, "mem"),
+						redis.Z{Member: name, Score: mem},
+					).Do(
+						func(_ string, args redis.Z) {
+							Expect(args.Member).To(Equal(name))
+							Expect(args.Score).To(BeEquivalentTo(mem))
+						})
 				}
+
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{}, configYaml.Name)
 
 				w = watcher.NewWatcher(config,
 					logger,
@@ -4203,16 +4246,6 @@ var _ = Describe("Watcher", func() {
 					[]*eventforwarder.Info{})
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
-
-				mockPipeline.EXPECT().ZAdd(models.GetRoomMetricsRedisKey(configYaml.Name, "cpu"), gomock.Any()).Do(
-					func(_ string, args redis.Z) {
-						Expect(args.Score).To(BeEquivalentTo(float64(math.MaxInt64)))
-					}).Times(expC.Total())
-
-				mockPipeline.EXPECT().ZAdd(models.GetRoomMetricsRedisKey(configYaml.Name, "mem"), gomock.Any()).Do(
-					func(_ string, args redis.Z) {
-						Expect(args.Score).To(BeEquivalentTo(float64(math.MaxInt64)))
-					}).Times(expC.Total())
 				mockPipeline.EXPECT().Exec().Times(2)
 
 				Expect(func() { w.AddUtilizationMetricsToRedis() }).ShouldNot(Panic())
@@ -4248,7 +4281,7 @@ var _ = Describe("Watcher", func() {
 					},
 				)
 
-				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 0, configYaml.Name, errors.New("unknown"))
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{}, configYaml.Name, errors.New("unknown"))
 
 				w = watcher.NewWatcher(config,
 					logger,

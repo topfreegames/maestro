@@ -335,9 +335,9 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 		logger.WithError(err).Error("failed to list pods metricses")
 	}
 
-	if pmetricsList != nil && len(pmetricsList.Items) > 0 {
-		for metric := range metricsMap {
-			roomUsages, roomUsagesIdxMap := createRoomUsages(pods)
+	for metric := range metricsMap {
+		roomUsages, roomUsagesIdxMap := createRoomUsages(pods)
+		if pmetricsList != nil && len(pmetricsList.Items) > 0 {
 			for _, pmetrics := range pmetricsList.Items {
 				usage := int64(0)
 				for _, container := range pmetrics.Containers {
@@ -346,16 +346,16 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 				roomUsages[roomUsagesIdxMap[pmetrics.Name]].Usage = float64(usage)
 				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
 			}
-
-			scheduler.SavePodsMetricsUtilizationPipeAndExec(
-				w.RedisClient.Client,
-				w.KubernetesMetricsClient,
-				w.MetricsReporter,
-				metric,
-				roomUsages,
-			)
-
 		}
+
+		scheduler.SavePodsMetricsUtilizationPipeAndExec(
+			w.RedisClient.Client,
+			w.KubernetesMetricsClient,
+			w.MetricsReporter,
+			metric,
+			roomUsages,
+		)
+
 	}
 }
 

@@ -363,12 +363,10 @@ var _ = Describe("Scheduler", func() {
 
 	Describe("SavePodsMetricsUtilizationPipeAndExec", func() {
 		It("should save pods metricses", func() {
-			var rooms []*Room
-			var usages []float64
+			roomUsages := make([]*RoomUsage, 5)
 
 			for i := 0; i < 5; i++ {
-				rooms = append(rooms, NewRoom(string(i), name))
-				usages = append(usages, float64(100))
+				roomUsages[i] = &RoomUsage{Name: name, Usage: float64(100)}
 			}
 			scheduler := NewScheduler(name, game, yaml1)
 
@@ -381,16 +379,12 @@ var _ = Describe("Scheduler", func() {
 				metricsClientset,
 				mmr,
 				CPUAutoScalingPolicyType,
-				rooms,
-				usages,
+				roomUsages,
 			)
 			// Expect(autoScalingPolicy.Min).To(Equal(100))
 		})
 
 		It("should not error when no rooms", func() {
-			var rooms []*Room
-			var usages []float64
-
 			scheduler := NewScheduler(name, game, yaml1)
 
 			scheduler.SavePodsMetricsUtilizationPipeAndExec(
@@ -398,8 +392,7 @@ var _ = Describe("Scheduler", func() {
 				metricsClientset,
 				mmr,
 				CPUAutoScalingPolicyType,
-				rooms,
-				usages,
+				[]*RoomUsage{},
 			)
 			// Expect(autoScalingPolicy.Min).To(Equal(100))
 		})
