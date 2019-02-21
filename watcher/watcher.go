@@ -41,6 +41,17 @@ import (
 	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
+func createRoomUsages(pods *v1.PodList) ([]*models.RoomUsage, map[string]int) {
+	roomUsages := make([]*models.RoomUsage, len(pods.Items))
+	roomUsagesIdxMap := make(map[string]int, len(pods.Items))
+	for i, pod := range pods.Items {
+		roomUsages[i] = &models.RoomUsage{Name: pod.Name, Usage: float64(math.MaxInt64)}
+		roomUsagesIdxMap[pod.Name] = i
+	}
+
+	return roomUsages, roomUsagesIdxMap
+}
+
 type gracefulShutdown struct {
 	wg      *sync.WaitGroup
 	timeout time.Duration
@@ -286,6 +297,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 		return
 	}
 
+	requests := scheduler.GetResourcesRequests()
 	sp := scheduler.GetAutoScalingPolicy()
 	metricsMap := map[models.AutoScalingPolicyType]bool{}
 	metricsTriggers := append(sp.Up.MetricsTrigger, sp.Down.MetricsTrigger...)
@@ -295,13 +307,25 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 		}
 	}
 
+	// If it does not use metricsTriggers we dont need to save metrics
 	if len(metricsMap) == 0 {
 		return
 	}
 
-	requests := scheduler.GetResourcesRequests()
-	var pmetricsList *v1beta1.PodMetricsList
+	// Load pods and set their usage to MaxInt64 for all resources
 	var pods *v1.PodList
+	err = w.MetricsReporter.WithSegment(models.SegmentMetrics, func() error {
+		var err error
+		pods, err = w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
+		return err
+	})
+	if err != nil {
+		logger.WithError(err).Error("failed to list pods on namespace")
+		return
+	}
+
+	// Load pods metricses
+	var pmetricsList *v1beta1.PodMetricsList
 	err = w.MetricsReporter.WithSegment(models.SegmentMetrics, func() error {
 		var err error
 		pmetricsList, err = w.KubernetesMetricsClient.Metrics().PodMetricses(w.SchedulerName).List(metav1.ListOptions{})
@@ -309,54 +333,29 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 	})
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods metricses")
-		return
 	}
 
-	// cant get metrics from pods yet. List pods created and set usage=math.MaxInt64 for them
-	if pmetricsList == nil || len(pmetricsList.Items) == 0 {
-		pods, err = w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(
-			metav1.ListOptions{})
-		if err != nil {
-			logger.WithError(err).Error("failed to list pods on namespace")
-			return
-		}
-	}
-
-	for metric := range metricsMap {
-		var roomUsages []*models.RoomUsage
-		if (pmetricsList == nil || len(pmetricsList.Items) == 0) && pods != nil {
-			usage := int64(math.MaxInt64)
-			for _, pod := range pods.Items {
-				room := &models.Room{
-					ID:            pod.Name,
-					SchedulerName: w.SchedulerName,
-				}
-
-				roomUsages = append(roomUsages, &models.RoomUsage{Name: room.ID, Usage: float64(usage)})
-				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
-			}
-		} else {
+	if pmetricsList != nil && len(pmetricsList.Items) > 0 {
+		for metric := range metricsMap {
+			roomUsages, roomUsagesIdxMap := createRoomUsages(pods)
 			for _, pmetrics := range pmetricsList.Items {
 				usage := int64(0)
 				for _, container := range pmetrics.Containers {
 					usage += models.GetResourceUsage(container.Usage, metric)
 				}
-				room := &models.Room{
-					ID:            pmetrics.Name,
-					SchedulerName: w.SchedulerName,
-				}
-				roomUsages = append(roomUsages, &models.RoomUsage{Name: room.ID, Usage: float64(usage)})
+				roomUsages[roomUsagesIdxMap[pmetrics.Name]].Usage = float64(usage)
 				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
 			}
-		}
 
-		scheduler.SavePodsMetricsUtilizationPipeAndExec(
-			w.RedisClient.Client,
-			w.KubernetesMetricsClient,
-			w.MetricsReporter,
-			metric,
-			roomUsages,
-		)
+			scheduler.SavePodsMetricsUtilizationPipeAndExec(
+				w.RedisClient.Client,
+				w.KubernetesMetricsClient,
+				w.MetricsReporter,
+				metric,
+				roomUsages,
+			)
+
+		}
 	}
 }
 
