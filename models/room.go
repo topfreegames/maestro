@@ -8,7 +8,6 @@
 package models
 
 import (
-	e "errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -243,19 +242,6 @@ func reportStatus(game, scheduler, status, gauge string) error {
 		reportersConstants.TagGame:      game,
 		reportersConstants.TagScheduler: scheduler,
 		"status":                        status,
-		"gauge":                         gauge,
-	})
-}
-
-func reportUsage(game, scheduler, metric string, requests, usage int64) error {
-	if requests == 0 {
-		return e.New("cannot divide by zero")
-	}
-	gauge := fmt.Sprintf("%.2f", float64(usage)/float64(requests))
-	return reporters.Report(reportersConstants.EventGruMetricUsage, map[string]interface{}{
-		reportersConstants.TagGame:      game,
-		reportersConstants.TagScheduler: scheduler,
-		reportersConstants.TagMetric:    metric,
 		"gauge":                         gauge,
 	})
 }

@@ -780,6 +780,51 @@ func MockGetRegisteredRooms(
 	mockPipeline.EXPECT().Exec().Return(nil, err)
 }
 
+// MockGetRegisteredRoomsPerStatus mocks the call that gets all rooms on redis with determined status
+func MockGetRegisteredRoomsPerStatus(
+	mockRedis *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	schedulerName string,
+	statusArr []string,
+	results map[string][]string,
+	err error,
+) {
+	mockRedis.EXPECT().TxPipeline().Return(mockPipeline)
+	for _, status := range statusArr {
+		result := results[status]
+		key := models.GetRoomStatusSetRedisKey(schedulerName, status)
+		mockPipeline.EXPECT().SMembers(key).Return(
+			goredis.NewStringSliceResult(result, nil))
+	}
+	mockPipeline.EXPECT().Exec().Return(nil, err)
+}
+
+// MockSavingRoomsMetricses mocks the call to redis to save a sorted set with pods metricses
+func MockSavingRoomsMetricses(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	autoScalingPolicyType models.AutoScalingPolicyType,
+	rooms []string,
+	usage float64,
+	schedulerName string,
+) {
+	// Mock saving CPU and MEM for all ready rooms
+	for _, room := range rooms {
+		roomName := models.RoomFromRedisKey(room)
+
+		mockPipeline.EXPECT().ZAdd(
+			models.GetRoomMetricsRedisKey(schedulerName, string(autoScalingPolicyType)),
+			goredis.Z{Member: roomName, Score: usage}).Do(
+			func(_ string, args goredis.Z) {
+				gomega.Expect(args.Member).To(gomega.Equal(roomName))
+				gomega.Expect(args.Score).To(gomega.BeEquivalentTo(usage))
+			})
+	}
+
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().Exec()
+}
+
 // MockSetScallingAmount mocks the call to adjust the scaling amount based on min and max limits
 func MockSetScallingAmount(
 	mockRedis *redismocks.MockRedisClient,
@@ -1093,6 +1138,25 @@ func CreatePod(clientset *fake.Clientset, cpuRequests, memRequests, schedulerNam
 		pod.SetName(schedulerName)
 	}
 	clientset.CoreV1().Pods(schedulerName).Create(pod)
+}
+
+// CreateTestRooms returns a map of string slices with names of test rooms with the 4 possible status
+func CreateTestRooms(clientset *fake.Clientset, schedulerName string, expC *models.RoomsStatusCount) map[string][]string {
+	rooms := make(map[string][]string, 4)
+	statusIdx := []string{models.StatusReady, models.StatusOccupied, models.StatusTerminating, models.StatusCreating}
+	statusCount := []int{expC.Ready, expC.Occupied, expC.Terminating, expC.Creating}
+	rooms[models.StatusReady] = make([]string, expC.Ready)
+	rooms[models.StatusOccupied] = make([]string, expC.Occupied)
+	rooms[models.StatusCreating] = make([]string, expC.Creating)
+	rooms[models.StateTerminating] = make([]string, expC.Terminating)
+	for idx, numPods := range statusCount {
+		for i := 0; i < numPods; i++ {
+			roomName := fmt.Sprintf("test-%s-%d", statusIdx[idx], i)
+			rooms[statusIdx[idx]][i] = fmt.Sprintf("scheduler:%s:rooms:%s", schedulerName, roomName)
+			CreatePod(clientset, "1.0", "1Ki", schedulerName, roomName, roomName)
+		}
+	}
+	return rooms
 }
 
 // CreatePodMetricsList returns a fakeMetricsClientset with reactor to PodMetricses Get call

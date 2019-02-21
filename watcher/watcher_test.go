@@ -881,6 +881,7 @@ var _ = Describe("Watcher", func() {
 
 			testing.MockSendUsage(mockPipeline, mockRedisClient, configYaml.AutoScaling)
 			Expect(func() { w.AutoScale() }).ShouldNot(Panic())
+
 			for _, logMessage := range simSpec.logMessages {
 				Expect(hook.Entries).To(testing.ContainLogMessage(logMessage))
 			}
@@ -3683,7 +3684,9 @@ var _ = Describe("Watcher", func() {
 					configYaml.AutoScaling.Min,
 					configYaml.AutoScaling.Max,
 				)
+				fmt.Println("BEFORE")
 				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
+				fmt.Println("AFTER")
 			})
 
 			It("should not scale up if 75% of the points are above threshold", func() {
@@ -4109,13 +4112,14 @@ var _ = Describe("Watcher", func() {
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yamlActive
 				}).Times(2)
-				expC := &models.RoomsStatusCount{0, 2, 4, 0} // creating,occupied,ready,terminating
+				expC := &models.RoomsStatusCount{1, 2, 4, 1} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// Mock pod metricses
 				cpuUsage := 100
 				memUsage := 100
 				memScale := resource.Mega
+				memUsageInBytes := memUsage * int(math.Pow10(int(memScale)))
 				containerMetrics := testing.BuildContainerMetricsArray(
 					[]testing.ContainerMetricsDefinition{
 						testing.ContainerMetricsDefinition{
@@ -4129,34 +4133,46 @@ var _ = Describe("Watcher", func() {
 					},
 				)
 
-				pods := make([]string, expC.Total())
-				for i := 0; i < expC.Total(); i++ {
-					name := fmt.Sprintf("%s-%d", configYaml.Name, i)
-					pods[i] = name
-					mem := float64(memUsage * int(math.Pow10(int(memScale))))
-					cpu := float64(cpuUsage)
-					testing.CreatePod(clientset, "1.0", "1Gi", configYaml.Name, name, configYaml.Name)
+				// Create test rooms names for each status
+				rooms := testing.CreateTestRooms(clientset, configYaml.Name, expC)
 
-					mockPipeline.EXPECT().ZAdd(
-						models.GetRoomMetricsRedisKey(configYaml.Name, "cpu"),
-						redis.Z{Member: name, Score: cpu},
-					).Do(
-						func(_ string, args redis.Z) {
-							Expect(args.Member).To(Equal(name))
-							Expect(args.Score).To(BeEquivalentTo(cpu))
-						})
+				// Mock saving CPU for all ready and occupied rooms
+				testing.MockSavingRoomsMetricses(
+					mockRedisClient,
+					mockPipeline,
+					models.CPUAutoScalingPolicyType,
+					append(rooms[models.StatusReady], rooms[models.StatusOccupied]...),
+					float64(cpuUsage),
+					configYaml.Name,
+				)
 
-					mockPipeline.EXPECT().ZAdd(
-						models.GetRoomMetricsRedisKey(configYaml.Name, "mem"),
-						redis.Z{Member: name, Score: mem},
-					).Do(
-						func(_ string, args redis.Z) {
-							Expect(args.Member).To(Equal(name))
-							Expect(args.Score).To(BeEquivalentTo(mem))
-						})
-				}
+				// Mock saving MEM for all ready and occupied rooms
+				testing.MockSavingRoomsMetricses(
+					mockRedisClient,
+					mockPipeline,
+					models.MemAutoScalingPolicyType,
+					append(rooms[models.StatusReady], rooms[models.StatusOccupied]...),
+					float64(memUsageInBytes),
+					configYaml.Name,
+				)
 
-				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, pods, configYaml.Name)
+				// Mock pod metricses list response from kube
+				fakeMetricsClient := testing.CreatePodsMetricsList(
+					containerMetrics,
+					append(rooms[models.StatusReady],
+						rooms[models.StatusOccupied]...),
+					configYaml.Name,
+				)
+
+				// CreZate rooms to MockGetRegisteredRoomsPerStatus
+				testing.MockGetRegisteredRoomsPerStatus(
+					mockRedisClient,
+					mockPipeline,
+					configYaml.Name,
+					[]string{models.StatusReady, models.StatusOccupied},
+					rooms,
+					nil,
+				)
 
 				w = watcher.NewWatcher(config,
 					logger,
@@ -4169,9 +4185,6 @@ var _ = Describe("Watcher", func() {
 					configYaml.Game,
 					occupiedTimeout,
 					[]*eventforwarder.Info{})
-
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
-				mockPipeline.EXPECT().Exec().Times(2)
 
 				Expect(func() { w.AddUtilizationMetricsToRedis() }).ShouldNot(Panic())
 			})
@@ -4193,6 +4206,7 @@ var _ = Describe("Watcher", func() {
 				cpuUsage := 100
 				memUsage := 100
 				memScale := resource.Mega
+				// memUsageInBytes := memUsage * int(math.Pow10(int(memScale)))
 				containerMetrics := testing.BuildContainerMetricsArray(
 					[]testing.ContainerMetricsDefinition{
 						testing.ContainerMetricsDefinition{
@@ -4206,30 +4220,40 @@ var _ = Describe("Watcher", func() {
 					},
 				)
 
-				for i := 0; i < expC.Total(); i++ {
-					name := fmt.Sprintf("%s-%d", configYaml.Name, i)
-					mem := float64(math.MaxInt64)
-					cpu := float64(math.MaxInt64)
-					testing.CreatePod(clientset, "1.0", "1Gi", configYaml.Name, name, configYaml.Name)
+				// Create test rooms names for each status
+				rooms := testing.CreateTestRooms(clientset, configYaml.Name, expC)
 
-					mockPipeline.EXPECT().ZAdd(
-						models.GetRoomMetricsRedisKey(configYaml.Name, "cpu"),
-						redis.Z{Member: name, Score: cpu},
-					).Do(
-						func(_ string, args redis.Z) {
-							Expect(args.Member).To(Equal(name))
-							Expect(args.Score).To(BeEquivalentTo(cpu))
-						})
+				// Mock saving CPU for all ready and occupied rooms
+				testing.MockSavingRoomsMetricses(
+					mockRedisClient,
+					mockPipeline,
+					models.CPUAutoScalingPolicyType,
+					append(rooms[models.StatusReady], rooms[models.StatusOccupied]...),
+					float64(math.MaxInt64),
+					configYaml.Name,
+				)
 
-					mockPipeline.EXPECT().ZAdd(
-						models.GetRoomMetricsRedisKey(configYaml.Name, "mem"),
-						redis.Z{Member: name, Score: mem},
-					).Do(
-						func(_ string, args redis.Z) {
-							Expect(args.Member).To(Equal(name))
-							Expect(args.Score).To(BeEquivalentTo(mem))
-						})
-				}
+				// Mock saving MEM for all ready and occupied rooms
+				testing.MockSavingRoomsMetricses(
+					mockRedisClient,
+					mockPipeline,
+					models.MemAutoScalingPolicyType,
+					append(rooms[models.StatusReady], rooms[models.StatusOccupied]...),
+					float64(math.MaxInt64),
+					configYaml.Name,
+				)
+
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{}, configYaml.Name)
+
+				// Create rooms to MockGetRegisteredRoomsPerStatus
+				testing.MockGetRegisteredRoomsPerStatus(
+					mockRedisClient,
+					mockPipeline,
+					configYaml.Name,
+					[]string{models.StatusReady, models.StatusOccupied},
+					rooms,
+					nil,
+				)
 
 				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{}, configYaml.Name)
 
@@ -4244,9 +4268,6 @@ var _ = Describe("Watcher", func() {
 					configYaml.Game,
 					occupiedTimeout,
 					[]*eventforwarder.Info{})
-
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
-				mockPipeline.EXPECT().Exec().Times(2)
 
 				Expect(func() { w.AddUtilizationMetricsToRedis() }).ShouldNot(Panic())
 			})

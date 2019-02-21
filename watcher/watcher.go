@@ -335,6 +335,17 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 		logger.WithError(err).Error("failed to list pods metricses")
 	}
 
+	// Get list of ready and occupied rooms
+	availableRooms, err := models.GetAllRegisteredRoomsByStatus(
+		w.RedisClient.Client,
+		scheduler.Name,
+		[]string{models.StatusReady, models.StatusOccupied})
+
+	if err != nil {
+		logger.WithError(err).Error("failed to list available pods on namespace")
+		return
+	}
+
 	for metric := range metricsMap {
 		roomUsages, roomUsagesIdxMap := createRoomUsages(pods)
 		if pmetricsList != nil && len(pmetricsList.Items) > 0 {
