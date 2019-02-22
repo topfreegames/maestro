@@ -344,7 +344,19 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 					usage += models.GetResourceUsage(container.Usage, metric)
 				}
 				roomUsages[roomUsagesIdxMap[pmetrics.Name]].Usage = float64(usage)
-				reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
+				l := logger.WithFields(logrus.Fields{
+					"game": scheduler.Game,
+					"name":   scheduler.Name,
+					"metric":   string(metric),
+					"requests": requests[metric],
+					"usage": usage,
+					"HasReporters": reporters.HasReporters(),
+				})
+				l.Debug("will report usage")
+				err := reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
+				if err != nil {
+					l.WithError(err).Debug("failed to report usage")
+				}
 			}
 		}
 
