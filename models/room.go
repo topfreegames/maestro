@@ -10,7 +10,6 @@ package models
 import (
 	e "errors"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -20,10 +19,7 @@ import (
 	"github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
 const (
@@ -56,6 +52,12 @@ type RoomAddresses struct {
 type RoomPort struct {
 	Name string `json:"name"`
 	Port int32  `json:"port"`
+}
+
+// RoomUsage struct
+type RoomUsage struct {
+	Name  string  `json:"name"`
+	Usage float64 `json:"usage"`
 }
 
 // NewRoom is the room constructor
@@ -112,7 +114,6 @@ return 'OK'
 func (r *Room) SetStatus(
 	redisClient interfaces.RedisClient,
 	db pginterfaces.DB,
-	metricsClientset metricsClient.Interface,
 	mr *MixedMetricsReporter,
 	status string,
 	scheduler *Scheduler,
@@ -139,10 +140,6 @@ func (r *Room) SetStatus(
 		pipe.ZRem(lastStatusChangedKey, r.ID)
 	}
 
-	mr.WithSegment("debug", func() error {
-		r.addUtilizationMetricsToRedis(metricsClientset, pipe, scheduler, mr)
-		return nil
-	})
 	// remove from other statuses to be safe
 	for _, st := range allStatus {
 		if st != status {
@@ -151,58 +148,6 @@ func (r *Room) SetStatus(
 	}
 
 	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, returnRoomsCount, scheduler)
-}
-
-func (r *Room) addUtilizationMetricsToRedis(
-	metricsClientset metricsClient.Interface,
-	pipe redis.Pipeliner,
-	scheduler *Scheduler,
-	mr *MixedMetricsReporter,
-) {
-	fmt.Println("[DEBUG] entered addUtilizationMetricsToRedis")
-	sp := scheduler.GetAutoScalingPolicy()
-	metricsMap := map[AutoScalingPolicyType]bool{}
-	metricsTriggers := append(sp.Up.MetricsTrigger, sp.Down.MetricsTrigger...)
-	for _, trigger := range metricsTriggers {
-		if ResourcePolicyType(trigger.Type) {
-			metricsMap[trigger.Type] = true
-		}
-	}
-
-	if len(metricsMap) == 0 {
-		fmt.Println("[DEBUG] no metrics enabled, exit")
-		return
-	}
-
-	fmt.Println("[DEBUG] retrieving metrics")
-	requests := scheduler.GetResourcesRequests()
-	var pmetrics *v1beta1.PodMetrics
-	err := mr.WithSegment(SegmentMetrics, func() error {
-		var err error
-		pmetrics, err = metricsClientset.Metrics().PodMetricses(r.SchedulerName).Get(r.ID, metav1.GetOptions{})
-		return err
-	})
-	if err != nil && !strings.Contains(err.Error(), "not found") {
-		return
-	}
-
-	for metric := range metricsMap {
-		usage := int64(0)
-		if err != nil {
-			// add rooms with unavailable metrics to the end of the sorted set
-			usage = math.MaxInt64
-		} else {
-			for _, container := range pmetrics.Containers {
-				usage += GetResourceUsage(container.Usage, metric)
-			}
-			reportUsage(scheduler.Game, scheduler.Name, string(metric), requests[metric], usage)
-		}
-
-		pipe.ZAdd(
-			GetRoomMetricsRedisKey(r.SchedulerName, string(metric)),
-			redis.Z{Member: r.ID, Score: float64(usage)},
-		)
-	}
 }
 
 func (r *Room) addStatusToRedisPipeAndExec(
@@ -311,7 +256,7 @@ func reportUsage(game, scheduler, metric string, requests, usage int64) error {
 		reportersConstants.TagGame:      game,
 		reportersConstants.TagScheduler: scheduler,
 		reportersConstants.TagMetric:    metric,
-		"gauge": gauge,
+		"gauge":                         gauge,
 	})
 }
 

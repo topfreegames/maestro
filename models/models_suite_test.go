@@ -11,6 +11,7 @@ package models_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/viper"
 
 	"testing"
 
@@ -26,20 +27,23 @@ import (
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	"k8s.io/client-go/kubernetes/fake"
+	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
 )
 
 var (
-	mockCtrl        *gomock.Controller
-	mockDb          *pgmocks.MockDB
-	mockRedisClient *redismocks.MockRedisClient
-	mockClientset   *fake.Clientset
-	mockPipeline    *redismocks.MockPipeliner
-	mockPortChooser *mocks.MockPortChooser
-	mmr             *models.MixedMetricsReporter
-	mr              *reportersmocks.MockReporter
-	singleton       *reporters.Reporters
-	hook            *test.Hook
-	logger          *logrus.Logger
+	mockCtrl         *gomock.Controller
+	mockDb           *pgmocks.MockDB
+	metricsClientset *metricsFake.Clientset
+	mockRedisClient  *redismocks.MockRedisClient
+	config           *viper.Viper
+	mockClientset    *fake.Clientset
+	mockPipeline     *redismocks.MockPipeliner
+	mockPortChooser  *mocks.MockPortChooser
+	mmr              *models.MixedMetricsReporter
+	mr               *reportersmocks.MockReporter
+	singleton        *reporters.Reporters
+	hook             *test.Hook
+	logger           *logrus.Logger
 )
 
 func TestModels(t *testing.T) {
@@ -53,6 +57,8 @@ var _ = BeforeEach(func() {
 	logger.Level = logrus.DebugLevel
 	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
+	config, _ = mtesting.GetDefaultConfig()
+	metricsClientset = metricsFake.NewSimpleClientset()
 	mockClientset = fake.NewSimpleClientset()
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
 

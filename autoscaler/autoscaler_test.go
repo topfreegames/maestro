@@ -152,7 +152,7 @@ var _ = Describe("AutoScaler", func() {
 					Occupied:    8,
 					Terminating: 0,
 				}
-				testing.CreatePod(clientset, "1.0", "0", schedulerName, containerName)
+				testing.CreatePod(clientset, "1.0", "0", schedulerName, "", containerName)
 			})
 
 			It("should return delta", func() {
@@ -169,7 +169,7 @@ var _ = Describe("AutoScaler", func() {
 						},
 					},
 				)
-				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{schedulerName}, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				delta := autoScaler.Delta(trigger, roomCount)
@@ -188,7 +188,7 @@ var _ = Describe("AutoScaler", func() {
 						},
 					},
 				)
-				fakeMetricsClient = testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
+				fakeMetricsClient = testing.CreatePodsMetricsList(containerMetrics, []string{schedulerName}, schedulerName)
 				autoScaler = NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				delta = autoScaler.Delta(trigger, roomCount)
@@ -208,7 +208,7 @@ var _ = Describe("AutoScaler", func() {
 						},
 					},
 				)
-				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{schedulerName}, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				usagePercentage := autoScaler.CurrentUtilization(trigger, roomCount)
@@ -233,7 +233,7 @@ var _ = Describe("AutoScaler", func() {
 					Terminating: 0,
 				}
 
-				testing.CreatePod(clientset, "0", "1Gi", schedulerName, containerName)
+				testing.CreatePod(clientset, "0", "1Gi", schedulerName, "", containerName)
 			})
 
 			It("should return delta", func() {
@@ -250,7 +250,7 @@ var _ = Describe("AutoScaler", func() {
 						},
 					},
 				)
-				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{schedulerName}, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				delta := autoScaler.Delta(trigger, roomCount)
@@ -269,7 +269,7 @@ var _ = Describe("AutoScaler", func() {
 						},
 					},
 				)
-				fakeMetricsClient = testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
+				fakeMetricsClient = testing.CreatePodsMetricsList(containerMetrics, []string{schedulerName}, schedulerName)
 				autoScaler = NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				delta = autoScaler.Delta(trigger, roomCount)
@@ -289,7 +289,7 @@ var _ = Describe("AutoScaler", func() {
 						},
 					},
 				)
-				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, 1, schedulerName)
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{schedulerName}, schedulerName)
 				autoScaler := NewAutoScaler(schedulerName, clientset, fakeMetricsClient)
 
 				usagePercentage := autoScaler.CurrentUtilization(trigger, roomCount)

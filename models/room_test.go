@@ -10,7 +10,6 @@ package models_test
 
 import (
 	"fmt"
-	"math"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -22,12 +21,10 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	"github.com/topfreegames/maestro/models"
-	"github.com/topfreegames/maestro/testing"
 
 	goredis "github.com/go-redis/redis"
 	uuid "github.com/satori/go.uuid"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
-	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
 )
 
 const (
@@ -101,10 +98,9 @@ cmd:
 
 var _ = Describe("Room", func() {
 	var (
-		metricsClientset = metricsFake.NewSimpleClientset()
-		schedulerName    = uuid.NewV4().String()
-		name             = uuid.NewV4().String()
-		scheduler        *models.Scheduler
+		schedulerName = uuid.NewV4().String()
+		name          = uuid.NewV4().String()
+		scheduler     *models.Scheduler
 	)
 
 	reportStatus := func(scheduler, status, roomKey, statusKey string) {
@@ -123,39 +119,6 @@ var _ = Describe("Room", func() {
 			"status":                        status,
 			"gauge":                         "5",
 		})
-	}
-
-	mockSetStatusWithoutMetrics := func(room *models.Room, lastStatus, status string) {
-		allStatus := []string{
-			models.StatusCreating,
-			models.StatusOccupied,
-			models.StatusTerminating,
-			models.StatusTerminated,
-		}
-
-		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-		mockPipeline.EXPECT().HMSet(room.GetRoomRedisKey(), gomock.Any())
-		mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(room.SchedulerName), gomock.Any())
-		for _, st := range allStatus {
-			mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, st), room.GetRoomRedisKey())
-		}
-		mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(room.SchedulerName, lastStatus), room.ID)
-		mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
-
-		mockPipeline.EXPECT().SCard(
-			models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusCreating),
-		).Return(goredis.NewIntResult(0, nil))
-		mockPipeline.EXPECT().SCard(
-			models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusReady),
-		).Return(goredis.NewIntResult(5, nil))
-		mockPipeline.EXPECT().SCard(
-			models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusOccupied),
-		).Return(goredis.NewIntResult(0, nil))
-		mockPipeline.EXPECT().SCard(
-			models.GetRoomStatusSetRedisKey(room.SchedulerName, models.StatusTerminating),
-		).Return(goredis.NewIntResult(0, nil))
-
-		mockPipeline.EXPECT().Exec()
 	}
 
 	BeforeEach(func() {
@@ -284,129 +247,10 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Exec()
 			reportStatus(room.SchedulerName, status, rKey, newSKey)
 
-			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, metricsClientset, mmr, status, scheduler, true)
+			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, mmr, status, scheduler, true)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(roomsCountByStatus).NotTo(BeNil())
 			Expect(roomsCountByStatus.Total()).To(Equal(5))
-		})
-
-		Context("when scheduler uses metrics trigger", func() {
-			var (
-				room       *models.Room
-				status     string
-				lastStatus string
-			)
-			BeforeEach(func() {
-				scheduler = &models.Scheduler{
-					Name: schedulerName,
-					Game: "game-name",
-					YAML: fmt.Sprintf(yamlRoom2, schedulerName),
-				}
-				room = models.NewRoom(name, schedulerName)
-				status = models.StatusReady
-				lastStatus = models.StatusOccupied
-			})
-
-			It("should add utilization metrics to redis", func() {
-				mockPipeline.EXPECT().ZAdd(models.GetRoomMetricsRedisKey(schedulerName, "cpu"), gomock.Any()).Do(
-					func(_ string, args redis.Z) {
-						Expect(args.Member).To(Equal(name))
-						Expect(args.Score).To(BeEquivalentTo(700))
-					})
-				mockPipeline.EXPECT().ZAdd(models.GetRoomMetricsRedisKey(schedulerName, "mem"), gomock.Any()).Do(
-					func(_ string, args redis.Z) {
-						Expect(args.Member).To(Equal(name))
-						Expect(args.Score).To(BeEquivalentTo(60000000))
-					})
-				mockSetStatusWithoutMetrics(room, lastStatus, status)
-				reportStatus(
-					room.SchedulerName,
-					status,
-					room.GetRoomRedisKey(),
-					models.GetRoomStatusSetRedisKey(schedulerName, status))
-
-				mr.EXPECT().Report("gru.metric", map[string]interface{}{
-					reportersConstants.TagGame:      scheduler.Game,
-					reportersConstants.TagScheduler: scheduler.Name,
-					reportersConstants.TagMetric:    "cpu",
-					"gauge": "0.70",
-				})
-
-				mr.EXPECT().Report("gru.metric", map[string]interface{}{
-					reportersConstants.TagGame:      scheduler.Game,
-					reportersConstants.TagScheduler: scheduler.Name,
-					reportersConstants.TagMetric:    "mem",
-					"gauge": "0.45",
-				})
-
-				containerMetrics := testing.BuildContainerMetricsArray(
-					[]testing.ContainerMetricsDefinition{
-						testing.ContainerMetricsDefinition{
-							Name: room.ID,
-							Usage: map[models.AutoScalingPolicyType]int{
-								models.CPUAutoScalingPolicyType: 500,
-								models.MemAutoScalingPolicyType: 40000000,
-							},
-							MemScale: 0,
-						},
-						testing.ContainerMetricsDefinition{
-							Name: room.ID,
-							Usage: map[models.AutoScalingPolicyType]int{
-								models.CPUAutoScalingPolicyType: 200,
-								models.MemAutoScalingPolicyType: 20000000,
-							},
-							MemScale: 0,
-						},
-					},
-				)
-				fakeMetricsClient := testing.CreatePodMetricsList(containerMetrics, schedulerName)
-				roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, fakeMetricsClient, mmr, status, scheduler, true)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(roomsCountByStatus).NotTo(BeNil())
-				Expect(roomsCountByStatus.Total()).To(Equal(5))
-			})
-
-			It("should add utilization metrics to redis if metrics not yet available", func() {
-				mockPipeline.EXPECT().ZAdd(models.GetRoomMetricsRedisKey(schedulerName, "cpu"), gomock.Any()).Do(
-					func(_ string, args redis.Z) {
-						Expect(args.Member).To(Equal(name))
-						Expect(args.Score).To(BeNumerically("~", math.MaxInt64, 1))
-					})
-				mockPipeline.EXPECT().ZAdd(models.GetRoomMetricsRedisKey(schedulerName, "mem"), gomock.Any()).Do(
-					func(_ string, args redis.Z) {
-						Expect(args.Member).To(Equal(name))
-						Expect(args.Score).To(BeNumerically("~", math.MaxInt64, 1))
-					})
-				mockSetStatusWithoutMetrics(room, lastStatus, status)
-				reportStatus(
-					room.SchedulerName,
-					status,
-					room.GetRoomRedisKey(),
-					models.GetRoomStatusSetRedisKey(schedulerName, status))
-
-				fakeMetricsClient := testing.CreatePodMetricsList(nil, schedulerName, errors.New("scheduler not found"))
-				roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, fakeMetricsClient, mmr, status, scheduler, true)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(roomsCountByStatus).NotTo(BeNil())
-				Expect(roomsCountByStatus.Total()).To(Equal(5))
-			})
-
-			It("should not add utilization metrics to redis if unknown error occured", func() {
-				mockSetStatusWithoutMetrics(room, lastStatus, status)
-				reportStatus(
-					room.SchedulerName,
-					status,
-					room.GetRoomRedisKey(),
-					models.GetRoomStatusSetRedisKey(schedulerName, status))
-
-				fakeMetricsClient := testing.CreatePodMetricsList(nil, schedulerName, errors.New("unknown"))
-				roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, fakeMetricsClient, mmr, status, scheduler, true)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(roomsCountByStatus).NotTo(BeNil())
-				Expect(roomsCountByStatus.Total()).To(Equal(5))
-			})
 		})
 
 		It("should remove from redis is status is 'terminated'", func() {
@@ -429,7 +273,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Del(rKey)
 			mockPipeline.EXPECT().Exec()
 
-			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, metricsClientset, mmr, status, scheduler, true)
+			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, mmr, status, scheduler, true)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(roomsCountByStatus).To(BeNil())
 		})
@@ -474,7 +318,7 @@ var _ = Describe("Room", func() {
 			).Return(goredis.NewIntResult(0, nil))
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
-			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, metricsClientset, mmr, status, scheduler, true)
+			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, mmr, status, scheduler, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 			Expect(roomsCountByStatus).To(BeNil())
@@ -517,7 +361,7 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Exec()
 			reportStatus(room.SchedulerName, status, rKey, newSKey)
 
-			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, metricsClientset, mmr, status, scheduler, true)
+			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, mmr, status, scheduler, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(roomsCountByStatus.Total()).To(Equal(10))
 		})

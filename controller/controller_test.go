@@ -32,7 +32,6 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes/fake"
-	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
 )
 
 const (
@@ -290,7 +289,6 @@ autoscaling:
 var _ = Describe("Controller", func() {
 	var (
 		clientset        *fake.Clientset
-		metricsClientset *metricsFake.Clientset
 		configYaml1      models.ConfigYAML
 		opManager        *models.OperationManager
 		roomManager      models.RoomManager
@@ -307,7 +305,6 @@ var _ = Describe("Controller", func() {
 
 	BeforeEach(func() {
 		clientset = fake.NewSimpleClientset()
-		metricsClientset = metricsFake.NewSimpleClientset()
 		err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -6373,7 +6370,6 @@ containers:
 				mockDb,
 				mr,
 				clientset,
-				metricsClientset,
 				status,
 				config,
 				room,
@@ -6469,7 +6465,6 @@ containers:
 				mockDb,
 				mr,
 				clientset,
-				metricsClientset,
 				status,
 				config,
 				room,
@@ -6525,7 +6520,6 @@ containers:
 				mockDb,
 				mr,
 				clientset,
-				metricsClientset,
 				status,
 				config,
 				room,
@@ -6550,7 +6544,6 @@ containers:
 				mockDb,
 				mr,
 				clientset,
-				metricsClientset,
 				status,
 				config,
 				room,
