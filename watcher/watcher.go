@@ -314,7 +314,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 
 	// Load pods and set their usage to MaxInt64 for all resources
 	var pods *v1.PodList
-	err = w.MetricsReporter.WithSegment(models.SegmentMetrics, func() error {
+	err = w.MetricsReporter.WithSegment(models.SegmentPod, func() error {
 		var err error
 		pods, err = w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
 		return err
