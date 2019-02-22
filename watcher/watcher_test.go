@@ -780,7 +780,7 @@ var _ = Describe("Watcher", func() {
 
 			pods := make([]string, simSpec.roomCount.Available())
 			for i := 0; i < simSpec.roomCount.Available(); i++ {
-				pods[i] = configYaml.Name
+				pods[i] = fmt.Sprintf("scheduler:%s:rooms:%s", configYaml.Name, configYaml.Name)
 			}
 			fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, pods, configYaml.Name)
 
@@ -4255,8 +4255,6 @@ var _ = Describe("Watcher", func() {
 					nil,
 				)
 
-				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{}, configYaml.Name)
-
 				w = watcher.NewWatcher(config,
 					logger,
 					mr,
@@ -4272,7 +4270,7 @@ var _ = Describe("Watcher", func() {
 				Expect(func() { w.AddUtilizationMetricsToRedis() }).ShouldNot(Panic())
 			})
 
-			It("should not add utilization metrics to redis if unknown error occured", func() {
+			It("should not add utilization metrics to redis if no pods were listed", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
@@ -4302,7 +4300,7 @@ var _ = Describe("Watcher", func() {
 					},
 				)
 
-				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{}, configYaml.Name, errors.New("unknown"))
+				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{}, configYaml.Name, nil)
 
 				w = watcher.NewWatcher(config,
 					logger,

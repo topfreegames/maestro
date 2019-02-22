@@ -1195,7 +1195,7 @@ func CreatePodsMetricsList(containers []metricsapi.ContainerMetrics, pods []stri
 		for _, pod := range pods {
 			podMetric := metricsapi.PodMetrics{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      pod,
+					Name:      models.RoomFromRedisKey(pod),
 					Namespace: schedulerName,
 				},
 				Timestamp:  metav1.Time{Time: time.Now()},

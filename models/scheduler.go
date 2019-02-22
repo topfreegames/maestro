@@ -400,10 +400,6 @@ func (c *Scheduler) SavePodsMetricsUtilizationPipeAndExec(
 		return err
 	})
 
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

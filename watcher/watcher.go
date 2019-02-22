@@ -41,12 +41,15 @@ import (
 	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
 )
 
-func createRoomUsages(pods *v1.PodList) ([]*models.RoomUsage, map[string]int) {
-	roomUsages := make([]*models.RoomUsage, len(pods.Items))
-	roomUsagesIdxMap := make(map[string]int, len(pods.Items))
+func createRoomUsages(pods *v1.PodList, availableRooms map[string]bool) ([]*models.RoomUsage, map[string]int) {
+	var roomUsages []*models.RoomUsage
+	roomUsagesIdxMap := map[string]int{}
 	for i, pod := range pods.Items {
-		roomUsages[i] = &models.RoomUsage{Name: pod.Name, Usage: float64(math.MaxInt64)}
-		roomUsagesIdxMap[pod.Name] = i
+		if availableRooms[pod.Name] == true {
+			roomUsages = append(roomUsages, &models.RoomUsage{Name: pod.Name, Usage: float64(math.MaxInt64)})
+			roomUsagesIdxMap[pod.Name] = i
+			fmt.Println("createRoomUsages", roomUsagesIdxMap)
+		}
 	}
 
 	return roomUsages, roomUsagesIdxMap
@@ -322,6 +325,9 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods on namespace")
 		return
+	} else if len(pods.Items) == 0 {
+		logger.Warn("empty list of pods on namespace")
+		return
 	}
 
 	// Load pods metricses
@@ -343,11 +349,10 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 
 	if err != nil {
 		logger.WithError(err).Error("failed to list available pods on namespace")
-		return
 	}
 
 	for metric := range metricsMap {
-		roomUsages, roomUsagesIdxMap := createRoomUsages(pods)
+		roomUsages, roomUsagesIdxMap := createRoomUsages(pods, availableRooms)
 		if pmetricsList != nil && len(pmetricsList.Items) > 0 {
 			for _, pmetrics := range pmetricsList.Items {
 				usage := int64(0)
