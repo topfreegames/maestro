@@ -399,8 +399,6 @@ func (c *Scheduler) SavePodsMetricsUtilizationPipeAndExec(
 		_, err := pipe.Exec()
 		return err
 	})
-
-	return nil
 }
 
 // ListSchedulersNames list all schedulers names

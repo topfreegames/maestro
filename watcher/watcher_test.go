@@ -4206,7 +4206,6 @@ var _ = Describe("Watcher", func() {
 				cpuUsage := 100
 				memUsage := 100
 				memScale := resource.Mega
-				// memUsageInBytes := memUsage * int(math.Pow10(int(memScale)))
 				containerMetrics := testing.BuildContainerMetricsArray(
 					[]testing.ContainerMetricsDefinition{
 						testing.ContainerMetricsDefinition{
