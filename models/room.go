@@ -380,26 +380,81 @@ func getReadyRooms(tx redis.Pipeliner, schedulerName string, size int, mr *Mixed
 	return res, err
 }
 
+func filterReadyAndOccupiedRooms(tx redis.Pipeliner, mr *MixedMetricsReporter, availableRooms *[]string, rooms []string, schedulerName string) error {
+	readyRooms := make(map[string]*redis.BoolCmd)
+	occupiedRooms := make(map[string]*redis.BoolCmd)
+
+	for _, room := range rooms {
+		roomObj := NewRoom(room, schedulerName)
+		readyRooms[room] = tx.SIsMember(GetRoomStatusSetRedisKey(schedulerName, StatusReady), roomObj.GetRoomRedisKey())
+		occupiedRooms[room] = tx.SIsMember(GetRoomStatusSetRedisKey(schedulerName, StatusOccupied), roomObj.GetRoomRedisKey())
+	}
+
+	err := mr.WithSegment(SegmentSIsMember, func() error {
+		_, err := tx.Exec()
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, room := range rooms {
+		if readyRooms[room].Val() || occupiedRooms[room].Val() {
+			*availableRooms = append(*availableRooms, room)
+		}
+	}
+
+	return nil
+}
+
 // GetRoomsByMetric returns a list of rooms ordered by metric
 func GetRoomsByMetric(redisClient interfaces.RedisClient, schedulerName string, metricName string, size int, mr *MixedMetricsReporter) ([]string, error) {
-	var result []string
+	var availableRooms []string
+	limit := size
+	offset := 0
 	// TODO hacky, one day add ZRange and SRandMember to redis interface
 	tx := redisClient.TxPipeline()
 	if metricName == string(RoomAutoScalingPolicyType) || metricName == string(LegacyAutoScalingPolicyType) {
 		return getReadyRooms(tx, schedulerName, size, mr)
 	}
-	rooms := tx.ZRange(
-		GetRoomMetricsRedisKey(schedulerName, metricName),
-		int64(0),
-		int64(size-1),
-	)
-	err := mr.WithSegment(SegmentZRangeBy, func() error {
-		_, err := tx.Exec()
-		return err
-	})
-	if err != nil {
-		return nil, err
+
+	for {
+		if len(availableRooms) < limit {
+			// Get rooms metrics for rooms in all states
+			rooms := tx.ZRange(
+				GetRoomMetricsRedisKey(schedulerName, metricName),
+				int64(offset),
+				int64(size-1),
+			)
+
+			err := mr.WithSegment(SegmentZRangeBy, func() error {
+				_, err := tx.Exec()
+				return err
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			result, err := rooms.Result()
+			if err != nil {
+				return nil, err
+			}
+
+			// Checked all rooms
+			if len(result) == 0 {
+				return availableRooms, nil
+			}
+
+			// Check if room is in ready or occupied state
+			err = filterReadyAndOccupiedRooms(tx, mr, &availableRooms, result, schedulerName)
+			if err != nil {
+				return nil, err
+			}
+
+			offset = size
+			size = size + offset
+		} else {
+			return availableRooms, nil
+		}
 	}
-	result, err = rooms.Result()
-	return result, err
 }
