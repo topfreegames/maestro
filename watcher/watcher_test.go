@@ -3684,9 +3684,7 @@ var _ = Describe("Watcher", func() {
 					configYaml.AutoScaling.Min,
 					configYaml.AutoScaling.Max,
 				)
-				fmt.Println("BEFORE")
 				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
-				fmt.Println("AFTER")
 			})
 
 			It("should not scale up if 75% of the points are above threshold", func() {
@@ -4112,7 +4110,7 @@ var _ = Describe("Watcher", func() {
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yamlActive
 				}).Times(2)
-				expC := &models.RoomsStatusCount{1, 2, 4, 1} // creating,occupied,ready,terminating
+				expC := &models.RoomsStatusCount{0, 2, 4, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// Mock pod metricses
@@ -4162,16 +4160,6 @@ var _ = Describe("Watcher", func() {
 					append(rooms[models.StatusReady],
 						rooms[models.StatusOccupied]...),
 					configYaml.Name,
-				)
-
-				// CreZate rooms to MockGetRegisteredRoomsPerStatus
-				testing.MockGetRegisteredRoomsPerStatus(
-					mockRedisClient,
-					mockPipeline,
-					configYaml.Name,
-					[]string{models.StatusReady, models.StatusOccupied},
-					rooms,
-					nil,
 				)
 
 				w = watcher.NewWatcher(config,
@@ -4243,16 +4231,6 @@ var _ = Describe("Watcher", func() {
 				)
 
 				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{}, configYaml.Name)
-
-				// Create rooms to MockGetRegisteredRoomsPerStatus
-				testing.MockGetRegisteredRoomsPerStatus(
-					mockRedisClient,
-					mockPipeline,
-					configYaml.Name,
-					[]string{models.StatusReady, models.StatusOccupied},
-					rooms,
-					nil,
-				)
 
 				w = watcher.NewWatcher(config,
 					logger,

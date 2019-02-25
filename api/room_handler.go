@@ -375,6 +375,7 @@ func (h *RoomListByMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		limit,
 		mr,
 	)
+
 	if err != nil {
 		status := http.StatusInternalServerError
 		logger.WithError(err).Error("list by metrics handler failed")
@@ -382,7 +383,27 @@ func (h *RoomListByMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	bytes, err := json.Marshal(map[string]interface{}{"rooms": rooms})
+	// Get list of ready and occupied rooms (excluding creating and terminating rooms from response)
+	readyAndOccupiedRooms, err := models.GetAllRegisteredRoomsByStatus(
+		h.App.RedisClient.Client,
+		params.SchedulerName,
+		[]string{models.StatusReady, models.StatusOccupied})
+
+	if err != nil {
+		logger.WithError(err).Error("failed to list available pods on namespace")
+	}
+
+	// remove terminating and creating rooms
+	roomsAvailable := []string{}
+	if readyAndOccupiedRooms != nil {
+		for _, room := range rooms {
+			if readyAndOccupiedRooms[room] {
+				roomsAvailable = append(roomsAvailable, room)
+			}
+		}
+	}
+
+	bytes, err := json.Marshal(map[string]interface{}{"rooms": roomsAvailable})
 	if err != nil {
 		logger.WithError(err).Error("list by metrics handler failed")
 		h.App.HandleError(w, http.StatusInternalServerError, "list by metrics handler error", err)
