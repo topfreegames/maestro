@@ -1019,7 +1019,7 @@ forwarders:
 			It("with default metric and limit", func() {
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				pKey := models.GetRoomStatusSetRedisKey(namespace, models.StatusReady)
-				expectedRooms := []string{"room1", "room2", "room3"}
+				expectedRooms := []string{"test-ready-0", "test-ready-1", "test-occupied-0"}
 				expectedRet := make([]string, len(expectedRooms))
 				for idx, room := range expectedRooms {
 					r := &models.Room{SchedulerName: namespace, ID: room}
@@ -1048,11 +1048,36 @@ forwarders:
 			It("with custom metric and limit", func() {
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				pKey := models.GetRoomMetricsRedisKey(namespace, "cpu")
-				expectedRooms := []string{"room1", "room2", "room3"}
+				// expC := &models.RoomsStatusCount{1, 1, 2, 1} // creating,occupied,ready,terminating
+				expectedRooms := []string{"test-ready-0", "test-ready-1", "test-occupied-0"}
+				readyKey := models.GetRoomStatusSetRedisKey(namespace, models.StatusReady)
+				occupiedKey := models.GetRoomStatusSetRedisKey(namespace, models.StatusOccupied)
+				// rooms := CreateTestRooms(clientset, namespace, expC)
+
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().ZRange(pKey, int64(0), int64(123-1)).Return(
-					redis.NewStringSliceResult(expectedRooms, nil))
-				mockPipeline.EXPECT().Exec()
+					redis.NewStringSliceResult(expectedRooms, nil)).AnyTimes()
+				mockPipeline.EXPECT().ZRange(pKey, int64(123), int64(246-1)).Return(
+					redis.NewStringSliceResult([]string{}, nil))
+				mockPipeline.EXPECT().Exec().Times(3)
+
+				for _, room := range expectedRooms {
+					roomObj := models.NewRoom(room, namespace)
+					mockPipeline.EXPECT().SIsMember(readyKey, roomObj.GetRoomRedisKey()).Return(
+						redis.NewBoolResult(true, nil))
+					mockPipeline.EXPECT().SIsMember(occupiedKey, roomObj.GetRoomRedisKey()).Return(
+						redis.NewBoolResult(true, nil))
+				}
+
+				// Create rooms to MockGetRegisteredRoomsPerStatus
+				// MockGetRegisteredRoomsPerStatus(
+				// 	mockRedisClient,
+				// 	mockPipeline,
+				// 	namespace,
+				// 	[]string{models.StatusReady, models.StatusOccupied},
+				// 	rooms,
+				// 	nil,
+				// )
 
 				url := fmt.Sprintf("/scheduler/%s/rooms?metric=cpu&limit=123", namespace)
 				request, err := http.NewRequest("GET", url, nil)

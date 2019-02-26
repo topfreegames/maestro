@@ -8,7 +8,6 @@
 package models
 
 import (
-	e "errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -247,19 +246,6 @@ func reportStatus(game, scheduler, status, gauge string) error {
 	})
 }
 
-func reportUsage(game, scheduler, metric string, requests, usage int64) error {
-	if requests == 0 {
-		return e.New("cannot divide by zero")
-	}
-	gauge := fmt.Sprintf("%.2f", float64(usage)/float64(requests))
-	return reporters.Report(reportersConstants.EventGruMetricUsage, map[string]interface{}{
-		reportersConstants.TagGame:      game,
-		reportersConstants.TagScheduler: scheduler,
-		reportersConstants.TagMetric:    metric,
-		"gauge":                         gauge,
-	})
-}
-
 // ClearAll removes all room keys from redis
 func (r *Room) ClearAll(redisClient interfaces.RedisClient, mr *MixedMetricsReporter) error {
 	pipe := redisClient.TxPipeline()
@@ -394,26 +380,84 @@ func getReadyRooms(tx redis.Pipeliner, schedulerName string, size int, mr *Mixed
 	return res, err
 }
 
-// GetRoomsByMetric returns a list of rooms ordered by metric
-func GetRoomsByMetric(redisClient interfaces.RedisClient, schedulerName string, metricName string, size int, mr *MixedMetricsReporter) ([]string, error) {
-	var result []string
-	// TODO hacky, one day add ZRange and SRandMember to redis interface
-	tx := redisClient.TxPipeline()
-	if metricName == string(RoomAutoScalingPolicyType) || metricName == string(LegacyAutoScalingPolicyType) {
-		return getReadyRooms(tx, schedulerName, size, mr)
+func filterReadyAndOccupiedRooms(tx redis.Pipeliner, mr *MixedMetricsReporter, rooms []string, schedulerName string) ([]string, error) {
+	availableRooms := []string{}
+	readyRooms := make(map[string]*redis.BoolCmd)
+	occupiedRooms := make(map[string]*redis.BoolCmd)
+
+	for _, room := range rooms {
+		roomObj := NewRoom(room, schedulerName)
+		readyRooms[room] = tx.SIsMember(GetRoomStatusSetRedisKey(schedulerName, StatusReady), roomObj.GetRoomRedisKey())
+		occupiedRooms[room] = tx.SIsMember(GetRoomStatusSetRedisKey(schedulerName, StatusOccupied), roomObj.GetRoomRedisKey())
 	}
-	rooms := tx.ZRange(
-		GetRoomMetricsRedisKey(schedulerName, metricName),
-		int64(0),
-		int64(size-1),
-	)
-	err := mr.WithSegment(SegmentZRangeBy, func() error {
+
+	err := mr.WithSegment(SegmentSIsMember, func() error {
 		_, err := tx.Exec()
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	result, err = rooms.Result()
-	return result, err
+
+	for _, room := range rooms {
+		if readyRooms[room].Val() || occupiedRooms[room].Val() {
+			availableRooms = append(availableRooms, room)
+		}
+	}
+
+	return availableRooms, nil
+}
+
+// GetRoomsByMetric returns a list of rooms ordered by metric
+func GetRoomsByMetric(redisClient interfaces.RedisClient, schedulerName string, metricName string, size int, mr *MixedMetricsReporter) ([]string, error) {
+	var availableRooms []string
+	limit := size
+	offset := 0
+	// TODO hacky, one day add ZRange and SRandMember to redis interface
+	tx := redisClient.TxPipeline()
+	if metricName == string(RoomAutoScalingPolicyType) || metricName == string(LegacyAutoScalingPolicyType) {
+		return getReadyRooms(tx, schedulerName, size, mr)
+	}
+
+	for {
+		if len(availableRooms) < limit {
+			// Get rooms metrics for rooms in all states
+			rooms := tx.ZRange(
+				GetRoomMetricsRedisKey(schedulerName, metricName),
+				int64(offset),
+				int64(size-1),
+			)
+
+			err := mr.WithSegment(SegmentZRangeBy, func() error {
+				_, err := tx.Exec()
+				return err
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			result, err := rooms.Result()
+			if err != nil {
+				return nil, err
+			}
+
+			// Checked all rooms
+			if len(result) == 0 {
+				return availableRooms, nil
+			}
+
+			// Check if room is in ready or occupied state
+			filteredRooms, err := filterReadyAndOccupiedRooms(tx, mr, result, schedulerName)
+			if err != nil {
+				return nil, err
+			}
+
+			availableRooms = append(availableRooms, filteredRooms...)
+
+			offset = size
+			size = size + offset
+		} else {
+			return availableRooms, nil
+		}
+	}
 }

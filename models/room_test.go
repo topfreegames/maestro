@@ -467,12 +467,22 @@ var _ = Describe("Room", func() {
 				scheduler := "pong-free-for-all"
 				size := 3
 				pKey := models.GetRoomMetricsRedisKey(scheduler, metric)
+				readyKey := models.GetRoomStatusSetRedisKey(scheduler, models.StatusReady)
+				occupiedKey := models.GetRoomStatusSetRedisKey(scheduler, models.StatusOccupied)
 
 				expectedRooms := []string{"room1", "room2", "room3"}
+				for _, room := range expectedRooms {
+					roomObj := models.NewRoom(room, scheduler)
+					mockPipeline.EXPECT().SIsMember(readyKey, roomObj.GetRoomRedisKey()).Return(
+						redis.NewBoolResult(true, nil))
+					mockPipeline.EXPECT().SIsMember(occupiedKey, roomObj.GetRoomRedisKey()).Return(
+						redis.NewBoolResult(true, nil))
+				}
+
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().ZRange(pKey, int64(0), int64(size-1)).Return(
 					redis.NewStringSliceResult(expectedRooms, nil))
-				mockPipeline.EXPECT().Exec()
+				mockPipeline.EXPECT().Exec().Times(2)
 
 				rooms, err := models.GetRoomsByMetric(mockRedisClient, scheduler, metric, size, mmr)
 				Expect(err).NotTo(HaveOccurred())

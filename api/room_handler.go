@@ -375,6 +375,7 @@ func (h *RoomListByMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		limit,
 		mr,
 	)
+
 	if err != nil {
 		status := http.StatusInternalServerError
 		logger.WithError(err).Error("list by metrics handler failed")

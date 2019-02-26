@@ -381,7 +381,6 @@ var _ = Describe("Scheduler", func() {
 				CPUAutoScalingPolicyType,
 				roomUsages,
 			)
-			// Expect(autoScalingPolicy.Min).To(Equal(100))
 		})
 
 		It("should not error when no rooms", func() {
@@ -394,7 +393,6 @@ var _ = Describe("Scheduler", func() {
 				CPUAutoScalingPolicyType,
 				[]*RoomUsage{},
 			)
-			// Expect(autoScalingPolicy.Min).To(Equal(100))
 		})
 	})
 

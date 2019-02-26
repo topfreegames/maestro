@@ -322,6 +322,9 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods on namespace")
 		return
+	} else if len(pods.Items) == 0 {
+		logger.Warn("empty list of pods on namespace")
+		return
 	}
 
 	// Load pods metricses
