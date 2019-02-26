@@ -17,7 +17,11 @@ const (
 
 	EventHTTPResponseTime = "http.response.time"
 
-	EventPodStatus     = "pod.status"
+	EventPodPending    = "pod.pending"
+	EventPodRunning    = "pod.running"
+	EventPodSucceeded  = "pod.succeeded"
+	EventPodFailed     = "pod.failed"
+	EventPodUnknown    = "pod.unknown"
 	EventPodLastStatus = "pod.last_status"
 
 	EventResponseTime = "response.time"
