@@ -98,7 +98,7 @@ func reportUsage(game, scheduler, metric string, requests, usage int64) error {
 		reportersConstants.TagGame:      game,
 		reportersConstants.TagScheduler: scheduler,
 		reportersConstants.TagMetric:    metric,
-		"gauge":                         gauge,
+		reportersConstants.ValueGauge:   gauge,
 	})
 }
 
@@ -348,11 +348,11 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 				}
 				roomUsages[roomUsagesIdxMap[pmetrics.Name]].Usage = float64(usage)
 				l := logger.WithFields(logrus.Fields{
-					"game": scheduler.Game,
-					"name":   scheduler.Name,
-					"metric":   string(metric),
-					"requests": requests[metric],
-					"usage": usage,
+					"game":         scheduler.Game,
+					"name":         scheduler.Name,
+					"metric":       string(metric),
+					"requests":     requests[metric],
+					"usage":        usage,
 					"HasReporters": reporters.HasReporters(),
 				})
 				l.Debug("will report usage")
@@ -1100,8 +1100,17 @@ func (w *Watcher) PodStatesCount() {
 	}
 
 	restartCount := map[string]int{}
+	stateCount := map[v1.PodPhase]int{}
+	stateEvents := map[v1.PodPhase]string{
+		v1.PodPending:   reportersConstants.EventPodPending,
+		v1.PodRunning:   reportersConstants.EventPodRunning,
+		v1.PodSucceeded: reportersConstants.EventPodSucceeded,
+		v1.PodFailed:    reportersConstants.EventPodFailed,
+		v1.PodUnknown:   reportersConstants.EventPodUnknown,
+	}
 
 	for _, pod := range pods.Items {
+		stateCount[pod.Status.Phase]++
 		for _, status := range pod.Status.ContainerStatuses {
 			logger.Debugf("termination state: %+v", status)
 			if hasTerminationState(&status) {
@@ -1112,6 +1121,14 @@ func (w *Watcher) PodStatesCount() {
 	}
 
 	logger.Debug("reporting to statsd")
+
+	for state, count := range stateCount {
+		reporters.Report(stateEvents[state], map[string]interface{}{
+			reportersConstants.TagGame:      w.GameName,
+			reportersConstants.TagScheduler: w.SchedulerName,
+			reportersConstants.ValueGauge:   fmt.Sprintf("%d", count),
+		})
+	}
 
 	for reason, count := range restartCount {
 		logger.Debugf("sending result to statsd: {%s:%d}", reason, count)

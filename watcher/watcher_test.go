@@ -4465,6 +4465,7 @@ var _ = Describe("Watcher", func() {
 				pod.SetName(fmt.Sprintf("pod-%d", idx))
 				pod.SetNamespace(w.SchedulerName)
 				pod.Status = v1.PodStatus{
+					Phase: v1.PodPending,
 					ContainerStatuses: []v1.ContainerStatus{{
 						LastTerminationState: v1.ContainerState{
 							Terminated: &v1.ContainerStateTerminated{
@@ -4477,6 +4478,12 @@ var _ = Describe("Watcher", func() {
 				_, err := clientset.CoreV1().Pods(w.SchedulerName).Create(pod)
 				Expect(err).ToNot(HaveOccurred())
 			}
+
+			mockReporter.EXPECT().Report(reportersConstants.EventPodPending, map[string]interface{}{
+				reportersConstants.TagGame:      w.GameName,
+				reportersConstants.TagScheduler: w.SchedulerName,
+				reportersConstants.ValueGauge:   fmt.Sprintf("%d", nPods),
+			})
 
 			mockReporter.EXPECT().Report(reportersConstants.EventPodLastStatus, map[string]interface{}{
 				reportersConstants.TagGame:      w.GameName,
