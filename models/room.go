@@ -380,7 +380,8 @@ func getReadyRooms(tx redis.Pipeliner, schedulerName string, size int, mr *Mixed
 	return res, err
 }
 
-func filterReadyAndOccupiedRooms(tx redis.Pipeliner, mr *MixedMetricsReporter, availableRooms *[]string, rooms []string, schedulerName string) error {
+func filterReadyAndOccupiedRooms(tx redis.Pipeliner, mr *MixedMetricsReporter, rooms []string, schedulerName string) ([]string, error) {
+	availableRooms := []string{}
 	readyRooms := make(map[string]*redis.BoolCmd)
 	occupiedRooms := make(map[string]*redis.BoolCmd)
 
@@ -395,16 +396,16 @@ func filterReadyAndOccupiedRooms(tx redis.Pipeliner, mr *MixedMetricsReporter, a
 		return err
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, room := range rooms {
 		if readyRooms[room].Val() || occupiedRooms[room].Val() {
-			*availableRooms = append(*availableRooms, room)
+			availableRooms = append(availableRooms, room)
 		}
 	}
 
-	return nil
+	return availableRooms, nil
 }
 
 // GetRoomsByMetric returns a list of rooms ordered by metric
@@ -446,10 +447,12 @@ func GetRoomsByMetric(redisClient interfaces.RedisClient, schedulerName string, 
 			}
 
 			// Check if room is in ready or occupied state
-			err = filterReadyAndOccupiedRooms(tx, mr, &availableRooms, result, schedulerName)
+			filteredRooms, err := filterReadyAndOccupiedRooms(tx, mr, result, schedulerName)
 			if err != nil {
 				return nil, err
 			}
+
+			availableRooms = append(availableRooms, filteredRooms...)
 
 			offset = size
 			size = size + offset

@@ -132,32 +132,3 @@ func GetAllRegisteredRooms(
 
 	return registeredRooms, nil
 }
-
-// GetAllRegisteredRoomsByStatus returns an map of registered pods on redis with determined status
-func GetAllRegisteredRoomsByStatus(
-	redisClient interfaces.RedisClient,
-	schedulerName string,
-	statusArr []string,
-) (map[string]bool, error) {
-	results := make(map[string]*redis.StringSliceCmd)
-
-	pipe := redisClient.TxPipeline()
-	for _, status := range statusArr {
-		key := GetRoomStatusSetRedisKey(schedulerName, status)
-		results[status] = pipe.SMembers(key)
-	}
-
-	_, err := pipe.Exec()
-	if err != nil {
-		return nil, err
-	}
-
-	registeredRooms := map[string]bool{}
-	for _, result := range results {
-		for _, room := range result.Val() {
-			registeredRooms[RoomFromRedisKey(room)] = true
-		}
-	}
-
-	return registeredRooms, nil
-}
