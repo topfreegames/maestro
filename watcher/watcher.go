@@ -1123,6 +1123,7 @@ func (w *Watcher) PodStatesCount() {
 	logger.Debug("reporting to statsd")
 
 	for state, count := range stateCount {
+		logger.Debugf("sending pods phases to statsd: {%s:%d}", stateEvents[state], count)
 		reporters.Report(stateEvents[state], map[string]interface{}{
 			reportersConstants.TagGame:      w.GameName,
 			reportersConstants.TagScheduler: w.SchedulerName,
