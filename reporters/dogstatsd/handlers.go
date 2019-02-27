@@ -25,6 +25,11 @@ var handlers = map[string]interface{}{
 	constants.EventRPCDuration:      GruTimingHandler,
 	constants.EventHTTPResponseTime: HTTPTimingHandler,
 	constants.EventPodLastStatus:    GaugeHandler,
+	constants.EventPodPending:       GaugeHandler,
+	constants.EventPodRunning:       GaugeHandler,
+	constants.EventPodSucceeded:     GaugeHandler,
+	constants.EventPodFailed:        GaugeHandler,
+	constants.EventPodUnknown:       GaugeHandler,
 	constants.EventResponseTime:     TimingHandler,
 	constants.EventGruMetricUsage:   GaugeHandler,
 }
