@@ -25,11 +25,7 @@ var handlers = map[string]interface{}{
 	constants.EventRPCDuration:      GruTimingHandler,
 	constants.EventHTTPResponseTime: HTTPTimingHandler,
 	constants.EventPodLastStatus:    GaugeHandler,
-	constants.EventPodPending:       GaugeHandler,
-	constants.EventPodRunning:       GaugeHandler,
-	constants.EventPodSucceeded:     GaugeHandler,
-	constants.EventPodFailed:        GaugeHandler,
-	constants.EventPodUnknown:       GaugeHandler,
+	constants.EventPodStatus:        GaugeHandler,
 	constants.EventResponseTime:     TimingHandler,
 	constants.EventGruMetricUsage:   GaugeHandler,
 }
@@ -133,7 +129,7 @@ func GaugeHandler(
 ) error {
 	tags := createAllowedTags(opts, []string{
 		constants.TagGame, constants.TagScheduler, constants.TagRegion,
-		constants.TagReason, constants.TagMetric,
+		constants.TagReason, constants.TagMetric, constants.TagPodStatus,
 	})
 	gauge, err := strconv.ParseFloat(opts["gauge"], 64)
 	if err != nil {

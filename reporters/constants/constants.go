@@ -22,6 +22,7 @@ const (
 	EventPodSucceeded  = "pod.succeeded"
 	EventPodFailed     = "pod.failed"
 	EventPodUnknown    = "pod.unknown"
+	EventPodStatus     = "pod.status"
 	EventPodLastStatus = "pod.last_status"
 
 	EventResponseTime = "response.time"
@@ -42,6 +43,7 @@ const (
 
 //Tag{...} represents datadog tags
 const (
+	TagPodStatus    = "maestro-pod-status"
 	TagGame         = "maestro-game"
 	TagScheduler    = "maestro-scheduler"
 	TagRegion       = "maestro-region"

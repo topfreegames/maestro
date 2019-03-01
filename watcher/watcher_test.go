@@ -4479,11 +4479,17 @@ var _ = Describe("Watcher", func() {
 				Expect(err).ToNot(HaveOccurred())
 			}
 
-			mockReporter.EXPECT().Report(reportersConstants.EventPodPending, map[string]interface{}{
-				reportersConstants.TagGame:      w.GameName,
-				reportersConstants.TagScheduler: w.SchedulerName,
-				reportersConstants.ValueGauge:   fmt.Sprintf("%d", nPods),
-			})
+			stateCount := map[v1.PodPhase]int{
+				v1.PodPending:   nPods,
+				v1.PodRunning:   0,
+				v1.PodSucceeded: 0,
+				v1.PodFailed:    0,
+				v1.PodUnknown:   0,
+			}
+
+			for _ = range stateCount {
+				mockReporter.EXPECT().Report(reportersConstants.EventPodStatus, gomock.Any())
+			}
 
 			mockReporter.EXPECT().Report(reportersConstants.EventPodLastStatus, map[string]interface{}{
 				reportersConstants.TagGame:      w.GameName,

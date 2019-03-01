@@ -1100,13 +1100,12 @@ func (w *Watcher) PodStatesCount() {
 	}
 
 	restartCount := map[string]int{}
-	stateCount := map[v1.PodPhase]int{}
-	stateEvents := map[v1.PodPhase]string{
-		v1.PodPending:   reportersConstants.EventPodPending,
-		v1.PodRunning:   reportersConstants.EventPodRunning,
-		v1.PodSucceeded: reportersConstants.EventPodSucceeded,
-		v1.PodFailed:    reportersConstants.EventPodFailed,
-		v1.PodUnknown:   reportersConstants.EventPodUnknown,
+	stateCount := map[v1.PodPhase]int{
+		v1.PodPending:   0,
+		v1.PodRunning:   0,
+		v1.PodSucceeded: 0,
+		v1.PodFailed:    0,
+		v1.PodUnknown:   0,
 	}
 
 	for _, pod := range pods.Items {
@@ -1123,8 +1122,9 @@ func (w *Watcher) PodStatesCount() {
 	logger.Debug("reporting to statsd")
 
 	for state, count := range stateCount {
-		logger.Debugf("sending pods phases to statsd: {%s:%d}", stateEvents[state], count)
-		reporters.Report(stateEvents[state], map[string]interface{}{
+		logger.Debugf("sending pods status to statsd: {%s:%d}", state, count)
+		reporters.Report(reportersConstants.EventPodStatus, map[string]interface{}{
+			reportersConstants.TagPodStatus: state,
 			reportersConstants.TagGame:      w.GameName,
 			reportersConstants.TagScheduler: w.SchedulerName,
 			reportersConstants.ValueGauge:   fmt.Sprintf("%d", count),
