@@ -45,20 +45,26 @@ type Resources struct {
 // Obs.: ValueFrom must not be a pointer so it can compare at controller.go MustUpdate function
 type EnvVar struct {
 	Name      string    `yaml:"name" json:"name"`
-	Value     string    `yaml:"value" json:"value"`
-	ValueFrom ValueFrom `yaml:"valueFrom" json:"valueFrom"`
+	Value     string    `yaml:"value,omitempty" json:"value,omitempty"`
+	ValueFrom ValueFrom `yaml:"valueFrom,omitempty" json:"valueFrom,omitempty"`
 }
 
 // ValueFrom has environment variables from secrets
 // Obs.: ValueFrom must not be a pointer so it can compare at controller.go MustUpdate function
 type ValueFrom struct {
-	SecretKeyRef SecretKeyRef `yaml:"secretKeyRef" json:"secretKeyRef"`
+	SecretKeyRef SecretKeyRef `yaml:"secretKeyRef,omitempty" json:"secretKeyRef,omitempty"`
+	FieldRef     FieldRef     `yaml:"fieldRef,omitempty" json:"fieldRef,omitempty"`
 }
 
 // SecretKeyRef has environment variables from secrets
 type SecretKeyRef struct {
 	Name string `yaml:"name" json:"name"`
 	Key  string `yaml:"key" json:"key"`
+}
+
+// FieldRef has environment variables from fields
+type FieldRef struct {
+	FieldPath string `yaml:"fieldPath" json:"fieldPath"`
 }
 
 // ScalingPolicyTrigger has the configuration for a scaling policy trigger

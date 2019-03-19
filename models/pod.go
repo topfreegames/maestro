@@ -103,6 +103,10 @@ spec:
             name: {{.SecretKeyRef.Name}}
             key: {{.SecretKeyRef.Key}}
           {{- end}}
+        {{- else if .ValueFrom.FieldRef.FieldPath}}
+        valueFrom:
+          fieldRef:
+            fieldPath: {{.ValueFrom.FieldRef.FieldPath}}
         {{- else}}
         value: "{{.Value}}"
         {{- end}}

@@ -29,7 +29,7 @@ env:
 containers: []
 `)
 
-			result := `{"yaml":"name: scheduler-name\ngame: game\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nauthorizedUsers: []\nportRange: null\nimage: nginx:alpine\nimagePullPolicy: \"\"\nports:\n- containerPort: 8080\n  protocol: TCP\n  name: tcp\nlimits:\n  cpu: 100m\n  memory: 100Mi\nrequests:\n  cpu: 50m\n  memory: 50Mi\nenv:\n- name: ENV_1\n  value: VALUE_1\n  valueFrom:\n    secretKeyRef:\n      name: \"\"\n      key: \"\"\ncmd:\n- /bin/bash\n- -c\n- ./start.sh\n"}`
+			result := `{"yaml":"name: scheduler-name\ngame: game\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nauthorizedUsers: []\nportRange: null\nimage: nginx:alpine\nimagePullPolicy: \"\"\nports:\n- containerPort: 8080\n  protocol: TCP\n  name: tcp\nlimits:\n  cpu: 100m\n  memory: 100Mi\nrequests:\n  cpu: 50m\n  memory: 50Mi\nenv:\n- name: ENV_1\n  value: VALUE_1\ncmd:\n- /bin/bash\n- -c\n- ./start.sh\n"}`
 
 			Expect(string(configYaml.ToYAML())).To(Equal(result))
 		})
@@ -56,7 +56,36 @@ containers:
     value: VALUE_1
 `)
 
-			result := `{"yaml":"name: scheduler-name\ngame: game\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nauthorizedUsers: []\ncontainers:\n- name: container1\n  image: nginx:alpine\n  imagePullPolicy: \"\"\n  ports:\n  - containerPort: 8080\n    protocol: TCP\n    name: tcp\n  limits:\n    cpu: 100m\n    memory: 100Mi\n  requests:\n    cpu: 50m\n    memory: 50Mi\n  env:\n  - name: ENV_1\n    value: VALUE_1\n    valueFrom:\n      secretKeyRef:\n        name: \"\"\n        key: \"\"\n  cmd:\n  - /bin/bash\n  - -c\n  - ./start.sh\nportRange: null\n"}`
+			result := `{"yaml":"name: scheduler-name\ngame: game\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nauthorizedUsers: []\ncontainers:\n- name: container1\n  image: nginx:alpine\n  imagePullPolicy: \"\"\n  ports:\n  - containerPort: 8080\n    protocol: TCP\n    name: tcp\n  limits:\n    cpu: 100m\n    memory: 100Mi\n  requests:\n    cpu: 50m\n    memory: 50Mi\n  env:\n  - name: ENV_1\n    value: VALUE_1\n  cmd:\n  - /bin/bash\n  - -c\n  - ./start.sh\nportRange: null\n"}`
+
+			Expect(string(configYaml.ToYAML())).To(Equal(result))
+		})
+
+		It("should return yaml for version v2 with field path", func() {
+			configYaml, _ := NewConfigYAML(`name: scheduler-name
+game: game
+containers:
+- name: container1
+  image: nginx:alpine
+  ports:
+  - containerPort: 8080
+    protocol: TCP
+    name: tcp
+  limits:
+    cpu: 100m
+    memory: 100Mi
+  requests:
+    cpu: 50m
+    memory: 50Mi
+  cmd: ["/bin/bash", "-c", "./start.sh"]
+  env:
+  - name: ENV_1
+    valueFrom:
+      fieldRef:
+        fieldPath: status.IP
+`)
+
+			result := `{"yaml":"name: scheduler-name\ngame: game\nshutdownTimeout: 0\nautoscaling: null\naffinity: \"\"\ntoleration: \"\"\noccupiedTimeout: 0\nforwarders: {}\nauthorizedUsers: []\ncontainers:\n- name: container1\n  image: nginx:alpine\n  imagePullPolicy: \"\"\n  ports:\n  - containerPort: 8080\n    protocol: TCP\n    name: tcp\n  limits:\n    cpu: 100m\n    memory: 100Mi\n  requests:\n    cpu: 50m\n    memory: 50Mi\n  env:\n  - name: ENV_1\n    valueFrom:\n      fieldRef:\n        fieldPath: status.IP\n  cmd:\n  - /bin/bash\n  - -c\n  - ./start.sh\nportRange: null\n"}`
 
 			Expect(string(configYaml.ToYAML())).To(Equal(result))
 		})
