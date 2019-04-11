@@ -125,6 +125,7 @@ forwarders:
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
 					"status":   status,
+					"metadata": "",
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().ZRem(lKey, roomName)
@@ -157,6 +158,7 @@ forwarders:
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
 					"status":   status,
+					"metadata": "",
 				}).Times(2)
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any()).Times(2)
 				mockPipeline.EXPECT().ZRem(lKey, roomName).Times(2)
@@ -288,6 +290,7 @@ forwarders:
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
 					"status":   status,
+					"metadata": "",
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().ZRem(lKey, roomName)
@@ -324,6 +327,7 @@ forwarders:
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
 					"status":   status,
+					"metadata": "",
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().ZRem(lKey, roomName)
@@ -386,6 +390,7 @@ forwarders:
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
 					"status":   status,
+					"metadata": "",
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().ZRem(lKey, roomName)
@@ -521,6 +526,7 @@ forwarders:
 					mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 						"lastPing": time.Now().Unix(),
 						"status":   status,
+						"metadata": "",
 					})
 					mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 					mockPipeline.EXPECT().ZRem(lKey, roomName)
@@ -558,6 +564,7 @@ forwarders:
 					mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 						"lastPing": time.Now().Unix(),
 						"status":   status,
+						"metadata": `{"ipv6Label":"","type":"sometype"}`,
 					})
 					mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 					mockPipeline.EXPECT().ZRem(lKey, roomName)
@@ -616,6 +623,7 @@ forwarders:
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
 					"status":   status,
+					"metadata": "",
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().ZRem(lKey, roomName)

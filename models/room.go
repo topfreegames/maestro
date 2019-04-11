@@ -8,6 +8,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -95,7 +96,9 @@ func (r *Room) Create(
 ) error {
 	r.LastPingAt = time.Now().Unix()
 	pipe := redisClient.TxPipeline()
-	_, err := r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, false, scheduler)
+	_, err := r.addStatusToRedisPipeAndExec(
+		redisClient, db, mr, pipe,
+		false, scheduler, &RoomStatusPayload{})
 	return err
 }
 
@@ -114,22 +117,23 @@ func (r *Room) SetStatus(
 	redisClient interfaces.RedisClient,
 	db pginterfaces.DB,
 	mr *MixedMetricsReporter,
-	status string,
+	roomPayload *RoomStatusPayload,
 	scheduler *Scheduler,
-	returnRoomsCount bool,
 ) (*RoomsStatusCount, error) {
+	returnRoomsCount := roomPayload.Status == StatusOccupied
+
 	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
-	r.Status = status
+	r.Status = roomPayload.Status
 	r.LastPingAt = time.Now().Unix()
 
-	if status == StatusTerminated {
+	if roomPayload.Status == StatusTerminated {
 		return nil, r.ClearAll(redisClient, mr)
 	}
 
 	lastStatusChangedKey := GetLastStatusRedisKey(r.SchedulerName, StatusOccupied)
 	lastPingAtStr := strconv.FormatInt(r.LastPingAt, 10)
 	pipe := redisClient.TxPipeline()
-	if status == StatusOccupied {
+	if roomPayload.Status == StatusOccupied {
 		pipe.Eval(
 			ZaddIfNotExists,
 			[]string{lastStatusChangedKey, lastPingAtStr},
@@ -141,12 +145,56 @@ func (r *Room) SetStatus(
 
 	// remove from other statuses to be safe
 	for _, st := range allStatus {
-		if st != status {
+		if st != roomPayload.Status {
 			pipe.SRem(GetRoomStatusSetRedisKey(r.SchedulerName, st), r.GetRoomRedisKey())
 		}
 	}
 
-	return r.addStatusToRedisPipeAndExec(redisClient, db, mr, pipe, returnRoomsCount, scheduler)
+	return r.addStatusToRedisPipeAndExec(
+		redisClient, db, mr, pipe,
+		returnRoomsCount, scheduler, roomPayload)
+}
+
+// GetRoomsMetadatas returns a map from roomID to its metadata
+func GetRoomsMetadatas(
+	redisClient interfaces.RedisClient,
+	schedulerName string,
+	roomIDs []string,
+) (map[string]map[string]interface{}, error) {
+	rooms := make([]*Room, len(roomIDs))
+	for idx, roomID := range roomIDs {
+		rooms[idx] = &Room{ID: roomID, SchedulerName: schedulerName}
+	}
+
+	pipe := redisClient.TxPipeline()
+	for _, room := range rooms {
+		pipe.HGet(room.GetRoomRedisKey(), "metadata")
+	}
+	cmds, err := pipe.Exec()
+	if err != nil && err != redis.Nil {
+		return nil, err
+	}
+
+	metadatas := map[string]map[string]interface{}{}
+	for idx, room := range rooms {
+		var metadata map[string]interface{}
+
+		metadataStr, err := cmds[idx].(*redis.StringCmd).Result()
+		if err != nil && err != redis.Nil {
+			return nil, err
+		} else if metadataStr == "" {
+			metadata = map[string]interface{}{}
+		} else {
+			err = json.Unmarshal([]byte(metadataStr), &metadata)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		metadatas[room.ID] = metadata
+	}
+
+	return metadatas, nil
 }
 
 func (r *Room) addStatusToRedisPipeAndExec(
@@ -156,6 +204,7 @@ func (r *Room) addStatusToRedisPipeAndExec(
 	p redis.Pipeliner,
 	returnRoomsCount bool,
 	scheduler *Scheduler,
+	roomPayload *RoomStatusPayload,
 ) (*RoomsStatusCount, error) {
 	prevStatus := "nil"
 
@@ -174,6 +223,7 @@ func (r *Room) addStatusToRedisPipeAndExec(
 	p.HMSet(r.GetRoomRedisKey(), map[string]interface{}{
 		"status":   r.Status,
 		"lastPing": r.LastPingAt,
+		"metadata": roomPayload.GetMetadataString(),
 	})
 	p.SAdd(GetRoomStatusSetRedisKey(r.SchedulerName, r.Status), r.GetRoomRedisKey())
 	p.ZAdd(GetRoomPingRedisKey(r.SchedulerName), redis.Z{

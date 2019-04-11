@@ -37,7 +37,7 @@ import (
 	"github.com/topfreegames/maestro/reporters"
 	"github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/watcher"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 )
@@ -3964,31 +3964,89 @@ var _ = Describe("Watcher", func() {
 			for _, roomName := range expectedRooms {
 				err := createPod(roomName, schedulerName, clientset)
 				Expect(err).NotTo(HaveOccurred())
-
-				room := models.NewRoom(roomName, schedulerName)
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(2)
-				for _, status := range allStatus {
-					mockPipeline.EXPECT().
-						SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey()).
-						Times(2)
-					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, status), roomName).Times(2)
-				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName).Times(2)
-				for _, mt := range allMetrics {
-					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(schedulerName, mt), roomName).Times(2)
-				}
-				mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).Times(2)
-				mockPipeline.EXPECT().Exec().Times(2)
 			}
 
-			mockEventForwarder.EXPECT().Forward(gomock.Any(), models.RoomTerminated, gomock.Any(), gomock.Any()).Do(
-				func(ctx context.Context, status string, infos, fwdMetadata map[string]interface{}) {
-					Expect(status).To(Equal(models.RoomTerminated))
-					Expect(infos["game"]).To(Equal(schedulerName))
-					Expect(expectedRooms).To(ContainElement(infos["roomId"]))
-				}).Times(len(expectedRooms) * 2)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room1", "metadata")
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room2", "metadata")
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room3", "metadata")
+			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{
+				redis.NewStringResult(`{"region": "us"}`, nil),
+				redis.NewStringResult(`{"region": "us"}`, nil),
+				redis.NewStringResult(`{"region": "us"}`, nil),
+			}, nil)
 
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			for _, roomName := range expectedRooms {
+				room := models.NewRoom(roomName, schedulerName)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().SRem(
+						models.GetRoomStatusSetRedisKey(schedulerName, status),
+						room.GetRoomRedisKey())
+					mockPipeline.EXPECT().ZRem(
+						models.GetLastStatusRedisKey(schedulerName, status),
+						roomName)
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName)
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(
+						models.GetRoomMetricsRedisKey(schedulerName, mt),
+						roomName)
+				}
+
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+				mockEventForwarder.EXPECT().Forward(gomock.Any(), models.RoomTerminated,
+					map[string]interface{}{
+						"game":     "controller-name",
+						"host":     "",
+						"port":     int32(0),
+						"roomId":   roomName,
+						"metadata": map[string]interface{}{"region": "us"},
+					}, map[string]interface{}(nil))
+			}
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room1", "metadata")
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room2", "metadata")
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room3", "metadata")
+			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{
+				redis.NewStringResult(`{"region": "us"}`, nil),
+				redis.NewStringResult(`{"region": "us"}`, nil),
+				redis.NewStringResult(`{"region": "us"}`, nil),
+			}, nil)
+
+			for _, roomName := range expectedRooms {
+				room := models.NewRoom(roomName, schedulerName)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				for _, status := range allStatus {
+					mockPipeline.EXPECT().SRem(
+						models.GetRoomStatusSetRedisKey(schedulerName, status),
+						room.GetRoomRedisKey())
+					mockPipeline.EXPECT().ZRem(
+						models.GetLastStatusRedisKey(schedulerName, status),
+						roomName)
+				}
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName)
+				for _, mt := range allMetrics {
+					mockPipeline.EXPECT().ZRem(
+						models.GetRoomMetricsRedisKey(schedulerName, mt),
+						roomName)
+				}
+				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+				mockPipeline.EXPECT().Exec()
+				mockEventForwarder.EXPECT().Forward(gomock.Any(), models.RoomTerminated,
+					map[string]interface{}{
+						"game":     schedulerName,
+						"host":     "",
+						"port":     int32(0),
+						"roomId":   roomName,
+						"metadata": map[string]interface{}{"region": "us"},
+					}, map[string]interface{}(nil))
+			}
+
+			mockDb.EXPECT().
+				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 					scheduler.Game = schedulerName
@@ -4026,10 +4084,36 @@ var _ = Describe("Watcher", func() {
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
 			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
 
-			mockEventForwarder.EXPECT().Forward(gomock.Any(), models.RoomTerminated, gomock.Any(), gomock.Any()).Do(
-				func(ctx context.Context, status string, infos, fwdMetadata map[string]interface{}) {
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room1", "metadata")
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room2", "metadata")
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room3", "metadata")
+			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{
+				redis.NewStringResult(`{"region": "us"}`, nil),
+				redis.NewStringResult(`{"region": "us"}`, nil),
+				redis.NewStringResult(`{"region": "us"}`, nil),
+			}, nil)
+
+			for _, room := range expectedRooms {
+				mockEventForwarder.EXPECT().Forward(
+					gomock.Any(),
+					models.RoomTerminated,
+					map[string]interface{}{
+						"game":     "",
+						"host":     "",
+						"port":     int32(0),
+						"roomId":   room,
+						"metadata": map[string]interface{}{"region": "us"},
+					},
+					map[string]interface{}(nil),
+				).Do(func(
+					ctx context.Context,
+					status string,
+					infos, fwdMetadata map[string]interface{},
+				) {
 					Expect(status).To(Equal(models.RoomTerminated))
-				}).Times(len(expectedRooms))
+				})
+			}
 
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {

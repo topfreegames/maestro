@@ -6352,6 +6352,7 @@ containers:
 			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 				"lastPing": time.Now().Unix(),
 				"status":   status,
+				"metadata": "",
 			})
 			mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 			mockPipeline.EXPECT().ZRem(lKey, roomName)
@@ -6370,7 +6371,7 @@ containers:
 				mockDb,
 				mr,
 				clientset,
-				status,
+				&models.RoomStatusPayload{Status: status},
 				config,
 				room,
 				schedulerCache,
@@ -6389,6 +6390,7 @@ containers:
 			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 				"lastPing": time.Now().Unix(),
 				"status":   status,
+				"metadata": "",
 			})
 			mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 			mockPipeline.EXPECT().Eval(models.ZaddIfNotExists, gomock.Any(), roomName)
@@ -6465,7 +6467,7 @@ containers:
 				mockDb,
 				mr,
 				clientset,
-				status,
+				&models.RoomStatusPayload{Status: status},
 				config,
 				room,
 				schedulerCache,
@@ -6486,6 +6488,7 @@ containers:
 			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 				"lastPing": time.Now().Unix(),
 				"status":   status,
+				"metadata": "",
 			})
 			mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 			mockPipeline.EXPECT().Eval(models.ZaddIfNotExists, gomock.Any(), roomName)
@@ -6520,7 +6523,7 @@ containers:
 				mockDb,
 				mr,
 				clientset,
-				status,
+				&models.RoomStatusPayload{Status: status},
 				config,
 				room,
 				schedulerCache,
@@ -6544,7 +6547,7 @@ containers:
 				mockDb,
 				mr,
 				clientset,
-				status,
+				&models.RoomStatusPayload{Status: status},
 				config,
 				room,
 				schedulerCache,

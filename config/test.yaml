@@ -29,7 +29,7 @@ reporters:
     region: "test"
   http:
     timeout: "5s"
-    putURL: "localhost:8080"
+    putURL: "http://localhost:8080"
     region: "test"
 scaleUpTimeoutSeconds: 300
 scaleDownTimeoutSeconds: 300

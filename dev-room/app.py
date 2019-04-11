@@ -1,5 +1,4 @@
 # External deps
-import sys
 import signal
 import time
 import requests
@@ -8,21 +7,29 @@ import logging
 import threading
 from logging.config import fileConfig
 
-# Internal deps 
+# Internal deps
 import constant
-from api import Healthcheck, Address, Status, IncreaseCPUUsage, IncreaseMemUsage
+from api import (
+    Healthcheck, Address, Status,
+    IncreaseCPUUsage, IncreaseMemUsage
+)
 
 fileConfig('logging_config.ini')
 logger = logging.getLogger()
 
 status = "ready"
 
+
 def sigterm_handler(signal, frame):
     global status
     print('Terminating room')
     status = "terminating"
-    requests.put("{}/{}".format(constant.MAESTRO_ADDR, constant.ROOM_PING_ENDPOINT), json={"timestamp": int(time.time()), "status": status})
+    requests.put("{}/{}".format(
+        constant.MAESTRO_ADDR,
+        constant.ROOM_PING_ENDPOINT,
+    ), json={"timestamp": int(time.time()), "status": status})
     exit()
+
 
 signal.signal(signal.SIGTERM, sigterm_handler)
 signal.signal(signal.SIGINT, sigterm_handler)
@@ -31,9 +38,20 @@ signal.signal(signal.SIGINT, sigterm_handler)
 def ping():
     while True:
         try:
-            print("ping {}/{}".format(constant.MAESTRO_ADDR, constant.ROOM_PING_ENDPOINT))
+            print("ping {}/{}".format(
+                constant.MAESTRO_ADDR,
+                constant.ROOM_PING_ENDPOINT))
             print("status {}".format(status))
-            requests.put("{}/{}".format(constant.MAESTRO_ADDR, constant.ROOM_PING_ENDPOINT), json={"timestamp": int(time.time()), "status": status})
+            requests.put("{}/{}".format(
+                constant.MAESTRO_ADDR,
+                constant.ROOM_PING_ENDPOINT,
+            ), json={
+                "timestamp": int(time.time()),
+                "status": status,
+                "metadata": {
+                    "region": "us"
+                }
+            })
         except Exception as ex:
             print(str(ex))
             pass
@@ -42,10 +60,21 @@ def ping():
 
 while True:
     try:
-        print("polling {}/{}".format(constant.MAESTRO_ADDR, constant.ROOM_ADDR_ENDPOINT))
-        r = requests.get("{}/{}".format(constant.MAESTRO_ADDR, constant.ROOM_ADDR_ENDPOINT))
+        print("polling {}/{}".format(
+            constant.MAESTRO_ADDR,
+            constant.ROOM_ADDR_ENDPOINT))
+
+        r = requests.get("{}/{}".format(
+            constant.MAESTRO_ADDR,
+            constant.ROOM_ADDR_ENDPOINT))
         if r.status_code == 200:
-            r = requests.put("{}/{}".format(constant.MAESTRO_ADDR, constant.ROOM_STATUS_ENDPOINT), json={"timestamp": int(time.time()), "status": "ready"})
+            r = requests.put("{}/{}".format(
+                constant.MAESTRO_ADDR,
+                constant.ROOM_STATUS_ENDPOINT,
+            ), json={
+                "timestamp": int(time.time()),
+                "status": "ready",
+            })
             break
     except Exception as ex:
         print(str(ex))

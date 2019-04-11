@@ -216,12 +216,17 @@ var _ = Describe("Room", func() {
 			newSKey := models.GetRoomStatusSetRedisKey(schedulerName, status)
 			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
 			now := time.Now().Unix()
+			payload := &models.RoomStatusPayload{
+				Status:   status,
+				Metadata: map[string]interface{}{"region": "us"},
+			}
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(rKey, gomock.Any()).Do(
 				func(schedulerName string, statusInfo map[string]interface{}) {
 					Expect(statusInfo["status"]).To(Equal(status))
 					Expect(statusInfo["lastPing"]).To(BeNumerically("~", now, 1))
+					Expect(statusInfo["metadata"]).To(Equal(`{"region":"us"}`))
 				},
 			)
 			mockPipeline.EXPECT().ZAdd(pKey, redis.Z{float64(now), room.ID})
@@ -231,26 +236,14 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied), name)
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
 
-			mockPipeline.EXPECT().SCard(
-				models.GetRoomStatusSetRedisKey(schedulerName, models.StatusCreating),
-			).Return(goredis.NewIntResult(0, nil))
-			mockPipeline.EXPECT().SCard(
-				models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady),
-			).Return(goredis.NewIntResult(5, nil))
-			mockPipeline.EXPECT().SCard(
-				models.GetRoomStatusSetRedisKey(schedulerName, models.StatusOccupied),
-			).Return(goredis.NewIntResult(0, nil))
-			mockPipeline.EXPECT().SCard(
-				models.GetRoomStatusSetRedisKey(schedulerName, models.StatusTerminating),
-			).Return(goredis.NewIntResult(0, nil))
-
 			mockPipeline.EXPECT().Exec()
 			reportStatus(room.SchedulerName, status, rKey, newSKey)
 
-			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, mmr, status, scheduler, true)
+			roomsCountByStatus, err := room.SetStatus(
+				mockRedisClient, mockDb, mmr,
+				payload, scheduler)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(roomsCountByStatus).NotTo(BeNil())
-			Expect(roomsCountByStatus.Total()).To(Equal(5))
+			Expect(roomsCountByStatus).To(BeNil())
 		})
 
 		It("should remove from redis is status is 'terminated'", func() {
@@ -258,6 +251,7 @@ var _ = Describe("Room", func() {
 			rKey := room.GetRoomRedisKey()
 			status := models.StatusTerminated
 			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
+			payload := &models.RoomStatusPayload{Status: status}
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady), rKey)
@@ -273,7 +267,9 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Del(rKey)
 			mockPipeline.EXPECT().Exec()
 
-			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, mmr, status, scheduler, true)
+			roomsCountByStatus, err := room.SetStatus(
+				mockRedisClient, mockDb, mmr,
+				payload, scheduler)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(roomsCountByStatus).To(BeNil())
 		})
@@ -285,6 +281,7 @@ var _ = Describe("Room", func() {
 			newSKey := models.GetRoomStatusSetRedisKey(schedulerName, status)
 			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
 			now := time.Now().Unix()
+			payload := &models.RoomStatusPayload{Status: status}
 
 			mockRedisClient.EXPECT().HGetAll(rKey).
 				Return(redis.NewStringStringMapResult(map[string]string{
@@ -304,21 +301,11 @@ var _ = Describe("Room", func() {
 				mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, st), rKey)
 			}
 			mockPipeline.EXPECT().SAdd(newSKey, rKey)
-			mockPipeline.EXPECT().SCard(
-				models.GetRoomStatusSetRedisKey(schedulerName, models.StatusCreating),
-			).Return(goredis.NewIntResult(0, nil))
-			mockPipeline.EXPECT().SCard(
-				models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady),
-			).Return(goredis.NewIntResult(5, nil))
-			mockPipeline.EXPECT().SCard(
-				models.GetRoomStatusSetRedisKey(schedulerName, models.StatusOccupied),
-			).Return(goredis.NewIntResult(0, nil))
-			mockPipeline.EXPECT().SCard(
-				models.GetRoomStatusSetRedisKey(schedulerName, models.StatusTerminating),
-			).Return(goredis.NewIntResult(0, nil))
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
 
-			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, mmr, status, scheduler, true)
+			roomsCountByStatus, err := room.SetStatus(
+				mockRedisClient, mockDb, mmr,
+				payload, scheduler)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 			Expect(roomsCountByStatus).To(BeNil())
@@ -331,6 +318,7 @@ var _ = Describe("Room", func() {
 			newSKey := models.GetRoomStatusSetRedisKey(schedulerName, status)
 			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
 			now := time.Now().Unix()
+			payload := &models.RoomStatusPayload{Status: status}
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(rKey, gomock.Any()).Do(
@@ -361,7 +349,9 @@ var _ = Describe("Room", func() {
 			mockPipeline.EXPECT().Exec()
 			reportStatus(room.SchedulerName, status, rKey, newSKey)
 
-			roomsCountByStatus, err := room.SetStatus(mockRedisClient, mockDb, mmr, status, scheduler, true)
+			roomsCountByStatus, err := room.SetStatus(
+				mockRedisClient, mockDb, mmr,
+				payload, scheduler)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(roomsCountByStatus.Total()).To(Equal(10))
 		})
@@ -545,5 +535,110 @@ var _ = Describe("Room", func() {
 				Expect(err.Error()).To(Equal("some error"))
 			})
 		})
+	})
+})
+
+var _ = Describe("GetRoomsMetadatas", func() {
+	var (
+		schedulerName = "scheduler-name"
+		roomIDs       = []string{"room-id-1", "room-id-2", "room-id-3"}
+		rooms         = []*models.Room{
+			{ID: roomIDs[0], SchedulerName: schedulerName},
+			{ID: roomIDs[1], SchedulerName: schedulerName},
+			{ID: roomIDs[2], SchedulerName: schedulerName},
+		}
+		rErr = errors.New("error")
+	)
+
+	It("should get when no metadata", func() {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().HGet(rooms[0].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().HGet(rooms[1].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().HGet(rooms[2].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().Exec().Return([]redis.Cmder{
+			redis.NewStringResult("", redis.Nil),
+			redis.NewStringResult("", redis.Nil),
+			redis.NewStringResult("", redis.Nil),
+		}, nil)
+
+		m, err := models.GetRoomsMetadatas(mockRedisClient, schedulerName, roomIDs)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(m).To(Equal(map[string]map[string]interface{}{
+			roomIDs[0]: map[string]interface{}{},
+			roomIDs[1]: map[string]interface{}{},
+			roomIDs[2]: map[string]interface{}{},
+		}))
+	})
+
+	It("should get when empty metadata", func() {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().HGet(rooms[0].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().HGet(rooms[1].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().HGet(rooms[2].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().Exec().Return([]redis.Cmder{
+			redis.NewStringResult("", nil),
+			redis.NewStringResult("", nil),
+			redis.NewStringResult("", nil),
+		}, nil)
+
+		m, err := models.GetRoomsMetadatas(mockRedisClient, schedulerName, roomIDs)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(m).To(Equal(map[string]map[string]interface{}{
+			roomIDs[0]: map[string]interface{}{},
+			roomIDs[1]: map[string]interface{}{},
+			roomIDs[2]: map[string]interface{}{},
+		}))
+	})
+
+	It("should get when metadata", func() {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().HGet(rooms[0].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().HGet(rooms[1].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().HGet(rooms[2].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().Exec().Return([]redis.Cmder{
+			redis.NewStringResult(`{"region": "us"}`, nil),
+			redis.NewStringResult(`{"region": "eu"}`, nil),
+			redis.NewStringResult(`{"region": "ap"}`, nil),
+		}, nil)
+
+		m, err := models.GetRoomsMetadatas(mockRedisClient, schedulerName, roomIDs)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(m).To(Equal(map[string]map[string]interface{}{
+			roomIDs[0]: map[string]interface{}{"region": "us"},
+			roomIDs[1]: map[string]interface{}{"region": "eu"},
+			roomIDs[2]: map[string]interface{}{"region": "ap"},
+		}))
+	})
+
+	It("should return error when error on first", func() {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().HGet(rooms[0].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().HGet(rooms[1].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().HGet(rooms[2].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().Exec().Return([]redis.Cmder{
+			redis.NewStringResult("", nil),
+			redis.NewStringResult("", rErr),
+			redis.NewStringResult("", nil),
+		}, rErr)
+
+		m, err := models.GetRoomsMetadatas(mockRedisClient, schedulerName, roomIDs)
+		Expect(err).To(Equal(rErr))
+		Expect(m).To(BeNil())
+	})
+
+	It("should return error when error on second", func() {
+		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+		mockPipeline.EXPECT().HGet(rooms[0].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().HGet(rooms[1].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().HGet(rooms[2].GetRoomRedisKey(), "metadata")
+		mockPipeline.EXPECT().Exec().Return([]redis.Cmder{
+			redis.NewStringResult("", redis.Nil),
+			redis.NewStringResult("", rErr),
+			redis.NewStringResult("", nil),
+		}, nil)
+
+		m, err := models.GetRoomsMetadatas(mockRedisClient, schedulerName, roomIDs)
+		Expect(err).To(Equal(rErr))
+		Expect(m).To(BeNil())
 	})
 })

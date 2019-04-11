@@ -1200,7 +1200,7 @@ func SetRoomStatus(
 	db pginterfaces.DB,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
-	status string,
+	roomPayload *models.RoomStatusPayload,
 	config *viper.Viper,
 	room *models.Room,
 	schedulerCache *models.SchedulerCache,
@@ -1214,18 +1214,13 @@ func SetRoomStatus(
 		return err
 	}
 	roomsCountByStatus, err := room.SetStatus(
-		redisClient,
-		db,
-		mr,
-		status,
-		cachedScheduler.Scheduler,
-		status == models.StatusOccupied,
-	)
+		redisClient, db, mr,
+		roomPayload, cachedScheduler.Scheduler)
 	if err != nil {
 		return err
 	}
 
-	if status != models.StatusOccupied {
+	if roomPayload.Status != models.StatusOccupied {
 		return nil
 	}
 

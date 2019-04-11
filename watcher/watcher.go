@@ -35,7 +35,7 @@ import (
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
@@ -497,13 +497,25 @@ func (w *Watcher) RemoveDeadRooms() {
 			"quantity": len(roomsNoPingSince),
 		}).Info("deleting rooms that are not pinging Maestro")
 
+		metadatas, err := models.GetRoomsMetadatas(
+			w.RedisClient.Client,
+			w.SchedulerName, roomsNoPingSince)
+		if err != nil {
+			logger.WithError(err).Error("failed to get pingTimeout rooms metadata")
+			return
+		}
+
 		for _, roomName := range roomsNoPingSince {
 			room := &models.Room{
 				ID:            roomName,
 				SchedulerName: w.SchedulerName,
 			}
-			_, err := eventforwarder.ForwardRoomEvent(context.Background(), w.EventForwarders, w.DB, w.KubernetesClient, room,
-				models.RoomTerminated, eventforwarder.PingTimeoutEvent, map[string]interface{}{}, nil, w.Logger, w.RoomAddrGetter)
+
+			_, err := eventforwarder.ForwardRoomEvent(
+				context.Background(),
+				w.EventForwarders, w.DB, w.KubernetesClient,
+				room, models.RoomTerminated, eventforwarder.PingTimeoutEvent,
+				metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
 			if err != nil {
 				logger.WithError(err).Error("event forwarder failed")
 			}
@@ -514,7 +526,7 @@ func (w *Watcher) RemoveDeadRooms() {
 		}).Info("rooms that are not pinging")
 
 		scheduler := models.NewScheduler(w.SchedulerName, "", "")
-		err := scheduler.Load(w.DB)
+		err = scheduler.Load(w.DB)
 		if err != nil {
 			logger.WithError(err).Error("error accessing db while removing dead rooms")
 		} else {
@@ -561,19 +573,32 @@ func (w *Watcher) RemoveDeadRooms() {
 		if roomsOnOccupiedTimeout != nil && len(roomsOnOccupiedTimeout) > 0 {
 			logger.Info("deleting rooms that are stuck at occupied status")
 
+			metadatas, err := models.GetRoomsMetadatas(
+				w.RedisClient.Client,
+				w.SchedulerName, roomsOnOccupiedTimeout)
+			if err != nil {
+				logger.WithError(err).Error("failed to get occupiedTimeout rooms metadata")
+				return
+			}
+
 			for _, roomName := range roomsOnOccupiedTimeout {
 				room := &models.Room{
 					ID:            roomName,
 					SchedulerName: w.SchedulerName,
 				}
-				eventforwarder.ForwardRoomEvent(context.Background(), w.EventForwarders, w.DB, w.KubernetesClient, room,
-					models.RoomTerminated, eventforwarder.OccupiedTimeoutEvent, map[string]interface{}{}, nil, w.Logger, w.RoomAddrGetter)
+
+				eventforwarder.ForwardRoomEvent(
+					context.Background(), w.EventForwarders, w.DB, w.KubernetesClient,
+					room, models.RoomTerminated, eventforwarder.OccupiedTimeoutEvent,
+					metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
 			}
 
 			scheduler := models.NewScheduler(w.SchedulerName, "", "")
-			err := scheduler.Load(w.DB)
+			err = scheduler.Load(w.DB)
 			if err != nil {
-				logger.WithError(err).Error("error accessing db while removing occupied timeout rooms")
+				logger.
+					WithError(err).
+					Error("error accessing db while removing occupied timeout rooms")
 			} else {
 				err = controller.DeleteUnavailableRooms(
 					logger,
