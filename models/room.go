@@ -220,11 +220,16 @@ func (r *Room) addStatusToRedisPipeAndExec(
 		}
 	}
 
-	p.HMSet(r.GetRoomRedisKey(), map[string]interface{}{
+	hmSetVals := map[string]interface{}{
 		"status":   r.Status,
 		"lastPing": r.LastPingAt,
-		"metadata": roomPayload.GetMetadataString(),
-	})
+	}
+	roomMetadata := roomPayload.GetMetadataString()
+	if roomMetadata != "" {
+		hmSetVals["metadata"] = roomMetadata
+	}
+	p.HMSet(r.GetRoomRedisKey(), hmSetVals)
+
 	p.SAdd(GetRoomStatusSetRedisKey(r.SchedulerName, r.Status), r.GetRoomRedisKey())
 	p.ZAdd(GetRoomPingRedisKey(r.SchedulerName), redis.Z{
 		Score:  float64(r.LastPingAt),
