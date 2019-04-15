@@ -68,6 +68,17 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(g.App.Forwarders) > 0 && payload.Metadata == nil {
+		payload.Metadata, err = models.GetRoomMetadata(
+			g.App.RedisClient.Trace(r.Context()),
+			room.SchedulerName, room.ID)
+		if err != nil {
+			logger.WithError(err).Error("failed to get room metadata from redis")
+			g.App.HandleError(w, http.StatusInternalServerError, "Redis failed", err)
+			return
+		}
+	}
+
 	// TODO: consider sampling requests by scheduler name and only forwarding a few pings
 	eventforwarder.ForwardRoomEvent(
 		r.Context(),

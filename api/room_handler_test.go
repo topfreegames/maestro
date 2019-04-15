@@ -284,6 +284,11 @@ forwarders:
 					})
 
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				mockRedisClient.EXPECT().
+					HGet("scheduler:schedulerName:rooms:roomName", "metadata").
+					Return(redis.NewStringResult(`{"region": "us"}`, nil))
+
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
@@ -297,7 +302,63 @@ forwarders:
 				}
 				mockPipeline.EXPECT().Exec()
 
-				mockEventForwarder1.EXPECT().Forward(gomock.Any(), fmt.Sprintf("ping%s", strings.Title(status)), gomock.Any(), gomock.Any())
+				mockEventForwarder1.EXPECT().Forward(gomock.Any(), fmt.Sprintf("ping%s", strings.Title(status)), map[string]interface{}{
+					"game":   game,
+					"roomId": roomName,
+					"host":   "",
+					"port":   int32(0),
+					"metadata": map[string]interface{}{
+						"ipv6Label": "",
+						"region":    "us",
+					},
+				}, gomock.Any())
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(200))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+			})
+
+			It("forwards room event and metadata", func() {
+				reader := JSONFor(JSON{
+					"timestamp": time.Now().Unix(),
+					"status":    status,
+					"metadata": map[string]interface{}{
+						"region": "us",
+					},
+				})
+				request, _ = http.NewRequest("PUT", url, reader)
+
+				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						scheduler.YAML = yamlStr
+						scheduler.Game = game
+					})
+
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+					"lastPing": time.Now().Unix(),
+					"status":   status,
+					"metadata": `{"region":"us"}`,
+				})
+				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+				mockPipeline.EXPECT().ZRem(lKey, roomName)
+				mockPipeline.EXPECT().SAdd(sKey, rKey)
+				for _, key := range allStatusKeys {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
+				mockPipeline.EXPECT().Exec()
+
+				mockEventForwarder1.EXPECT().Forward(gomock.Any(), fmt.Sprintf("ping%s", strings.Title(status)), map[string]interface{}{
+					"game":   game,
+					"roomId": roomName,
+					"host":   "",
+					"port":   int32(0),
+					"metadata": map[string]interface{}{
+						"ipv6Label": "",
+						"region":    "us",
+					},
+				}, gomock.Any())
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(200))

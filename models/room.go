@@ -155,6 +155,30 @@ func (r *Room) SetStatus(
 		returnRoomsCount, scheduler, roomPayload)
 }
 
+// GetRoomMetadata returns the metadata of roomID
+func GetRoomMetadata(
+	redisClient interfaces.RedisClient,
+	schedulerName, roomID string,
+) (map[string]interface{}, error) {
+	room := &Room{ID: roomID, SchedulerName: schedulerName}
+	metadataStr, err := redisClient.HGet(room.GetRoomRedisKey(), "metadata").Result()
+	if err == redis.Nil || metadataStr == "" {
+		return map[string]interface{}{}, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var metadata map[string]interface{}
+	err = json.Unmarshal([]byte(metadataStr), &metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return metadata, nil
+}
+
 // GetRoomsMetadatas returns a map from roomID to its metadata
 func GetRoomsMetadatas(
 	redisClient interfaces.RedisClient,
