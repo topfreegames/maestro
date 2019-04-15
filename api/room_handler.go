@@ -89,7 +89,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"",
 		payload.Metadata,
 		g.App.SchedulerCache,
-		g.App.Logger,
+		logger,
 		g.App.RoomAddrGetter,
 	)
 
@@ -175,13 +175,15 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	payload := roomEventPayloadFromCtx(r.Context())
 
 	logger := l.WithFields(logrus.Fields{
-		"source":           "roomHandler",
-		"operation":        "roomEventHandler",
-		"payloadTimestamp": payload.Timestamp,
-		"event":            payload.Event,
+		"operation": "roomEventHandler",
+		"scheduler": params.Scheduler,
+		"roomId":    params.Name,
+		"event":     payload.Event,
 	})
 
-	logger.Debug("Performing room event handler...")
+	logger.
+		WithField("metadata", payload.Metadata).
+		Debug("performing room event handler")
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 
