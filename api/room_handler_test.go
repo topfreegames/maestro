@@ -293,6 +293,7 @@ forwarders:
 				mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
 					"lastPing": time.Now().Unix(),
 					"status":   status,
+					"metadata": `{"region":"us"}`,
 				})
 				mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
 				mockPipeline.EXPECT().ZRem(lKey, roomName)
