@@ -275,6 +275,19 @@ func (c *Scheduler) Update(db interfaces.DB) error {
 	return nil
 }
 
+// UpdateState updates a scheduler status in the database
+func (c *Scheduler) UpdateState(db interfaces.DB) error {
+	_, err := db.Query(c, `UPDATE schedulers
+	SET (state, state_last_changed_at, last_scale_op_at) = (?state, ?state_last_changed_at, ?last_scale_op_at)
+	WHERE id=?id`, c)
+	if err != nil {
+		err = fmt.Errorf("error updating status on schedulers: %s", err.Error())
+		return err
+	}
+
+	return nil
+}
+
 // UpdateVersion updates a scheduler on database
 // Instead of Update, it creates a new scheduler and delete the oldest one if necessary
 func (c *Scheduler) UpdateVersion(

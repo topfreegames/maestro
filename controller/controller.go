@@ -205,6 +205,13 @@ func CreateNamespaceIfNecessary(
 	})
 }
 
+// UpdateSchedulerState updates a scheduler state
+func UpdateSchedulerState(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, scheduler *models.Scheduler) error {
+	return mr.WithSegment(models.SegmentUpdate, func() error {
+		return scheduler.UpdateState(db)
+	})
+}
+
 // UpdateScheduler updates a scheduler
 func UpdateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter, db pginterfaces.DB, scheduler *models.Scheduler) error {
 	return mr.WithSegment(models.SegmentUpdate, func() error {

@@ -351,7 +351,7 @@ var _ = Describe("Controller", func() {
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
 
 			mt.MockInsertScheduler(mockDb, nil)
-			mt.MockUpdateSchedulerStatus(mockDb, nil, nil)
+			mt.MockUpdateScheduler(mockDb, nil, nil)
 
 			mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
 
@@ -438,7 +438,7 @@ cmd:
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
 
 			mt.MockInsertScheduler(mockDb, nil)
-			mt.MockUpdateSchedulerStatus(mockDb, nil, nil)
+			mt.MockUpdateScheduler(mockDb, nil, nil)
 
 			mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
 
@@ -533,7 +533,7 @@ portRange:
 				mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
 
 				mt.MockInsertScheduler(mockDb, nil)
-				mt.MockUpdateSchedulerStatus(mockDb, nil, nil)
+				mt.MockUpdateScheduler(mockDb, nil, nil)
 
 				mockDb.EXPECT().Query(gomock.Any(), `SELECT name FROM schedulers`)
 				mockDb.EXPECT().Query(gomock.Any(), `SELECT * FROM schedulers WHERE name IN (?)`, gomock.Any())
@@ -942,7 +942,7 @@ portRange:
 				scheduler.ID = "random-id"
 			})
 
-			mt.MockUpdateSchedulerStatus(mockDb, errDB, nil)
+			mt.MockUpdateScheduler(mockDb, errDB, nil)
 
 			err = controller.DeleteScheduler(logger, mr, mockDb, mockRedisClient, clientset, configYaml1.Name, timeoutSec)
 			Expect(err).To(HaveOccurred())
@@ -1092,7 +1092,7 @@ cmd:
 			scheduler.StateLastChangedAt = time.Now().Unix()
 			scheduler.LastScaleOpAt = time.Now().Unix()
 
-			mt.MockUpdateSchedulerStatus(mockDb, nil, nil)
+			mt.MockUpdateScheduler(mockDb, nil, nil)
 
 			err := controller.UpdateScheduler(logger, mr, mockDb, scheduler)
 			Expect(err).NotTo(HaveOccurred())
@@ -1105,7 +1105,7 @@ cmd:
 			scheduler.StateLastChangedAt = time.Now().Unix()
 			scheduler.LastScaleOpAt = time.Now().Unix()
 
-			mt.MockUpdateSchedulerStatus(mockDb, errDB, nil)
+			mt.MockUpdateScheduler(mockDb, errDB, nil)
 
 			err := controller.UpdateScheduler(logger, mr, mockDb, scheduler)
 			Expect(err).To(HaveOccurred())
@@ -1119,11 +1119,40 @@ cmd:
 			scheduler.StateLastChangedAt = time.Now().Unix()
 			scheduler.LastScaleOpAt = time.Now().Unix()
 
-			mt.MockUpdateSchedulerStatus(mockDb, nil, errDB)
+			mt.MockUpdateScheduler(mockDb, nil, errDB)
 
 			err := controller.UpdateScheduler(logger, mr, mockDb, scheduler)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error inserting on scheduler_versions: some error in db"))
+		})
+	})
+
+	Describe("UpdateSchedulerState", func() {
+		It("should succeed", func() {
+			name := "scheduler-name"
+			scheduler := models.NewScheduler(name, name, yaml1)
+			scheduler.State = "in-sync"
+			scheduler.StateLastChangedAt = time.Now().Unix()
+			scheduler.LastScaleOpAt = time.Now().Unix()
+
+			mt.MockUpdateSchedulerStatus(mockDb, nil, nil)
+
+			err := controller.UpdateSchedulerState(logger, mr, mockDb, scheduler)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should fail if fail to update on schedulers table", func() {
+			name := "scheduler-name"
+			scheduler := models.NewScheduler(name, name, yaml1)
+			scheduler.State = "in-sync"
+			scheduler.StateLastChangedAt = time.Now().Unix()
+			scheduler.LastScaleOpAt = time.Now().Unix()
+
+			mt.MockUpdateSchedulerStatus(mockDb, errDB, nil)
+
+			err := controller.UpdateSchedulerState(logger, mr, mockDb, scheduler)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("error updating status on schedulers: some error in db"))
 		})
 	})
 

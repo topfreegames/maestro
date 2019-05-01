@@ -747,7 +747,7 @@ func (w *Watcher) AutoScale() {
 	}
 
 	if scaling.ChangedState {
-		err = controller.UpdateScheduler(logger, w.MetricsReporter, w.DB, scheduler)
+		err = controller.UpdateSchedulerState(logger, w.MetricsReporter, w.DB, scheduler)
 		if err != nil {
 			logger.WithError(err).Error("failed to update scheduler info")
 		}

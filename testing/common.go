@@ -358,7 +358,7 @@ func MockCreateScheduler(
 		MockGetPortsFromPool(&configYaml, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd))
 
 	calls.Append(
-		MockUpdateSchedulerStatus(mockDb, nil, nil))
+		MockUpdateScheduler(mockDb, nil, nil))
 
 	err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml, timeoutSec)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -431,8 +431,44 @@ func MockInsertScheduler(
 	return calls
 }
 
-// MockUpdateSchedulerStatus mocks the scheduler update query on database
+// MockUpdateSchedulerStatus mocks the scheduler update state query on database
 func MockUpdateSchedulerStatus(
+	mockDb *pgmocks.MockDB,
+	errUpdate, errInsert error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), `UPDATE schedulers
+	SET (state, state_last_changed_at, last_scale_op_at) = (?state, ?state_last_changed_at, ?last_scale_op_at)
+	WHERE id=?id`, gomock.Any()).
+			Return(pg.NewTestResult(nil, 1), errUpdate))
+
+	return calls
+}
+
+// MockUpdateSchedulerStatusAndDo mocks the scheduler update state query on database
+func MockUpdateSchedulerStatusAndDo(
+	do func(base *models.Scheduler, query string, scheduler *models.Scheduler),
+	mockDb *pgmocks.MockDB,
+	errUpdate, errInsert error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(
+		mockDb.EXPECT().
+			Query(gomock.Any(), `UPDATE schedulers
+	SET (state, state_last_changed_at, last_scale_op_at) = (?state, ?state_last_changed_at, ?last_scale_op_at)
+	WHERE id=?id`, gomock.Any()).
+			Return(pg.NewTestResult(nil, 1), errUpdate).
+			Do(do))
+
+	return calls
+}
+
+// MockUpdateScheduler mocks the scheduler update query on database
+func MockUpdateScheduler(
 	mockDb *pgmocks.MockDB,
 	errUpdate, errInsert error,
 ) (calls *Calls) {
@@ -457,8 +493,8 @@ func MockUpdateSchedulerStatus(
 	return calls
 }
 
-// MockUpdateSchedulerStatusAndDo mocks the scheduler update query on database
-func MockUpdateSchedulerStatusAndDo(
+// MockUpdateSchedulerAndDo mocks the scheduler update query on database
+func MockUpdateSchedulerAndDo(
 	do func(base *models.Scheduler, query string, scheduler *models.Scheduler),
 	mockDb *pgmocks.MockDB,
 	errUpdate, errInsert error,

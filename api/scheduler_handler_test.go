@@ -329,7 +329,7 @@ var _ = Describe("Scheduler Handler", func() {
 					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(100)
 					mockPipeline.EXPECT().Exec().Times(100)
 					MockInsertScheduler(mockDb, nil)
-					MockUpdateSchedulerStatus(mockDb, nil, nil)
+					MockUpdateScheduler(mockDb, nil, nil)
 
 					mockRedisClient.EXPECT().
 						Get(models.GlobalPortsPoolKey).
@@ -424,12 +424,12 @@ autoscaling:
 					mockPipeline.EXPECT().Exec().Times(2)
 
 					MockInsertScheduler(mockDb, nil)
-					MockUpdateSchedulerStatus(mockDb, nil, nil)
+					MockUpdateScheduler(mockDb, nil, nil)
 					mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 						Return(goredis.NewStringResult(workerPortRange, nil))
 
 					MockInsertScheduler(mockDb, nil)
-					MockUpdateSchedulerStatus(mockDb, nil, nil)
+					MockUpdateScheduler(mockDb, nil, nil)
 					mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 						Return(goredis.NewStringResult(workerPortRange, nil))
 
@@ -587,7 +587,7 @@ autoscaling:
 					mockEventForwarder1.EXPECT().Forward(gomock.Any(), "schedulerEvent", gomock.Any(), gomock.Any())
 
 					MockInsertScheduler(mockDb, nil)
-					MockUpdateSchedulerStatus(mockDb, nil, nil)
+					MockUpdateScheduler(mockDb, nil, nil)
 					mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 						Return(goredis.NewStringResult(workerPortRange, nil)).Times(100)
 
@@ -850,7 +850,7 @@ autoscaling:
 						Times(configYaml1.AutoScaling.Min)
 
 					MockInsertScheduler(mockDb, nil)
-					MockUpdateSchedulerStatus(mockDb, nil, nil)
+					MockUpdateScheduler(mockDb, nil, nil)
 
 					err = MockSetScallingAmount(
 						mockRedisClient,
@@ -1339,7 +1339,7 @@ autoscaling:
 						Times(configYaml1.AutoScaling.Min)
 
 					MockInsertScheduler(mockDb, nil)
-					MockUpdateSchedulerStatus(mockDb, nil, nil)
+					MockUpdateScheduler(mockDb, nil, nil)
 
 					mockDb.EXPECT().Query(
 						gomock.Any(),
@@ -3084,7 +3084,7 @@ game: game-name
 					Times(configYaml1.AutoScaling.Min)
 
 				MockInsertScheduler(mockDb, nil)
-				MockUpdateSchedulerStatus(mockDb, nil, nil)
+				MockUpdateScheduler(mockDb, nil, nil)
 
 				mockRedisClient.EXPECT().Ping().AnyTimes()
 

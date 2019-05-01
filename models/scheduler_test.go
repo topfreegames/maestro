@@ -286,7 +286,7 @@ var _ = Describe("Scheduler", func() {
 			scheduler.State = "terminating"
 			scheduler.StateLastChangedAt = time.Now().Unix()
 			scheduler.LastScaleOpAt = time.Now().Unix()
-			testing.MockUpdateSchedulerStatus(mockDb, nil, nil)
+			testing.MockUpdateScheduler(mockDb, nil, nil)
 			err := scheduler.Update(mockDb)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -296,7 +296,7 @@ var _ = Describe("Scheduler", func() {
 			scheduler.State = "terminating"
 			scheduler.StateLastChangedAt = time.Now().Unix()
 			scheduler.LastScaleOpAt = time.Now().Unix()
-			testing.MockUpdateSchedulerStatus(mockDb, errDB, nil)
+			testing.MockUpdateScheduler(mockDb, errDB, nil)
 			err := scheduler.Update(mockDb)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error updating status on schedulers: db failed"))
@@ -307,7 +307,7 @@ var _ = Describe("Scheduler", func() {
 			scheduler.State = "terminating"
 			scheduler.StateLastChangedAt = time.Now().Unix()
 			scheduler.LastScaleOpAt = time.Now().Unix()
-			testing.MockUpdateSchedulerStatus(mockDb, nil, errDB)
+			testing.MockUpdateScheduler(mockDb, nil, errDB)
 			err := scheduler.Update(mockDb)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error inserting on scheduler_versions: db failed"))
