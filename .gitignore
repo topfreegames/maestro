@@ -35,6 +35,7 @@ _testmain.go
 .*.swo
 
 .DS_Store
+.history
 
 # IDE files
 .vscode

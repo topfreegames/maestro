@@ -66,7 +66,7 @@ var _ = Describe("Controller", func() {
 			mockPipeline.EXPECT().Exec().Times(configYaml1.AutoScaling.Min)
 
 			mtesting.MockInsertScheduler(mockDb, nil)
-			mtesting.MockUpdateSchedulerStatus(mockDb, errors.New("error updating state"), nil)
+			mtesting.MockUpdateScheduler(mockDb, errors.New("error updating state"), nil)
 			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
 
 			mockRedisClient.EXPECT().
