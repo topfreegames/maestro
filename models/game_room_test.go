@@ -353,7 +353,7 @@ var _ = Describe("GameRoomManagement", func() {
 				Expect(podv1.ObjectMeta.Name).To(ContainSubstring(namespace))
 				Expect(podv1.ObjectMeta.Namespace).To(Equal(namespace))
 				Expect(podv1.ObjectMeta.Labels).To(HaveLen(3))
-				Expect(podv1.ObjectMeta.Labels["app"]).To(ContainSubstring(namespace))
+				Expect(podv1.ObjectMeta.Labels["app"]).To(ContainSubstring(podv1.Name))
 				Expect(podv1.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
 				Expect(podv1.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 				Expect(*podv1.Spec.TerminationGracePeriodSeconds).To(BeEquivalentTo(shutdownTimeout))

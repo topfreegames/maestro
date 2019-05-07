@@ -1,4 +1,4 @@
-package watcher
+package constants
 
 // Constants for api configuration
 const (

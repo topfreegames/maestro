@@ -23,6 +23,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/maestro/constants"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -144,7 +145,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("watcher.gracefulShutdownTimeout", 300)
 	w.Config.SetDefault("pingTimeout", 30)
 	w.Config.SetDefault("occupiedTimeout", 60*60)
-	w.Config.SetDefault(EnvironmentConfig, ProdEnvironment)
+	w.Config.SetDefault(constants.EnvironmentConfig, constants.ProdEnvironment)
 }
 
 func (w *Watcher) configure() error {
@@ -204,7 +205,7 @@ func (w *Watcher) configureEnvironment() {
 	w.RoomAddrGetter = &models.RoomAddressesFromHostPort{}
 	w.RoomManager = &models.GameRoom{}
 
-	if w.Config.GetString(EnvironmentConfig) == DevEnvironment {
+	if w.Config.GetString(constants.EnvironmentConfig) == constants.DevEnvironment {
 		w.RoomAddrGetter = &models.RoomAddressesFromNodePort{}
 		w.RoomManager = &models.GameRoomWithService{}
 		w.Logger.Info("development environment")
