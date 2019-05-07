@@ -517,7 +517,7 @@ func (w *Watcher) RemoveDeadRooms() {
 				room, models.RoomTerminated, eventforwarder.PingTimeoutEvent,
 				metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
 			if err != nil {
-				logger.WithError(err).Error("event forwarder failed")
+				logger.WithError(err).Error("pingTimeout event forward failed")
 			}
 		}
 
@@ -587,10 +587,13 @@ func (w *Watcher) RemoveDeadRooms() {
 					SchedulerName: w.SchedulerName,
 				}
 
-				eventforwarder.ForwardRoomEvent(
+				_, err = eventforwarder.ForwardRoomEvent(
 					context.Background(), w.EventForwarders, w.DB, w.KubernetesClient,
 					room, models.RoomTerminated, eventforwarder.OccupiedTimeoutEvent,
 					metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
+				if err != nil {
+					logger.WithError(err).Error("occupiedTimeout event forward failed")
+				}
 			}
 
 			scheduler := models.NewScheduler(w.SchedulerName, "", "")

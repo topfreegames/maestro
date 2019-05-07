@@ -81,7 +81,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: consider sampling requests by scheduler name and only forwarding a few pings
-	eventforwarder.ForwardRoomEvent(
+	_, err = eventforwarder.ForwardRoomEvent(
 		r.Context(),
 		g.App.Forwarders,
 		g.App.DBClient.WithContext(r.Context()),
@@ -93,6 +93,12 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		logger,
 		g.App.RoomAddrGetter,
 	)
+
+	if err != nil {
+		logger.WithError(err).Error("ping event forward failed")
+		g.App.HandleError(w, http.StatusInternalServerError, "event forward failed", err)
+		return
+	}
 
 	Write(w, http.StatusOK, `{"success": true}`)
 	logger.Debug("Ping successful.")
@@ -275,7 +281,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.HandleError(w, http.StatusInternalServerError, "Status update failed", err)
 		return
 	}
-	eventforwarder.ForwardRoomEvent(
+	_, err = eventforwarder.ForwardRoomEvent(
 		r.Context(),
 		g.App.Forwarders,
 		g.App.DBClient.WithContext(r.Context()),
@@ -286,6 +292,12 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.Logger,
 		g.App.RoomAddrGetter,
 	)
+	if err != nil {
+		logger.WithError(err).Error("status update event forward failed")
+		g.App.HandleError(w, http.StatusInternalServerError, "event forward failed", err)
+		return
+	}
+
 	Write(w, http.StatusOK, `{"success": true}`)
 	logger.Debug("Performed status update.")
 }
