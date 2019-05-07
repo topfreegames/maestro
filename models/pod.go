@@ -37,7 +37,11 @@ metadata:
   name: {{.Name}}
   namespace: {{.Namespace}}
   labels:
+    {{- if eq .Environment "development"}}
     app: {{.Name}}
+    {{- else}}
+    app: {{.Namespace}}
+    {{- end}}
     heritage: maestro
     version: {{.Version}}
   annotations:
@@ -130,6 +134,7 @@ type Pod struct {
 	NodeToleration  string
 	Containers      []*Container
 	Version         string
+	Environment     string
 }
 
 // NewPod is the pod constructor

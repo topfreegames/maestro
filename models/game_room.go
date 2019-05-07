@@ -15,7 +15,8 @@ import (
 	"github.com/sirupsen/logrus"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
-	"k8s.io/api/core/v1"
+	"github.com/topfreegames/maestro/constants"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -40,6 +41,7 @@ func (g *GameRoom) Create(
 		clientset,
 		configYAML,
 		scheduler,
+		constants.ProdEnvironment,
 	)
 }
 
@@ -84,6 +86,7 @@ func (g *GameRoomWithService) Create(
 		clientset,
 		configYAML,
 		scheduler,
+		constants.DevEnvironment,
 	)
 	if err != nil {
 		return nil, err
@@ -140,6 +143,7 @@ func createPod(
 	clientset kubernetes.Interface,
 	configYAML *ConfigYAML,
 	scheduler *Scheduler,
+	environment string,
 ) (*v1.Pod, error) {
 	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
@@ -190,6 +194,7 @@ func createPod(
 	}
 
 	pod.SetVersion(scheduler.Version)
+	pod.Environment = environment
 
 	var kubePod *v1.Pod
 	err = mr.WithSegment(SegmentPod, func() error {
