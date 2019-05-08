@@ -50,7 +50,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	room := models.NewRoom(params.Name, params.Scheduler)
 
-	if len(g.App.Forwarders) > 0 && payload.Metadata == nil {
+	if len(g.App.Forwarders) > 0 && len(payload.Metadata) == 0 {
 		payload.Metadata, err = models.GetRoomMetadata(
 			g.App.RedisClient.Trace(r.Context()),
 			room.SchedulerName, room.ID)
