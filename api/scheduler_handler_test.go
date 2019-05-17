@@ -2713,6 +2713,7 @@ game: game-name
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				config.Set("basicauth.tryOauthIfUnset", false)
 
 				// Update scheduler
 				body := map[string]interface{}{"image": "new-image"}
@@ -3327,6 +3328,7 @@ game: game-name
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				config.Set("basicauth.tryOauthIfUnset", false)
 
 				// Update scheduler
 				body := map[string]interface{}{"min": configYaml1.AutoScaling.Min + 1}

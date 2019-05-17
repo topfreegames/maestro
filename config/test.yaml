@@ -47,7 +47,7 @@ oauth:
 basicauth:
   username: user
   password: pass
-  tryOauthIfUnset: false
+  tryOauthIfUnset: true
 schedulerCache:
   defaultExpiration: 5m
   cleanupInterval: 10m
