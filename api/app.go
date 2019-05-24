@@ -189,7 +189,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerStatusHandler(a),
-		NewAccessMiddleware(a),
+		NewBasicAuthMiddleware(a),
 		NewAuthMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
