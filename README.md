@@ -49,7 +49,7 @@ The [CLI](https://github.com/topfreegames/maestro-cli) is a wrapper for the maes
 
 ### maestro-client:
 
-A client lib for Unity and cocos2dx responsible for calling maestro HTTP routes defined in the [room protocol](#room-protocol). It also must catch sigterm/sigkill and handle the room graceful shutdown.
+A [client lib](https://github.com/topfreegames/maestro-client) for Unity and cocos2dx responsible for calling maestro HTTP routes defined in the [room protocol](#room-protocol). It also must catch sigterm/sigkill and handle the room graceful shutdown.
 
 ## Configuring Maestro Schedulers
 
