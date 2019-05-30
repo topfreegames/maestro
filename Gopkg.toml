@@ -76,3 +76,7 @@
 [[constraint]]
   name = "github.com/spf13/viper"
   version = "v1.1.0"
+
+[[constraint]]
+  name = "github.com/topfreegames/go-extensions-k8s-client-go"
+  version = "v1.1.0"

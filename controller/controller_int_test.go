@@ -23,7 +23,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 var _ = Describe("Controller", func() {

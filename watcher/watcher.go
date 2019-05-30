@@ -29,6 +29,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	kubernetesExtensions "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/autoscaler"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
@@ -1002,7 +1003,9 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		return err
 	}
 
-	pods, err := w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(
+	ctx := context.Background()
+	k, _ := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
+	pods, err := k.CoreV1().Pods(w.SchedulerName).List(
 		metav1.ListOptions{})
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods on namespace")
@@ -1038,8 +1041,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	for _, podName := range podsToDelete {
 		err = controller.DeletePodAndRoom(logger, w.RoomManager, w.MetricsReporter,
-			w.KubernetesClient, w.RedisClient.Client, configYaml,
-			podName, reportersConstants.ReasonInvalidPod)
+			k, w.RedisClient.Client, configYaml, podName, reportersConstants.ReasonInvalidPod)
 		if err != nil {
 			logger.WithError(err).WithField("podName", podName).Error("failed to delete pod")
 		}
@@ -1122,7 +1124,9 @@ func (w *Watcher) PodStatesCount() {
 	logger := w.Logger.WithField("method", "PodStatesCount")
 
 	logger.Info("listing pods on namespace")
-	pods, err := w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
+	ctx := context.Background()
+	k, _ := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
+	pods, err := k.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods")
 		return
