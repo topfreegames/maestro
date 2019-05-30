@@ -17,6 +17,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
@@ -35,10 +36,11 @@ func NewRoomPingHandler(a *App) *RoomPingHandler {
 
 // ServeHTTP method
 func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := middleware.GetLogger(r.Context())
-	mr := metricsReporterFromCtx(r.Context())
-	params := roomParamsFromContext(r.Context())
-	payload := statusPayloadFromCtx(r.Context())
+	ctx := r.Context()
+	l := middleware.GetLogger(ctx)
+	mr := metricsReporterFromCtx(ctx)
+	params := roomParamsFromContext(ctx)
+	payload := statusPayloadFromCtx(ctx)
 
 	logger := l.WithFields(logrus.Fields{
 		"source":           "roomHandler",
@@ -52,7 +54,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if len(g.App.Forwarders) > 0 && len(payload.Metadata) == 0 {
 		payload.Metadata, err = models.GetRoomMetadata(
-			g.App.RedisClient.Trace(r.Context()),
+			g.App.RedisClient.Trace(ctx),
 			room.SchedulerName, room.ID)
 		if err != nil {
 			logger.WithError(err).Error("failed to get room metadata from redis")
@@ -61,13 +63,14 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 	err = controller.SetRoomStatus(
 		g.App.Logger,
 		g.App.RoomManager,
-		g.App.RedisClient.Trace(r.Context()),
-		g.App.DBClient.WithContext(r.Context()),
+		g.App.RedisClient.Trace(ctx),
+		g.App.DBClient.WithContext(ctx),
 		mr,
-		g.App.KubernetesClient,
+		kubernetesClient,
 		payload,
 		g.App.Config,
 		room,
@@ -82,10 +85,10 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: consider sampling requests by scheduler name and only forwarding a few pings
 	_, err = eventforwarder.ForwardRoomEvent(
-		r.Context(),
+		ctx,
 		g.App.Forwarders,
-		g.App.DBClient.WithContext(r.Context()),
-		g.App.KubernetesClient,
+		g.App.DBClient.WithContext(ctx),
+		kubernetesClient,
 		room, fmt.Sprintf("ping%s", strings.Title(payload.Status)),
 		"",
 		payload.Metadata,
@@ -117,9 +120,10 @@ func NewPlayerEventHandler(a *App) *PlayerEventHandler {
 
 // ServeHTTP method
 func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := middleware.GetLogger(r.Context())
-	params := roomParamsFromContext(r.Context())
-	payload := playerEventPayloadFromCtx(r.Context())
+	ctx := r.Context()
+	l := middleware.GetLogger(ctx)
+	params := roomParamsFromContext(ctx)
+	payload := playerEventPayloadFromCtx(ctx)
 
 	logger := l.WithFields(logrus.Fields{
 		"source":           "roomHandler",
@@ -131,11 +135,12 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 
+	kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 	resp, err := eventforwarder.ForwardPlayerEvent(
 		r.Context(),
 		g.App.Forwarders,
-		g.App.DBClient.WithContext(r.Context()),
-		g.App.KubernetesClient,
+		g.App.DBClient.WithContext(ctx),
+		kubernetesClient,
 		room,
 		payload.Event,
 		payload.Metadata,
@@ -177,9 +182,10 @@ func NewRoomEventHandler(a *App) *RoomEventHandler {
 
 // ServeHTTP method
 func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := middleware.GetLogger(r.Context())
-	params := roomParamsFromContext(r.Context())
-	payload := roomEventPayloadFromCtx(r.Context())
+	ctx := r.Context()
+	l := middleware.GetLogger(ctx)
+	params := roomParamsFromContext(ctx)
+	payload := roomEventPayloadFromCtx(ctx)
 
 	logger := l.WithFields(logrus.Fields{
 		"operation": "roomEventHandler",
@@ -202,11 +208,12 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 	resp, err := eventforwarder.ForwardRoomEvent(
 		r.Context(),
 		g.App.Forwarders,
-		g.App.DBClient.WithContext(r.Context()),
-		g.App.KubernetesClient,
+		g.App.DBClient.WithContext(ctx),
+		kubernetesClient,
 		room,
 		"roomEvent",
 		"",
@@ -250,10 +257,11 @@ func NewRoomStatusHandler(a *App) *RoomStatusHandler {
 
 // ServeHTTP method
 func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := middleware.GetLogger(r.Context())
-	mr := metricsReporterFromCtx(r.Context())
-	params := roomParamsFromContext(r.Context())
-	payload := statusPayloadFromCtx(r.Context())
+	ctx := r.Context()
+	l := middleware.GetLogger(ctx)
+	mr := metricsReporterFromCtx(ctx)
+	params := roomParamsFromContext(ctx)
+	payload := statusPayloadFromCtx(ctx)
 
 	logger := l.WithFields(logrus.Fields{
 		"source":           "roomHandler",
@@ -263,14 +271,15 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug("Performing status update...")
 
+	kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := controller.SetRoomStatus(
 		g.App.Logger,
 		g.App.RoomManager,
-		g.App.RedisClient.Trace(r.Context()),
-		g.App.DBClient.WithContext(r.Context()),
+		g.App.RedisClient.Trace(ctx),
+		g.App.DBClient.WithContext(ctx),
 		mr,
-		g.App.KubernetesClient,
+		kubernetesClient,
 		payload,
 		g.App.Config,
 		room,
@@ -284,8 +293,8 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, err = eventforwarder.ForwardRoomEvent(
 		r.Context(),
 		g.App.Forwarders,
-		g.App.DBClient.WithContext(r.Context()),
-		g.App.KubernetesClient,
+		g.App.DBClient.WithContext(ctx),
+		kubernetesClient,
 		room, payload.Status, "",
 		payload.Metadata,
 		g.App.SchedulerCache,
@@ -315,8 +324,9 @@ func NewRoomAddressHandler(a *App) *RoomAddressHandler {
 
 // ServerHTTP method
 func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := middleware.GetLogger(r.Context())
-	params := roomParamsFromContext(r.Context())
+	ctx := r.Context()
+	l := middleware.GetLogger(ctx)
+	params := roomParamsFromContext(ctx)
 
 	logger := l.WithFields(logrus.Fields{
 		"source":    "roomHandler",
@@ -326,7 +336,8 @@ func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("Address handler called")
 
 	room := models.NewRoom(params.Name, params.Scheduler)
-	roomAddresses, err := h.App.RoomAddrGetter.Get(room, h.App.KubernetesClient)
+	kubernetesClient, _ := kubernetes.TryWithContext(h.App.KubernetesClient, ctx)
+	roomAddresses, err := h.App.RoomAddrGetter.Get(room, kubernetesClient)
 
 	if err != nil {
 		status := http.StatusInternalServerError

@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,7 +29,8 @@ func getOperationRollingProgress(
 	scheduler.NextMajorVersion()
 	major := scheduler.Version
 
-	totalPods, err := app.KubernetesClient.CoreV1().Pods(schedulerName).List(
+	k, _ := kubernetes.TryWithContext(app.KubernetesClient, ctx)
+	totalPods, err := k.CoreV1().Pods(schedulerName).List(
 		metav1.ListOptions{},
 	)
 	if err != nil {
@@ -38,7 +40,7 @@ func getOperationRollingProgress(
 
 	var new float64
 
-	podsMinorVersion, err := app.KubernetesClient.CoreV1().Pods(
+	podsMinorVersion, err := k.CoreV1().Pods(
 		schedulerName,
 	).List(metav1.ListOptions{
 		LabelSelector: labels.Set{"version": minor}.String(),
@@ -52,7 +54,7 @@ func getOperationRollingProgress(
 		}
 	}
 
-	podsMajorVersion, err := app.KubernetesClient.CoreV1().Pods(
+	podsMajorVersion, err := k.CoreV1().Pods(
 		schedulerName,
 	).List(metav1.ListOptions{
 		LabelSelector: labels.Set{"version": major}.String(),

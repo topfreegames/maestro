@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
@@ -41,17 +42,18 @@ func NewSchedulerCreateHandler(a *App) *SchedulerCreateHandler {
 
 // ServeHTTP method
 func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := middleware.GetLogger(r.Context())
-	mr := metricsReporterFromCtx(r.Context())
-	configs := configYamlFromCtx(r.Context())
+	ctx := r.Context()
+	l := middleware.GetLogger(ctx)
+	mr := metricsReporterFromCtx(ctx)
+	configs := configYamlFromCtx(ctx)
 
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "create",
 	})
 
-	email := emailFromContext(r.Context())
-	db := g.App.DBClient.WithContext(r.Context())
+	email := emailFromContext(ctx)
+	db := g.App.DBClient.WithContext(ctx)
 	for _, payload := range configs {
 		logger.Debug("Creating scheduler...")
 
@@ -63,14 +65,15 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			payload.AuthorizedUsers = append(payload.AuthorizedUsers, email)
 		}
 
+		kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
 		err := controller.CreateScheduler(
 			l,
 			g.App.RoomManager,
 			mr,
 			db,
-			g.App.RedisClient.Trace(r.Context()),
-			g.App.KubernetesClient,
+			g.App.RedisClient.Trace(ctx),
+			kubernetesClient,
 			payload,
 			timeoutSec,
 		)
@@ -100,7 +103,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			r.Context(),
 			g.App.Forwarders,
 			db,
-			g.App.KubernetesClient,
+			kubernetesClient,
 			payload.Name,
 			g.App.SchedulerCache,
 			g.App.Logger,
@@ -128,9 +131,10 @@ func NewSchedulerDeleteHandler(a *App) *SchedulerDeleteHandler {
 
 // ServeHTTP method
 func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l := middleware.GetLogger(r.Context())
-	mr := metricsReporterFromCtx(r.Context())
-	params := schedulerParamsFromContext(r.Context())
+	ctx := r.Context()
+	l := middleware.GetLogger(ctx)
+	mr := metricsReporterFromCtx(ctx)
+	params := schedulerParamsFromContext(ctx)
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
 		"operation": "delete",
@@ -139,14 +143,15 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	logger.Info("deleting scheduler")
 
+	kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 	timeoutSec := g.App.Config.GetInt("deleteTimeoutSeconds")
 	db := g.App.DBClient.WithContext(r.Context())
 	err := controller.DeleteScheduler(
 		l,
 		mr,
 		db,
-		g.App.RedisClient.Trace(r.Context()),
-		g.App.KubernetesClient,
+		g.App.RedisClient.Trace(ctx),
+		kubernetesClient,
 		params.SchedulerName,
 		timeoutSec,
 	)
@@ -272,16 +277,18 @@ func updateSchedulerConfigCommon(
 		return http.StatusBadRequest, "invalid maxsurge parameter", err
 	}
 
+	ctx := r.Context()
+	kubernetesClient, _ := kubernetes.TryWithContext(app.KubernetesClient, ctx)
 	db := app.DBClient.WithContext(r.Context())
 	logger.WithField("time", time.Now()).Info("Starting update")
 	err = controller.UpdateSchedulerConfig(
-		r.Context(),
+		ctx,
 		logger,
 		app.RoomManager,
 		mr,
 		db,
 		app.RedisClient,
-		app.KubernetesClient,
+		kubernetesClient,
 		configYaml,
 		maxSurge,
 		&clock.Clock{},
@@ -314,10 +321,10 @@ func updateSchedulerConfigCommon(
 
 	// this forwards the metadata configured for each enabled forwarder
 	_, err = eventforwarder.ForwardRoomInfo(
-		r.Context(),
+		ctx,
 		app.Forwarders,
 		db,
-		app.KubernetesClient,
+		kubernetesClient,
 		configYaml.Name,
 		nil, // intentionally omit SchedulerCache to force reload since it is an update
 		app.Logger,
