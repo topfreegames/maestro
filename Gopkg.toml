@@ -49,21 +49,25 @@
 ## what source location any dependent projects specify.
 # source = "https://github.com/myfork/package.git"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/client-go"
-  version = "7.0.0"
-
+  version = "=8.0.0"
+ 
 [[override]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.9.7"
+  version = "kubernetes-1.11.7"
+
+[[override]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.11.7"
 
 [[override]]
   name = "k8s.io/metrics"
-  version = "kubernetes-1.11.2"
+  version = "kubernetes-1.11.7"
 
-[[constraint]]
+[[override]]
   name = "github.com/topfreegames/extensions"
-  version = "6.4.0"
+  version = "=v6.4.0"
 
 [[constraint]]
   branch = "master"
@@ -79,4 +83,4 @@
 
 [[constraint]]
   name = "github.com/topfreegames/go-extensions-k8s-client-go"
-  version = "v1.1.0"
+  version = "v2.0.0"

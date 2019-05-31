@@ -65,7 +65,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			payload.AuthorizedUsers = append(payload.AuthorizedUsers, email)
 		}
 
-		kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+		kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
 		err := controller.CreateScheduler(
 			l,
@@ -143,7 +143,7 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	logger.Info("deleting scheduler")
 
-	kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 	timeoutSec := g.App.Config.GetInt("deleteTimeoutSeconds")
 	db := g.App.DBClient.WithContext(r.Context())
 	err := controller.DeleteScheduler(
@@ -278,7 +278,7 @@ func updateSchedulerConfigCommon(
 	}
 
 	ctx := r.Context()
-	kubernetesClient, _ := kubernetes.TryWithContext(app.KubernetesClient, ctx)
+	kubernetesClient := kubernetes.TryWithContext(app.KubernetesClient, ctx)
 	db := app.DBClient.WithContext(r.Context())
 	logger.WithField("time", time.Now()).Info("Starting update")
 	err = controller.UpdateSchedulerConfig(

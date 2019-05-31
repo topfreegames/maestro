@@ -1004,7 +1004,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	}
 
 	ctx := context.Background()
-	k, _ := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
+	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
 	pods, err := k.CoreV1().Pods(w.SchedulerName).List(
 		metav1.ListOptions{})
 	if err != nil {
@@ -1125,7 +1125,7 @@ func (w *Watcher) PodStatesCount() {
 
 	logger.Info("listing pods on namespace")
 	ctx := context.Background()
-	k, _ := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
+	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
 	pods, err := k.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods")

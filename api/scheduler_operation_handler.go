@@ -29,7 +29,7 @@ func getOperationRollingProgress(
 	scheduler.NextMajorVersion()
 	major := scheduler.Version
 
-	k, _ := kubernetes.TryWithContext(app.KubernetesClient, ctx)
+	k := kubernetes.TryWithContext(app.KubernetesClient, ctx)
 	totalPods, err := k.CoreV1().Pods(schedulerName).List(
 		metav1.ListOptions{},
 	)

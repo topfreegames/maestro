@@ -63,7 +63,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 	err = controller.SetRoomStatus(
 		g.App.Logger,
 		g.App.RoomManager,
@@ -135,7 +135,7 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 
-	kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 	resp, err := eventforwarder.ForwardPlayerEvent(
 		r.Context(),
 		g.App.Forwarders,
@@ -208,7 +208,7 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 	resp, err := eventforwarder.ForwardRoomEvent(
 		r.Context(),
 		g.App.Forwarders,
@@ -271,7 +271,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug("Performing status update...")
 
-	kubernetesClient, _ := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := controller.SetRoomStatus(
 		g.App.Logger,
@@ -336,7 +336,7 @@ func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("Address handler called")
 
 	room := models.NewRoom(params.Name, params.Scheduler)
-	kubernetesClient, _ := kubernetes.TryWithContext(h.App.KubernetesClient, ctx)
+	kubernetesClient := kubernetes.TryWithContext(h.App.KubernetesClient, ctx)
 	roomAddresses, err := h.App.RoomAddrGetter.Get(room, kubernetesClient)
 
 	if err != nil {
