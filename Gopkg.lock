@@ -670,15 +670,14 @@
   revision = "b8ad3d69db7176826b06c7173bd89eeef388b03a"
 
 [[projects]]
-  digest = "1:fabcd742e2d3561f96b5b6f2a14d3571dc9b2e8d37a43ec437c542c02d5e6890"
   name = "github.com/topfreegames/go-extensions-k8s-client-go"
   packages = [
     "kubernetes",
     "rest",
   ]
   pruneopts = ""
-  revision = "9bb94657ff99fe87b544ef03c59acfe42fde2e56"
-  version = "v2.0.0"
+  revision = "fa03bde914d47d4c4e5f0151eb53eaeff15126e1"
+  version = "v2.0.1"
 
 [[projects]]
   branch = "master"
