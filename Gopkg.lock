@@ -676,8 +676,8 @@
     "rest",
   ]
   pruneopts = ""
-  revision = "31a7bad4650af53b1c1ee039dd384b91519611bd"
-  version = "v2.0.3"
+  revision = "fca40c6c724da09dd6fce96ef406e206cd16e7fb"
+  version = "v2.0.4"
 
 [[projects]]
   branch = "master"
