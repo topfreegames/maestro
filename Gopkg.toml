@@ -83,4 +83,4 @@
 
 [[constraint]]
   name = "github.com/topfreegames/go-extensions-k8s-client-go"
-  version = "v2.0.2"
+  version = "v2.0.3"
