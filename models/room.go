@@ -48,10 +48,29 @@ type RoomAddresses struct {
 	Ipv6Label string      `json:"ipv6Label"`
 }
 
+func (r RoomAddresses) Clone() *RoomAddresses {
+	ports := make([]*RoomPort, len(r.Ports))
+	for i, port := range r.Ports {
+		ports[i] = port.Clone()
+	}
+	return &RoomAddresses{
+		Ports:     ports,
+		Host:      r.Host,
+		Ipv6Label: r.Ipv6Label,
+	}
+}
+
 // RoomPort struct
 type RoomPort struct {
 	Name string `json:"name"`
 	Port int32  `json:"port"`
+}
+
+func (r RoomPort) Clone() *RoomPort {
+	return &RoomPort{
+		Name: r.Name,
+		Port: r.Port,
+	}
 }
 
 // RoomUsage struct

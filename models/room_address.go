@@ -46,7 +46,7 @@ func NewRoomAddressesFromHostPort(
 func (r *RoomAddressesFromHostPort) Get(room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
 	if r.cache != nil {
 		if cached, found := r.cache.Get(r.buildCacheKey(room)); found {
-			return cached.(*RoomAddresses), nil
+			return cached.(*RoomAddresses).Clone(), nil
 		}
 	}
 	addrs, err := getRoomAddresses(false, r.ipv6KubernetesLabelKey, room, kubernetesClient)
@@ -54,7 +54,7 @@ func (r *RoomAddressesFromHostPort) Get(room *Room, kubernetesClient kubernetes.
 		return nil, err
 	}
 	if r.cache != nil {
-		r.cache.Set(r.buildCacheKey(room), addrs, 0)
+		r.cache.Set(r.buildCacheKey(room), addrs.Clone(), 0)
 	}
 	return addrs, nil
 }
@@ -89,7 +89,7 @@ func NewRoomAddressesFromNodePort(
 func (r *RoomAddressesFromNodePort) Get(room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
 	if r.cache != nil {
 		if cached, found := r.cache.Get(r.buildCacheKey(room)); found {
-			return cached.(*RoomAddresses), nil
+			return cached.(*RoomAddresses).Clone(), nil
 		}
 	}
 	addrs, err := getRoomAddresses(true, r.ipv6KubernetesLabelKey, room, kubernetesClient)
@@ -97,7 +97,7 @@ func (r *RoomAddressesFromNodePort) Get(room *Room, kubernetesClient kubernetes.
 		return nil, err
 	}
 	if r.cache != nil {
-		r.cache.Set(r.buildCacheKey(room), addrs, 0)
+		r.cache.Set(r.buildCacheKey(room), addrs.Clone(), 10*time.Second)
 	}
 	return addrs, nil
 }

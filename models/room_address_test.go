@@ -10,6 +10,7 @@ package models_test
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/btcsuite/btcutil/base58"
 
@@ -94,6 +95,107 @@ var _ = Describe("AddressGetter", func() {
 	BeforeEach(func() {
 		clientset = fake.NewSimpleClientset()
 		room = models.NewRoom(name, namespace)
+	})
+
+	Context("Cache usage", func() {
+		Context("When in development env", func() {
+			It("should not query kube api when addr is cached", func() {
+				node := &v1.Node{}
+				node.SetName(nodeName)
+				node.SetLabels(nodeLabels)
+				node.Status.Addresses = []v1.NodeAddress{
+					v1.NodeAddress{
+						Type:    v1.NodeInternalIP,
+						Address: host,
+					},
+				}
+				_, err := clientset.CoreV1().Nodes().Create(node)
+				Expect(err).NotTo(HaveOccurred())
+
+				pod := &v1.Pod{}
+				pod.Spec.NodeName = nodeName
+				pod.SetName(name)
+				pod.Spec.Containers = []v1.Container{
+					{Ports: []v1.ContainerPort{
+						{HostPort: port, Name: "TCP"},
+					}},
+				}
+				_, err = clientset.CoreV1().Pods(namespace).Create(pod)
+				Expect(err).NotTo(HaveOccurred())
+
+				service := &v1.Service{}
+				service.SetName(name)
+				service.Spec.Type = v1.ServiceTypeNodePort
+				service.Spec.Ports = []v1.ServicePort{
+					{
+						Port: port,
+						TargetPort: intstr.IntOrString{
+							IntVal: port,
+						},
+						Name:     "TCP",
+						Protocol: v1.ProtocolTCP,
+						NodePort: nodePort,
+					},
+				}
+				service.Spec.Selector = map[string]string{
+					"app": name,
+				}
+				_, err = clientset.CoreV1().Services(namespace).Create(service)
+				Expect(err).NotTo(HaveOccurred())
+
+				step1 := len(clientset.Fake.Actions())
+				addrGetter := models.NewRoomAddressesFromNodePort(ipv6KubernetesLabelKey, true, 10*time.Second, 10*time.Second)
+				addrs1, err := addrGetter.Get(room, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				step2 := len(clientset.Fake.Actions())
+				Expect(step2).To(Equal(step1 + 3))
+				addrs2, err := addrGetter.Get(room, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				step3 := len(clientset.Fake.Actions())
+				Expect(step3).To(Equal(step2))
+				Expect(addrs2).To(Equal(addrs1))
+				Expect(addrs2).NotTo(BeIdenticalTo(addrs1))
+			})
+		})
+
+		Context("When in production env", func() {
+			It("should not query kube api when addr is cached", func() {
+				node := &v1.Node{}
+				node.SetName(nodeName)
+				node.Status.Addresses = []v1.NodeAddress{
+					v1.NodeAddress{
+						Type:    v1.NodeExternalDNS,
+						Address: host,
+					},
+				}
+				_, err := clientset.CoreV1().Nodes().Create(node)
+				Expect(err).NotTo(HaveOccurred())
+
+				pod := &v1.Pod{}
+				pod.Spec.NodeName = nodeName
+				pod.SetName(name)
+				pod.Spec.Containers = []v1.Container{
+					{Ports: []v1.ContainerPort{
+						{HostPort: port, Name: "TCP"},
+					}},
+				}
+				_, err = clientset.CoreV1().Pods(namespace).Create(pod)
+				Expect(err).NotTo(HaveOccurred())
+
+				step1 := len(clientset.Fake.Actions())
+				addrGetter := models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey, true, 10*time.Second, 10*time.Second)
+				addrs1, err := addrGetter.Get(room, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				step2 := len(clientset.Fake.Actions())
+				Expect(step2).To(Equal(step1 + 2))
+				addrs2, err := addrGetter.Get(room, clientset)
+				Expect(err).NotTo(HaveOccurred())
+				step3 := len(clientset.Fake.Actions())
+				Expect(step3).To(Equal(step2))
+				Expect(addrs2).To(Equal(addrs1))
+				Expect(addrs2).NotTo(BeIdenticalTo(addrs1))
+			})
+		})
 	})
 
 	Context("When in development env", func() {
