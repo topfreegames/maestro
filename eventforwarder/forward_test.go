@@ -155,7 +155,7 @@ var _ = Describe("Forward", func() {
 		It("should report fail if event forward fails", func() {
 			errMsg := "event forward failed"
 			ctx := context.Background()
-			noIpv6roomAddrGetter := models.NewRoomAddressesFromHostPort("")
+			noIpv6roomAddrGetter := models.NewRoomAddressesFromHostPort("", false, 0, 0)
 			mockEventForwarder.EXPECT().Forward(
 				ctx,
 				models.StatusReady,

@@ -9,47 +9,101 @@ package models
 
 import (
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/btcsuite/btcutil/base58"
-
+	"github.com/pmylund/go-cache"
 	maestroErrors "github.com/topfreegames/maestro/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 // RoomAddressesFromHostPort is the struct that defines room addresses in production (using node HostPort)
 type RoomAddressesFromHostPort struct {
+	cache                  *cache.Cache
 	ipv6KubernetesLabelKey string
 }
 
 // NewRoomAddressesFromHostPort is the RoomAddressesFromHostPort constructor
-func NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey string) *RoomAddressesFromHostPort {
+func NewRoomAddressesFromHostPort(
+	ipv6KubernetesLabelKey string,
+	useCache bool,
+	cacheExpirationInterval, cacheCleanupInterval time.Duration,
+) *RoomAddressesFromHostPort {
+	var c *cache.Cache
+	if useCache {
+		c = cache.New(cacheExpirationInterval, cacheCleanupInterval)
+	}
 	return &RoomAddressesFromHostPort{
 		ipv6KubernetesLabelKey: ipv6KubernetesLabelKey,
+		cache:                  c,
 	}
 }
 
 // Get gets room public addresses
 func (r *RoomAddressesFromHostPort) Get(room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
-	return getRoomAddresses(false, r.ipv6KubernetesLabelKey, room, kubernetesClient)
+	if r.cache != nil {
+		if cached, found := r.cache.Get(r.buildCacheKey(room)); found {
+			return cached.(*RoomAddresses), nil
+		}
+	}
+	addrs, err := getRoomAddresses(false, r.ipv6KubernetesLabelKey, room, kubernetesClient)
+	if err != nil {
+		return nil, err
+	}
+	if r.cache != nil {
+		r.cache.Set(r.buildCacheKey(room), addrs, 0)
+	}
+	return addrs, nil
+}
+
+func (r *RoomAddressesFromHostPort) buildCacheKey(room *Room) string {
+	return fmt.Sprintf("%s-%s", room.SchedulerName, room.ID)
 }
 
 // RoomAddressesFromNodePort is the struct that defines room addresses in development (using NodePort service)
 type RoomAddressesFromNodePort struct {
+	cache                  *cache.Cache
 	ipv6KubernetesLabelKey string
 }
 
 // NewRoomAddressesFromNodePort is the RoomAddressesFromNodePort constructor
-func NewRoomAddressesFromNodePort(ipv6KubernetesLabelKey string) *RoomAddressesFromNodePort {
+func NewRoomAddressesFromNodePort(
+	ipv6KubernetesLabelKey string,
+	useCache bool,
+	cacheExpirationInterval, cacheCleanupInterval time.Duration,
+) *RoomAddressesFromNodePort {
+	var c *cache.Cache
+	if useCache {
+		c = cache.New(cacheExpirationInterval, cacheCleanupInterval)
+	}
 	return &RoomAddressesFromNodePort{
 		ipv6KubernetesLabelKey: ipv6KubernetesLabelKey,
+		cache:                  c,
 	}
 }
 
 // Get gets room public addresses
 func (r *RoomAddressesFromNodePort) Get(room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
-	return getRoomAddresses(true, r.ipv6KubernetesLabelKey, room, kubernetesClient)
+	if r.cache != nil {
+		if cached, found := r.cache.Get(r.buildCacheKey(room)); found {
+			return cached.(*RoomAddresses), nil
+		}
+	}
+	addrs, err := getRoomAddresses(true, r.ipv6KubernetesLabelKey, room, kubernetesClient)
+	if err != nil {
+		return nil, err
+	}
+	if r.cache != nil {
+		r.cache.Set(r.buildCacheKey(room), addrs, 0)
+	}
+	return addrs, nil
+}
+
+func (r *RoomAddressesFromNodePort) buildCacheKey(room *Room) string {
+	return fmt.Sprintf("%s-%s", room.SchedulerName, room.ID)
 }
 
 func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {

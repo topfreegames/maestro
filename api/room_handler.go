@@ -291,7 +291,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, err = eventforwarder.ForwardRoomEvent(
-		r.Context(),
+		ctx,
 		g.App.Forwarders,
 		g.App.DBClient.WithContext(ctx),
 		kubernetesClient,

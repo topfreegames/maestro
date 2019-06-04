@@ -13,7 +13,7 @@ import (
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
 	"testing"
@@ -114,5 +114,5 @@ var _ = BeforeEach(func() {
 	_, err = clientset.CoreV1().Nodes().Create(node)
 
 	room = models.NewRoom(roomName, schedulerName)
-	roomAddrGetter = models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey)
+	roomAddrGetter = models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey, false, 0, 0)
 })

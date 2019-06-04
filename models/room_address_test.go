@@ -21,7 +21,7 @@ import (
 
 	"github.com/topfreegames/maestro/models"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -97,7 +97,7 @@ var _ = Describe("AddressGetter", func() {
 	})
 
 	Context("When in development env", func() {
-		var addrGetter = models.NewRoomAddressesFromNodePort(ipv6KubernetesLabelKey)
+		var addrGetter = models.NewRoomAddressesFromNodePort(ipv6KubernetesLabelKey, false, 0, 0)
 
 		Describe("Get", func() {
 			It("should not crash if pod does not exist", func() {
@@ -257,7 +257,7 @@ var _ = Describe("AddressGetter", func() {
 	})
 
 	Context("When in production env", func() {
-		var addrGetter = models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey)
+		var addrGetter = models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey, false, 0, 0)
 
 		Describe("Get", func() {
 			It("should not crash if pod does not exist", func() {

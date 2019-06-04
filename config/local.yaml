@@ -73,3 +73,8 @@ api:
   limitManager:
     keyTimeout: 1h
 ipv6KubernetesLabelKey: "local.io/ipv6"
+addrGetter:
+  cache:
+    use: true
+    expirationInterval: 10m
+    cleanupInterval: 30s
