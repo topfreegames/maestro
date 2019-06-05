@@ -448,7 +448,6 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("jaeger.samplingProbability", 1.0)
 	a.Config.SetDefault("addrGetter.cache.use", false)
 	a.Config.SetDefault("addrGetter.cache.expirationInterval", "10m")
-	a.Config.SetDefault("addrGetter.cache.cleanupInterval", "30s")
 	a.Config.SetDefault(EnvironmentConfig, ProdEnvironment)
 }
 
