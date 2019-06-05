@@ -110,7 +110,7 @@ func (r RoomAddressesFromHostPort) fromCache(redisClient redisinterfaces.RedisCl
 }
 
 func (r *RoomAddressesFromHostPort) buildCacheKey(room *Room) string {
-	return fmt.Sprintf("%s-%s", room.SchedulerName, room.ID)
+	return fmt.Sprintf("room-adrr-%s-%s", room.SchedulerName, room.ID)
 }
 
 // RoomAddressesFromNodePort is the struct that defines room addresses in development (using NodePort service)
@@ -200,7 +200,7 @@ func (r RoomAddressesFromNodePort) fromCache(redisClient redisinterfaces.RedisCl
 }
 
 func (r RoomAddressesFromNodePort) buildCacheKey(room *Room) string {
-	return fmt.Sprintf("%s-%s", room.SchedulerName, room.ID)
+	return fmt.Sprintf("room-addr-%s-%s", room.SchedulerName, room.ID)
 }
 
 func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {

@@ -147,9 +147,9 @@ var _ = Describe("AddressGetter", func() {
 
 				step1 := len(clientset.Fake.Actions())
 				addrGetter := models.NewRoomAddressesFromNodePort(logger, ipv6KubernetesLabelKey, true, 10*time.Second)
-				mockRedisClient.EXPECT().Get("pong-free-for-all-pong-free-for-all-0").
+				mockRedisClient.EXPECT().Get("room-adrr-pong-free-for-all-pong-free-for-all-0").
 					Return(goredis.NewStringResult("", goredis.Nil))
-				mockRedisClient.EXPECT().Set("pong-free-for-all-pong-free-for-all-0", gomock.Any(), gomock.Any()).
+				mockRedisClient.EXPECT().Set("room-adrr-pong-free-for-all-pong-free-for-all-0", gomock.Any(), gomock.Any()).
 					Return(goredis.NewStatusCmd())
 				addrs1, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
@@ -157,7 +157,7 @@ var _ = Describe("AddressGetter", func() {
 				Expect(step2).To(Equal(step1 + 3))
 				b, err := json.Marshal(addrs1)
 				Expect(err).NotTo(HaveOccurred())
-				mockRedisClient.EXPECT().Get("pong-free-for-all-pong-free-for-all-0").
+				mockRedisClient.EXPECT().Get("room-adrr-pong-free-for-all-pong-free-for-all-0").
 					Return(goredis.NewStringResult(string(b), nil))
 				addrs2, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
@@ -194,9 +194,9 @@ var _ = Describe("AddressGetter", func() {
 
 				step1 := len(clientset.Fake.Actions())
 				addrGetter := models.NewRoomAddressesFromHostPort(logger, ipv6KubernetesLabelKey, true, 10*time.Second)
-				mockRedisClient.EXPECT().Get("pong-free-for-all-pong-free-for-all-0").
+				mockRedisClient.EXPECT().Get("room-adrr-pong-free-for-all-pong-free-for-all-0").
 					Return(goredis.NewStringResult("", goredis.Nil))
-				mockRedisClient.EXPECT().Set("pong-free-for-all-pong-free-for-all-0", gomock.Any(), gomock.Any()).
+				mockRedisClient.EXPECT().Set("room-adrr-pong-free-for-all-pong-free-for-all-0", gomock.Any(), gomock.Any()).
 					Return(goredis.NewStatusCmd())
 				addrs1, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
@@ -204,7 +204,7 @@ var _ = Describe("AddressGetter", func() {
 				Expect(step2).To(Equal(step1 + 2))
 				b, err := json.Marshal(addrs1)
 				Expect(err).NotTo(HaveOccurred())
-				mockRedisClient.EXPECT().Get("pong-free-for-all-pong-free-for-all-0").
+				mockRedisClient.EXPECT().Get("room-adrr-pong-free-for-all-pong-free-for-all-0").
 					Return(goredis.NewStringResult(string(b), nil))
 				addrs2, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
