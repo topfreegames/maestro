@@ -8,48 +8,199 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/btcsuite/btcutil/base58"
-
+	"github.com/go-redis/redis"
+	"github.com/sirupsen/logrus"
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 // RoomAddressesFromHostPort is the struct that defines room addresses in production (using node HostPort)
 type RoomAddressesFromHostPort struct {
-	ipv6KubernetesLabelKey string
+	logger                  logrus.FieldLogger
+	useCache                bool
+	cacheExpirationInterval time.Duration
+	ipv6KubernetesLabelKey  string
 }
 
 // NewRoomAddressesFromHostPort is the RoomAddressesFromHostPort constructor
-func NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey string) *RoomAddressesFromHostPort {
+func NewRoomAddressesFromHostPort(
+	logger logrus.FieldLogger, ipv6KubernetesLabelKey string,
+	useCache bool, cacheExpirationInterval time.Duration,
+) *RoomAddressesFromHostPort {
 	return &RoomAddressesFromHostPort{
-		ipv6KubernetesLabelKey: ipv6KubernetesLabelKey,
+		ipv6KubernetesLabelKey:  ipv6KubernetesLabelKey,
+		useCache:                useCache,
+		cacheExpirationInterval: cacheExpirationInterval,
+		logger:                  logger,
 	}
 }
 
 // Get gets room public addresses
-func (r *RoomAddressesFromHostPort) Get(room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
-	return getRoomAddresses(false, r.ipv6KubernetesLabelKey, room, kubernetesClient)
+func (r *RoomAddressesFromHostPort) Get(
+	room *Room, kubernetesClient kubernetes.Interface, redisClient redisinterfaces.RedisClient,
+) (*RoomAddresses, error) {
+	if addrs := r.fromCache(redisClient, room); addrs != nil {
+		return addrs, nil
+	}
+	addrs, err := getRoomAddresses(false, r.ipv6KubernetesLabelKey, room, kubernetesClient)
+	if err != nil {
+		return nil, err
+	}
+	r.toCache(redisClient, room, addrs)
+	return addrs, nil
+}
+
+func (r RoomAddressesFromHostPort) toCache(
+	redisClient redisinterfaces.RedisClient, room *Room, addrs *RoomAddresses,
+) {
+	if !r.useCache {
+		return
+	}
+	l := r.logger.WithFields(logrus.Fields{
+		"struct": "RoomAddressesFromNodePort",
+		"method": "toCache",
+	})
+	b, err := json.Marshal(addrs)
+	if err != nil {
+		l.WithError(err).Error("failed to marshal room addresses")
+		return
+	}
+	if redisClient.Set(r.buildCacheKey(room), b, r.cacheExpirationInterval).Err() != nil {
+		l.WithError(err).Error("failed to set room addresses in redis")
+	}
+}
+
+func (r RoomAddressesFromHostPort) fromCache(redisClient redisinterfaces.RedisClient, room *Room) *RoomAddresses {
+	if !r.useCache {
+		return nil
+	}
+	cmd := redisClient.Get(r.buildCacheKey(room))
+	err := cmd.Err()
+	l := r.logger.WithFields(logrus.Fields{
+		"struct": "RoomAddressesFromNodePort",
+		"method": "fromCache",
+	})
+	if err != nil && err != redis.Nil {
+		l.WithError(err).Error("failed to get from redis")
+		return nil
+	}
+	if err == redis.Nil {
+		return nil
+	}
+	addrs := &RoomAddresses{}
+	b, err := cmd.Bytes()
+	if err != nil {
+		l.WithError(err).Error("failed to cmd.Bytes()")
+		return nil
+	}
+	if err := json.Unmarshal(b, addrs); err != nil {
+		l.WithError(err).Error("failed unmarshal room addresses from redis")
+		return nil
+	}
+	return addrs
+}
+
+func (r *RoomAddressesFromHostPort) buildCacheKey(room *Room) string {
+	return fmt.Sprintf("room-addr-%s-%s", room.SchedulerName, room.ID)
 }
 
 // RoomAddressesFromNodePort is the struct that defines room addresses in development (using NodePort service)
 type RoomAddressesFromNodePort struct {
-	ipv6KubernetesLabelKey string
+	logger                  logrus.FieldLogger
+	useCache                bool
+	cacheExpirationInterval time.Duration
+	ipv6KubernetesLabelKey  string
 }
 
 // NewRoomAddressesFromNodePort is the RoomAddressesFromNodePort constructor
-func NewRoomAddressesFromNodePort(ipv6KubernetesLabelKey string) *RoomAddressesFromNodePort {
+func NewRoomAddressesFromNodePort(
+	logger logrus.FieldLogger, ipv6KubernetesLabelKey string,
+	useCache bool, cacheExpirationInterval time.Duration,
+) *RoomAddressesFromNodePort {
 	return &RoomAddressesFromNodePort{
-		ipv6KubernetesLabelKey: ipv6KubernetesLabelKey,
+		ipv6KubernetesLabelKey:  ipv6KubernetesLabelKey,
+		useCache:                useCache,
+		cacheExpirationInterval: cacheExpirationInterval,
+		logger:                  logger,
 	}
 }
 
 // Get gets room public addresses
-func (r *RoomAddressesFromNodePort) Get(room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
-	return getRoomAddresses(true, r.ipv6KubernetesLabelKey, room, kubernetesClient)
+func (r *RoomAddressesFromNodePort) Get(
+	room *Room, kubernetesClient kubernetes.Interface, redisClient redisinterfaces.RedisClient,
+) (*RoomAddresses, error) {
+	if addrs := r.fromCache(redisClient, room); addrs != nil {
+		return addrs, nil
+	}
+	addrs, err := getRoomAddresses(true, r.ipv6KubernetesLabelKey, room, kubernetesClient)
+	if err != nil {
+		return nil, err
+	}
+	r.toCache(redisClient, room, addrs)
+	return addrs, nil
+}
+
+func (r RoomAddressesFromNodePort) toCache(
+	redisClient redisinterfaces.RedisClient, room *Room, addrs *RoomAddresses,
+) {
+	if !r.useCache {
+		return
+	}
+	l := r.logger.WithFields(logrus.Fields{
+		"struct": "RoomAddressesFromNodePort",
+		"method": "toCache",
+	})
+	b, err := json.Marshal(addrs)
+	if err != nil {
+		l.WithError(err).Error("failed to marshal room addresses")
+		return
+	}
+	if redisClient.Set(r.buildCacheKey(room), b, r.cacheExpirationInterval).Err() != nil {
+		l.WithError(err).Error("failed to set room addresses in redis")
+	}
+}
+
+func (r RoomAddressesFromNodePort) fromCache(redisClient redisinterfaces.RedisClient, room *Room) *RoomAddresses {
+	if !r.useCache {
+		return nil
+	}
+	cmd := redisClient.Get(r.buildCacheKey(room))
+	err := cmd.Err()
+	l := r.logger.WithFields(logrus.Fields{
+		"struct": "RoomAddressesFromNodePort",
+		"method": "fromCache",
+	})
+	if err != nil && err != redis.Nil {
+		l.WithError(err).Error("failed to get from redis")
+		return nil
+	}
+	if err == redis.Nil {
+		return nil
+	}
+	addrs := &RoomAddresses{}
+	b, err := cmd.Bytes()
+	if err != nil {
+		l.WithError(err).Error("failed to cmd.Bytes()")
+		return nil
+	}
+	if err := json.Unmarshal(b, addrs); err != nil {
+		l.WithError(err).Error("failed unmarshal room addresses from redis")
+		return nil
+	}
+	return addrs
+}
+
+func (r RoomAddressesFromNodePort) buildCacheKey(room *Room) string {
+	return fmt.Sprintf("room-addr-%s-%s", room.SchedulerName, room.ID)
 }
 
 func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {

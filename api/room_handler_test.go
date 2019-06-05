@@ -114,6 +114,7 @@ forwarders:
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
@@ -146,6 +147,8 @@ forwarders:
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
@@ -277,6 +280,7 @@ forwarders:
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
@@ -329,6 +333,7 @@ forwarders:
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
@@ -437,6 +442,7 @@ forwarders:
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
@@ -591,6 +597,7 @@ forwarders:
 						mockPipeline.EXPECT().SRem(key, rKey)
 					}
 					mockPipeline.EXPECT().Exec()
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 						Do(func(scheduler *models.Scheduler, query string, modifier string) {
 							scheduler.YAML = yamlStr
@@ -629,6 +636,7 @@ forwarders:
 						mockPipeline.EXPECT().SRem(key, rKey)
 					}
 					mockPipeline.EXPECT().Exec()
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
 						Do(func(scheduler *models.Scheduler, query string, modifier string) {
 							scheduler.YAML = yamlStr
@@ -906,6 +914,7 @@ forwarders:
 				scheduler.Game = game
 			})
 
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			mockEventForwarder1.EXPECT().Forward(gomock.Any(), "roomEvent", gomock.Any(), gomock.Any()).Return(
 				int32(500), "", errors.New("some error occurred"),
 			)
@@ -929,6 +938,7 @@ forwarders:
 				"metadata":  make(map[string]interface{}),
 			})
 			request, _ = http.NewRequest("POST", url, reader)
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			mockDb.EXPECT().Query(
 				gomock.Any(),
 				"SELECT * FROM schedulers WHERE name = ?",
@@ -961,6 +971,7 @@ forwarders:
 				"metadata":  make(map[string]interface{}),
 			})
 			request, _ = http.NewRequest("POST", url, reader)
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			mockDb.EXPECT().Query(
 				gomock.Any(),
 				"SELECT * FROM schedulers WHERE name = ?",
@@ -1025,6 +1036,7 @@ forwarders:
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			url := fmt.Sprintf(
 				"/scheduler/%s/rooms/%s/address",
 				namespace,
@@ -1053,6 +1065,7 @@ forwarders:
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			namespace := "unexisting-name"
 			url := fmt.Sprintf(
 				"/scheduler/%s/rooms/%s/address",

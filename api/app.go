@@ -446,6 +446,8 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("api.limitManager.keyTimeout", 1*time.Minute)
 	a.Config.SetDefault("jaeger.disabled", false)
 	a.Config.SetDefault("jaeger.samplingProbability", 1.0)
+	a.Config.SetDefault("addrGetter.cache.use", false)
+	a.Config.SetDefault("addrGetter.cache.expirationInterval", "10m")
 	a.Config.SetDefault(EnvironmentConfig, ProdEnvironment)
 }
 
@@ -568,11 +570,21 @@ func (a *App) configureServer(showProfile bool) {
 }
 
 func (a *App) configureEnvironment() {
-	a.RoomAddrGetter = models.NewRoomAddressesFromHostPort(a.Config.GetString(Ipv6KubernetesLabelKey))
+	a.RoomAddrGetter = models.NewRoomAddressesFromHostPort(
+		a.Logger,
+		a.Config.GetString(Ipv6KubernetesLabelKey),
+		a.Config.GetBool("addrGetter.cache.use"),
+		a.Config.GetDuration("addrGetter.cache.expirationInterval"),
+	)
 	a.RoomManager = &models.GameRoom{}
 
 	if a.Config.GetString(EnvironmentConfig) == DevEnvironment {
-		a.RoomAddrGetter = models.NewRoomAddressesFromNodePort(a.Config.GetString(Ipv6KubernetesLabelKey))
+		a.RoomAddrGetter = models.NewRoomAddressesFromNodePort(
+			a.Logger,
+			a.Config.GetString(Ipv6KubernetesLabelKey),
+			a.Config.GetBool("addrGetter.cache.use"),
+			a.Config.GetDuration("addrGetter.cache.expirationInterval"),
+		)
 		a.RoomManager = &models.GameRoomWithService{}
 		a.Logger.Info("development environment")
 		return

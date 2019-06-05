@@ -17,6 +17,7 @@ import (
 	"github.com/go-redis/redis"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	"k8s.io/client-go/kubernetes"
@@ -48,10 +49,29 @@ type RoomAddresses struct {
 	Ipv6Label string      `json:"ipv6Label"`
 }
 
+func (r RoomAddresses) Clone() *RoomAddresses {
+	ports := make([]*RoomPort, len(r.Ports))
+	for i, port := range r.Ports {
+		ports[i] = port.Clone()
+	}
+	return &RoomAddresses{
+		Ports:     ports,
+		Host:      r.Host,
+		Ipv6Label: r.Ipv6Label,
+	}
+}
+
 // RoomPort struct
 type RoomPort struct {
 	Name string `json:"name"`
 	Port int32  `json:"port"`
+}
+
+func (r RoomPort) Clone() *RoomPort {
+	return &RoomPort{
+		Name: r.Name,
+		Port: r.Port,
+	}
 }
 
 // RoomUsage struct
@@ -370,6 +390,7 @@ func GetRoomMetricsRedisKey(schedulerName string, metric string) string {
 
 // GetRoomInfos returns a map with room informations
 func (r *Room) GetRoomInfos(
+	redis redisinterfaces.RedisClient,
 	db pginterfaces.DB,
 	kubernetesClient kubernetes.Interface,
 	schedulerCache *SchedulerCache,
@@ -383,7 +404,7 @@ func (r *Room) GetRoomInfos(
 		}
 		scheduler = cachedScheduler.Scheduler
 	}
-	address, err := addrGetter.Get(r, kubernetesClient)
+	address, err := addrGetter.Get(r, kubernetesClient, redis)
 	if err != nil {
 		return nil, err
 	}

@@ -13,12 +13,13 @@ import (
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
 	"testing"
 
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
 	reportermock "github.com/topfreegames/maestro/reporters/mocks"
 )
@@ -36,6 +37,7 @@ var (
 	mockDB                 *pgmocks.MockDB
 	mockEventForwarder     *eventforwardermock.MockEventForwarder
 	mockForwarders         []*eventforwarder.Info
+	mockRedisClient        *redismocks.MockRedisClient
 	mockReporter           *reportermock.MockReporter
 	room                   *models.Room
 	clientset              *fake.Clientset
@@ -77,6 +79,8 @@ var _ = BeforeEach(func() {
 	mockReporter = reportermock.NewMockReporter(mockCtrl)
 	r.SetReporter("mockReporter", mockReporter)
 
+	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
+
 	clientset = fake.NewSimpleClientset()
 
 	mockDB = pgmocks.NewMockDB(mockCtrl)
@@ -114,5 +118,5 @@ var _ = BeforeEach(func() {
 	_, err = clientset.CoreV1().Nodes().Create(node)
 
 	room = models.NewRoom(roomName, schedulerName)
-	roomAddrGetter = models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey)
+	roomAddrGetter = models.NewRoomAddressesFromHostPort(logger, ipv6KubernetesLabelKey, false, 0)
 })
