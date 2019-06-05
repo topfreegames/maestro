@@ -77,4 +77,3 @@ addrGetter:
   cache:
     use: true
     expirationInterval: 10m
-    cleanupInterval: 30s

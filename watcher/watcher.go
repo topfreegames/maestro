@@ -515,7 +515,7 @@ func (w *Watcher) RemoveDeadRooms() {
 
 			_, err := eventforwarder.ForwardRoomEvent(
 				context.Background(),
-				w.EventForwarders, w.DB, w.KubernetesClient,
+				w.EventForwarders, w.RedisClient.Client, w.DB, w.KubernetesClient,
 				room, models.RoomTerminated, eventforwarder.PingTimeoutEvent,
 				metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
 			if err != nil {
@@ -590,7 +590,7 @@ func (w *Watcher) RemoveDeadRooms() {
 				}
 
 				_, err = eventforwarder.ForwardRoomEvent(
-					context.Background(), w.EventForwarders, w.DB, w.KubernetesClient,
+					context.Background(), w.EventForwarders, w.RedisClient.Client, w.DB, w.KubernetesClient,
 					room, models.RoomTerminated, eventforwarder.OccupiedTimeoutEvent,
 					metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
 				if err != nil {

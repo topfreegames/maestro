@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/topfreegames/extensions/pg/interfaces"
+	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
@@ -52,7 +53,8 @@ func getEnabledForwarders(
 func ForwardRoomEvent(
 	ctx context.Context,
 	forwarders []*Info,
-	db interfaces.DB,
+	redis redisinterfaces.RedisClient,
+	db pginterfaces.DB,
 	kubernetesClient kubernetes.Interface,
 	room *models.Room,
 	status string,
@@ -113,7 +115,7 @@ func ForwardRoomEvent(
 					"game":   cachedScheduler.Scheduler.Game,
 				}
 				if eventType != PingTimeoutEvent && eventType != OccupiedTimeoutEvent {
-					infos, err = room.GetRoomInfos(db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler, addrGetter)
+					infos, err = room.GetRoomInfos(redis, db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler, addrGetter)
 					metadata["ipv6Label"] = infos["ipv6Label"]
 
 					if err != nil {
@@ -146,7 +148,7 @@ func ForwardRoomEvent(
 func ForwardRoomInfo(
 	ctx context.Context,
 	forwarders []*Info,
-	db interfaces.DB,
+	db pginterfaces.DB,
 	kubernetesClient kubernetes.Interface,
 	schedulerName string,
 	schedulerCache *models.SchedulerCache,
@@ -201,7 +203,7 @@ func ForwardRoomInfo(
 func ForwardPlayerEvent(
 	ctx context.Context,
 	forwarders []*Info,
-	db interfaces.DB,
+	db pginterfaces.DB,
 	kubernetesClient kubernetes.Interface,
 	room *models.Room,
 	event string,
@@ -296,7 +298,7 @@ func ForwardEventToForwarders(
 func reportRPCStatus(
 	eventWasForwarded bool,
 	schedulerName, forwardRoute string,
-	db interfaces.DB,
+	db pginterfaces.DB,
 	cache *models.SchedulerCache,
 	logger logrus.FieldLogger,
 	eventForwarderErr error,

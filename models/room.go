@@ -17,6 +17,7 @@ import (
 	"github.com/go-redis/redis"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	"k8s.io/client-go/kubernetes"
@@ -389,6 +390,7 @@ func GetRoomMetricsRedisKey(schedulerName string, metric string) string {
 
 // GetRoomInfos returns a map with room informations
 func (r *Room) GetRoomInfos(
+	redis redisinterfaces.RedisClient,
 	db pginterfaces.DB,
 	kubernetesClient kubernetes.Interface,
 	schedulerCache *SchedulerCache,
@@ -402,7 +404,7 @@ func (r *Room) GetRoomInfos(
 		}
 		scheduler = cachedScheduler.Scheduler
 	}
-	address, err := addrGetter.Get(r, kubernetesClient)
+	address, err := addrGetter.Get(r, kubernetesClient, redis)
 	if err != nil {
 		return nil, err
 	}

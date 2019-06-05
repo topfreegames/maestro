@@ -87,6 +87,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, err = eventforwarder.ForwardRoomEvent(
 		ctx,
 		g.App.Forwarders,
+		g.App.RedisClient.Trace(ctx),
 		g.App.DBClient.WithContext(ctx),
 		kubernetesClient,
 		room, fmt.Sprintf("ping%s", strings.Title(payload.Status)),
@@ -212,6 +213,7 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := eventforwarder.ForwardRoomEvent(
 		r.Context(),
 		g.App.Forwarders,
+		g.App.RedisClient.Trace(ctx),
 		g.App.DBClient.WithContext(ctx),
 		kubernetesClient,
 		room,
@@ -293,6 +295,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, err = eventforwarder.ForwardRoomEvent(
 		ctx,
 		g.App.Forwarders,
+		g.App.RedisClient.Trace(ctx),
 		g.App.DBClient.WithContext(ctx),
 		kubernetesClient,
 		room, payload.Status, "",
@@ -337,7 +340,7 @@ func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 	kubernetesClient := kubernetes.TryWithContext(h.App.KubernetesClient, ctx)
-	roomAddresses, err := h.App.RoomAddrGetter.Get(room, kubernetesClient)
+	roomAddresses, err := h.App.RoomAddrGetter.Get(room, kubernetesClient, h.App.RedisClient.Trace(ctx))
 
 	if err != nil {
 		status := http.StatusInternalServerError

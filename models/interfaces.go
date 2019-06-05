@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -40,7 +40,7 @@ type ContainerIface interface {
 
 // AddrGetter return IP and ports of a room
 type AddrGetter interface {
-	Get(room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error)
+	Get(*Room, kubernetes.Interface, redisinterfaces.RedisClient) (*RoomAddresses, error)
 }
 
 // RoomManager should create and delete a game room

@@ -9,10 +9,12 @@
 package models_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/btcsuite/btcutil/base58"
+	"github.com/golang/mock/gomock"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -144,12 +146,20 @@ var _ = Describe("AddressGetter", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				step1 := len(clientset.Fake.Actions())
-				addrGetter := models.NewRoomAddressesFromNodePort(ipv6KubernetesLabelKey, true, 10*time.Second, 10*time.Second)
-				addrs1, err := addrGetter.Get(room, clientset)
+				addrGetter := models.NewRoomAddressesFromNodePort(logger, ipv6KubernetesLabelKey, true, 10*time.Second)
+				mockRedisClient.EXPECT().Get("pong-free-for-all-pong-free-for-all-0").
+					Return(goredis.NewStringResult("", goredis.Nil))
+				mockRedisClient.EXPECT().Set("pong-free-for-all-pong-free-for-all-0", gomock.Any(), gomock.Any()).
+					Return(goredis.NewStatusCmd())
+				addrs1, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				step2 := len(clientset.Fake.Actions())
 				Expect(step2).To(Equal(step1 + 3))
-				addrs2, err := addrGetter.Get(room, clientset)
+				b, err := json.Marshal(addrs1)
+				Expect(err).NotTo(HaveOccurred())
+				mockRedisClient.EXPECT().Get("pong-free-for-all-pong-free-for-all-0").
+					Return(goredis.NewStringResult(string(b), nil))
+				addrs2, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				step3 := len(clientset.Fake.Actions())
 				Expect(step3).To(Equal(step2))
@@ -183,12 +193,20 @@ var _ = Describe("AddressGetter", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				step1 := len(clientset.Fake.Actions())
-				addrGetter := models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey, true, 10*time.Second, 10*time.Second)
-				addrs1, err := addrGetter.Get(room, clientset)
+				addrGetter := models.NewRoomAddressesFromHostPort(logger, ipv6KubernetesLabelKey, true, 10*time.Second)
+				mockRedisClient.EXPECT().Get("pong-free-for-all-pong-free-for-all-0").
+					Return(goredis.NewStringResult("", goredis.Nil))
+				mockRedisClient.EXPECT().Set("pong-free-for-all-pong-free-for-all-0", gomock.Any(), gomock.Any()).
+					Return(goredis.NewStatusCmd())
+				addrs1, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				step2 := len(clientset.Fake.Actions())
 				Expect(step2).To(Equal(step1 + 2))
-				addrs2, err := addrGetter.Get(room, clientset)
+				b, err := json.Marshal(addrs1)
+				Expect(err).NotTo(HaveOccurred())
+				mockRedisClient.EXPECT().Get("pong-free-for-all-pong-free-for-all-0").
+					Return(goredis.NewStringResult(string(b), nil))
+				addrs2, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				step3 := len(clientset.Fake.Actions())
 				Expect(step3).To(Equal(step2))
@@ -199,11 +217,11 @@ var _ = Describe("AddressGetter", func() {
 	})
 
 	Context("When in development env", func() {
-		var addrGetter = models.NewRoomAddressesFromNodePort(ipv6KubernetesLabelKey, false, 0, 0)
+		var addrGetter = models.NewRoomAddressesFromNodePort(logger, ipv6KubernetesLabelKey, false, 0)
 
 		Describe("Get", func() {
 			It("should not crash if pod does not exist", func() {
-				_, err := addrGetter.Get(room, clientset)
+				_, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal(`pods "pong-free-for-all-0" not found`))
 			})
@@ -225,7 +243,7 @@ var _ = Describe("AddressGetter", func() {
 				svc := models.NewService(pod.Name, configYaml)
 				svc.Create(clientset)
 				room := models.NewRoom(name, namespace)
-				addresses, err := addrGetter.Get(room, clientset)
+				addresses, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(addresses.Ports)).To(Equal(0))
 			})
@@ -274,7 +292,7 @@ var _ = Describe("AddressGetter", func() {
 				_, err = clientset.CoreV1().Services(namespace).Create(service)
 				Expect(err).NotTo(HaveOccurred())
 
-				roomAddresses, err := addrGetter.Get(room, clientset)
+				roomAddresses, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(roomAddresses.Host).To(Equal(host))
 
@@ -332,7 +350,7 @@ var _ = Describe("AddressGetter", func() {
 				_, err = clientset.CoreV1().Services(namespace).Create(service)
 				Expect(err).NotTo(HaveOccurred())
 
-				roomAddresses, err := addrGetter.Get(room, clientset)
+				roomAddresses, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(roomAddresses.Host).To(Equal(host))
 				Expect(roomAddresses.Ipv6Label).To(Equal(""))
@@ -351,7 +369,7 @@ var _ = Describe("AddressGetter", func() {
 				_, err := clientset.CoreV1().Pods(namespace).Create(pod)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = addrGetter.Get(room, clientset)
+				_, err = addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("nodes \"node-name\" not found"))
 			})
@@ -359,11 +377,11 @@ var _ = Describe("AddressGetter", func() {
 	})
 
 	Context("When in production env", func() {
-		var addrGetter = models.NewRoomAddressesFromHostPort(ipv6KubernetesLabelKey, false, 0, 0)
+		var addrGetter = models.NewRoomAddressesFromHostPort(logger, ipv6KubernetesLabelKey, false, 0)
 
 		Describe("Get", func() {
 			It("should not crash if pod does not exist", func() {
-				_, err := addrGetter.Get(room, clientset)
+				_, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal(`pods "pong-free-for-all-0" not found`))
 			})
@@ -385,7 +403,7 @@ var _ = Describe("AddressGetter", func() {
 				svc := models.NewService(pod.Name, configYaml)
 				svc.Create(clientset)
 				room := models.NewRoom(name, namespace)
-				addresses, err := addrGetter.Get(room, clientset)
+				addresses, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(addresses.Ports)).To(Equal(0))
 			})
@@ -413,7 +431,7 @@ var _ = Describe("AddressGetter", func() {
 				_, err = clientset.CoreV1().Pods(namespace).Create(pod)
 				Expect(err).NotTo(HaveOccurred())
 
-				roomAddresses, err := addrGetter.Get(room, clientset)
+				roomAddresses, err := addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(roomAddresses.Host).To(Equal(host))
 				Expect(roomAddresses.Ports).To(HaveLen(1))
@@ -431,7 +449,7 @@ var _ = Describe("AddressGetter", func() {
 				_, err := clientset.CoreV1().Pods(namespace).Create(pod)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = addrGetter.Get(room, clientset)
+				_, err = addrGetter.Get(room, clientset, mockRedisClient)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("nodes \"node-name\" not found"))
 			})

@@ -51,6 +51,7 @@ var _ = Describe("Forward", func() {
 			response, err := ForwardRoomEvent(
 				ctx,
 				mockForwarders,
+				mockRedisClient,
 				mockDB,
 				clientset,
 				room,
@@ -95,6 +96,7 @@ var _ = Describe("Forward", func() {
 			response, err := ForwardRoomEvent(
 				ctx,
 				mockForwarders,
+				mockRedisClient,
 				mockDB,
 				clientset,
 				room,
@@ -136,6 +138,7 @@ var _ = Describe("Forward", func() {
 			response, err = ForwardRoomEvent(
 				ctx,
 				mockForwarders,
+				mockRedisClient,
 				mockDB,
 				clientset,
 				room,
@@ -155,7 +158,7 @@ var _ = Describe("Forward", func() {
 		It("should report fail if event forward fails", func() {
 			errMsg := "event forward failed"
 			ctx := context.Background()
-			noIpv6roomAddrGetter := models.NewRoomAddressesFromHostPort("", false, 0, 0)
+			noIpv6roomAddrGetter := models.NewRoomAddressesFromHostPort(logger, "", false, 0)
 			mockEventForwarder.EXPECT().Forward(
 				ctx,
 				models.StatusReady,
@@ -190,6 +193,7 @@ var _ = Describe("Forward", func() {
 			response, err := ForwardRoomEvent(
 				ctx,
 				mockForwarders,
+				mockRedisClient,
 				mockDB,
 				clientset,
 				room,
@@ -229,6 +233,7 @@ var _ = Describe("Forward", func() {
 			_, err := ForwardRoomEvent(
 				ctx,
 				mockForwarders,
+				mockRedisClient,
 				mockDB,
 				clientset,
 				room,
@@ -258,6 +263,7 @@ game: game
 			response, err := ForwardRoomEvent(
 				context.Background(),
 				mockForwarders,
+				mockRedisClient,
 				mockDB,
 				clientset,
 				room,
