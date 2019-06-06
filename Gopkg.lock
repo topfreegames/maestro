@@ -597,7 +597,7 @@
   name = "github.com/topfreegames/go-extensions-http"
   packages = ["."]
   pruneopts = ""
-  revision = "b8ad3d69db7176826b06c7173bd89eeef388b03a"
+  revision = "940a4c3671e7aed383ae8b793da7b17256ddaa4b"
 
 [[projects]]
   digest = "1:2eec5a9bc83841ab81b4e09aa9109015ec1c78c762f3788d7ae9e7b72e8fb1f2"
