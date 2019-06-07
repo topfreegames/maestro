@@ -168,8 +168,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:f3ab3137d6473487f4bcd862f2ab2b11f626ae47674a936deef911ba24cdbd00"
+  digest = "1:3dd078fda7500c341bc26cfbc6c6a34614f295a2457149fc1045cab767cbcf18"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -179,7 +178,8 @@
     "ptypes/timestamp",
   ]
   pruneopts = ""
-  revision = "4f95b0d3eab845462f9b0ca5ad21dea8093be211"
+  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:1e5b1e14524ed08301977b7b8e10c719ed853cbf3f24ecb66fae783a46f207a6"
@@ -593,11 +593,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c921f3c0ebe740c94426f67efc8f9533b56701923eff5b13542aca3b87d3d203"
+  digest = "1:30b4aaf8eedff56c69836fd4156cb2581c16bb3066c0674e8c6d294b6e480b1c"
   name = "github.com/topfreegames/go-extensions-http"
   packages = ["."]
   pruneopts = ""
-  revision = "b8ad3d69db7176826b06c7173bd89eeef388b03a"
+  revision = "940a4c3671e7aed383ae8b793da7b17256ddaa4b"
 
 [[projects]]
   digest = "1:2eec5a9bc83841ab81b4e09aa9109015ec1c78c762f3788d7ae9e7b72e8fb1f2"
@@ -619,12 +619,12 @@
   revision = "b2a1ed83a5ee950bb96756ca9213819fc7da33e0"
 
 [[projects]]
-  digest = "1:12a2b0bc97eb8ef4f87439c3586d59147687d5e3bacf0777cdc52a8bb7e7ffef"
+  digest = "1:686e968be81acba7539a59d88e12589f952262a9a8c3fc20be847cca67b000fc"
   name = "github.com/topfreegames/protos"
   packages = ["maestro/grpc/generated"]
   pruneopts = ""
-  revision = "fc2c08bd1c9bae2a22e65820d0e1fd19e9b0e9d4"
-  version = "v1.3.0"
+  revision = "6f1c73753eb052351ad81af2129d12b15a548104"
+  version = "v1.6.2"
 
 [[projects]]
   digest = "1:acdc8a34ebf61772eed1f00cad6667f37b8f2618bf958eb59d3e28c690703ad8"
@@ -760,28 +760,34 @@
   revision = "aa2eb687b4d3e17154372564ad8d6bf11c3cf21f"
 
 [[projects]]
-  digest = "1:00fa1f54ca71953ffed4fd5c8f50600e63b0aa7411561d7af15a7712bceda73a"
+  digest = "1:c86864f5ec2c7655d641d04e027be7425673499247e4340702c1a5fd3ba89271"
   name = "google.golang.org/grpc"
   packages = [
     ".",
+    "balancer",
+    "balancer/roundrobin",
     "codes",
     "connectivity",
     "credentials",
-    "grpclb/grpc_lb_v1",
+    "encoding",
+    "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "internal",
     "keepalive",
     "metadata",
     "naming",
     "peer",
+    "resolver",
+    "resolver/dns",
+    "resolver/passthrough",
     "stats",
     "status",
     "tap",
     "transport",
   ]
   pruneopts = ""
-  revision = "b3ddf786825de56a4178401b7e174ee332173b66"
-  version = "v1.5.2"
+  revision = ""
+  version = "v1.8.0"
 
 [[projects]]
   digest = "1:e5d1fb981765b6f7513f793a3fcaac7158408cca77f75f7311ac82cc88e9c445"

@@ -37,13 +37,13 @@ type GRPCForwarder struct {
 // ForwarderFunc is the type of functions in GRPCForwarder
 type ForwarderFunc func(client pb.GRPCForwarderClient, infos, fwdMetadata map[string]interface{}) (int32, string, error)
 
-func (g *GRPCForwarder) roomPing(ctx context.Context, infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
+func (g *GRPCForwarder) roomResync(ctx context.Context, infos map[string]interface{}, roomStatus pb.RoomStatus_RoomStatusType) (status int32, message string, err error) {
 	req := g.roomStatusRequest(infos, roomStatus)
 
 	ctx, cancel := context.WithTimeout(ctx, g.config.GetDuration("timeout"))
 	defer cancel()
 
-	response, err := g.client.SendRoomPing(ctx, req)
+	response, err := g.client.SendRoomResync(ctx, req)
 	if err != nil {
 		return 500, "", err
 	}
@@ -83,6 +83,11 @@ func (g *GRPCForwarder) roomStatusRequest(infos map[string]interface{}, status p
 			}
 		}
 		req.Room.Metadata = m
+
+		if roomType, ok := meta["roomType"].(string); ok {
+			req.Room.RoomType = roomType
+			delete(meta, "roomType")
+		}
 	}
 	return req
 }
@@ -289,25 +294,25 @@ func (g *GRPCForwarder) Terminated(ctx context.Context, infos, fwdMetadata map[s
 // PingReady status
 func (g *GRPCForwarder) PingReady(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomPing(ctx, infos, pb.RoomStatus_ready)
+	return g.roomResync(ctx, infos, pb.RoomStatus_ready)
 }
 
 // PingOccupied status
 func (g *GRPCForwarder) PingOccupied(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomPing(ctx, infos, pb.RoomStatus_occupied)
+	return g.roomResync(ctx, infos, pb.RoomStatus_occupied)
 }
 
 // PingTerminating status
 func (g *GRPCForwarder) PingTerminating(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomPing(ctx, infos, pb.RoomStatus_terminating)
+	return g.roomResync(ctx, infos, pb.RoomStatus_terminating)
 }
 
 // PingTerminated status
 func (g *GRPCForwarder) PingTerminated(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
-	return g.roomPing(ctx, infos, pb.RoomStatus_terminated)
+	return g.roomResync(ctx, infos, pb.RoomStatus_terminated)
 }
 
 // PlayerJoin event
