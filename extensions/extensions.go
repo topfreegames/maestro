@@ -74,6 +74,7 @@ func GetKubernetesClient(logger logrus.FieldLogger, inCluster bool, kubeConfigPa
 		l.Debug("starting outside Kubernetes cluster")
 		config, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	}
+  config.Timeout = 60 * time.Second
 	if err != nil {
 		l.WithError(err).Error("start Kubernetes failed")
 		return nil, nil, err
