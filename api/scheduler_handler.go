@@ -278,7 +278,7 @@ func updateSchedulerConfigCommon(
 	}
 
 	ctx := r.Context()
-	kubernetesClient := kubernetes.TryWithContext(app.KubernetesClient, ctx)
+	kubernetesClient := app.KubernetesClient
 	db := app.DBClient.WithContext(r.Context())
 	logger.WithField("time", time.Now()).Info("Starting update")
 	err = controller.UpdateSchedulerConfig(
