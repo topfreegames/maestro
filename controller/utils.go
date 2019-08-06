@@ -58,9 +58,6 @@ func replacePodsAndWait(
 		}
 	}
 
-	// sleepTime, _ := time.ParseDuration("5s")
-	// time.Sleep(sleepTime)
-
 	now := clock.Now()
 	timeout := willTimeoutAt.Sub(now)
 	deletedPods, timedout, canceled = waitCreatingAndDeleteOldPods(
@@ -82,26 +79,6 @@ func replacePodsAndWait(
 			logger.WithError(err).Debugf("error deleting pod %s", pod.GetName())
 		}
 	}
-
-	// sleepTime, _ := time.ParseDuration("5s")
-	// time.Sleep(sleepTime)
-
-	// now := clock.Now()
-	// timeout := willTimeoutAt.Sub(now)
-	// createdPods, timedout, canceled = createPodsAsTheyAreDeleted(
-	// 	logger, roomManager, mr, clientset, db, redisClient, timeout, configYAML,
-	// 	deletedPods, scheduler, operationManager)
-	// if timedout || canceled {
-	// 	return createdPods, deletedPods, timedout, canceled
-	// }
-
-	// timeout = willTimeoutAt.Sub(clock.Now())
-	// _, timedout, canceled = waitCreatingAndDeleteOldPods(
-	// 	logger, clientset, redisClient, timeout, configYAML,
-	// 	createdPods, nil, nil, operationManager, mr)
-	// if timedout || canceled {
-	// 	return createdPods, deletedPods, timedout, canceled
-	// }
 
 	return createdPods, deletedPods, false, false
 }
