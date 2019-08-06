@@ -4752,7 +4752,131 @@ cmd:
 				}
 			})
 
-			It("should stop on waitCreatingPods", func() {
+			It("should stop on createPodsAsTheyAreDeleted", func() {
+				yamlString := `
+name: scheduler-name-cancel
+autoscaling:
+  min: 3
+  up:
+    trigger:
+      limit: 10
+containers:
+- name: container1
+  image: image1
+`
+				newYamlString := `
+name: scheduler-name-cancel
+autoscaling:
+  min: 3
+  up:
+    trigger:
+      limit: 10
+containers:
+- name: container1
+  image: image2
+`
+				configYaml, _ := models.NewConfigYAML(yamlString)
+				newConfigYaml, err := models.NewConfigYAML(newYamlString)
+				Expect(err).ToNot(HaveOccurred())
+
+				mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
+					logger, roomManager, mr, yamlString, timeoutSec, mockPortChooser, workerPortRange, portStart, portEnd)
+
+				pods, err := clientset.CoreV1().Pods("scheduler-name-cancel").List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(3))
+
+				for _, pod := range pods.Items {
+					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
+				}
+
+				// Select current scheduler yaml
+				mt.MockSelectScheduler(newYamlString, mockDb, nil)
+
+				// Get redis lock
+				lockKey := "maestro-lock-key-scheduler-name-cancel"
+				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Set new operation manager description
+				mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+
+				// Remove old room
+				for i, pod := range pods.Items {
+					room := models.NewRoom(pod.GetName(), pod.GetNamespace())
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+
+					for _, status := range allStatus {
+						mockPipeline.EXPECT().
+							SRem(
+								models.GetRoomStatusSetRedisKey(room.SchedulerName, status),
+								room.GetRoomRedisKey())
+						mockPipeline.EXPECT().ZRem(
+							models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
+					}
+					for _, mt := range allMetrics {
+						mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), gomock.Any())
+					}
+					mockPipeline.EXPECT().
+						ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID)
+
+					if i == len(pods.Items)-1 {
+						mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).Do(func(_ string) {
+							opManager.Cancel(opManager.GetOperationKey())
+						})
+					} else {
+						mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+					}
+
+					mockPipeline.EXPECT().Exec()
+				}
+
+				// Delete keys from OperationManager (to cancel it)
+				mt.MockDeleteRedisKey(opManager, mockRedisClient, mockPipeline, nil)
+
+				// Create rooms to rollback
+				mt.MockCreateRooms(mockRedisClient, mockPipeline, newConfigYaml)
+				mt.MockGetPortsFromPool(newConfigYaml, mockRedisClient, mockPortChooser,
+					workerPortRange, portStart, portEnd)
+
+				// Retrieve redis lock
+				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				err = controller.UpdateSchedulerConfig(
+					context.Background(),
+					logger,
+					roomManager,
+					mr,
+					mockDb,
+					redisClient,
+					clientset,
+					configYaml,
+					maxSurge,
+					&clock.Clock{},
+					nil,
+					config,
+					opManager,
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("operation was canceled, rolled back"))
+
+				pods, err = clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+
+				for _, pod := range pods.Items {
+					Expect(pod.GetName()).To(ContainSubstring("scheduler-name-cancel-"))
+					Expect(pod.GetName()).To(HaveLen(len("scheduler-name-cancel-") + 8))
+					Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
+					Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("scheduler-name-cancel"))
+					Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_ROOM_ID"))
+					Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal(pod.GetName()))
+					Expect(pod.Spec.Containers[0].Env).To(HaveLen(2))
+					Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
+					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
+				}
+			})
+
+			It("should stop on waitCreatingAndDeleteOldPods", func() {
 				yamlString := `
 name: scheduler-name-cancel
 autoscaling:
