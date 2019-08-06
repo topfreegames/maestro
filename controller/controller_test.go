@@ -5029,7 +5029,7 @@ containers:
 				}
 			})
 
-			It("should stop on waitCreatingPods", func() {
+			It("should stop on waitCreatingAndDeleteOldPods", func() {
 				yamlString := `
 name: scheduler-name-cancel
 autoscaling:
@@ -5053,7 +5053,6 @@ containers:
   image: image2
 `
 				configYaml, _ := models.NewConfigYAML(yamlString)
-				newConfigYaml, _ := models.NewConfigYAML(newYamlString)
 
 				mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
 					logger, roomManager, mr, yamlString, timeoutSec, mockPortChooser, workerPortRange, portStart, portEnd)
@@ -5079,9 +5078,6 @@ containers:
 				// Delete keys from OperationManager (to cancel it)
 				mt.MockDeleteRedisKey(opManager, mockRedisClient, mockPipeline, nil)
 
-				// Create rooms to rollback
-				mt.MockCreateRooms(mockRedisClient, mockPipeline, newConfigYaml)
-
 				// But first, create rooms
 				for i := 0; i < configYaml.AutoScaling.Min; i++ {
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -5102,25 +5098,6 @@ containers:
 				}
 
 				// Delete newly created rooms
-				for i := 0; i < configYaml2.AutoScaling.Min; i++ {
-					mockRedisClient.EXPECT().TxPipeline().
-						Return(mockPipeline)
-					for _, status := range allStatus {
-						mockPipeline.EXPECT().SRem(
-							models.GetRoomStatusSetRedisKey(configYaml.Name, status), gomock.Any())
-						mockPipeline.EXPECT().ZRem(
-							models.GetLastStatusRedisKey(configYaml.Name, status), gomock.Any())
-					}
-					for _, mt := range allMetrics {
-						mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any())
-					}
-					mockPipeline.EXPECT().ZRem(
-						models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
-					mockPipeline.EXPECT().Del(gomock.Any())
-					mockPipeline.EXPECT().Exec()
-				}
-
-				// But first, remove old rooms
 				for i := 0; i < configYaml2.AutoScaling.Min; i++ {
 					mockRedisClient.EXPECT().TxPipeline().
 						Return(mockPipeline)
