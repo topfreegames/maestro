@@ -282,6 +282,15 @@ func waitTerminatingPods(
 					exit = false
 					break
 				}
+
+				if err != nil && !strings.Contains(err.Error(), "not found") {
+					logger.
+						WithError(err).
+						WithField("pod", pod.GetName()).
+						Info("error getting pod")
+					exit = false
+					break
+				}
 			}
 		case <-timeoutTimer.C:
 			logger.Error("timeout waiting for rooms to be removed")
@@ -359,6 +368,15 @@ func waitCreatingPods(
 
 				if len(createdPod.Status.Phase) == 0 {
 					//HACK! Trying to detect if we are running unit tests
+					break
+				}
+
+				if err != nil && !strings.Contains(err.Error(), "not found") {
+					logger.
+						WithError(err).
+						WithField("pod", pod.GetName()).
+						Info("error getting pod")
+					exit = false
 					break
 				}
 
