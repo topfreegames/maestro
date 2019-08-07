@@ -4419,11 +4419,12 @@ cmd:
 			calls.Append(
 				mt.MockSelectScheduler(yaml1, mockDb, nil))
 
+			calls.Append(mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser,
+				workerPortRange, portStart, portEnd, 1))
+
 			// Create rooms
 			calls.Append(
-				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1))
-			calls.Append(mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser,
-				workerPortRange, portStart, portEnd))
+				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1, 1))
 
 			// Get timeout for waiting pod to be created
 			calls.Add(
@@ -4433,7 +4434,7 @@ cmd:
 
 			// Delete newly created rooms
 			calls.Append(
-				mt.MockRemoveAnyRoomsFromRedis(mockRedisClient, mockPipeline, 3, &configYaml1))
+				mt.MockRemoveAnyRoomsFromRedis(mockRedisClient, mockPipeline, 1, &configYaml1))
 
 			calls.Append(
 				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil))
@@ -4479,11 +4480,11 @@ cmd:
 			calls.Append(
 				mt.MockSelectScheduler(yaml1, mockDb, nil))
 
-			// Create rooms
+			// Create room
 			calls.Append(
-				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1))
+				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1, 1))
 			calls.Append(mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser,
-				workerPortRange, portStart, portEnd))
+				workerPortRange, portStart, portEnd, 1))
 			calls.Add(
 				mockClock.EXPECT().
 					Now().
@@ -4491,7 +4492,7 @@ cmd:
 
 			// Delete old rooms
 			calls.Append(
-				mt.MockRemoveAnyRoomsFromRedis(mockRedisClient, mockPipeline, 3, &configYaml1))
+				mt.MockRemoveAnyRoomsFromRedis(mockRedisClient, mockPipeline, 1, &configYaml1))
 
 			// Get timeout for waiting old pods to be deleted
 			calls.Add(
@@ -4501,13 +4502,13 @@ cmd:
 
 			// Delete newly created rooms
 			calls.Append(
-				mt.MockRemoveAnyRoomsFromRedis(mockRedisClient, mockPipeline, 3, &configYaml1))
+				mt.MockRemoveAnyRoomsFromRedis(mockRedisClient, mockPipeline, 1, &configYaml1))
 
 			// Recreate old rooms
 			calls.Append(
-				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1))
+				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1, 1))
 			calls.Append(mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser,
-				workerPortRange, portStart, portEnd))
+				workerPortRange, portStart, portEnd, 1))
 
 			calls.Append(
 				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil))
@@ -4556,20 +4557,22 @@ cmd:
 			// Get scheduler from DB
 			calls.Append(mt.MockSelectScheduler(yaml1, mockDb, nil))
 
-			// Create new pods
-			calls.Append(
-				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml2))
-			calls.Append(
-				mt.MockGetPortsFromPool(&configYaml2, mockRedisClient, mockPortChooser,
-					workerPortRange, portStart, portEnd))
-			calls.Add(
-				mockClock.EXPECT().
-					Now().
-					Return(time.Unix(0, 0)))
-
-			// Delete rooms
+			// Create and Delete rooms
 			errRedis := errors.New("redis error")
 			for _, pod := range pods.Items {
+
+				// Create new pod
+				calls.Append(
+					mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml2, 1))
+				calls.Append(
+					mt.MockGetPortsFromPool(&configYaml2, mockRedisClient, mockPortChooser,
+						workerPortRange, portStart, portEnd, 1))
+				// Get time.Now()
+				calls.Add(
+					mockClock.EXPECT().
+						Now().
+						Return(time.Unix(int64(timeoutSec-100), 1)))
+
 				// Retrieve ports to pool
 				room := models.NewRoom(pod.GetName(), pod.GetNamespace())
 				calls.Add(
@@ -4598,9 +4601,6 @@ cmd:
 						Exec().
 						Return(nil, errRedis))
 			}
-
-			// Delete old rooms
-			mt.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, &configYaml1, errors.New("redis error"))
 
 			calls.Append(
 				mt.MockUpdateSchedulersTable(mockDb, nil))
