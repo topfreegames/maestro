@@ -276,10 +276,16 @@ func mockCreateRooms(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 	configYaml *models.ConfigYAML,
+	roomCount int,
 ) (calls *Calls) {
 	calls = NewCalls()
 
-	for i := 0; i < configYaml.AutoScaling.Min; i++ {
+	count := configYaml.AutoScaling.Min
+	if roomCount > 0 {
+		count = roomCount
+	}
+
+	for i := 0; i < count; i++ {
 		calls.Add(
 			mockRedisClient.EXPECT().
 				TxPipeline().
@@ -316,8 +322,9 @@ func MockCreateRooms(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 	configYaml *models.ConfigYAML,
+	roomCount int,
 ) (calls *Calls) {
-	return mockCreateRooms(mockRedisClient, mockPipeline, configYaml)
+	return mockCreateRooms(mockRedisClient, mockPipeline, configYaml, roomCount)
 }
 
 // MockCreateRoomsWithPorts mocks the creation of rooms on redis when
@@ -327,7 +334,7 @@ func MockCreateRoomsWithPorts(
 	mockPipeline *redismocks.MockPipeliner,
 	configYaml *models.ConfigYAML,
 ) (calls *Calls) {
-	return mockCreateRooms(mockRedisClient, mockPipeline, configYaml)
+	return mockCreateRooms(mockRedisClient, mockPipeline, configYaml, 0)
 }
 
 // MockCreateScheduler mocks the creation of a scheduler
@@ -386,7 +393,7 @@ func MockCreateScheduler(
 			Times(configYaml.AutoScaling.Min))
 
 	calls.Append(
-		MockGetPortsFromPool(&configYaml, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd))
+		MockGetPortsFromPool(&configYaml, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd, 0))
 
 	calls.Append(
 		MockUpdateScheduler(mockDb, nil, nil))
@@ -404,9 +411,14 @@ func MockGetPortsFromPool(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPortChooser *mocks.MockPortChooser,
 	workerPortRange string,
-	portStart, portEnd int,
+	portStart, portEnd, times int,
 ) (calls *Calls) {
 	calls = NewCalls()
+
+	callTimes := configYaml.AutoScaling.Min
+	if times > 0 {
+		callTimes = times
+	}
 
 	if !configYaml.HasPorts() {
 		return
@@ -416,7 +428,7 @@ func MockGetPortsFromPool(
 		mockRedisClient.EXPECT().
 			Get(models.GlobalPortsPoolKey).
 			Return(goredis.NewStringResult(workerPortRange, nil)).
-			Times(configYaml.AutoScaling.Min)
+			Times(callTimes)
 	}
 
 	if mockPortChooser == nil {
@@ -431,7 +443,7 @@ func MockGetPortsFromPool(
 		mockPortChooser.EXPECT().
 			Choose(portStart, portEnd, nPorts).
 			Return(ports).
-			Times(configYaml.AutoScaling.Min)
+			Times(callTimes)
 	}
 
 	if configYaml.Version() == "v1" {

@@ -693,7 +693,7 @@ waitForLock:
 		deletedPods := []v1.Pod{}
 
 		for i, chunk := range podChunks {
-			l.Debugf("deleting chunk %d: %v", i, names(chunk))
+			l.Debugf("updating chunk %d: %v", i, names(chunk))
 
 			newlyCreatedPods, newlyDeletedPods, timedout, canceled := replacePodsAndWait(
 				l, roomManager, mr, clientset, db, redisClient.Client,

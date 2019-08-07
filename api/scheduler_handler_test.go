@@ -76,7 +76,7 @@ var _ = Describe("Scheduler Handler", func() {
   },
   "shutdownTimeout": 180,
   "autoscaling": {
-    "min": 100,
+    "min": 10,
     "up": {
       "delta": 10,
       "trigger": {
@@ -293,7 +293,7 @@ var _ = Describe("Scheduler Handler", func() {
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
-				Expect(recorder.Body.String()).To(Equal(`[{"autoscalingDownTriggerUsage":50,"autoscalingMin":100,"autoscalingUpTriggerUsage":70,"game":"game-name","name":"scheduler1","roomsCreating":2,"roomsOccupied":1,"roomsReady":1,"roomsTerminating":0,"state":"in-sync"}]`))
+				Expect(recorder.Body.String()).To(Equal(`[{"autoscalingDownTriggerUsage":50,"autoscalingMin":10,"autoscalingUpTriggerUsage":70,"game":"game-name","name":"scheduler1","roomsCreating":2,"roomsOccupied":1,"roomsReady":1,"roomsTerminating":0,"state":"in-sync"}]`))
 			})
 
 			It("should list empty array when there aren't schedulers", func() {
@@ -318,23 +318,23 @@ var _ = Describe("Scheduler Handler", func() {
 			Context("when all services are healthy", func() {
 				It("returns a status code of 201 and success body", func() {
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(10)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 						func(schedulerName string, statusInfo map[string]interface{}) {
 							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
 							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 						},
-					).Times(100)
-					mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(100)
-					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(100)
-					mockPipeline.EXPECT().Exec().Times(100)
+					).Times(10)
+					mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(10)
+					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(10)
+					mockPipeline.EXPECT().Exec().Times(10)
 					MockInsertScheduler(mockDb, nil)
 					MockUpdateScheduler(mockDb, nil, nil)
 
 					mockRedisClient.EXPECT().
 						Get(models.GlobalPortsPoolKey).
 						Return(goredis.NewStringResult(workerPortRange, nil)).
-						Times(100)
+						Times(10)
 
 					var configYaml1 models.ConfigYAML
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
@@ -564,16 +564,16 @@ autoscaling:
 
 				It("forwards scheduler event", func() {
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(100)
+					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(10)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 						func(schedulerName string, statusInfo map[string]interface{}) {
 							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
 							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
 						},
-					).Times(100)
-					mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(100)
-					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(100)
-					mockPipeline.EXPECT().Exec().Times(100)
+					).Times(10)
+					mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey("scheduler-name"), gomock.Any()).Times(10)
+					mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey("scheduler-name", "creating"), gomock.Any()).Times(10)
+					mockPipeline.EXPECT().Exec().Times(10)
 
 					mockDb.EXPECT().Query(
 						gomock.Any(),
@@ -589,7 +589,7 @@ autoscaling:
 					MockInsertScheduler(mockDb, nil)
 					MockUpdateScheduler(mockDb, nil, nil)
 					mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
-						Return(goredis.NewStringResult(workerPortRange, nil)).Times(100)
+						Return(goredis.NewStringResult(workerPortRange, nil)).Times(10)
 
 					var configYaml1 models.ConfigYAML
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
@@ -699,7 +699,7 @@ autoscaling:
 		    },
 		    "shutdownTimeout": 180,
 		    "autoscaling": {
-		      "min": 100,
+		      "min": 10,
 		      "up": {
 		        "delta": 10,
 		        "trigger": {
@@ -779,8 +779,8 @@ autoscaling:
 
 					// Create new roome
 					// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-					MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
-					MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd)
+					MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
+					MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
 
 					// Update new config on schedulers table
 					MockUpdateSchedulersTable(mockDb, nil)
@@ -1111,8 +1111,8 @@ autoscaling:
 
 					// Create new roome
 					// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-					MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
-					MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd)
+					MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
+					MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
 
 					// Update new config on schedulers table
 					MockUpdateSchedulersTable(mockDb, nil)
@@ -1202,8 +1202,8 @@ autoscaling:
 
 					// Create new roome
 					// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-					MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
-					MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd)
+					MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
+					MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
 
 					// Update new config on schedulers table
 					MockUpdateSchedulersTable(mockDb, errors.New("err on db"))
@@ -2381,8 +2381,8 @@ game: game-name
 
 				// Create new roome
 				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
-				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd)
+				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
+				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
 
 				// Update new config on schedulers table
 				MockUpdateSchedulersTable(mockDb, nil)
@@ -2439,8 +2439,8 @@ game: game-name
 
 				// Create new roome
 				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
-				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd)
+				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
+				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
 
 				// Update new config on schedulers table
 				MockUpdateSchedulersTable(mockDb, nil)
@@ -2780,8 +2780,8 @@ game: game-name
 
 				// Create new roome
 				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
-				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd)
+				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
+				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
 
 				// Update new config on schedulers table
 				MockUpdateSchedulersTable(mockDb, nil)
@@ -2873,7 +2873,7 @@ game: game-name
 
 				// Create new roome
 				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1)
+				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1, 0)
 
 				// Update new config on schedulers table
 				MockUpdateSchedulersTable(mockDb, nil)
@@ -2954,8 +2954,8 @@ game: game-name
 
 				// Create new roome
 				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
-				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd)
+				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
+				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
 
 				// Update new config on schedulers table
 				MockUpdateSchedulersTable(mockDb, nil)
