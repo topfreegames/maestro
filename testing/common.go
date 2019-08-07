@@ -169,6 +169,7 @@ func MockDeleteOldVersions(
 func mockRemoveRoomsFromRedis(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
+	numRooms int,
 	pods *v1.PodList,
 	configYaml *models.ConfigYAML,
 ) (calls *Calls) {
@@ -185,6 +186,38 @@ func mockRemoveRoomsFromRedis(
 	allMetrics := []string{
 		string(models.CPUAutoScalingPolicyType),
 		string(models.MemAutoScalingPolicyType),
+	}
+
+	for index := 0; index < numRooms; index++ {
+		calls.Add(
+			mockRedisClient.EXPECT().
+				TxPipeline().
+				Return(mockPipeline))
+		for _, status := range allStatus {
+			calls.Add(
+				mockPipeline.EXPECT().
+					SRem(models.GetRoomStatusSetRedisKey(configYaml.Name, status), gomock.Any()))
+			calls.Add(
+				mockPipeline.EXPECT().
+					ZRem(models.GetLastStatusRedisKey(configYaml.Name, status), gomock.Any()))
+		}
+		calls.Add(
+			mockPipeline.EXPECT().
+				ZRem(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()))
+		for _, mt := range allMetrics {
+			calls.Add(
+				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any()))
+		}
+		calls.Add(
+			mockPipeline.EXPECT().
+				Del(gomock.Any()))
+		calls.Add(
+			mockPipeline.EXPECT().
+				Exec())
+	}
+
+	if pods == nil {
+		return calls
 	}
 
 	for _, pod := range pods.Items {
@@ -219,26 +252,24 @@ func mockRemoveRoomsFromRedis(
 	return calls
 }
 
-// MockRemoveRoomStatusFromRedis removes room only from redis
-func MockRemoveRoomStatusFromRedis(
+// MockRemoveAnyRoomsFromRedis removes any rooms from redis
+func MockRemoveAnyRoomsFromRedis(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
-	pods *v1.PodList,
+	numRooms int,
 	configYaml *models.ConfigYAML,
 ) (calls *Calls) {
-	return mockRemoveRoomsFromRedis(mockRedisClient, mockPipeline,
-		pods, configYaml)
+	return mockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, numRooms, nil, configYaml)
 }
 
-// MockRemoveRoomsFromRedis mocks the room creation from pod
+// MockRemoveRoomsFromRedis removes room only from redis
 func MockRemoveRoomsFromRedis(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 	pods *v1.PodList,
 	configYaml *models.ConfigYAML,
 ) (calls *Calls) {
-	return mockRemoveRoomsFromRedis(mockRedisClient, mockPipeline,
-		pods, configYaml)
+	return mockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, 0, pods, configYaml)
 }
 
 func mockCreateRooms(
