@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -43,58 +44,124 @@ func replacePodsAndWait(
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
 ) (createdPods []v1.Pod, deletedPods []v1.Pod, timedout, canceled bool) {
+	timedout = false
+	canceled = false
 	createdPods = []v1.Pod{}
 	deletedPods = []v1.Pod{}
+	var wg sync.WaitGroup
+	var mutex = &sync.Mutex{}
 
-	// create a chunk of pods (chunkSize = maxSurge)
+	// create a chunk of pods (chunkSize = maxSurge) and remove a chunk of old ones
+	wg.Add(len(podsChunk))
 	for _, pod := range podsChunk {
-		logger.Debug("creating pods")
+		go func(pod v1.Pod) {
+			defer wg.Done()
+			localTimedout, localCanceled := createNewRemoveOldPod(
+				logger,
+				roomManager,
+				mr,
+				clientset,
+				db,
+				redisClient,
+				willTimeoutAt,
+				clock,
+				configYAML,
+				scheduler,
+				operationManager,
+				mutex,
+				pod,
+				&createdPods,
+				&deletedPods,
+			)
+			// if a routine is timedout or canceled,
+			// rolling update should stop
+			if localTimedout {
+				mutex.Lock()
+				timedout = localTimedout
+				mutex.Unlock()
+			}
+			if localCanceled {
+				mutex.Lock()
+				canceled = localCanceled
+				mutex.Unlock()
+			}
+		}(pod)
+	}
+	wg.Wait()
 
-		// create new pod
-		newPod, err := roomManager.Create(logger, mr, redisClient,
-			db, clientset, configYAML, scheduler)
+	return createdPods, deletedPods, timedout, canceled
+}
 
-		if err != nil {
-			logger.WithError(err).Debug("error creating pod")
-			continue
-		}
+func createNewRemoveOldPod(
+	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	willTimeoutAt time.Time,
+	clock clockinterfaces.Clock,
+	configYAML *models.ConfigYAML,
+	scheduler *models.Scheduler,
+	operationManager *models.OperationManager,
+	mutex *sync.Mutex,
+	pod v1.Pod,
+	createdPods *[]v1.Pod,
+	deletedPods *[]v1.Pod,
+) (timedout, canceled bool) {
+	logger.Debug("creating pod")
+	fmt.Printf("\nARNALDO - creating pod %s", pod.Name)
 
-		createdPods = append(createdPods, *newPod)
+	// create new pod
+	newPod, err := roomManager.Create(logger, mr, redisClient,
+		db, clientset, configYAML, scheduler)
 
-		// wait for new pod to be created
-		timeout := willTimeoutAt.Sub(clock.Now())
-		timedout, canceled = waitCreatingPods(
-			logger, clientset, timeout, configYAML.Name,
-			[]v1.Pod{*newPod}, operationManager, mr)
-		if timedout || canceled {
-			return createdPods, deletedPods, timedout, canceled
-		}
+	fmt.Printf("\nARNALDO - pod created %s", pod.Name)
 
-		// delete old pod
-		logger.Debugf("deleting pod %s", pod.GetName())
-		err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
-			configYAML, pod.GetName(), reportersConstants.ReasonUpdate)
-		if err == nil || strings.Contains(err.Error(), "redis") {
-			deletedPods = append(deletedPods, pod)
-		}
-		if err != nil {
-			logger.WithError(err).Debugf("error deleting pod %s", pod.GetName())
-			continue
-		}
-
-		// wait for old pods to be deleted
-		// we assume that maxSurge == maxUnavailable as we can't set maxUnavailable yet
-		// so for every pod created in a chunk one is deleted right after it
-		timeout = willTimeoutAt.Sub(clock.Now())
-		timedout, canceled = waitTerminatingPods(
-			logger, clientset, timeout, configYAML.Name,
-			[]v1.Pod{pod}, operationManager, mr)
-		if timedout || canceled {
-			return createdPods, deletedPods, timedout, canceled
-		}
+	if err != nil {
+		logger.WithError(err).Debug("error creating pod")
+		return false, false
 	}
 
-	return createdPods, deletedPods, false, false
+	mutex.Lock()
+	*createdPods = append(*createdPods, *newPod)
+	mutex.Unlock()
+
+	// wait for new pod to be created
+	timeout := willTimeoutAt.Sub(clock.Now())
+	timedout, canceled = waitCreatingPods(
+		logger, clientset, timeout, configYAML.Name,
+		[]v1.Pod{*newPod}, operationManager, mr)
+	if timedout || canceled {
+		return timedout, canceled
+	}
+
+	// delete old pod
+	logger.Debugf("deleting pod %s", pod.GetName())
+	err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
+		configYAML, pod.GetName(), reportersConstants.ReasonUpdate)
+	if err == nil || strings.Contains(err.Error(), "redis") {
+		mutex.Lock()
+		*deletedPods = append(*deletedPods, pod)
+		mutex.Unlock()
+	}
+	if err != nil {
+		logger.WithError(err).Debugf("error deleting pod %s", pod.GetName())
+		return false, false
+	}
+
+	// wait for old pods to be deleted
+	// we assume that maxSurge == maxUnavailable as we can't set maxUnavailable yet
+	// so for every pod created in a chunk one is deleted right after it
+	timeout = willTimeoutAt.Sub(clock.Now())
+	timedout, canceled = waitTerminatingPods(
+		logger, clientset, timeout, configYAML.Name,
+		[]v1.Pod{pod}, operationManager, mr)
+	if timedout || canceled {
+		return timedout, canceled
+	}
+
+	return false, false
 }
 
 // In rollback, it must delete newly created pod and
