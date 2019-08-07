@@ -226,8 +226,8 @@ func rollback(
 			}
 
 			waitTimeout := willTimeoutAt.Sub(time.Now())
-			waitCreatingAndDeleteOldPods(logger, clientset, redisClient, waitTimeout, configYAML,
-				newlyCreatedPods, nil, nil, nil, mr)
+			waitCreatingPods(logger, clientset, waitTimeout, configYAML.Name,
+				newlyCreatedPods, nil, mr)
 		}
 	}
 
@@ -259,6 +259,7 @@ func waitTerminatingPods(
 		exit := true
 		select {
 		case <-ticker.C:
+			// operationManger is nil when rolling back (rollback can't be canceled)
 			if operationManager != nil && operationManager.WasCanceled() {
 				logger.Warn("operation was canceled")
 				return false, true
@@ -319,7 +320,8 @@ func waitCreatingPods(
 		exit := true
 		select {
 		case <-ticker.C:
-			if operationManager.WasCanceled() {
+			// operationManger is nil when rolling back (rollback can't be canceled)
+			if operationManager != nil && operationManager.WasCanceled() {
 				logger.Warn("operation was canceled")
 				return false, true
 			}
@@ -387,124 +389,6 @@ func waitCreatingPods(
 	}
 
 	return false, false
-}
-
-func waitCreatingAndDeleteOldPods(
-	l logrus.FieldLogger,
-	clientset kubernetes.Interface,
-	redisClient redisinterfaces.RedisClient,
-	timeout time.Duration,
-	configYAML *models.ConfigYAML,
-	createdPods []v1.Pod,
-	podsToDelete []v1.Pod,
-	roomManager models.RoomManager,
-	operationManager *models.OperationManager,
-	mr *models.MixedMetricsReporter,
-) (deletedPods []v1.Pod, timedout, wasCanceled bool) {
-	deletedPods = []v1.Pod{}
-	logger := l.WithFields(logrus.Fields{
-		"operation": "controller.waitCreatingAndDeleteOldPods",
-		"scheduler": configYAML.Name,
-	})
-
-	timeoutTimer := time.NewTimer(timeout)
-	defer timeoutTimer.Stop()
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		exit := true
-		select {
-		case <-ticker.C:
-			// operationManger is nil when rolling back (rollback can't be canceled)
-			if operationManager != nil && operationManager.WasCanceled() {
-				logger.Warn("operation was canceled")
-				return nil, false, true
-			}
-
-			for _, pod := range createdPods {
-				var createdPod *v1.Pod
-				err := mr.WithSegment(models.SegmentPod, func() error {
-					var err error
-					createdPod, err = clientset.CoreV1().Pods(configYAML.Name).Get(
-						pod.GetName(), getOptions,
-					)
-					return err
-				})
-				if err != nil && strings.Contains(err.Error(), "not found") {
-					exit = false
-					logger.
-						WithError(err).
-						WithField("pod", pod.GetName()).
-						Info("error creating pod, recreating...")
-
-					pod.ResourceVersion = ""
-					err = mr.WithSegment(models.SegmentPod, func() error {
-						var err error
-						_, err = clientset.CoreV1().Pods(configYAML.Name).Create(&pod)
-						return err
-					})
-					if err != nil {
-						logger.
-							WithError(err).
-							WithField("pod", pod.GetName()).
-							Errorf("error recreating pod")
-					}
-					break
-				}
-
-				if len(createdPod.Status.Phase) == 0 {
-					//HACK! Trying to detect if we are running unit tests
-					break
-				}
-
-				if err != nil && !strings.Contains(err.Error(), "not found") {
-					logger.
-						WithError(err).
-						WithField("pod", pod.GetName()).
-						Info("error getting pod")
-					exit = false
-					break
-				}
-
-				if !models.IsPodReady(createdPod) {
-					logger.WithField("pod", createdPod.GetName()).Debug("pod not ready yet, waiting...")
-					exit = false
-					break
-				}
-
-				if podsToDelete != nil && len(podsToDelete) > 0 {
-					err = DeletePodAndRoom(
-						logger,
-						roomManager,
-						mr,
-						clientset,
-						redisClient,
-						configYAML,
-						podsToDelete[0].GetName(),
-						reportersConstants.ReasonUpdate,
-					)
-					if err == nil || strings.Contains(err.Error(), "redis") {
-						deletedPods = append(deletedPods, podsToDelete[0])
-						podsToDelete = podsToDelete[1:]
-					}
-					if err != nil {
-						logger.WithError(err).Debugf("error deleting pod %s", pod.GetName())
-					}
-				}
-			}
-		case <-timeoutTimer.C:
-			logger.Error("timeout waiting for rooms to be created")
-			return nil, true, false
-		}
-
-		if exit {
-			logger.Info("creating pods are successfully running")
-			break
-		}
-	}
-
-	return deletedPods, false, false
 }
 
 // DeletePodAndRoom deletes the pod and removes the room from redis

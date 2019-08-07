@@ -4799,7 +4799,7 @@ cmd:
 				}
 			})
 
-			It("should stop on waitCreatingAndDeleteOldPods", func() {
+			It("should stop on waitCreatingPods", func() {
 				yamlString := `
 name: scheduler-name-cancel
 autoscaling:
