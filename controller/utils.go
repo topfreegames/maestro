@@ -120,15 +120,10 @@ func createNewRemoveOldPod(
 		return false, false
 	}
 
-	mutex.Lock()
-	*createdPods = append(*createdPods, *newPod)
-	mutex.Unlock()
-
-	// wait for new pod to be created
 	timeout := willTimeoutAt.Sub(clock.Now())
 	timedout, canceled = waitCreatingPods(
 		logger, clientset, timeout, configYAML.Name,
-		[]v1.Pod{*newPod}, operationManager, mr)
+		createdPods, operationManager, mr)
 	if timedout || canceled {
 		return timedout, canceled
 	}
@@ -158,7 +153,15 @@ func createNewRemoveOldPod(
 		return timedout, canceled
 	}
 
-	return false, false
+	timeout = willTimeoutAt.Sub(clock.Now())
+	timedout, canceled = waitTerminatingPods(
+		logger, clientset, timeout, configYAML.Name,
+		deletedPods, operationManager, mr)
+	if timedout || canceled {
+		return createdPods, deletedPods, timedout, canceled
+	}
+
+	return createdPods, deletedPods, false, false
 }
 
 // In rollback, it must delete newly created pod and
@@ -280,7 +283,6 @@ func waitTerminatingPods(
 		exit := true
 		select {
 		case <-ticker.C:
-			// operationManger is nil when rolling back (rollback can't be canceled)
 			if operationManager != nil && operationManager.WasCanceled() {
 				logger.Warn("operation was canceled")
 				return false, true
@@ -303,6 +305,90 @@ func waitTerminatingPods(
 					exit = false
 					break
 				}
+			}
+		case <-timeoutTimer.C:
+			logger.Error("timeout waiting for rooms to be removed")
+			return true, false
+		}
+
+		if exit {
+			logger.Info("terminating pods were successfully removed")
+			break
+		}
+	}
+
+	return false, false
+}
+
+func waitCreatingPods(
+	l logrus.FieldLogger,
+	clientset kubernetes.Interface,
+	timeout time.Duration,
+	namespace string,
+	createdPods []v1.Pod,
+	operationManager *models.OperationManager,
+	mr *models.MixedMetricsReporter,
+) (timedout, wasCanceled bool) {
+	logger := l.WithFields(logrus.Fields{
+		"operation": "controller.waitCreatingPods",
+		"scheduler": namespace,
+	})
+
+	timeoutTimer := time.NewTimer(timeout)
+	defer timeoutTimer.Stop()
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		exit := true
+		select {
+		case <-ticker.C:
+			if operationManager.WasCanceled() {
+				logger.Warn("operation was canceled")
+				return false, true
+			}
+
+			for _, pod := range createdPods {
+				var createdPod *v1.Pod
+				err := mr.WithSegment(models.SegmentPod, func() error {
+					var err error
+					createdPod, err = clientset.CoreV1().Pods(namespace).Get(
+						pod.GetName(), getOptions,
+					)
+					return err
+				})
+				if err != nil && strings.Contains(err.Error(), "not found") {
+					exit = false
+					logger.
+						WithError(err).
+						WithField("pod", pod.GetName()).
+						Info("error creating pod, recreating...")
+
+					pod.ResourceVersion = ""
+					err = mr.WithSegment(models.SegmentPod, func() error {
+						var err error
+						_, err = clientset.CoreV1().Pods(namespace).Create(&pod)
+						return err
+					})
+					if err != nil {
+						logger.
+							WithError(err).
+							WithField("pod", pod.GetName()).
+							Errorf("error recreating pod")
+					}
+					break
+				}
+
+				if len(createdPod.Status.Phase) == 0 {
+					//HACK! Trying to detect if we are running unit tests
+					break
+				}
+
+				if !models.IsPodReady(createdPod) {
+					logger.WithField("pod", createdPod.GetName()).Debug("pod not ready yet, waiting...")
+					exit = false
+					break
+				}
 
 				if err != nil && !strings.Contains(err.Error(), "not found") {
 					logger.
@@ -314,12 +400,12 @@ func waitTerminatingPods(
 				}
 			}
 		case <-timeoutTimer.C:
-			logger.Error("timeout waiting for rooms to be removed")
+			logger.Error("timeout waiting for rooms to be created")
 			return true, false
 		}
 
 		if exit {
-			logger.Info("terminating pods were successfully removed")
+			logger.Info("creating pods are successfully running")
 			break
 		}
 	}
