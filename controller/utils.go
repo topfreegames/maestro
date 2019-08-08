@@ -110,13 +110,10 @@ func createNewRemoveOldPod(
 	deletedPods *[]v1.Pod,
 ) (timedout, canceled bool) {
 	logger.Debug("creating pod")
-	fmt.Printf("\nARNALDO - creating pod %s", pod.Name)
 
 	// create new pod
 	newPod, err := roomManager.Create(logger, mr, redisClient,
 		db, clientset, configYAML, scheduler)
-
-	fmt.Printf("\nARNALDO - pod created %s", pod.Name)
 
 	if err != nil {
 		logger.WithError(err).Debug("error creating pod")
