@@ -353,7 +353,7 @@ var _ = Describe("Controller", func() {
 			mt.MockInsertScheduler(mockDb, nil)
 			mt.MockUpdateScheduler(mockDb, nil, nil)
 
-			mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd, 0)
 
 			err = mt.MockSetScallingAmount(
 				mockRedisClient,
@@ -440,7 +440,7 @@ cmd:
 			mt.MockInsertScheduler(mockDb, nil)
 			mt.MockUpdateScheduler(mockDb, nil, nil)
 
-			mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd, 0)
 
 			err = mt.MockSetScallingAmount(
 				mockRedisClient,
@@ -545,7 +545,7 @@ portRange:
 				schedulerPortStart := configYaml1.PortRange.Start
 				schedulerPortEnd := configYaml1.PortRange.End
 				mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser,
-					workerPortRange, schedulerPortStart, schedulerPortEnd)
+					workerPortRange, schedulerPortStart, schedulerPortEnd, 0)
 
 				err = mt.MockSetScallingAmount(
 					mockRedisClient,
@@ -1723,7 +1723,7 @@ portRange:
 			schedulerPortStart := configYaml.PortRange.Start
 			schedulerPortEnd := configYaml.PortRange.End
 			mt.MockGetPortsFromPool(&configYaml, mockRedisClient, mockPortChooser,
-				workerPortRange, schedulerPortStart, schedulerPortEnd)
+				workerPortRange, schedulerPortStart, schedulerPortEnd, 0)
 
 			err = mt.MockSetScallingAmount(
 				mockRedisClient,
@@ -3610,10 +3610,10 @@ cmd:
 			// Remove old rooms
 			mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml2)
 
-			// Create new roome
+			// Create new rooms
 			// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-			mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml2)
-			mt.MockGetPortsFromPool(&configYaml2, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml2, 0)
+			mt.MockGetPortsFromPool(&configYaml2, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd, 0)
 
 			// Update new config on schedulers table
 			mt.MockUpdateSchedulersTable(mockDb, nil)
@@ -3744,13 +3744,13 @@ portRange:
 					Return(goredis.NewStringResult(workerPortRange, nil))
 
 				// Remove old rooms
-				mt.MockRemoveRoomStatusFromRedis(mockRedisClient, mockPipeline, pods, &configYaml2)
+				mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml2)
 
 				// Create new rooms
 				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
 				mt.MockCreateRoomsWithPorts(mockRedisClient, mockPipeline, &configYaml2)
 				mt.MockGetPortsFromPool(&configYaml2, mockRedisClient, mockPortChooser,
-					workerPortRange, configYaml2.PortRange.Start, configYaml2.PortRange.End)
+					workerPortRange, configYaml2.PortRange.Start, configYaml2.PortRange.End, 0)
 
 				// Update new config on schedulers table
 				mt.MockUpdateSchedulersTable(mockDb, nil)
@@ -3917,9 +3917,9 @@ cmd:
 				mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml1)
 
 				// Create new rooms
-				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml2)
+				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml2, 0)
 				mt.MockGetPortsFromPool(&configYaml2, mockRedisClient, mockPortChooser,
-					workerPortRange, portStart, portEnd)
+					workerPortRange, portStart, portEnd, 0)
 
 				// Update new config on schedulers table
 				mt.MockUpdateSchedulersTable(mockDb, nil)
@@ -4089,12 +4089,12 @@ portRange:
 					Return(goredis.NewStringResult(workerPortRange, nil))
 
 				// Remove old rooms
-				mt.MockRemoveRoomStatusFromRedis(mockRedisClient, mockPipeline, pods, &configYaml1)
+				mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml1)
 
 				// Create new rooms
 				mt.MockCreateRoomsWithPorts(mockRedisClient, mockPipeline, &configYaml2)
 				mt.MockGetPortsFromPool(&configYaml2, mockRedisClient, mockPortChooser,
-					workerPortRange, 20000, 20020)
+					workerPortRange, 20000, 20020, 0)
 
 				// Update new config on schedulers table
 				mt.MockUpdateSchedulersTable(mockDb, nil)
@@ -4399,11 +4399,7 @@ cmd:
 			Expect(err.Error()).To(Equal("error getting lock"))
 		})
 
-		It("should return error if timeout when deleting rooms", func() {
-			pods, err := clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pods.Items).To(HaveLen(3))
-
+		It("should return error if timeout when creating rooms", func() {
 			// Update scheduler
 			calls := mt.NewCalls()
 
@@ -4423,21 +4419,19 @@ cmd:
 			calls.Append(
 				mt.MockSelectScheduler(yaml1, mockDb, nil))
 
-			// Delete first room
-			calls.Append(
-				mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml1))
+			// Create rooms
+			mt.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml1, 0)
+			mt.MockGetPortsFromPoolAnyTimes(&configYaml1, mockRedisClient, mockPortChooser,
+				workerPortRange, portStart, portEnd)
 
-			// Get timeout for waiting pod to be deleted and create new one
-			calls.Add(
-				mockClock.EXPECT().
-					Now().
-					Return(time.Unix(int64(timeoutSec+100), 0)))
+			// Get timeout for waiting pod to be created
+			mockClock.EXPECT().
+				Now().
+				Return(time.Unix(int64(timeoutSec+100), 0)).Times(3).Do(func() {
+			})
 
-			// Timeod out, so rollback
-			calls.Append(
-				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1))
-			calls.Append(mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser,
-				workerPortRange, portStart, portEnd))
+			// Delete newly created rooms
+			mt.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, &configYaml1, nil)
 
 			calls.Append(
 				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil))
@@ -4463,158 +4457,47 @@ cmd:
 			Expect(err.Error()).To(Equal("timedout waiting rooms to be replaced, rolled back"))
 		})
 
-		It("should return error if timeout when creating rooms", func() {
-			pods, err := clientset.CoreV1().Pods("controller-name").List(metav1.ListOptions{})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pods.Items).To(HaveLen(3))
-
+		It("should return error if timeout when deleting rooms", func() {
 			// Update scheduler
 			calls := mt.NewCalls()
 
-			// Get lock
-			calls.Add(
-				mockClock.EXPECT().
-					Now().
-					Return(time.Unix(0, 0)))
-			calls.Add(
-				mockRedisClient.EXPECT().
-					SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-					Return(goredis.NewBoolResult(true, nil)))
+			calls.Append(
+				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil))
 
 			// Set new operation manager description
-			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+			calls.Append(
+				mt.MockSetDescription(opManager, mockRedisClient, "running", nil))
 
 			// Get scheduler from DB
-			calls.Add(
-				mockDb.EXPECT().
-					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
-					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
-					}))
+			calls.Append(
+				mt.MockSelectScheduler(yaml1, mockDb, nil))
 
-			// Delete first room
-			for _, pod := range pods.Items {
-				calls.Add(
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
+			// Create room
+			mt.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml1, 0)
+			mt.MockGetPortsFromPoolAnyTimes(&configYaml1, mockRedisClient, mockPortChooser,
+				workerPortRange, portStart, portEnd)
 
-				room := models.NewRoom(pod.GetName(), pod.GetNamespace())
+			// Get lock
+			mockClock.EXPECT().
+				Now().
+				Return(time.Unix(0, 0)).Times(1)
 
-				for _, status := range allStatus {
-					calls.Add(
-						mockPipeline.EXPECT().
-							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey()))
-					mockPipeline.EXPECT().
-						ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
-				}
-				calls.Add(mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID))
-				for _, mt := range allMetrics {
-					calls.Add(
-						mockPipeline.EXPECT().
-							ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), gomock.Any()))
-				}
-				calls.Add(mockPipeline.EXPECT().Del(room.GetRoomRedisKey()))
-				calls.Add(mockPipeline.EXPECT().Exec())
-				break
-			}
+			// Mock expired time now
+			mockClock.EXPECT().
+				Now().
+				Return(time.Unix(int64(timeoutSec+100), 0)).Times(3)
 
-			// Get timeout for waiting pod to be deleted and create new one
-			calls.Add(
-				mockClock.EXPECT().
-					Now().
-					Return(time.Unix(int64(timeoutSec-100), 0)))
+			// Mock not expired time now
+			mockClock.EXPECT().
+				Now().
+				Return(time.Unix(int64(timeoutSec-100), 0)).Times(3)
 
-			// Create new room with updated scheduler
-			for range pods.Items {
-				calls.Add(mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
-				calls.Add(
-					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-						func(schedulerName string, statusInfo map[string]interface{}) {
-							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-						},
-					))
-				calls.Add(
-					mockPipeline.EXPECT().
-						SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()))
-				calls.Add(
-					mockPipeline.EXPECT().
-						ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()))
-				calls.Add(
-					mockPipeline.EXPECT().Exec())
-				calls.Add(
-					mockRedisClient.EXPECT().
-						Get(models.GlobalPortsPoolKey).
-						Return(goredis.NewStringResult(workerPortRange, nil)))
-				calls.Add(
-					mockPortChooser.EXPECT().
-						Choose(portStart, portEnd, 2).
-						Return([]int{5000, 5001}))
-				break
-			}
+			// Delete old rooms
+			mt.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, &configYaml1, nil)
 
-			// Get timeout for waiting new pod to be created
-			calls.Add(
-				mockClock.EXPECT().
-					Now().
-					Return(time.Unix(int64(timeoutSec+100), 0)))
+			calls.Append(
+				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil))
 
-			// Timed out, so rollback
-			// Delete newly created room
-			for range pods.Items {
-				calls.Add(
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
-
-				for range allStatus {
-					calls.Add(
-						mockPipeline.EXPECT().
-							SRem(gomock.Any(), gomock.Any()))
-					calls.Add(mockPipeline.EXPECT().
-						ZRem(gomock.Any(), gomock.Any()))
-				}
-				for range allMetrics {
-					calls.Add(
-						mockPipeline.EXPECT().
-							ZRem(gomock.Any(), gomock.Any()))
-				}
-				calls.Add(mockPipeline.EXPECT().ZRem(gomock.Any(), gomock.Any()))
-				calls.Add(mockPipeline.EXPECT().Del(gomock.Any()))
-				calls.Add(mockPipeline.EXPECT().Exec())
-				break
-			}
-
-			// Create new room to replace the one with old version deleted
-			for range pods.Items {
-				calls.Add(mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline))
-				calls.Add(
-					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-						func(schedulerName string, statusInfo map[string]interface{}) {
-							Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-							Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-						},
-					))
-				calls.Add(
-					mockPipeline.EXPECT().
-						SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"), gomock.Any()))
-				calls.Add(
-					mockPipeline.EXPECT().
-						ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any()))
-				calls.Add(
-					mockPipeline.EXPECT().Exec())
-				calls.Add(
-					mockRedisClient.EXPECT().
-						Get(models.GlobalPortsPoolKey).
-						Return(goredis.NewStringResult(workerPortRange, nil)))
-				calls.Add(
-					mockPortChooser.EXPECT().
-						Choose(portStart, portEnd, 2).
-						Return([]int{5000, 5001}))
-				break
-			}
-
-			calls.Add(
-				mockRedisClient.EXPECT().
-					Eval(gomock.Any(), []string{lockKey}, gomock.Any()).
-					Return(goredis.NewCmdResult(nil, nil)))
 			calls.Finish()
 
 			err = controller.UpdateSchedulerConfig(
@@ -4626,7 +4509,7 @@ cmd:
 				redisClient,
 				clientset,
 				&configYaml2,
-				10,
+				maxSurge,
 				mockClock,
 				nil,
 				config,
@@ -4659,54 +4542,18 @@ cmd:
 			// Get scheduler from DB
 			calls.Append(mt.MockSelectScheduler(yaml1, mockDb, nil))
 
-			// Delete rooms
-			errRedis := errors.New("redis error")
-			for _, pod := range pods.Items {
-				// Retrieve ports to pool
-				room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-				calls.Add(
-					mockRedisClient.EXPECT().
-						TxPipeline().
-						Return(mockPipeline))
-				for _, status := range allStatus {
-					calls.Add(
-						mockPipeline.EXPECT().
-							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey()))
-					calls.Add(
-						mockPipeline.EXPECT().
-							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID))
-				}
-				calls.Add(
-					mockPipeline.EXPECT().
-						ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID))
-				for _, mt := range allMetrics {
-					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), gomock.Any())
-				}
-				calls.Add(
-					mockPipeline.EXPECT().
-						Del(room.GetRoomRedisKey()))
-				calls.Add(
-					mockPipeline.EXPECT().
-						Exec().
-						Return(nil, errRedis))
-			}
+			// Create room
+			mt.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml1, 3)
+			mt.MockGetPortsFromPoolAnyTimes(&configYaml1, mockRedisClient, mockPortChooser,
+				workerPortRange, portStart, portEnd)
 
-			calls.Add(
-				mockClock.EXPECT().
-					Now().
-					Return(time.Unix(0, 0)))
+			// Delete old rooms
+			mt.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, &configYaml1, errors.New("redis error"))
 
-			// Create new pods
-			calls.Append(
-				mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml2))
-			calls.Append(
-				mt.MockGetPortsFromPool(&configYaml2, mockRedisClient, mockPortChooser,
-					workerPortRange, portStart, portEnd))
-
-			calls.Add(
-				mockClock.EXPECT().
-					Now().
-					Return(time.Unix(0, 0)))
+			// Mock not expired time now
+			mockClock.EXPECT().
+				Now().
+				Return(time.Unix(int64(timeoutSec-100), 0)).AnyTimes()
 
 			calls.Append(
 				mt.MockUpdateSchedulersTable(mockDb, nil))
@@ -4787,8 +4634,8 @@ cmd:
 
 			// Create new roome
 			// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-			mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml2)
-			mt.MockGetPortsFromPool(&configYaml2, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml2, 0)
+			mt.MockGetPortsFromPool(&configYaml2, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd, 0)
 
 			// Update new config on schedulers table
 			mt.MockUpdateSchedulersTable(mockDb, nil)
@@ -4905,130 +4752,6 @@ cmd:
 				}
 			})
 
-			It("should stop on createPodsAsTheyAreDeleted", func() {
-				yamlString := `
-name: scheduler-name-cancel
-autoscaling:
-  min: 3
-  up:
-    trigger:
-      limit: 10
-containers:
-- name: container1
-  image: image1
-`
-				newYamlString := `
-name: scheduler-name-cancel
-autoscaling:
-  min: 3
-  up:
-    trigger:
-      limit: 10
-containers:
-- name: container1
-  image: image2
-`
-				configYaml, _ := models.NewConfigYAML(yamlString)
-				newConfigYaml, err := models.NewConfigYAML(newYamlString)
-				Expect(err).ToNot(HaveOccurred())
-
-				mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-					logger, roomManager, mr, yamlString, timeoutSec, mockPortChooser, workerPortRange, portStart, portEnd)
-
-				pods, err := clientset.CoreV1().Pods("scheduler-name-cancel").List(metav1.ListOptions{})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(3))
-
-				for _, pod := range pods.Items {
-					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
-				}
-
-				// Select current scheduler yaml
-				mt.MockSelectScheduler(newYamlString, mockDb, nil)
-
-				// Get redis lock
-				lockKey := "maestro-lock-key-scheduler-name-cancel"
-				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
-
-				// Set new operation manager description
-				mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
-
-				// Remove old room
-				for i, pod := range pods.Items {
-					room := models.NewRoom(pod.GetName(), pod.GetNamespace())
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-
-					for _, status := range allStatus {
-						mockPipeline.EXPECT().
-							SRem(
-								models.GetRoomStatusSetRedisKey(room.SchedulerName, status),
-								room.GetRoomRedisKey())
-						mockPipeline.EXPECT().ZRem(
-							models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
-					}
-					for _, mt := range allMetrics {
-						mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), gomock.Any())
-					}
-					mockPipeline.EXPECT().
-						ZRem(models.GetRoomPingRedisKey(pod.GetNamespace()), room.ID)
-
-					if i == len(pods.Items)-1 {
-						mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).Do(func(_ string) {
-							opManager.Cancel(opManager.GetOperationKey())
-						})
-					} else {
-						mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
-					}
-
-					mockPipeline.EXPECT().Exec()
-				}
-
-				// Delete keys from OperationManager (to cancel it)
-				mt.MockDeleteRedisKey(opManager, mockRedisClient, mockPipeline, nil)
-
-				// Create rooms to rollback
-				mt.MockCreateRooms(mockRedisClient, mockPipeline, newConfigYaml)
-				mt.MockGetPortsFromPool(newConfigYaml, mockRedisClient, mockPortChooser,
-					workerPortRange, portStart, portEnd)
-
-				// Retrieve redis lock
-				mt.MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-				err = controller.UpdateSchedulerConfig(
-					context.Background(),
-					logger,
-					roomManager,
-					mr,
-					mockDb,
-					redisClient,
-					clientset,
-					configYaml,
-					maxSurge,
-					&clock.Clock{},
-					nil,
-					config,
-					opManager,
-				)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("operation was canceled, rolled back"))
-
-				pods, err = clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
-
-				for _, pod := range pods.Items {
-					Expect(pod.GetName()).To(ContainSubstring("scheduler-name-cancel-"))
-					Expect(pod.GetName()).To(HaveLen(len("scheduler-name-cancel-") + 8))
-					Expect(pod.Spec.Containers[0].Env[0].Name).To(Equal("MAESTRO_SCHEDULER_NAME"))
-					Expect(pod.Spec.Containers[0].Env[0].Value).To(Equal("scheduler-name-cancel"))
-					Expect(pod.Spec.Containers[0].Env[1].Name).To(Equal("MAESTRO_ROOM_ID"))
-					Expect(pod.Spec.Containers[0].Env[1].Value).To(Equal(pod.GetName()))
-					Expect(pod.Spec.Containers[0].Env).To(HaveLen(2))
-					Expect(pod.ObjectMeta.Labels["heritage"]).To(Equal("maestro"))
-					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
-				}
-			})
-
 			It("should stop on waitCreatingPods", func() {
 				yamlString := `
 name: scheduler-name-cancel
@@ -5053,7 +4776,6 @@ containers:
   image: image2
 `
 				configYaml, _ := models.NewConfigYAML(yamlString)
-				newConfigYaml, _ := models.NewConfigYAML(newYamlString)
 
 				mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
 					logger, roomManager, mr, yamlString, timeoutSec, mockPortChooser, workerPortRange, portStart, portEnd)
@@ -5079,9 +4801,6 @@ containers:
 				// Delete keys from OperationManager (to cancel it)
 				mt.MockDeleteRedisKey(opManager, mockRedisClient, mockPipeline, nil)
 
-				// Create rooms to rollback
-				mt.MockCreateRooms(mockRedisClient, mockPipeline, newConfigYaml)
-
 				// But first, create rooms
 				for i := 0; i < configYaml.AutoScaling.Min; i++ {
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -5102,25 +4821,6 @@ containers:
 				}
 
 				// Delete newly created rooms
-				for i := 0; i < configYaml2.AutoScaling.Min; i++ {
-					mockRedisClient.EXPECT().TxPipeline().
-						Return(mockPipeline)
-					for _, status := range allStatus {
-						mockPipeline.EXPECT().SRem(
-							models.GetRoomStatusSetRedisKey(configYaml.Name, status), gomock.Any())
-						mockPipeline.EXPECT().ZRem(
-							models.GetLastStatusRedisKey(configYaml.Name, status), gomock.Any())
-					}
-					for _, mt := range allMetrics {
-						mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any())
-					}
-					mockPipeline.EXPECT().ZRem(
-						models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
-					mockPipeline.EXPECT().Del(gomock.Any())
-					mockPipeline.EXPECT().Exec()
-				}
-
-				// But first, remove old rooms
 				for i := 0; i < configYaml2.AutoScaling.Min; i++ {
 					mockRedisClient.EXPECT().TxPipeline().
 						Return(mockPipeline)
@@ -5334,8 +5034,8 @@ containers:
 
 			// Create new roome
 			// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-			mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1)
-			mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1, 0)
+			mt.MockGetPortsFromPool(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd, 0)
 
 			// Update new config on schedulers table
 			mt.MockUpdateSchedulersTable(mockDb, nil)
@@ -5561,8 +5261,8 @@ containers:
 			mt.MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
 
 			// Create new rooms
-			mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml)
-			mt.MockGetPortsFromPool(&configYaml, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
+			mt.MockGetPortsFromPool(&configYaml, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd, 0)
 
 			// Update new config on schedulers table
 			mt.MockUpdateSchedulersTable(mockDb, nil)

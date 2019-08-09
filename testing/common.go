@@ -169,6 +169,7 @@ func MockDeleteOldVersions(
 func mockRemoveRoomsFromRedis(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
+	numRooms int,
 	pods *v1.PodList,
 	configYaml *models.ConfigYAML,
 ) (calls *Calls) {
@@ -185,6 +186,38 @@ func mockRemoveRoomsFromRedis(
 	allMetrics := []string{
 		string(models.CPUAutoScalingPolicyType),
 		string(models.MemAutoScalingPolicyType),
+	}
+
+	for index := 0; index < numRooms; index++ {
+		calls.Add(
+			mockRedisClient.EXPECT().
+				TxPipeline().
+				Return(mockPipeline))
+		for _, status := range allStatus {
+			calls.Add(
+				mockPipeline.EXPECT().
+					SRem(models.GetRoomStatusSetRedisKey(configYaml.Name, status), gomock.Any()))
+			calls.Add(
+				mockPipeline.EXPECT().
+					ZRem(models.GetLastStatusRedisKey(configYaml.Name, status), gomock.Any()))
+		}
+		calls.Add(
+			mockPipeline.EXPECT().
+				ZRem(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()))
+		for _, mt := range allMetrics {
+			calls.Add(
+				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any()))
+		}
+		calls.Add(
+			mockPipeline.EXPECT().
+				Del(gomock.Any()))
+		calls.Add(
+			mockPipeline.EXPECT().
+				Exec())
+	}
+
+	if pods == nil {
+		return calls
 	}
 
 	for _, pod := range pods.Items {
@@ -219,36 +252,40 @@ func mockRemoveRoomsFromRedis(
 	return calls
 }
 
-// MockRemoveRoomStatusFromRedis removes room only from redis
-func MockRemoveRoomStatusFromRedis(
+// MockRemoveAnyRoomsFromRedis removes any rooms from redis
+func MockRemoveAnyRoomsFromRedis(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
-	pods *v1.PodList,
+	numRooms int,
 	configYaml *models.ConfigYAML,
 ) (calls *Calls) {
-	return mockRemoveRoomsFromRedis(mockRedisClient, mockPipeline,
-		pods, configYaml)
+	return mockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, numRooms, nil, configYaml)
 }
 
-// MockRemoveRoomsFromRedis mocks the room creation from pod
+// MockRemoveRoomsFromRedis removes room only from redis
 func MockRemoveRoomsFromRedis(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 	pods *v1.PodList,
 	configYaml *models.ConfigYAML,
 ) (calls *Calls) {
-	return mockRemoveRoomsFromRedis(mockRedisClient, mockPipeline,
-		pods, configYaml)
+	return mockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, 0, pods, configYaml)
 }
 
 func mockCreateRooms(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 	configYaml *models.ConfigYAML,
+	roomCount int,
 ) (calls *Calls) {
 	calls = NewCalls()
 
-	for i := 0; i < configYaml.AutoScaling.Min; i++ {
+	count := configYaml.AutoScaling.Min
+	if roomCount > 0 {
+		count = roomCount
+	}
+
+	for i := 0; i < count; i++ {
 		calls.Add(
 			mockRedisClient.EXPECT().
 				TxPipeline().
@@ -280,13 +317,106 @@ func mockCreateRooms(
 	return calls
 }
 
+// MockRemoveAnyRoomsFromRedisAnyTimes removes any rooms from redis
+func MockRemoveAnyRoomsFromRedisAnyTimes(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	configYaml *models.ConfigYAML, redisErrOrNil error,
+) {
+
+	allStatus := []string{
+		models.StatusCreating,
+		models.StatusReady,
+		models.StatusOccupied,
+		models.StatusTerminating,
+		models.StatusTerminated,
+	}
+
+	allMetrics := []string{
+		string(models.CPUAutoScalingPolicyType),
+		string(models.MemAutoScalingPolicyType),
+	}
+
+	mockRedisClient.EXPECT().
+		TxPipeline().
+		Return(mockPipeline).AnyTimes()
+	for _, status := range allStatus {
+		mockPipeline.EXPECT().
+			SRem(models.GetRoomStatusSetRedisKey(configYaml.Name, status), gomock.Any()).AnyTimes()
+		mockPipeline.EXPECT().
+			ZRem(models.GetLastStatusRedisKey(configYaml.Name, status), gomock.Any()).AnyTimes()
+	}
+	mockPipeline.EXPECT().
+		ZRem(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).AnyTimes()
+	for _, mt := range allMetrics {
+		mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any()).AnyTimes()
+	}
+	mockPipeline.EXPECT().
+		Del(gomock.Any()).AnyTimes()
+
+	if redisErrOrNil == nil {
+		mockPipeline.EXPECT().
+			Exec().AnyTimes()
+	} else {
+		mockPipeline.EXPECT().
+			Exec().Return(nil, redisErrOrNil).AnyTimes()
+	}
+
+}
+
+// MockCreateRoomsAnyTimes mocks the creation of rooms on redis
+func MockCreateRoomsAnyTimes(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	configYaml *models.ConfigYAML,
+	times int,
+) {
+	tx := mockRedisClient.EXPECT().
+		TxPipeline().
+		Return(mockPipeline)
+
+	hmset := mockPipeline.EXPECT().
+		HMSet(gomock.Any(), gomock.Any()).
+		Do(func(schedulerName string, statusInfo map[string]interface{}) {
+			gomega.Expect(statusInfo["status"]).
+				To(gomega.Equal(models.StatusCreating))
+			gomega.Expect(statusInfo["lastPing"]).
+				To(gomega.BeNumerically("~", time.Now().Unix(), 1))
+		})
+
+	sadd := mockPipeline.EXPECT().
+		SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"),
+			gomock.Any())
+
+	zadd := mockPipeline.EXPECT().
+		ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
+
+	exec := mockPipeline.EXPECT().Exec()
+
+	if times > 0 {
+		tx.Times(times)
+		hmset.Times(times)
+		sadd.Times(times)
+		zadd.Times(times)
+		exec.Times(times)
+
+		return
+	}
+	tx.AnyTimes()
+	hmset.AnyTimes()
+	sadd.AnyTimes()
+	zadd.AnyTimes()
+	exec.AnyTimes()
+}
+
 // MockCreateRooms mocks the creation of rooms on redis
 func MockCreateRooms(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 	configYaml *models.ConfigYAML,
+	roomCount int,
 ) (calls *Calls) {
-	return mockCreateRooms(mockRedisClient, mockPipeline, configYaml)
+	return mockCreateRooms(mockRedisClient, mockPipeline, configYaml, roomCount)
 }
 
 // MockCreateRoomsWithPorts mocks the creation of rooms on redis when
@@ -296,7 +426,7 @@ func MockCreateRoomsWithPorts(
 	mockPipeline *redismocks.MockPipeliner,
 	configYaml *models.ConfigYAML,
 ) (calls *Calls) {
-	return mockCreateRooms(mockRedisClient, mockPipeline, configYaml)
+	return mockCreateRooms(mockRedisClient, mockPipeline, configYaml, 0)
 }
 
 // MockCreateScheduler mocks the creation of a scheduler
@@ -355,7 +485,7 @@ func MockCreateScheduler(
 			Times(configYaml.AutoScaling.Min))
 
 	calls.Append(
-		MockGetPortsFromPool(&configYaml, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd))
+		MockGetPortsFromPool(&configYaml, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd, 0))
 
 	calls.Append(
 		MockUpdateScheduler(mockDb, nil, nil))
@@ -373,9 +503,14 @@ func MockGetPortsFromPool(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPortChooser *mocks.MockPortChooser,
 	workerPortRange string,
-	portStart, portEnd int,
+	portStart, portEnd, times int,
 ) (calls *Calls) {
 	calls = NewCalls()
+
+	callTimes := configYaml.AutoScaling.Min
+	if times > 0 {
+		callTimes = times
+	}
 
 	if !configYaml.HasPorts() {
 		return
@@ -385,7 +520,7 @@ func MockGetPortsFromPool(
 		mockRedisClient.EXPECT().
 			Get(models.GlobalPortsPoolKey).
 			Return(goredis.NewStringResult(workerPortRange, nil)).
-			Times(configYaml.AutoScaling.Min)
+			Times(callTimes)
 	}
 
 	if mockPortChooser == nil {
@@ -400,7 +535,7 @@ func MockGetPortsFromPool(
 		mockPortChooser.EXPECT().
 			Choose(portStart, portEnd, nPorts).
 			Return(ports).
-			Times(configYaml.AutoScaling.Min)
+			Times(callTimes)
 	}
 
 	if configYaml.Version() == "v1" {
@@ -412,6 +547,50 @@ func MockGetPortsFromPool(
 	}
 
 	return calls
+}
+
+// MockGetPortsFromPoolAnyTimes mocks the function that chooses random ports
+// to be used as HostPort in the pods
+func MockGetPortsFromPoolAnyTimes(
+	configYaml *models.ConfigYAML,
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPortChooser *mocks.MockPortChooser,
+	workerPortRange string,
+	portStart, portEnd int,
+) {
+	if !configYaml.HasPorts() {
+		return
+	}
+
+	if !configYaml.PortRange.IsSet() {
+		mockRedisClient.EXPECT().
+			Get(models.GlobalPortsPoolKey).
+			Return(goredis.NewStringResult(workerPortRange, nil)).
+			AnyTimes()
+	}
+
+	if mockPortChooser == nil {
+		return
+	}
+
+	givePorts := func(nPorts int) {
+		ports := make([]int, nPorts)
+		for i := 0; i < nPorts; i++ {
+			ports[i] = portStart + i
+		}
+		mockPortChooser.EXPECT().
+			Choose(portStart, portEnd, nPorts).
+			Return(ports).
+			AnyTimes()
+	}
+
+	if configYaml.Version() == "v1" {
+		givePorts(len(configYaml.Ports))
+	} else if configYaml.Version() == "v2" {
+		for _, container := range configYaml.Containers {
+			givePorts(len(container.Ports))
+		}
+	}
 }
 
 // MockInsertScheduler inserts a new scheduler into database
