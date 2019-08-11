@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	redisLock "github.com/bsm/redis-lock"
 	goredis "github.com/go-redis/redis"
 	uuid "github.com/satori/go.uuid"
 	clockinterfaces "github.com/topfreegames/extensions/clock/interfaces"
@@ -22,7 +21,6 @@ import (
 	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
-	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	yaml "gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -356,6 +354,7 @@ func ScaleUp(
 		"scheduler": scheduler.Name,
 		"amount":    amount,
 	})
+
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 
 	existPendingPods, err := pendingPods(clientset, scheduler.Name, mr)
@@ -438,6 +437,8 @@ func ScaleDown(
 		"scheduler": scheduler.Name,
 		"amount":    amount,
 	})
+
+	// check if scheduler update is in place
 
 	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
 
@@ -570,12 +571,9 @@ func UpdateSchedulerConfig(
 	operationManager *models.OperationManager,
 ) error {
 	configYAML.EnsureDefaultValues()
-
 	timeoutSec := config.GetInt("updateTimeoutSeconds")
-	lockTimeoutMS := config.GetInt("watcher.lockTimeoutMs")
-	lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
-	maxVersions := config.GetInt("schedulers.versions.toKeep")
-
+	timeoutDur := time.Duration(timeoutSec) * time.Second
+	willTimeoutAt := clock.Now().Add(timeoutDur)
 	schedulerName := configYAML.Name
 	l := logger.WithFields(logrus.Fields{
 		"source":    "updateSchedulerConfig",
@@ -584,84 +582,63 @@ func UpdateSchedulerConfig(
 
 	l.Info("starting scheduler update")
 
-	if maxSurge <= 0 {
-		return errors.New("invalid parameter: maxsurge must be greater than 0")
-	}
-
-	if configYAML.AutoScaling.Max > 0 && configYAML.AutoScaling.Min > configYAML.AutoScaling.Max {
-		return errors.New("invalid parameter: autoscaling max must be greater than min")
-	}
-
-	// if using resource scaling (cpu, mem) requests must be set
-	err := validateMetricsTrigger(configYAML, logger)
+	err := validateConfig(logger, configYAML, maxSurge)
 	if err != nil {
 		return err
 	}
 
 	// Lock watchers so they don't scale up or down and the scheduler is not
-	//  overwritten with older version on database
-	var lock *redisLock.Lock
-	timeoutDur := time.Duration(timeoutSec) * time.Second
-	willTimeoutAt := clock.Now().Add(timeoutDur)
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-	timeout := time.NewTimer(timeoutDur)
-	defer timeout.Stop()
+	// overwritten with older version on database
+	// during the databse write phase
+	globalLockKey := GetLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
+	globalLock, err := acquireLock(
+		ctx,
+		logger,
+		clock,
+		redisClient,
+		config,
+		operationManager,
+		globalLockKey,
+		schedulerName,
+	)
 
-waitForLock:
-	for {
-		lock, err = redisClient.EnterCriticalSection(
-			redisClient.Trace(ctx),
-			lockKey,
-			time.Duration(lockTimeoutMS)*time.Millisecond,
-			0, 0,
-		)
-		select {
-		case <-timeout.C:
-			return errors.New("timeout while wating for redis lock")
-		case <-ticker.C:
-			if operationManager.WasCanceled() {
-				l.Warn("operation was canceled")
-				return nil
-			}
+	defer releaseLock(
+		logger,
+		redisClient,
+		globalLock,
+		schedulerName,
+	)
 
-			if lock == nil || err != nil {
-				if err != nil {
-					l.WithError(err).Error("error getting watcher lock")
-					return err
-				} else if lock == nil {
-					l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
-				}
-			} else if lock.IsLocked() {
-				break waitForLock
-			}
-		}
-	}
+	// Lock updates on scheduler during all the process
+	configLockKey := GetConfigLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
+	configLock, err := acquireLock(
+		ctx,
+		logger,
+		clock,
+		redisClient,
+		config,
+		operationManager,
+		configLockKey,
+		schedulerName,
+	)
 
-	defer func() {
-		if lock != nil {
-			err := redisClient.LeaveCriticalSection(lock)
-			if err != nil {
-				l.WithError(err).Error("error retrieving lock. Either wait of remove it manually from redis")
-			}
-		}
-	}()
+	defer releaseLock(
+		logger,
+		redisClient,
+		configLock,
+		schedulerName,
+	)
 
 	operationManager.SetDescription("running")
 
-	var scheduler *models.Scheduler
-	var oldConfig models.ConfigYAML
-	if schedulerOrNil != nil {
-		scheduler = schedulerOrNil
-		err = yaml.Unmarshal([]byte(scheduler.YAML), &oldConfig)
-		if err != nil {
-			return err
-		}
-	} else {
-		scheduler, oldConfig, err = schedulerAndConfigFromName(mr, db, schedulerName)
-		if err != nil {
-			return err
-		}
+	scheduler, oldConfig, err := loadScheduler(
+		mr,
+		db,
+		schedulerOrNil,
+		schedulerName,
+	)
+	if err != nil {
+		return err
 	}
 
 	currentVersion := scheduler.Version
@@ -671,201 +648,143 @@ waitForLock:
 		return err
 	}
 
-	if changedPortRange || MustUpdatePods(&oldConfig, configYAML) {
-		scheduler.NextMajorVersion()
-		l.Info("pods must be recreated, starting process")
+	shouldRecreatePods := changedPortRange || MustUpdatePods(&oldConfig, configYAML)
 
-		var kubePods *v1.PodList
-		err := mr.WithSegment(models.SegmentPod, func() error {
-			var err error
-			kubePods, err = clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
-				LabelSelector: labels.Set{}.AsSelector().String(),
-				FieldSelector: fields.Everything().String(),
-			})
-			return err
-		})
+	if shouldRecreatePods {
+		l.Info("pods must be recreated, starting process")
+		scheduler.NextMajorVersion()
+	} else {
+		l.Info("pods do not need to be recreated")
+		scheduler.NextMinorVersion()
+	}
+
+	scheduler.RollingUpdateStatus = "in progress"
+	err = saveConfigYAML(
+		ctx,
+		logger,
+		mr,
+		db,
+		configYAML,
+		scheduler,
+		oldConfig,
+		config,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Don't worry, there is a defer releaseLock()
+	// in case any error before this code happen ;)
+	releaseLock(
+		logger,
+		redisClient,
+		globalLock,
+		schedulerName,
+	)
+
+	if shouldRecreatePods {
+		// Lock down scaling so it doesn't interferer with rolling update surges
+		downScalingLockKey := GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
+		downScalingLock, err := acquireLock(
+			ctx,
+			logger,
+			clock,
+			redisClient,
+			config,
+			operationManager,
+			downScalingLockKey,
+			schedulerName,
+		)
+		defer releaseLock(
+			logger,
+			redisClient,
+			downScalingLock,
+			schedulerName,
+		)
+
+		// get list of actual pods
+		kubePods, err := listCurrentPods(mr, clientset, schedulerName)
 		if err != nil {
-			return maestroErrors.NewKubernetesError("error when listing pods", err)
+			return err
 		}
 
+		// segment pods in chunks
 		podChunks := segmentPods(kubePods.Items, maxSurge)
-		createdPods := []v1.Pod{}
-		deletedPods := []v1.Pod{}
 
 		for i, chunk := range podChunks {
 			l.Debugf("updating chunk %d: %v", i, names(chunk))
 
-			newlyCreatedPods, newlyDeletedPods, timedout, canceled := replacePodsAndWait(
-				l, roomManager, mr, clientset, db, redisClient.Client,
-				willTimeoutAt, clock, configYAML, chunk,
-				scheduler, operationManager,
+			// replace chunk
+			timedout, canceled, errored := replacePodsAndWait(
+				l,
+				roomManager,
+				mr,
+				clientset,
+				db,
+				redisClient.Client,
+				willTimeoutAt,
+				clock,
+				configYAML,
+				chunk,
+				scheduler,
+				operationManager,
 			)
-			createdPods = append(createdPods, newlyCreatedPods...)
-			deletedPods = append(deletedPods, newlyDeletedPods...)
 
-			if timedout || canceled {
-				errMsg := "timedout waiting rooms to be replaced, rolled back"
+			if timedout || canceled || errored != nil {
+				err := errors.New("timedout waiting rooms to be replaced, rolling back")
+				scheduler.RollingUpdateStatus = "timed out"
+
 				if canceled {
-					errMsg = "operation was canceled, rolled back"
+					err = errors.New("operation was canceled, rolling back")
+					scheduler.RollingUpdateStatus = "canceled"
 				}
 
-				l.Debug(errMsg)
+				if errored != nil {
+					err = errored
+					scheduler.RollingUpdateStatus = "error"
+				}
+
+				updateErr := scheduler.UpdateVersionStatus(db)
+				if updateErr != nil {
+					l.WithError(updateErr).Errorf("error updating scheduler_version status to %s", scheduler.RollingUpdateStatus)
+				}
+
+				l.WithError(err).Error(err.Error())
+
 				rollErr := rollback(
-					l, roomManager, mr, db, redisClient.Client, clientset,
-					&oldConfig, maxSurge, 2*timeoutDur, createdPods, deletedPods,
-					scheduler, currentVersion)
+					ctx,
+					logger,
+					roomManager,
+					mr,
+					db,
+					redisClient,
+					clientset,
+					configYAML,
+					&oldConfig,
+					maxSurge,
+					clock,
+					scheduler,
+					config,
+					operationManager,
+					currentVersion,
+					globalLockKey,
+				)
+
 				if rollErr != nil {
-					l.WithError(rollErr).Debug("error during update roll back")
-					err = rollErr
+					l.WithError(rollErr).Error("error during update roll back")
 				}
-				return errors.New(errMsg)
-			}
-		}
-	} else {
-		scheduler.NextMinorVersion()
-		l.Info("pods do not need to be recreated")
-	}
 
-	l.Info("updating configYaml on database")
-
-	// Update new config on DB
-	configBytes, err := yaml.Marshal(configYAML)
-	if err != nil {
-		return err
-	}
-	yamlString := string(configBytes)
-	scheduler.Game = configYAML.Game
-	scheduler.YAML = yamlString
-
-	if string(oldConfig.ToYAML()) != string(configYAML.ToYAML()) {
-		err = mr.WithSegment(models.SegmentUpdate, func() error {
-			created, err := scheduler.UpdateVersion(db, maxVersions)
-			if !created {
 				return err
 			}
-			if err != nil {
-				l.WithError(err).Error("error on operation on scheduler_verions table. But the newest one was created.")
-			}
-			return nil
-		})
-		if err != nil {
-			l.WithError(err).Error("failed to update scheduler on database")
-			return err
-		}
 
-		l.Info("updated configYaml on database")
-	} else {
-		l.Info("config yaml is the same, skipping")
-	}
-
-	return nil
-}
-
-func deleteSchedulerHelper(
-	logger logrus.FieldLogger,
-	mr *models.MixedMetricsReporter,
-	db pginterfaces.DB,
-	redisClient redisinterfaces.RedisClient,
-	clientset kubernetes.Interface,
-	scheduler *models.Scheduler,
-	namespace *models.Namespace,
-	timeoutSec int,
-) error {
-	var err error
-	if scheduler.ID != "" {
-		scheduler.State = models.StateTerminating
-		scheduler.StateLastChangedAt = time.Now().Unix()
-		if scheduler.LastScaleOpAt == 0 {
-			scheduler.LastScaleOpAt = 1
-		}
-		err = mr.WithSegment(models.SegmentUpdate, func() error {
-			return scheduler.Update(db)
-		})
-		if err != nil {
-			logger.WithError(err).Error("failed to update scheduler state")
-			return err
 		}
 	}
 
-	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
-	// Delete pods and wait for graceful termination before deleting the namespace
-	err = mr.WithSegment(models.SegmentPod, func() error {
-		return namespace.DeletePods(clientset, redisClient, scheduler)
-	})
-	if err != nil {
-		logger.WithError(err).Error("failed to delete namespace pods")
-		return err
+	scheduler.RollingUpdateStatus = "deployed"
+	updateErr := scheduler.UpdateVersionStatus(db)
+	if updateErr != nil {
+		l.WithError(updateErr).Errorf("error updating scheduler_version status to %s", scheduler.RollingUpdateStatus)
 	}
-	timeoutPods := time.NewTimer(time.Duration(2*configYAML.ShutdownTimeout) * time.Second)
-	defer timeoutPods.Stop()
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
-	exit := false
-	for !exit {
-		select {
-		case <-timeoutPods.C:
-			return errors.New("timeout deleting scheduler pods")
-		case <-ticker.C:
-			var pods *v1.PodList
-			listErr := mr.WithSegment(models.SegmentPod, func() error {
-				var err error
-				pods, err = clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
-				return err
-			})
-			if listErr != nil {
-				logger.WithError(listErr).Error("error listing pods")
-			} else if len(pods.Items) == 0 {
-				exit = true
-			}
-			logger.Debug("deleting scheduler pods")
-		}
-	}
-
-	err = mr.WithSegment(models.SegmentNamespace, func() error {
-		return namespace.Delete(clientset)
-	})
-	if err != nil {
-		logger.WithError(err).Error("failed to delete namespace while deleting scheduler")
-		return err
-	}
-	timeoutNamespace := time.NewTimer(time.Duration(timeoutSec) * time.Second)
-	defer timeoutNamespace.Stop()
-
-	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
-	exit = false
-	for !exit {
-		select {
-		case <-timeoutNamespace.C:
-			return errors.New("timeout deleting namespace")
-		default:
-			exists, existsErr := namespace.Exists(clientset)
-			if existsErr != nil {
-				logger.WithError(existsErr).Error("error checking namespace existence")
-			} else if !exists {
-				exit = true
-			}
-			logger.Debug("deleting scheduler pods")
-			time.Sleep(time.Duration(1) * time.Second)
-		}
-	}
-
-	// Delete from DB must be the last operation because
-	// if kubernetes failed to delete pods, watcher will recreate
-	// and keep the last state
-	err = mr.WithSegment(models.SegmentDelete, func() error {
-		return scheduler.Delete(db)
-	})
-	if err != nil {
-		logger.WithError(err).Error("failed to delete scheduler from database while deleting scheduler")
-		return err
-	}
-
-	reporters.Report(reportersConstants.EventSchedulerDelete, map[string]interface{}{
-		"name": scheduler.Name,
-		"game": scheduler.Game,
-	})
 
 	return nil
 }
@@ -1062,36 +981,6 @@ func UpdateSchedulerMin(
 		config,
 		operationManager,
 	)
-}
-
-func schedulerAndConfigFromName(
-	mr *models.MixedMetricsReporter,
-	db pginterfaces.DB,
-	schedulerName string,
-) (
-	*models.Scheduler,
-	models.ConfigYAML,
-	error,
-) {
-	var configYaml models.ConfigYAML
-	scheduler := models.NewScheduler(schedulerName, "", "")
-	err := mr.WithSegment(models.SegmentSelect, func() error {
-		return scheduler.Load(db)
-	})
-	if err != nil {
-		return nil, configYaml, maestroErrors.NewDatabaseError(err)
-	}
-
-	// Check if scheduler to Update exists indeed
-	if scheduler.YAML == "" {
-		msg := fmt.Sprintf("scheduler %s not found, create it first", schedulerName)
-		return nil, configYaml, maestroErrors.NewValidationFailedError(errors.New(msg))
-	}
-	err = yaml.Unmarshal([]byte(scheduler.YAML), &configYaml)
-	if err != nil {
-		return nil, configYaml, err
-	}
-	return scheduler, configYaml, nil
 }
 
 // ScaleScheduler scale up or down, depending on what parameters are passed

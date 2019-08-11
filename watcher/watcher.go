@@ -726,17 +726,31 @@ func (w *Watcher) AutoScale() {
 		l.Info("scheduler is overdimensioned, should scale down")
 		timeoutSec := w.Config.GetInt("scaleDownTimeoutSeconds")
 
-		err = controller.ScaleDown(
+		// check if a scheduler rolling update is in place
+		downScalingBlocked := controller.DownScalingBlocked(
+			context.Background(),
 			logger,
-			w.RoomManager,
-			w.MetricsReporter,
-			w.DB,
-			w.RedisClient.Client,
-			w.KubernetesClient,
-			scheduler,
-			-scaling.Delta,
-			timeoutSec,
+			w.RedisClient,
+			w.Config,
+			scheduler.Name,
 		)
+
+		if !downScalingBlocked {
+			err = controller.ScaleDown(
+				logger,
+				w.RoomManager,
+				w.MetricsReporter,
+				w.DB,
+				w.RedisClient.Client,
+				w.KubernetesClient,
+				scheduler,
+				-scaling.Delta,
+				timeoutSec,
+			)
+		} else {
+			l.Infof("not able to scale down. Rolling update in place for scheduler %s", scheduler.Name)
+		}
+
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
 		scaling.ChangedState = true
@@ -1004,6 +1018,21 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	}
 
 	ctx := context.Background()
+
+	// check if a scheduler rolling update is in place
+	downScalingBlocked := controller.DownScalingBlocked(
+		ctx,
+		logger,
+		w.RedisClient,
+		w.Config,
+		scheduler.Name,
+	)
+
+	if downScalingBlocked {
+		logger.Infof("not able to ensure correct rooms. Rolling update in place for scheduler %s", scheduler.Name)
+		return nil
+	}
+
 	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
 	pods, err := k.CoreV1().Pods(w.SchedulerName).List(
 		metav1.ListOptions{})
