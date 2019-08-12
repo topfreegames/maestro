@@ -78,7 +78,7 @@ func (h *SchedulerLockDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 		}
 	}
 	if !isLockValid {
-		logger.Info("trying to delete invaldi lock key")
+		logger.Info("trying to delete invalid lock key")
 		Write(w, http.StatusBadRequest, "invalid lock key")
 		return
 	}
