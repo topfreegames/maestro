@@ -29,7 +29,7 @@ import (
 	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes/fake"
 )
@@ -310,7 +310,7 @@ var _ = Describe("Controller", func() {
 
 		timeoutSec = 300
 		lockTimeoutMs = config.GetInt("watcher.lockTimeoutMs")
-		lockKey = controller.GetLockKey(config.GetString("watcher.lockKey"), "controller-name")
+		lockKey = models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), "controller-name")
 		maxSurge = 100
 		errDB = errors.New("some error in db")
 		numberOfVersions = 1
@@ -3907,7 +3907,7 @@ cmd:
 				mt.MockSelectScheduler(yaml1, mockDb, nil)
 
 				// Get redis lock
-				lockKey = controller.GetLockKey(config.GetString("watcher.lockKey"), "controller-name-ports")
+				lockKey = models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), "controller-name-ports")
 				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
@@ -4076,7 +4076,7 @@ portRange:
 				mt.MockSelectScheduler(yaml1, mockDb, nil)
 
 				// Get redis lock
-				lockKey = controller.GetLockKey(config.GetString("watcher.lockKey"), "controller-name-ports")
+				lockKey = models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), "controller-name-ports")
 				mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
@@ -4139,7 +4139,7 @@ portRange:
 			configYaml2, err := models.NewConfigYAML(yaml2)
 			Expect(err).NotTo(HaveOccurred())
 
-			lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), configYaml2.Name)
+			lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), configYaml2.Name)
 
 			// Get redis lock
 			mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)

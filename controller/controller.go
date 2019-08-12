@@ -573,7 +573,7 @@ func UpdateSchedulerConfig(
 
 	timeoutSec := config.GetInt("updateTimeoutSeconds")
 	lockTimeoutMS := config.GetInt("watcher.lockTimeoutMs")
-	lockKey := GetLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
+	lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
 	maxVersions := config.GetInt("schedulers.versions.toKeep")
 
 	schedulerName := configYAML.Name

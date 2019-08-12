@@ -318,6 +318,26 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewDogStatsdMiddleware(a),
 	).ServeHTTP).Methods("PUT").Name("schedulersOperationCancel")
 
+	r.HandleFunc("/scheduler/{schedulerName}/rooms", Chain(
+		NewRoomListByMetricHandler(a),
+		NewResponseTimeMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+	).ServeHTTP).Methods("GET").Name("roomsByMetric")
+
+	r.HandleFunc("/scheduler/{schedulerName}/locks", Chain(
+		NewSchedulerLocksListHandler(a),
+		NewResponseTimeMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+	).ServeHTTP).Methods("GET").Name("schedulerLocksList")
+
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),
 		NewResponseTimeMiddleware(a),
@@ -338,16 +358,6 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewDogStatsdMiddleware(a),
 		NewParamMiddleware(func() interface{} { return &models.RoomParams{} }),
 	).ServeHTTP).Methods("GET").Name("address")
-
-	r.HandleFunc("/scheduler/{schedulerName}/rooms", Chain(
-		NewRoomListByMetricHandler(a),
-		NewResponseTimeMiddleware(a),
-		NewMetricsReporterMiddleware(a),
-		NewSentryMiddleware(),
-		NewNewRelicMiddleware(a),
-		NewDogStatsdMiddleware(a),
-		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
-	).ServeHTTP).Methods("GET").Name("roomsByMetric")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/status", Chain(
 		NewRoomStatusHandler(a),

@@ -35,6 +35,13 @@ type Scheduler struct {
 	Version            string      `db:"version"`
 }
 
+// SchedulerLock represents a critical section lock
+type SchedulerLock struct {
+	Key      string `json:"key"`
+	TTLInSec int64  `json:"ttlInSec"`
+	IsLocked bool   `json:"isLocked"`
+}
+
 // Resources the CPU and memory resources limits
 type Resources struct {
 	CPU    string `yaml:"cpu" json:"cpu" valid:"int64"`
@@ -452,6 +459,40 @@ func LoadConfigWithVersion(db interfaces.DB, schedulerName, version string) (str
 	_, err := db.Query(c,
 		"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?", schedulerName, version)
 	return c.YAML, err
+}
+
+// ListSchedulerLocks returns the list of locks of a scheduler
+func ListSchedulerLocks(
+	redisClient redisinterfaces.RedisClient, schedulerName string, prefixes []string,
+) ([]SchedulerLock, error) {
+	locks := make([]SchedulerLock, 0, len(prefixes))
+	pipe := redisClient.TxPipeline()
+	for _, prefix := range prefixes {
+		key := GetSchedulerLockKey(prefix, schedulerName)
+		duration, err := pipe.TTL(key).Result()
+		if err != nil && err != redis.Nil {
+			return nil, err
+		}
+		exists, err := pipe.Exists(key).Result()
+		if err != nil && err != redis.Nil {
+			return nil, err
+		}
+		lock := SchedulerLock{
+			Key:      key,
+			TTLInSec: int64(duration.Seconds()),
+			IsLocked: exists == 1,
+		}
+		locks = append(locks, lock)
+	}
+	if _, err := pipe.Exec(); err != nil {
+		return nil, err
+	}
+	return locks, nil
+}
+
+// GetSchedulerLockKey returns the key of the scheduler lock
+func GetSchedulerLockKey(prefix, schedulerName string) string {
+	return fmt.Sprintf("%s-%s", prefix, schedulerName)
 }
 
 // ListSchedulerReleases returns the list of releases of a scheduler
