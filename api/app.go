@@ -338,7 +338,7 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewParamMiddleware(func() interface{} { return &models.SchedulerLockParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerLocksList")
 
-	r.HandleFunc("/scheduler/{schedulerName}/locks/{lockName}", Chain(
+	r.HandleFunc("/scheduler/{schedulerName}/locks/{lockKey}", Chain(
 		NewSchedulerLockDeleteHandler(a),
 		NewAccessMiddleware(a),
 		NewAuthMiddleware(a),

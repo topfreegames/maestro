@@ -65,10 +65,25 @@ func (h *SchedulerLockDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 		"source":    "schedulerLocksDelete",
 		"operation": "delete lock",
 		"scheduler": params.SchedulerName,
+		"lock":      params.LockKey,
 	})
 	logger.Debug("Getting scheduler locks")
+	locksPrefixes := []string{h.App.Config.GetString("watcher.lockKey")}
+	isLockValid := false
+	validLocksKeys := models.ListSchedulerLocksKeys(params.SchedulerName, locksPrefixes)
+	for _, possible := range validLocksKeys {
+		if possible == params.LockKey {
+			isLockValid = true
+			break
+		}
+	}
+	if !isLockValid {
+		logger.Info("trying to delete invaldi lock key")
+		Write(w, http.StatusBadRequest, "invalid lock key")
+		return
+	}
 	err := models.DeleteSchedulerLock(
-		h.App.RedisClient.Trace(r.Context()), params.SchedulerName, params.LockName,
+		h.App.RedisClient.Trace(r.Context()), params.SchedulerName, params.LockKey,
 	)
 	if err != nil {
 		logger.WithError(err).Error("error deleting scheduler lock")

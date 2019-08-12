@@ -467,8 +467,8 @@ func ListSchedulerLocks(
 ) ([]SchedulerLock, error) {
 	locks := make([]SchedulerLock, 0, len(prefixes))
 	pipe := redisClient.TxPipeline()
-	for _, prefix := range prefixes {
-		key := GetSchedulerLockKey(prefix, schedulerName)
+	keys := ListSchedulerLocksKeys(schedulerName, prefixes)
+	for _, key := range keys {
 		duration, err := pipe.TTL(key).Result()
 		if err != nil && err != redis.Nil {
 			return nil, err
@@ -490,11 +490,20 @@ func ListSchedulerLocks(
 	return locks, nil
 }
 
+// ListSchedulerLocksKeys lists a slice of locks keys for schedulerName and prefixes
+func ListSchedulerLocksKeys(schedulerName string, prefixes []string) []string {
+	names := make([]string, 0, len(prefixes))
+	for _, prefix := range prefixes {
+		names = append(names, GetSchedulerLockKey(prefix, schedulerName))
+	}
+	return names
+}
+
 // DeleteSchedulerLock deletes a scheduler lock
 func DeleteSchedulerLock(
-	redisClient redisinterfaces.RedisClient, schedulerName string, lockName string,
+	redisClient redisinterfaces.RedisClient, schedulerName string, lockKey string,
 ) error {
-	_, err := redisClient.Del(lockName).Result()
+	_, err := redisClient.Del(lockKey).Result()
 	return err
 }
 

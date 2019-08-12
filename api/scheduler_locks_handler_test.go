@@ -100,18 +100,27 @@ var _ = Describe("SchedulerLocksHandler", func() {
 		BeforeEach(func() {
 			recorder = httptest.NewRecorder()
 			configYaml, _ = models.NewConfigYAML(yamlString)
+		})
+
+		It("should remove lockName key in redis", func() {
 			url = fmt.Sprintf(
 				"http://%s/scheduler/%s/locks/%s", app.Address, configYaml.Name,
 				models.GetSchedulerLockKey(app.Config.GetString("watcher.lockKey"), configYaml.Name),
 			)
 			request, _ = http.NewRequest("DELETE", url, nil)
-		})
-
-		It("should remove lockName key in redis", func() {
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			mockRedisClient.EXPECT().Del("maestro-lock-key-scheduler-name").Return(redis.NewIntResult(1, nil))
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusNoContent))
+		})
+
+		It("should return 400 when trying to remove invalid lock key", func() {
+			url = fmt.Sprintf(
+				"http://%s/scheduler/%s/locks/%s", app.Address, configYaml.Name, "invalid_lock_key",
+			)
+			request, _ = http.NewRequest("DELETE", url, nil)
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 		})
 	})
 })
