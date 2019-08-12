@@ -490,6 +490,14 @@ func ListSchedulerLocks(
 	return locks, nil
 }
 
+// DeleteSchedulerLock deletes a scheduler lock
+func DeleteSchedulerLock(
+	redisClient redisinterfaces.RedisClient, schedulerName string, lockName string,
+) error {
+	_, err := redisClient.Del(lockName).Result()
+	return err
+}
+
 // GetSchedulerLockKey returns the key of the scheduler lock
 func GetSchedulerLockKey(prefix, schedulerName string) string {
 	return fmt.Sprintf("%s-%s", prefix, schedulerName)

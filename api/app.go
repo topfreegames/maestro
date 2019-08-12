@@ -335,8 +335,20 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
-		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerLockParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerLocksList")
+
+	r.HandleFunc("/scheduler/{schedulerName}/locks/{lockName}", Chain(
+		NewSchedulerLockDeleteHandler(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a),
+		NewResponseTimeMiddleware(a),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerLockParams{} }),
+	).ServeHTTP).Methods("DELETE").Name("schedulerLockDelete")
 
 	r.HandleFunc("/scheduler/{schedulerName}/rooms/{roomName}/ping", Chain(
 		NewRoomPingHandler(a),

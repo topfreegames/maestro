@@ -20,6 +20,12 @@ type SchedulerParams struct {
 	SchedulerName string `json:"schedulerName" valid:"required"`
 }
 
+// SchedulerLockParams is the struct that defines the params for scheduler locks routes
+type SchedulerLockParams struct {
+	SchedulerName string `json:"schedulerName" valid:"required"`
+	LockName      string `json:"lockName" valid:"optional"`
+}
+
 // SchedulerImageParams holds the new image name to be updated
 type SchedulerImageParams struct {
 	Image     string `json:"image" yaml:"image" valid:"required"`

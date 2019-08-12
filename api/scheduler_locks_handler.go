@@ -9,19 +9,19 @@ import (
 	"github.com/topfreegames/maestro/models"
 )
 
-// SchedulerLocksListHandler handler returns the scheduler config
+// SchedulerLocksListHandler handler returns schedulers locks
 type SchedulerLocksListHandler struct {
 	App *App
 }
 
-// NewSchedulerLocksListHandler returns an instance of SchedulerConfigHandler
+// NewSchedulerLocksListHandler returns an instance of SchedulerLocksListHandler
 func NewSchedulerLocksListHandler(a *App) *SchedulerLocksListHandler {
 	h := &SchedulerLocksListHandler{App: a}
 	return h
 }
 
 func (h *SchedulerLocksListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	params := schedulerParamsFromContext(r.Context())
+	params := schedulerLockParamsFromContext(r.Context())
 	l := middleware.GetLogger(r.Context())
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerLocksList",
@@ -45,4 +45,35 @@ func (h *SchedulerLocksListHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 	WriteBytes(w, http.StatusOK, bts)
+}
+
+// SchedulerLockDeleteHandler handler deletes a scheduler lock
+type SchedulerLockDeleteHandler struct {
+	App *App
+}
+
+// NewSchedulerLockDeleteHandler returns an instance of SchedulerLocksDeleteHandler
+func NewSchedulerLockDeleteHandler(a *App) *SchedulerLockDeleteHandler {
+	h := &SchedulerLockDeleteHandler{App: a}
+	return h
+}
+
+func (h *SchedulerLockDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	params := schedulerLockParamsFromContext(r.Context())
+	l := middleware.GetLogger(r.Context())
+	logger := l.WithFields(logrus.Fields{
+		"source":    "schedulerLocksDelete",
+		"operation": "delete lock",
+		"scheduler": params.SchedulerName,
+	})
+	logger.Debug("Getting scheduler locks")
+	err := models.DeleteSchedulerLock(
+		h.App.RedisClient.Trace(r.Context()), params.SchedulerName, params.LockName,
+	)
+	if err != nil {
+		logger.WithError(err).Error("error deleting scheduler lock")
+		h.App.HandleError(w, http.StatusInternalServerError, "delete lock failed", err)
+		return
+	}
+	Write(w, http.StatusNoContent, "")
 }

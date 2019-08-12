@@ -85,7 +85,7 @@ wait-for-test-pg:
 	@until docker exec maestro_test_postgres_1 pg_isready; do echo 'Waiting for Postgres...' && sleep 1; done
 	@sleep 2
 
-deps-test: start-deps-test wait-for-test-pg drop-test migrate-test # minikube
+deps-test: start-deps-test wait-for-test-pg drop-test migrate-test minikube
 
 deps-test-ci: deps drop-test migrate-test minikube-ci
 
@@ -112,7 +112,7 @@ unit-board:
 	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
 
 unit-run:
-	@ginkgo -tags unit -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements ./api
+	@ginkgo -tags unit -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements ${TEST_PACKAGES}
 
 gather-unit-profiles:
 	@mkdir -p _build
@@ -132,7 +132,7 @@ integration-run:
     MAESTRO_EXTENSIONS_REDIS_URL=redis://${MY_IP}:6333    \
     ginkgo -tags integration -cover -r                    \
       -randomizeAllSpecs -randomizeSuites                 \
-      -skipMeasurements api # worker  models controller;
+      -skipMeasurements worker api models controller;
 
 int-ci: integration-board clear-coverage-profiles deps-test-ci integration-run gather-integration-profiles
 

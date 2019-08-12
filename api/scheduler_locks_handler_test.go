@@ -23,7 +23,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 )
 
-var _ = FDescribe("SchedulerLocksHandler", func() {
+var _ = Describe("SchedulerLocksHandler", func() {
 	var request *http.Request
 	var recorder *httptest.ResponseRecorder
 	var url string
@@ -52,6 +52,13 @@ var _ = FDescribe("SchedulerLocksHandler", func() {
 	})
 
 	Describe("GET /scheduler/{schedulerName}/locks", func() {
+		BeforeEach(func() {
+			recorder = httptest.NewRecorder()
+			configYaml, _ = models.NewConfigYAML(yamlString)
+			url = fmt.Sprintf("http://%s/scheduler/%s/locks", app.Address, configYaml.Name)
+			request, _ = http.NewRequest("GET", url, nil)
+		})
+
 		It("should return unlocked watcher lock", func() {
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -86,6 +93,25 @@ var _ = FDescribe("SchedulerLocksHandler", func() {
 			Expect(locks[0].Key).To(Equal("maestro-lock-key-scheduler-name"))
 			Expect(locks[0].TTLInSec).To(Equal(int64(0)))
 			Expect(locks[0].IsLocked).To(BeFalse())
+		})
+	})
+
+	Describe("DELETE /scheduler/{schedulerName}/locks/{lockName}", func() {
+		BeforeEach(func() {
+			recorder = httptest.NewRecorder()
+			configYaml, _ = models.NewConfigYAML(yamlString)
+			url = fmt.Sprintf(
+				"http://%s/scheduler/%s/locks/%s", app.Address, configYaml.Name,
+				models.GetSchedulerLockKey(app.Config.GetString("watcher.lockKey"), configYaml.Name),
+			)
+			request, _ = http.NewRequest("DELETE", url, nil)
+		})
+
+		It("should remove lockName key in redis", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+			mockRedisClient.EXPECT().Del("maestro-lock-key-scheduler-name").Return(redis.NewIntResult(1, nil))
+			app.Router.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusNoContent))
 		})
 	})
 })
