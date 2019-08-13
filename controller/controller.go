@@ -754,9 +754,6 @@ func UpdateSchedulerConfig(
 				operationManager,
 			)
 
-			if errored != nil {
-			}
-
 			if timedout || canceled || errored != nil {
 				err := errors.New("timedout waiting rooms to be replaced, rolled back")
 				scheduler.RollingUpdateStatus = timedoutStatus

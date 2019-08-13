@@ -4426,7 +4426,6 @@ cmd:
 		})
 
 		It("should return error if timeout when creating rooms", func() {
-			// Update scheduler
 			calls := mt.NewCalls()
 
 			mt.MockSaveSchedulerFlow(
@@ -4879,7 +4878,7 @@ containers:
 				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(8)
 
 				// Delete old rooms
-				mt.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, configYaml, nil)
+				mt.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, configYaml, nil, 0)
 
 				// Mock rolling update with rollback
 

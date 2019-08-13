@@ -340,6 +340,7 @@ func MockRemoveAnyRoomsFromRedisAnyTimes(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 	configYaml *models.ConfigYAML, redisErrOrNil error,
+	times int,
 ) {
 
 	allStatus := []string{
@@ -355,29 +356,56 @@ func MockRemoveAnyRoomsFromRedisAnyTimes(
 		string(models.MemAutoScalingPolicyType),
 	}
 
-	mockRedisClient.EXPECT().
-		TxPipeline().
-		Return(mockPipeline).AnyTimes()
-	for _, status := range allStatus {
+	if times > 0 {
+		mockRedisClient.EXPECT().
+			TxPipeline().
+			Return(mockPipeline).Times(times)
+		for _, status := range allStatus {
+			mockPipeline.EXPECT().
+				SRem(models.GetRoomStatusSetRedisKey(configYaml.Name, status), gomock.Any()).Times(times)
+			mockPipeline.EXPECT().
+				ZRem(models.GetLastStatusRedisKey(configYaml.Name, status), gomock.Any()).Times(times)
+		}
 		mockPipeline.EXPECT().
-			SRem(models.GetRoomStatusSetRedisKey(configYaml.Name, status), gomock.Any()).AnyTimes()
+			ZRem(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(times)
+		for _, mt := range allMetrics {
+			mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any()).Times(times)
+		}
 		mockPipeline.EXPECT().
-			ZRem(models.GetLastStatusRedisKey(configYaml.Name, status), gomock.Any()).AnyTimes()
-	}
-	mockPipeline.EXPECT().
-		ZRem(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).AnyTimes()
-	for _, mt := range allMetrics {
-		mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any()).AnyTimes()
-	}
-	mockPipeline.EXPECT().
-		Del(gomock.Any()).AnyTimes()
+			Del(gomock.Any()).Times(times)
 
-	if redisErrOrNil == nil {
-		mockPipeline.EXPECT().
-			Exec().AnyTimes()
+		if redisErrOrNil == nil {
+			mockPipeline.EXPECT().
+				Exec().Times(times)
+		} else {
+			mockPipeline.EXPECT().
+				Exec().Return(nil, redisErrOrNil).Times(times)
+		}
 	} else {
+		mockRedisClient.EXPECT().
+			TxPipeline().
+			Return(mockPipeline).AnyTimes()
+		for _, status := range allStatus {
+			mockPipeline.EXPECT().
+				SRem(models.GetRoomStatusSetRedisKey(configYaml.Name, status), gomock.Any()).AnyTimes()
+			mockPipeline.EXPECT().
+				ZRem(models.GetLastStatusRedisKey(configYaml.Name, status), gomock.Any()).AnyTimes()
+		}
 		mockPipeline.EXPECT().
-			Exec().Return(nil, redisErrOrNil).AnyTimes()
+			ZRem(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).AnyTimes()
+		for _, mt := range allMetrics {
+			mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any()).AnyTimes()
+		}
+		mockPipeline.EXPECT().
+			Del(gomock.Any()).AnyTimes()
+
+		if redisErrOrNil == nil {
+			mockPipeline.EXPECT().
+				Exec().AnyTimes()
+		} else {
+			mockPipeline.EXPECT().
+				Exec().Return(nil, redisErrOrNil).AnyTimes()
+		}
 	}
 
 }
@@ -1530,7 +1558,7 @@ func MockRollingUpdateFlow(
 		workerPortRange, portStart, portEnd)
 
 	// Delete old rooms
-	MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, configYaml, removeRoomsError)
+	MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, configYaml, removeRoomsError, numRoomsToCreate)
 
 	// Update scheduler rolling update status
 	calls.Append(
