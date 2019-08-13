@@ -154,7 +154,7 @@ func (w *Watcher) configure() error {
 	w.RoomsStatusesReportPeriod = w.Config.GetInt("watcher.roomsStatusesReportPeriod")
 	w.EnsureCorrectRoomsPeriod = w.Config.GetDuration("watcher.ensureCorrectRoomsPeriod")
 	w.PodStatesCountPeriod = w.Config.GetDuration("watcher.podStatesCountPeriod")
-	w.LockKey = controller.GetLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
+	w.LockKey = models.GetSchedulerLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
 	var wg sync.WaitGroup
 	w.gracefulShutdown = &gracefulShutdown{
