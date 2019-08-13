@@ -536,21 +536,6 @@ func names(pods []v1.Pod) []string {
 	return names
 }
 
-// GetLockKey returns the key of the scheduler lock
-func GetLockKey(prefix, schedulerName string) string {
-	return fmt.Sprintf("%s-%s", prefix, schedulerName)
-}
-
-// GetConfigLockKey returns the key of the scheduler update config lock
-func GetConfigLockKey(prefix, schedulerName string) string {
-	return fmt.Sprintf("%s-config-%s", prefix, schedulerName)
-}
-
-// GetDownScalingLockKey returns the key of the downscaling lock
-func GetDownScalingLockKey(prefix, schedulerName string) string {
-	return fmt.Sprintf("%s-downscaling-%s", prefix, schedulerName)
-}
-
 func waitForPods(
 	timeout time.Duration,
 	clientset kubernetes.Interface,
@@ -967,7 +952,7 @@ func DownScalingBlocked(
 		"scheduler": schedulerName,
 	})
 
-	downScalingLockKey := GetDownScalingLockKey(config.GetString("watcher.lockKey"), schedulerName)
+	downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), schedulerName)
 	timeout, _ := time.ParseDuration("5ms")
 	lock, err := redisClient.EnterCriticalSection(
 		redisClient.Trace(ctx),
@@ -975,12 +960,13 @@ func DownScalingBlocked(
 		timeout,
 		0, 0,
 	)
-	if err != nil || lock != nil {
-		if err != nil {
-			l.WithError(err).Error("failed to check if downscaling is blocked")
-			return false
-		}
 
+	if err != nil {
+		l.WithError(err).Error("failed to check if downscaling is blocked")
+		return false
+	}
+
+	if lock != nil {
 		redisClient.LeaveCriticalSection(lock)
 		return lock.IsLocked()
 	}
@@ -1027,14 +1013,16 @@ func acquireLock(
 				return nil, true, nil
 			}
 
-			if lock == nil || err != nil {
-				if err != nil {
-					l.WithError(err).Error("error getting watcher lock")
-					return nil, false, err
-				} else if lock == nil {
-					l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
-				}
-			} else if lock.IsLocked() {
+			if err != nil {
+				l.WithError(err).Error("error getting watcher lock")
+				return nil, false, err
+			}
+
+			if lock == nil {
+				l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
+			}
+
+			if lock.IsLocked() {
 				exit = true
 				break
 			}

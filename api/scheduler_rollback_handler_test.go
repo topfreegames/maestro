@@ -21,7 +21,6 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/login"
 	"github.com/topfreegames/maestro/models"
 	. "github.com/topfreegames/maestro/testing"
@@ -85,8 +84,8 @@ autoscaling:
 
 			calls := NewCalls()
 
-			lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-			configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+			lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+			configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 			// Get global lock
 			MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -223,8 +222,8 @@ autoscaling:
 
 			calls := NewCalls()
 
-			lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-			configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+			lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+			configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 			// Get global lock
 			MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)

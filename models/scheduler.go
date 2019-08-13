@@ -526,6 +526,16 @@ func GetSchedulerLockKey(prefix, schedulerName string) string {
 	return fmt.Sprintf("%s-%s", prefix, schedulerName)
 }
 
+// GetConfigLockKey returns the key of the scheduler update config lock
+func GetConfigLockKey(prefix, schedulerName string) string {
+	return fmt.Sprintf("%s-%s-config", prefix, schedulerName)
+}
+
+// GetDownScalingLockKey returns the key of the downscaling lock
+func GetDownScalingLockKey(prefix, schedulerName string) string {
+	return fmt.Sprintf("%s-%s-downscaling", prefix, schedulerName)
+}
+
 // ListSchedulerReleases returns the list of releases of a scheduler
 func ListSchedulerReleases(db interfaces.DB, schedulerName string) (
 	versions []*SchedulerVersion,

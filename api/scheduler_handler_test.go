@@ -767,8 +767,8 @@ autoscaling:
 
 					calls := NewCalls()
 
-					lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-					configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 					// Get global lock
 					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -930,8 +930,8 @@ autoscaling:
 
 					calls := NewCalls()
 
-					lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-					configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 					// Get global lock
 					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -991,8 +991,8 @@ autoscaling:
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 
 					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-					configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 					// Get global lock
 					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -1062,8 +1062,8 @@ autoscaling:
 
 					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 
-					lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-					configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 					// Get global lock
 					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -1144,8 +1144,8 @@ autoscaling:
 
 					calls := NewCalls()
 
-					lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-					configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 					// Get global lock
 					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -1257,8 +1257,8 @@ autoscaling:
 
 					scheduler1 := models.NewScheduler(configYaml.Name, configYaml.Game, yamlString)
 
-					lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-					configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 					// Get global lock
 					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -1311,8 +1311,8 @@ autoscaling:
 
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-					configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 					// Get global lock
 					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -1491,8 +1491,8 @@ forwarders:
 							*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString1)
 						})
 
-					lockKeyNs := controller.GetLockKey(config.GetString("watcher.lockKey"), configYaml1.Name)
-					configLockKeyNs := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), configYaml1.Name)
+					lockKeyNs := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), configYaml1.Name)
+					configLockKeyNs := models.GetConfigLockKey(config.GetString("watcher.lockKey"), configYaml1.Name)
 					MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
 					MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
 					MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
@@ -2439,8 +2439,8 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-				configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 				// Get global lock
 				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -2517,8 +2517,8 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-				configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 				// Get global lock
 				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -2878,8 +2878,8 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-				configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 				// Get global lock
 				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -2990,8 +2990,8 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-				configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 				// Get global lock
 				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -3092,8 +3092,8 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-				configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 				// Get global lock
 				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -3297,8 +3297,8 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-				configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 				// Get global lock
 				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -3451,8 +3451,8 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-				configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 				// Get global lock
 				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -3578,8 +3578,8 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-				configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 				// Get global lock
 				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -3665,8 +3665,8 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-				configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 				// Get global lock
 				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -3760,8 +3760,8 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-				configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 				// Get global lock
 				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)

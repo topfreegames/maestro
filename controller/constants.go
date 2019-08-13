@@ -6,7 +6,7 @@ import "fmt"
 const (
 	timedoutStatus   = "timed out"
 	erroredStatus    = "error"
-	canceledStatus   = "canceld"
+	canceledStatus   = "canceled"
 	inProgressStatus = "in progress"
 	deployedStatus   = "deployed"
 )

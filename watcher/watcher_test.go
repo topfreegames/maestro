@@ -1078,7 +1078,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -1265,7 +1265,7 @@ var _ = Describe("Watcher", func() {
 				})
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -1636,7 +1636,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -1866,7 +1866,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -1985,7 +1985,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -2080,7 +2080,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -2407,7 +2407,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -2538,7 +2538,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -2633,7 +2633,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -2948,7 +2948,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -3079,7 +3079,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -3174,7 +3174,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
 				// EnterCriticalSection (lock done by redis-lock)
-				downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -3538,7 +3538,7 @@ var _ = Describe("Watcher", func() {
 
 				// EnterCriticalSection (lock done by redis-lock)
 				for index := 0; index < 2; index++ {
-					downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+					downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 					testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 					testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 				}
@@ -3649,7 +3649,7 @@ var _ = Describe("Watcher", func() {
 
 				// EnterCriticalSection (lock done by redis-lock)
 				for index := 0; index < 2; index++ {
-					downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+					downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 					testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 					testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 				}
@@ -3718,7 +3718,7 @@ var _ = Describe("Watcher", func() {
 
 				// EnterCriticalSection (lock done by redis-lock)
 				for index := 0; index < 2; index++ {
-					downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+					downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 					testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 					testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 				}
@@ -4527,7 +4527,7 @@ var _ = Describe("Watcher", func() {
 				w.SchedulerName, [][]string{}, errDB)
 
 			// EnterCriticalSection (lock done by redis-lock)
-			downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+			downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 			testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -4546,7 +4546,7 @@ var _ = Describe("Watcher", func() {
 				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
 
 			// EnterCriticalSection (lock done by redis-lock)
-			downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+			downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 			testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
@@ -4588,7 +4588,7 @@ var _ = Describe("Watcher", func() {
 			room := models.NewRoom(podNames[0], w.SchedulerName)
 
 			// EnterCriticalSection (lock done by redis-lock)
-			downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+			downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
 			testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
