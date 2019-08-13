@@ -17,7 +17,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/maestro/models"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -503,11 +503,6 @@ func names(pods []v1.Pod) []string {
 		names[i] = pod.GetName()
 	}
 	return names
-}
-
-// GetLockKey returns the key of the scheduler lock
-func GetLockKey(prefix, schedulerName string) string {
-	return fmt.Sprintf("%s-%s", prefix, schedulerName)
 }
 
 func waitForPods(
