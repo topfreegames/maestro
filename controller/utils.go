@@ -184,7 +184,7 @@ func rollback(
 
 	l.Debug("starting rollback")
 
-	globalLock, err := acquireLock(
+	globalLock, _, _ := acquireLock(
 		ctx,
 		logger,
 		clock,
@@ -204,8 +204,8 @@ func rollback(
 
 	// create new major version to rollback
 	scheduler.NextMajorVersion()
-	scheduler.RollingUpdateStatus = fmt.Sprintf("rolled back to %s", oldVersion)
-	err = saveConfigYAML(
+	scheduler.RollingUpdateStatus = rollbackStatus(oldVersion)
+	err := saveConfigYAML(
 		ctx,
 		logger,
 		mr,
@@ -250,7 +250,7 @@ func rollback(
 		l.Debugf("updating chunk %d: %v", i, names(chunk))
 
 		// replace chunk
-		timedout, canceled, err := replacePodsAndWait(
+		timedout, _, err := replacePodsAndWait(
 			l,
 			roomManager,
 			mr,
@@ -262,13 +262,10 @@ func rollback(
 			oldConfigYAML,
 			chunk,
 			scheduler,
-			operationManager,
+			nil,
 		)
 
-		if timedout || canceled {
-			if canceled {
-				return errors.New("canceled rollback")
-			}
+		if timedout {
 			return errors.New("timeout waiting to replace pods on rollback")
 		}
 
@@ -979,7 +976,6 @@ func DownScalingBlocked(
 		0, 0,
 	)
 	if err != nil || lock != nil {
-
 		if err != nil {
 			l.WithError(err).Error("failed to check if downscaling is blocked")
 			return false
@@ -1000,9 +996,7 @@ func acquireLock(
 	config *viper.Viper,
 	operationManager *models.OperationManager,
 	lockKey, schedulerName string,
-) (*redisLock.Lock, error) {
-	var lock *redisLock.Lock
-	var err error
+) (lock *redisLock.Lock, canceled bool, err error) {
 	timeoutSec := config.GetInt("updateTimeoutSeconds")
 	lockTimeoutMS := config.GetInt("watcher.lockTimeoutMs")
 	timeoutDur := time.Duration(timeoutSec) * time.Second
@@ -1026,17 +1020,17 @@ func acquireLock(
 		)
 		select {
 		case <-timeout.C:
-			return nil, errors.New("timeout while wating for redis lock")
+			return nil, false, errors.New("timeout while wating for redis lock")
 		case <-ticker.C:
 			if operationManager.WasCanceled() {
 				l.Warn("operation was canceled")
-				return nil, nil
+				return nil, true, nil
 			}
 
 			if lock == nil || err != nil {
 				if err != nil {
 					l.WithError(err).Error("error getting watcher lock")
-					return nil, err
+					return nil, false, err
 				} else if lock == nil {
 					l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
 				}
@@ -1051,7 +1045,7 @@ func acquireLock(
 		}
 	}
 
-	return lock, err
+	return lock, false, err
 }
 
 func releaseLock(

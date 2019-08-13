@@ -591,7 +591,7 @@ func UpdateSchedulerConfig(
 	// overwritten with older version on database
 	// during the databse write phase
 	globalLockKey := GetLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
-	globalLock, err := acquireLock(
+	globalLock, canceled, err := acquireLock(
 		ctx,
 		logger,
 		clock,
@@ -609,9 +609,17 @@ func UpdateSchedulerConfig(
 		schedulerName,
 	)
 
+	if err != nil {
+		return err
+	}
+
+	if canceled {
+		return nil
+	}
+
 	// Lock updates on scheduler during all the process
 	configLockKey := GetConfigLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
-	configLock, err := acquireLock(
+	configLock, canceled, err := acquireLock(
 		ctx,
 		logger,
 		clock,
@@ -628,6 +636,14 @@ func UpdateSchedulerConfig(
 		configLock,
 		schedulerName,
 	)
+
+	if err != nil {
+		return err
+	}
+
+	if canceled {
+		return nil
+	}
 
 	operationManager.SetDescription("running")
 
@@ -658,7 +674,7 @@ func UpdateSchedulerConfig(
 		scheduler.NextMinorVersion()
 	}
 
-	scheduler.RollingUpdateStatus = "in progress"
+	scheduler.RollingUpdateStatus = inProgressStatus
 	err = saveConfigYAML(
 		ctx,
 		logger,
@@ -685,7 +701,7 @@ func UpdateSchedulerConfig(
 	if shouldRecreatePods {
 		// Lock down scaling so it doesn't interferer with rolling update surges
 		downScalingLockKey := GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
-		downScalingLock, err := acquireLock(
+		downScalingLock, canceled, err := acquireLock(
 			ctx,
 			logger,
 			clock,
@@ -701,6 +717,14 @@ func UpdateSchedulerConfig(
 			downScalingLock,
 			schedulerName,
 		)
+
+		if err != nil {
+			return err
+		}
+
+		if canceled {
+			return nil
+		}
 
 		// get list of actual pods
 		kubePods, err := listCurrentPods(mr, clientset, schedulerName)
@@ -730,18 +754,21 @@ func UpdateSchedulerConfig(
 				operationManager,
 			)
 
+			if errored != nil {
+			}
+
 			if timedout || canceled || errored != nil {
-				err := errors.New("timedout waiting rooms to be replaced, rolling back")
-				scheduler.RollingUpdateStatus = "timed out"
+				err := errors.New("timedout waiting rooms to be replaced, rolled back")
+				scheduler.RollingUpdateStatus = timedoutStatus
 
 				if canceled {
-					err = errors.New("operation was canceled, rolling back")
-					scheduler.RollingUpdateStatus = "canceled"
+					err = errors.New("operation was canceled, rolled back")
+					scheduler.RollingUpdateStatus = canceledStatus
 				}
 
 				if errored != nil {
 					err = errored
-					scheduler.RollingUpdateStatus = "error"
+					scheduler.RollingUpdateStatus = erroredStatus
 				}
 
 				updateErr := scheduler.UpdateVersionStatus(db)
@@ -780,7 +807,7 @@ func UpdateSchedulerConfig(
 		}
 	}
 
-	scheduler.RollingUpdateStatus = "deployed"
+	scheduler.RollingUpdateStatus = deployedStatus
 	updateErr := scheduler.UpdateVersionStatus(db)
 	if updateErr != nil {
 		l.WithError(updateErr).Errorf("error updating scheduler_version status to %s", scheduler.RollingUpdateStatus)

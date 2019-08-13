@@ -6,6 +6,8 @@ import (
 	"time"
 
 	goredis "github.com/go-redis/redis"
+	"github.com/spf13/viper"
+	clockmocks "github.com/topfreegames/extensions/clock/mocks"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	yaml "gopkg.in/yaml.v2"
@@ -111,10 +113,26 @@ func MockInsertIntoVersionsTable(
 ) (calls *Calls) {
 	calls = NewCalls()
 
-	query := `INSERT INTO scheduler_versions (name, version, yaml)
-	VALUES (?, ?, ?)`
+	query := `INSERT INTO scheduler_versions (name, version, yaml, rolling_update_status)
+	VALUES (?, ?, ?, ?)`
 	calls.Add(mockDb.EXPECT().
-		Query(gomock.Any(), query, scheduler.Name, scheduler.Version, gomock.Any()).
+		Query(gomock.Any(), query, scheduler.Name, scheduler.Version, gomock.Any(), gomock.Any()).
+		Return(pg.NewTestResult(nil, 1), errDB))
+
+	return calls
+}
+
+// MockUpdateVersionsTable mocks update in scheduler_versions table
+func MockUpdateVersionsTable(
+	mockDb *pgmocks.MockDB,
+	errDB error,
+) (calls *Calls) {
+	calls = NewCalls()
+
+	calls.Add(mockDb.EXPECT().
+		Query(gomock.Any(), `UPDATE scheduler_versions
+	SET (rolling_update_status) = (?rolling_update_status)
+	WHERE name=?name AND version=?version`, gomock.Any()).
 		Return(pg.NewTestResult(nil, 1), errDB))
 
 	return calls
@@ -1423,4 +1441,168 @@ func CreatePodsMetricsList(containers []metricsapi.ContainerMetrics, pods []stri
 	})
 
 	return myFakeMetricsClient
+}
+
+// MockSaveSchedulerFlow mocks all necessary calls to complete the first part of UpdateSchedulerConfig
+// flow (until it saves the new scheduler in DB)
+func MockSaveSchedulerFlow(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockDb *pgmocks.MockDB,
+	mockClock *clockmocks.MockClock,
+	opManager *models.OperationManager,
+	config *viper.Viper,
+	lockTimeoutMs, numberOfVersions int,
+	yaml string,
+	scheduler *models.Scheduler,
+	isMinor bool,
+	calls *Calls,
+) {
+	lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+	configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+
+	// Get global lock
+	calls.Append(
+		MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil))
+
+	// Get config lock
+	calls.Append(
+		MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil))
+
+	// Set new operation manager description
+	calls.Append(
+		MockSetDescription(opManager, mockRedisClient, "running", nil))
+
+	// Get scheduler from DB
+	calls.Append(
+		MockSelectScheduler(yaml, mockDb, nil))
+
+	// Update scheduler
+	calls.Append(
+		MockUpdateSchedulersTable(mockDb, nil))
+
+	// Add new version into versions table
+
+	if isMinor {
+		scheduler.NextMinorVersion()
+	} else {
+		scheduler.NextMajorVersion()
+	}
+	calls.Append(
+		MockInsertIntoVersionsTable(scheduler, mockDb, nil))
+
+	// Count to delete old versions if necessary
+	calls.Append(
+		MockCountNumberOfVersions(scheduler, numberOfVersions, mockDb, nil))
+
+	// Release globalLock
+	calls.Append(
+		MockReturnRedisLock(mockRedisClient, lockKey, nil))
+}
+
+// MockRollingUpdateFlow mocks all necessary calls to perform a rolling update
+func MockRollingUpdateFlow(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockDb *pgmocks.MockDB,
+	mockClock *clockmocks.MockClock,
+	mockPipeline *redismocks.MockPipeliner,
+	mockPortChooser *mocks.MockPortChooser,
+	opManager *models.OperationManager,
+	config *viper.Viper,
+	timeoutSec, lockTimeoutMs, numberOfVersions, portStart, portEnd, numRoomsToCreate int,
+	yaml, workerPortRange string,
+	scheduler *models.Scheduler,
+	configYaml *models.ConfigYAML,
+	removeRoomsError error,
+	rollback bool,
+	calls *Calls,
+) {
+	lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+	configLockKey := controller.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+	downScalingLockKey := controller.GetDownScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+
+	// Get downscaling lock
+	calls.Append(
+		MockRedisLock(mockRedisClient, downScalingLockKey, lockTimeoutMs, true, nil))
+
+	// Create room
+	MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, configYaml, numRoomsToCreate)
+	MockGetPortsFromPoolAnyTimes(configYaml, mockRedisClient, mockPortChooser,
+		workerPortRange, portStart, portEnd)
+
+	// Delete old rooms
+	MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, configYaml, removeRoomsError)
+
+	// Update scheduler rolling update status
+	calls.Append(
+		MockUpdateVersionsTable(mockDb, nil))
+
+	if rollback {
+		MockRollback(
+			mockRedisClient,
+			mockDb,
+			mockClock,
+			opManager,
+			config,
+			timeoutSec, lockTimeoutMs, numberOfVersions,
+			yaml,
+			scheduler,
+			calls,
+		)
+	}
+
+	// release downScalingLock
+	calls.Append(
+		MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil))
+
+	// release configLockKey
+	calls.Append(
+		MockReturnRedisLock(mockRedisClient, configLockKey, nil))
+
+	// release globalLock again (defer)
+	calls.Append(
+		MockReturnRedisLock(mockRedisClient, lockKey, nil))
+}
+
+// MockRollback mocks all calls necessary to perform a rollback on a scheduler update
+func MockRollback(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockDb *pgmocks.MockDB,
+	mockClock *clockmocks.MockClock,
+	opManager *models.OperationManager,
+	config *viper.Viper,
+	timeoutSec, lockTimeoutMs, numberOfVersions int,
+	yaml string,
+	scheduler *models.Scheduler,
+	calls *Calls,
+) {
+	lockKey := controller.GetLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+
+	// Get globalLock
+	calls.Append(
+		MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil))
+
+	// Update scheduler
+	calls.Append(
+		MockUpdateSchedulersTable(mockDb, nil))
+
+	// Add new version into versions table
+	scheduler.NextMajorVersion()
+	calls.Append(
+		MockInsertIntoVersionsTable(scheduler, mockDb, nil))
+
+	// Count to delete old versions if necessary
+	calls.Append(
+		MockCountNumberOfVersions(scheduler, numberOfVersions, mockDb, nil))
+
+	// Update scheduler rolling update status
+	calls.Append(
+		MockUpdateVersionsTable(mockDb, nil))
+
+	// Release globalLock
+	calls.Append(
+		MockReturnRedisLock(mockRedisClient, lockKey, nil))
+
+	// Release globalLock again (defer)
+	calls.Append(
+		MockReturnRedisLock(mockRedisClient, lockKey, nil))
 }
