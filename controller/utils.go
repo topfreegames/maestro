@@ -952,7 +952,7 @@ func DownScalingBlocked(
 		"scheduler": schedulerName,
 	})
 
-	downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), schedulerName)
+	downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), schedulerName)
 	timeout, _ := time.ParseDuration("5ms")
 	lock, err := redisClient.EnterCriticalSection(
 		redisClient.Trace(ctx),

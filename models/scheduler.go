@@ -508,7 +508,7 @@ func ListSchedulerLocks(
 func ListSchedulerLocksKeys(schedulerName string, prefixes []string) []string {
 	names := make([]string, 0, len(prefixes))
 	for _, prefix := range prefixes {
-		names = append(names, GetSchedulerLockKey(prefix, schedulerName))
+		names = append(names, GetSchedulerScalingLockKey(prefix, schedulerName))
 	}
 	return names
 }
@@ -521,18 +521,18 @@ func DeleteSchedulerLock(
 	return err
 }
 
-// GetSchedulerLockKey returns the key of the scheduler lock
-func GetSchedulerLockKey(prefix, schedulerName string) string {
+// GetSchedulerScalingLockKey returns the key of the scheduler lock
+func GetSchedulerScalingLockKey(prefix, schedulerName string) string {
 	return fmt.Sprintf("%s-%s", prefix, schedulerName)
 }
 
-// GetConfigLockKey returns the key of the scheduler update config lock
-func GetConfigLockKey(prefix, schedulerName string) string {
+// GetSchedulerConfigLockKey returns the key of the scheduler update config lock
+func GetSchedulerConfigLockKey(prefix, schedulerName string) string {
 	return fmt.Sprintf("%s-%s-config", prefix, schedulerName)
 }
 
-// GetDownScalingLockKey returns the key of the downscaling lock
-func GetDownScalingLockKey(prefix, schedulerName string) string {
+// GetSchedulerDownScalingLockKey returns the key of the downscaling lock
+func GetSchedulerDownScalingLockKey(prefix, schedulerName string) string {
 	return fmt.Sprintf("%s-%s-downscaling", prefix, schedulerName)
 }
 

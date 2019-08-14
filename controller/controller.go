@@ -590,7 +590,7 @@ func UpdateSchedulerConfig(
 	// Lock watchers so they don't scale up or down and the scheduler is not
 	// overwritten with older version on database
 	// during the databse write phase
-	globalLockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
+	globalLockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
 	globalLock, canceled, err := acquireLock(
 		ctx,
 		logger,
@@ -618,7 +618,7 @@ func UpdateSchedulerConfig(
 	}
 
 	// Lock updates on scheduler during all the process
-	configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
+	configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
 	configLock, canceled, err := acquireLock(
 		ctx,
 		logger,
@@ -700,7 +700,7 @@ func UpdateSchedulerConfig(
 
 	if shouldRecreatePods {
 		// Lock down scaling so it doesn't interferer with rolling update surges
-		downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
+		downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
 		downScalingLock, canceled, err := acquireLock(
 			ctx,
 			logger,

@@ -84,8 +84,8 @@ autoscaling:
 
 			calls := NewCalls()
 
-			lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-			configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+			lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+			configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 			// Get global lock
 			MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -222,8 +222,8 @@ autoscaling:
 
 			calls := NewCalls()
 
-			lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-			configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+			lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+			configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
 			// Get global lock
 			MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)

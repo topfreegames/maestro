@@ -105,7 +105,7 @@ var _ = Describe("SchedulerLocksHandler", func() {
 		It("should remove lockName key in redis", func() {
 			url = fmt.Sprintf(
 				"http://%s/scheduler/%s/locks/%s", app.Address, configYaml.Name,
-				models.GetSchedulerLockKey(app.Config.GetString("watcher.lockKey"), configYaml.Name),
+				models.GetSchedulerScalingLockKey(app.Config.GetString("watcher.lockKey"), configYaml.Name),
 			)
 			request, _ = http.NewRequest("DELETE", url, nil)
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)

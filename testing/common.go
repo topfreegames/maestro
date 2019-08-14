@@ -1485,8 +1485,8 @@ func MockSaveSchedulerFlow(
 	isMinor bool,
 	calls *Calls,
 ) {
-	lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
-	configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+	lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+	configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
 
 	// Get global lock
 	calls.Append(
@@ -1544,9 +1544,9 @@ func MockRollingUpdateFlow(
 	rollback bool,
 	calls *Calls,
 ) {
-	lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
-	configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
-	downScalingLockKey := models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+	lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+	configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+	downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
 
 	// Get downscaling lock
 	calls.Append(
@@ -1603,7 +1603,7 @@ func MockRollback(
 	scheduler *models.Scheduler,
 	calls *Calls,
 ) {
-	lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+	lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
 
 	// Get globalLock
 	calls.Append(

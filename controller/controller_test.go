@@ -310,9 +310,9 @@ var _ = Describe("Controller", func() {
 
 		timeoutSec = 300
 		lockTimeoutMs = config.GetInt("watcher.lockTimeoutMs")
-		lockKey = models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), "controller-name")
-		configLockKey = models.GetConfigLockKey(config.GetString("watcher.lockKey"), "controller-name")
-		downScalingLockKey = models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), "controller-name")
+		lockKey = models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), "controller-name")
+		configLockKey = models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), "controller-name")
+		downScalingLockKey = models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), "controller-name")
 		maxSurge = 100
 		errDB = errors.New("some error in db")
 		numberOfVersions = 1
@@ -4158,8 +4158,8 @@ portRange:
 			configYaml2, err := models.NewConfigYAML(yaml2)
 			Expect(err).NotTo(HaveOccurred())
 
-			lockKey := models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), configYaml2.Name)
-			configLockKey := models.GetConfigLockKey(config.GetString("watcher.lockKey"), configYaml2.Name)
+			lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), configYaml2.Name)
+			configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), configYaml2.Name)
 
 			// Get redis lock
 			mt.MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
@@ -4853,9 +4853,9 @@ containers:
 					calls,
 				)
 
-				lockKey = models.GetSchedulerLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
-				configLockKey = models.GetConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
-				downScalingLockKey = models.GetDownScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+				lockKey = models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+				configLockKey = models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+				downScalingLockKey = models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
 				mt.MockRedisLock(mockRedisClient, downScalingLockKey, lockTimeoutMs, true, nil)
 
 				// Update scheduler rolling update status
