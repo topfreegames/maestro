@@ -8,6 +8,7 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -16,14 +17,19 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/models"
-	v1 "k8s.io/api/core/v1"
+	"github.com/topfreegames/maestro/reporters"
+	yaml "gopkg.in/yaml.v2"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 
+	redisLock "github.com/bsm/redis-lock"
 	clockinterfaces "github.com/topfreegames/extensions/clock/interfaces"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
@@ -43,11 +49,9 @@ func replacePodsAndWait(
 	podsChunk []v1.Pod,
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
-) (createdPods []v1.Pod, deletedPods []v1.Pod, timedout, canceled bool) {
+) (timedout, canceled bool, err error) {
 	timedout = false
 	canceled = false
-	createdPods = []v1.Pod{}
-	deletedPods = []v1.Pod{}
 	var wg sync.WaitGroup
 	var mutex = &sync.Mutex{}
 
@@ -56,7 +60,7 @@ func replacePodsAndWait(
 	for _, pod := range podsChunk {
 		go func(pod v1.Pod) {
 			defer wg.Done()
-			localTimedout, localCanceled := createNewRemoveOldPod(
+			localTimedout, localCanceled, localErr := createNewRemoveOldPod(
 				logger,
 				roomManager,
 				mr,
@@ -70,8 +74,6 @@ func replacePodsAndWait(
 				operationManager,
 				mutex,
 				pod,
-				&createdPods,
-				&deletedPods,
 			)
 			// if a routine is timedout or canceled,
 			// rolling update should stop
@@ -85,11 +87,16 @@ func replacePodsAndWait(
 				canceled = localCanceled
 				mutex.Unlock()
 			}
+			if localErr != nil {
+				mutex.Lock()
+				err = localErr
+				mutex.Unlock()
+			}
 		}(pod)
 	}
 	wg.Wait()
 
-	return createdPods, deletedPods, timedout, canceled
+	return timedout, canceled, err
 }
 
 func createNewRemoveOldPod(
@@ -106,9 +113,7 @@ func createNewRemoveOldPod(
 	operationManager *models.OperationManager,
 	mutex *sync.Mutex,
 	pod v1.Pod,
-	createdPods *[]v1.Pod,
-	deletedPods *[]v1.Pod,
-) (timedout, canceled bool) {
+) (timedout, canceled bool, err error) {
 	logger.Debug("creating pod")
 
 	// create new pod
@@ -117,12 +122,8 @@ func createNewRemoveOldPod(
 
 	if err != nil {
 		logger.WithError(err).Debug("error creating pod")
-		return false, false
+		return false, false, err
 	}
-
-	mutex.Lock()
-	*createdPods = append(*createdPods, *newPod)
-	mutex.Unlock()
 
 	// wait for new pod to be created
 	timeout := willTimeoutAt.Sub(clock.Now())
@@ -130,21 +131,16 @@ func createNewRemoveOldPod(
 		logger, clientset, timeout, configYAML.Name,
 		[]v1.Pod{*newPod}, operationManager, mr)
 	if timedout || canceled {
-		return timedout, canceled
+		return timedout, canceled, nil
 	}
 
 	// delete old pod
 	logger.Debugf("deleting pod %s", pod.GetName())
 	err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
 		configYAML, pod.GetName(), reportersConstants.ReasonUpdate)
-	if err == nil || strings.Contains(err.Error(), "redis") {
-		mutex.Lock()
-		*deletedPods = append(*deletedPods, pod)
-		mutex.Unlock()
-	}
-	if err != nil {
-		logger.WithError(err).Debugf("error deleting pod %s", pod.GetName())
-		return false, false
+	if err != nil && !strings.Contains(err.Error(), "redis") {
+		logger.WithError(err).Errorf("error deleting pod %s during rolling update", pod.GetName())
+		return false, false, nil
 	}
 
 	// wait for old pods to be deleted
@@ -155,100 +151,126 @@ func createNewRemoveOldPod(
 		logger, clientset, timeout, configYAML.Name,
 		[]v1.Pod{pod}, operationManager, mr)
 	if timedout || canceled {
-		return timedout, canceled
+		return timedout, canceled, nil
 	}
 
-	return false, false
+	return false, false, nil
 }
 
 // In rollback, it must delete newly created pod and
 // restore old deleted pods to come back to previous state
 func rollback(
-	l logrus.FieldLogger,
+	ctx context.Context,
+	logger logrus.FieldLogger,
 	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
-	redisClient redisinterfaces.RedisClient,
+	redisClient *redis.Client,
 	clientset kubernetes.Interface,
-	configYAML *models.ConfigYAML,
+	failedConfigYAML *models.ConfigYAML,
+	oldConfigYAML *models.ConfigYAML,
 	maxSurge int,
-	timeout time.Duration,
-	createdPods, deletedPods []v1.Pod,
+	clock clockinterfaces.Clock,
 	scheduler *models.Scheduler,
-	versionToRollbackTo string,
+	config *viper.Viper,
+	operationManager *models.OperationManager,
+	oldVersion, globalLockKey string,
 ) error {
-	scheduler.Version = versionToRollbackTo
-
-	var err error
-	willTimeoutAt := time.Now().Add(timeout)
-	logger := l.WithFields(logrus.Fields{
-		"operation": "controller.rollback",
-		"scheduler": configYAML.Name,
+	schedulerName := oldConfigYAML.Name
+	l := logger.WithFields(logrus.Fields{
+		"source":    "updateSchedulerConfig.rollback",
+		"scheduler": schedulerName,
 	})
 
-	logger.Info("starting rollback")
-	logger.Debugf("deleting all %#v", names(createdPods))
-	logger.Debugf("recreating same quantity of these: %#v", names(deletedPods))
+	l.Debug("starting rollback")
 
-	deletedPodChunks := segmentPods(deletedPods, maxSurge)
-	createdPodChunks := segmentPods(createdPods, maxSurge)
+	globalLock, _, _ := acquireLock(
+		ctx,
+		logger,
+		clock,
+		redisClient,
+		config,
+		operationManager,
+		globalLockKey,
+		schedulerName,
+	)
 
-	configYaml, err := models.NewConfigYAML(scheduler.YAML)
+	defer releaseLock(
+		logger,
+		redisClient,
+		globalLock,
+		schedulerName,
+	)
+
+	// create new major version to rollback
+	scheduler.NextMajorVersion()
+	scheduler.RollingUpdateStatus = rollbackStatus(oldVersion)
+	err := saveConfigYAML(
+		ctx,
+		logger,
+		mr,
+		db,
+		oldConfigYAML,
+		scheduler,
+		*failedConfigYAML,
+		config,
+	)
 	if err != nil {
 		return err
 	}
 
-	for i := 0; i < len(deletedPodChunks) || i < len(createdPodChunks); i++ {
-		if i < len(createdPodChunks) {
-			logger.Debugf("deleting chunk %#v", names(createdPodChunks[i]))
-			for j := 0; j < len(createdPodChunks[i]); {
-				pod := createdPodChunks[i][j]
-				logger.Debugf("deleting pod %s", pod.GetName())
+	err = scheduler.UpdateVersionStatus(db)
+	if err != nil {
+		return err
+	}
 
-				err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
-					configYaml, pod.GetName(), reportersConstants.ReasonUpdate)
-				if err != nil {
-					logger.WithError(err).
-						Debugf("error deleting newly created pod %s", pod.GetName())
-					time.Sleep(1 * time.Second)
-					continue
-				}
+	// Don't worry, there is a defer releaseLock()
+	// in case any error before this code happen ;)
+	releaseLock(
+		logger,
+		redisClient,
+		globalLock,
+		schedulerName,
+	)
 
-				j = j + 1
-			}
+	timeoutSec := config.GetInt("updateTimeoutSeconds")
+	timeoutDur := time.Duration(timeoutSec) * time.Second
+	willTimeoutAt := clock.Now().Add(timeoutDur)
 
-			waitTimeout := willTimeoutAt.Sub(time.Now())
-			timedout, _ := waitTerminatingPods(
-				logger, clientset, waitTimeout, configYAML.Name,
-				createdPodChunks[i], nil, mr,
-			)
-			if timedout {
-				return errors.New("timeout waiting for rooms to be removed")
-			}
+	// get list of actual pods
+	kubePods, err := listCurrentPods(mr, clientset, schedulerName)
+	if err != nil {
+		return err
+	}
+
+	// segment pods in chunks
+	podChunks := segmentPods(kubePods.Items, maxSurge)
+
+	for i, chunk := range podChunks {
+		l.Debugf("updating chunk %d: %v", i, names(chunk))
+
+		// replace chunk
+		timedout, _, err := replacePodsAndWait(
+			l,
+			roomManager,
+			mr,
+			clientset,
+			db,
+			redisClient.Client,
+			willTimeoutAt,
+			clock,
+			oldConfigYAML,
+			chunk,
+			scheduler,
+			nil,
+		)
+
+		if timedout {
+			return errors.New("timeout waiting to replace pods on rollback")
 		}
 
-		if i < len(deletedPodChunks) {
-			logger.Debugf("recreating chunk %#v", names(deletedPodChunks[i]))
-			newlyCreatedPods := []v1.Pod{}
-			for j := 0; j < len(deletedPodChunks[i]); {
-				pod := deletedPodChunks[i][j]
-				logger.Debugf("creating new pod to substitute %s", pod.GetName())
-
-				newPod, err := roomManager.Create(logger, mr, redisClient,
-					db, clientset, configYAML, scheduler)
-				if err != nil {
-					logger.WithError(err).Debug("error creating new pod")
-					time.Sleep(1 * time.Second)
-					continue
-				}
-
-				j = j + 1
-				newlyCreatedPods = append(newlyCreatedPods, *newPod)
-			}
-
-			waitTimeout := willTimeoutAt.Sub(time.Now())
-			waitCreatingPods(logger, clientset, waitTimeout, configYAML.Name,
-				newlyCreatedPods, nil, mr)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -403,6 +425,15 @@ func waitCreatingPods(
 
 				if !models.IsPodReady(createdPod) {
 					logger.WithField("pod", createdPod.GetName()).Debug("pod not ready yet, waiting...")
+					exit = false
+					break
+				}
+
+				if err != nil && !strings.Contains(err.Error(), "not found") {
+					logger.
+						WithError(err).
+						WithField("pod", pod.GetName()).
+						Info("error getting pod")
 					exit = false
 					break
 				}
@@ -838,5 +869,368 @@ func validateMetricsTrigger(configYAML *models.ConfigYAML, logger logrus.FieldLo
 			}
 		}
 	}
+	return nil
+}
+
+func schedulerAndConfigFromName(
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	schedulerName string,
+) (
+	*models.Scheduler,
+	models.ConfigYAML,
+	error,
+) {
+	var configYaml models.ConfigYAML
+	scheduler := models.NewScheduler(schedulerName, "", "")
+	err := mr.WithSegment(models.SegmentSelect, func() error {
+		return scheduler.Load(db)
+	})
+	if err != nil {
+		return nil, configYaml, maestroErrors.NewDatabaseError(err)
+	}
+
+	// Check if scheduler to Update exists indeed
+	if scheduler.YAML == "" {
+		msg := fmt.Sprintf("scheduler %s not found, create it first", schedulerName)
+		return nil, configYaml, maestroErrors.NewValidationFailedError(errors.New(msg))
+	}
+	err = yaml.Unmarshal([]byte(scheduler.YAML), &configYaml)
+	if err != nil {
+		return nil, configYaml, err
+	}
+	return scheduler, configYaml, nil
+}
+
+func validateConfig(logger logrus.FieldLogger, configYAML *models.ConfigYAML, maxSurge int) error {
+	if maxSurge <= 0 {
+		return errors.New("invalid parameter: maxsurge must be greater than 0")
+	}
+
+	if configYAML.AutoScaling.Max > 0 && configYAML.AutoScaling.Min > configYAML.AutoScaling.Max {
+		return errors.New("invalid parameter: autoscaling max must be greater than min")
+	}
+
+	// if using resource scaling (cpu, mem) requests must be set
+	return validateMetricsTrigger(configYAML, logger)
+}
+
+func loadScheduler(
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	schedulerOrNil *models.Scheduler,
+	schedulerName string,
+) (*models.Scheduler, models.ConfigYAML, error) {
+	var scheduler *models.Scheduler
+	var oldConfig models.ConfigYAML
+	var err error
+	if schedulerOrNil != nil {
+		scheduler = schedulerOrNil
+		err = yaml.Unmarshal([]byte(scheduler.YAML), &oldConfig)
+		if err != nil {
+			return scheduler, oldConfig, err
+		}
+	} else {
+		scheduler, oldConfig, err = schedulerAndConfigFromName(mr, db, schedulerName)
+		if err != nil {
+			return scheduler, oldConfig, err
+		}
+	}
+	return scheduler, oldConfig, nil
+}
+
+// DownScalingBlocked check if downScalinglockKey exists
+func DownScalingBlocked(
+	ctx context.Context,
+	logger logrus.FieldLogger,
+	redisClient *redis.Client,
+	config *viper.Viper,
+	schedulerName string,
+) bool {
+	l := logger.WithFields(logrus.Fields{
+		"source":    "DownScalingBlocked",
+		"scheduler": schedulerName,
+	})
+
+	downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), schedulerName)
+	timeout, _ := time.ParseDuration("5ms")
+	lock, err := redisClient.EnterCriticalSection(
+		redisClient.Trace(ctx),
+		downScalingLockKey,
+		timeout,
+		0, 0,
+	)
+
+	if err != nil {
+		l.WithError(err).Error("failed to check if downscaling is blocked")
+		return false
+	}
+
+	if lock != nil {
+		redisClient.LeaveCriticalSection(lock)
+		return lock.IsLocked()
+	}
+
+	return true
+}
+
+func acquireLock(
+	ctx context.Context,
+	logger logrus.FieldLogger,
+	clock clockinterfaces.Clock,
+	redisClient *redis.Client,
+	config *viper.Viper,
+	operationManager *models.OperationManager,
+	lockKey, schedulerName string,
+) (lock *redisLock.Lock, canceled bool, err error) {
+	timeoutSec := config.GetInt("updateTimeoutSeconds")
+	lockTimeoutMS := config.GetInt("watcher.lockTimeoutMs")
+	timeoutDur := time.Duration(timeoutSec) * time.Second
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	timeout := time.NewTimer(timeoutDur)
+	defer timeout.Stop()
+
+	l := logger.WithFields(logrus.Fields{
+		"source":    "acquireLock",
+		"scheduler": schedulerName,
+	})
+
+	for {
+		exit := false
+		lock, err = redisClient.EnterCriticalSection(
+			redisClient.Trace(ctx),
+			lockKey,
+			time.Duration(lockTimeoutMS)*time.Millisecond,
+			0, 0,
+		)
+		select {
+		case <-timeout.C:
+			return nil, false, errors.New("timeout while wating for redis lock")
+		case <-ticker.C:
+			if operationManager.WasCanceled() {
+				l.Warn("operation was canceled")
+				return nil, true, nil
+			}
+
+			if err != nil {
+				l.WithError(err).Error("error getting watcher lock")
+				return nil, false, err
+			}
+
+			if lock == nil {
+				l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
+			}
+
+			if lock.IsLocked() {
+				exit = true
+				break
+			}
+		}
+		if exit {
+			l.Debugf("acquired lock %s", lockKey)
+			break
+		}
+	}
+
+	return lock, false, err
+}
+
+func releaseLock(
+	logger logrus.FieldLogger,
+	redisClient *redis.Client,
+	lock *redisLock.Lock,
+	schedulerName string,
+) {
+	l := logger.WithFields(logrus.Fields{
+		"source":    "releaseLock",
+		"scheduler": schedulerName,
+	})
+
+	if lock != nil {
+		err := redisClient.LeaveCriticalSection(lock)
+		if err != nil {
+			l.WithError(err).Error("error retrieving lock. Either wait or remove it manually from redis")
+		}
+	}
+}
+
+func saveConfigYAML(
+	ctx context.Context,
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	configYAML *models.ConfigYAML,
+	scheduler *models.Scheduler,
+	oldConfig models.ConfigYAML,
+	config *viper.Viper,
+) error {
+	l := logger.WithFields(logrus.Fields{
+		"source":    "saveConfigYAML",
+		"scheduler": configYAML.Name,
+	})
+	maxVersions := config.GetInt("schedulers.versions.toKeep")
+
+	l.Debug("updating configYAML on database")
+
+	// Update new config on DB
+	configBytes, err := yaml.Marshal(configYAML)
+	if err != nil {
+		return err
+	}
+	yamlString := string(configBytes)
+	scheduler.Game = configYAML.Game
+	scheduler.YAML = yamlString
+
+	if string(oldConfig.ToYAML()) != string(configYAML.ToYAML()) {
+		err = mr.WithSegment(models.SegmentUpdate, func() error {
+			created, err := scheduler.UpdateVersion(db, maxVersions)
+			if !created {
+				return err
+			}
+			if err != nil {
+				l.WithError(err).Error("error on operation on scheduler_verions table. But the newest one was created.")
+			}
+			return nil
+		})
+		if err != nil {
+			l.WithError(err).Error("failed to update scheduler on database")
+			return err
+		}
+
+		l.Info("updated configYaml on database")
+	} else {
+		l.Info("config yaml is the same, skipping")
+	}
+
+	return nil
+}
+
+func listCurrentPods(
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	schedulerName string,
+) (*v1.PodList, error) {
+	var kubePods *v1.PodList
+	err := mr.WithSegment(models.SegmentPod, func() error {
+		var err error
+		kubePods, err = clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
+			LabelSelector: labels.Set{}.AsSelector().String(),
+			FieldSelector: fields.Everything().String(),
+		})
+		return err
+	})
+	if err != nil {
+		return nil, maestroErrors.NewKubernetesError("error when listing pods", err)
+	}
+	return kubePods, nil
+}
+
+func deleteSchedulerHelper(
+	logger logrus.FieldLogger,
+	mr *models.MixedMetricsReporter,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	clientset kubernetes.Interface,
+	scheduler *models.Scheduler,
+	namespace *models.Namespace,
+	timeoutSec int,
+) error {
+	var err error
+	if scheduler.ID != "" {
+		scheduler.State = models.StateTerminating
+		scheduler.StateLastChangedAt = time.Now().Unix()
+		if scheduler.LastScaleOpAt == 0 {
+			scheduler.LastScaleOpAt = 1
+		}
+		err = mr.WithSegment(models.SegmentUpdate, func() error {
+			return scheduler.Update(db)
+		})
+		if err != nil {
+			logger.WithError(err).Error("failed to update scheduler state")
+			return err
+		}
+	}
+
+	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
+	// Delete pods and wait for graceful termination before deleting the namespace
+	err = mr.WithSegment(models.SegmentPod, func() error {
+		return namespace.DeletePods(clientset, redisClient, scheduler)
+	})
+	if err != nil {
+		logger.WithError(err).Error("failed to delete namespace pods")
+		return err
+	}
+	timeoutPods := time.NewTimer(time.Duration(2*configYAML.ShutdownTimeout) * time.Second)
+	defer timeoutPods.Stop()
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
+	exit := false
+	for !exit {
+		select {
+		case <-timeoutPods.C:
+			return errors.New("timeout deleting scheduler pods")
+		case <-ticker.C:
+			var pods *v1.PodList
+			listErr := mr.WithSegment(models.SegmentPod, func() error {
+				var err error
+				pods, err = clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
+				return err
+			})
+			if listErr != nil {
+				logger.WithError(listErr).Error("error listing pods")
+			} else if len(pods.Items) == 0 {
+				exit = true
+			}
+			logger.Debug("deleting scheduler pods")
+		}
+	}
+
+	err = mr.WithSegment(models.SegmentNamespace, func() error {
+		return namespace.Delete(clientset)
+	})
+	if err != nil {
+		logger.WithError(err).Error("failed to delete namespace while deleting scheduler")
+		return err
+	}
+	timeoutNamespace := time.NewTimer(time.Duration(timeoutSec) * time.Second)
+	defer timeoutNamespace.Stop()
+
+	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
+	exit = false
+	for !exit {
+		select {
+		case <-timeoutNamespace.C:
+			return errors.New("timeout deleting namespace")
+		default:
+			exists, existsErr := namespace.Exists(clientset)
+			if existsErr != nil {
+				logger.WithError(existsErr).Error("error checking namespace existence")
+			} else if !exists {
+				exit = true
+			}
+			logger.Debug("deleting scheduler pods")
+			time.Sleep(time.Duration(1) * time.Second)
+		}
+	}
+
+	// Delete from DB must be the last operation because
+	// if kubernetes failed to delete pods, watcher will recreate
+	// and keep the last state
+	err = mr.WithSegment(models.SegmentDelete, func() error {
+		return scheduler.Delete(db)
+	})
+	if err != nil {
+		logger.WithError(err).Error("failed to delete scheduler from database while deleting scheduler")
+		return err
+	}
+
+	reporters.Report(reportersConstants.EventSchedulerDelete, map[string]interface{}{
+		"name": scheduler.Name,
+		"game": scheduler.Game,
+	})
+
 	return nil
 }

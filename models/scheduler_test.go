@@ -457,10 +457,10 @@ var _ = Describe("Scheduler", func() {
 			query = "UPDATE schedulers SET (game, yaml, version) = (?game, ?yaml, ?version) WHERE id = ?id"
 			mockDb.EXPECT().Query(scheduler, query, scheduler).Return(pg.NewTestResult(nil, 1), nil)
 
-			query = `INSERT INTO scheduler_versions (name, version, yaml)
-	VALUES (?, ?, ?)`
+			query = `INSERT INTO scheduler_versions (name, version, yaml, rolling_update_status)
+	VALUES (?, ?, ?, ?)`
 			mockDb.EXPECT().
-				Query(scheduler, query, name, scheduler.Version, yaml1).
+				Query(scheduler, query, name, scheduler.Version, yaml1, gomock.Any()).
 				Return(pg.NewTestResult(nil, 1), nil)
 
 			query = "SELECT COUNT(*) FROM scheduler_versions WHERE name = ?"

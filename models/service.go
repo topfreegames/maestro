@@ -10,6 +10,7 @@ package models
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,7 +60,7 @@ func NewService(
 	if len(configYaml.Ports) <= 0 && len(configYaml.Containers) > 0 {
 		for i, container := range configYaml.Containers {
 			for j, port := range container.Ports {
-				port.Name = fmt.Sprintf("%s-%d%d", port.Name, i, j)
+				port.Name = fmt.Sprintf("%s-%d%d", strings.Split(port.Name, "-")[0], i, j)
 				ports = append(ports, port)
 			}
 		}

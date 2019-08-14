@@ -23,16 +23,17 @@ import (
 
 // Scheduler is the struct that defines a maestro scheduler
 type Scheduler struct {
-	ID                 string      `db:"id"`
-	Name               string      `db:"name" yaml:"name"`
-	Game               string      `db:"game" yaml:"game"`
-	YAML               string      `db:"yaml"`
-	State              string      `db:"state"`
-	StateLastChangedAt int64       `db:"state_last_changed_at"`
-	LastScaleOpAt      int64       `db:"last_scale_op_at"`
-	CreatedAt          pg.NullTime `db:"created_at"`
-	UpdatedAt          pg.NullTime `db:"updated_at"`
-	Version            string      `db:"version"`
+	ID                  string      `db:"id"`
+	Name                string      `db:"name" yaml:"name"`
+	Game                string      `db:"game" yaml:"game"`
+	YAML                string      `db:"yaml"`
+	State               string      `db:"state"`
+	StateLastChangedAt  int64       `db:"state_last_changed_at"`
+	LastScaleOpAt       int64       `db:"last_scale_op_at"`
+	CreatedAt           pg.NullTime `db:"created_at"`
+	UpdatedAt           pg.NullTime `db:"updated_at"`
+	Version             string      `db:"version"`
+	RollingUpdateStatus string      `db:"rolling_update_status"`
 }
 
 // SchedulerLock represents a critical section lock
@@ -295,6 +296,19 @@ func (c *Scheduler) UpdateState(db interfaces.DB) error {
 	return nil
 }
 
+// UpdateVersionStatus updates a scheduler_version rolling_update_status in the database
+func (c *Scheduler) UpdateVersionStatus(db interfaces.DB) error {
+	_, err := db.Query(c, `UPDATE scheduler_versions
+	SET (rolling_update_status) = (?rolling_update_status)
+	WHERE name=?name AND version=?version`, c)
+	if err != nil {
+		err = fmt.Errorf("error updating status on scheduler_versions: %s", err.Error())
+		return err
+	}
+
+	return nil
+}
+
 // UpdateVersion updates a scheduler on database
 // Instead of Update, it creates a new scheduler and delete the oldest one if necessary
 func (c *Scheduler) UpdateVersion(
@@ -310,9 +324,9 @@ func (c *Scheduler) UpdateVersion(
 		return false, err
 	}
 
-	query = `INSERT INTO scheduler_versions (name, version, yaml)
-	VALUES (?, ?, ?)`
-	_, err = db.Query(c, query, c.Name, c.Version, c.YAML)
+	query = `INSERT INTO scheduler_versions (name, version, yaml, rolling_update_status)
+	VALUES (?, ?, ?, ?)`
+	_, err = db.Query(c, query, c.Name, c.Version, c.YAML, c.RollingUpdateStatus)
 	if err != nil {
 		err = fmt.Errorf("error to insert into scheduler_versions table: %s", err.Error())
 		return true, err
@@ -494,7 +508,7 @@ func ListSchedulerLocks(
 func ListSchedulerLocksKeys(schedulerName string, prefixes []string) []string {
 	names := make([]string, 0, len(prefixes))
 	for _, prefix := range prefixes {
-		names = append(names, GetSchedulerLockKey(prefix, schedulerName))
+		names = append(names, GetSchedulerScalingLockKey(prefix, schedulerName))
 	}
 	return names
 }
@@ -507,9 +521,19 @@ func DeleteSchedulerLock(
 	return err
 }
 
-// GetSchedulerLockKey returns the key of the scheduler lock
-func GetSchedulerLockKey(prefix, schedulerName string) string {
+// GetSchedulerScalingLockKey returns the key of the scheduler lock
+func GetSchedulerScalingLockKey(prefix, schedulerName string) string {
 	return fmt.Sprintf("%s-%s", prefix, schedulerName)
+}
+
+// GetSchedulerConfigLockKey returns the key of the scheduler update config lock
+func GetSchedulerConfigLockKey(prefix, schedulerName string) string {
+	return fmt.Sprintf("%s-%s-config", prefix, schedulerName)
+}
+
+// GetSchedulerDownScalingLockKey returns the key of the downscaling lock
+func GetSchedulerDownScalingLockKey(prefix, schedulerName string) string {
+	return fmt.Sprintf("%s-%s-downscaling", prefix, schedulerName)
 }
 
 // ListSchedulerReleases returns the list of releases of a scheduler
