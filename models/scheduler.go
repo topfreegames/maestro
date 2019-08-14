@@ -477,11 +477,11 @@ func LoadConfigWithVersion(db interfaces.DB, schedulerName, version string) (str
 
 // ListSchedulerLocks returns the list of locks of a scheduler
 func ListSchedulerLocks(
-	redisClient redisinterfaces.RedisClient, schedulerName string, prefixes []string,
+	redisClient redisinterfaces.RedisClient, prefix, schedulerName string,
 ) ([]SchedulerLock, error) {
-	locks := make([]SchedulerLock, 0, len(prefixes))
 	pipe := redisClient.TxPipeline()
-	keys := ListSchedulerLocksKeys(schedulerName, prefixes)
+	keys := ListSchedulerLocksKeys(prefix, schedulerName)
+	locks := make([]SchedulerLock, 0, len(keys))
 	for _, key := range keys {
 		duration, err := pipe.TTL(key).Result()
 		if err != nil && err != redis.Nil {
@@ -504,13 +504,13 @@ func ListSchedulerLocks(
 	return locks, nil
 }
 
-// ListSchedulerLocksKeys lists a slice of locks keys for schedulerName and prefixes
-func ListSchedulerLocksKeys(schedulerName string, prefixes []string) []string {
-	names := make([]string, 0, len(prefixes))
-	for _, prefix := range prefixes {
-		names = append(names, GetSchedulerScalingLockKey(prefix, schedulerName))
+// ListSchedulerLocksKeys lists a slice of locks keys for schedulerName and prefix
+func ListSchedulerLocksKeys(prefix, schedulerName string) []string {
+	return []string{
+		GetSchedulerScalingLockKey(prefix, schedulerName),
+		GetSchedulerConfigLockKey(prefix, schedulerName),
+		GetSchedulerDownScalingLockKey(prefix, schedulerName),
 	}
-	return names
 }
 
 // DeleteSchedulerLock deletes a scheduler lock

@@ -59,40 +59,67 @@ var _ = Describe("SchedulerLocksHandler", func() {
 			request, _ = http.NewRequest("GET", url, nil)
 		})
 
-		It("should return unlocked watcher lock", func() {
-			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+		It("should return unlocked watcher locks", func() {
+			for _, lockKey := range []string{
+				"maestro-lock-key-scheduler-name",
+				"maestro-lock-key-scheduler-name-config",
+				"maestro-lock-key-scheduler-name-downscaling",
+			} {
+				mockPipeline.EXPECT().TTL(lockKey).
+					Return(redis.NewDurationResult(9*time.Second, nil))
+				mockPipeline.EXPECT().Exists(lockKey).
+					Return(redis.NewIntResult(1, nil))
+			}
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().TTL("maestro-lock-key-scheduler-name").
-				Return(redis.NewDurationResult(9*time.Second, nil))
-			mockPipeline.EXPECT().Exists("maestro-lock-key-scheduler-name").
-				Return(redis.NewIntResult(1, nil))
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			mockPipeline.EXPECT().Exec()
+
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 			var locks []models.SchedulerLock
 			json.Unmarshal(recorder.Body.Bytes(), &locks)
-			Expect(locks).To(HaveLen(1))
-			Expect(locks[0].Key).To(Equal("maestro-lock-key-scheduler-name"))
-			Expect(locks[0].TTLInSec).To(Equal(int64(9)))
-			Expect(locks[0].IsLocked).To(BeTrue())
+			Expect(locks).To(HaveLen(3))
+
+			for i, lockKey := range []string{
+				"maestro-lock-key-scheduler-name",
+				"maestro-lock-key-scheduler-name-config",
+				"maestro-lock-key-scheduler-name-downscaling",
+			} {
+				Expect(locks[i].Key).To(Equal(lockKey))
+				Expect(locks[i].TTLInSec).To(Equal(int64(9)))
+				Expect(locks[i].IsLocked).To(BeTrue())
+			}
 		})
 
 		It("should return locked watcher lock", func() {
-			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+			for _, lockKey := range []string{
+				"maestro-lock-key-scheduler-name",
+				"maestro-lock-key-scheduler-name-config",
+				"maestro-lock-key-scheduler-name-downscaling",
+			} {
+				mockPipeline.EXPECT().TTL(lockKey).
+					Return(redis.NewDurationResult(time.Duration(0), redis.Nil))
+				mockPipeline.EXPECT().Exists(lockKey).
+					Return(redis.NewIntResult(0, nil))
+			}
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().TTL("maestro-lock-key-scheduler-name").
-				Return(redis.NewDurationResult(time.Duration(0), redis.Nil))
-			mockPipeline.EXPECT().Exists("maestro-lock-key-scheduler-name").
-				Return(redis.NewIntResult(0, nil))
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			mockPipeline.EXPECT().Exec()
+
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 			var locks []models.SchedulerLock
 			json.Unmarshal(recorder.Body.Bytes(), &locks)
-			Expect(locks).To(HaveLen(1))
-			Expect(locks[0].Key).To(Equal("maestro-lock-key-scheduler-name"))
-			Expect(locks[0].TTLInSec).To(Equal(int64(0)))
-			Expect(locks[0].IsLocked).To(BeFalse())
+
+			for i, lockKey := range []string{
+				"maestro-lock-key-scheduler-name",
+				"maestro-lock-key-scheduler-name-config",
+				"maestro-lock-key-scheduler-name-downscaling",
+			} {
+				Expect(locks[i].Key).To(Equal(lockKey))
+				Expect(locks[i].TTLInSec).To(Equal(int64(0)))
+				Expect(locks[i].IsLocked).To(BeFalse())
+			}
 		})
 	})
 
@@ -103,15 +130,18 @@ var _ = Describe("SchedulerLocksHandler", func() {
 		})
 
 		It("should remove lockName key in redis", func() {
-			url = fmt.Sprintf(
-				"http://%s/scheduler/%s/locks/%s", app.Address, configYaml.Name,
+			for _, lockKey := range []string{
 				models.GetSchedulerScalingLockKey(app.Config.GetString("watcher.lockKey"), configYaml.Name),
-			)
-			request, _ = http.NewRequest("DELETE", url, nil)
-			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-			mockRedisClient.EXPECT().Del("maestro-lock-key-scheduler-name").Return(redis.NewIntResult(1, nil))
-			app.Router.ServeHTTP(recorder, request)
-			Expect(recorder.Code).To(Equal(http.StatusNoContent))
+				models.GetSchedulerConfigLockKey(app.Config.GetString("watcher.lockKey"), configYaml.Name),
+				models.GetSchedulerDownScalingLockKey(app.Config.GetString("watcher.lockKey"), configYaml.Name),
+			} {
+				url = fmt.Sprintf("http://%s/scheduler/%s/locks/%s", app.Address, configYaml.Name, lockKey)
+				request, _ = http.NewRequest("DELETE", url, nil)
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				mockRedisClient.EXPECT().Del(lockKey).Return(redis.NewIntResult(1, nil))
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusNoContent))
+			}
 		})
 
 		It("should return 400 when trying to remove invalid lock key", func() {
