@@ -740,7 +740,7 @@ autoscaling:
 
 			Context("when all services are healthy", func() {
 				It("returns a status code of 200 and success body", func() {
-					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
 						logger, app.RoomManager, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
 
@@ -765,24 +765,24 @@ autoscaling:
 					request, err = http.NewRequest("PUT", url, reader)
 					Expect(err).NotTo(HaveOccurred())
 
-					// Select current scheduler yaml
-					MockSelectScheduler(yamlString, mockDb, nil)
+					calls := NewCalls()
 
-					// Get redis lock
-					MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+					// Get global lock
+					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+					// Get config lock
+					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 					// Set new operation manager description
 					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-					// Remove old rooms
-					MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
+					// Get scheduler from DB
+					MockSelectScheduler(yamlString, mockDb, nil)
 
-					// Create new roome
-					// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-					MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
-					MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
-
-					// Update new config on schedulers table
+					// Update scheduler
 					MockUpdateSchedulersTable(mockDb, nil)
 
 					// Add new version into versions table
@@ -792,8 +792,28 @@ autoscaling:
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-					// Retrieve redis lock
-					MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+					// Mock rolling update with rollback
+					MockRollingUpdateFlow(
+						mockRedisClient,
+						mockDb,
+						mockClock,
+						mockPipeline,
+						mockPortChooser,
+						opManager,
+						config,
+						timeoutSec, lockTimeoutMs, numberOfVersions, portStart, portEnd, 10,
+						yamlString, workerPortRange,
+						scheduler1,
+						&configYaml,
+						nil,
+						false,
+						calls,
+					)
+
+					calls.Finish()
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)
@@ -831,7 +851,7 @@ autoscaling:
 					err = yaml.Unmarshal([]byte(yamlString1), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 						func(schedulerName string, statusInfo map[string]interface{}) {
@@ -906,33 +926,47 @@ autoscaling:
 
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 
-					mockDb.EXPECT().
-						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
-						Do(func(scheduler *models.Scheduler, query string, modifier string) {
-							*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString1)
-						})
+					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString2)
 
-					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+					calls := NewCalls()
 
-					mockRedisClient.EXPECT().
-						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-						Return(redis.NewBoolResult(true, nil))
+					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+					// Get global lock
+					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+					// Get config lock
+					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 					// Set new operation manager description
 					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					// Update new config on schedulers table
+					// Get scheduler from DB
+					MockSelectScheduler(yamlString1, mockDb, nil)
+
+					// Update scheduler
 					MockUpdateSchedulersTable(mockDb, nil)
+
 					// Add new version into versions table
 					scheduler1.NextMinorVersion()
 					MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-					mockRedisClient.EXPECT().
-						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
-						Return(redis.NewCmdResult(nil, nil))
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+					// Release globalLock (defer)
+					MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+					// Release configLock
+					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
+
+					MockUpdateVersionsTable(mockDb, nil)
+
+					calls.Finish()
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)
@@ -945,7 +979,7 @@ autoscaling:
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
 					opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 					MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -956,19 +990,24 @@ autoscaling:
 
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 
-					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
-					mockRedisClient.EXPECT().
-						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-						Return(redis.NewBoolResult(true, nil))
+					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
+					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+					// Get global lock
+					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, lockKey, nil)
+					// Get config lock
+					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					// Set new operation manager description
 					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
 					mockDb.EXPECT().
 						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name)
-					mockRedisClient.EXPECT().
-						Eval(gomock.Any(), gomock.Any(), gomock.Any()).
-						Return(redis.NewCmdResult(nil, nil))
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)
@@ -1010,7 +1049,7 @@ autoscaling:
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
 					opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 					MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -1021,16 +1060,22 @@ autoscaling:
 
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 
-					mockRedisClient.EXPECT().
-						SetNX(gomock.Any(), gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-						Return(redis.NewBoolResult(true, nil))
+					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
+
+					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+					// Get global lock
+					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, lockKey, nil)
+					// Get config lock
+					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					// Set new operation manager description
 					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
-
-					mockRedisClient.EXPECT().
-						Eval(gomock.Any(), gomock.Any(), gomock.Any()).
-						Return(redis.NewCmdResult(nil, nil))
 
 					mockDb.EXPECT().
 						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
@@ -1097,24 +1142,24 @@ autoscaling:
 					request, err = http.NewRequest("PUT", url, reader)
 					Expect(err).NotTo(HaveOccurred())
 
-					// Select current scheduler yaml
-					MockSelectScheduler(yamlString, mockDb, nil)
+					calls := NewCalls()
 
-					// Get redis lock
-					MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+					// Get global lock
+					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+					// Get config lock
+					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 					// Set new operation manager description
 					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-					// Remove old rooms
-					MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
+					// Get scheduler from DB
+					MockSelectScheduler(yamlString, mockDb, nil)
 
-					// Create new roome
-					// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-					MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
-					MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
-
-					// Update new config on schedulers table
+					// Update scheduler
 					MockUpdateSchedulersTable(mockDb, nil)
 
 					// Add new version into versions table
@@ -1124,8 +1169,28 @@ autoscaling:
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-					// Retrieve redis lock
-					MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+					// Mock rolling update with rollback
+					MockRollingUpdateFlow(
+						mockRedisClient,
+						mockDb,
+						mockClock,
+						mockPipeline,
+						mockPortChooser,
+						opManager,
+						config,
+						timeoutSec, lockTimeoutMs, numberOfVersions, portStart, portEnd, 10,
+						yamlString, workerPortRange,
+						scheduler1,
+						&configYaml2,
+						nil,
+						false,
+						calls,
+					)
+
+					calls.Finish()
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)
@@ -1134,7 +1199,7 @@ autoscaling:
 					Expect(response).To(HaveKeyWithValue("success", true))
 					Expect(response).To(HaveKey("operationKey"))
 
-					Eventually(opManager.IsStopped, 1*time.Minute).Should(BeTrue())
+					Eventually(opManager.IsStopped, 30*time.Second).Should(BeTrue())
 				})
 
 				It("should asynchronously update scheduler and show error when occurred", func() {
@@ -1188,35 +1253,35 @@ autoscaling:
 					request, err = http.NewRequest("PUT", url, reader)
 					Expect(err).NotTo(HaveOccurred())
 
-					// Select current scheduler yaml
-					MockSelectScheduler(yamlString, mockDb, nil)
+					calls := NewCalls()
 
-					// Get redis lock
-					MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+					scheduler1 := models.NewScheduler(configYaml.Name, configYaml.Game, yamlString)
+
+					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+					// Get global lock
+					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+					// Get config lock
+					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 					// Set new operation manager description
 					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-					// Remove old rooms
-					MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
+					// Get scheduler from DB
+					MockSelectScheduler(yamlString, mockDb, nil)
 
-					// Create new roome
-					// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-					MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
-					MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
-
-					// Update new config on schedulers table
+					// Update scheduler
 					MockUpdateSchedulersTable(mockDb, errors.New("err on db"))
 
-					// // Add new version into versions table
-					// scheduler1.NextMajorVersion()
-					// MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
-					// // Count to delete old versions if necessary
-					// MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
-					// Retrieve redis lock
-					MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+					calls.Finish()
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)
@@ -1225,7 +1290,7 @@ autoscaling:
 					Expect(response).To(HaveKeyWithValue("success", true))
 					Expect(response).To(HaveKey("operationKey"))
 
-					Eventually(opManager.IsStopped, 1*time.Minute).Should(BeTrue())
+					Eventually(opManager.IsStopped, 30*time.Second).Should(BeTrue())
 				})
 			})
 
@@ -1235,7 +1300,7 @@ autoscaling:
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
 					opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 					MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -1245,9 +1310,18 @@ autoscaling:
 					Expect(err).NotTo(HaveOccurred())
 
 					mockRedisClient.EXPECT().Ping().AnyTimes()
-					mockRedisClient.EXPECT().
-						SetNX(gomock.Any(), gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-						Return(redis.NewBoolResult(true, nil))
+					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
+					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+					// Get global lock
+					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, lockKey, nil)
+					// Get config lock
+					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
+					// Release globalLock
+					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					// Set new operation manager description
 					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
@@ -1257,10 +1331,6 @@ autoscaling:
 						"SELECT * FROM schedulers WHERE name = ?",
 						configYaml1.Name,
 					).Return(pg.NewTestResult(errors.New("sql: database is closed"), 0), errors.New("sql: database is closed"))
-					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
-					mockRedisClient.EXPECT().
-						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
-						Return(redis.NewCmdResult(nil, nil))
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
@@ -1421,11 +1491,15 @@ forwarders:
 							*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString1)
 						})
 
-					lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
+					lockKeyNs := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), configYaml1.Name)
+					configLockKeyNs := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), configYaml1.Name)
+					MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+					MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+					MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+					MockRedisLock(mockRedisClient, configLockKeyNs, lockTimeoutMs, true, nil)
+					MockReturnRedisLock(mockRedisClient, configLockKeyNs, nil)
 
-					mockRedisClient.EXPECT().
-						SetNX(lockKeyNs, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-						Return(redis.NewBoolResult(true, nil))
+					MockUpdateVersionsTable(mockDb, nil)
 
 					// Set new operation manager description
 					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
@@ -1438,10 +1512,6 @@ forwarders:
 					MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-					mockRedisClient.EXPECT().
-						Eval(gomock.Any(), []string{lockKeyNs}, gomock.Any()).
-						Return(redis.NewCmdResult(nil, nil))
 
 					mockDb.EXPECT().Query(
 						gomock.Any(),
@@ -2346,7 +2416,7 @@ game: game-name
 			})
 
 			It("should update image", func() {
-				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2367,24 +2437,24 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				// Select current scheduler yaml
-				MockSelectScheduler(yamlString, mockDb, nil)
+				calls := NewCalls()
 
-				// Get redis lock
-				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+				// Get global lock
+				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Get config lock
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
 				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-				// Remove old rooms
-				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
+				// Get scheduler from DB
+				MockSelectScheduler(yamlString, mockDb, nil)
 
-				// Create new roome
-				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
-				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
-
-				// Update new config on schedulers table
+				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, nil)
 
 				// Add new version into versions table
@@ -2394,8 +2464,28 @@ game: game-name
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				// Retrieve redis lock
-				MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+				// Release globalLock
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Mock rolling update with rollback
+				MockRollingUpdateFlow(
+					mockRedisClient,
+					mockDb,
+					mockClock,
+					mockPipeline,
+					mockPortChooser,
+					opManager,
+					config,
+					timeoutSec, lockTimeoutMs, numberOfVersions, portStart, portEnd, 10,
+					yamlString, workerPortRange,
+					scheduler1,
+					&configYaml1,
+					nil,
+					false,
+					calls,
+				)
+
+				calls.Finish()
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2404,7 +2494,7 @@ game: game-name
 			})
 
 			It("should update image with max surge of 100%", func() {
-				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2425,24 +2515,24 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				// Select current scheduler yaml
-				MockSelectScheduler(yamlString, mockDb, nil)
+				calls := NewCalls()
 
-				// Get redis lock
-				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+				// Get global lock
+				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Get config lock
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
 				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-				// Remove old rooms
-				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
+				// Get scheduler from DB
+				MockSelectScheduler(yamlString, mockDb, nil)
 
-				// Create new roome
-				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
-				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
-
-				// Update new config on schedulers table
+				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, nil)
 
 				// Add new version into versions table
@@ -2452,8 +2542,28 @@ game: game-name
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				// Retrieve redis lock
-				MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+				// Release globalLock
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Mock rolling update with rollback
+				MockRollingUpdateFlow(
+					mockRedisClient,
+					mockDb,
+					mockClock,
+					mockPipeline,
+					mockPortChooser,
+					opManager,
+					config,
+					timeoutSec, lockTimeoutMs, numberOfVersions, portStart, portEnd, 10,
+					yamlString, workerPortRange,
+					scheduler1,
+					&configYaml,
+					nil,
+					false,
+					calls,
+				)
+
+				calls.Finish()
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2737,7 +2847,7 @@ game: game-name
 			})
 
 			It("should set image if basicauth is not sent and tryOauthIfUnset is true", func() {
-				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -2766,24 +2876,24 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				// Select current scheduler yaml
-				MockSelectScheduler(yamlString, mockDb, nil)
+				calls := NewCalls()
 
-				// Get redis lock
-				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+				// Get global lock
+				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Get config lock
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
 				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-				// Remove old rooms
-				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
+				// Get scheduler from DB
+				MockSelectScheduler(yamlString, mockDb, nil)
 
-				// Create new roome
-				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
-				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
-
-				// Update new config on schedulers table
+				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, nil)
 
 				// Add new version into versions table
@@ -2793,8 +2903,28 @@ game: game-name
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				// Retrieve redis lock
-				MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+				// Release globalLock
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Mock rolling update with rollback
+				MockRollingUpdateFlow(
+					mockRedisClient,
+					mockDb,
+					mockClock,
+					mockPipeline,
+					mockPortChooser,
+					opManager,
+					config,
+					timeoutSec, lockTimeoutMs, numberOfVersions, portStart, portEnd, 10,
+					yamlString, workerPortRange,
+					scheduler1,
+					&configYaml,
+					nil,
+					false,
+					calls,
+				)
+
+				calls.Finish()
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2838,7 +2968,6 @@ game: game-name
 
 				newImageName := "new-image"
 				containerName := "container1"
-				lockKeyNs := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
 
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
@@ -2859,23 +2988,24 @@ game: game-name
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
-				// Select current scheduler yaml
-				MockSelectScheduler(jsonString, mockDb, nil)
+				calls := NewCalls()
 
-				// Get redis lock
-				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+				// Get global lock
+				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Get config lock
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
 				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-				// Remove old rooms
-				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml1)
+				// Get scheduler from DB
+				MockSelectScheduler(jsonString, mockDb, nil)
 
-				// Create new roome
-				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml1, 0)
-
-				// Update new config on schedulers table
+				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, nil)
 
 				// Add new version into versions table
@@ -2885,8 +3015,28 @@ game: game-name
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				// Retrieve redis lock
-				MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+				// Release globalLock
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Mock rolling update with rollback
+				MockRollingUpdateFlow(
+					mockRedisClient,
+					mockDb,
+					mockClock,
+					mockPipeline,
+					mockPortChooser,
+					opManager,
+					config,
+					timeoutSec, lockTimeoutMs, numberOfVersions, portStart, portEnd, 1,
+					jsonString, workerPortRange,
+					scheduler1,
+					&configYaml1,
+					nil,
+					false,
+					calls,
+				)
+
+				calls.Finish()
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2940,24 +3090,24 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				// Select current scheduler yaml
-				MockSelectScheduler(yamlString, mockDb, nil)
+				calls := NewCalls()
 
-				// Get redis lock
-				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
+				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+				// Get global lock
+				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Get config lock
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
 				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-				// Remove old rooms
-				MockRemoveRoomsFromRedis(mockRedisClient, mockPipeline, pods, &configYaml)
+				// Get scheduler from DB
+				MockSelectScheduler(yamlString, mockDb, nil)
 
-				// Create new roome
-				// It will use the same number of rooms as config1, and ScaleUp to new min in Watcher at AutoScale
-				MockCreateRooms(mockRedisClient, mockPipeline, &configYaml, 0)
-				MockGetPortsFromPool(&configYaml, mockRedisClient, nil, workerPortRange, portStart, portEnd, 0)
-
-				// Update new config on schedulers table
+				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, nil)
 
 				// Add new version into versions table
@@ -2967,8 +3117,28 @@ game: game-name
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				// Retrieve redis lock
-				MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
+				// Release globalLock
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Mock rolling update with rollback
+				MockRollingUpdateFlow(
+					mockRedisClient,
+					mockDb,
+					mockClock,
+					mockPipeline,
+					mockPortChooser,
+					opManager,
+					config,
+					timeoutSec, lockTimeoutMs, numberOfVersions, portStart, portEnd, 10,
+					yamlString, workerPortRange,
+					scheduler1,
+					&configYaml,
+					nil,
+					false,
+					calls,
+				)
+
+				calls.Finish()
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2978,7 +3148,7 @@ game: game-name
 				Expect(response).To(HaveKey("operationKey"))
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 
-				Eventually(opManager.IsStopped, 1*time.Minute).Should(BeTrue())
+				Eventually(opManager.IsStopped, 30*time.Second).Should(BeTrue())
 			})
 
 			It("should update image asynchronously and show error when occurred", func() {
@@ -3109,7 +3279,7 @@ game: game-name
 			})
 
 			It("should update min", func() {
-				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -3125,30 +3295,45 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				schedulerLockKey := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
-				mockRedisClient.EXPECT().
-					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil))
-				mockRedisClient.EXPECT().
-					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil))
+				calls := NewCalls()
+
+				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+				// Get global lock
+				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Get config lock
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
 				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					})
+				// Get scheduler from DB
+				MockSelectScheduler(yamlString, mockDb, nil)
 
-				// Update new config on schedulers table
+				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, nil)
+
 				// Add new version into versions table
 				scheduler1.NextMinorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
+
+				// Release globalLock
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Release globalLock (defer)
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Release configLock
+				MockReturnRedisLock(mockRedisClient, configLockKey, nil)
+
+				MockUpdateVersionsTable(mockDb, nil)
+
+				calls.Finish()
 
 				recorder = httptest.NewRecorder()
 
@@ -3250,7 +3435,7 @@ game: game-name
 			})
 
 			It("should set min 0 if body is empty (default value is 0)", func() {
-				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -3264,30 +3449,45 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					})
+				calls := NewCalls()
 
-				schedulerLockKey := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
-				mockRedisClient.EXPECT().
-					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil))
-				mockRedisClient.EXPECT().
-					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil))
+				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+				// Get global lock
+				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Get config lock
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
 				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-				// Update new config on schedulers table
+				// Get scheduler from DB
+				MockSelectScheduler(yamlString, mockDb, nil)
+
+				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, nil)
+
 				// Add new version into versions table
 				scheduler1.NextMinorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
+
+				// Release globalLock
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Release globalLock (defer)
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Release configLock
+				MockReturnRedisLock(mockRedisClient, configLockKey, nil)
+
+				MockUpdateVersionsTable(mockDb, nil)
+
+				calls.Finish()
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -3352,7 +3552,7 @@ game: game-name
 			})
 
 			It("should set min if basicauth is not sent and tryOauthIfUnset is true", func() {
-				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -3366,17 +3566,6 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
 
-				schedulerLockKey := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
-				mockRedisClient.EXPECT().
-					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil))
-				mockRedisClient.EXPECT().
-					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil))
-
-				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
-
 				// Update scheduler
 				body := map[string]interface{}{"min": configYaml1.AutoScaling.Min + 1}
 				bts, _ := json.Marshal(body)
@@ -3385,21 +3574,47 @@ game: game-name
 				request, err = http.NewRequest("PUT", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
-
-				mockDb.EXPECT().
-					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					})
-
 				scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-				// Update new config on schedulers table
+
+				calls := NewCalls()
+
+				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+				// Get global lock
+				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Get config lock
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
+
+				// Set new operation manager description
+				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+
+				// Get scheduler from DB
+				MockSelectScheduler(yamlString, mockDb, nil)
+
+				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, nil)
+
 				// Add new version into versions table
 				scheduler1.NextMinorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
+
+				// Release globalLock
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Release globalLock (again defer)
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Release configLock
+				MockReturnRedisLock(mockRedisClient, configLockKey, nil)
+
+				MockUpdateVersionsTable(mockDb, nil)
+
+				calls.Finish()
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -3448,30 +3663,45 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				schedulerLockKey := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
-				mockRedisClient.EXPECT().
-					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil))
-				mockRedisClient.EXPECT().
-					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil))
+				calls := NewCalls()
+
+				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+				// Get global lock
+				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Get config lock
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
 				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					})
+				// Get scheduler from DB
+				MockSelectScheduler(yamlString, mockDb, nil)
 
-				// Update new config on schedulers table
+				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, nil)
+
 				// Add new version into versions table
 				scheduler1.NextMinorVersion()
 				MockInsertIntoVersionsTable(scheduler1, mockDb, nil)
+
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
+
+				// Release globalLock
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Release globalLock (defer)
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Release configLock
+				MockReturnRedisLock(mockRedisClient, configLockKey, nil)
+
+				MockUpdateVersionsTable(mockDb, nil)
+
+				calls.Finish()
 
 				recorder = httptest.NewRecorder()
 
@@ -3515,6 +3745,8 @@ game: game-name
 					opManager.StopLoop()
 				})
 
+				scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
+
 				newMin := configYaml1.AutoScaling.Min + 1
 
 				// Update scheduler
@@ -3526,25 +3758,33 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				request.SetBasicAuth(user, pass)
 
-				schedulerLockKey := fmt.Sprintf("%s-%s", lockKey, configYaml1.Name)
-				mockRedisClient.EXPECT().
-					Eval(gomock.Any(), []string{schedulerLockKey}, gomock.Any()).
-					Return(redis.NewCmdResult(nil, nil))
-				mockRedisClient.EXPECT().
-					SetNX(schedulerLockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
-					Return(redis.NewBoolResult(true, nil))
+				calls := NewCalls()
+
+				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+
+				// Get global lock
+				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
+
+				// Get config lock
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
 				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
 
-				mockDb.EXPECT().
-					Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
-					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					})
+				// Get scheduler from DB
+				MockSelectScheduler(yamlString, mockDb, nil)
 
-				// Update new config on schedulers table
+				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, errors.New("db failed"))
+
+				// Release globalLock
+				MockReturnRedisLock(mockRedisClient, lockKey, nil)
+
+				// Release configLock
+				MockReturnRedisLock(mockRedisClient, configLockKey, nil)
+
+				calls.Finish()
 
 				recorder = httptest.NewRecorder()
 

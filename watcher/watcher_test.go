@@ -446,6 +446,7 @@ var _ = Describe("Watcher", func() {
 
 		BeforeEach(func() {
 			config.Set("watcher.autoScalingPeriod", 1)
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 		})
 
 		It("should start watcher", func() {
@@ -905,6 +906,8 @@ var _ = Describe("Watcher", func() {
 
 				// Mock send usage percentage
 				testing.MockSendUsage(mockPipeline, mockRedisClient, mockAutoScaling)
+
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 			})
 
 			It("should scale up and update scheduler state", func() {
@@ -1073,6 +1076,11 @@ var _ = Describe("Watcher", func() {
 				})
 				expC := &models.RoomsStatusCount{0, 2, 100, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
+
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 				// Mock MetricsTrigger Up get usage percentages
 				for _, trigger := range mockAutoScaling.Up.MetricsTrigger {
@@ -1255,6 +1263,11 @@ var _ = Describe("Watcher", func() {
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
 					scheduler.YAML = yamlWithUpLimit
 				})
+
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 				expC := &models.RoomsStatusCount{0, 2, 100, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
@@ -1622,6 +1635,11 @@ var _ = Describe("Watcher", func() {
 				expC := &models.RoomsStatusCount{0, 1, 4, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(&configYaml, mockPipeline, mockRedisClient, expC)
 
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+
 				err := testing.MockSetScallingAmountWithRoomStatusCount(
 					mockRedisClient,
 					mockPipeline,
@@ -1795,6 +1813,8 @@ var _ = Describe("Watcher", func() {
 				Expect(w).NotTo(BeNil())
 				testing.CopyAutoScaling(configYaml.AutoScaling, mockAutoScaling)
 				testing.TransformLegacyInMetricsTrigger(mockAutoScaling)
+
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 			})
 
 			It("should terminate watcher if scheduler is not in database", func() {
@@ -1836,12 +1856,19 @@ var _ = Describe("Watcher", func() {
 
 				// Mock send usage percentage
 				testing.MockSendUsage(mockPipeline, mockRedisClient, mockAutoScaling)
+
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 			})
 
 			// Down
 			It("should scale down if 90% of the points are above threshold", func() {
 				expC := &models.RoomsStatusCount{0, 1, 4, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
+
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 				// Mock scheduler
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
@@ -1957,6 +1984,11 @@ var _ = Describe("Watcher", func() {
 				expC := &models.RoomsStatusCount{0, 1, 2, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+
 				// Mock scheduler
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
@@ -2046,6 +2078,11 @@ var _ = Describe("Watcher", func() {
 			It("should scale down if total rooms above max", func() {
 				expC := &models.RoomsStatusCount{0, 9, 3, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
+
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 				// Mock scheduler
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
@@ -2360,12 +2397,19 @@ var _ = Describe("Watcher", func() {
 
 				// Mock send usage percentage
 				testing.MockSendUsage(mockPipeline, mockRedisClient, mockAutoScaling)
+
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 			})
 
 			// Down
 			It("should scale down if 90% of the points are above threshold", func() {
 				expC := &models.RoomsStatusCount{0, 1, 4, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
+
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 				// Mock scheduler
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
@@ -2493,6 +2537,11 @@ var _ = Describe("Watcher", func() {
 				configYaml.AutoScaling.Min = 4
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+
 				// Mock scheduler
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
@@ -2582,6 +2631,11 @@ var _ = Describe("Watcher", func() {
 			It("should scale down if total rooms above max", func() {
 				expC := &models.RoomsStatusCount{0, 9, 3, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
+
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 				// Mock scheduler
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
@@ -2884,12 +2938,19 @@ var _ = Describe("Watcher", func() {
 
 				// Mock send usage percentage
 				testing.MockSendUsage(mockPipeline, mockRedisClient, configYaml.AutoScaling)
+
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 			})
 
 			// Down
 			It("should scale down if 90% of the points are above threshold", func() {
 				expC := &models.RoomsStatusCount{0, 1, 4, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
+
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 				// Mock scheduler
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
@@ -3017,6 +3078,11 @@ var _ = Describe("Watcher", func() {
 				configYaml.AutoScaling.Min = 4
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
 
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+
 				// Mock scheduler
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
@@ -3106,6 +3172,11 @@ var _ = Describe("Watcher", func() {
 			It("should scale down if total rooms above max", func() {
 				expC := &models.RoomsStatusCount{0, 20, 3, 0} // creating,occupied,ready,terminating
 				testing.MockRoomDistribution(configYaml, mockPipeline, mockRedisClient, expC)
+
+				// EnterCriticalSection (lock done by redis-lock)
+				downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+				testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+				testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 				// Mock scheduler
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
@@ -3443,6 +3514,8 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				testing.CreatePod(clientset, "1.0", "1Gi", configYaml.Name, "", configYaml.Name)
+
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 			})
 
 			// Down
@@ -3461,6 +3534,13 @@ var _ = Describe("Watcher", func() {
 					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
 					percentageOfPointsAboveTargetUsage: 90,
 					logMessages:                        []string{"scheduler is overdimensioned, should scale down"},
+				}
+
+				// EnterCriticalSection (lock done by redis-lock)
+				for index := 0; index < 2; index++ {
+					downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+					testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+					testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 				}
 
 				// CPU
@@ -3567,6 +3647,13 @@ var _ = Describe("Watcher", func() {
 					},
 				}
 
+				// EnterCriticalSection (lock done by redis-lock)
+				for index := 0; index < 2; index++ {
+					downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+					testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+					testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+				}
+
 				// CPU
 				simSpec.deltaExpected = calculateExpectedDelta(
 					configYaml.AutoScaling.Down.MetricsTrigger[0],
@@ -3627,6 +3714,13 @@ var _ = Describe("Watcher", func() {
 					metricTypeToScale:                  models.CPUAutoScalingPolicyType,
 					percentageOfPointsAboveTargetUsage: 20,
 					logMessages:                        []string{"scheduler is overdimensioned, should scale down"},
+				}
+
+				// EnterCriticalSection (lock done by redis-lock)
+				for index := 0; index < 2; index++ {
+					downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+					testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+					testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 				}
 
 				// CPU
@@ -3929,6 +4023,8 @@ var _ = Describe("Watcher", func() {
 				},
 			)
 			Expect(w).NotTo(BeNil())
+
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 		})
 
 		It("should call controller DeleteRoomsNoPingSince and DeleteRoomsOccupiedTimeout", func() {
@@ -4182,6 +4278,8 @@ var _ = Describe("Watcher", func() {
 				yamlActive = yamlWithCPUAndMemoryMetricsTrigger
 				err := yaml.Unmarshal([]byte(yamlActive), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
+
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 			})
 
 			It("should add utilization metrics to redis", func() {
@@ -4399,6 +4497,8 @@ var _ = Describe("Watcher", func() {
 				configYaml.Name, configYaml.Game, occupiedTimeout,
 				[]*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
+
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 		})
 
 		It("should return error if fail to get scheduler", func() {
@@ -4426,6 +4526,11 @@ var _ = Describe("Watcher", func() {
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
 				w.SchedulerName, [][]string{}, errDB)
 
+			// EnterCriticalSection (lock done by redis-lock)
+			downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+			testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+
 			err := w.EnsureCorrectRooms()
 
 			Expect(err).To(HaveOccurred())
@@ -4439,6 +4544,11 @@ var _ = Describe("Watcher", func() {
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
 				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
+
+			// EnterCriticalSection (lock done by redis-lock)
+			downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+			testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 			for _, podName := range podNames {
 				pod := &v1.Pod{}
@@ -4476,6 +4586,11 @@ var _ = Describe("Watcher", func() {
 		It("should delete invalid pods", func() {
 			podNames := []string{"room-1", "room-2"}
 			room := models.NewRoom(podNames[0], w.SchedulerName)
+
+			// EnterCriticalSection (lock done by redis-lock)
+			downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+			testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
@@ -4533,6 +4648,8 @@ var _ = Describe("Watcher", func() {
 			r := reporters.GetInstance()
 			mockReporter = reportersMocks.NewMockReporter(mockCtrl)
 			r.SetReporter("mockReporter", mockReporter)
+
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 		})
 
 		AfterEach(func() {

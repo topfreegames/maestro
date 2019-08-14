@@ -29,20 +29,21 @@ import (
 )
 
 var (
-	clientset          *fake.Clientset
-	metricsClientset   *metricsFake.Clientset
-	config             *viper.Viper
-	hook               *test.Hook
-	logger             *logrus.Logger
-	roomManager        models.RoomManager
-	mockCtrl           *gomock.Controller
-	mockDb             *pgmocks.MockDB
-	mockPipeline       *redismocks.MockPipeliner
-	mockRedisClient    *redismocks.MockRedisClient
-	mockEventForwarder *eventforwardermock.MockEventForwarder
-	mr                 *models.MixedMetricsReporter
-	redisClient        *redis.Client
-	allStatus          = []string{
+	clientset             *fake.Clientset
+	metricsClientset      *metricsFake.Clientset
+	config                *viper.Viper
+	hook                  *test.Hook
+	logger                *logrus.Logger
+	roomManager           models.RoomManager
+	mockCtrl              *gomock.Controller
+	mockDb                *pgmocks.MockDB
+	mockPipeline          *redismocks.MockPipeliner
+	mockRedisClient       *redismocks.MockRedisClient
+	mockRedisTraceWrapper *redismocks.MockTraceWrapper
+	mockEventForwarder    *eventforwardermock.MockEventForwarder
+	mr                    *models.MixedMetricsReporter
+	redisClient           *redis.Client
+	allStatus             = []string{
 		models.StatusCreating,
 		models.StatusReady,
 		models.StatusOccupied,
@@ -78,7 +79,8 @@ var _ = BeforeEach(func() {
 	config, err = mtesting.GetDefaultConfig()
 	Expect(err).NotTo(HaveOccurred())
 	mockRedisClient.EXPECT().Ping()
-	redisClient, err = redis.NewClient("extensions.redis", config, mockRedisClient)
+	mockRedisTraceWrapper = redismocks.NewMockTraceWrapper(mockCtrl)
+	redisClient, err = redis.NewClient("extensions.redis", config, mockRedisClient, mockRedisTraceWrapper)
 	Expect(err).NotTo(HaveOccurred())
 	roomManager = &models.GameRoom{}
 })

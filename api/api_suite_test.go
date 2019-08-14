@@ -26,7 +26,8 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/api"
-	"github.com/topfreegames/maestro/login/mocks"
+	loginMocks "github.com/topfreegames/maestro/login/mocks"
+	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes/fake"
 	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
@@ -46,12 +47,13 @@ var (
 	mockRedisClient       *redismocks.MockRedisClient
 	mockRedisTraceWrapper *redismocks.MockTraceWrapper
 	mockClientset         *fake.Clientset
+	mockPortChooser       *mocks.MockPortChooser
 	mockEventForwarder1   *eventforwardermock.MockEventForwarder
 	mockEventForwarder2   *eventforwardermock.MockEventForwarder
 	mockEventForwarder3   *eventforwardermock.MockEventForwarder
 	mockEventForwarder4   *eventforwardermock.MockEventForwarder
 	mockEventForwarder5   *eventforwardermock.MockEventForwarder
-	mockLogin             *mocks.MockLogin
+	mockLogin             *loginMocks.MockLogin
 	mockClock             *clockmocks.MockClock
 	mmr                   *models.MixedMetricsReporter
 	allStatus             = []string{
@@ -85,6 +87,7 @@ var _ = BeforeEach(func() {
 	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockCtxWrapper = pgmocks.NewMockCtxWrapper(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
+	mockPortChooser = mocks.NewMockPortChooser(mockCtrl)
 	mockRedisTraceWrapper = redismocks.NewMockTraceWrapper(mockCtrl)
 	mockEventForwarder1 = eventforwardermock.NewMockEventForwarder(mockCtrl)
 	mockEventForwarder2 = eventforwardermock.NewMockEventForwarder(mockCtrl)
@@ -107,7 +110,7 @@ var _ = BeforeEach(func() {
 	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 	Expect(err).NotTo(HaveOccurred())
 
-	mockLogin = mocks.NewMockLogin(mockCtrl)
+	mockLogin = loginMocks.NewMockLogin(mockCtrl)
 	app.Login = mockLogin
 })
 
