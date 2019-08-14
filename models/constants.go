@@ -102,3 +102,10 @@ const Global = "global"
 
 // PodNotFitsHostPorts is a message when the pod's host port is no available in any node of the pool
 const PodNotFitsHostPorts = "PodFitsHostPorts"
+
+// InvalidPodWaitingStates are all the states that are not accepted in a waiting pod.
+var InvalidPodWaitingStates = []string{
+	"ErrImageNeverPull",
+	"ErrImagePullBackOff",
+	"CrashLoopBackOff",
+}

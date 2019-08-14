@@ -1029,7 +1029,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	)
 
 	if downScalingBlocked {
-		logger.Infof("not able to ensure correct rooms. Rolling update in place for scheduler %s", scheduler.Name)
+		logger.Debugf("not able to ensure correct rooms. Rolling update in place for scheduler %s", scheduler.Name)
 		return nil
 	}
 
