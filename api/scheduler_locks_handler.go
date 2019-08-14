@@ -29,9 +29,9 @@ func (h *SchedulerLocksListHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		"scheduler": params.SchedulerName,
 	})
 	logger.Debug("Getting scheduler locks")
-	locksPrefixes := []string{h.App.Config.GetString("watcher.lockKey")}
+	lockPrefix := h.App.Config.GetString("watcher.lockKey")
 	locks, err := models.ListSchedulerLocks(
-		h.App.RedisClient.Trace(r.Context()), params.SchedulerName, locksPrefixes,
+		h.App.RedisClient.Trace(r.Context()), lockPrefix, params.SchedulerName,
 	)
 	if err != nil {
 		logger.WithError(err).Error("error listing scheduler locks")
@@ -68,9 +68,9 @@ func (h *SchedulerLockDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 		"lock":      params.LockKey,
 	})
 	logger.Debug("Getting scheduler locks")
-	locksPrefixes := []string{h.App.Config.GetString("watcher.lockKey")}
+	prefix := h.App.Config.GetString("watcher.lockKey")
 	isLockValid := false
-	validLocksKeys := models.ListSchedulerLocksKeys(params.SchedulerName, locksPrefixes)
+	validLocksKeys := models.ListSchedulerLocksKeys(prefix, params.SchedulerName)
 	for _, possible := range validLocksKeys {
 		if possible == params.LockKey {
 			isLockValid = true
