@@ -139,7 +139,7 @@ func createNewRemoveOldPod(
 	err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
 		configYAML, pod.GetName(), reportersConstants.ReasonUpdate)
 	if err != nil && !strings.Contains(err.Error(), "redis") {
-		logger.WithError(err).Debugf("error deleting pod %s", pod.GetName())
+		logger.WithError(err).Errorf("error deleting pod %s during rolling update", pod.GetName())
 		return false, false, nil
 	}
 
