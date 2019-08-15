@@ -400,6 +400,39 @@ func IsPodReady(pod *v1.Pod) bool {
 	return false
 }
 
+// ValidatePodWaitingState returns nil if pod waiting reson is valid and error otherwise
+// Errors checked:
+// - ErrImageNeverPull
+// - CrashLoopBackOff
+// - ErrImagePullBackOff
+// - ErrInvalidImageName
+func ValidatePodWaitingState(pod *v1.Pod) error {
+
+	for _, invalidState := range InvalidPodWaitingStates {
+		status := &pod.Status
+		if checkWaitingReason(status, invalidState) {
+			return fmt.Errorf("one or more containers in pod are in %s", invalidState)
+		}
+	}
+
+	return nil
+}
+
+func checkWaitingReason(status *v1.PodStatus, reason string) bool {
+	if status == nil {
+		return false
+	}
+
+	for _, containerStatus := range status.ContainerStatuses {
+		state := containerStatus.State
+		if state.Waiting != nil && state.Waiting.Reason == reason {
+			return true
+		}
+	}
+
+	return false
+}
+
 // PodPending returns true if pod is with status Pending.
 // In this case, also returns reason for being pending and message.
 func PodPending(pod *v1.Pod) (isPending bool, reason, message string) {

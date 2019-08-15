@@ -5,7 +5,6 @@ import "fmt"
 // SchedulerVersions rolling update statuses
 const (
 	timedoutStatus   = "timed out"
-	erroredStatus    = "error"
 	canceledStatus   = "canceled"
 	inProgressStatus = "in progress"
 	deployedStatus   = "deployed"
@@ -14,5 +13,9 @@ const (
 var (
 	rollbackStatus = func(version string) string {
 		return fmt.Sprintf("rolled back to %s", version)
+	}
+
+	erroredStatus = func(err string) string {
+		return fmt.Sprintf("error: %s", err)
 	}
 )

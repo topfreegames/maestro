@@ -127,11 +127,11 @@ func createNewRemoveOldPod(
 
 	// wait for new pod to be created
 	timeout := willTimeoutAt.Sub(clock.Now())
-	timedout, canceled = waitCreatingPods(
+	timedout, canceled, err = waitCreatingPods(
 		logger, clientset, timeout, configYAML.Name,
 		[]v1.Pod{*newPod}, operationManager, mr)
-	if timedout || canceled {
-		return timedout, canceled, nil
+	if timedout || canceled || err != nil {
+		return timedout, canceled, err
 	}
 
 	// delete old pod
@@ -366,7 +366,7 @@ func waitCreatingPods(
 	createdPods []v1.Pod,
 	operationManager *models.OperationManager,
 	mr *models.MixedMetricsReporter,
-) (timedout, wasCanceled bool) {
+) (timedout, wasCanceled bool, err error) {
 	logger := l.WithFields(logrus.Fields{
 		"operation": "controller.waitCreatingPods",
 		"scheduler": namespace,
@@ -384,7 +384,7 @@ func waitCreatingPods(
 			// operationManger is nil when rolling back (rollback can't be canceled)
 			if operationManager != nil && operationManager.WasCanceled() {
 				logger.Warn("operation was canceled")
-				return false, true
+				return false, true, nil
 			}
 
 			for _, pod := range createdPods {
@@ -396,6 +396,7 @@ func waitCreatingPods(
 					)
 					return err
 				})
+
 				if err != nil && strings.Contains(err.Error(), "not found") {
 					exit = false
 					logger.
@@ -434,22 +435,20 @@ func waitCreatingPods(
 
 				if !models.IsPodReady(createdPod) {
 					logger.WithField("pod", createdPod.GetName()).Debug("pod not ready yet, waiting...")
-					exit = false
-					break
-				}
+					err = models.ValidatePodWaitingState(createdPod)
 
-				if err != nil && !strings.Contains(err.Error(), "not found") {
-					logger.
-						WithError(err).
-						WithField("pod", pod.GetName()).
-						Info("error getting pod")
+					if err != nil {
+						logger.WithField("pod", pod.GetName()).WithError(err).Error("invalid pod waiting state")
+						return false, false, err
+					}
+
 					exit = false
 					break
 				}
 			}
 		case <-timeoutTimer.C:
 			logger.Error("timeout waiting for rooms to be created")
-			return true, false
+			return true, false, nil
 		}
 
 		if exit {
@@ -458,7 +457,7 @@ func waitCreatingPods(
 		}
 	}
 
-	return false, false
+	return false, false, nil
 }
 
 // DeletePodAndRoom deletes the pod and removes the room from redis
@@ -996,6 +995,14 @@ func acquireLock(
 	lockTimeoutMS := config.GetInt("watcher.lockTimeoutMs")
 	timeoutDur := time.Duration(timeoutSec) * time.Second
 	ticker := time.NewTicker(2 * time.Second)
+
+	// guarantee that downScaling and config locks doesn't timeout before update times out.
+	// otherwise it can result in all pods dying during a rolling update that is destined to timeout
+	if lockKey == models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), schedulerName) ||
+		lockKey == models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), schedulerName) {
+		lockTimeoutMS = (timeoutSec + 1) * 1000
+	}
+
 	defer ticker.Stop()
 	timeout := time.NewTimer(timeoutDur)
 	defer timeout.Stop()
@@ -1029,6 +1036,7 @@ func acquireLock(
 
 			if lock == nil {
 				l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
+				break
 			}
 
 			if lock.IsLocked() {
