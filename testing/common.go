@@ -64,7 +64,7 @@ func MockRedisLock(
 	calls = NewCalls()
 
 	calls.Add(mockRedisClient.EXPECT().
-		SetNX(lockKey, gomock.Any(), time.Duration(lockTimeoutMs)*time.Millisecond).
+		SetNX(lockKey, gomock.Any(), gomock.Any()).
 		Return(goredis.NewBoolResult(lockResult, errLock)))
 
 	return calls

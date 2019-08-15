@@ -765,7 +765,7 @@ func UpdateSchedulerConfig(
 
 				if errored != nil {
 					err = errored
-					scheduler.RollingUpdateStatus = erroredStatus
+					scheduler.RollingUpdateStatus = erroredStatus(err.Error())
 				}
 
 				updateErr := scheduler.UpdateVersionStatus(db)
