@@ -777,7 +777,7 @@ autoscaling:
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 					// Set new operation manager description
-					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 					// Get scheduler from DB
 					MockSelectScheduler(yamlString, mockDb, nil)
@@ -940,7 +940,7 @@ autoscaling:
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 					// Set new operation manager description
-					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 					// Get scheduler from DB
 					MockSelectScheduler(yamlString1, mockDb, nil)
@@ -1004,7 +1004,7 @@ autoscaling:
 					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					// Set new operation manager description
-					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 					mockDb.EXPECT().
 						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name)
@@ -1075,7 +1075,7 @@ autoscaling:
 					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					// Set new operation manager description
-					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 					mockDb.EXPECT().
 						Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml1.Name).
@@ -1154,7 +1154,7 @@ autoscaling:
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 					// Set new operation manager description
-					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 					// Get scheduler from DB
 					MockSelectScheduler(yamlString, mockDb, nil)
@@ -1267,7 +1267,7 @@ autoscaling:
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 					// Set new operation manager description
-					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 					// Get scheduler from DB
 					MockSelectScheduler(yamlString, mockDb, nil)
@@ -1324,7 +1324,7 @@ autoscaling:
 					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					// Set new operation manager description
-					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 					mockDb.EXPECT().Query(
 						gomock.Any(),
@@ -1502,7 +1502,7 @@ forwarders:
 					MockUpdateVersionsTable(mockDb, nil)
 
 					// Set new operation manager description
-					MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 					// Update new config on schedulers table
@@ -2449,7 +2449,7 @@ game: game-name
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 				// Get scheduler from DB
 				MockSelectScheduler(yamlString, mockDb, nil)
@@ -2527,7 +2527,7 @@ game: game-name
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 				// Get scheduler from DB
 				MockSelectScheduler(yamlString, mockDb, nil)
@@ -2888,7 +2888,7 @@ game: game-name
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 				// Get scheduler from DB
 				MockSelectScheduler(yamlString, mockDb, nil)
@@ -3000,7 +3000,7 @@ game: game-name
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 				// Get scheduler from DB
 				MockSelectScheduler(jsonString, mockDb, nil)
@@ -3102,7 +3102,7 @@ game: game-name
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 				// Get scheduler from DB
 				MockSelectScheduler(yamlString, mockDb, nil)
@@ -3307,7 +3307,7 @@ game: game-name
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 				// Get scheduler from DB
 				MockSelectScheduler(yamlString, mockDb, nil)
@@ -3461,7 +3461,7 @@ game: game-name
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 				// Get scheduler from DB
 				MockSelectScheduler(yamlString, mockDb, nil)
@@ -3588,7 +3588,7 @@ game: game-name
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 				// Get scheduler from DB
 				MockSelectScheduler(yamlString, mockDb, nil)
@@ -3675,7 +3675,7 @@ game: game-name
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 				// Get scheduler from DB
 				MockSelectScheduler(yamlString, mockDb, nil)
@@ -3770,7 +3770,7 @@ game: game-name
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 				// Set new operation manager description
-				MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 				// Get scheduler from DB
 				MockSelectScheduler(yamlString, mockDb, nil)

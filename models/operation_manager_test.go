@@ -30,7 +30,7 @@ var _ = Describe("OperationManager", func() {
 	var errDB = errors.New("db failed")
 	var initialStatus = map[string]interface{}{
 		"operation":   opName,
-		"description": "waiting for lock",
+		"description": OpManagerWaitingLock,
 	}
 
 	toMapStringString := func(m map[string]interface{}) map[string]string {
@@ -154,7 +154,7 @@ var _ = Describe("OperationManager", func() {
 
 	Describe("Finish", func() {
 		var status = http.StatusOK
-		var description = "finished"
+		var description = OpManagerFinished
 
 		It("should save result on redis when not error", func() {
 			mockFinishOnRedis(map[string]interface{}{

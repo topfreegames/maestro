@@ -89,7 +89,7 @@ func (o *OperationManager) Start(
 	txpipeline := o.redisClient.TxPipeline()
 	txpipeline.HMSet(o.operationKey, map[string]interface{}{
 		"operation":   operationName,
-		"description": "waiting for lock",
+		"description": OpManagerWaitingLock,
 	})
 	txpipeline.Expire(o.operationKey, timeout)
 	txpipeline.Set(o.BuildCurrOpKey(), o.operationKey, timeout)
@@ -207,7 +207,7 @@ func (o *OperationManager) Finish(status int, description string, opErr error) e
 		"success":     opErr == nil,
 		"status":      status,
 		"operation":   o.operationName,
-		"description": "finished",
+		"description": OpManagerFinished,
 	}
 
 	if opErr != nil {

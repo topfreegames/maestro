@@ -16,18 +16,13 @@ import (
 )
 
 func getOperationRollingProgress(
-	ctx context.Context, app *App, schedulerName string,
+	ctx context.Context, app *App, status map[string]string, schedulerName string,
 ) (float64, string, error) {
 	scheduler := models.NewScheduler(schedulerName, "", "")
 	err := scheduler.Load(app.DBClient.WithContext(ctx))
 	if err != nil {
 		return 0, "error getting scheduler for getting progress", err
 	}
-
-	scheduler.NextMinorVersion()
-	minor := scheduler.Version
-	scheduler.NextMajorVersion()
-	major := scheduler.Version
 
 	k := kubernetes.TryWithContext(app.KubernetesClient, ctx)
 	totalPods, err := k.CoreV1().Pods(schedulerName).List(
@@ -40,32 +35,22 @@ func getOperationRollingProgress(
 
 	var new float64
 
-	podsMinorVersion, err := k.CoreV1().Pods(
+	podsUpdated, err := k.CoreV1().Pods(
 		schedulerName,
 	).List(metav1.ListOptions{
-		LabelSelector: labels.Set{"version": minor}.String(),
+		LabelSelector: labels.Set{"version": scheduler.Version}.String(),
 	})
 	if err != nil {
 		return 0, "error getting getting pods from kubernetes", err
 	}
-	for _, pod := range podsMinorVersion.Items {
+	for _, pod := range podsUpdated.Items {
 		if models.IsPodReady(&pod) {
 			new = new + 1.0
 		}
 	}
 
-	podsMajorVersion, err := k.CoreV1().Pods(
-		schedulerName,
-	).List(metav1.ListOptions{
-		LabelSelector: labels.Set{"version": major}.String(),
-	})
-	if err != nil {
-		return 0, "error getting getting pods from kubernetes", err
-	}
-	for _, pod := range podsMajorVersion.Items {
-		if models.IsPodReady(&pod) {
-			new = new + 1.0
-		}
+	if status["description"] != models.OpManagerFinished && new/total > 0.99 {
+		return 0, "", nil
 	}
 
 	return 100.0 * new / total, "", nil
@@ -107,7 +92,7 @@ func getOperationStatus(
 		return status, "", nil
 	}
 
-	progress, errorMsg, err := getOperationRollingProgress(ctx, app, schedulerName)
+	progress, errorMsg, err := getOperationRollingProgress(ctx, app, status, schedulerName)
 	if err != nil {
 		return empty, errorMsg, err
 	}

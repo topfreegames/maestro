@@ -645,7 +645,7 @@ func UpdateSchedulerConfig(
 		return nil
 	}
 
-	operationManager.SetDescription("running")
+	operationManager.SetDescription(models.OpManagerRunning)
 
 	scheduler, oldConfig, err := loadScheduler(
 		mr,

@@ -94,7 +94,7 @@ autoscaling:
 			MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 			// Set new operation manager description
-			MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+			MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 			// Get scheduler from DB
 			MockSelectScheduler(yamlString, mockDb, nil)
@@ -232,7 +232,7 @@ autoscaling:
 			MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 			// Set new operation manager description
-			MockAnySetDescription(opManager, mockRedisClient, "running", nil)
+			MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 			// Get scheduler from DB
 			MockSelectScheduler(yamlString, mockDb, nil)

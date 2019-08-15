@@ -110,3 +110,14 @@ var InvalidPodWaitingStates = []string{
 	"CrashLoopBackOff",
 	"ErrInvalidImageName",
 }
+
+// OperationManager description constants
+
+// OpManagerRunning constant
+const OpManagerRunning = "running"
+
+// OpManagerWaitingLock constant
+const OpManagerWaitingLock = "waiting for lock"
+
+// OpManagerFinished constant
+const OpManagerFinished = "finished"
