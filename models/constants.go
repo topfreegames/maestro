@@ -108,4 +108,5 @@ var InvalidPodWaitingStates = []string{
 	"ErrImageNeverPull",
 	"ErrImagePullBackOff",
 	"CrashLoopBackOff",
+	"ErrInvalidImageName",
 }

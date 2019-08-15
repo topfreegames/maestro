@@ -388,6 +388,7 @@ func IsPodReady(pod *v1.Pod) bool {
 // - ErrImageNeverPull
 // - CrashLoopBackOff
 // - ErrImagePullBackOff
+// - ErrInvalidImageName
 func ValidatePodWaitingState(pod *v1.Pod) error {
 
 	for _, invalidState := range InvalidPodWaitingStates {
