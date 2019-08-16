@@ -248,12 +248,6 @@ func (c *Scheduler) NextMajorVersion() {
 	c.Version = fmt.Sprintf("v%d.0", major+1)
 }
 
-// PreviousMajorVersion decrements the major version
-func (c *Scheduler) PreviousMajorVersion() {
-	major, _, _ := c.splitedVersion()
-	c.Version = fmt.Sprintf("v%d.0", major-1)
-}
-
 // NextMinorVersion increments the minor version
 func (c *Scheduler) NextMinorVersion() {
 	major, minor, _ := c.splitedVersion()
