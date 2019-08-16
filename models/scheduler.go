@@ -212,17 +212,6 @@ func (c *Scheduler) Load(db interfaces.DB) error {
 	return err
 }
 
-// LoadWithVersionStatus loads a scheduler from the database using the scheduler name
-// and also loads its RollingUpdateStatus
-func (c *Scheduler) LoadWithVersionStatus(db interfaces.DB) error {
-	_, err := db.Query(c, "SELECT * FROM schedulers WHERE name = ?", c.Name)
-	if c.Version == "" {
-		c.Version = "v1.0"
-	}
-	_, err = db.Query(c, "SELECT rolling_update_status FROM scheduler_versions WHERE name = ? AND version = ?", c.Name, c.Version)
-	return err
-}
-
 // LoadSchedulers loads a slice of schedulers from database by names
 func LoadSchedulers(db interfaces.DB, names []string) ([]Scheduler, error) {
 	var schedulers []Scheduler

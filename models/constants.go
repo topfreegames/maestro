@@ -121,3 +121,6 @@ const OpManagerWaitingLock = "waiting for lock"
 
 // OpManagerFinished constant
 const OpManagerFinished = "finished"
+
+// OpManagerRollingBack constant
+const OpManagerRollingBack = "rolling back"

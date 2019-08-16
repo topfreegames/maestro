@@ -1560,22 +1560,41 @@ func MockRollingUpdateFlow(
 	// Delete old rooms
 	MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, configYaml, removeRoomsError, numRoomsToCreate)
 
-	// Update scheduler rolling update status
-	calls.Append(
-		MockUpdateVersionsTable(mockDb, nil))
-
 	if rollback {
-		MockRollback(
-			mockRedisClient,
-			mockDb,
-			mockClock,
-			opManager,
-			config,
-			timeoutSec, lockTimeoutMs, numberOfVersions,
-			yaml,
-			scheduler,
-			calls,
-		)
+		// Acquire global lock
+		calls.Append(
+			MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil))
+
+		// Update scheduler rolling update status
+		calls.Append(
+			MockUpdateVersionsTable(mockDb, nil))
+
+		// Update scheduler
+		calls.Append(
+			MockUpdateSchedulersTable(mockDb, nil))
+
+		// Add new version into versions table
+		scheduler.NextMajorVersion()
+		calls.Append(
+			MockInsertIntoVersionsTable(scheduler, mockDb, nil))
+
+		// Count to delete old versions if necessary
+		calls.Append(
+			MockCountNumberOfVersions(scheduler, numberOfVersions, mockDb, nil))
+
+		// Update scheduler rolling update status
+		calls.Append(
+			MockUpdateVersionsTable(mockDb, nil))
+
+		// release globalLock
+		calls.Append(
+			MockReturnRedisLock(mockRedisClient, lockKey, nil))
+	}
+
+	if !rollback {
+		// Update scheduler rolling update status
+		calls.Append(
+			MockUpdateVersionsTable(mockDb, nil))
 	}
 
 	// release downScalingLock
@@ -1587,50 +1606,6 @@ func MockRollingUpdateFlow(
 		MockReturnRedisLock(mockRedisClient, configLockKey, nil))
 
 	// release globalLock again (defer)
-	calls.Append(
-		MockReturnRedisLock(mockRedisClient, lockKey, nil))
-}
-
-// MockRollback mocks all calls necessary to perform a rollback on a scheduler update
-func MockRollback(
-	mockRedisClient *redismocks.MockRedisClient,
-	mockDb *pgmocks.MockDB,
-	mockClock *clockmocks.MockClock,
-	opManager *models.OperationManager,
-	config *viper.Viper,
-	timeoutSec, lockTimeoutMs, numberOfVersions int,
-	yaml string,
-	scheduler *models.Scheduler,
-	calls *Calls,
-) {
-	lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
-
-	// Get globalLock
-	calls.Append(
-		MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil))
-
-	// Update scheduler
-	calls.Append(
-		MockUpdateSchedulersTable(mockDb, nil))
-
-	// Add new version into versions table
-	scheduler.NextMajorVersion()
-	calls.Append(
-		MockInsertIntoVersionsTable(scheduler, mockDb, nil))
-
-	// Count to delete old versions if necessary
-	calls.Append(
-		MockCountNumberOfVersions(scheduler, numberOfVersions, mockDb, nil))
-
-	// Update scheduler rolling update status
-	calls.Append(
-		MockUpdateVersionsTable(mockDb, nil))
-
-	// Release globalLock
-	calls.Append(
-		MockReturnRedisLock(mockRedisClient, lockKey, nil))
-
-	// Release globalLock again (defer)
 	calls.Append(
 		MockReturnRedisLock(mockRedisClient, lockKey, nil))
 }

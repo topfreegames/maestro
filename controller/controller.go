@@ -591,10 +591,9 @@ func UpdateSchedulerConfig(
 	// overwritten with older version on database
 	// during the databse write phase
 	globalLockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
-	globalLock, canceled, err := acquireLock(
+	globalLock, canceled, err := AcquireLock(
 		ctx,
 		logger,
-		clock,
 		redisClient,
 		config,
 		operationManager,
@@ -602,7 +601,7 @@ func UpdateSchedulerConfig(
 		schedulerName,
 	)
 
-	defer releaseLock(
+	defer ReleaseLock(
 		logger,
 		redisClient,
 		globalLock,
@@ -619,10 +618,9 @@ func UpdateSchedulerConfig(
 
 	// Lock updates on scheduler during all the process
 	configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
-	configLock, canceled, err := acquireLock(
+	configLock, canceled, err := AcquireLock(
 		ctx,
 		logger,
-		clock,
 		redisClient,
 		config,
 		operationManager,
@@ -630,7 +628,7 @@ func UpdateSchedulerConfig(
 		schedulerName,
 	)
 
-	defer releaseLock(
+	defer ReleaseLock(
 		logger,
 		redisClient,
 		configLock,
@@ -657,13 +655,12 @@ func UpdateSchedulerConfig(
 		return err
 	}
 
-	currentVersion := scheduler.Version
-
 	changedPortRange, err := checkPortRange(&oldConfig, configYAML, l, db, redisClient.Client)
 	if err != nil {
 		return err
 	}
 
+	oldVersion := scheduler.Version
 	shouldRecreatePods := changedPortRange || MustUpdatePods(&oldConfig, configYAML)
 
 	if shouldRecreatePods {
@@ -689,9 +686,9 @@ func UpdateSchedulerConfig(
 		return err
 	}
 
-	// Don't worry, there is a defer releaseLock()
+	// Don't worry, there is a defer ReleaseLock()
 	// in case any error before this code happen ;)
-	releaseLock(
+	ReleaseLock(
 		logger,
 		redisClient,
 		globalLock,
@@ -701,17 +698,16 @@ func UpdateSchedulerConfig(
 	if shouldRecreatePods {
 		// Lock down scaling so it doesn't interferer with rolling update surges
 		downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
-		downScalingLock, canceled, err := acquireLock(
+		downScalingLock, canceled, err := AcquireLock(
 			ctx,
 			logger,
-			clock,
 			redisClient,
 			config,
 			operationManager,
 			downScalingLockKey,
 			schedulerName,
 		)
-		defer releaseLock(
+		defer ReleaseLock(
 			logger,
 			redisClient,
 			downScalingLock,
@@ -732,75 +728,55 @@ func UpdateSchedulerConfig(
 			return err
 		}
 
-		// segment pods in chunks
-		podChunks := segmentPods(kubePods.Items, maxSurge)
+		timeoutErr, cancelErr, err := SegmentAndReplacePods(
+			ctx,
+			l,
+			roomManager,
+			mr,
+			clientset,
+			db,
+			redisClient.Client,
+			willTimeoutAt,
+			configYAML,
+			kubePods.Items,
+			scheduler,
+			operationManager,
+			maxSurge,
+			clock,
+		)
 
-		for i, chunk := range podChunks {
-			l.Debugf("updating chunk %d: %v", i, names(chunk))
+		if err != nil {
+			scheduler.RollingUpdateStatus = erroredStatus(err.Error())
+		} else if cancelErr != nil {
+			err = cancelErr
+			scheduler.RollingUpdateStatus = canceledStatus
+		} else if timeoutErr != nil {
+			err = timeoutErr
+			scheduler.RollingUpdateStatus = timedoutStatus
+		}
 
-			// replace chunk
-			timedout, canceled, errored := replacePodsAndWait(
-				l,
-				roomManager,
+		if err != nil {
+			dbRollbackErr := dbRollback(
+				ctx,
+				logger,
 				mr,
-				clientset,
 				db,
-				redisClient.Client,
-				willTimeoutAt,
-				clock,
+				redisClient,
 				configYAML,
-				chunk,
+				&oldConfig,
+				clock,
 				scheduler,
+				config,
 				operationManager,
+				oldVersion,
+				globalLockKey,
 			)
 
-			if timedout || canceled || errored != nil {
-				err := errors.New("timedout waiting rooms to be replaced, rolled back")
-				scheduler.RollingUpdateStatus = timedoutStatus
-
-				if canceled {
-					err = errors.New("operation was canceled, rolled back")
-					scheduler.RollingUpdateStatus = canceledStatus
-				}
-
-				if errored != nil {
-					err = errored
-					scheduler.RollingUpdateStatus = erroredStatus(err.Error())
-				}
-
-				updateErr := scheduler.UpdateVersionStatus(db)
-				if updateErr != nil {
-					l.WithError(updateErr).Errorf("error updating scheduler_version status to %s", scheduler.RollingUpdateStatus)
-				}
-
-				l.WithError(err).Error(err.Error())
-
-				rollErr := rollback(
-					ctx,
-					logger,
-					roomManager,
-					mr,
-					db,
-					redisClient,
-					clientset,
-					configYAML,
-					&oldConfig,
-					maxSurge,
-					clock,
-					scheduler,
-					config,
-					operationManager,
-					currentVersion,
-					globalLockKey,
-				)
-
-				if rollErr != nil {
-					l.WithError(rollErr).Error("error during update roll back")
-				}
-
-				return err
+			if dbRollbackErr != nil {
+				l.WithError(dbRollbackErr).Error("error during scheduler database roll back")
 			}
 
+			return err
 		}
 	}
 

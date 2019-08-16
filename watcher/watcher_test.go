@@ -4550,6 +4550,14 @@ var _ = Describe("Watcher", func() {
 			testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
 			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
+			testing.MockRedisLock(mockRedisClient, downScalingLockKey, config.GetInt("watcher.lockTimeoutMs"), true, nil)
+			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+
+			// Create room
+			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
+			testing.MockGetPortsFromPoolAnyTimes(&configYaml, mockRedisClient, mockPortChooser,
+				models.NewPortRange(5000, 6000).String(), 5000, 6000)
+
 			for _, podName := range podNames {
 				pod := &v1.Pod{}
 				pod.SetName(podName)
@@ -4564,23 +4572,23 @@ var _ = Describe("Watcher", func() {
 			for _, status := range allStatus {
 				mockPipeline.EXPECT().
 					SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status),
-						room.GetRoomRedisKey())
+						room.GetRoomRedisKey()).AnyTimes()
 				mockPipeline.EXPECT().
 					ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status),
-						room.ID)
+						room.ID).AnyTimes()
 			}
 			mockPipeline.EXPECT().
-				ZRem(models.GetRoomPingRedisKey(w.SchedulerName), room.ID)
+				ZRem(models.GetRoomPingRedisKey(w.SchedulerName), room.ID).AnyTimes()
 			for _, mt := range allMetrics {
-				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(w.SchedulerName, mt), gomock.Any())
+				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(w.SchedulerName, mt), gomock.Any()).AnyTimes()
 			}
-			mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+			mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).AnyTimes()
 			mockPipeline.EXPECT().Exec().Return(nil, errDB)
 
 			err := w.EnsureCorrectRooms()
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(hook.LastEntry().Message).To(Equal("failed to delete pod"))
+			Expect(hook.LastEntry().Message).To(Equal("replacing pods returned error on EnsureCorrectRooms"))
 		})
 
 		It("should delete invalid pods", func() {
@@ -4605,23 +4613,16 @@ var _ = Describe("Watcher", func() {
 				Expect(err).ToNot(HaveOccurred())
 			}
 
-			room = models.NewRoom(podNames[1], w.SchedulerName)
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			for _, status := range allStatus {
-				mockPipeline.EXPECT().
-					SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status),
-						room.GetRoomRedisKey())
-				mockPipeline.EXPECT().
-					ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status),
-						room.ID)
-			}
-			mockPipeline.EXPECT().
-				ZRem(models.GetRoomPingRedisKey(w.SchedulerName), room.ID)
-			for _, mt := range allMetrics {
-				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(w.SchedulerName, mt), gomock.Any())
-			}
-			mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
-			mockPipeline.EXPECT().Exec()
+			testing.MockRedisLock(mockRedisClient, downScalingLockKey, config.GetInt("watcher.lockTimeoutMs"), true, nil)
+			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+
+			// Create room
+			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 1)
+			testing.MockGetPortsFromPoolAnyTimes(&configYaml, mockRedisClient, mockPortChooser,
+				models.NewPortRange(5000, 6000).String(), 5000, 6000)
+
+			// Delete old rooms
+			testing.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, &configYaml, nil, 1)
 
 			err := w.EnsureCorrectRooms()
 
