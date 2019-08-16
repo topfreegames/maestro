@@ -482,24 +482,33 @@ func ListSchedulerLocks(
 	pipe := redisClient.TxPipeline()
 	keys := ListSchedulerLocksKeys(prefix, schedulerName)
 	locks := make([]SchedulerLock, 0, len(keys))
+	durations := map[string]*redis.DurationCmd{}
+
 	for _, key := range keys {
-		duration, err := pipe.TTL(key).Result()
-		if err != nil && err != redis.Nil {
-			return nil, err
-		}
-		exists, err := pipe.Exists(key).Result()
-		if err != nil && err != redis.Nil {
-			return nil, err
-		}
-		lock := SchedulerLock{
-			Key:      key,
-			TTLInSec: int64(duration.Seconds()),
-			IsLocked: exists == 1,
-		}
-		locks = append(locks, lock)
+		durations[key] = pipe.TTL(key)
 	}
+
 	if _, err := pipe.Exec(); err != nil {
 		return nil, err
+	}
+
+	for _, key := range keys {
+		d, err := durations[key].Result()
+		if d < 0 {
+			d = 0
+		}
+
+		if err != nil && err != redis.Nil {
+			return nil, err
+		}
+
+		lock := SchedulerLock{
+			Key:      key,
+			TTLInSec: int64(d.Seconds()),
+			IsLocked: d.Seconds() > 0,
+		}
+
+		locks = append(locks, lock)
 	}
 	return locks, nil
 }
