@@ -49,6 +49,9 @@ func getOperationRollingProgress(
 		}
 	}
 
+	// if the percentage of gameservers with the actual version is 100% but the
+	// operation is not finished, the new scheduler version has not been stored as the actual version yet.
+	// it means that the rolling update didn't started and so the progress should be 0%
 	if status["description"] != models.OpManagerFinished && new/total > 0.99 {
 		return 0, "", nil
 	}
