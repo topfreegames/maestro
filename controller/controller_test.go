@@ -4166,7 +4166,7 @@ portRange:
 			mt.MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 			// Set new operation manager description
-			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+			mt.MockSetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 			// Select empty scheduler yaml
 			mockDb.EXPECT().
@@ -4313,7 +4313,7 @@ cmd:
 			mt.MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 			// Set new operation manager description
-			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+			mt.MockSetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml2.Name).
 				Return(pg.NewTestResult(errors.New("error on select"), 0), errors.New("error on select"))
@@ -5112,7 +5112,7 @@ containers:
 
 			// Set new operation manager description
 			calls.Append(
-				mt.MockSetDescription(opManager, mockRedisClient, "running", nil))
+				mt.MockSetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil))
 
 			// Update scheduler
 			calls.Append(
@@ -5366,7 +5366,7 @@ containers:
 
 			// Set new operation manager description
 			calls.Append(
-				mt.MockSetDescription(opManager, mockRedisClient, "running", nil))
+				mt.MockSetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil))
 
 			// Update scheduler
 			calls.Append(
@@ -5651,7 +5651,7 @@ containers:
 			mt.MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
 
 			// Set new operation manager description
-			mt.MockSetDescription(opManager, mockRedisClient, "running", nil)
+			mt.MockSetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
 
 			// Update new config on schedulers table
 			mt.MockUpdateSchedulersTable(mockDb, nil)

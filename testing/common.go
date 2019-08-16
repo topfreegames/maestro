@@ -1498,7 +1498,7 @@ func MockSaveSchedulerFlow(
 
 	// Set new operation manager description
 	calls.Append(
-		MockSetDescription(opManager, mockRedisClient, "running", nil))
+		MockSetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil))
 
 	// Get scheduler from DB
 	calls.Append(
