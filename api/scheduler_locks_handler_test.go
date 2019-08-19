@@ -67,8 +67,6 @@ var _ = Describe("SchedulerLocksHandler", func() {
 			} {
 				mockPipeline.EXPECT().TTL(lockKey).
 					Return(redis.NewDurationResult(9*time.Second, nil))
-				mockPipeline.EXPECT().Exists(lockKey).
-					Return(redis.NewIntResult(1, nil))
 			}
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
@@ -99,8 +97,6 @@ var _ = Describe("SchedulerLocksHandler", func() {
 			} {
 				mockPipeline.EXPECT().TTL(lockKey).
 					Return(redis.NewDurationResult(time.Duration(0), redis.Nil))
-				mockPipeline.EXPECT().Exists(lockKey).
-					Return(redis.NewIntResult(0, nil))
 			}
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
