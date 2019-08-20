@@ -1485,12 +1485,7 @@ func MockSaveSchedulerFlow(
 	isMinor bool,
 	calls *Calls,
 ) {
-	lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
 	configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
-
-	// Get global lock
-	calls.Append(
-		MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil))
 
 	// Get config lock
 	calls.Append(
@@ -1521,10 +1516,6 @@ func MockSaveSchedulerFlow(
 	// Count to delete old versions if necessary
 	calls.Append(
 		MockCountNumberOfVersions(scheduler, numberOfVersions, mockDb, nil))
-
-	// Release globalLock
-	calls.Append(
-		MockReturnRedisLock(mockRedisClient, lockKey, nil))
 }
 
 // MockRollingUpdateFlow mocks all necessary calls to perform a rolling update
@@ -1544,7 +1535,6 @@ func MockRollingUpdateFlow(
 	rollback bool,
 	calls *Calls,
 ) {
-	lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
 	configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
 	downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
 
@@ -1561,10 +1551,6 @@ func MockRollingUpdateFlow(
 	MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, configYaml, removeRoomsError, numRoomsToCreate)
 
 	if rollback {
-		// Acquire global lock
-		calls.Append(
-			MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil))
-
 		// Update scheduler rolling update status
 		calls.Append(
 			MockUpdateVersionsTable(mockDb, nil))
@@ -1585,10 +1571,6 @@ func MockRollingUpdateFlow(
 		// Update scheduler rolling update status
 		calls.Append(
 			MockUpdateVersionsTable(mockDb, nil))
-
-		// release globalLock
-		calls.Append(
-			MockReturnRedisLock(mockRedisClient, lockKey, nil))
 	}
 
 	if !rollback {
@@ -1604,8 +1586,4 @@ func MockRollingUpdateFlow(
 	// release configLockKey
 	calls.Append(
 		MockReturnRedisLock(mockRedisClient, configLockKey, nil))
-
-	// release globalLock again (defer)
-	calls.Append(
-		MockReturnRedisLock(mockRedisClient, lockKey, nil))
 }

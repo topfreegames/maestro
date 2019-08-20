@@ -4588,7 +4588,7 @@ var _ = Describe("Watcher", func() {
 			err := w.EnsureCorrectRooms()
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(hook.LastEntry().Message).To(Equal("replacing pods returned error on EnsureCorrectRooms"))
+			Expect(hook.LastEntry().Message).To(Equal("error replacing chunk of pods"))
 		})
 
 		It("should delete invalid pods", func() {

@@ -988,8 +988,9 @@ func AcquireLock(
 
 	// guarantee that downScaling and config locks doesn't timeout before update times out.
 	// otherwise it can result in all pods dying during a rolling update that is destined to timeout
-	if lockKey == models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), schedulerName) ||
-		lockKey == models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), schedulerName) {
+	if (lockKey == models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), schedulerName) ||
+		lockKey == models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), schedulerName)) &&
+		lockTimeoutMS < timeoutSec*1000 {
 		lockTimeoutMS = (timeoutSec + 1) * 1000
 	}
 
