@@ -84,19 +84,18 @@ func SegmentAndReplacePods(
 
 		if timedout {
 			timeoutErr = errors.New("timedout waiting rooms to be replaced, rolled back")
-			l.WithError(err).Error(timeoutErr.Error())
+			l.WithError(timeoutErr).Error("error replacing chunk of pods")
 			break
 		}
 
 		if canceled {
 			cancelErr = errors.New("operation was canceled, rolled back")
-			l.WithError(err).Error(cancelErr.Error())
+			l.WithError(cancelErr).Error("error replacing chunk of pods")
 			break
 		}
 
 		if errored != nil {
-			err = errored
-			l.WithError(err).Error(err.Error())
+			l.WithError(errored).Error("error replacing chunk of pods")
 			break
 		}
 	}
@@ -194,11 +193,7 @@ func createNewRemoveOldPod(
 	}
 
 	// wait for new pod to be created
-	now := time.Now()
-	if clock != nil {
-		now = clock.Now()
-	}
-	timeout := willTimeoutAt.Sub(now)
+	timeout := willTimeoutAt.Sub(clock.Now())
 	timedout, canceled, err = waitCreatingPods(
 		logger, clientset, timeout, configYAML.Name,
 		[]v1.Pod{*newPod}, operationManager, mr)
@@ -218,11 +213,7 @@ func createNewRemoveOldPod(
 	// wait for old pods to be deleted
 	// we assume that maxSurge == maxUnavailable as we can't set maxUnavailable yet
 	// so for every pod created in a chunk one is deleted right after it
-	now = time.Now()
-	if clock != nil {
-		now = clock.Now()
-	}
-	timeout = willTimeoutAt.Sub(now)
+	timeout = willTimeoutAt.Sub(clock.Now())
 	timedout, canceled = waitTerminatingPods(
 		logger, clientset, timeout, configYAML.Name,
 		[]v1.Pod{pod}, operationManager, mr)
@@ -244,7 +235,7 @@ func dbRollback(
 	clock clockinterfaces.Clock,
 	scheduler *models.Scheduler,
 	config *viper.Viper,
-	oldVersion, globalLockKey string,
+	oldVersion string,
 ) (err error) {
 	err = scheduler.UpdateVersionStatus(db)
 	if err != nil {

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
+	"github.com/topfreegames/extensions/clock"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/constants"
@@ -1108,7 +1109,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		scheduler,
 		nil,
 		w.Config.GetInt("watcher.maxSurge"),
-		nil,
+		&clock.Clock{},
 	)
 
 	if timeoutErr != nil {
