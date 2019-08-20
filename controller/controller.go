@@ -587,35 +587,6 @@ func UpdateSchedulerConfig(
 		return err
 	}
 
-	// Lock watchers so they don't scale up or down and the scheduler is not
-	// overwritten with older version on database
-	// during the databse write phase
-	globalLockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
-	globalLock, canceled, err := AcquireLock(
-		ctx,
-		logger,
-		redisClient,
-		config,
-		operationManager,
-		globalLockKey,
-		schedulerName,
-	)
-
-	defer ReleaseLock(
-		logger,
-		redisClient,
-		globalLock,
-		schedulerName,
-	)
-
-	if err != nil {
-		return err
-	}
-
-	if canceled {
-		return nil
-	}
-
 	// Lock updates on scheduler during all the process
 	configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
 	configLock, canceled, err := AcquireLock(
@@ -685,15 +656,6 @@ func UpdateSchedulerConfig(
 	if err != nil {
 		return err
 	}
-
-	// Don't worry, there is a defer ReleaseLock()
-	// in case any error before this code happen ;)
-	ReleaseLock(
-		logger,
-		redisClient,
-		globalLock,
-		schedulerName,
-	)
 
 	if shouldRecreatePods {
 		// Lock down scaling so it doesn't interferer with rolling update surges
@@ -767,9 +729,7 @@ func UpdateSchedulerConfig(
 				clock,
 				scheduler,
 				config,
-				operationManager,
 				oldVersion,
-				globalLockKey,
 			)
 
 			if dbRollbackErr != nil {

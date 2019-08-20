@@ -244,26 +244,8 @@ func dbRollback(
 	clock clockinterfaces.Clock,
 	scheduler *models.Scheduler,
 	config *viper.Viper,
-	operationManager *models.OperationManager,
 	oldVersion, globalLockKey string,
 ) (err error) {
-	globalLock, _, _ := AcquireLock(
-		ctx,
-		logger,
-		redisClient,
-		config,
-		operationManager,
-		globalLockKey,
-		scheduler.Name,
-	)
-
-	defer ReleaseLock(
-		logger,
-		redisClient,
-		globalLock,
-		scheduler.Name,
-	)
-
 	err = scheduler.UpdateVersionStatus(db)
 	if err != nil {
 		return err
@@ -290,15 +272,6 @@ func dbRollback(
 	if err != nil {
 		return err
 	}
-
-	// Don't worry, there is a defer ReleaseLock()
-	// in case any error before this code happen ;)
-	ReleaseLock(
-		logger,
-		redisClient,
-		globalLock,
-		scheduler.Name,
-	)
 
 	return nil
 }
