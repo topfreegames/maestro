@@ -19,15 +19,13 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-# FROM golang:1.13beta1-buster
-FROM golang:1.13beta1-alpine3.10
+FROM golang:1.12.9-alpine3.10
 
 MAINTAINER TFG Co <backend@tfgco.com>
 
 RUN mkdir -p /app/bin
 
 RUN apk add postgresql git make musl-dev gcc libc6-compat --no-cache
-# RUN apt update && apt install -y postgresql git make build-essential gcc
 RUN go get -u github.com/jteeuwen/go-bindata/...
 
 ADD . /go/src/github.com/topfreegames/maestro
@@ -44,8 +42,6 @@ RUN cd /go/src/github.com/topfreegames/maestro && \
 WORKDIR /app
 RUN make assets
 
-# FROM alpine:3.10
-
 EXPOSE 8080
 
 ENV MAESTRO_EXTENSIONS_PG_HOST "maestro-postgres"
@@ -53,14 +49,5 @@ ENV MAESTRO_EXTENSIONS_PG_PORT "5432"
 ENV MAESTRO_EXTENSIONS_PG_USER "maestro"
 ENV MAESTRO_EXTENSIONS_PG_PASS "pass"
 ENV PGPASSWORD "pass"
-
-# COPY --from=build-env /app/maestro /app/maestro
-# COPY --from=build-env /app/bin/grpc.so /app/bin/grpc.so
-# COPY --from=build-env /app/config /app/config
-# COPY --from=build-env /app/scripts /app/scripts
-# COPY --from=build-env /app/migrations /app/migrations
-# COPY --from=build-env /app/Makefile /app/Makefile
-
-# WORKDIR /app
 
 CMD /app/maestro start

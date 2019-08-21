@@ -36,25 +36,14 @@ var RootCmd = &cobra.Command{
 
 // Execute runs RootCmd to initialize maestro CLI application
 func Execute(cmd *cobra.Command) {
-	InitConfig()
-	println("YURI -- Execute")
-	if pprof {
-		println("YURI -- launchPProf")
-		launchPProf() // professor starts it in a go routine by default
-	}
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
 	}
 }
 
-func launchPProf() {
-	fmt.Println("Starting PProf HTTP server")
-	config.SetDefault("pprof.address", "localhost:6060")
-	professor.Launch(config.GetString("pprof.address"))
-}
-
 func init() {
+	cobra.OnInitialize(onCobraInitialize)
 	RootCmd.PersistentFlags().BoolVarP(
 		&json, "json", "j",
 		false, "json output mode")
@@ -69,6 +58,11 @@ func init() {
 	RootCmd.PersistentFlags().BoolVar(&pprof, "pprof", false, "it enables pprof")
 }
 
+func onCobraInitialize() {
+	InitConfig()
+	launchPProf()
+}
+
 // InitConfig reads in config file and ENV variables if set.
 func InitConfig() {
 	config = viper.New()
@@ -80,10 +74,15 @@ func InitConfig() {
 	config.AddConfigPath(".")
 	config.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	config.AutomaticEnv()
-
 	// If a config file is found, read it in.
 	if err := config.ReadInConfig(); err != nil {
 		fmt.Printf("Config file %s failed to load: %s.\n", ConfigFile, err.Error())
 		panic("Failed to load config file")
 	}
+}
+
+func launchPProf() {
+	fmt.Println("Starting PProf HTTP server")
+	config.SetDefault("pprof.address", "localhost:6060")
+	professor.Launch(config.GetString("pprof.address"))
 }
