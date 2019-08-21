@@ -12,13 +12,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mmcloughlin/professor"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var config *viper.Viper
 var json bool
-var showProfile bool
+var pprof bool
 
 // ConfigFile is the configuration file used for running a command
 var ConfigFile string
@@ -35,33 +36,37 @@ var RootCmd = &cobra.Command{
 
 // Execute runs RootCmd to initialize maestro CLI application
 func Execute(cmd *cobra.Command) {
+	InitConfig()
+	println("YURI -- Execute")
+	if pprof {
+		println("YURI -- launchPProf")
+		launchPProf() // professor starts it in a go routine by default
+	}
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
 	}
 }
 
+func launchPProf() {
+	fmt.Println("Starting PProf HTTP server")
+	config.SetDefault("pprof.address", "localhost:6060")
+	professor.Launch(config.GetString("pprof.address"))
+}
+
 func init() {
-	cobra.OnInitialize(InitConfig)
 	RootCmd.PersistentFlags().BoolVarP(
 		&json, "json", "j",
 		false, "json output mode")
-
 	RootCmd.PersistentFlags().IntVarP(
 		&Verbose, "verbose", "v", 0,
 		"Verbosity level => v0: Error, v1=Warning, v2=Info, v3=Debug",
 	)
-
 	RootCmd.PersistentFlags().StringVarP(
 		&ConfigFile, "config", "c", "./config/local.yaml",
 		"config file",
 	)
-
-	workerCmd.Flags().BoolVar(&showProfile,
-		"show-profile",
-		false,
-		"if true creates an endpoint to show collected metrics",
-	)
+	RootCmd.PersistentFlags().BoolVar(&pprof, "pprof", false, "it enables pprof")
 }
 
 // InitConfig reads in config file and ENV variables if set.

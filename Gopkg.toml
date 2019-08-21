@@ -87,4 +87,12 @@
 
 [[override]]
   name = "google.golang.org/grpc"
-  version = "v1.8.0"
+  version = "v1.23.0"
+
+[[override]]
+  name = "golang.org/x/sys"
+  revision = "fde4db37ae7ad8191b03d30d27f258b5291ae4e3"
+
+[[override]]
+  name = "golang.org/x/net"
+  revision = "74dc4d7220e7acc4e100824340f3e66577424772"

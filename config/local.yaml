@@ -77,3 +77,5 @@ addrGetter:
   cache:
     use: true
     expirationInterval: 10m
+pprof:
+  address: localhost:6060

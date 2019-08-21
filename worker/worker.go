@@ -9,8 +9,6 @@ package worker
 
 import (
 	"fmt"
-	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -193,16 +191,10 @@ func (w *Worker) configureLogger() {
 }
 
 // Start starts the worker
-func (w *Worker) Start(startHostPortRange, endHostPortRange int, showProfile bool) error {
+func (w *Worker) Start(startHostPortRange, endHostPortRange int) error {
 	l := w.Logger.WithFields(logrus.Fields{
 		"operation": "start",
 	})
-
-	if showProfile {
-		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
-		}()
-	}
 
 	w.Run = true
 	sigchan := make(chan os.Signal)
