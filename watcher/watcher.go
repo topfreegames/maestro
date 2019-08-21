@@ -21,6 +21,7 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
+	"github.com/topfreegames/extensions/clock"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/constants"
@@ -240,7 +241,7 @@ func (w *Watcher) Start() {
 		case <-ticker.C:
 			w.WithRedisLock(l, w.watchRooms)
 		case <-tickerEnsure.C:
-			w.WithRedisLock(l, w.EnsureCorrectRooms)
+			w.EnsureCorrectRooms()
 		case <-tickerStateCount.C:
 			w.PodStatesCount()
 		case sig := <-sigchan:
@@ -1011,7 +1012,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		return err
 	}
 
-	configYaml, err := models.NewConfigYAML(scheduler.YAML)
+	configYAML, err := models.NewConfigYAML(scheduler.YAML)
 	if err != nil {
 		logger.WithError(err).Error("failed to unmarshal config yaml")
 		return err
@@ -1041,12 +1042,12 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		return err
 	}
 
-	podsToDelete := []string{}
-	concat := func(podNames []string, err error) error {
+	podsToDelete := []v1.Pod{}
+	concat := func(pods []v1.Pod, err error) error {
 		if err != nil {
 			return err
 		}
-		podsToDelete = append(podsToDelete, podNames...)
+		podsToDelete = append(podsToDelete, pods...)
 		return nil
 	}
 
@@ -1068,12 +1069,55 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		logger.Info("no invalid pods to delete")
 	}
 
-	for _, podName := range podsToDelete {
-		err = controller.DeletePodAndRoom(logger, w.RoomManager, w.MetricsReporter,
-			k, w.RedisClient.Client, configYaml, podName, reportersConstants.ReasonInvalidPod)
-		if err != nil {
-			logger.WithError(err).WithField("podName", podName).Error("failed to delete pod")
-		}
+	timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
+	timeoutDur := time.Duration(timeoutSec) * time.Second
+	willTimeoutAt := time.Now().Add(timeoutDur)
+
+	// Lock down scaling so it doesn't interfer with rolling update surges
+	downScalingLockKey := models.GetSchedulerDownScalingLockKey(w.Config.GetString("watcher.lockKey"), configYAML.Name)
+	downScalingLock, _, err := controller.AcquireLock(
+		ctx,
+		logger,
+		w.RedisClient,
+		w.Config,
+		nil,
+		downScalingLockKey,
+		w.SchedulerName,
+	)
+	defer controller.ReleaseLock(
+		logger,
+		w.RedisClient,
+		downScalingLock,
+		w.SchedulerName,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	timeoutErr, _, err := controller.SegmentAndReplacePods(
+		ctx,
+		logger,
+		w.RoomManager,
+		w.MetricsReporter,
+		w.KubernetesClient,
+		w.DB,
+		w.RedisClient.Client,
+		willTimeoutAt,
+		configYAML,
+		podsToDelete,
+		scheduler,
+		nil,
+		w.Config.GetInt("watcher.maxSurge"),
+		&clock.Clock{},
+	)
+
+	if timeoutErr != nil {
+		logger.WithError(err).Error("timeout replacing pods on EnsureCorrectRooms")
+	}
+
+	if err != nil {
+		logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms")
 	}
 
 	return nil
@@ -1081,17 +1125,17 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 func (w *Watcher) podsNotRegistered(
 	pods *v1.PodList,
-) ([]string, error) {
+) ([]v1.Pod, error) {
 	registered, err := models.GetAllRegisteredRooms(w.RedisClient.Client,
 		w.SchedulerName)
 	if err != nil {
 		return nil, err
 	}
 
-	notRegistered := []string{}
+	notRegistered := []v1.Pod{}
 	for _, pod := range pods.Items {
 		if _, ok := registered[pod.Name]; !ok {
-			notRegistered = append(notRegistered, pod.Name)
+			notRegistered = append(notRegistered, pod)
 		}
 	}
 	return notRegistered, nil
@@ -1119,8 +1163,8 @@ func (w *Watcher) splitedVersion(version string) (majorInt, minorInt int, err er
 func (w *Watcher) podsOfIncorrectVersion(
 	pods *v1.PodList,
 	scheduler *models.Scheduler,
-) ([]string, error) {
-	podNames := []string{}
+) ([]v1.Pod, error) {
+	incorrectPods := []v1.Pod{}
 	for _, pod := range pods.Items {
 		podMajorVersion, _, err := w.splitedVersion(pod.Labels["version"])
 		if err != nil {
@@ -1133,10 +1177,10 @@ func (w *Watcher) podsOfIncorrectVersion(
 		}
 
 		if podMajorVersion != schedulerMajorVersion {
-			podNames = append(podNames, pod.GetName())
+			incorrectPods = append(incorrectPods, pod)
 		}
 	}
-	return podNames, nil
+	return incorrectPods, nil
 }
 
 func hasTerminationState(status *v1.ContainerStatus) bool {
