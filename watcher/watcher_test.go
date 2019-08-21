@@ -4060,19 +4060,19 @@ var _ = Describe("Watcher", func() {
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
-			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
+			}).Return(redis.NewStringSliceResult(expectedRooms, nil)).AnyTimes()
 
 			// DeleteRoomsOccupiedTimeout
 			ts = time.Now().Unix() - w.OccupiedTimeout
 			mockRedisClient.EXPECT().ZRangeByScore(
 				lKey,
-				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
+				gomock.Any(),
 			).Do(func(key string, zrangeby redis.ZRangeBy) {
 				Expect(zrangeby.Min).To(Equal("-inf"))
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
-			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
+			}).Return(redis.NewStringSliceResult(expectedRooms, nil)).AnyTimes()
 
 			for _, roomName := range expectedRooms {
 				err := createPod(roomName, schedulerName, clientset)
@@ -4087,7 +4087,10 @@ var _ = Describe("Watcher", func() {
 				redis.NewStringResult(`{"region": "us"}`, nil),
 				redis.NewStringResult(`{"region": "us"}`, nil),
 				redis.NewStringResult(`{"region": "us"}`, nil),
-			}, nil)
+			}, nil).Times(2)
+
+			// Mock room creation
+			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
 
 			for _, roomName := range expectedRooms {
 				room := models.NewRoom(roomName, schedulerName)
@@ -4130,24 +4133,6 @@ var _ = Describe("Watcher", func() {
 			}, nil)
 
 			for _, roomName := range expectedRooms {
-				room := models.NewRoom(roomName, schedulerName)
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				for _, status := range allStatus {
-					mockPipeline.EXPECT().SRem(
-						models.GetRoomStatusSetRedisKey(schedulerName, status),
-						room.GetRoomRedisKey())
-					mockPipeline.EXPECT().ZRem(
-						models.GetLastStatusRedisKey(schedulerName, status),
-						roomName)
-				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName)
-				for _, mt := range allMetrics {
-					mockPipeline.EXPECT().ZRem(
-						models.GetRoomMetricsRedisKey(schedulerName, mt),
-						roomName)
-				}
-				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
-				mockPipeline.EXPECT().Exec()
 				mockEventForwarder.EXPECT().Forward(gomock.Any(), models.RoomTerminated,
 					map[string]interface{}{
 						"game":     schedulerName,
@@ -4163,7 +4148,7 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 					scheduler.Game = schedulerName
-				}).Times(8)
+				}).Times(7)
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 		})
@@ -4206,7 +4191,6 @@ var _ = Describe("Watcher", func() {
 				redis.NewStringResult(`{"region": "us"}`, nil),
 				redis.NewStringResult(`{"region": "us"}`, nil),
 			}, nil)
-
 			for _, room := range expectedRooms {
 				mockEventForwarder.EXPECT().Forward(
 					gomock.Any(),
@@ -4232,21 +4216,6 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				}).Times(4)
-
-			for _, roomName := range expectedRooms {
-				room := models.NewRoom(roomName, schedulerName)
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				for _, status := range allStatus {
-					mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, status), room.GetRoomRedisKey())
-					mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, status), roomName)
-				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(schedulerName), roomName)
-				for _, mt := range allMetrics {
-					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(schedulerName, mt), gomock.Any())
-				}
-				mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
-				mockPipeline.EXPECT().Exec()
-			}
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("error listing rooms with no ping since"))
@@ -4619,9 +4588,6 @@ var _ = Describe("Watcher", func() {
 				_, err := clientset.CoreV1().Pods(w.SchedulerName).Create(pod)
 				Expect(err).ToNot(HaveOccurred())
 			}
-
-			// testing.MockRedisLock(mockRedisClient, downScalingLockKey, config.GetInt("watcher.lockTimeoutMs"), true, nil)
-			// testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 			// Create room
 			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 1)

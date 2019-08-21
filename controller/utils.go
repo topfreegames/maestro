@@ -277,7 +277,7 @@ func waitTerminatingPods(
 	mr *models.MixedMetricsReporter,
 ) (timedout, wasCanceled bool) {
 	logger := l.WithFields(logrus.Fields{
-		"operation": "controller.waitTerminatingPods",
+		"source":    "controller.waitTerminatingPods",
 		"scheduler": namespace,
 	})
 
@@ -358,7 +358,7 @@ func waitCreatingPods(
 	mr *models.MixedMetricsReporter,
 ) (timedout, wasCanceled bool, err error) {
 	logger := l.WithFields(logrus.Fields{
-		"operation": "controller.waitCreatingPods",
+		"source":    "controller.waitCreatingPods",
 		"scheduler": namespace,
 	})
 
@@ -1026,7 +1026,7 @@ func AcquireLock(
 			}
 
 			if lock == nil {
-				l.Warnf("unable to get watcher %s lock, maybe some other process has it...", schedulerName)
+				l.Warnf("unable to get watcher %s lock %s, maybe some other process has it", schedulerName, lockKey)
 				break
 			}
 
