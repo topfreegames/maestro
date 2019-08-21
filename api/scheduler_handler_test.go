@@ -43,7 +43,6 @@ var _ = Describe("Scheduler Handler", func() {
 		payload    JSON
 		yamlString string
 		scheduler1 *models.Scheduler
-		lockKeyNs  string
 		opManager  *models.OperationManager
 
 		timeoutSec       = 300
@@ -131,8 +130,6 @@ var _ = Describe("Scheduler Handler", func() {
 		})
 		_, err := clientset.CoreV1().Nodes().Create(node)
 		Expect(err).NotTo(HaveOccurred())
-
-		lockKeyNs = fmt.Sprintf("%s-scheduler-name", lockKey)
 
 		mockRedisClient.EXPECT().Ping().AnyTimes()
 	})
@@ -767,11 +764,7 @@ autoscaling:
 
 					calls := NewCalls()
 
-					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-					// Get global lock
-					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 					// Get config lock
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -791,9 +784,6 @@ autoscaling:
 
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-					// Release globalLock
-					MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 					// Mock rolling update with rollback
 					MockRollingUpdateFlow(
@@ -851,7 +841,7 @@ autoscaling:
 					err = yaml.Unmarshal([]byte(yamlString1), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml1.AutoScaling.Min)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 						func(schedulerName string, statusInfo map[string]interface{}) {
@@ -930,11 +920,7 @@ autoscaling:
 
 					calls := NewCalls()
 
-					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-					// Get global lock
-					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 					// Get config lock
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -955,12 +941,6 @@ autoscaling:
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-					// Release globalLock
-					MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-					// Release globalLock (defer)
-					MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
 					// Release configLock
 					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
@@ -979,7 +959,7 @@ autoscaling:
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 					MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -991,16 +971,10 @@ autoscaling:
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 
 					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
-					// Get global lock
-					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
-					// Release globalLock
-					MockReturnRedisLock(mockRedisClient, lockKey, nil)
 					// Get config lock
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
-					// Release globalLock
 					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					// Set new operation manager description
@@ -1049,7 +1023,7 @@ autoscaling:
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 					MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -1062,16 +1036,11 @@ autoscaling:
 
 					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 
-					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
-					// Get global lock
-					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
-					// Release globalLock
-					MockReturnRedisLock(mockRedisClient, lockKey, nil)
 					// Get config lock
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
-					// Release globalLock
+					// Return config lock
 					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					// Set new operation manager description
@@ -1144,11 +1113,7 @@ autoscaling:
 
 					calls := NewCalls()
 
-					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-					// Get global lock
-					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 					// Get config lock
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -1168,9 +1133,6 @@ autoscaling:
 
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-					// Release globalLock
-					MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 					// Mock rolling update with rollback
 					MockRollingUpdateFlow(
@@ -1257,14 +1219,11 @@ autoscaling:
 
 					scheduler1 := models.NewScheduler(configYaml.Name, configYaml.Game, yamlString)
 
-					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-					// Get global lock
-					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 					// Get config lock
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
+					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					// Set new operation manager description
 					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
@@ -1274,12 +1233,6 @@ autoscaling:
 
 					// Update scheduler
 					MockUpdateSchedulersTable(mockDb, errors.New("err on db"))
-
-					// Release globalLock
-					MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-					// Release globalLock
-					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					calls.Finish()
 
@@ -1300,7 +1253,7 @@ autoscaling:
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
 
-					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
+					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 					opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 					MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -1311,16 +1264,11 @@ autoscaling:
 
 					mockRedisClient.EXPECT().Ping().AnyTimes()
 					scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
-					lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 					configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
-					// Get global lock
-					MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
-					// Release globalLock
-					MockReturnRedisLock(mockRedisClient, lockKey, nil)
 					// Get config lock
 					MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
-					// Release globalLock
+					// Return config lock
 					MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 					// Set new operation manager description
@@ -1491,11 +1439,7 @@ forwarders:
 							*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString1)
 						})
 
-					lockKeyNs := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), configYaml1.Name)
 					configLockKeyNs := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), configYaml1.Name)
-					MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, nil)
-					MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
-					MockReturnRedisLock(mockRedisClient, lockKeyNs, nil)
 					MockRedisLock(mockRedisClient, configLockKeyNs, lockTimeoutMs, true, nil)
 					MockReturnRedisLock(mockRedisClient, configLockKeyNs, nil)
 
@@ -2439,11 +2383,7 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-				// Get global lock
-				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Get config lock
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -2463,9 +2403,6 @@ game: game-name
 
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-				// Release globalLock
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				// Mock rolling update with rollback
 				MockRollingUpdateFlow(
@@ -2517,11 +2454,7 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-				// Get global lock
-				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Get config lock
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -2541,9 +2474,6 @@ game: game-name
 
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-				// Release globalLock
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				// Mock rolling update with rollback
 				MockRollingUpdateFlow(
@@ -2878,11 +2808,7 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-				// Get global lock
-				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Get config lock
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -2902,9 +2828,6 @@ game: game-name
 
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-				// Release globalLock
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				// Mock rolling update with rollback
 				MockRollingUpdateFlow(
@@ -2990,11 +2913,7 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-				// Get global lock
-				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Get config lock
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -3014,9 +2933,6 @@ game: game-name
 
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-				// Release globalLock
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				// Mock rolling update with rollback
 				MockRollingUpdateFlow(
@@ -3092,11 +3008,7 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-				// Get global lock
-				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Get config lock
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -3116,9 +3028,6 @@ game: game-name
 
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-				// Release globalLock
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				// Mock rolling update with rollback
 				MockRollingUpdateFlow(
@@ -3202,8 +3111,9 @@ game: game-name
 				// Select current scheduler yaml
 				MockSelectScheduler(yamlString, mockDb, nil)
 
-				// Get redis lock
-				MockRedisLock(mockRedisClient, lockKeyNs, lockTimeoutMs, true, errors.New("redis error"))
+				// Get config lock
+				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
+				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, errors.New("redis error"))
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -3279,7 +3189,7 @@ game: game-name
 			})
 
 			It("should update min", func() {
-				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -3297,11 +3207,7 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-				// Get global lock
-				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Get config lock
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -3321,12 +3227,6 @@ game: game-name
 
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-				// Release globalLock
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-				// Release globalLock (defer)
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				// Release configLock
 				MockReturnRedisLock(mockRedisClient, configLockKey, nil)
@@ -3435,7 +3335,7 @@ game: game-name
 			})
 
 			It("should set min 0 if body is empty (default value is 0)", func() {
-				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(3)
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
 				MockOperationManager(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
@@ -3451,11 +3351,7 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-				// Get global lock
-				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Get config lock
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -3475,12 +3371,6 @@ game: game-name
 
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-				// Release globalLock
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-				// Release globalLock (defer)
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				// Release configLock
 				MockReturnRedisLock(mockRedisClient, configLockKey, nil)
@@ -3578,11 +3468,7 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-				// Get global lock
-				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Get config lock
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -3602,12 +3488,6 @@ game: game-name
 
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-				// Release globalLock
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-				// Release globalLock (again defer)
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				// Release configLock
 				MockReturnRedisLock(mockRedisClient, configLockKey, nil)
@@ -3665,11 +3545,7 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-				// Get global lock
-				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Get config lock
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -3689,12 +3565,6 @@ game: game-name
 
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-				// Release globalLock
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-				// Release globalLock (defer)
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				// Release configLock
 				MockReturnRedisLock(mockRedisClient, configLockKey, nil)
@@ -3760,11 +3630,7 @@ game: game-name
 
 				calls := NewCalls()
 
-				lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-				// Get global lock
-				MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 				// Get config lock
 				MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -3777,9 +3643,6 @@ game: game-name
 
 				// Update scheduler
 				MockUpdateSchedulersTable(mockDb, errors.New("db failed"))
-
-				// Release globalLock
-				MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 				// Release configLock
 				MockReturnRedisLock(mockRedisClient, configLockKey, nil)

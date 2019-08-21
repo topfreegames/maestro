@@ -24,6 +24,7 @@ import (
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
+	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"
 )
@@ -37,6 +38,7 @@ var (
 	roomManager           models.RoomManager
 	mockCtrl              *gomock.Controller
 	mockDb                *pgmocks.MockDB
+	mockPortChooser       *mocks.MockPortChooser
 	mockPipeline          *redismocks.MockPipeliner
 	mockRedisClient       *redismocks.MockRedisClient
 	mockRedisTraceWrapper *redismocks.MockTraceWrapper
@@ -72,6 +74,7 @@ var _ = BeforeEach(func() {
 	clientset = fake.NewSimpleClientset()
 	metricsClientset = metricsFake.NewSimpleClientset()
 	mockCtrl = gomock.NewController(GinkgoT())
+	mockPortChooser = mocks.NewMockPortChooser(mockCtrl)
 	mockDb = pgmocks.NewMockDB(mockCtrl)
 	mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
 	mockPipeline = redismocks.NewMockPipeliner(mockCtrl)

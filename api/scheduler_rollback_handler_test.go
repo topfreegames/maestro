@@ -84,11 +84,7 @@ autoscaling:
 
 			calls := NewCalls()
 
-			lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 			configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-			// Get global lock
-			MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 			// Get config lock
 			MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -108,12 +104,6 @@ autoscaling:
 
 			// Count to delete old versions if necessary
 			MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-			// Release globalLock
-			MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-			// Release globalLock (again defer)
-			MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 			// Release configLock
 			MockReturnRedisLock(mockRedisClient, configLockKey, nil)
@@ -222,11 +212,7 @@ autoscaling:
 
 			calls := NewCalls()
 
-			lockKey := models.GetSchedulerScalingLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 			configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
-
-			// Get global lock
-			MockRedisLock(mockRedisClient, lockKey, lockTimeoutMs, true, nil)
 
 			// Get config lock
 			MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -246,12 +232,6 @@ autoscaling:
 
 			// Count to delete old versions if necessary
 			MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
-
-			// Release globalLock
-			MockReturnRedisLock(mockRedisClient, lockKey, nil)
-
-			// Release globalLock (again defer)
-			MockReturnRedisLock(mockRedisClient, lockKey, nil)
 
 			// Release configLock
 			MockReturnRedisLock(mockRedisClient, configLockKey, nil)
