@@ -471,8 +471,12 @@ var _ = Describe("Watcher", func() {
 
 			// EnterCriticalSection (lock done by redis-lock)
 			lockKey := fmt.Sprintf("maestro-lock-key-%s", configYaml.Name)
+			downscalingLockKey := fmt.Sprintf("maestro-lock-key-%s-downscaling", configYaml.Name)
 			mockRedisClient.EXPECT().
 				SetNX(lockKey, gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).
+				AnyTimes()
+			mockRedisClient.EXPECT().
+				SetNX(downscalingLockKey, gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).
 				AnyTimes()
 
 			// DeleteRoomsNoPingSince
@@ -542,6 +546,7 @@ var _ = Describe("Watcher", func() {
 
 			// LeaveCriticalSection (unlock done by redis-lock)
 			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{lockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
+			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{downscalingLockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
 			w.Start()
 		})
 
@@ -558,8 +563,14 @@ var _ = Describe("Watcher", func() {
 
 			// EnterCriticalSection (lock done by redis-lock)
 			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, errors.New("some error in lock"))).AnyTimes()
+			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler-downscaling", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, nil)).AnyTimes()
 
-			Expect(func() { go w.Start() }).ShouldNot(Panic())
+			Expect(func() {
+				go func() {
+					defer GinkgoRecover()
+					w.Start()
+				}()
+			}).ShouldNot(Panic())
 			Eventually(func() bool { return w.Run }).Should(BeTrue())
 			Eventually(func() bool { return hook.LastEntry() != nil }).Should(BeTrue())
 			Eventually(func() string { return hook.LastEntry().Message }, 1500*time.Millisecond).Should(Equal("error getting watcher lock"))
@@ -578,8 +589,14 @@ var _ = Describe("Watcher", func() {
 
 			// EnterCriticalSection (lock done by redis-lock)
 			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, nil)).AnyTimes()
+			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler-downscaling", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, nil)).AnyTimes()
 
-			Expect(func() { go w.Start() }).ShouldNot(Panic())
+			Expect(func() {
+				go func() {
+					defer GinkgoRecover()
+					w.Start()
+				}()
+			}).ShouldNot(Panic())
 			Eventually(func() bool { return w.Run }).Should(BeTrue())
 			Eventually(func() bool { return hook.LastEntry() != nil }).Should(BeTrue())
 			Eventually(func() string { return hook.LastEntry().Message }, 1500*time.Millisecond).
@@ -4165,7 +4182,7 @@ var _ = Describe("Watcher", func() {
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
-			}).Return(redis.NewStringSliceResult([]string{}, errors.New("some error")))
+			}).Return(redis.NewStringSliceResult([]string{}, errors.New("some error"))).AnyTimes()
 
 			// DeleteRoomsOccupiedTimeout
 			ts = time.Now().Unix() - w.OccupiedTimeout
@@ -4526,11 +4543,6 @@ var _ = Describe("Watcher", func() {
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
 				w.SchedulerName, [][]string{}, errDB)
 
-			// EnterCriticalSection (lock done by redis-lock)
-			downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
-			testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
-			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
-
 			err := w.EnsureCorrectRooms()
 
 			Expect(err).To(HaveOccurred())
@@ -4545,13 +4557,13 @@ var _ = Describe("Watcher", func() {
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
 				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
 
-			// EnterCriticalSection (lock done by redis-lock)
-			downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
-			testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
-			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+			// // EnterCriticalSection (lock done by redis-lock)
+			// downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
+			// testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
+			// testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
-			testing.MockRedisLock(mockRedisClient, downScalingLockKey, config.GetInt("watcher.lockTimeoutMs"), true, nil)
-			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+			// testing.MockRedisLock(mockRedisClient, downScalingLockKey, config.GetInt("watcher.lockTimeoutMs"), true, nil)
+			// testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 			// Create room
 			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
@@ -4595,11 +4607,6 @@ var _ = Describe("Watcher", func() {
 			podNames := []string{"room-1", "room-2"}
 			room := models.NewRoom(podNames[0], w.SchedulerName)
 
-			// EnterCriticalSection (lock done by redis-lock)
-			downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
-			testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
-			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
-
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
 				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
@@ -4613,8 +4620,8 @@ var _ = Describe("Watcher", func() {
 				Expect(err).ToNot(HaveOccurred())
 			}
 
-			testing.MockRedisLock(mockRedisClient, downScalingLockKey, config.GetInt("watcher.lockTimeoutMs"), true, nil)
-			testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+			// testing.MockRedisLock(mockRedisClient, downScalingLockKey, config.GetInt("watcher.lockTimeoutMs"), true, nil)
+			// testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
 
 			// Create room
 			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 1)

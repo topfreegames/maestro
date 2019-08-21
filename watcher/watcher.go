@@ -239,9 +239,9 @@ func (w *Watcher) Start() {
 	for w.Run == true {
 		select {
 		case <-ticker.C:
-			w.WithRedisLock(l, w.watchRooms)
+			w.watchRooms()
 		case <-tickerEnsure.C:
-			w.EnsureCorrectRooms()
+			w.WithDownscalingLock(w.EnsureCorrectRooms)
 		case <-tickerStateCount.C:
 			w.PodStatesCount()
 		case sig := <-sigchan:
@@ -268,14 +268,17 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 }
 
 func (w *Watcher) watchRooms() error {
-	w.RemoveDeadRooms()
-	w.AutoScale()
-	w.AddUtilizationMetricsToRedis()
+	l := w.Logger.WithFields(logrus.Fields{
+		"operation": "watchRooms",
+	})
+	w.WithRedisLock(l, w.AutoScale)
+	w.WithDownscalingLock(w.RemoveDeadRooms)
+	w.WithRedisLock(l, w.AddUtilizationMetricsToRedis)
 	return nil
 }
 
 // AddUtilizationMetricsToRedis store the pods usage metrics (cpu and mem) in a redis sorted set
-func (w *Watcher) AddUtilizationMetricsToRedis() {
+func (w *Watcher) AddUtilizationMetricsToRedis() error {
 	logger := w.Logger.WithFields(logrus.Fields{
 		"executionID": uuid.NewV4().String(),
 		"operation":   "addUtilizationMetricsToRedis",
@@ -294,10 +297,10 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			w.Run = false
-			return
+			return err
 		}
 		logger.WithError(err).Error("failed to get scheduler scaling info")
-		return
+		return err
 	}
 
 	requests := scheduler.GetResourcesRequests()
@@ -312,7 +315,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 
 	// If it does not use metricsTriggers we dont need to save metrics
 	if len(metricsMap) == 0 {
-		return
+		return nil
 	}
 
 	// Load pods and set their usage to MaxInt64 for all resources
@@ -324,10 +327,10 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 	})
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods on namespace")
-		return
+		return err
 	} else if len(pods.Items) == 0 {
 		logger.Warn("empty list of pods on namespace")
-		return
+		return err
 	}
 
 	// Load pods metricses
@@ -375,6 +378,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 		)
 
 	}
+	return nil
 }
 
 // ReportRoomsStatuses runs as a block of code inside WithRedisLock
@@ -435,6 +439,33 @@ func (w *Watcher) ReportRoomsStatuses() error {
 	return nil
 }
 
+// WithDownscalingLock is a helper function that runs a block of code
+// that needs to hold a downscaling lock to redis
+func (w *Watcher) WithDownscalingLock(f func() error) error {
+	// Lock down scaling so it doesn't interfer with rolling update surges
+	downScalingLockKey := models.GetSchedulerDownScalingLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
+	downScalingLock, _, err := controller.AcquireLock(
+		context.Background(),
+		w.Logger,
+		w.RedisClient,
+		w.Config,
+		nil,
+		downScalingLockKey,
+		w.SchedulerName,
+	)
+	defer controller.ReleaseLock(
+		w.Logger,
+		w.RedisClient,
+		downScalingLock,
+		w.SchedulerName,
+	)
+	if err != nil {
+		return err
+	}
+
+	return f()
+}
+
 // WithRedisLock is a helper function that runs a block of code
 // that needs to hold a lock to redis
 func (w *Watcher) WithRedisLock(l *logrus.Entry, f func() error) {
@@ -473,7 +504,7 @@ func (w *Watcher) WithRedisLock(l *logrus.Entry, f func() error) {
 }
 
 // RemoveDeadRooms remove rooms that have not sent ping requests for a while
-func (w *Watcher) RemoveDeadRooms() {
+func (w *Watcher) RemoveDeadRooms() error {
 	w.gracefulShutdown.wg.Add(1)
 	defer w.gracefulShutdown.wg.Done()
 
@@ -505,7 +536,7 @@ func (w *Watcher) RemoveDeadRooms() {
 			w.SchedulerName, roomsNoPingSince)
 		if err != nil {
 			logger.WithError(err).Error("failed to get pingTimeout rooms metadata")
-			return
+			return err
 		}
 
 		for _, roomName := range roomsNoPingSince {
@@ -581,7 +612,7 @@ func (w *Watcher) RemoveDeadRooms() {
 				w.SchedulerName, roomsOnOccupiedTimeout)
 			if err != nil {
 				logger.WithError(err).Error("failed to get occupiedTimeout rooms metadata")
-				return
+				return err
 			}
 
 			for _, roomName := range roomsOnOccupiedTimeout {
@@ -624,6 +655,7 @@ func (w *Watcher) RemoveDeadRooms() {
 	}
 
 	logger.Info("finish check of dead rooms")
+	return nil
 }
 
 func (w *Watcher) updateOccupiedTimeout(scheduler *models.Scheduler) error {
@@ -631,12 +663,13 @@ func (w *Watcher) updateOccupiedTimeout(scheduler *models.Scheduler) error {
 	if err != nil {
 		return err
 	}
+
 	w.OccupiedTimeout = configYaml.OccupiedTimeout
 	return nil
 }
 
 // AutoScale checks if the GRUs state is as expected and scale up or down if necessary
-func (w *Watcher) AutoScale() {
+func (w *Watcher) AutoScale() error {
 	w.gracefulShutdown.wg.Add(1)
 	defer w.gracefulShutdown.wg.Done()
 
@@ -657,16 +690,16 @@ func (w *Watcher) AutoScale() {
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			w.Run = false
-			return
+			return err
 		}
 		logger.WithError(err).Error("failed to get scheduler scaling info")
-		return
+		return err
 	}
 
 	err = w.updateOccupiedTimeout(scheduler)
 	if err != nil {
 		logger.WithError(err).Error("failed to update scheduler occupied timeout")
-		return
+		return err
 	}
 
 	l := logger.WithFields(logrus.Fields{
@@ -685,7 +718,7 @@ func (w *Watcher) AutoScale() {
 	)
 	if err != nil {
 		logger.WithError(err).Error("failed to create namespace")
-		return
+		return err
 	}
 
 	nowTimestamp := time.Now().Unix()
@@ -698,7 +731,7 @@ func (w *Watcher) AutoScale() {
 	)
 	if err != nil {
 		logger.WithError(err).Error("failed to get scheduler occupancy info")
-		return
+		return err
 	}
 
 	if scaling.Delta > 0 {
@@ -772,6 +805,7 @@ func (w *Watcher) AutoScale() {
 			logger.WithError(err).Error("failed to update scheduler info")
 		}
 	}
+	return nil
 }
 
 func (w *Watcher) checkState(
@@ -1020,20 +1054,6 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	ctx := context.Background()
 
-	// check if a scheduler rolling update is in place
-	downScalingBlocked := controller.DownScalingBlocked(
-		ctx,
-		logger,
-		w.RedisClient,
-		w.Config,
-		scheduler.Name,
-	)
-
-	if downScalingBlocked {
-		logger.Debugf("not able to ensure correct rooms. Rolling update in place for scheduler %s", scheduler.Name)
-		return nil
-	}
-
 	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
 	pods, err := k.CoreV1().Pods(w.SchedulerName).List(
 		metav1.ListOptions{})
@@ -1072,28 +1092,6 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
 	timeoutDur := time.Duration(timeoutSec) * time.Second
 	willTimeoutAt := time.Now().Add(timeoutDur)
-
-	// Lock down scaling so it doesn't interfer with rolling update surges
-	downScalingLockKey := models.GetSchedulerDownScalingLockKey(w.Config.GetString("watcher.lockKey"), configYAML.Name)
-	downScalingLock, _, err := controller.AcquireLock(
-		ctx,
-		logger,
-		w.RedisClient,
-		w.Config,
-		nil,
-		downScalingLockKey,
-		w.SchedulerName,
-	)
-	defer controller.ReleaseLock(
-		logger,
-		w.RedisClient,
-		downScalingLock,
-		w.SchedulerName,
-	)
-
-	if err != nil {
-		return err
-	}
 
 	timeoutErr, _, err := controller.SegmentAndReplacePods(
 		ctx,
