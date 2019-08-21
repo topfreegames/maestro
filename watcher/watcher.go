@@ -41,7 +41,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 func createRoomUsages(pods *v1.PodList) ([]*models.RoomUsage, map[string]int) {

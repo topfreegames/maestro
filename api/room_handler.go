@@ -63,7 +63,8 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	// kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	kubernetesClient := g.App.KubernetesClient
 	err = controller.SetRoomStatus(
 		g.App.Logger,
 		g.App.RoomManager,

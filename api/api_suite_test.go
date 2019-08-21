@@ -30,7 +30,7 @@ import (
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes/fake"
-	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
+	metricsFake "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
 
 var (

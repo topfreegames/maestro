@@ -65,7 +65,8 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			payload.AuthorizedUsers = append(payload.AuthorizedUsers, email)
 		}
 
-		kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+		// kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+		kubernetesClient := g.App.KubernetesClient
 		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
 		err := controller.CreateScheduler(
 			l,

@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/redis"
 	"k8s.io/client-go/kubernetes/fake"
-	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
+	metricsFake "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 
 	"testing"
 

@@ -15,11 +15,10 @@ import (
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/extensions/redis"
-	kubernetesExtensions "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 )
@@ -74,13 +73,14 @@ func GetKubernetesClient(logger logrus.FieldLogger, inCluster bool, kubeConfigPa
 		l.Debug("starting outside Kubernetes cluster")
 		config, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	}
-  config.Timeout = 60 * time.Second
+	config.Timeout = 60 * time.Second
 	if err != nil {
 		l.WithError(err).Error("start Kubernetes failed")
 		return nil, nil, err
 	}
 	l.Debug("connecting to Kubernetes...")
-	clientset, err := kubernetesExtensions.NewForConfig(config)
+	// clientset, err := kubernetesExtensions.NewForConfig(config)
+	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		l.WithError(err).Error("connection to Kubernetes failed")
 		return nil, nil, err

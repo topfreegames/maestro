@@ -77,6 +77,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:46ddeb9dd35d875ac7568c4dc1fc96ce424e034bdbb984239d8ffc151398ec01"
+  name = "github.com/evanphx/json-patch"
+  packages = ["."]
+  pruneopts = ""
+  revision = "026c730a0dcc5d11f93f1cf1cc65b01247ea7b6f"
+  version = "v4.5.0"
+
+[[projects]]
   digest = "1:9f1e571696860f2b4f8a241b43ce91c6085e7aaed849ccca53f590a4dc7b95bd"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
@@ -99,14 +107,6 @@
   packages = ["."]
   pruneopts = ""
   revision = "b68337dbf03e7fbb53d9fd9b63fd09b28e8f13f7"
-
-[[projects]]
-  digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
-  name = "github.com/ghodss/yaml"
-  packages = ["."]
-  pruneopts = ""
-  revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
-  version = "v1.0.0"
 
 [[projects]]
   digest = "1:9d3afdcb2bb84f114df864f13ab5ec02bb8249ecad9803fcdfb717052f9265b8"
@@ -150,14 +150,6 @@
   pruneopts = ""
   revision = "100ba4e885062801d56799d78530b73b178a78f3"
   version = "v0.4"
-
-[[projects]]
-  branch = "master"
-  digest = "1:107b233e45174dbab5b1324201d092ea9448e58243ab9f039e4c0f332e121e3a"
-  name = "github.com/golang/glog"
-  packages = ["."]
-  pruneopts = ""
-  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
   digest = "1:a1bad350477afbc84e8cbe5c78be4579478c55335377239631ff0adb985fbabc"
@@ -627,12 +619,13 @@
   revision = "b2a1ed83a5ee950bb96756ca9213819fc7da33e0"
 
 [[projects]]
-  digest = "1:686e968be81acba7539a59d88e12589f952262a9a8c3fc20be847cca67b000fc"
+  digest = "1:b3c520b698f1dd209a39da6c56dc3a6254805d9bfa3017ae7cf9ef6f10b6e12b"
   name = "github.com/topfreegames/protos"
   packages = ["maestro/grpc/generated"]
   pruneopts = ""
-  revision = "6f1c73753eb052351ad81af2129d12b15a548104"
-  version = "v1.6.2"
+  revision = "b1f12ded05ddf2f5e732490db807585a35571e11"
+  source = "github.com/ghostec/protos"
+  version = "v1.8.0"
 
 [[projects]]
   digest = "1:acdc8a34ebf61772eed1f00cad6667f37b8f2618bf958eb59d3e28c690703ad8"
@@ -816,15 +809,14 @@
   version = "v0.9.0"
 
 [[projects]]
-  branch = "v2"
-  digest = "1:a3a9e86d4cd7b56a405875f475a6bb29f4614692fddf33e10eca5c839250b49e"
+  digest = "1:cedccf16b71e86db87a24f8d4c70b0a855872eb967cb906a66b95de56aefbd0d"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = ""
-  revision = "cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b"
+  revision = "v2.2.2"
 
 [[projects]]
-  digest = "1:b7dfcf13245d66685997bc74c67c3d00b89b9e3e6bf6cfcdfa5b41ad44150445"
+  digest = "1:ad71a18cee2ba21d6cfc996ee9ba275fa86ae5c11246908895d6afc3f2fb36c7"
   name = "k8s.io/api"
   packages = [
     "admissionregistration/v1alpha1",
@@ -832,16 +824,19 @@
     "apps/v1",
     "apps/v1beta1",
     "apps/v1beta2",
+    "auditregistration/v1alpha1",
     "authentication/v1",
     "authentication/v1beta1",
     "authorization/v1",
     "authorization/v1beta1",
     "autoscaling/v1",
     "autoscaling/v2beta1",
+    "autoscaling/v2beta2",
     "batch/v1",
     "batch/v1beta1",
     "batch/v2alpha1",
     "certificates/v1beta1",
+    "coordination/v1beta1",
     "core/v1",
     "events/v1beta1",
     "extensions/v1beta1",
@@ -858,11 +853,11 @@
     "storage/v1beta1",
   ]
   pruneopts = ""
-  revision = "e86510ea3fe79b17eda7b8b3bb5cf8811d3af968"
-  version = "kubernetes-1.11.7"
+  revision = "5e2f71e44c7fbe9ff9e3eb3f66f51d07e48183cf"
+  version = "kubernetes-1.13.9"
 
 [[projects]]
-  digest = "1:1cabd999b24a5205c04c88e95b3803fcb71512d563ed8e409ea7f88ab95f4230"
+  digest = "1:2ec0e8ff27c8afd0ed9ebc102d531ec83f67f54c2dafa07dad95eae11486df6c"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/errors",
@@ -891,13 +886,13 @@
     "pkg/util/intstr",
     "pkg/util/json",
     "pkg/util/mergepatch",
+    "pkg/util/naming",
     "pkg/util/net",
     "pkg/util/runtime",
     "pkg/util/sets",
     "pkg/util/strategicpatch",
     "pkg/util/validation",
     "pkg/util/validation/field",
-    "pkg/util/wait",
     "pkg/util/yaml",
     "pkg/version",
     "pkg/watch",
@@ -905,11 +900,11 @@
     "third_party/forked/golang/reflect",
   ]
   pruneopts = ""
-  revision = "1525e4dadd2df06debdeb27ee24ac7db5b6413b1"
-  version = "kubernetes-1.11.7"
+  revision = "e20a3a656cff908c57d43ba1c2ccec3b269e8ad7"
+  version = "kubernetes-1.13.9"
 
 [[projects]]
-  digest = "1:d04779a8de7d5465e0463bd986506348de5e89677c74777f695d3145a7a8d15e"
+  digest = "1:96ab89894f66b77a0137bba12e607c6a9be992acadfb075b5602939e8519a157"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -927,6 +922,8 @@
     "kubernetes/typed/apps/v1beta1/fake",
     "kubernetes/typed/apps/v1beta2",
     "kubernetes/typed/apps/v1beta2/fake",
+    "kubernetes/typed/auditregistration/v1alpha1",
+    "kubernetes/typed/auditregistration/v1alpha1/fake",
     "kubernetes/typed/authentication/v1",
     "kubernetes/typed/authentication/v1/fake",
     "kubernetes/typed/authentication/v1beta1",
@@ -939,6 +936,8 @@
     "kubernetes/typed/autoscaling/v1/fake",
     "kubernetes/typed/autoscaling/v2beta1",
     "kubernetes/typed/autoscaling/v2beta1/fake",
+    "kubernetes/typed/autoscaling/v2beta2",
+    "kubernetes/typed/autoscaling/v2beta2/fake",
     "kubernetes/typed/batch/v1",
     "kubernetes/typed/batch/v1/fake",
     "kubernetes/typed/batch/v1beta1",
@@ -947,6 +946,8 @@
     "kubernetes/typed/batch/v2alpha1/fake",
     "kubernetes/typed/certificates/v1beta1",
     "kubernetes/typed/certificates/v1beta1/fake",
+    "kubernetes/typed/coordination/v1beta1",
+    "kubernetes/typed/coordination/v1beta1/fake",
     "kubernetes/typed/core/v1",
     "kubernetes/typed/core/v1/fake",
     "kubernetes/typed/events/v1beta1",
@@ -998,8 +999,16 @@
     "util/integer",
   ]
   pruneopts = ""
-  revision = "7d04d0e2a0a1a4d4a1cd6baa432a2301492e4e65"
-  version = "v8.0.0"
+  revision = "e64494209f554a6723674bd494d69445fb76a1d4"
+  version = "v10.0.0"
+
+[[projects]]
+  digest = "1:3063061b6514ad2666c4fa292451685884cacf77c803e1b10b4a4fa23f7787fb"
+  name = "k8s.io/klog"
+  packages = ["."]
+  pruneopts = ""
+  revision = "3ca30a56d8a775276f9cdae009ba326fdc05af7f"
+  version = "v0.4.0"
 
 [[projects]]
   branch = "master"
@@ -1010,23 +1019,30 @@
   revision = "e3762e86a74c878ffed47484592986685639c2cd"
 
 [[projects]]
-  digest = "1:4eb9dc49822944c6734b34daad6f5b04628966c641682fd86a6901b35fc9fba2"
+  digest = "1:d64c1ace2ec90f7995b1a5500309bd9fe4c95098bfe3640d72ad15914467c3d6"
   name = "k8s.io/metrics"
   packages = [
     "pkg/apis/metrics",
     "pkg/apis/metrics/v1alpha1",
     "pkg/apis/metrics/v1beta1",
-    "pkg/client/clientset_generated/clientset",
-    "pkg/client/clientset_generated/clientset/fake",
-    "pkg/client/clientset_generated/clientset/scheme",
-    "pkg/client/clientset_generated/clientset/typed/metrics/v1alpha1",
-    "pkg/client/clientset_generated/clientset/typed/metrics/v1alpha1/fake",
-    "pkg/client/clientset_generated/clientset/typed/metrics/v1beta1",
-    "pkg/client/clientset_generated/clientset/typed/metrics/v1beta1/fake",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/fake",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/metrics/v1alpha1",
+    "pkg/client/clientset/versioned/typed/metrics/v1alpha1/fake",
+    "pkg/client/clientset/versioned/typed/metrics/v1beta1",
+    "pkg/client/clientset/versioned/typed/metrics/v1beta1/fake",
   ]
   pruneopts = ""
-  revision = "8f4f9519bde52c95f3b4e05dae0dc6563cf19863"
-  version = "kubernetes-1.11.7"
+  revision = "cf97d17242fbd3b961ff2332adecf5623692bacf"
+  version = "kubernetes-1.13.9"
+
+[[projects]]
+  digest = "1:de511b33a07bbe6f6e92520131350572378c15610ab22dd22afb4ea934933562"
+  name = "sigs.k8s.io/yaml"
+  packages = ["."]
+  pruneopts = ""
+  revision = "4cd0c284b15f1735b8cc247df097d262b8903f9f"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -1096,8 +1112,8 @@
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/metrics/pkg/apis/metrics/v1beta1",
-    "k8s.io/metrics/pkg/client/clientset_generated/clientset",
-    "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake",
+    "k8s.io/metrics/pkg/client/clientset/versioned",
+    "k8s.io/metrics/pkg/client/clientset/versioned/fake",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
