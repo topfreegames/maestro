@@ -61,7 +61,6 @@ var _ = Describe("SchedulerLocksHandler", func() {
 
 		It("should return unlocked watcher locks", func() {
 			for _, lockKey := range []string{
-				"maestro-lock-key-scheduler-name",
 				"maestro-lock-key-scheduler-name-config",
 				"maestro-lock-key-scheduler-name-downscaling",
 			} {
@@ -76,10 +75,9 @@ var _ = Describe("SchedulerLocksHandler", func() {
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 			var locks []models.SchedulerLock
 			json.Unmarshal(recorder.Body.Bytes(), &locks)
-			Expect(locks).To(HaveLen(3))
+			Expect(locks).To(HaveLen(2))
 
 			for i, lockKey := range []string{
-				"maestro-lock-key-scheduler-name",
 				"maestro-lock-key-scheduler-name-config",
 				"maestro-lock-key-scheduler-name-downscaling",
 			} {
@@ -91,7 +89,6 @@ var _ = Describe("SchedulerLocksHandler", func() {
 
 		It("should return locked watcher lock", func() {
 			for _, lockKey := range []string{
-				"maestro-lock-key-scheduler-name",
 				"maestro-lock-key-scheduler-name-config",
 				"maestro-lock-key-scheduler-name-downscaling",
 			} {
@@ -108,7 +105,6 @@ var _ = Describe("SchedulerLocksHandler", func() {
 			json.Unmarshal(recorder.Body.Bytes(), &locks)
 
 			for i, lockKey := range []string{
-				"maestro-lock-key-scheduler-name",
 				"maestro-lock-key-scheduler-name-config",
 				"maestro-lock-key-scheduler-name-downscaling",
 			} {
@@ -127,7 +123,6 @@ var _ = Describe("SchedulerLocksHandler", func() {
 
 		It("should remove lockName key in redis", func() {
 			for _, lockKey := range []string{
-				models.GetSchedulerScalingLockKey(app.Config.GetString("watcher.lockKey"), configYaml.Name),
 				models.GetSchedulerConfigLockKey(app.Config.GetString("watcher.lockKey"), configYaml.Name),
 				models.GetSchedulerDownScalingLockKey(app.Config.GetString("watcher.lockKey"), configYaml.Name),
 			} {

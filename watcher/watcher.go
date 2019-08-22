@@ -155,7 +155,6 @@ func (w *Watcher) configure() error {
 	w.RoomsStatusesReportPeriod = w.Config.GetInt("watcher.roomsStatusesReportPeriod")
 	w.EnsureCorrectRoomsPeriod = w.Config.GetDuration("watcher.ensureCorrectRoomsPeriod")
 	w.PodStatesCountPeriod = w.Config.GetDuration("watcher.podStatesCountPeriod")
-	w.LockKey = models.GetSchedulerScalingLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
 	w.LockTimeoutMS = w.Config.GetInt("watcher.lockTimeoutMs")
 	var wg sync.WaitGroup
 	w.gracefulShutdown = &gracefulShutdown{
@@ -277,9 +276,9 @@ func (w *Watcher) watchRooms() error {
 	l := w.Logger.WithFields(logrus.Fields{
 		"operation": "watcher.watchRooms",
 	})
-	w.WithRedisLock(l, w.AutoScale)
 	w.WithDownscalingLock(l, w.RemoveDeadRooms)
-	w.WithRedisLock(l, w.AddUtilizationMetricsToRedis)
+	w.AutoScale()
+	w.AddUtilizationMetricsToRedis()
 	return nil
 }
 
@@ -447,7 +446,7 @@ func (w *Watcher) ReportRoomsStatuses() error {
 
 // WithDownscalingLock is a helper function that runs a block of code
 // that needs to hold a downscaling lock to redis
-func (w *Watcher) WithDownscalingLock(l *logrus.Entry, f func() error) error {
+func (w *Watcher) WithDownscalingLock(l *logrus.Entry, f func() error) (lockErr, err error) {
 	// Lock down scaling so it doesn't interfer with rolling update surges
 	downScalingLockKey := models.GetSchedulerDownScalingLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
 	downScalingLock, _, err := controller.AcquireLock(
@@ -466,47 +465,10 @@ func (w *Watcher) WithDownscalingLock(l *logrus.Entry, f func() error) error {
 		w.SchedulerName,
 	)
 	if err != nil {
-		return err
+		return err, nil
 	}
 
-	return f()
-}
-
-// WithRedisLock is a helper function that runs a block of code
-// that needs to hold a lock to redis
-func (w *Watcher) WithRedisLock(l *logrus.Entry, f func() error) {
-	executionID := uuid.NewV4().String()
-	lock, err := w.RedisClient.EnterCriticalSection(
-		w.RedisClient.Client, w.LockKey,
-		time.Duration(w.LockTimeoutMS)*time.Millisecond, 0, 0,
-	)
-	if lock == nil || err != nil {
-		if err != nil {
-			l.WithError(err).Error("error getting watcher lock")
-		} else if lock == nil {
-			l.Warnf("unable to get watcher %s lock, maybe some other process has it...", w.SchedulerName)
-		}
-	} else if lock.IsLocked() {
-		l.WithFields(logrus.Fields{
-			"lockKey":     w.LockKey,
-			"scheduler":   w.SchedulerName,
-			"executionID": executionID,
-		}).Debug("lock acquired")
-		err = f()
-		if err != nil {
-			l.WithError(err).Error("WithRedisLock block function failed")
-		}
-		err = w.RedisClient.LeaveCriticalSection(lock)
-		if err != nil {
-			l.WithError(err).Error("LeaveCriticalSection failed to release lock")
-		} else {
-			l.WithFields(logrus.Fields{
-				"lockKey":     w.LockKey,
-				"scheduler":   w.SchedulerName,
-				"executionID": executionID,
-			}).Debug("lock released")
-		}
-	}
+	return nil, f()
 }
 
 // List names of rooms with no ping
@@ -815,17 +777,8 @@ func (w *Watcher) AutoScale() error {
 		l.Info("scheduler is overdimensioned, should scale down")
 		timeoutSec := w.Config.GetInt("scaleDownTimeoutSeconds")
 
-		// check if a scheduler rolling update is in place
-		downScalingBlocked := controller.DownScalingBlocked(
-			context.Background(),
-			logger,
-			w.RedisClient,
-			w.Config,
-			scheduler.Name,
-		)
-
-		if !downScalingBlocked {
-			err = controller.ScaleDown(
+		scaleDown := func() error {
+			return controller.ScaleDown(
 				logger,
 				w.RoomManager,
 				w.MetricsReporter,
@@ -836,8 +789,11 @@ func (w *Watcher) AutoScale() error {
 				-scaling.Delta,
 				timeoutSec,
 			)
-		} else {
-			l.Infof("not able to scale down. Rolling update in place for scheduler %s", scheduler.Name)
+		}
+		lockErr, err := w.WithDownscalingLock(l, scaleDown)
+		if lockErr != nil {
+			l.WithError(err).Info("not able to acquire downScalingLock. Not scaling down")
+			return nil
 		}
 
 		scheduler.State = models.StateInSync
