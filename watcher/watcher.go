@@ -220,7 +220,7 @@ func (w *Watcher) configureEnvironment() {
 // Start starts the watcher
 func (w *Watcher) Start() {
 	l := w.Logger.WithFields(logrus.Fields{
-		"operation": "start",
+		"operation": "watcher.Start",
 	})
 	l.Info("starting watcher")
 	w.Run = true
@@ -237,11 +237,17 @@ func (w *Watcher) Start() {
 	go w.reportRoomsStatusesRoutine()
 
 	for w.Run == true {
+		l = w.Logger.WithFields(logrus.Fields{
+			"operation": "watcher.Start",
+		})
 		select {
 		case <-ticker.C:
-			w.WithRedisLock(l, w.watchRooms)
+			w.watchRooms()
 		case <-tickerEnsure.C:
-			w.EnsureCorrectRooms()
+			l = w.Logger.WithFields(logrus.Fields{
+				"operation": "watcher.EnsureCorrectRooms",
+			})
+			w.WithDownscalingLock(l, w.EnsureCorrectRooms)
 		case <-tickerStateCount.C:
 			w.PodStatesCount()
 		case sig := <-sigchan:
@@ -268,14 +274,17 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 }
 
 func (w *Watcher) watchRooms() error {
-	w.RemoveDeadRooms()
-	w.AutoScale()
-	w.AddUtilizationMetricsToRedis()
+	l := w.Logger.WithFields(logrus.Fields{
+		"operation": "watcher.watchRooms",
+	})
+	w.WithRedisLock(l, w.AutoScale)
+	w.WithDownscalingLock(l, w.RemoveDeadRooms)
+	w.WithRedisLock(l, w.AddUtilizationMetricsToRedis)
 	return nil
 }
 
 // AddUtilizationMetricsToRedis store the pods usage metrics (cpu and mem) in a redis sorted set
-func (w *Watcher) AddUtilizationMetricsToRedis() {
+func (w *Watcher) AddUtilizationMetricsToRedis() error {
 	logger := w.Logger.WithFields(logrus.Fields{
 		"executionID": uuid.NewV4().String(),
 		"operation":   "addUtilizationMetricsToRedis",
@@ -294,10 +303,10 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			w.Run = false
-			return
+			return err
 		}
 		logger.WithError(err).Error("failed to get scheduler scaling info")
-		return
+		return err
 	}
 
 	requests := scheduler.GetResourcesRequests()
@@ -312,7 +321,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 
 	// If it does not use metricsTriggers we dont need to save metrics
 	if len(metricsMap) == 0 {
-		return
+		return nil
 	}
 
 	// Load pods and set their usage to MaxInt64 for all resources
@@ -324,10 +333,10 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 	})
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods on namespace")
-		return
+		return err
 	} else if len(pods.Items) == 0 {
 		logger.Warn("empty list of pods on namespace")
-		return
+		return err
 	}
 
 	// Load pods metricses
@@ -375,6 +384,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() {
 		)
 
 	}
+	return nil
 }
 
 // ReportRoomsStatuses runs as a block of code inside WithRedisLock
@@ -435,6 +445,33 @@ func (w *Watcher) ReportRoomsStatuses() error {
 	return nil
 }
 
+// WithDownscalingLock is a helper function that runs a block of code
+// that needs to hold a downscaling lock to redis
+func (w *Watcher) WithDownscalingLock(l *logrus.Entry, f func() error) error {
+	// Lock down scaling so it doesn't interfer with rolling update surges
+	downScalingLockKey := models.GetSchedulerDownScalingLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
+	downScalingLock, _, err := controller.AcquireLock(
+		context.Background(),
+		l,
+		w.RedisClient,
+		w.Config,
+		nil,
+		downScalingLockKey,
+		w.SchedulerName,
+	)
+	defer controller.ReleaseLock(
+		l,
+		w.RedisClient,
+		downScalingLock,
+		w.SchedulerName,
+	)
+	if err != nil {
+		return err
+	}
+
+	return f()
+}
+
 // WithRedisLock is a helper function that runs a block of code
 // that needs to hold a lock to redis
 func (w *Watcher) WithRedisLock(l *logrus.Entry, f func() error) {
@@ -472,19 +509,14 @@ func (w *Watcher) WithRedisLock(l *logrus.Entry, f func() error) {
 	}
 }
 
-// RemoveDeadRooms remove rooms that have not sent ping requests for a while
-func (w *Watcher) RemoveDeadRooms() {
-	w.gracefulShutdown.wg.Add(1)
-	defer w.gracefulShutdown.wg.Done()
-
+// List names of rooms with no ping
+func (w *Watcher) roomsWithNoPing(logger *logrus.Entry) ([]string, error) {
+	var roomsNoPingSince []string
 	since := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
-	logger := w.Logger.WithFields(logrus.Fields{
-		"executionID": uuid.NewV4().String(),
-		"operation":   "removeDeadRooms",
-		"since":       since,
+	l := logger.WithFields(logrus.Fields{
+		"since": since,
 	})
 
-	var roomsNoPingSince []string
 	err := w.MetricsReporter.WithSegment(models.SegmentZRangeBy, func() error {
 		var err error
 		roomsNoPingSince, err = models.GetRoomsNoPingSince(w.RedisClient.Client, w.SchedulerName, since, w.MetricsReporter)
@@ -492,138 +524,193 @@ func (w *Watcher) RemoveDeadRooms() {
 	})
 
 	if err != nil {
-		logger.WithError(err).Error("error listing rooms with no ping since")
+		l.WithError(err).Error("error listing rooms with no ping since")
 	}
 
-	if roomsNoPingSince != nil && len(roomsNoPingSince) > 0 {
-		logger.WithFields(logrus.Fields{
+	if len(roomsNoPingSince) > 0 {
+		l.WithFields(logrus.Fields{
 			"quantity": len(roomsNoPingSince),
-		}).Info("deleting rooms that are not pinging Maestro")
+		}).Info("replacing rooms that are not pinging Maestro")
 
-		metadatas, err := models.GetRoomsMetadatas(
-			w.RedisClient.Client,
-			w.SchedulerName, roomsNoPingSince)
+		err = w.forwardRemovalRoomEvent(logger, roomsNoPingSince)
 		if err != nil {
-			logger.WithError(err).Error("failed to get pingTimeout rooms metadata")
-			return
+			return nil, err
+		}
+	}
+
+	return roomsNoPingSince, nil
+}
+
+// List names of rooms that expired occupation timeout
+func (w *Watcher) roomsWithOccupationTimeout(logger *logrus.Entry) ([]string, error) {
+	var roomsOnOccupiedTimeout []string
+	since := time.Now().Unix() - w.OccupiedTimeout
+	l := logger.WithFields(logrus.Fields{
+		"since": since,
+	})
+
+	if w.OccupiedTimeout <= 0 {
+		return nil, nil
+	}
+
+	err := w.MetricsReporter.WithSegment(models.SegmentZRangeBy, func() error {
+		var err error
+		roomsOnOccupiedTimeout, err = models.GetRoomsOccupiedTimeout(w.RedisClient.Client, w.SchedulerName, since, w.MetricsReporter)
+		return err
+	})
+
+	if err != nil {
+		l.WithError(err).Error("error listing rooms with no occupied timeout")
+	}
+
+	if len(roomsOnOccupiedTimeout) > 0 {
+		l.WithFields(logrus.Fields{
+			"quantity": len(roomsOnOccupiedTimeout),
+		}).Info("replacing rooms that expired occupied timeout")
+
+		err = w.forwardRemovalRoomEvent(logger, roomsOnOccupiedTimeout)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return roomsOnOccupiedTimeout, nil
+}
+
+func (w *Watcher) forwardRemovalRoomEvent(logger *logrus.Entry, rooms []string) (err error) {
+	// get metadata
+	metadatas, err := models.GetRoomsMetadatas(
+		w.RedisClient.Client,
+		w.SchedulerName, rooms)
+	if err != nil {
+		logger.WithError(err).Error("failed to get rooms metadata")
+		return err
+	}
+
+	// forward
+	for _, roomName := range rooms {
+		room := &models.Room{
+			ID:            roomName,
+			SchedulerName: w.SchedulerName,
 		}
 
-		for _, roomName := range roomsNoPingSince {
-			room := &models.Room{
-				ID:            roomName,
-				SchedulerName: w.SchedulerName,
-			}
-
-			_, err := eventforwarder.ForwardRoomEvent(
-				context.Background(),
-				w.EventForwarders, w.RedisClient.Client, w.DB, w.KubernetesClient,
-				room, models.RoomTerminated, eventforwarder.PingTimeoutEvent,
-				metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
-			if err != nil {
-				logger.WithError(err).Error("pingTimeout event forward failed")
-			}
+		_, err := eventforwarder.ForwardRoomEvent(
+			context.Background(),
+			w.EventForwarders, w.RedisClient.Client, w.DB, w.KubernetesClient,
+			room, models.RoomTerminated, eventforwarder.PingTimeoutEvent,
+			metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
+		if err != nil {
+			logger.WithError(err).Error("pingTimeout event forward failed")
 		}
+	}
+	return nil
+}
 
-		logger.WithFields(logrus.Fields{
-			"rooms": fmt.Sprintf("%v", roomsNoPingSince),
-		}).Info("rooms that are not pinging")
+func (w *Watcher) listPodsToReplace(logger *logrus.Entry, podNames []string) (podsToReplace []v1.Pod, err error) {
+	k := w.KubernetesClient
+	pods, err := k.CoreV1().Pods(w.SchedulerName).List(
+		metav1.ListOptions{})
+	if err != nil {
+		logger.WithError(err).Error("failed to list pods on namespace")
+		return nil, err
+	}
 
+	podNameMap := map[string]bool{}
+	for _, name := range podNames {
+		podNameMap[name] = true
+	}
+
+	for _, pod := range pods.Items {
+		if podNameMap[pod.GetName()] {
+			podsToReplace = append(podsToReplace, pod)
+		}
+	}
+
+	return podsToReplace, nil
+}
+
+// RemoveDeadRooms remove rooms that have not sent ping requests for a while
+func (w *Watcher) RemoveDeadRooms() error {
+	w.gracefulShutdown.wg.Add(1)
+	defer w.gracefulShutdown.wg.Done()
+
+	logger := w.Logger.WithFields(logrus.Fields{
+		"executionID": uuid.NewV4().String(),
+		"operation":   "watcher.RemoveDeadRooms",
+	})
+
+	// get rooms with no ping
+	roomsNoPingSince, err := w.roomsWithNoPing(logger)
+	if err != nil {
+		return err
+	}
+
+	// get rooms with occupation timeout
+	roomsOnOccupiedTimeout, err := w.roomsWithOccupationTimeout(logger)
+	if err != nil {
+		return err
+	}
+
+	if len(roomsNoPingSince) > 0 || len(roomsOnOccupiedTimeout) > 0 {
+		podsToReplace, err := w.listPodsToReplace(logger, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
+
+		// load scheduler from database
 		scheduler := models.NewScheduler(w.SchedulerName, "", "")
 		err = scheduler.Load(w.DB)
 		if err != nil {
 			logger.WithError(err).Error("error accessing db while removing dead rooms")
-		} else {
-			err := controller.DeleteUnavailableRooms(
-				logger,
-				w.RoomManager,
-				w.MetricsReporter,
-				w.RedisClient.Client,
-				w.KubernetesClient,
-				scheduler,
-				roomsNoPingSince,
-				reportersConstants.ReasonPingTimeout,
-			)
-			if err != nil {
-				logger.WithError(err).Error("error removing dead rooms")
-			} else {
-				logger.WithFields(logrus.Fields{
-					"rooms": fmt.Sprintf("%v", roomsNoPingSince),
-				}).Info("successfully deleted rooms that were not pinging")
-			}
+			return err
 		}
 
-	}
+		timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
+		timeoutDur := time.Duration(timeoutSec) * time.Second
+		willTimeoutAt := time.Now().Add(timeoutDur)
 
-	if w.OccupiedTimeout > 0 {
-		since = time.Now().Unix() - w.OccupiedTimeout
-		logger = w.Logger.WithFields(logrus.Fields{
-			"executionID": uuid.NewV4().String(),
-			"operation":   "removeDeadOccupiedRooms",
-			"since":       since,
-		})
-
-		var roomsOnOccupiedTimeout []string
-		err := w.MetricsReporter.WithSegment(models.SegmentZRangeBy, func() error {
-			var err error
-			roomsOnOccupiedTimeout, err = models.GetRoomsOccupiedTimeout(w.RedisClient.Client, w.SchedulerName, since, w.MetricsReporter)
+		configYAML, err := models.NewConfigYAML(scheduler.YAML)
+		if err != nil {
+			logger.WithError(err).Error("failed to unmarshal config yaml")
 			return err
-		})
+		}
+
+		timeoutErr, _, err := controller.SegmentAndReplacePods(
+			context.Background(),
+			logger,
+			w.RoomManager,
+			w.MetricsReporter,
+			w.KubernetesClient,
+			w.DB,
+			w.RedisClient.Client,
+			willTimeoutAt,
+			configYAML,
+			podsToReplace,
+			scheduler,
+			nil,
+			w.Config.GetInt("watcher.maxSurge"),
+			&clock.Clock{},
+		)
+
+		if timeoutErr != nil {
+			logger.WithError(err).Error("timeout replacing pods on RemoveDeadRooms")
+		}
 
 		if err != nil {
-			logger.WithError(err).Error("error listing rooms with no occupied timeout")
+			logger.WithError(err).Error("replacing pods returned error on RemoveDeadRooms")
 		}
 
-		if roomsOnOccupiedTimeout != nil && len(roomsOnOccupiedTimeout) > 0 {
-			logger.Info("deleting rooms that are stuck at occupied status")
+		if timeoutErr == nil && err == nil {
+			l := logger.WithFields(logrus.Fields{
+				"rooms": fmt.Sprintf("%v", roomsNoPingSince),
+			})
+			l.Info("successfully deleted rooms that were not pinging")
 
-			metadatas, err := models.GetRoomsMetadatas(
-				w.RedisClient.Client,
-				w.SchedulerName, roomsOnOccupiedTimeout)
-			if err != nil {
-				logger.WithError(err).Error("failed to get occupiedTimeout rooms metadata")
-				return
-			}
-
-			for _, roomName := range roomsOnOccupiedTimeout {
-				room := &models.Room{
-					ID:            roomName,
-					SchedulerName: w.SchedulerName,
-				}
-
-				_, err = eventforwarder.ForwardRoomEvent(
-					context.Background(), w.EventForwarders, w.RedisClient.Client, w.DB, w.KubernetesClient,
-					room, models.RoomTerminated, eventforwarder.OccupiedTimeoutEvent,
-					metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
-				if err != nil {
-					logger.WithError(err).Error("occupiedTimeout event forward failed")
-				}
-			}
-
-			scheduler := models.NewScheduler(w.SchedulerName, "", "")
-			err = scheduler.Load(w.DB)
-			if err != nil {
-				logger.
-					WithError(err).
-					Error("error accessing db while removing occupied timeout rooms")
-			} else {
-				err = controller.DeleteUnavailableRooms(
-					logger,
-					w.RoomManager,
-					w.MetricsReporter,
-					w.RedisClient.Client,
-					w.KubernetesClient,
-					scheduler,
-					roomsOnOccupiedTimeout,
-					reportersConstants.ReasonOccupiedTimeout,
-				)
-				if err != nil {
-					logger.WithError(err).Error("error removing old occupied rooms")
-				}
-			}
+			l = logger.WithFields(logrus.Fields{
+				"rooms": fmt.Sprintf("%v", roomsOnOccupiedTimeout),
+			})
+			l.Info("successfully deleted rooms that expired occupied timeout")
 		}
 	}
-
 	logger.Info("finish check of dead rooms")
+	return nil
 }
 
 func (w *Watcher) updateOccupiedTimeout(scheduler *models.Scheduler) error {
@@ -631,12 +718,13 @@ func (w *Watcher) updateOccupiedTimeout(scheduler *models.Scheduler) error {
 	if err != nil {
 		return err
 	}
+
 	w.OccupiedTimeout = configYaml.OccupiedTimeout
 	return nil
 }
 
 // AutoScale checks if the GRUs state is as expected and scale up or down if necessary
-func (w *Watcher) AutoScale() {
+func (w *Watcher) AutoScale() error {
 	w.gracefulShutdown.wg.Add(1)
 	defer w.gracefulShutdown.wg.Done()
 
@@ -657,16 +745,16 @@ func (w *Watcher) AutoScale() {
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			w.Run = false
-			return
+			return err
 		}
 		logger.WithError(err).Error("failed to get scheduler scaling info")
-		return
+		return err
 	}
 
 	err = w.updateOccupiedTimeout(scheduler)
 	if err != nil {
 		logger.WithError(err).Error("failed to update scheduler occupied timeout")
-		return
+		return err
 	}
 
 	l := logger.WithFields(logrus.Fields{
@@ -685,7 +773,7 @@ func (w *Watcher) AutoScale() {
 	)
 	if err != nil {
 		logger.WithError(err).Error("failed to create namespace")
-		return
+		return err
 	}
 
 	nowTimestamp := time.Now().Unix()
@@ -698,7 +786,7 @@ func (w *Watcher) AutoScale() {
 	)
 	if err != nil {
 		logger.WithError(err).Error("failed to get scheduler occupancy info")
-		return
+		return err
 	}
 
 	if scaling.Delta > 0 {
@@ -772,6 +860,7 @@ func (w *Watcher) AutoScale() {
 			logger.WithError(err).Error("failed to update scheduler info")
 		}
 	}
+	return nil
 }
 
 func (w *Watcher) checkState(
@@ -1020,20 +1109,6 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	ctx := context.Background()
 
-	// check if a scheduler rolling update is in place
-	downScalingBlocked := controller.DownScalingBlocked(
-		ctx,
-		logger,
-		w.RedisClient,
-		w.Config,
-		scheduler.Name,
-	)
-
-	if downScalingBlocked {
-		logger.Debugf("not able to ensure correct rooms. Rolling update in place for scheduler %s", scheduler.Name)
-		return nil
-	}
-
 	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
 	pods, err := k.CoreV1().Pods(w.SchedulerName).List(
 		metav1.ListOptions{})
@@ -1072,28 +1147,6 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
 	timeoutDur := time.Duration(timeoutSec) * time.Second
 	willTimeoutAt := time.Now().Add(timeoutDur)
-
-	// Lock down scaling so it doesn't interfer with rolling update surges
-	downScalingLockKey := models.GetSchedulerDownScalingLockKey(w.Config.GetString("watcher.lockKey"), configYAML.Name)
-	downScalingLock, _, err := controller.AcquireLock(
-		ctx,
-		logger,
-		w.RedisClient,
-		w.Config,
-		nil,
-		downScalingLockKey,
-		w.SchedulerName,
-	)
-	defer controller.ReleaseLock(
-		logger,
-		w.RedisClient,
-		downScalingLock,
-		w.SchedulerName,
-	)
-
-	if err != nil {
-		return err
-	}
 
 	timeoutErr, _, err := controller.SegmentAndReplacePods(
 		ctx,
