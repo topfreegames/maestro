@@ -30,7 +30,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	kubernetesExtensions "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/autoscaler"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
@@ -1329,8 +1328,8 @@ func (w *Watcher) PodStatesCount() {
 	logger := w.Logger.WithField("method", "PodStatesCount")
 
 	logger.Info("listing pods on namespace")
-	ctx := context.Background()
-	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
+	// k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
+	k := w.KubernetesClient
 	pods, err := k.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods")

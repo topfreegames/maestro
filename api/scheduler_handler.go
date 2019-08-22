@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
@@ -144,7 +143,8 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	logger.Info("deleting scheduler")
 
-	kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	// kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	kubernetesClient := g.App.KubernetesClient
 	timeoutSec := g.App.Config.GetInt("deleteTimeoutSeconds")
 	db := g.App.DBClient.WithContext(r.Context())
 	err := controller.DeleteScheduler(

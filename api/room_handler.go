@@ -17,7 +17,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/middleware"
-	"github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
@@ -137,7 +136,8 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 
-	kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	// kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	kubernetesClient := g.App.KubernetesClient
 	resp, err := eventforwarder.ForwardPlayerEvent(
 		r.Context(),
 		g.App.Forwarders,
@@ -210,7 +210,8 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	// kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	kubernetesClient := g.App.KubernetesClient
 	resp, err := eventforwarder.ForwardRoomEvent(
 		r.Context(),
 		g.App.Forwarders,
@@ -274,7 +275,8 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug("Performing status update...")
 
-	kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	// kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
+	kubernetesClient := g.App.KubernetesClient
 	room := models.NewRoom(params.Name, params.Scheduler)
 	err := controller.SetRoomStatus(
 		g.App.Logger,
@@ -340,7 +342,8 @@ func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("Address handler called")
 
 	room := models.NewRoom(params.Name, params.Scheduler)
-	kubernetesClient := kubernetes.TryWithContext(h.App.KubernetesClient, ctx)
+	// kubernetesClient := kubernetes.TryWithContext(h.App.KubernetesClient, ctx)
+	kubernetesClient := h.App.KubernetesClient
 	roomAddresses, err := h.App.RoomAddrGetter.Get(room, kubernetesClient, h.App.RedisClient.Trace(ctx))
 
 	if err != nil {

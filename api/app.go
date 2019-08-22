@@ -445,7 +445,7 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("api.limitManager.keyTimeout", 1*time.Minute)
 	a.Config.SetDefault("jaeger.disabled", false)
 	a.Config.SetDefault("jaeger.samplingProbability", 1.0)
-	a.Config.SetDefault("addrGetter.cache.use", false)
+	a.Config.SetDefault("addrGetter.cache.use", true)
 	a.Config.SetDefault("addrGetter.cache.expirationInterval", "10m")
 	a.Config.SetDefault(EnvironmentConfig, ProdEnvironment)
 }
