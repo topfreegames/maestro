@@ -19,19 +19,20 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-FROM golang:1.13beta1-alpine3.10
+FROM golang:1.12.9-buster AS build-env
 
 MAINTAINER TFG Co <backend@tfgco.com>
 
 RUN mkdir -p /app/bin
 
-RUN apk add postgresql git make musl-dev gcc libc6-compat --no-cache
+RUN apt update && apt install --no-install-recommends -y postgresql git make libc-dev gcc
 RUN go get -u github.com/jteeuwen/go-bindata/...
 
 ADD . /go/src/github.com/topfreegames/maestro
 RUN cd /go/src/github.com/topfreegames/maestro && \
   make build && \
   make plugins-linux && \
+  make assets && \
   mv bin/maestro /app/maestro && \
   mv bin/grpc.so /app/bin/grpc.so && \
   mv config /app/config && \
@@ -39,8 +40,16 @@ RUN cd /go/src/github.com/topfreegames/maestro && \
   mv migrations /app/migrations && \
   mv Makefile /app/Makefile
   
+FROM debian:buster-slim
+
 WORKDIR /app
-RUN make assets
+
+COPY --from=build-env /app/maestro /app/maestro
+COPY --from=build-env /app/bin/grpc.so /app/bin/grpc.so
+COPY --from=build-env /app/config /app/config
+COPY --from=build-env /app/scripts /app/scripts
+COPY --from=build-env /app/migrations /app/migrations
+COPY --from=build-env /app/Makefile /app/Makefile
 
 EXPOSE 8080
 
