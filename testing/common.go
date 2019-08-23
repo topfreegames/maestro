@@ -41,16 +41,24 @@ func MockSelectScheduler(
 
 	var configYaml models.ConfigYAML
 	yaml.Unmarshal([]byte(yamlStr), &configYaml)
-
 	calls.Add(
-		mockDb.EXPECT().
-			Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+		MockLoadScheduler(configYaml.Name, mockDb).
 			Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
 			}).
 			Return(pg.NewTestResult(nil, 1), errDB))
 
 	return calls
+}
+
+// MockLoadScheduler mocks scheduler.Load query
+func MockLoadScheduler(schedulerName string, mockDb *pgmocks.MockDB) (call *gomock.Call) {
+	return mockDb.EXPECT().Query(gomock.Any(), "SELECT "+
+		"s.id, s.name, s.game, s.yaml, s.state, s.state_last_changed_at, last_scale_op_at, s.created_at, s.updated_at, s.version, "+
+		"v.rolling_update_status, v.rollback_version "+
+		"FROM schedulers s join scheduler_versions v "+
+		"ON s.name=v.name AND v.version=s.version "+
+		"WHERE s.name = ?", schedulerName)
 }
 
 // MockRedisLock mocks a lock creation on redis
@@ -113,10 +121,10 @@ func MockInsertIntoVersionsTable(
 ) (calls *Calls) {
 	calls = NewCalls()
 
-	query := `INSERT INTO scheduler_versions (name, version, yaml, rolling_update_status)
-	VALUES (?, ?, ?, ?)`
+	query := `INSERT INTO scheduler_versions (name, version, yaml, rolling_update_status, rollback_version)
+	VALUES (?, ?, ?, ?, ?)`
 	calls.Add(mockDb.EXPECT().
-		Query(gomock.Any(), query, scheduler.Name, scheduler.Version, gomock.Any(), gomock.Any()).
+		Query(gomock.Any(), query, scheduler.Name, scheduler.Version, gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(pg.NewTestResult(nil, 1), errDB))
 
 	return calls
@@ -880,7 +888,7 @@ func MockOperationManager(
 
 	mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
 		goredis.NewStringStringMapResult(map[string]string{
-			"not": "empty",
+			"description": models.OpManagerRollingUpdate,
 		}, nil)).AnyTimes()
 
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -1208,7 +1216,7 @@ func MockGetScheduler(
 	times int,
 ) {
 	// Mock scheduler
-	mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+	MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 		scheduler.State = state
 		scheduler.StateLastChangedAt = lastChangedAt.Unix()
 		scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1532,15 +1540,24 @@ func MockRollingUpdateFlow(
 	scheduler *models.Scheduler,
 	configYaml *models.ConfigYAML,
 	removeRoomsError error,
-	rollback bool,
+	rollback, timeout bool,
 	calls *Calls,
 ) {
 	configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
-	downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
 
-	// Get downscaling lock
-	calls.Append(
-		MockRedisLock(mockRedisClient, downScalingLockKey, lockTimeoutMs, true, nil))
+	MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRollingUpdate, nil)
+
+	if timeout {
+		mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
+			goredis.NewStringStringMapResult(map[string]string{
+				"description": models.OpManagerTimedout,
+			}, nil)).AnyTimes()
+	} else {
+		mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
+			goredis.NewStringStringMapResult(map[string]string{
+				"description": models.OpManagerRollingUpdate,
+			}, nil)).AnyTimes()
+	}
 
 	// Create room
 	MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, configYaml, numRoomsToCreate)
@@ -1573,16 +1590,6 @@ func MockRollingUpdateFlow(
 			MockUpdateVersionsTable(mockDb, nil))
 	}
 
-	if !rollback {
-		// Update scheduler rolling update status
-		calls.Append(
-			MockUpdateVersionsTable(mockDb, nil))
-	}
-
-	// release downScalingLock
-	calls.Append(
-		MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil))
-
 	// release configLockKey
 	calls.Append(
 		MockReturnRedisLock(mockRedisClient, configLockKey, nil))
@@ -1596,8 +1603,23 @@ func MockRemoveZombieRooms(
 	schedulerName,
 	status string,
 ) {
-	mockRedisClient.EXPECT().SMembers(models.GetRoomStatusSetRedisKey(schedulerName, status)).Return(
-		goredis.NewStringSliceResult(rooms, nil))
+	allStatus := []string{
+		models.StatusCreating,
+		models.StatusReady,
+		models.StatusOccupied,
+		models.StatusTerminating,
+		models.StatusTerminated,
+	}
+	var ret *goredis.StringSliceCmd
+
+	for _, status := range allStatus {
+		if status == models.StatusTerminating {
+			ret = goredis.NewStringSliceResult(rooms, nil)
+		} else {
+			ret = goredis.NewStringSliceResult([]string{}, nil)
+		}
+		mockRedisClient.EXPECT().SMembers(models.GetRoomStatusSetRedisKey(schedulerName, status)).Return(ret)
+	}
 
 	amount := len(rooms)
 	if amount > 0 {

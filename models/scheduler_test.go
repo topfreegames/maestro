@@ -237,18 +237,14 @@ var _ = Describe("Scheduler", func() {
 	Describe("Load Scheduler", func() {
 		It("should load scheduler from the database", func() {
 			scheduler := NewScheduler(name, "", "")
-			mockDb.EXPECT().Query(scheduler, "SELECT * FROM schedulers WHERE name = ?", name)
+			testing.MockLoadScheduler(name, mockDb)
 			err := scheduler.Load(mockDb)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return an error if db returns an error", func() {
 			scheduler := NewScheduler(name, game, yaml1)
-			mockDb.EXPECT().Query(
-				scheduler,
-				"SELECT * FROM schedulers WHERE name = ?",
-				name,
-			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
+			testing.MockLoadScheduler(name, mockDb).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))
 			err := scheduler.Load(mockDb)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
@@ -457,11 +453,7 @@ var _ = Describe("Scheduler", func() {
 			query = "UPDATE schedulers SET (game, yaml, version) = (?game, ?yaml, ?version) WHERE id = ?id"
 			mockDb.EXPECT().Query(scheduler, query, scheduler).Return(pg.NewTestResult(nil, 1), nil)
 
-			query = `INSERT INTO scheduler_versions (name, version, yaml, rolling_update_status)
-	VALUES (?, ?, ?, ?)`
-			mockDb.EXPECT().
-				Query(scheduler, query, name, scheduler.Version, yaml1, gomock.Any()).
-				Return(pg.NewTestResult(nil, 1), nil)
+			testing.MockInsertIntoVersionsTable(scheduler, mockDb, nil)
 
 			query = "SELECT COUNT(*) FROM scheduler_versions WHERE name = ?"
 			mockDb.EXPECT().
@@ -470,7 +462,7 @@ var _ = Describe("Scheduler", func() {
 					*count = maxVersions
 				}).Return(pg.NewTestResult(nil, 1), nil)
 
-			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions, "")
 			Expect(created).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -483,7 +475,7 @@ var _ = Describe("Scheduler", func() {
 			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, nil)
 			testing.MockDeleteOldVersions(scheduler, 1, mockDb, nil)
 
-			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions, "")
 			Expect(created).To(BeTrue())
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -493,7 +485,7 @@ var _ = Describe("Scheduler", func() {
 
 			testing.MockUpdateSchedulersTable(mockDb, errDB)
 
-			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions, "")
 			Expect(created).To(BeFalse())
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error to update scheduler on schedulers table: db failed"))
@@ -505,7 +497,7 @@ var _ = Describe("Scheduler", func() {
 			testing.MockUpdateSchedulersTable(mockDb, nil)
 			testing.MockInsertIntoVersionsTable(scheduler, mockDb, errDB)
 
-			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions, "")
 			Expect(created).To(BeTrue())
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error to insert into scheduler_versions table: db failed"))
@@ -518,7 +510,7 @@ var _ = Describe("Scheduler", func() {
 			testing.MockInsertIntoVersionsTable(scheduler, mockDb, nil)
 			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, errDB)
 
-			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions, "")
 			Expect(created).To(BeTrue())
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error to select count on scheduler_versions table: db failed"))
@@ -532,7 +524,7 @@ var _ = Describe("Scheduler", func() {
 			testing.MockCountNumberOfVersions(scheduler, maxVersions+1, mockDb, nil)
 			testing.MockDeleteOldVersions(scheduler, 1, mockDb, errDB)
 
-			created, err := scheduler.UpdateVersion(mockDb, maxVersions)
+			created, err := scheduler.UpdateVersion(mockDb, maxVersions, "")
 			Expect(created).To(BeTrue())
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error to delete from scheduler_versions table: db failed"))

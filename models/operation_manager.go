@@ -9,11 +9,13 @@ package models
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"k8s.io/api/core/v1"
 
 	goredis "github.com/go-redis/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
@@ -58,6 +60,11 @@ func (o *OperationManager) SetLoopTime(t time.Duration) {
 // GetOperationKey returns the operation key
 func (o *OperationManager) GetOperationKey() string {
 	return o.operationKey
+}
+
+// SetOperationKey sets the operation key
+func (o *OperationManager) SetOperationKey(operationKey string) {
+	o.operationKey = operationKey
 }
 
 func (o *OperationManager) buildKey() string {
@@ -214,7 +221,7 @@ func (o *OperationManager) Finish(status int, description string, opErr error) e
 		result["description"] = description
 		result["error"] = opErr.Error()
 	} else {
-		result["progress"] = "100%"
+		result["progress"] = "100"
 	}
 
 	l.WithFields(logrus.Fields(result)).Info("saving result on redis")
@@ -278,9 +285,61 @@ func (o *OperationManager) IsStopped() bool {
 	return !o.continueLoop
 }
 
-// SetDescription sets the description of the operation current state
+// SetDescription sets the description and error of the operation current state
 func (o *OperationManager) SetDescription(description string) error {
 	return o.redisClient.HMSet(o.operationKey, map[string]interface{}{
 		"description": description,
 	}).Err()
+}
+
+// SetError sets the error string of the operation
+func (o *OperationManager) SetError(err string) error {
+	return o.redisClient.HMSet(o.operationKey, map[string]interface{}{
+		"error":       err,
+		"description": OpManagerErrored,
+	}).Err()
+}
+
+func (o *OperationManager) getOperationRollingProgress(
+	scheduler Scheduler, totalPods []v1.Pod, status map[string]string,
+) float64 {
+	new := float64(0)
+	total := float64(len(totalPods))
+
+	for _, pod := range totalPods {
+		if pod.GetObjectMeta().GetLabels()["version"] == scheduler.Version {
+			new++
+		}
+	}
+
+	// if the percentage of gameservers with the actual version is 100% but the
+	// operation is not 'rolling update', the new scheduler version has not been stored as the actual version yet.
+	// it means that the rolling update didn't started and so the progress should be 0%
+	if status["description"] != OpManagerRollingUpdate && new/total > 0.99 {
+		return 0
+	}
+
+	return 100.0 * new / total
+}
+
+// GetOperationStatus returns an operation status with progress percentage
+func (o *OperationManager) GetOperationStatus(scheduler Scheduler, totalPods []v1.Pod) (map[string]string, error) {
+	status, err := o.Get(o.operationKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if status == nil || len(status) == 0 {
+		return nil, nil
+	}
+
+	// if status is set, the operation is finished. Progress is set to 100 in Finish method
+	if _, ok := status["status"]; ok {
+		return status, nil
+	}
+
+	progress := o.getOperationRollingProgress(scheduler, totalPods, status)
+
+	status["progress"] = strconv.FormatFloat(progress, 'f', 2, 64)
+	return status, nil
 }

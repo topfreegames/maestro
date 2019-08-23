@@ -161,7 +161,7 @@ var _ = Describe("OperationManager", func() {
 				"success":     true,
 				"status":      status,
 				"operation":   "",
-				"progress":    "100%",
+				"progress":    "100",
 				"description": description,
 			}, nil)
 
@@ -187,7 +187,7 @@ var _ = Describe("OperationManager", func() {
 				"success":     true,
 				"status":      status,
 				"operation":   "",
-				"progress":    "100%",
+				"progress":    "100",
 				"description": description,
 			}, goredis.Nil)
 
@@ -200,7 +200,7 @@ var _ = Describe("OperationManager", func() {
 				"success":     true,
 				"status":      status,
 				"operation":   "",
-				"progress":    "100%",
+				"progress":    "100",
 				"description": description,
 			}, errDB)
 

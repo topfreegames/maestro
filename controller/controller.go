@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -219,11 +220,13 @@ func UpdateScheduler(logger logrus.FieldLogger, mr *models.MixedMetricsReporter,
 
 // DeleteScheduler deletes a scheduler from a yaml configuration
 func DeleteScheduler(
+	ctx context.Context,
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
-	redisClient redisinterfaces.RedisClient,
+	redisClient *redis.Client,
 	clientset kubernetes.Interface,
+	config *viper.Viper,
 	schedulerName string,
 	timeoutSec int,
 ) error {
@@ -240,7 +243,32 @@ func DeleteScheduler(
 		)
 	}
 	namespace := models.NewNamespace(scheduler.Name)
-	return deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
+
+	// lock so autoscaler doesn't recreate rooms deleted
+	terminationLockKey := models.GetSchedulerTerminationLockKey(config.GetString("watcher.lockKey"), schedulerName)
+	configLock, _, err := AcquireLock(
+		ctx,
+		logger,
+		redisClient,
+		config,
+		nil,
+		terminationLockKey,
+		schedulerName,
+	)
+
+	if err != nil {
+		logger.WithError(err).Error("failed to acquire lock")
+		return err
+	}
+
+	defer ReleaseLock(
+		logger,
+		redisClient,
+		configLock,
+		schedulerName,
+	)
+
+	return deleteSchedulerHelper(logger, mr, db, redisClient.Trace(ctx), clientset, scheduler, namespace, timeoutSec)
 }
 
 // GetSchedulerScalingInfo returns the scheduler scaling policies and room count by status
@@ -571,9 +599,6 @@ func UpdateSchedulerConfig(
 	operationManager *models.OperationManager,
 ) error {
 	configYAML.EnsureDefaultValues()
-	timeoutSec := config.GetInt("updateTimeoutSeconds")
-	timeoutDur := time.Duration(timeoutSec) * time.Second
-	willTimeoutAt := clock.Now().Add(timeoutDur)
 	schedulerName := configYAML.Name
 	l := logger.WithFields(logrus.Fields{
 		"source":    "updateSchedulerConfig",
@@ -652,73 +677,64 @@ func UpdateSchedulerConfig(
 		scheduler,
 		oldConfig,
 		config,
+		"",
 	)
 	if err != nil {
 		return err
 	}
 
 	if shouldRecreatePods {
-		// Lock down scaling so it doesn't interferer with rolling update surges
-		downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYAML.Name)
-		downScalingLock, canceled, err := AcquireLock(
-			ctx,
-			logger,
-			redisClient,
-			config,
-			operationManager,
-			downScalingLockKey,
-			schedulerName,
-		)
-		defer ReleaseLock(
-			logger,
-			redisClient,
-			downScalingLock,
-			schedulerName,
-		)
+		var kubePods *v1.PodList
+		var status map[string]string
 
-		if err != nil {
-			return err
-		}
+		operationManager.SetDescription(models.OpManagerRollingUpdate)
 
-		if canceled {
-			return nil
-		}
+		// wait for watcher.EnsureCorrectRooms to rolling update the pods
+		for {
+			// get list of actual pods
+			kubePods, err = listCurrentPods(mr, clientset, schedulerName)
+			if err != nil {
+				break
+			}
 
-		// get list of actual pods
-		kubePods, err := listCurrentPods(mr, clientset, schedulerName)
-		if err != nil {
-			return err
-		}
+			status, err = operationManager.GetOperationStatus(*scheduler, kubePods.Items)
+			if err != nil {
+				break
+			}
 
-		timeoutErr, cancelErr, err := SegmentAndReplacePods(
-			ctx,
-			l,
-			roomManager,
-			mr,
-			clientset,
-			db,
-			redisClient.Client,
-			willTimeoutAt,
-			configYAML,
-			kubePods.Items,
-			scheduler,
-			operationManager,
-			maxSurge,
-			clock,
-		)
+			// operation canceled
+			if status == nil || len(status) <= 0 {
+				scheduler.RollingUpdateStatus = canceledStatus
+				err = errors.New("operation canceled")
+				break
+			}
 
-		if err != nil {
-			scheduler.RollingUpdateStatus = erroredStatus(err.Error())
-		} else if cancelErr != nil {
-			err = cancelErr
-			scheduler.RollingUpdateStatus = canceledStatus
-		} else if timeoutErr != nil {
-			err = timeoutErr
-			scheduler.RollingUpdateStatus = timedoutStatus
+			// operation returned error
+			if status["description"] == models.OpManagerErrored {
+				err = errors.New(status["error"])
+				scheduler.RollingUpdateStatus = erroredStatus(err.Error())
+				break
+			}
+
+			// operation timedout
+			if status["description"] == models.OpManagerTimedout {
+				scheduler.RollingUpdateStatus = timedoutStatus
+				err = errors.New("operation timedout")
+				break
+			}
+
+			progress, _ := strconv.ParseFloat(status["progress"], 64)
+
+			if progress > 99.9 {
+				break
+			}
+			time.Sleep(time.Second * 1)
 		}
 
 		if err != nil {
-			dbRollbackErr := dbRollback(
+
+			l.WithError(err).Error("error during UpdateSchedulerConfig. Rolling back database")
+			dbRollbackErr := DBRollback(
 				ctx,
 				logger,
 				mr,

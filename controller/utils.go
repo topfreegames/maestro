@@ -95,6 +95,7 @@ func SegmentAndReplacePods(
 		}
 
 		if errored != nil {
+			err = errored
 			l.WithError(errored).Error("error replacing chunk of pods")
 			break
 		}
@@ -224,7 +225,8 @@ func createNewRemoveOldPod(
 	return false, false, nil
 }
 
-func dbRollback(
+// DBRollback perform a rollback on a scheduler config in the database
+func DBRollback(
 	ctx context.Context,
 	logger logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
@@ -237,8 +239,13 @@ func dbRollback(
 	config *viper.Viper,
 	oldVersion string,
 ) (err error) {
+	eventRollbackTags := map[string]interface{}{
+		"name": scheduler.Name,
+		"game": scheduler.Game,
+	}
 	err = scheduler.UpdateVersionStatus(db)
 	if err != nil {
+		reporters.Report(reportersConstants.EventSchedulerRollbackError, eventRollbackTags)
 		return err
 	}
 
@@ -254,13 +261,16 @@ func dbRollback(
 		scheduler,
 		*failedConfigYAML,
 		config,
+		oldVersion,
 	)
 	if err != nil {
+		reporters.Report(reportersConstants.EventSchedulerRollbackError, eventRollbackTags)
 		return err
 	}
 
 	err = scheduler.UpdateVersionStatus(db)
 	if err != nil {
+		reporters.Report(reportersConstants.EventSchedulerRollbackError, eventRollbackTags)
 		return err
 	}
 
@@ -1073,6 +1083,7 @@ func saveConfigYAML(
 	scheduler *models.Scheduler,
 	oldConfig models.ConfigYAML,
 	config *viper.Viper,
+	oldVersion string,
 ) error {
 	l := logger.WithFields(logrus.Fields{
 		"source":    "saveConfigYAML",
@@ -1093,7 +1104,7 @@ func saveConfigYAML(
 
 	if string(oldConfig.ToYAML()) != string(configYAML.ToYAML()) {
 		err = mr.WithSegment(models.SegmentUpdate, func() error {
-			created, err := scheduler.UpdateVersion(db, maxVersions)
+			created, err := scheduler.UpdateVersion(db, maxVersions, oldVersion)
 			if !created {
 				return err
 			}
@@ -1220,7 +1231,7 @@ func deleteSchedulerHelper(
 			} else if !exists {
 				exit = true
 			}
-			logger.Debug("deleting scheduler pods")
+			logger.Debug("deleting scheduler namespace")
 			time.Sleep(time.Duration(1) * time.Second)
 		}
 	}

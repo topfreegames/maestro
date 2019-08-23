@@ -29,7 +29,7 @@ func getOperationRollingProgress(
 		metav1.ListOptions{},
 	)
 	if err != nil {
-		return 0, "error getting getting pods from kubernetes", err
+		return 0, "error getting pods from kubernetes", err
 	}
 	total := float64(len(totalPods.Items))
 
@@ -41,7 +41,7 @@ func getOperationRollingProgress(
 		LabelSelector: labels.Set{"version": scheduler.Version}.String(),
 	})
 	if err != nil {
-		return 0, "error getting getting pods from kubernetes", err
+		return 0, "error getting pods from kubernetes", err
 	}
 	for _, pod := range podsUpdated.Items {
 		if models.IsPodReady(&pod) {
@@ -81,25 +81,32 @@ func getOperationStatus(
 	operationManager := models.NewOperationManager(
 		schedulerName, app.RedisClient.Trace(ctx), logger,
 	)
-	status, err := operationManager.Get(operationKey)
+	operationManager.SetOperationKey(operationKey)
+
+	scheduler := models.NewScheduler(schedulerName, "", "")
+	err := scheduler.Load(app.DBClient.WithContext(ctx))
 	if err != nil {
-		return empty, "error accesssing operation key on redis", err
+		return empty, "error getting scheduler for progress information", err
 	}
 
-	if status == nil || len(status) == 0 {
-		return empty, "scheduler with operation key not found",
-			NewOperationNotFoundError()
-	}
-
-	if _, ok := status["status"]; ok {
-		return status, "", nil
-	}
-
-	progress, errorMsg, err := getOperationRollingProgress(ctx, app, status, schedulerName)
+	k := kubernetes.TryWithContext(app.KubernetesClient, ctx)
+	totalPods, err := k.CoreV1().Pods(schedulerName).List(
+		metav1.ListOptions{},
+	)
 	if err != nil {
-		return empty, errorMsg, err
+		return empty, "error getting pods from kubernetes", err
 	}
-	status["progress"] = fmt.Sprintf("%.2f%%", progress)
+
+	status, err := operationManager.GetOperationStatus(*scheduler, totalPods.Items)
+	if err != nil {
+		return status, "error getting operation status", err
+	}
+
+	if status == nil {
+		status = map[string]string{"progress": "0.00"}
+	}
+
+	status["progress"] = fmt.Sprintf("%s%%", status["progress"])
 	return status, "", nil
 }
 
