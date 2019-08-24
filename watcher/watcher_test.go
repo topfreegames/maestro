@@ -457,6 +457,9 @@ var _ = Describe("Watcher", func() {
 			testing.CopyAutoScaling(configYaml.AutoScaling, mockAutoScaling)
 			testing.TransformLegacyInMetricsTrigger(mockAutoScaling)
 
+			// Mock get terminating rooms
+			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{}, configYaml.Name, "terminating")
+
 			// Mock send usage percentage
 			testing.MockSendUsage(mockPipeline, mockRedisClient, mockAutoScaling)
 
@@ -4092,6 +4095,9 @@ var _ = Describe("Watcher", func() {
 			// Mock room creation
 			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
 
+			// Mock get terminating rooms
+			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{"scheduler:controller-name:rooms:room-0"}, schedulerName, "terminating")
+
 			for _, roomName := range expectedRooms {
 				room := models.NewRoom(roomName, schedulerName)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -4169,6 +4175,9 @@ var _ = Describe("Watcher", func() {
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
 			}).Return(redis.NewStringSliceResult([]string{}, errors.New("some error"))).AnyTimes()
 
+			// Mock get terminating rooms
+			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{}, schedulerName, "terminating")
+
 			// DeleteRoomsOccupiedTimeout
 			ts = time.Now().Unix() - w.OccupiedTimeout
 			expectedRooms := []string{"room1", "room2", "room3"}
@@ -4236,6 +4245,9 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
 			}).Return(redis.NewStringSliceResult([]string{}, nil))
+
+			// Mock get terminating rooms
+			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{}, schedulerName, "terminating")
 
 			// DeleteRoomsOccupiedTimeout
 			ts = time.Now().Unix() - w.OccupiedTimeout

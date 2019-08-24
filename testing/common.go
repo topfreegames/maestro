@@ -1587,3 +1587,20 @@ func MockRollingUpdateFlow(
 	calls.Append(
 		MockReturnRedisLock(mockRedisClient, configLockKey, nil))
 }
+
+// MockRemoveZombieRooms mocks removal of rooms that are in terminating state but pods are already removed
+func MockRemoveZombieRooms(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	rooms []string,
+	schedulerName,
+	status string,
+) {
+	mockRedisClient.EXPECT().SMembers(models.GetRoomStatusSetRedisKey(schedulerName, status)).Return(
+		goredis.NewStringSliceResult(rooms, nil))
+
+	amount := len(rooms)
+	if amount > 0 {
+		MockClearAll(mockPipeline, mockRedisClient, schedulerName, amount)
+	}
+}
