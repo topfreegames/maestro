@@ -606,27 +606,46 @@ func (w *Watcher) forwardRemovalRoomEvent(logger *logrus.Entry, rooms []string) 
 	return nil
 }
 
-func (w *Watcher) listPodsToReplace(logger *logrus.Entry, podNames []string) (podsToReplace []v1.Pod, err error) {
+func (w *Watcher) listPods() (pods []v1.Pod, err error) {
 	k := w.KubernetesClient
-	pods, err := k.CoreV1().Pods(w.SchedulerName).List(
+	podList, err := k.CoreV1().Pods(w.SchedulerName).List(
 		metav1.ListOptions{})
 	if err != nil {
-		logger.WithError(err).Error("failed to list pods on namespace")
 		return nil, err
 	}
 
+	return podList.Items, nil
+}
+
+func (w *Watcher) listPodsToReplace(logger *logrus.Entry, pods []v1.Pod, podNames []string) (podsToReplace []v1.Pod) {
 	podNameMap := map[string]bool{}
 	for _, name := range podNames {
 		podNameMap[name] = true
 	}
 
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		if podNameMap[pod.GetName()] {
 			podsToReplace = append(podsToReplace, pod)
 		}
 	}
 
-	return podsToReplace, nil
+	return podsToReplace
+}
+
+// zombie rooms are the ones that are in terminating state but the pods doesn't exist
+func (w *Watcher) removeZombies(pods []v1.Pod, rooms []string) error {
+	zombieRooms := []*models.Room{}
+	liveKubePods := map[string]bool{}
+	for _, pod := range pods {
+		liveKubePods[pod.GetName()] = true
+	}
+	for _, room := range rooms {
+		if _, ok := liveKubePods[room]; !ok {
+			zombieRooms = append(zombieRooms, models.NewRoom(room, w.SchedulerName))
+		}
+	}
+
+	return models.ClearAllMultipleRooms(w.RedisClient.Client, w.MetricsReporter, zombieRooms)
 }
 
 // RemoveDeadRooms remove rooms that have not sent ping requests for a while
@@ -639,20 +658,51 @@ func (w *Watcher) RemoveDeadRooms() error {
 		"operation":   "watcher.RemoveDeadRooms",
 	})
 
+	pods := []v1.Pod{}
+
+	// get rooms in terminating state
+	roomsTerminating, err := models.GetRoomsTerminating(w.RedisClient.Client, w.SchedulerName, w.MetricsReporter)
+	if err != nil {
+		logger.WithError(err).Error("error listing terminating rooms")
+	}
+	if len(roomsTerminating) > 0 {
+		pods, err = w.listPods()
+		if err != nil {
+			logger.WithError(err).Error("failed to list pods on namespace")
+			return err
+		}
+
+		// zombie rooms are the ones that are in terminating state but the pods doesn't exist
+		err = w.removeZombies(pods, roomsTerminating)
+		if err != nil {
+			logger.WithError(err).Error("failed to remove zombie rooms")
+			return err
+		}
+	}
+
 	// get rooms with no ping
 	roomsNoPingSince, err := w.roomsWithNoPing(logger)
 	if err != nil {
+		logger.WithError(err).Error("failed to list rooms that are not pinging")
 		return err
 	}
 
 	// get rooms with occupation timeout
 	roomsOnOccupiedTimeout, err := w.roomsWithOccupationTimeout(logger)
 	if err != nil {
+		logger.WithError(err).Error("failed to list rooms that are on occupied timeout state")
 		return err
 	}
 
 	if len(roomsNoPingSince) > 0 || len(roomsOnOccupiedTimeout) > 0 {
-		podsToReplace, err := w.listPodsToReplace(logger, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
+		if len(pods) <= 0 {
+			pods, err = w.listPods()
+			if err != nil {
+				logger.WithError(err).Error("failed to list pods on namespace")
+				return err
+			}
+		}
+		podsToReplace := w.listPodsToReplace(logger, pods, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
 
 		// load scheduler from database
 		scheduler := models.NewScheduler(w.SchedulerName, "", "")

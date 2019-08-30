@@ -1145,16 +1145,6 @@ forwarders:
 						redis.NewBoolResult(true, nil))
 				}
 
-				// Create rooms to MockGetRegisteredRoomsPerStatus
-				// MockGetRegisteredRoomsPerStatus(
-				// 	mockRedisClient,
-				// 	mockPipeline,
-				// 	namespace,
-				// 	[]string{models.StatusReady, models.StatusOccupied},
-				// 	rooms,
-				// 	nil,
-				// )
-
 				url := fmt.Sprintf("/scheduler/%s/rooms?metric=cpu&limit=123", namespace)
 				request, err := http.NewRequest("GET", url, nil)
 				Expect(err).NotTo(HaveOccurred())
