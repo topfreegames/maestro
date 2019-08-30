@@ -356,6 +356,19 @@ func (r *Room) ClearAll(redisClient interfaces.RedisClient, mr *MixedMetricsRepo
 	return err
 }
 
+// ClearAllMultipleRooms removes all rooms keys from redis
+func ClearAllMultipleRooms(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, rooms []*Room) error {
+	pipe := redisClient.TxPipeline()
+	for _, room := range rooms {
+		room.clearAllWithPipe(pipe)
+	}
+	err := mr.WithSegment(SegmentPipeExec, func() error {
+		_, err := pipe.Exec()
+		return err
+	})
+	return err
+}
+
 func (r *Room) clearAllWithPipe(
 	pipe redis.Pipeliner,
 ) {
@@ -451,6 +464,22 @@ func GetRoomsOccupiedTimeout(redisClient interfaces.RedisClient, schedulerName s
 		).Result()
 		return err
 	})
+	return result, err
+}
+
+// GetRoomsTerminating returns a list of rooms ids that are in terminating state
+func GetRoomsTerminating(redisClient interfaces.RedisClient, schedulerName string, mr *MixedMetricsReporter) ([]string, error) {
+	var result, redisKeys []string
+	err := mr.WithSegment(SegmentSMembers, func() error {
+		var err error
+		redisKeys, err = redisClient.SMembers(
+			GetRoomStatusSetRedisKey(schedulerName, StatusTerminating),
+		).Result()
+		return err
+	})
+	for _, redisKey := range redisKeys {
+		result = append(result, RoomFromRedisKey(redisKey))
+	}
 	return result, err
 }
 
