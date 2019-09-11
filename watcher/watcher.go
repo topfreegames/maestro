@@ -24,6 +24,7 @@ import (
 	"github.com/topfreegames/extensions/clock"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
+	kubernetesExtensions "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/constants"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1328,8 +1329,7 @@ func (w *Watcher) PodStatesCount() {
 	logger := w.Logger.WithField("method", "PodStatesCount")
 
 	logger.Info("listing pods on namespace")
-	// k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
-	k := w.KubernetesClient
+	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, context.Background())
 	pods, err := k.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods")

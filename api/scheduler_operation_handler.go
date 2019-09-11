@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -23,8 +24,7 @@ func getOperationRollingProgress(
 		return 0, "error getting scheduler for getting progress", err
 	}
 
-	// k := kubernetes.TryWithContext(app.KubernetesClient, ctx)
-	k := app.KubernetesClient
+	k := kubernetes.TryWithContext(app.KubernetesClient, ctx)
 	totalPods, err := k.CoreV1().Pods(schedulerName).List(
 		metav1.ListOptions{},
 	)

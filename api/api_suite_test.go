@@ -107,7 +107,7 @@ var _ = BeforeEach(func() {
 	lockKey = config.GetString("watcher.lockKey")
 
 	mockRedisClient.EXPECT().Ping().Return(redis.NewStatusResult("PONG", nil)).AnyTimes()
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	mockLogin = loginMocks.NewMockLogin(mockCtrl)

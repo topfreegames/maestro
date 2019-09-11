@@ -27,9 +27,9 @@ type containLogMessageMatcher struct {
 }
 
 func (matcher *containLogMessageMatcher) Match(actual interface{}) (success bool, err error) {
-	entries, ok := actual.([]*logrus.Entry)
+	entries, ok := actual.([]logrus.Entry)
 	if !ok {
-		return false, errors.New("cannot to convert value to []*logrus.Entry")
+		return false, errors.New("cannot to convert value to []logrus.Entry")
 	}
 	for _, entry := range entries {
 		if entry.Message == matcher.expected {

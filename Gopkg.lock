@@ -600,6 +600,33 @@
   version = "v6.4.0"
 
 [[projects]]
+  digest = "1:2f53a65e6bc705d06e520fbda5598c4e15613ef004b0e02ac6156991cdb6376b"
+  name = "github.com/topfreegames/go-extensions-http"
+  packages = ["."]
+  pruneopts = ""
+  revision = "406395fac88ffdcd4e987a97873aa23e9b8e47ec"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:1400fd534bf8ebdd25a41fc087aa52d07d6eed420f2e3f4c91a92c1fe39da6ff"
+  name = "github.com/topfreegames/go-extensions-k8s-client-go"
+  packages = [
+    "kubernetes",
+    "rest",
+  ]
+  pruneopts = ""
+  revision = "71e4464e67cbb7c16b1d73137739500f6997c088"
+  version = "kubernetes-1.13.9"
+
+[[projects]]
+  digest = "1:a7be39007eab800ddc8c099d17c48ce5a845eab9618370cd83f51abc347f0858"
+  name = "github.com/topfreegames/go-extensions-tracing"
+  packages = ["."]
+  pruneopts = ""
+  revision = "b7a17227eadd73517b81bcf01f82e5d215598688"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:937f4857acfd6fd07b593f11485f8ecb146fb5de3af38eabc46f3e1f90a15f26"
   name = "github.com/topfreegames/protos"
   packages = ["maestro/grpc/generated"]
@@ -1071,6 +1098,7 @@
     "github.com/topfreegames/extensions/redis/interfaces",
     "github.com/topfreegames/extensions/redis/mocks",
     "github.com/topfreegames/extensions/router",
+    "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes",
     "github.com/topfreegames/protos/maestro/grpc/generated",
     "golang.org/x/oauth2",
     "golang.org/x/oauth2/google",

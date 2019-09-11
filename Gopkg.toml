@@ -85,9 +85,9 @@
   name = "github.com/topfreegames/protos"
   version = "v1.8.0"
 
-# [[override]]
-#   name = "github.com/topfreegames/go-extensions-k8s-client-go"
-#   version = "kubernetes-1.11.7"
+[[override]]
+  name = "github.com/topfreegames/go-extensions-k8s-client-go"
+  version = "kubernetes-1.13.9"
 
 [[override]]
   name = "google.golang.org/grpc"

@@ -36,6 +36,9 @@ scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 300
 pingTimeout: 300
 updateTimeoutSeconds: 300
+addrGetter:
+  cache:
+    use: false
 newrelic:
   app: maestro
   key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

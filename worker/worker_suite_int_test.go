@@ -95,7 +95,7 @@ var _ = BeforeSuite(func() {
 
 	w, err = worker.NewWorker(config, logger, mr, false, "", app.DBClient.DB, app.RedisClient.Client, clientset, metricsClientset)
 	Expect(err).NotTo(HaveOccurred())
-	go w.Start(startPortRange, endPortRange, false)
+	go w.Start(startPortRange, endPortRange)
 })
 
 var _ = BeforeEach(func() {
