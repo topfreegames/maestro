@@ -421,7 +421,6 @@ var _ = Describe("Watcher", func() {
 			Expect(w.Logger).NotTo(BeNil())
 			Expect(w.MetricsReporter).To(Equal(mr))
 			Expect(w.RedisClient).To(Equal(redisClient))
-			Expect(w.LockKey).To(Equal(fmt.Sprintf("%s-%s", lockKey, name)))
 			Expect(w.LockTimeoutMS).To(Equal(lockTimeoutMs))
 			Expect(w.SchedulerName).To(Equal(name))
 		})
@@ -435,7 +434,6 @@ var _ = Describe("Watcher", func() {
 				})
 			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w.AutoScalingPeriod).To(Equal(10))
-			Expect(w.LockKey).To(Equal("maestro-lock-key-my-scheduler"))
 			Expect(w.LockTimeoutMS).To(Equal(180000))
 		})
 	})
@@ -448,7 +446,6 @@ var _ = Describe("Watcher", func() {
 			config.Set("watcher.autoScalingPeriod", 1)
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 		})
-
 		It("should start watcher", func() {
 			// Testing here if no scaling needs to be done
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
@@ -473,11 +470,7 @@ var _ = Describe("Watcher", func() {
 			Expect(w).NotTo(BeNil())
 
 			// EnterCriticalSection (lock done by redis-lock)
-			lockKey := fmt.Sprintf("maestro-lock-key-%s", configYaml.Name)
 			downscalingLockKey := fmt.Sprintf("maestro-lock-key-%s-downscaling", configYaml.Name)
-			mockRedisClient.EXPECT().
-				SetNX(lockKey, gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).
-				AnyTimes()
 			mockRedisClient.EXPECT().
 				SetNX(downscalingLockKey, gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).
 				AnyTimes()
@@ -501,6 +494,7 @@ var _ = Describe("Watcher", func() {
 				scheduler.YAML = yaml1
 				scheduler.State = models.StateInSync
 			}).AnyTimes()
+
 			creating := models.GetRoomStatusSetRedisKey(configYaml.Name, "creating")
 			ready := models.GetRoomStatusSetRedisKey(configYaml.Name, "ready")
 			occupied := models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied")
@@ -548,7 +542,6 @@ var _ = Describe("Watcher", func() {
 			}, mockDb, nil, nil)
 
 			// LeaveCriticalSection (unlock done by redis-lock)
-			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{lockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
 			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{downscalingLockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
 			w.Start()
 		})
@@ -559,14 +552,28 @@ var _ = Describe("Watcher", func() {
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
-				})
+				}).AnyTimes()
 			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 			defer func() { w.Run = false }()
 
 			// EnterCriticalSection (lock done by redis-lock)
-			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, errors.New("some error in lock"))).AnyTimes()
-			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler-downscaling", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, nil)).AnyTimes()
+			mockRedisClient.EXPECT().
+				SetNX("maestro-lock-key-my-scheduler-downscaling", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, errors.New("some error in lock"))).AnyTimes()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
+			creating := models.GetRoomStatusSetRedisKey(name, "creating")
+			occupied := models.GetRoomStatusSetRedisKey(name, "occupied")
+			terminating := models.GetRoomStatusSetRedisKey(name, "terminating")
+			ready := models.GetRoomStatusSetRedisKey(name, "ready")
+			expC := &models.RoomsStatusCount{0, 0, 1, 0}
+			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any()).AnyTimes()
+			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil)).AnyTimes()
+			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil)).AnyTimes()
+			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil)).AnyTimes()
+			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil)).AnyTimes()
+			mockPipeline.EXPECT().Exec().AnyTimes()
 
 			Expect(func() {
 				go func() {
@@ -576,7 +583,7 @@ var _ = Describe("Watcher", func() {
 			}).ShouldNot(Panic())
 			Eventually(func() bool { return w.Run }).Should(BeTrue())
 			Eventually(func() bool { return hook.LastEntry() != nil }).Should(BeTrue())
-			Eventually(func() string { return hook.LastEntry().Message }, 1500*time.Millisecond).Should(Equal("error getting watcher lock"))
+			time.Sleep(3 * time.Second)
 		})
 
 		It("should not panic if lock is being used", func() {
@@ -591,7 +598,6 @@ var _ = Describe("Watcher", func() {
 			defer func() { w.Run = false }()
 
 			// EnterCriticalSection (lock done by redis-lock)
-			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, nil)).AnyTimes()
 			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler-downscaling", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, nil)).AnyTimes()
 
 			Expect(func() {
@@ -602,8 +608,7 @@ var _ = Describe("Watcher", func() {
 			}).ShouldNot(Panic())
 			Eventually(func() bool { return w.Run }).Should(BeTrue())
 			Eventually(func() bool { return hook.LastEntry() != nil }).Should(BeTrue())
-			Eventually(func() string { return hook.LastEntry().Message }, 1500*time.Millisecond).
-				Should(Equal("unable to get watcher my-scheduler lock, maybe some other process has it..."))
+			time.Sleep(3 * time.Second)
 		})
 	})
 
