@@ -516,7 +516,6 @@ func ListSchedulerLocks(
 // ListSchedulerLocksKeys lists a slice of locks keys for schedulerName and prefix
 func ListSchedulerLocksKeys(prefix, schedulerName string) []string {
 	return []string{
-		GetSchedulerScalingLockKey(prefix, schedulerName),
 		GetSchedulerConfigLockKey(prefix, schedulerName),
 		GetSchedulerDownScalingLockKey(prefix, schedulerName),
 	}
@@ -528,11 +527,6 @@ func DeleteSchedulerLock(
 ) error {
 	_, err := redisClient.Del(lockKey).Result()
 	return err
-}
-
-// GetSchedulerScalingLockKey returns the key of the scheduler lock
-func GetSchedulerScalingLockKey(prefix, schedulerName string) string {
-	return fmt.Sprintf("%s-%s", prefix, schedulerName)
 }
 
 // GetSchedulerConfigLockKey returns the key of the scheduler update config lock
