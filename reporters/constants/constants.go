@@ -8,9 +8,10 @@ const (
 	EventGruStatus      = "gru.status"
 	EventGruMetricUsage = "gru.metric"
 
-	EventSchedulerCreate = "scheduler.create"
-	EventSchedulerUpdate = "scheduler.update"
-	EventSchedulerDelete = "scheduler.delete"
+	EventSchedulerCreate        = "scheduler.create"
+	EventSchedulerUpdate        = "scheduler.update"
+	EventSchedulerDelete        = "scheduler.delete"
+	EventSchedulerRollbackError = "scheduler.rollback_error"
 
 	EventRPCStatus   = "rpc.status"
 	EventRPCDuration = "rpc.duration"

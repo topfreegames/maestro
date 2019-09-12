@@ -18,6 +18,8 @@ import (
 
 	"testing"
 
+	mt "github.com/topfreegames/maestro/testing"
+
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
@@ -86,8 +88,8 @@ var _ = BeforeEach(func() {
 	mockDB = pgmocks.NewMockDB(mockCtrl)
 
 	cache = models.NewSchedulerCache(1*time.Second, 1*time.Second, logger)
-	mockDB.EXPECT().
-		Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerName).
+
+	mt.MockLoadScheduler(schedulerName, mockDB).
 		Do(func(scheduler *models.Scheduler, _ string, _ string) {
 			*scheduler = *models.NewScheduler(schedulerName, gameName, yaml)
 		})

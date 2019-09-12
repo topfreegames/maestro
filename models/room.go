@@ -487,20 +487,30 @@ func GetRoomsOccupiedTimeout(redisClient interfaces.RedisClient, schedulerName s
 	return result, err
 }
 
-// GetRoomsTerminating returns a list of rooms ids that are in terminating state
-func GetRoomsTerminating(redisClient interfaces.RedisClient, schedulerName string, mr *MixedMetricsReporter) ([]string, error) {
+// GetRooms returns a list of rooms ids that are in any state
+func GetRooms(redisClient interfaces.RedisClient, schedulerName string, mr *MixedMetricsReporter) ([]string, error) {
 	var result, redisKeys []string
-	err := mr.WithSegment(SegmentSMembers, func() error {
-		var err error
-		redisKeys, err = redisClient.SMembers(
-			GetRoomStatusSetRedisKey(schedulerName, StatusTerminating),
-		).Result()
-		return err
-	})
+	allStatus := []string{StatusCreating, StatusReady, StatusOccupied, StatusTerminating, StatusTerminated}
+
+	for _, status := range allStatus {
+		err := mr.WithSegment(SegmentSMembers, func() error {
+			var err error
+			keys, err := redisClient.SMembers(
+				GetRoomStatusSetRedisKey(schedulerName, status),
+			).Result()
+			redisKeys = append(redisKeys, keys...)
+			return err
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	for _, redisKey := range redisKeys {
 		result = append(result, RoomFromRedisKey(redisKey))
 	}
-	return result, err
+	return result, nil
 }
 
 func getReadyRooms(tx redis.Pipeliner, schedulerName string, size int, mr *MixedMetricsReporter) ([]string, error) {

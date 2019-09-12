@@ -65,6 +65,7 @@ var _ = Describe("SchedulerOperationHandler", func() {
 		})
 
 		It("should return status completed if so", func() {
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			status := map[string]string{
 				"status":   "200",
@@ -72,6 +73,8 @@ var _ = Describe("SchedulerOperationHandler", func() {
 				"progress": "100%",
 			}
 			mockGetStatusFromRedis(status, nil)
+
+			MockLoadScheduler(schedulerName, mockDb)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -140,9 +143,12 @@ var _ = Describe("SchedulerOperationHandler", func() {
 		})
 
 		It("should return status completed if so, for current operation", func() {
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB).AnyTimes()
 			mockRedisTraceWrapper.EXPECT().WithContext(
 				gomock.Any(), mockRedisClient,
 			).Return(mockRedisClient)
+
+			MockLoadScheduler(schedulerName, mockDb)
 
 			mockRedisClient.EXPECT().
 				Get(opManager.BuildCurrOpKey()).

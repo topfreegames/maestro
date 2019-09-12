@@ -20,6 +20,7 @@ import (
 	"github.com/topfreegames/extensions/pg"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/watcher"
 	"github.com/topfreegames/maestro/worker"
 )
@@ -141,7 +142,7 @@ cmd:
 				},
 			)
 			for _, name := range schedulerNames {
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+				testing.MockLoadScheduler(name, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yaml1
 					})
@@ -155,7 +156,7 @@ cmd:
 		It("should set watcher.Run to true", func() {
 			schedulerNames := []string{"scheduler-1"}
 			for _, name := range schedulerNames {
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+				testing.MockLoadScheduler(name, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yaml1
 					})
@@ -183,7 +184,7 @@ cmd:
 		It("should remove watcher if it should not be running", func() {
 			schedulerNames := []string{"scheduler-1", "scheduler-2"}
 			for _, name := range schedulerNames {
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+				testing.MockLoadScheduler(name, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yaml1
 					})

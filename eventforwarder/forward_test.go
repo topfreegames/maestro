@@ -9,6 +9,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
+	mt "github.com/topfreegames/maestro/testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -252,8 +253,7 @@ var _ = Describe("Forward", func() {
 			yaml := `name: scheduler
 game: game
 `
-			mockDB.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", schedulerName).
+			mt.MockLoadScheduler(schedulerName, mockDB).
 				Do(func(scheduler *models.Scheduler, _ string, _ string) {
 					*scheduler = *models.NewScheduler(schedulerName, gameName, yaml)
 				})

@@ -119,11 +119,17 @@ var InvalidPodWaitingStates = []string{
 // OpManagerRunning constant
 const OpManagerRunning = "running"
 
+// OpManagerRollingUpdate constant
+const OpManagerRollingUpdate = "rolling update"
+
 // OpManagerWaitingLock constant
 const OpManagerWaitingLock = "waiting for lock"
 
 // OpManagerFinished constant
 const OpManagerFinished = "finished"
 
-// OpManagerRollingBack constant
-const OpManagerRollingBack = "rolling back"
+// OpManagerErrored constant
+const OpManagerErrored = "errored"
+
+// OpManagerTimedout constant
+const OpManagerTimedout = "timedout"

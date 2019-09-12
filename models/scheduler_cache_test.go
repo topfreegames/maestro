@@ -4,9 +4,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/topfreegames/extensions/pg"
 	. "github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -49,8 +49,7 @@ autoscaling:
 		It("should load from db for the first time", func() {
 			cache := NewSchedulerCache(timeout, purgeTime, logger)
 
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *Scheduler, query string, modifier string) {
 					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
 				})
@@ -65,8 +64,7 @@ autoscaling:
 		It("should load from cache for the next 10 times", func() {
 			cache := NewSchedulerCache(timeout, purgeTime, logger)
 
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *Scheduler, query string, modifier string) {
 					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
 				})
@@ -89,8 +87,7 @@ autoscaling:
 		It("should load from db is useCache is false", func() {
 			cache := NewSchedulerCache(timeout, purgeTime, logger)
 
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *Scheduler, query string, modifier string) {
 					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, yamlStr)
 				}).Times(2)
@@ -111,8 +108,7 @@ autoscaling:
 		It("should return error if scheduler is not found on cache nor on db", func() {
 			cache := NewSchedulerCache(timeout, purgeTime, logger)
 
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *Scheduler, query string, modifier string) {
 					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, "")
 				})
@@ -126,8 +122,7 @@ autoscaling:
 		It("should return error if db fails", func() {
 			cache := NewSchedulerCache(timeout, purgeTime, logger)
 
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(schedulerName, mockDb).
 				Return(pg.NewTestResult(errors.New("db failed"), 0), errors.New("db failed"))
 
 			scheduler, err := cache.LoadScheduler(mockDb, schedulerName, true)
@@ -139,8 +134,7 @@ autoscaling:
 		It("should return error if yaml is invaild", func() {
 			cache := NewSchedulerCache(timeout, purgeTime, logger)
 
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *Scheduler, query string, modifier string) {
 					*scheduler = *NewScheduler(configYaml.Name, configYaml.Game, "}i am invalid!{")
 				})

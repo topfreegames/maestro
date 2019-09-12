@@ -277,7 +277,7 @@ func (w *Watcher) watchRooms() error {
 		"operation": "watcher.watchRooms",
 	})
 	w.WithDownscalingLock(l, w.RemoveDeadRooms)
-	w.AutoScale()
+	w.WithTerminationLock(l, w.AutoScale)
 	w.AddUtilizationMetricsToRedis()
 	return nil
 }
@@ -444,24 +444,22 @@ func (w *Watcher) ReportRoomsStatuses() error {
 	return nil
 }
 
-// WithDownscalingLock is a helper function that runs a block of code
-// that needs to hold a downscaling lock to redis
-func (w *Watcher) WithDownscalingLock(l *logrus.Entry, f func() error) (lockErr, err error) {
-	// Lock down scaling so it doesn't interfer with rolling update surges
-	downScalingLockKey := models.GetSchedulerDownScalingLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
-	downScalingLock, _, err := controller.AcquireLock(
+// WithLock is a helper function that runs a block of code
+// that needs to hold a type of lock to redis
+func (w *Watcher) WithLock(l *logrus.Entry, lockKey string, f func() error) (lockErr, err error) {
+	lock, _, err := controller.AcquireLock(
 		context.Background(),
 		l,
 		w.RedisClient,
 		w.Config,
 		nil,
-		downScalingLockKey,
+		lockKey,
 		w.SchedulerName,
 	)
 	defer controller.ReleaseLock(
 		l,
 		w.RedisClient,
-		downScalingLock,
+		lock,
 		w.SchedulerName,
 	)
 	if err != nil {
@@ -469,6 +467,18 @@ func (w *Watcher) WithDownscalingLock(l *logrus.Entry, f func() error) (lockErr,
 	}
 
 	return nil, f()
+}
+
+// WithDownscalingLock is a sugar for WithLock for downscaling
+func (w *Watcher) WithDownscalingLock(l *logrus.Entry, f func() error) (lockErr, err error) {
+	downScalingLockKey := models.GetSchedulerDownScalingLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
+	return w.WithLock(l, downScalingLockKey, f)
+}
+
+// WithTerminationLock is a sugar for WithLock for scheduler termination
+func (w *Watcher) WithTerminationLock(l *logrus.Entry, f func() error) (lockErr, err error) {
+	terminationLockKey := models.GetSchedulerTerminationLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
+	return w.WithLock(l, terminationLockKey, f)
 }
 
 // List names of rooms with no ping
@@ -579,7 +589,8 @@ func (w *Watcher) listPods() (pods []v1.Pod, err error) {
 	return podList.Items, nil
 }
 
-func (w *Watcher) listPodsToReplace(logger *logrus.Entry, pods []v1.Pod, podNames []string) (podsToReplace []v1.Pod) {
+// filterPodsByName returns a []v1.Pod with pods which names are in podNames
+func (w *Watcher) filterPodsByName(logger *logrus.Entry, pods []v1.Pod, podNames []string) (filteredPods []v1.Pod) {
 	podNameMap := map[string]bool{}
 	for _, name := range podNames {
 		podNameMap[name] = true
@@ -587,11 +598,11 @@ func (w *Watcher) listPodsToReplace(logger *logrus.Entry, pods []v1.Pod, podName
 
 	for _, pod := range pods {
 		if podNameMap[pod.GetName()] {
-			podsToReplace = append(podsToReplace, pod)
+			filteredPods = append(filteredPods, pod)
 		}
 	}
 
-	return podsToReplace
+	return filteredPods
 }
 
 // zombie rooms are the ones that are in terminating state but the pods doesn't exist
@@ -622,20 +633,20 @@ func (w *Watcher) RemoveDeadRooms() error {
 
 	pods := []v1.Pod{}
 
-	// get rooms in terminating state
-	roomsTerminating, err := models.GetRoomsTerminating(w.RedisClient.Client, w.SchedulerName, w.MetricsReporter)
+	// get rooms registered
+	rooms, err := models.GetRooms(w.RedisClient.Client, w.SchedulerName, w.MetricsReporter)
 	if err != nil {
 		logger.WithError(err).Error("error listing terminating rooms")
 	}
-	if len(roomsTerminating) > 0 {
+	if len(rooms) > 0 {
 		pods, err = w.listPods()
 		if err != nil {
 			logger.WithError(err).Error("failed to list pods on namespace")
 			return err
 		}
 
-		// zombie rooms are the ones that are in terminating state but the pods doesn't exist
-		err = w.removeZombies(pods, roomsTerminating)
+		// zombie rooms are the ones that are registered but the pods doesn't exist
+		err = w.removeZombies(pods, rooms)
 		if err != nil {
 			logger.WithError(err).Error("failed to remove zombie rooms")
 			return err
@@ -664,7 +675,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 				return err
 			}
 		}
-		podsToReplace := w.listPodsToReplace(logger, pods, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
+		podsToReplace := w.filterPodsByName(logger, pods, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
 
 		// load scheduler from database
 		scheduler := models.NewScheduler(w.SchedulerName, "", "")
@@ -1154,6 +1165,22 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	timeoutDur := time.Duration(timeoutSec) * time.Second
 	willTimeoutAt := time.Now().Add(timeoutDur)
 
+	operationManager := models.NewOperationManager(
+		w.SchedulerName, w.RedisClient.Trace(ctx), logger,
+	)
+
+	currentOpKey, _ := operationManager.CurrentOperation()
+	if err != nil {
+		logger.WithError(err).Error("error trying to get current operation from operationManager")
+		return err
+	}
+
+	operationManager.SetOperationKey(currentOpKey)
+
+	if currentOpKey == "" {
+		operationManager = nil
+	}
+
 	timeoutErr, _, err := controller.SegmentAndReplacePods(
 		ctx,
 		logger,
@@ -1166,17 +1193,52 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		configYAML,
 		podsToDelete,
 		scheduler,
-		nil,
+		operationManager,
 		w.Config.GetInt("watcher.maxSurge"),
 		&clock.Clock{},
 	)
 
-	if timeoutErr != nil {
-		logger.WithError(err).Error("timeout replacing pods on EnsureCorrectRooms")
+	if err != nil {
+		// if operationManager != nil there is a scheduler update in place
+		if operationManager != nil {
+			logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms during update scheduler config")
+			operationManager.SetError(err.Error())
+		} else {
+			logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms")
+			oldScheduler, err := models.PreviousVersion(w.DB, scheduler.Name, scheduler.Version)
+			if err != nil {
+				logger.WithError(err).Error("error to load previous scheduler version to rollback on EnsureCorrectRooms")
+				return err
+			}
+			oldConfig, err := models.NewConfigYAML(scheduler.YAML)
+			if err != nil {
+				logger.WithError(err).Error("failed to unmarshal config yaml to rollback on EnsureCorrectRooms")
+				return err
+			}
+			dbRollbackErr := controller.DBRollback(
+				ctx,
+				logger,
+				w.MetricsReporter,
+				w.DB,
+				w.RedisClient,
+				configYAML,
+				oldConfig,
+				&clock.Clock{},
+				scheduler,
+				w.Config,
+				oldScheduler.Version,
+			)
+			if dbRollbackErr != nil {
+				logger.WithError(dbRollbackErr).Error("error during scheduler database roll back")
+			}
+		}
 	}
 
-	if err != nil {
-		logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms")
+	if timeoutErr != nil {
+		logger.WithError(err).Error("timeout replacing pods on EnsureCorrectRooms")
+		if operationManager != nil {
+			operationManager.SetDescription(models.OpManagerTimedout)
+		}
 	}
 
 	return nil
@@ -1224,18 +1286,29 @@ func (w *Watcher) podsOfIncorrectVersion(
 	scheduler *models.Scheduler,
 ) ([]v1.Pod, error) {
 	incorrectPods := []v1.Pod{}
+
+	schedulerMajorVersion, _, err := w.splitedVersion(scheduler.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	schedulerMajorRollbackVersion := -1
+	if scheduler.RollbackVersion != "" {
+		schedulerMajorRollbackVersion, _, err = w.splitedVersion(scheduler.RollbackVersion)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	for _, pod := range pods.Items {
 		podMajorVersion, _, err := w.splitedVersion(pod.Labels["version"])
 		if err != nil {
 			return nil, err
 		}
 
-		schedulerMajorVersion, _, err := w.splitedVersion(scheduler.Version)
-		if err != nil {
-			return nil, err
-		}
-
-		if podMajorVersion != schedulerMajorVersion {
+		// if a rollback happened consider 2 versions as correct:
+		// actual version(after DB rollback) and the version the rolled-back-to version (the one before corrupt version)
+		if podMajorVersion != schedulerMajorVersion && podMajorVersion != schedulerMajorRollbackVersion {
 			incorrectPods = append(incorrectPods, pod)
 		}
 	}
