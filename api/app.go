@@ -447,6 +447,9 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("jaeger.samplingProbability", 1.0)
 	a.Config.SetDefault("addrGetter.cache.use", true)
 	a.Config.SetDefault("addrGetter.cache.expirationInterval", "10m")
+	a.Config.SetDefault("extensions.kubernetesClient.timeout", "1s")
+	a.Config.SetDefault("extensions.kubernetesClient.burst", 300)
+	a.Config.SetDefault("extensions.kubernetesClient.qps", 300)
 	a.Config.SetDefault(EnvironmentConfig, ProdEnvironment)
 }
 
@@ -485,7 +488,7 @@ func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interfa
 		}
 		return nil
 	}
-	clientset, metricsClientset, err := extensions.GetKubernetesClient(a.Logger, a.InCluster, a.KubeconfigPath)
+	clientset, metricsClientset, err := extensions.GetKubernetesClient(a.Logger, a.Config, a.InCluster, a.KubeconfigPath)
 	if err != nil {
 		return err
 	}

@@ -90,6 +90,9 @@ func (w *Worker) loadConfigurationDefaults() {
 	w.Config.SetDefault("worker.retrieveFreePortsPeriod", 3600)
 	w.Config.SetDefault("worker.getLocksTimeout", 300)
 	w.Config.SetDefault("worker.lockTimeoutMs", 180000)
+	w.Config.SetDefault("extensions.kubernetesClient.timeout", "1s")
+	w.Config.SetDefault("extensions.kubernetesClient.burst", 300)
+	w.Config.SetDefault("extensions.kubernetesClient.qps", 300)
 }
 
 func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface, kubernetesMetricsClientOrNil metricsClient.Interface) error {
@@ -137,7 +140,7 @@ func (w *Worker) configureKubernetesClient(kubernetesClientOrNil kubernetes.Inte
 		return nil
 	}
 
-	clientset, metricsClientset, err := extensions.GetKubernetesClient(w.Logger, w.InCluster, w.KubeconfigPath)
+	clientset, metricsClientset, err := extensions.GetKubernetesClient(w.Logger, w.Config, w.InCluster, w.KubeconfigPath)
 	if err != nil {
 		return err
 	}

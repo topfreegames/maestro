@@ -15,6 +15,10 @@ extensions:
   redis:
     url: redis://localhost:6363
     connectionTimeout: 200
+  kubernetesClient:
+    timeout: 1s
+    burst: 300
+    qps: 300
 watcher:
   autoScalingPeriod: 10
   roomsStatusesReportPeriod: 10
@@ -77,5 +81,3 @@ addrGetter:
   cache:
     use: true
     expirationInterval: 10m
-pprof:
-  address: localhost:6060
