@@ -33,6 +33,7 @@ type Scheduler struct {
 	CreatedAt           pg.NullTime `db:"created_at"`
 	UpdatedAt           pg.NullTime `db:"updated_at"`
 	Version             string      `db:"version"`
+	RollbackVersion     string      `db:"rollback_version"`
 	RollingUpdateStatus string      `db:"rolling_update_status"`
 }
 
@@ -205,7 +206,12 @@ func NewScheduler(name, game, yaml string) *Scheduler {
 
 // Load loads a scheduler from the database using the scheduler name
 func (c *Scheduler) Load(db interfaces.DB) error {
-	_, err := db.Query(c, "SELECT * FROM schedulers WHERE name = ?", c.Name)
+	_, err := db.Query(c, "SELECT "+
+		"s.id, s.name, s.game, s.yaml, s.state, s.state_last_changed_at, last_scale_op_at, s.created_at, s.updated_at, s.version, "+
+		"v.rolling_update_status, v.rollback_version "+
+		"FROM schedulers s join scheduler_versions v "+
+		"ON s.name=v.name AND v.version=s.version "+
+		"WHERE s.name = ?", c.Name)
 	if c.Version == "" {
 		c.Version = "v1.0"
 	}
@@ -314,6 +320,7 @@ func (c *Scheduler) UpdateVersionStatus(db interfaces.DB) error {
 func (c *Scheduler) UpdateVersion(
 	db interfaces.DB,
 	maxVersions int,
+	oldVersion string,
 ) (created bool, err error) {
 	currentVersion := c.Version
 	query := "UPDATE schedulers SET (game, yaml, version) = (?game, ?yaml, ?version) WHERE id = ?id"
@@ -324,9 +331,9 @@ func (c *Scheduler) UpdateVersion(
 		return false, err
 	}
 
-	query = `INSERT INTO scheduler_versions (name, version, yaml, rolling_update_status)
-	VALUES (?, ?, ?, ?)`
-	_, err = db.Query(c, query, c.Name, c.Version, c.YAML, c.RollingUpdateStatus)
+	query = `INSERT INTO scheduler_versions (name, version, yaml, rolling_update_status, rollback_version)
+	VALUES (?, ?, ?, ?, ?)`
+	_, err = db.Query(c, query, c.Name, c.Version, c.YAML, c.RollingUpdateStatus, oldVersion)
 	if err != nil {
 		err = fmt.Errorf("error to insert into scheduler_versions table: %s", err.Error())
 		return true, err
@@ -537,6 +544,11 @@ func GetSchedulerConfigLockKey(prefix, schedulerName string) string {
 // GetSchedulerDownScalingLockKey returns the key of the downscaling lock
 func GetSchedulerDownScalingLockKey(prefix, schedulerName string) string {
 	return fmt.Sprintf("%s-%s-downscaling", prefix, schedulerName)
+}
+
+// GetSchedulerTerminationLockKey returns the key of the downscaling lock
+func GetSchedulerTerminationLockKey(prefix, schedulerName string) string {
+	return fmt.Sprintf("%s-%s-termination", prefix, schedulerName)
 }
 
 // ListSchedulerReleases returns the list of releases of a scheduler

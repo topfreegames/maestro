@@ -409,7 +409,7 @@ var _ = Describe("Watcher", func() {
 			config.Set("watcher.lockKey", lockKey)
 			config.Set("watcher.lockTimeoutMs", lockTimeoutMs)
 
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+			testing.MockLoadScheduler(name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
@@ -428,7 +428,7 @@ var _ = Describe("Watcher", func() {
 		It("should return configured new watcher using configuration defaults", func() {
 			name := "my-scheduler"
 			gameName := "game-name"
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+			testing.MockLoadScheduler(name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
@@ -460,7 +460,7 @@ var _ = Describe("Watcher", func() {
 			// Mock send usage percentage
 			testing.MockSendUsage(mockPipeline, mockRedisClient, mockAutoScaling)
 
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
@@ -470,7 +470,11 @@ var _ = Describe("Watcher", func() {
 			Expect(w).NotTo(BeNil())
 
 			// EnterCriticalSection (lock done by redis-lock)
+			terminationLockKey := fmt.Sprintf("maestro-lock-key-%s-termination", configYaml.Name)
 			downscalingLockKey := fmt.Sprintf("maestro-lock-key-%s-downscaling", configYaml.Name)
+			mockRedisClient.EXPECT().
+				SetNX(terminationLockKey, gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).
+				AnyTimes()
 			mockRedisClient.EXPECT().
 				SetNX(downscalingLockKey, gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(true, nil)).
 				AnyTimes()
@@ -490,7 +494,7 @@ var _ = Describe("Watcher", func() {
 			).Return(redis.NewStringSliceResult([]string{}, nil))
 
 			// GetSchedulerScalingInfo
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+			testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yaml1
 				scheduler.State = models.StateInSync
 			}).AnyTimes()
@@ -542,6 +546,7 @@ var _ = Describe("Watcher", func() {
 			}, mockDb, nil, nil)
 
 			// LeaveCriticalSection (unlock done by redis-lock)
+			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{terminationLockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
 			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{downscalingLockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
 			w.Start()
 		})
@@ -549,7 +554,7 @@ var _ = Describe("Watcher", func() {
 		It("should not panic if error acquiring lock", func() {
 			name := "my-scheduler"
 			gameName := "game-name"
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+			testing.MockLoadScheduler(name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				}).AnyTimes()
@@ -558,6 +563,8 @@ var _ = Describe("Watcher", func() {
 			defer func() { w.Run = false }()
 
 			// EnterCriticalSection (lock done by redis-lock)
+			mockRedisClient.EXPECT().
+				SetNX("maestro-lock-key-my-scheduler-termination", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, errors.New("some error in lock"))).AnyTimes()
 			mockRedisClient.EXPECT().
 				SetNX("maestro-lock-key-my-scheduler-downscaling", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, errors.New("some error in lock"))).AnyTimes()
 
@@ -589,7 +596,7 @@ var _ = Describe("Watcher", func() {
 		It("should not panic if lock is being used", func() {
 			name := "my-scheduler"
 			gameName := "game-name"
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", name).
+			testing.MockLoadScheduler(name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
@@ -618,7 +625,7 @@ var _ = Describe("Watcher", func() {
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
@@ -920,7 +927,7 @@ var _ = Describe("Watcher", func() {
 			BeforeEach(func() {
 				err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+				testing.MockLoadScheduler(configYaml.Name, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yaml1
 					})
@@ -939,7 +946,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -994,7 +1001,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1040,7 +1047,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1093,7 +1100,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1179,7 +1186,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateOverdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1221,7 +1228,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now()
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1247,7 +1254,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now()
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateOverdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1282,7 +1289,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateOverdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1407,7 +1414,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1440,7 +1447,7 @@ var _ = Describe("Watcher", func() {
 
 			It("should do nothing if state is creating", func() {
 				// GetSchedulerScalingInfo
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateCreating
 					scheduler.YAML = yaml1
 				})
@@ -1453,7 +1460,7 @@ var _ = Describe("Watcher", func() {
 
 			It("should do nothing if state is terminating", func() {
 				// GetSchedulerScalingInfo
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateTerminating
 					scheduler.YAML = yaml1
 				})
@@ -1468,7 +1475,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1521,7 +1528,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1560,7 +1567,7 @@ var _ = Describe("Watcher", func() {
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Up.Cooldown+1) * time.Second)
 				w.AutoScalingPeriod = configYaml.AutoScaling.Up.Trigger.Time / 10
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1613,7 +1620,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1651,7 +1658,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Trigger.Time+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateOverdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1736,7 +1743,7 @@ var _ = Describe("Watcher", func() {
 			It("should scale up, even if lastScaleOpAt is now, if usage is above 90% (default)", func() {
 				lastChangedAt := time.Now()
 				lastScaleOpAt := time.Now()
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1780,7 +1787,7 @@ var _ = Describe("Watcher", func() {
 			It("should scale up, even if lastScaleOpAt is now, if usage is above 70% (from scheduler)", func() {
 				lastChangedAt := time.Now()
 				lastScaleOpAt := time.Now()
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateSubdimensioned
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -1830,7 +1837,7 @@ var _ = Describe("Watcher", func() {
 			BeforeEach(func() {
 				err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+				testing.MockLoadScheduler(configYaml.Name, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yaml1
 					})
@@ -1844,11 +1851,7 @@ var _ = Describe("Watcher", func() {
 
 			It("should terminate watcher if scheduler is not in database", func() {
 				// GetSchedulerScalingInfo
-				mockDb.EXPECT().Query(
-					gomock.Any(),
-					"SELECT * FROM schedulers WHERE name = ?",
-					configYaml.Name,
-				).Return(pg.NewTestResult(fmt.Errorf("scheduler not found"), 0), fmt.Errorf("scheduler not found"))
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Return(pg.NewTestResult(fmt.Errorf("scheduler not found"), 0), fmt.Errorf("scheduler not found"))
 
 				w.Run = true
 				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
@@ -1857,7 +1860,7 @@ var _ = Describe("Watcher", func() {
 
 			It("should not panic and exit if error retrieving scheduler scaling info", func() {
 				// GetSchedulerScalingInfo
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				}).Return(pg.NewTestResult(nil, 0), errors.New("some cool error in pg"))
 
@@ -4032,7 +4035,7 @@ var _ = Describe("Watcher", func() {
 		BeforeEach(func() {
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 			Expect(err).NotTo(HaveOccurred())
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
@@ -4154,8 +4157,7 @@ var _ = Describe("Watcher", func() {
 					}, map[string]interface{}(nil))
 			}
 
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 					scheduler.Game = schedulerName
@@ -4226,7 +4228,7 @@ var _ = Describe("Watcher", func() {
 				})
 			}
 
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				}).Times(4)
@@ -4289,7 +4291,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -4366,7 +4368,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -4436,7 +4438,7 @@ var _ = Describe("Watcher", func() {
 				// GetSchedulerScalingInfo
 				lastChangedAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
 				lastScaleOpAt := time.Now().Add(-1 * time.Duration(configYaml.AutoScaling.Down.Cooldown+1) * time.Second)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+				testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.State = models.StateInSync
 					scheduler.StateLastChangedAt = lastChangedAt.Unix()
 					scheduler.LastScaleOpAt = lastScaleOpAt.Unix()
@@ -4488,11 +4490,7 @@ var _ = Describe("Watcher", func() {
 		BeforeEach(func() {
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 			Expect(err).NotTo(HaveOccurred())
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"SELECT * FROM schedulers WHERE name = ?",
-				configYaml.Name,
-			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+			testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yaml1
 			})
 			w = watcher.NewWatcher(
@@ -4512,8 +4510,7 @@ var _ = Describe("Watcher", func() {
 		})
 
 		It("should return error if fail to unmarshal yaml", func() {
-			mockDb.EXPECT().
-				Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", w.SchedulerName).
+			testing.MockLoadScheduler(w.SchedulerName, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					*scheduler = *models.NewScheduler(w.SchedulerName, "", "}\":{}")
 				}).Return(pg.NewTestResult(nil, 1), nil)
@@ -4543,13 +4540,8 @@ var _ = Describe("Watcher", func() {
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
 				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
 
-			// // EnterCriticalSection (lock done by redis-lock)
-			// downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml.Name)
-			// testing.MockRedisLock(mockRedisClient, downScalingLockKey, 5, true, nil)
-			// testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
-
-			// testing.MockRedisLock(mockRedisClient, downScalingLockKey, config.GetInt("watcher.lockTimeoutMs"), true, nil)
-			// testing.MockReturnRedisLock(mockRedisClient, downScalingLockKey, nil)
+			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
 
 			// Create room
 			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
@@ -4582,11 +4574,12 @@ var _ = Describe("Watcher", func() {
 			}
 			mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).AnyTimes()
 			mockPipeline.EXPECT().Exec().Return(nil, errDB)
+			mockPipeline.EXPECT().Exec().Return(nil, nil)
 
 			err := w.EnsureCorrectRooms()
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(hook.LastEntry().Message).To(Equal("error replacing chunk of pods"))
+			Expect(hook.LastEntry().Message).To(Equal(fmt.Sprintf("error deleting pod %s during rolling update", podNames[1])))
 		})
 
 		It("should delete invalid pods", func() {
@@ -4596,6 +4589,9 @@ var _ = Describe("Watcher", func() {
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
 				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
+
+			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
 
 			for _, podName := range podNames {
 				pod := &v1.Pod{}
@@ -4627,7 +4623,7 @@ var _ = Describe("Watcher", func() {
 		BeforeEach(func() {
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 			Expect(err).NotTo(HaveOccurred())
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", configYaml.Name).
+			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})

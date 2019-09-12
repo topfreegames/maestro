@@ -115,7 +115,7 @@ forwarders:
 				request, _ = http.NewRequest("PUT", url, reader)
 
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+				MockLoadScheduler(namespace, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
 						scheduler.Game = game
@@ -149,7 +149,7 @@ forwarders:
 
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+				MockLoadScheduler(namespace, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
 						scheduler.Game = game
@@ -281,7 +281,7 @@ forwarders:
 				request, _ = http.NewRequest("PUT", url, reader)
 
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+				MockLoadScheduler(namespace, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
 						scheduler.Game = game
@@ -334,7 +334,7 @@ forwarders:
 				request, _ = http.NewRequest("PUT", url, reader)
 
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+				MockLoadScheduler(namespace, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
 						scheduler.Game = game
@@ -380,7 +380,7 @@ forwarders:
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+				MockLoadScheduler(namespace, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
 						scheduler.Game = game
@@ -443,7 +443,7 @@ forwarders:
 				request, _ = http.NewRequest("PUT", url, reader)
 
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+				MockLoadScheduler(namespace, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
 						scheduler.Game = game
@@ -598,7 +598,7 @@ forwarders:
 					}
 					mockPipeline.EXPECT().Exec()
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+					MockLoadScheduler(namespace, mockDb).
 						Do(func(scheduler *models.Scheduler, query string, modifier string) {
 							scheduler.YAML = yamlStr
 							scheduler.Game = game
@@ -637,7 +637,7 @@ forwarders:
 					}
 					mockPipeline.EXPECT().Exec()
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-					mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+					MockLoadScheduler(namespace, mockDb).
 						Do(func(scheduler *models.Scheduler, query string, modifier string) {
 							scheduler.YAML = yamlStr
 							scheduler.Game = game
@@ -676,7 +676,7 @@ forwarders:
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
 
-				mockDb.EXPECT().Query(gomock.Any(), "SELECT * FROM schedulers WHERE name = ?", namespace).
+				MockLoadScheduler(namespace, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
 						scheduler.Game = game
@@ -774,11 +774,7 @@ forwarders:
 				"metadata":  make(map[string]interface{}),
 			})
 			request, _ = http.NewRequest("POST", url, reader)
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"SELECT * FROM schedulers WHERE name = ?",
-				"schedulerName",
-			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+			MockLoadScheduler("schedulerName", mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yamlStr
 				scheduler.Game = game
 			})
@@ -804,11 +800,7 @@ forwarders:
 				"metadata":  make(map[string]interface{}),
 			})
 			request, _ = http.NewRequest("POST", url, reader)
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"SELECT * FROM schedulers WHERE name = ?",
-				"schedulerName",
-			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+			MockLoadScheduler("schedulerName", mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yamlStr
 				scheduler.Game = game
 			})
@@ -835,11 +827,7 @@ forwarders:
 				"metadata":  make(map[string]interface{}),
 			})
 			request, _ = http.NewRequest("POST", url, reader)
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"SELECT * FROM schedulers WHERE name = ?",
-				"schedulerName",
-			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+			MockLoadScheduler("schedulerName", mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yamlStr
 				scheduler.Game = game
 			})
@@ -905,11 +893,7 @@ forwarders:
 				"metadata":  make(map[string]interface{}),
 			})
 			request, _ = http.NewRequest("POST", url, reader)
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"SELECT * FROM schedulers WHERE name = ?",
-				"schedulerName",
-			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+			MockLoadScheduler("schedulerName", mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yamlStr
 				scheduler.Game = game
 			})
@@ -939,11 +923,7 @@ forwarders:
 			})
 			request, _ = http.NewRequest("POST", url, reader)
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"SELECT * FROM schedulers WHERE name = ?",
-				"schedulerName",
-			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+			MockLoadScheduler("schedulerName", mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yamlStr
 				scheduler.Game = game
 			})
@@ -972,11 +952,7 @@ forwarders:
 			})
 			request, _ = http.NewRequest("POST", url, reader)
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-			mockDb.EXPECT().Query(
-				gomock.Any(),
-				"SELECT * FROM schedulers WHERE name = ?",
-				"schedulerName",
-			).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+			MockLoadScheduler("schedulerName", mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yamlStr
 				scheduler.Game = game
 			})

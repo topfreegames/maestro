@@ -147,11 +147,13 @@ func (g *SchedulerDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	timeoutSec := g.App.Config.GetInt("deleteTimeoutSeconds")
 	db := g.App.DBClient.WithContext(r.Context())
 	err := controller.DeleteScheduler(
+		ctx,
 		l,
 		mr,
 		db,
-		g.App.RedisClient.Trace(ctx),
+		g.App.RedisClient,
 		kubernetesClient,
+		g.App.Config,
 		params.SchedulerName,
 		timeoutSec,
 	)
@@ -225,7 +227,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",
-		"operation": "update",
+		"operation": "SchedulerUpdate",
 		"scheduler": params.SchedulerName,
 		"user":      email,
 	})
