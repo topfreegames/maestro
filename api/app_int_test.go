@@ -244,7 +244,7 @@ var _ = Describe("App", func() {
 		})
 
 		It("should return code 500 if postgres is down", func() {
-			app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, nil, nil, clientset, metricsClientset)
+			app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", nil, nil, nil, nil, clientset, metricsClientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = app.DBClient.DB.Close()

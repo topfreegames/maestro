@@ -24,13 +24,13 @@ import (
 	"github.com/topfreegames/extensions/clock"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
+	kubernetesExtensions "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/constants"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	kubernetesExtensions "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/autoscaler"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
@@ -41,7 +41,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 func createRoomUsages(pods *v1.PodList) ([]*models.RoomUsage, map[string]int) {
@@ -1329,8 +1329,7 @@ func (w *Watcher) PodStatesCount() {
 	logger := w.Logger.WithField("method", "PodStatesCount")
 
 	logger.Info("listing pods on namespace")
-	ctx := context.Background()
-	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
+	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, context.Background())
 	pods, err := k.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods")

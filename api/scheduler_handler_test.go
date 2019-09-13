@@ -1761,7 +1761,7 @@ game: game-name
 				err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
-				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 			})
@@ -2803,7 +2803,7 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
 
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 				newImageName := "new-image"
@@ -2911,7 +2911,7 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
 
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 
@@ -3491,7 +3491,7 @@ game: game-name
 
 				config, err := GetDefaultConfig()
 				config.Set("basicauth.tryOauthIfUnset", true)
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 

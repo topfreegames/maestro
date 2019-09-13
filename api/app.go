@@ -14,7 +14,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/pprof"
 	"os"
 	"os/signal"
 	"sync"
@@ -42,7 +41,7 @@ import (
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 type gracefulShutdown struct {
@@ -79,7 +78,7 @@ func NewApp(
 	port int,
 	config *viper.Viper,
 	logger logrus.FieldLogger,
-	incluster, showProfile bool,
+	incluster bool,
 	kubeconfigPath string,
 	dbOrNil pginterfaces.DB,
 	dbCtxOrNil pginterfaces.CtxWrapper,
@@ -109,7 +108,6 @@ func NewApp(
 		redisClientOrNil, redisTraceWrapperOrNil,
 		kubernetesClientOrNil,
 		metricsClientsetOrNil,
-		showProfile,
 	)
 	if err != nil {
 		return nil, err
@@ -117,7 +115,7 @@ func NewApp(
 	return a, nil
 }
 
-func (a *App) getRouter(showProfile bool) *mux.Router {
+func (a *App) getRouter() *mux.Router {
 	r := router.NewRouter()
 	r.Use(middleware.Version(metadata.Version))
 	r.Use(middleware.Logging(a.Logger))
@@ -129,12 +127,6 @@ func (a *App) getRouter(showProfile bool) *mux.Router {
 		NewNewRelicMiddleware(a),
 		NewDogStatsdMiddleware(a),
 	)).Methods("GET").Name("healthcheck")
-
-	if showProfile {
-		r.HandleFunc("/debug/pprof/", pprof.Index)
-		r.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		r.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	}
 
 	r.Handle("/login", Chain(
 		NewLoginUrlHandler(a),
@@ -414,43 +406,28 @@ func (a *App) configureApp(
 	redisTraceWrapperOrNil redisinterfaces.TraceWrapper,
 	kubernetesClientOrNil kubernetes.Interface,
 	metricsClientsetOrNil metricsClient.Interface,
-	showProfile bool,
 ) error {
 	a.loadConfigurationDefaults()
 	a.configureJaeger()
 	a.configureLogger()
-
 	a.configureForwarders()
-	err := a.configureDatabase(dbOrNil, dbCtxOrNil)
-	if err != nil {
+	if err := a.configureDatabase(dbOrNil, dbCtxOrNil); err != nil {
 		return err
 	}
-
-	err = a.configureRedisClient(redisClientOrNil, redisTraceWrapperOrNil)
-	if err != nil {
+	if err := a.configureRedisClient(redisClientOrNil, redisTraceWrapperOrNil); err != nil {
 		return err
 	}
-
-	err = a.configureKubernetesClient(kubernetesClientOrNil, metricsClientsetOrNil)
-	if err != nil {
+	if err := a.configureKubernetesClient(kubernetesClientOrNil, metricsClientsetOrNil); err != nil {
 		return err
 	}
-
-	err = a.configureNewRelic()
-	if err != nil {
+	if err := a.configureNewRelic(); err != nil {
 		return err
 	}
-
 	a.configureCache()
-
 	a.configureSentry()
-
 	a.configureLogin()
-
-	a.configureServer(showProfile)
-
+	a.configureServer()
 	a.configureEnvironment()
-
 	return nil
 }
 
@@ -468,8 +445,11 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("api.limitManager.keyTimeout", 1*time.Minute)
 	a.Config.SetDefault("jaeger.disabled", false)
 	a.Config.SetDefault("jaeger.samplingProbability", 1.0)
-	a.Config.SetDefault("addrGetter.cache.use", false)
+	a.Config.SetDefault("addrGetter.cache.use", true)
 	a.Config.SetDefault("addrGetter.cache.expirationInterval", "10m")
+	a.Config.SetDefault("extensions.kubernetesClient.timeout", "1s")
+	a.Config.SetDefault("extensions.kubernetesClient.burst", 300)
+	a.Config.SetDefault("extensions.kubernetesClient.qps", 300)
 	a.Config.SetDefault(EnvironmentConfig, ProdEnvironment)
 }
 
@@ -508,7 +488,7 @@ func (a *App) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interfa
 		}
 		return nil
 	}
-	clientset, metricsClientset, err := extensions.GetKubernetesClient(a.Logger, a.InCluster, a.KubeconfigPath)
+	clientset, metricsClientset, err := extensions.GetKubernetesClient(a.Logger, a.Config, a.InCluster, a.KubeconfigPath)
 	if err != nil {
 		return err
 	}
@@ -583,8 +563,8 @@ func (a *App) configureNewRelic() error {
 	return nil
 }
 
-func (a *App) configureServer(showProfile bool) {
-	a.Router = a.getRouter(showProfile)
+func (a *App) configureServer() {
+	a.Router = a.getRouter()
 	a.Server = &http.Server{
 		Addr:    a.Address,
 		Handler: wrapHandlerWithCors(middleware.UseResponseWriter(a.Router)),

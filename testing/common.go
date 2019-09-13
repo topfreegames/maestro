@@ -16,7 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/testing"
 	metricsapi "k8s.io/metrics/pkg/apis/metrics/v1beta1"
-	fakeMetricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
+	fakeMetricsClient "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 
 	"github.com/golang/mock/gomock"
 	"github.com/onsi/gomega"
@@ -25,7 +25,7 @@ import (
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"

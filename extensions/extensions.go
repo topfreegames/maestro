@@ -19,7 +19,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 )
@@ -61,31 +61,34 @@ func GetDB(logger logrus.FieldLogger, config *viper.Viper, dbOrNil pginterfaces.
 }
 
 // GetKubernetesClient returns a Kubernetes client
-func GetKubernetesClient(logger logrus.FieldLogger, inCluster bool, kubeConfigPath string) (kubernetes.Interface, metricsClient.Interface, error) {
+func GetKubernetesClient(logger logrus.FieldLogger, config *viper.Viper, inCluster bool, kubeConfigPath string) (kubernetes.Interface, metricsClient.Interface, error) {
 	var err error
 	l := logger.WithFields(logrus.Fields{
 		"operation": "configureKubernetesClient",
 	})
-	var config *rest.Config
+	var conf *rest.Config
 	if inCluster {
 		l.Debug("starting with incluster configuration")
-		config, err = rest.InClusterConfig()
+		conf, err = rest.InClusterConfig()
 	} else {
 		l.Debug("starting outside Kubernetes cluster")
-		config, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+		conf, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	}
-  config.Timeout = 60 * time.Second
+	conf.Timeout = config.GetDuration("extensions.kubernetesClient.timeout")
+	conf.RateLimiter = nil
+	conf.Burst = config.GetInt("extensions.kubernetesClient.burst")
+	conf.QPS = float32(config.GetInt("extensions.kubernetesClient.qps"))
 	if err != nil {
 		l.WithError(err).Error("start Kubernetes failed")
 		return nil, nil, err
 	}
 	l.Debug("connecting to Kubernetes...")
-	clientset, err := kubernetesExtensions.NewForConfig(config)
+	clientset, err := kubernetesExtensions.NewForConfig(conf)
 	if err != nil {
 		l.WithError(err).Error("connection to Kubernetes failed")
 		return nil, nil, err
 	}
-	metricsClientset, err := metricsClient.NewForConfig(config)
+	metricsClientset, err := metricsClient.NewForConfig(conf)
 	if err != nil {
 		l.WithError(err).Error("connection to Kubernetes Metrics Server failed")
 		return nil, nil, err

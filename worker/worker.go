@@ -9,8 +9,6 @@ package worker
 
 import (
 	"fmt"
-	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -27,7 +25,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/watcher"
 	"k8s.io/client-go/kubernetes"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
@@ -92,6 +90,9 @@ func (w *Worker) loadConfigurationDefaults() {
 	w.Config.SetDefault("worker.retrieveFreePortsPeriod", 3600)
 	w.Config.SetDefault("worker.getLocksTimeout", 300)
 	w.Config.SetDefault("worker.lockTimeoutMs", 180000)
+	w.Config.SetDefault("extensions.kubernetesClient.timeout", "1s")
+	w.Config.SetDefault("extensions.kubernetesClient.burst", 300)
+	w.Config.SetDefault("extensions.kubernetesClient.qps", 300)
 }
 
 func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterfaces.RedisClient, kubernetesClientOrNil kubernetes.Interface, kubernetesMetricsClientOrNil metricsClient.Interface) error {
@@ -139,7 +140,7 @@ func (w *Worker) configureKubernetesClient(kubernetesClientOrNil kubernetes.Inte
 		return nil
 	}
 
-	clientset, metricsClientset, err := extensions.GetKubernetesClient(w.Logger, w.InCluster, w.KubeconfigPath)
+	clientset, metricsClientset, err := extensions.GetKubernetesClient(w.Logger, w.Config, w.InCluster, w.KubeconfigPath)
 	if err != nil {
 		return err
 	}
@@ -193,16 +194,10 @@ func (w *Worker) configureLogger() {
 }
 
 // Start starts the worker
-func (w *Worker) Start(startHostPortRange, endHostPortRange int, showProfile bool) error {
+func (w *Worker) Start(startHostPortRange, endHostPortRange int) error {
 	l := w.Logger.WithFields(logrus.Fields{
 		"operation": "start",
 	})
-
-	if showProfile {
-		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
-		}()
-	}
 
 	w.Run = true
 	sigchan := make(chan os.Signal)

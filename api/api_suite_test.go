@@ -30,7 +30,7 @@ import (
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes/fake"
-	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
+	metricsFake "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
 
 var (
@@ -107,7 +107,7 @@ var _ = BeforeEach(func() {
 	lockKey = config.GetString("watcher.lockKey")
 
 	mockRedisClient.EXPECT().Ping().Return(redis.NewStatusResult("PONG", nil)).AnyTimes()
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	mockLogin = loginMocks.NewMockLogin(mockCtrl)
