@@ -9,7 +9,7 @@ package autoscaler
 
 import (
 	"k8s.io/client-go/kubernetes"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	"github.com/topfreegames/maestro/models"
 )

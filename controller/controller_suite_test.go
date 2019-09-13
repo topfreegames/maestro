@@ -27,7 +27,7 @@ import (
 	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
-	metricsFake "k8s.io/metrics/pkg/client/clientset_generated/clientset/fake"
+	metricsFake "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
 
 var (

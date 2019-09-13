@@ -12,13 +12,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mmcloughlin/professor"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var config *viper.Viper
 var json bool
-var showProfile bool
+var pprof bool
 
 // ConfigFile is the configuration file used for running a command
 var ConfigFile string
@@ -42,26 +43,24 @@ func Execute(cmd *cobra.Command) {
 }
 
 func init() {
-	cobra.OnInitialize(InitConfig)
+	cobra.OnInitialize(onCobraInitialize)
 	RootCmd.PersistentFlags().BoolVarP(
 		&json, "json", "j",
 		false, "json output mode")
-
 	RootCmd.PersistentFlags().IntVarP(
 		&Verbose, "verbose", "v", 0,
 		"Verbosity level => v0: Error, v1=Warning, v2=Info, v3=Debug",
 	)
-
 	RootCmd.PersistentFlags().StringVarP(
 		&ConfigFile, "config", "c", "./config/local.yaml",
 		"config file",
 	)
+	RootCmd.PersistentFlags().BoolVar(&pprof, "pprof", false, "it enables pprof")
+}
 
-	workerCmd.Flags().BoolVar(&showProfile,
-		"show-profile",
-		false,
-		"if true creates an endpoint to show collected metrics",
-	)
+func onCobraInitialize() {
+	InitConfig()
+	launchPProf()
 }
 
 // InitConfig reads in config file and ENV variables if set.
@@ -75,10 +74,15 @@ func InitConfig() {
 	config.AddConfigPath(".")
 	config.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	config.AutomaticEnv()
-
 	// If a config file is found, read it in.
 	if err := config.ReadInConfig(); err != nil {
 		fmt.Printf("Config file %s failed to load: %s.\n", ConfigFile, err.Error())
 		panic("Failed to load config file")
 	}
+}
+
+func launchPProf() {
+	fmt.Println("Starting PProf HTTP server")
+	config.SetDefault("pprof.address", "localhost:6060")
+	professor.Launch(config.GetString("pprof.address"))
 }

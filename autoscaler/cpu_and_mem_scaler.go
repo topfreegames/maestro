@@ -10,10 +10,10 @@ package autoscaler
 import (
 	"math"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	"github.com/topfreegames/maestro/models"
 )

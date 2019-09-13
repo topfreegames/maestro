@@ -28,7 +28,7 @@ import (
 
 	mTest "github.com/topfreegames/maestro/testing"
 	"k8s.io/client-go/kubernetes"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 var (
@@ -67,7 +67,7 @@ var _ = BeforeSuite(func() {
 	config, err = mTest.GetDefaultConfig()
 	Expect(err).NotTo(HaveOccurred())
 
-	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", nil, nil, nil, nil, clientset, metricsClientset)
+	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", nil, nil, nil, nil, clientset, metricsClientset)
 	Expect(err).NotTo(HaveOccurred())
 
 	user := &login.User{

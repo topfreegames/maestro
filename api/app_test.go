@@ -18,7 +18,7 @@ import (
 var _ = Describe("App", func() {
 	Describe("NewApp", func() {
 		It("should return new app", func() {
-			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(application).NotTo(BeNil())
 			Expect(application.Address).NotTo(Equal(""))
@@ -36,14 +36,14 @@ var _ = Describe("App", func() {
 
 			// should use development environment
 			config.Set(api.EnvironmentConfig, api.DevEnvironment)
-			application, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+			application, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(application.RoomAddrGetter).To(BeAssignableToTypeOf(&models.RoomAddressesFromNodePort{}))
 		})
 
 		It("should fail if some error occurred", func() {
 			config.Set("newrelic.key", 12345)
-			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("license length is not 40"))
 			Expect(application).To(BeNil())
@@ -51,7 +51,7 @@ var _ = Describe("App", func() {
 
 		It("should not fail if no newrelic key is provided", func() {
 			config.Set("newrelic.key", "")
-			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+			application, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(application).NotTo(BeNil())
 		})

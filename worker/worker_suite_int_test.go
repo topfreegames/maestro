@@ -25,7 +25,7 @@ import (
 	mtesting "github.com/topfreegames/maestro/testing"
 	"github.com/topfreegames/maestro/worker"
 	"k8s.io/client-go/kubernetes"
-	metricsClient "k8s.io/metrics/pkg/client/clientset_generated/clientset"
+	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 var (
@@ -95,7 +95,7 @@ var _ = BeforeSuite(func() {
 
 	w, err = worker.NewWorker(config, logger, mr, false, "", app.DBClient.DB, app.RedisClient.Client, clientset, metricsClientset)
 	Expect(err).NotTo(HaveOccurred())
-	go w.Start(startPortRange, endPortRange, false)
+	go w.Start(startPortRange, endPortRange)
 })
 
 var _ = BeforeEach(func() {

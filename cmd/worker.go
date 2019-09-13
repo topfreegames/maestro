@@ -67,7 +67,7 @@ var workerCmd = &cobra.Command{
 
 		reporters.MakeReporters(config, log)
 
-		err = w.Start(startHostPortRange, endHostPortRange, showProfile)
+		err = w.Start(startHostPortRange, endHostPortRange)
 		if err != nil {
 			cmdL.Fatal(err)
 		}

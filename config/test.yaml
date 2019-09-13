@@ -11,6 +11,10 @@ extensions:
   redis:
     url: redis://localhost:6333
     connectionTimeout: 200
+  kubernetesClient:
+    timeout: 1s
+    burst: 300
+    qps: 300
 watcher:
   autoScalingPeriod: 10
   roomsStatusesReportPeriod: 10
@@ -36,6 +40,9 @@ scaleDownTimeoutSeconds: 300
 deleteTimeoutSeconds: 300
 pingTimeout: 300
 updateTimeoutSeconds: 300
+addrGetter:
+  cache:
+    use: false
 newrelic:
   app: maestro
   key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

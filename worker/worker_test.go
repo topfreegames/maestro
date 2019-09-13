@@ -101,7 +101,7 @@ cmd:
 				Set(models.GlobalPortsPoolKey, "40000-50000", 0*time.Second).
 				Return(goredis.NewStatusResult("", nil)).Times(2)
 
-			w.Start(startPortRange, endPortRange, false)
+			w.Start(startPortRange, endPortRange)
 		})
 
 		It("should log error and not panic if failed to list scheduler names", func() {
@@ -116,7 +116,7 @@ cmd:
 				Set(models.GlobalPortsPoolKey, "40000-50000", 0*time.Second).
 				Return(goredis.NewStatusResult("", nil)).Times(2)
 
-			err := w.Start(startPortRange, endPortRange, false)
+			err := w.Start(startPortRange, endPortRange)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in pg"))
 			Expect(hook.LastEntry().Message).To(Equal("error listing schedulers"))

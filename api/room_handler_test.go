@@ -262,7 +262,7 @@ forwarders:
 				createNamespace(namespace, clientset)
 				err := createPod(roomName, namespace, clientset)
 				Expect(err).NotTo(HaveOccurred())
-				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
 				app.Forwarders = []*eventforwarder.Info{
 					&eventforwarder.Info{
@@ -546,7 +546,7 @@ forwarders:
 					createNamespace(namespace, clientset)
 					err := createPod(roomName, namespace, clientset)
 					Expect(err).NotTo(HaveOccurred())
-					app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+					app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 					Expect(err).NotTo(HaveOccurred())
 					app.Forwarders = []*eventforwarder.Info{
 						&eventforwarder.Info{
@@ -714,7 +714,7 @@ forwarders:
 		var app *api.App
 		BeforeEach(func() {
 			var err error
-			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 			Expect(err).NotTo(HaveOccurred())
 			app.Forwarders = []*eventforwarder.Info{
 				&eventforwarder.Info{
@@ -853,7 +853,7 @@ forwarders:
 			createNamespace(namespace, clientset)
 			err := createPod("roomName", namespace, clientset)
 			Expect(err).NotTo(HaveOccurred())
-			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 			Expect(err).NotTo(HaveOccurred())
 			app.Forwarders = []*eventforwarder.Info{
 				&eventforwarder.Info{
