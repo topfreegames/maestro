@@ -402,7 +402,7 @@ func waitCreatingPods(
 					logger.
 						WithError(err).
 						WithField("pod", pod.GetName()).
-						Info("error creating pod, recreating...")
+						Error("error creating pod, recreating...")
 
 					pod.ResourceVersion = ""
 					err = mr.WithSegment(models.SegmentPod, func() error {
@@ -428,7 +428,7 @@ func waitCreatingPods(
 					logger.
 						WithError(err).
 						WithField("pod", pod.GetName()).
-						Info("error getting pod")
+						Error("error getting pod")
 					exit = false
 					break
 				}
@@ -1069,7 +1069,7 @@ func ReleaseLock(
 	if lock != nil {
 		err := redisClient.LeaveCriticalSection(lock)
 		if err != nil {
-			l.WithError(err).Error("error retrieving lock. Either wait or remove it manually from redis")
+			l.WithError(err).Error("error releasing lock. Either wait or remove it manually from redis")
 		}
 	}
 }

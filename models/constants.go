@@ -110,6 +110,7 @@ const PodNotFitsHostPorts = "PodFitsHostPorts"
 var InvalidPodWaitingStates = []string{
 	"ErrImageNeverPull",
 	"ErrImagePullBackOff",
+	"ImagePullBackOff",
 	"CrashLoopBackOff",
 	"ErrInvalidImageName",
 }
