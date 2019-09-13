@@ -246,7 +246,7 @@ func DeleteScheduler(
 
 	// lock so autoscaler doesn't recreate rooms deleted
 	terminationLockKey := models.GetSchedulerTerminationLockKey(config.GetString("watcher.lockKey"), schedulerName)
-	configLock, _, err := AcquireLock(
+	terminationLock, _, err := AcquireLock(
 		ctx,
 		logger,
 		redisClient,
@@ -264,7 +264,7 @@ func DeleteScheduler(
 	defer ReleaseLock(
 		logger,
 		redisClient,
-		configLock,
+		terminationLock,
 		schedulerName,
 	)
 
