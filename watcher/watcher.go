@@ -1156,7 +1156,11 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	}
 
 	if len(podsToDelete) > 0 {
-		logger.WithField("podsToDelete", podsToDelete).Info("deleting invalid pods")
+		podNamesToDelete := []string{}
+		for _, pod := range podsToDelete {
+			podNamesToDelete = append(podNamesToDelete, pod.GetName())
+		}
+		logger.WithField("podsToDelete", podNamesToDelete).Info("deleting invalid pods")
 	} else {
 		logger.Info("no invalid pods to delete")
 	}
