@@ -465,6 +465,12 @@ var _ = Describe("Watcher", func() {
 					scheduler.YAML = yaml1
 				})
 
+			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
+				configYaml.Name, [][]string{}, nil)
+
+			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+
 			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset,
 				configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())

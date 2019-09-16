@@ -242,11 +242,6 @@ func (w *Watcher) Start() {
 		select {
 		case <-ticker.C:
 			w.watchRooms()
-		case <-tickerEnsure.C:
-			l = w.Logger.WithFields(logrus.Fields{
-				"operation": "watcher.EnsureCorrectRooms",
-			})
-			w.WithDownscalingLock(l, w.EnsureCorrectRooms)
 		case <-tickerStateCount.C:
 			w.PodStatesCount()
 		case sig := <-sigchan:
@@ -276,6 +271,7 @@ func (w *Watcher) watchRooms() error {
 	l := w.Logger.WithFields(logrus.Fields{
 		"operation": "watcher.watchRooms",
 	})
+	w.WithDownscalingLock(l, w.EnsureCorrectRooms)
 	w.WithDownscalingLock(l, w.RemoveDeadRooms)
 	w.WithTerminationLock(l, w.AutoScale)
 	w.AddUtilizationMetricsToRedis()
