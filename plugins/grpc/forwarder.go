@@ -348,8 +348,12 @@ func (g *GRPCForwarder) SchedulerEvent(ctx context.Context, infos, fwdMetadata m
 func (g *GRPCForwarder) Forward(ctx context.Context, event string, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 
 	// Add forwarder metadata (from maestro config) to request
+	metadata := map[string]interface{}{}
+	if g.metadata != nil {
+		metadata = eventforwarder.CopyMap(g.metadata)
+	}
+
 	// Client metadata should take priority
-	metadata := g.metadata
 	if metadata != nil {
 		for k := range fwdMetadata {
 			metadata[k] = fwdMetadata[k]
