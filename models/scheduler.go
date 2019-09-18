@@ -525,6 +525,7 @@ func ListSchedulerLocksKeys(prefix, schedulerName string) []string {
 	return []string{
 		GetSchedulerConfigLockKey(prefix, schedulerName),
 		GetSchedulerDownScalingLockKey(prefix, schedulerName),
+		GetSchedulerTerminationLockKey(prefix, schedulerName),
 	}
 }
 

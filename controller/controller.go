@@ -694,11 +694,13 @@ func UpdateSchedulerConfig(
 			// get list of actual pods
 			kubePods, err = listCurrentPods(mr, clientset, schedulerName)
 			if err != nil {
+				scheduler.RollingUpdateStatus = erroredStatus(err.Error())
 				break
 			}
 
 			status, err = operationManager.GetOperationStatus(*scheduler, kubePods.Items)
 			if err != nil {
+				scheduler.RollingUpdateStatus = erroredStatus(err.Error())
 				break
 			}
 

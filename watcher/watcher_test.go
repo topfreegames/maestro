@@ -468,9 +468,6 @@ var _ = Describe("Watcher", func() {
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
 				configYaml.Name, [][]string{}, nil)
 
-			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
-			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
-
 			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset,
 				configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
@@ -605,13 +602,28 @@ var _ = Describe("Watcher", func() {
 			testing.MockLoadScheduler(name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
-				})
+				}).AnyTimes()
 			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset, name, gameName, occupiedTimeout, []*eventforwarder.Info{})
 			Expect(w).NotTo(BeNil())
 			defer func() { w.Run = false }()
 
 			// EnterCriticalSection (lock done by redis-lock)
 			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler-downscaling", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, nil)).AnyTimes()
+			mockRedisClient.EXPECT().SetNX("maestro-lock-key-my-scheduler-termination", gomock.Any(), gomock.Any()).Return(redis.NewBoolResult(false, nil)).AnyTimes()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
+			creating := models.GetRoomStatusSetRedisKey(name, "creating")
+			occupied := models.GetRoomStatusSetRedisKey(name, "occupied")
+			terminating := models.GetRoomStatusSetRedisKey(name, "terminating")
+			ready := models.GetRoomStatusSetRedisKey(name, "ready")
+			expC := &models.RoomsStatusCount{0, 0, 1, 0}
+			mockPipeline.EXPECT().LPush(gomock.Any(), gomock.Any()).AnyTimes()
+			mockPipeline.EXPECT().LTrim(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+			mockPipeline.EXPECT().SCard(creating).Return(redis.NewIntResult(int64(expC.Creating), nil)).AnyTimes()
+			mockPipeline.EXPECT().SCard(occupied).Return(redis.NewIntResult(int64(expC.Occupied), nil)).AnyTimes()
+			mockPipeline.EXPECT().SCard(terminating).Return(redis.NewIntResult(int64(expC.Terminating), nil)).AnyTimes()
+			mockPipeline.EXPECT().SCard(ready).Return(redis.NewIntResult(int64(expC.Ready), nil)).AnyTimes()
+			mockPipeline.EXPECT().Exec().AnyTimes()
 
 			Expect(func() {
 				go func() {
@@ -621,7 +633,7 @@ var _ = Describe("Watcher", func() {
 			}).ShouldNot(Panic())
 			Eventually(func() bool { return w.Run }).Should(BeTrue())
 			Eventually(func() bool { return hook.LastEntry() != nil }).Should(BeTrue())
-			time.Sleep(3 * time.Second)
+			time.Sleep(1 * time.Second)
 		})
 	})
 
