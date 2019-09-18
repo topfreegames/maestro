@@ -25,7 +25,6 @@ import (
 	"github.com/topfreegames/extensions/clock"
 	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/controller"
-	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 )
 
@@ -97,22 +96,6 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			"name": payload.Name,
 			"game": payload.Game,
 		})
-
-		// this forwards the metadata configured for each enabled forwarder
-		_, err = eventforwarder.ForwardRoomInfo(
-			r.Context(),
-			g.App.Forwarders,
-			db,
-			kubernetesClient,
-			payload.Name,
-			g.App.SchedulerCache,
-			g.App.Logger,
-		)
-
-		if err != nil {
-			logger.WithError(err).Error("Room info forward failed.")
-		}
-
 		logger.Debug("Create scheduler succeeded.")
 	}
 	Write(w, http.StatusCreated, `{"success": true}`)
@@ -320,22 +303,6 @@ func updateSchedulerConfigCommon(
 
 		return status, description, err
 	}
-
-	// this forwards the metadata configured for each enabled forwarder
-	_, err = eventforwarder.ForwardRoomInfo(
-		ctx,
-		app.Forwarders,
-		db,
-		kubernetesClient,
-		configYaml.Name,
-		nil, // intentionally omit SchedulerCache to force reload since it is an update
-		app.Logger,
-	)
-
-	if err != nil {
-		logger.WithError(err).Error("Room info forward failed.")
-	}
-
 	logger.Info("update scheduler succeeded")
 	return http.StatusOK, "", nil
 }
