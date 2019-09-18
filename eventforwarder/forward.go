@@ -143,61 +143,6 @@ func ForwardRoomEvent(
 	return nil, nil
 }
 
-// ForwardRoomInfo forwards room info to app eventforwarders
-func ForwardRoomInfo(
-	ctx context.Context,
-	forwarders []*Info,
-	db pginterfaces.DB,
-	kubernetesClient kubernetes.Interface,
-	schedulerName string,
-	schedulerCache *models.SchedulerCache,
-	logger logrus.FieldLogger,
-) (res *Response, err error) {
-	var eventWasForwarded bool
-	startTime := time.Now()
-	defer func() {
-		reportRPCStatus(
-			eventWasForwarded,
-			schedulerName, RouteRoomInfo,
-			db,
-			schedulerCache,
-			logger,
-			err,
-			time.Now().Sub(startTime),
-		)
-	}()
-
-	l := logger.WithFields(logrus.Fields{
-		"op":        "forwardRoomInfo",
-		"scheduler": schedulerName,
-	})
-	if len(forwarders) > 0 {
-		cachedScheduler, err := schedulerCache.LoadScheduler(db, schedulerName, true)
-		if err != nil {
-			return nil, err
-		}
-		infos := map[string]interface{}{
-			"game": cachedScheduler.Scheduler.Game,
-		}
-		l.WithFields(logrus.Fields{
-			"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
-		}).Debug("checking enabled forwarders")
-		if len(cachedScheduler.ConfigYAML.Forwarders) > 0 {
-			enabledForwarders := getEnabledForwarders(cachedScheduler.ConfigYAML.Forwarders, forwarders)
-			l.WithFields(logrus.Fields{
-				"schedulerForwarders": len(cachedScheduler.ConfigYAML.Forwarders),
-				"enabledForwarders":   len(enabledForwarders),
-			}).Debug("got enabled forwarders")
-			if len(enabledForwarders) > 0 {
-				eventWasForwarded = true
-				return ForwardEventToForwarders(ctx, enabledForwarders, "schedulerEvent", infos, l)
-			}
-		}
-	}
-	l.Debug("no forwarders configured and enabled")
-	return nil, nil
-}
-
 // ForwardPlayerEvent forwards player event to app eventforwarders
 func ForwardPlayerEvent(
 	ctx context.Context,

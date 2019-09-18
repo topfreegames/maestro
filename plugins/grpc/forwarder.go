@@ -11,7 +11,6 @@ import "C"
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -195,79 +194,6 @@ func (g *GRPCForwarder) playerEvent(ctx context.Context, infos map[string]interf
 	return response.Code, response.Message, err
 }
 
-func (g *GRPCForwarder) roomInfoRequest(infos map[string]interface{}) (*pb.RoomInfo, error) {
-	game := infos["game"].(string)
-
-	g.logger.WithFields(log.Fields{
-		"op":   "roomInfoRequest",
-		"game": game,
-	}).Debug("getting room info request")
-
-	var m map[string]interface{}
-	var ok bool
-	if infos["metadata"] != nil {
-		if m, ok = infos["metadata"].(map[string]interface{}); !ok {
-			var n map[interface{}]interface{}
-			if n, ok = infos["metadata"].(map[interface{}]interface{}); ok {
-				m = map[string]interface{}{}
-				for key, value := range n {
-					switch key := key.(type) {
-					case string:
-						m[key] = value
-					}
-				}
-			} else {
-				g.logger.WithFields(log.Fields{
-					"op":       "roomInfoRequest",
-					"game":     game,
-					"metadata": fmt.Sprintf("%T", infos["metadata"]),
-				}).Warn("invalid metadata provided")
-			}
-		}
-		delete(infos, "metadata")
-	}
-	infosBytes, err := json.Marshal(infos)
-	if err != nil {
-		return nil, err
-	}
-
-	var req pb.RoomInfo
-	err = json.Unmarshal(infosBytes, &req)
-	if err != nil {
-		return nil, err
-	}
-
-	if m != nil {
-		req.Metadata = make(map[string]string)
-
-		for key, value := range m {
-			switch value := value.(type) {
-			case string:
-				req.Metadata[key] = value
-			default:
-				req.Metadata[key] = fmt.Sprintf("%v", value)
-			}
-		}
-	}
-	return &req, nil
-}
-
-func (g *GRPCForwarder) sendRoomInfo(ctx context.Context, infos map[string]interface{}) (status int32, message string, err error) {
-	req, err := g.roomInfoRequest(infos)
-	if err != nil {
-		return 500, "", err
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, g.config.GetDuration("timeout"))
-	defer cancel()
-
-	response, err := g.client.SendRoomInfo(ctx, req)
-	if err != nil {
-		return 500, "", err
-	}
-	return response.Code, response.Message, err
-}
-
 // Ready status
 func (g *GRPCForwarder) Ready(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 	infos = g.mergeInfos(infos, fwdMetadata)
@@ -334,14 +260,6 @@ func (g *GRPCForwarder) RoomEvent(ctx context.Context, infos, fwdMetadata map[st
 	eventType := infos["metadata"].(map[string]interface{})["eventType"].(string)
 	delete(infos["metadata"].(map[string]interface{}), "eventType")
 	return g.sendRoomEvent(ctx, infos, eventType)
-}
-
-// SchedulerEvent sends a scheduler event
-func (g *GRPCForwarder) SchedulerEvent(ctx context.Context, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-	for k, v := range fwdMetadata {
-		infos[k] = v
-	}
-	return g.sendRoomInfo(ctx, infos)
 }
 
 //Forward send room or player status to specified server
