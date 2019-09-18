@@ -327,30 +327,35 @@ func (g *GRPCForwarder) configure() error {
 }
 
 func (g *GRPCForwarder) mergeInfos(infos, fwdMetadata map[string]interface{}) map[string]interface{} {
-	if fwdMetadata != nil {
-		if roomType, ok := fwdMetadata["roomType"]; ok {
-			if metadata, ok := infos["metadata"].(map[string]interface{}); ok {
-				if metadata != nil {
-					metadata["roomType"] = roomType
-				} else {
-					infos["metadata"] = map[string]interface{}{"roomType": roomType}
-				}
-			} else if metadata, ok := infos["metadata"].(map[interface{}]interface{}); ok {
-				if metadata != nil {
-					metadata["roomType"] = roomType
-				} else {
-					infos["metadata"] = map[string]interface{}{"roomType": roomType}
-				}
-			} else if infos["metadata"] == nil {
-				infos["metadata"] = map[string]interface{}{"roomType": roomType}
-			} else {
-				g.logger.WithFields(log.Fields{
-					"op":       "mergeInfos",
-					"metadata": fmt.Sprintf("%T", infos["metadata"]),
-				}).Warn("invalid metadata provided")
-			}
-		}
+	if fwdMetadata == nil {
+		return infos
 	}
+
+	metadata := infos["metadata"]
+	if metadata == nil {
+		metadata = map[string]interface{}{}
+	}
+
+	if m, ok := metadata.(map[string]interface{}); ok {
+		for k, v := range fwdMetadata {
+			m[k] = v
+		}
+		infos["metadata"] = m
+		return infos
+	}
+
+	if m, ok := metadata.(map[interface{}]interface{}); ok {
+		for k, v := range fwdMetadata {
+			m[k] = v
+		}
+		infos["metadata"] = m
+		return infos
+	}
+
+	g.logger.WithFields(log.Fields{
+		"op":       "mergeInfos",
+		"metadata": fmt.Sprintf("%T", infos["metadata"]),
+	}).Warn("invalid metadata provided")
 	return infos
 }
 
