@@ -269,10 +269,18 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 
 func (w *Watcher) watchRooms() error {
 	l := w.Logger.WithFields(logrus.Fields{
-		"operation": "watcher.watchRooms",
+		"operation": "watcher.watchRooms.EnsureCorrectRooms",
 	})
 	w.WithDownscalingLock(l, w.EnsureCorrectRooms)
+
+	l = w.Logger.WithFields(logrus.Fields{
+		"operation": "watcher.watchRooms.RemoveDeadRooms",
+	})
 	w.WithDownscalingLock(l, w.RemoveDeadRooms)
+
+	l = w.Logger.WithFields(logrus.Fields{
+		"operation": "watcher.watchRooms.AutoScale",
+	})
 	w.WithTerminationLock(l, w.AutoScale)
 	w.AddUtilizationMetricsToRedis()
 	return nil
@@ -628,11 +636,31 @@ func (w *Watcher) RemoveDeadRooms() error {
 
 	pods := []v1.Pod{}
 
+	// get rooms with no ping
+	roomsNoPingSince, err := w.roomsWithNoPing(logger)
+	if err != nil {
+		logger.WithError(err).Error("failed to list rooms that are not pinging")
+		return err
+	}
+
+	// get rooms with occupation timeout
+	roomsOnOccupiedTimeout, err := w.roomsWithOccupationTimeout(logger)
+	if err != nil {
+		logger.WithError(err).Error("failed to list rooms that are on occupied timeout state")
+		return err
+	}
+
 	// get rooms registered
 	rooms, err := models.GetRooms(w.RedisClient.Client, w.SchedulerName, w.MetricsReporter)
 	if err != nil {
-		logger.WithError(err).Error("error listing terminating rooms")
+		logger.WithError(err).Error("error listing registered rooms")
 	}
+
+	// append rooms with no ping and on occupation timeout
+	// to make sure these keys don't leak
+	noPingAndOccupied := append(roomsNoPingSince, roomsOnOccupiedTimeout...)
+	rooms = append(rooms, noPingAndOccupied...)
+
 	if len(rooms) > 0 {
 		pods, err = w.listPods()
 		if err != nil {
@@ -646,20 +674,11 @@ func (w *Watcher) RemoveDeadRooms() error {
 			logger.WithError(err).Error("failed to remove zombie rooms")
 			return err
 		}
-	}
 
-	// get rooms with no ping
-	roomsNoPingSince, err := w.roomsWithNoPing(logger)
-	if err != nil {
-		logger.WithError(err).Error("failed to list rooms that are not pinging")
-		return err
-	}
-
-	// get rooms with occupation timeout
-	roomsOnOccupiedTimeout, err := w.roomsWithOccupationTimeout(logger)
-	if err != nil {
-		logger.WithError(err).Error("failed to list rooms that are on occupied timeout state")
-		return err
+		l := logger.WithFields(logrus.Fields{
+			"rooms": fmt.Sprintf("%v", rooms),
+		})
+		l.Info("successfully deleted zombie rooms")
 	}
 
 	if len(roomsNoPingSince) > 0 || len(roomsOnOccupiedTimeout) > 0 {

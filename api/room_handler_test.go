@@ -1100,11 +1100,9 @@ forwarders:
 			It("with custom metric and limit", func() {
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				pKey := models.GetRoomMetricsRedisKey(namespace, "cpu")
-				// expC := &models.RoomsStatusCount{1, 1, 2, 1} // creating,occupied,ready,terminating
 				expectedRooms := []string{"test-ready-0", "test-ready-1", "test-occupied-0"}
 				readyKey := models.GetRoomStatusSetRedisKey(namespace, models.StatusReady)
 				occupiedKey := models.GetRoomStatusSetRedisKey(namespace, models.StatusOccupied)
-				// rooms := CreateTestRooms(clientset, namespace, expC)
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().ZRange(pKey, int64(0), int64(123-1)).Return(
