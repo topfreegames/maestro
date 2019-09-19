@@ -63,6 +63,7 @@ var _ = Describe("SchedulerLocksHandler", func() {
 			for _, lockKey := range []string{
 				"maestro-lock-key-scheduler-name-config",
 				"maestro-lock-key-scheduler-name-downscaling",
+				"maestro-lock-key-scheduler-name-termination",
 			} {
 				mockPipeline.EXPECT().TTL(lockKey).
 					Return(redis.NewDurationResult(9*time.Second, nil))
@@ -75,11 +76,12 @@ var _ = Describe("SchedulerLocksHandler", func() {
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 			var locks []models.SchedulerLock
 			json.Unmarshal(recorder.Body.Bytes(), &locks)
-			Expect(locks).To(HaveLen(2))
+			Expect(locks).To(HaveLen(3))
 
 			for i, lockKey := range []string{
 				"maestro-lock-key-scheduler-name-config",
 				"maestro-lock-key-scheduler-name-downscaling",
+				"maestro-lock-key-scheduler-name-termination",
 			} {
 				Expect(locks[i].Key).To(Equal(lockKey))
 				Expect(locks[i].TTLInSec).To(Equal(int64(9)))
@@ -91,6 +93,7 @@ var _ = Describe("SchedulerLocksHandler", func() {
 			for _, lockKey := range []string{
 				"maestro-lock-key-scheduler-name-config",
 				"maestro-lock-key-scheduler-name-downscaling",
+				"maestro-lock-key-scheduler-name-termination",
 			} {
 				mockPipeline.EXPECT().TTL(lockKey).
 					Return(redis.NewDurationResult(time.Duration(0), redis.Nil))
@@ -107,6 +110,7 @@ var _ = Describe("SchedulerLocksHandler", func() {
 			for i, lockKey := range []string{
 				"maestro-lock-key-scheduler-name-config",
 				"maestro-lock-key-scheduler-name-downscaling",
+				"maestro-lock-key-scheduler-name-termination",
 			} {
 				Expect(locks[i].Key).To(Equal(lockKey))
 				Expect(locks[i].TTLInSec).To(Equal(int64(0)))

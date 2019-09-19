@@ -242,11 +242,6 @@ func (w *Watcher) Start() {
 		select {
 		case <-ticker.C:
 			w.watchRooms()
-		case <-tickerEnsure.C:
-			l = w.Logger.WithFields(logrus.Fields{
-				"operation": "watcher.EnsureCorrectRooms",
-			})
-			w.WithDownscalingLock(l, w.EnsureCorrectRooms)
 		case <-tickerStateCount.C:
 			w.PodStatesCount()
 		case sig := <-sigchan:
@@ -276,6 +271,7 @@ func (w *Watcher) watchRooms() error {
 	l := w.Logger.WithFields(logrus.Fields{
 		"operation": "watcher.watchRooms",
 	})
+	w.WithDownscalingLock(l, w.EnsureCorrectRooms)
 	w.WithDownscalingLock(l, w.RemoveDeadRooms)
 	w.WithTerminationLock(l, w.AutoScale)
 	w.AddUtilizationMetricsToRedis()
@@ -447,12 +443,11 @@ func (w *Watcher) ReportRoomsStatuses() error {
 // WithLock is a helper function that runs a block of code
 // that needs to hold a type of lock to redis
 func (w *Watcher) WithLock(l *logrus.Entry, lockKey string, f func() error) (lockErr, err error) {
-	lock, _, err := controller.AcquireLock(
+	lock, err := controller.AcquireLockOnce(
 		context.Background(),
 		l,
 		w.RedisClient,
 		w.Config,
-		nil,
 		lockKey,
 		w.SchedulerName,
 	)
@@ -1163,6 +1158,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		logger.WithField("podsToDelete", podNamesToDelete).Info("deleting invalid pods")
 	} else {
 		logger.Info("no invalid pods to delete")
+		return nil
 	}
 
 	timeoutSec := w.Config.GetInt("updateTimeoutSeconds")

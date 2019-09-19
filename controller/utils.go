@@ -947,41 +947,6 @@ func loadScheduler(
 	return scheduler, oldConfig, nil
 }
 
-// DownScalingBlocked check if downScalinglockKey exists
-func DownScalingBlocked(
-	ctx context.Context,
-	logger logrus.FieldLogger,
-	redisClient *redis.Client,
-	config *viper.Viper,
-	schedulerName string,
-) bool {
-	l := logger.WithFields(logrus.Fields{
-		"source":    "DownScalingBlocked",
-		"scheduler": schedulerName,
-	})
-
-	downScalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), schedulerName)
-	timeout, _ := time.ParseDuration("5ms")
-	lock, err := redisClient.EnterCriticalSection(
-		redisClient.Trace(ctx),
-		downScalingLockKey,
-		timeout,
-		0, 0,
-	)
-
-	if err != nil {
-		l.WithError(err).Error("failed to check if downscaling is blocked")
-		return false
-	}
-
-	if lock != nil {
-		redisClient.LeaveCriticalSection(lock)
-		return lock.IsLocked()
-	}
-
-	return true
-}
-
 // AcquireLock acquires a lock defined by its lockKey
 func AcquireLock(
 	ctx context.Context,
@@ -1023,6 +988,7 @@ func AcquireLock(
 		)
 		select {
 		case <-timeout.C:
+			l.Warn("timeout while wating for redis lock")
 			return nil, false, errors.New("timeout while wating for redis lock")
 		case <-ticker.C:
 			if operationManager != nil && operationManager.WasCanceled() {
@@ -1054,6 +1020,47 @@ func AcquireLock(
 	return lock, false, err
 }
 
+// AcquireLockOnce tries to acquire a lock defined by its lockKey only once
+// If lock is already acquired by another process it just returns an error
+func AcquireLockOnce(
+	ctx context.Context,
+	logger logrus.FieldLogger,
+	redisClient *redis.Client,
+	config *viper.Viper,
+	lockKey string,
+	schedulerName string,
+) (*redisLock.Lock, error) {
+	l := logger.WithFields(logrus.Fields{
+		"source":    "AcquireLockOnce",
+		"scheduler": schedulerName,
+	})
+
+	lockTimeoutMS := config.GetInt("watcher.lockTimeoutMs")
+
+	lock, err := redisClient.EnterCriticalSection(
+		redisClient.Trace(ctx),
+		lockKey,
+		time.Duration(lockTimeoutMS)*time.Millisecond,
+		0, 0,
+	)
+
+	if err != nil {
+		l.WithError(err).Error("error acquiring lock")
+		return nil, err
+	}
+
+	if lock == nil {
+		l.Warnf("unable to acquire scheduler %s lock %s, maybe some other process has it", schedulerName, lockKey)
+		return nil, fmt.Errorf("unable to acquire scheduler %s lock %s, maybe some other process has it", schedulerName, lockKey)
+	}
+
+	if lock.IsLocked() {
+		l.Debugf("acquired lock %s", lockKey)
+	}
+
+	return lock, err
+}
+
 // ReleaseLock releases a lock defined by its lockKey
 func ReleaseLock(
 	logger logrus.FieldLogger,
@@ -1070,7 +1077,11 @@ func ReleaseLock(
 		err := redisClient.LeaveCriticalSection(lock)
 		if err != nil {
 			l.WithError(err).Error("error releasing lock. Either wait or remove it manually from redis")
+		} else {
+			l.Debug("lock released")
 		}
+	} else {
+		l.Debug("lock is nil. No lock to release")
 	}
 }
 
