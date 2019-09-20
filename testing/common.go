@@ -1600,8 +1600,7 @@ func MockRemoveZombieRooms(
 	mockPipeline *redismocks.MockPipeliner,
 	mockRedisClient *redismocks.MockRedisClient,
 	rooms []string,
-	schedulerName,
-	status string,
+	schedulerName string,
 ) {
 	allStatus := []string{
 		models.StatusCreating,

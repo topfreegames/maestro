@@ -508,7 +508,10 @@ func GetRooms(redisClient interfaces.RedisClient, schedulerName string, mr *Mixe
 	}
 
 	for _, redisKey := range redisKeys {
-		result = append(result, RoomFromRedisKey(redisKey))
+		r := RoomFromRedisKey(redisKey)
+		if r != "" {
+			result = append(result, r)
+		}
 	}
 	return result, nil
 }
