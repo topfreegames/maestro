@@ -609,8 +609,10 @@ func (w *Watcher) filterPodsByName(logger *logrus.Entry, pods []v1.Pod, podNames
 }
 
 // zombie rooms are the ones that are in terminating state but the pods doesn't exist
-func (w *Watcher) removeZombies(pods []v1.Pod, rooms []string) error {
+func (w *Watcher) removeZombies(pods []v1.Pod, rooms []string) ([]string, error) {
 	zombieRooms := []*models.Room{}
+	zombieRoomsNames := []string{}
+
 	liveKubePods := map[string]bool{}
 	for _, pod := range pods {
 		liveKubePods[pod.GetName()] = true
@@ -618,10 +620,11 @@ func (w *Watcher) removeZombies(pods []v1.Pod, rooms []string) error {
 	for _, room := range rooms {
 		if _, ok := liveKubePods[room]; !ok {
 			zombieRooms = append(zombieRooms, models.NewRoom(room, w.SchedulerName))
+			zombieRoomsNames = append(zombieRoomsNames, room)
 		}
 	}
 
-	return models.ClearAllMultipleRooms(w.RedisClient.Client, w.MetricsReporter, zombieRooms)
+	return zombieRoomsNames, models.ClearAllMultipleRooms(w.RedisClient.Client, w.MetricsReporter, zombieRooms)
 }
 
 // RemoveDeadRooms remove rooms that have not sent ping requests for a while
@@ -669,14 +672,14 @@ func (w *Watcher) RemoveDeadRooms() error {
 		}
 
 		// zombie rooms are the ones that are registered but the pods doesn't exist
-		err = w.removeZombies(pods, rooms)
+		roomsRemoved, err := w.removeZombies(pods, rooms)
 		if err != nil {
 			logger.WithError(err).Error("failed to remove zombie rooms")
 			return err
 		}
 
 		l := logger.WithFields(logrus.Fields{
-			"rooms": fmt.Sprintf("%v", rooms),
+			"rooms": fmt.Sprintf("%v", roomsRemoved),
 		})
 		l.Info("successfully deleted zombie rooms")
 	}
