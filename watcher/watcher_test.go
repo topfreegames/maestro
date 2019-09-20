@@ -455,7 +455,7 @@ var _ = Describe("Watcher", func() {
 			testing.TransformLegacyInMetricsTrigger(mockAutoScaling)
 
 			// Mock get terminating rooms
-			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{}, configYaml.Name, "terminating")
+			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{}, configYaml.Name)
 
 			// Mock send usage percentage
 			testing.MockSendUsage(mockPipeline, mockRedisClient, mockAutoScaling)
@@ -4122,7 +4122,7 @@ var _ = Describe("Watcher", func() {
 			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
 
 			// Mock get terminating rooms
-			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{"scheduler:controller-name:rooms:room-0"}, schedulerName, "terminating")
+			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{"scheduler:controller-name:rooms:room-0"}, schedulerName)
 
 			for _, roomName := range expectedRooms {
 				room := models.NewRoom(roomName, schedulerName)
@@ -4189,6 +4189,8 @@ var _ = Describe("Watcher", func() {
 			pKey := models.GetRoomPingRedisKey(schedulerName)
 			lKey := models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied)
 			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
+			expectedRooms := []string{"room-0", "room-1", "room-2"}
+
 			// DeleteRoomsNoPingSince
 			mockRedisClient.EXPECT().ZRangeByScore(
 				pKey,
@@ -4198,14 +4200,10 @@ var _ = Describe("Watcher", func() {
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
-			}).Return(redis.NewStringSliceResult([]string{}, errors.New("some error"))).AnyTimes()
-
-			// Mock get terminating rooms
-			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{}, schedulerName, "terminating")
+			}).Return(redis.NewStringSliceResult([]string{}, errors.New("some error")))
 
 			// DeleteRoomsOccupiedTimeout
 			ts = time.Now().Unix() - w.OccupiedTimeout
-			expectedRooms := []string{"room1", "room2", "room3"}
 			mockRedisClient.EXPECT().ZRangeByScore(
 				lKey,
 				redis.ZRangeBy{Min: "-inf", Max: strconv.FormatInt(ts, 10)},
@@ -4217,9 +4215,9 @@ var _ = Describe("Watcher", func() {
 			}).Return(redis.NewStringSliceResult(expectedRooms, nil))
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room1", "metadata")
-			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room2", "metadata")
-			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room3", "metadata")
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room-0", "metadata")
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room-1", "metadata")
+			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room-2", "metadata")
 			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{
 				redis.NewStringResult(`{"region": "us"}`, nil),
 				redis.NewStringResult(`{"region": "us"}`, nil),
@@ -4245,6 +4243,9 @@ var _ = Describe("Watcher", func() {
 					Expect(status).To(Equal(models.RoomTerminated))
 				})
 			}
+
+			// Mock get terminating rooms
+			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, expectedRooms, schedulerName)
 
 			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -4272,7 +4273,7 @@ var _ = Describe("Watcher", func() {
 			}).Return(redis.NewStringSliceResult([]string{}, nil))
 
 			// Mock get terminating rooms
-			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{}, schedulerName, "terminating")
+			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{}, schedulerName)
 
 			// DeleteRoomsOccupiedTimeout
 			ts = time.Now().Unix() - w.OccupiedTimeout
