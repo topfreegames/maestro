@@ -603,3 +603,44 @@ func GetRoomsByMetric(redisClient interfaces.RedisClient, schedulerName string, 
 		}
 	}
 }
+
+// GetInvalidRoomsKey gets the key for the set that keeps names of invalid rooms (rooms from old scheduler version)
+func GetInvalidRoomsKey(schedulerName string) string {
+	return fmt.Sprintf("scheduler:%s:invalidRooms", schedulerName)
+}
+
+// SetInvalidRooms save a room in invalid redis set
+// A room is considered invalid if its version is not the scheduler current version
+func SetInvalidRooms(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, schedulerName string, roomIDs []string) error {
+	pipe := redisClient.TxPipeline()
+	err := mr.WithSegment(SegmentSAdd, func() error {
+		var err error
+		pipe.Del(GetInvalidRoomsKey(schedulerName))
+		pipe.SAdd(GetInvalidRoomsKey(schedulerName), roomIDs)
+		_, err = pipe.Exec()
+		return err
+	})
+	return err
+}
+
+// RemoveInvalidRooms deletes an invalid room
+func RemoveInvalidRooms(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, schedulerName string, roomIDs []string) error {
+	err := mr.WithSegment(SegmentSRem, func() error {
+		var err error
+		_, err = redisClient.SRem(GetInvalidRoomsKey(schedulerName), roomIDs).Result()
+		return err
+	})
+	return err
+}
+
+// GetInvalidRoomsCount returns the total invalid rooms
+func GetInvalidRoomsCount(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, schedulerName string) (int, error) {
+	count := 0
+	err := mr.WithSegment(SegmentSMembers, func() error {
+		var err error
+		keys, err := redisClient.SMembers(GetInvalidRoomsKey(schedulerName)).Result()
+		count = len(keys)
+		return err
+	})
+	return count, err
+}

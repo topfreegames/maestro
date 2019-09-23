@@ -1118,83 +1118,48 @@ func (w *Watcher) checkMetricsTrigger(
 	return scaling, nil
 }
 
-// EnsureCorrectRooms walks through the pods on the namespace and
-// delete those that have incorrect version and those pods that
-// are not registered on Maestro
-func (w *Watcher) EnsureCorrectRooms() error {
-	w.gracefulShutdown.wg.Add(1)
-	defer w.gracefulShutdown.wg.Done()
-
-	logger := w.Logger.WithField("operation", "EnsureCorrectRooms")
-	logger.Info("loading scheduler from database")
-
-	scheduler := models.NewScheduler(w.SchedulerName, "", "")
-	err := scheduler.Load(w.DB)
-	if err != nil {
-		logger.WithError(err).Error("failed to load scheduler from database")
-		return err
-	}
-
-	configYAML, err := models.NewConfigYAML(scheduler.YAML)
-	if err != nil {
-		logger.WithError(err).Error("failed to unmarshal config yaml")
-		return err
-	}
-
-	ctx := context.Background()
-
-	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
-	pods, err := k.CoreV1().Pods(w.SchedulerName).List(
-		metav1.ListOptions{})
-	if err != nil {
-		logger.WithError(err).Error("failed to list pods on namespace")
-		return err
-	}
-
-	podsToDelete := []v1.Pod{}
+func (w *Watcher) getInvalidPodsAndPodNames(
+	podList *v1.PodList,
+	scheduler *models.Scheduler,
+) (invalidPods []v1.Pod, invalidPodNames []string, err error) {
 	concat := func(pods []v1.Pod, err error) error {
 		if err != nil {
 			return err
 		}
-		podsToDelete = append(podsToDelete, pods...)
+		invalidPods = append(invalidPods, pods...)
 		return nil
 	}
 
 	logger.Info("searching for invalid pods")
 
-	err = concat(w.podsOfIncorrectVersion(pods, scheduler))
+	err = concat(w.podsOfIncorrectVersion(podList, scheduler))
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	err = concat(w.podsNotRegistered(pods))
+	err = concat(w.podsNotRegistered(podList))
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	if len(podsToDelete) > 0 {
-		podNamesToDelete := []string{}
-		for _, pod := range podsToDelete {
-			podNamesToDelete = append(podNamesToDelete, pod.GetName())
+	if len(invalidPods) > 0 {
+		for _, pod := range invalidPods {
+			invalidPodNames = append(invalidPodNames, pod.GetName())
 		}
 		logger.WithField("podsToDelete", podNamesToDelete).Info("deleting invalid pods")
-	} else {
-		logger.Info("no invalid pods to delete")
-		return nil
 	}
 
-	timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
-	timeoutDur := time.Duration(timeoutSec) * time.Second
-	willTimeoutAt := time.Now().Add(timeoutDur)
+	return invalidPods, invalidPodNames, err
+}
 
-	operationManager := models.NewOperationManager(
+func (w *Watcher) getOperation(ctx context.Context, logger logrus.FieldLogger) (operationManager *models.OperationManager, err error) {
+	operationManager = models.NewOperationManager(
 		w.SchedulerName, w.RedisClient.Trace(ctx), logger,
 	)
 
 	currentOpKey, _ := operationManager.CurrentOperation()
 	if err != nil {
-		logger.WithError(err).Error("error trying to get current operation from operationManager")
-		return err
+		return nil, err
 	}
 
 	operationManager.SetOperationKey(currentOpKey)
@@ -1203,6 +1168,106 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		operationManager = nil
 	}
 
+	return operationManager, err
+}
+
+func (w *Watcher) rollbackSchedulerVersion(
+	ctx context.Context,
+	logger logrus.FieldLogger,
+	scheduler *models.Scheduler,
+	configYAML *models.ConfigYAML,
+) {
+	oldScheduler, err := models.PreviousVersion(w.DB, scheduler.Name, scheduler.Version)
+	if err != nil {
+		logger.WithError(err).Error("error to load previous scheduler version to rollback on EnsureCorrectRooms")
+		return err
+	}
+	oldConfig, err := models.NewConfigYAML(scheduler.YAML)
+	if err != nil {
+		logger.WithError(err).Error("failed to unmarshal config yaml to rollback on EnsureCorrectRooms")
+		return err
+	}
+	dbRollbackErr := controller.DBRollback(
+		ctx,
+		logger,
+		w.MetricsReporter,
+		w.DB,
+		w.RedisClient,
+		configYAML,
+		oldConfig,
+		&clock.Clock{},
+		scheduler,
+		w.Config,
+		oldScheduler.Version,
+	)
+	if dbRollbackErr != nil {
+		logger.WithError(dbRollbackErr).Error("error during scheduler database roll back on EnsureCorrectRooms")
+	}
+}
+
+// EnsureCorrectRooms walks through the pods on the namespace and
+// delete those that have incorrect version and those pods that
+// are not registered on Maestro
+func (w *Watcher) EnsureCorrectRooms() error {
+	ctx := context.Background()
+	logger := w.Logger.WithField("operation", "EnsureCorrectRooms")
+	logger.Info("loading scheduler from database")
+
+	w.gracefulShutdown.wg.Add(1)
+	defer w.gracefulShutdown.wg.Done()
+
+	// load scheduler
+	scheduler, configYAML, err := controller.LoadScheduler(w.MetricsReporter, w.DB, nil, w.SchedulerName)
+	if err != nil {
+		logger.WithError(err).Error("failed to load scheduler from database")
+		return err
+	}
+
+	// list current pods
+	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
+	pods, err := controller.ListCurrentPods(w.MetricsReporter, k, w.SchedulerName)
+	if err != nil {
+		logger.WithError(err).Error("failed to list pods on namespace")
+		return err
+	}
+
+	// get invalid pods (wrong versions and pods not registered in redis)
+	logger.Info("searching for invalid pods")
+	invalidPods, invalidPodNames, err := getInvalidPodsAndPodNames(pods, scheduler)
+	if err != nil {
+		logger.WithError(err).Error("failed to get invalid pods")
+		return err
+	}
+
+	if len(invalidPods) <= 0 {
+		logger.Debug("no invalid pods to replace")
+		return nil
+	}
+
+	logger.WithField("invalidPods", invalidPodNames).Info("replacing invalid pods")
+
+	// get operation manager if it exists.
+	// It won't exist if not in a UpdateSchedulerConfig operation
+	operationManager, err := w.getOperation(ctx, logger)
+	if err != nil {
+		logger.WithError(err).Error("error trying to get current operation from operationManager")
+		return err
+	}
+
+	// save invalid pods in redis to track rolling update progress
+	if operationManager != nil {
+		err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, podNamesToDelete)
+		if err != nil {
+			logger.WithError(err).Error("error trying to save invalid rooms to track progress. Aborting rolling update")
+			operationManager.SetError(err.Error())
+			return err
+		}
+	}
+
+	// replace invalid pods using rolling strategy
+	timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
+	timeoutDur := time.Duration(timeoutSec) * time.Second
+	willTimeoutAt := time.Now().Add(timeoutDur)
 	timeoutErr, _, err := controller.SegmentAndReplacePods(
 		ctx,
 		logger,
@@ -1227,32 +1292,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 			operationManager.SetError(err.Error())
 		} else {
 			logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms")
-			oldScheduler, err := models.PreviousVersion(w.DB, scheduler.Name, scheduler.Version)
-			if err != nil {
-				logger.WithError(err).Error("error to load previous scheduler version to rollback on EnsureCorrectRooms")
-				return err
-			}
-			oldConfig, err := models.NewConfigYAML(scheduler.YAML)
-			if err != nil {
-				logger.WithError(err).Error("failed to unmarshal config yaml to rollback on EnsureCorrectRooms")
-				return err
-			}
-			dbRollbackErr := controller.DBRollback(
-				ctx,
-				logger,
-				w.MetricsReporter,
-				w.DB,
-				w.RedisClient,
-				configYAML,
-				oldConfig,
-				&clock.Clock{},
-				scheduler,
-				w.Config,
-				oldScheduler.Version,
-			)
-			if dbRollbackErr != nil {
-				logger.WithError(dbRollbackErr).Error("error during scheduler database roll back")
-			}
+			w.rollbackSchedulerVersion()
 		}
 	}
 
