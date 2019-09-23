@@ -96,6 +96,9 @@ var _ = Describe("SchedulerOperationHandler", func() {
 			// Select current scheduler
 			MockSelectScheduler(yamlString, mockDb, nil)
 
+			// Mock getting invalid rooms from redis to track progress
+			MockGetInvalidRooms(mockRedisClient, mockPipeline, schedulerName, 1, 2, nil)
+
 			// Create half of the pods in version v1.0 and half in v2.0
 			createPod("pod1", schedulerName, "v1.0")
 			createPod("pod2", schedulerName, "v2.0")
@@ -205,6 +208,9 @@ var _ = Describe("SchedulerOperationHandler", func() {
 			// Create half of the pods in version v1.0 and half in v2.0
 			createPod("pod1", schedulerName, "v1.0")
 			createPod("pod2", schedulerName, "v2.0")
+
+			// Mock getting invalid rooms from redis to track progress
+			MockGetInvalidRooms(mockRedisClient, mockPipeline, schedulerName, 1, 2, nil)
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))

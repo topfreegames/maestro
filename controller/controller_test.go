@@ -4820,7 +4820,7 @@ containers:
 					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 				}
 
-				mt.MockAnySetDescription(opManager, mockRedisClient, "rolling update", nil)
+				mt.MockRemoveInvalidRoomsKey(mockRedisClient, mockPipeline, configYaml.Name)
 
 				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
 					goredis.NewStringStringMapResult(nil, nil)).AnyTimes()

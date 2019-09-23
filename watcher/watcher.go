@@ -1130,8 +1130,6 @@ func (w *Watcher) getInvalidPodsAndPodNames(
 		return nil
 	}
 
-	logger.Info("searching for invalid pods")
-
 	err = concat(w.podsOfIncorrectVersion(podList, scheduler))
 	if err != nil {
 		return nil, nil, err
@@ -1146,7 +1144,6 @@ func (w *Watcher) getInvalidPodsAndPodNames(
 		for _, pod := range invalidPods {
 			invalidPodNames = append(invalidPodNames, pod.GetName())
 		}
-		logger.WithField("podsToDelete", podNamesToDelete).Info("deleting invalid pods")
 	}
 
 	return invalidPods, invalidPodNames, err
@@ -1180,12 +1177,10 @@ func (w *Watcher) rollbackSchedulerVersion(
 	oldScheduler, err := models.PreviousVersion(w.DB, scheduler.Name, scheduler.Version)
 	if err != nil {
 		logger.WithError(err).Error("error to load previous scheduler version to rollback on EnsureCorrectRooms")
-		return err
 	}
 	oldConfig, err := models.NewConfigYAML(scheduler.YAML)
 	if err != nil {
 		logger.WithError(err).Error("failed to unmarshal config yaml to rollback on EnsureCorrectRooms")
-		return err
 	}
 	dbRollbackErr := controller.DBRollback(
 		ctx,
@@ -1233,7 +1228,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	// get invalid pods (wrong versions and pods not registered in redis)
 	logger.Info("searching for invalid pods")
-	invalidPods, invalidPodNames, err := getInvalidPodsAndPodNames(pods, scheduler)
+	invalidPods, invalidPodNames, err := w.getInvalidPodsAndPodNames(pods, scheduler)
 	if err != nil {
 		logger.WithError(err).Error("failed to get invalid pods")
 		return err
@@ -1256,10 +1251,14 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	// save invalid pods in redis to track rolling update progress
 	if operationManager != nil {
-		err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, podNamesToDelete)
+		err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, invalidPodNames)
 		if err != nil {
-			logger.WithError(err).Error("error trying to save invalid rooms to track progress. Aborting rolling update")
-			operationManager.SetError(err.Error())
+			logger.WithError(err).Error("error trying to save invalid rooms to track progress")
+			return err
+		}
+		err = operationManager.SetDescription(models.OpManagerRollingUpdate)
+		if err != nil {
+			logger.WithError(err).Error("error trying to set opmanager to rolling update status")
 			return err
 		}
 	}
@@ -1277,8 +1276,8 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		w.DB,
 		w.RedisClient.Client,
 		willTimeoutAt,
-		configYAML,
-		podsToDelete,
+		&configYAML,
+		invalidPods,
 		scheduler,
 		operationManager,
 		w.Config.GetInt("watcher.maxSurge"),
@@ -1291,8 +1290,8 @@ func (w *Watcher) EnsureCorrectRooms() error {
 			logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms during update scheduler config")
 			operationManager.SetError(err.Error())
 		} else {
-			logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms")
-			w.rollbackSchedulerVersion()
+			logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms. Rolling back")
+			w.rollbackSchedulerVersion(ctx, logger, scheduler, &configYAML)
 		}
 	}
 

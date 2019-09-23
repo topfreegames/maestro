@@ -1545,7 +1545,8 @@ func MockRollingUpdateFlow(
 ) {
 	configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
 
-	MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRollingUpdate, nil)
+	MockGetInvalidRooms(mockRedisClient, mockPipeline, configYaml.Name, 0, 0, nil)
+	MockRemoveInvalidRoomsKey(mockRedisClient, mockPipeline, configYaml.Name)
 
 	if timeout {
 		mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
@@ -1559,13 +1560,14 @@ func MockRollingUpdateFlow(
 			}, nil)).AnyTimes()
 	}
 
-	// Create room
-	MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, configYaml, numRoomsToCreate)
+	if numRoomsToCreate > 0 {
+		// Create rooms
+		MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, configYaml, numRoomsToCreate)
+		// Delete old rooms
+		MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, configYaml, removeRoomsError, numRoomsToCreate)
+	}
 	MockGetPortsFromPoolAnyTimes(configYaml, mockRedisClient, mockPortChooser,
 		workerPortRange, portStart, portEnd)
-
-	// Delete old rooms
-	MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, configYaml, removeRoomsError, numRoomsToCreate)
 
 	if rollback {
 		// Update scheduler rolling update status
@@ -1624,4 +1626,36 @@ func MockRemoveZombieRooms(
 	if amount > 0 {
 		MockClearAll(mockPipeline, mockRedisClient, schedulerName, amount)
 	}
+}
+
+// MockGetInvalidRooms mocks getting invalid rooms keys from redis
+func MockGetInvalidRooms(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	schedulerName string,
+	currentInvalidCount, invalidCount int,
+	err error,
+) {
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().Exec()
+	mockPipeline.EXPECT().SCard(models.GetInvalidRoomsKey(schedulerName)).Return(goredis.NewIntResult(int64(currentInvalidCount), nil))
+
+	retGet := goredis.NewStringResult(strconv.Itoa(invalidCount), err)
+	mockRedisClient.EXPECT().Get(models.GetInvalidRoomsCountKey(schedulerName)).Return(retGet)
+}
+
+// MockRemoveInvalidRoomsKey mocks removing invalid rooms keys from redis
+func MockRemoveInvalidRoomsKey(
+	mockRedisClient *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	schedulerName string,
+) {
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().Exec()
+
+	mockPipeline.EXPECT().
+		Del(models.GetInvalidRoomsCountKey(schedulerName))
+
+	mockPipeline.EXPECT().
+		Del(models.GetInvalidRoomsKey(schedulerName))
 }

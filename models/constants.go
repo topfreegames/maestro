@@ -55,6 +55,9 @@ const SegmentSAdd = "Redis/SAdd"
 //SegmentSRem represents a segment
 const SegmentSRem = "Redis/SRem"
 
+//SegmentGet represents a segment
+const SegmentGet = "Redis/Get"
+
 //SegmentSIsMember represents a segment
 const SegmentSIsMember = "Redis/SIsMember"
 
