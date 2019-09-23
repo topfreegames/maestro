@@ -30,8 +30,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/models"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -641,7 +639,7 @@ func UpdateSchedulerConfig(
 
 	operationManager.SetDescription(models.OpManagerRunning)
 
-	scheduler, oldConfig, err := loadScheduler(
+	scheduler, oldConfig, err := LoadScheduler(
 		mr,
 		db,
 		schedulerOrNil,
@@ -692,7 +690,7 @@ func UpdateSchedulerConfig(
 		// wait for watcher.EnsureCorrectRooms to rolling update the pods
 		for {
 			// get list of actual pods
-			kubePods, err = listCurrentPods(mr, clientset, schedulerName)
+			kubePods, err = ListCurrentPods(mr, clientset, schedulerName)
 			if err != nil {
 				scheduler.RollingUpdateStatus = erroredStatus(err.Error())
 				break
@@ -1019,18 +1017,10 @@ func ScaleScheduler(
 		)
 	} else {
 		logger.Infof("manually scaling scheduler %s to  %d GRUs", schedulerName, replicas)
-		var pods *v1.PodList
-		err := mr.WithSegment(models.SegmentPod, func() error {
-			var err error
-			pods, err = clientset.CoreV1().Pods(schedulerName).List(metav1.ListOptions{
-				LabelSelector: labels.Set{}.AsSelector().String(),
-				FieldSelector: fields.Everything().String(),
-			})
-			return err
-		})
+		// get list of actual pods
+		pods, err := ListCurrentPods(mr, clientset, schedulerName)
 		if err != nil {
-			msg := fmt.Sprintf("error listing pods for scheduler %s", schedulerName)
-			return maestroErrors.NewKubernetesError(msg, err)
+			return err
 		}
 
 		nPods := uint(len(pods.Items))

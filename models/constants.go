@@ -49,6 +49,12 @@ const SegmentZRangeBy = "Redis/ZRangeBy"
 //SegmentSMembers represents a segment
 const SegmentSMembers = "Redis/SMembers"
 
+//SegmentSAdd represents a segment
+const SegmentSAdd = "Redis/SAdd"
+
+//SegmentSRem represents a segment
+const SegmentSRem = "Redis/SRem"
+
 //SegmentSIsMember represents a segment
 const SegmentSIsMember = "Redis/SIsMember"
 

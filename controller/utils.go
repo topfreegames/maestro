@@ -923,28 +923,29 @@ func validateConfig(logger logrus.FieldLogger, configYAML *models.ConfigYAML, ma
 	return validateMetricsTrigger(configYAML, logger)
 }
 
-func loadScheduler(
+// LoadScheduler loads a scheduler from DB with its YAML config
+func LoadScheduler(
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
 	schedulerOrNil *models.Scheduler,
 	schedulerName string,
 ) (*models.Scheduler, models.ConfigYAML, error) {
 	var scheduler *models.Scheduler
-	var oldConfig models.ConfigYAML
+	var configYAML models.ConfigYAML
 	var err error
 	if schedulerOrNil != nil {
 		scheduler = schedulerOrNil
-		err = yaml.Unmarshal([]byte(scheduler.YAML), &oldConfig)
+		err = yaml.Unmarshal([]byte(scheduler.YAML), &configYAML)
 		if err != nil {
-			return scheduler, oldConfig, err
+			return scheduler, configYAML, err
 		}
 	} else {
-		scheduler, oldConfig, err = schedulerAndConfigFromName(mr, db, schedulerName)
+		scheduler, configYAML, err = schedulerAndConfigFromName(mr, db, schedulerName)
 		if err != nil {
-			return scheduler, oldConfig, err
+			return scheduler, configYAML, err
 		}
 	}
-	return scheduler, oldConfig, nil
+	return scheduler, configYAML, nil
 }
 
 // AcquireLock acquires a lock defined by its lockKey
@@ -1137,7 +1138,8 @@ func saveConfigYAML(
 	return nil
 }
 
-func listCurrentPods(
+// ListCurrentPods returns a list of kubernetes pods
+func ListCurrentPods(
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
 	schedulerName string,
