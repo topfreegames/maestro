@@ -682,24 +682,15 @@ func UpdateSchedulerConfig(
 	}
 
 	if shouldRecreatePods {
-		var kubePods *v1.PodList
 		var status map[string]string
 
-		operationManager.SetDescription(models.OpManagerRollingUpdate)
-
 		// wait for watcher.EnsureCorrectRooms to rolling update the pods
-		for {
-			// get list of actual pods
-			kubePods, err = ListCurrentPods(mr, clientset, schedulerName)
+		for err == nil {
+			status, err = operationManager.GetOperationStatus(mr, *scheduler)
 			if err != nil {
-				scheduler.RollingUpdateStatus = erroredStatus(err.Error())
-				break
-			}
-
-			status, err = operationManager.GetOperationStatus(*scheduler, kubePods.Items)
-			if err != nil {
-				scheduler.RollingUpdateStatus = erroredStatus(err.Error())
-				break
+				logger.WithError(err).Warn("errored trying to get rolling update progress")
+				err = nil
+				continue
 			}
 
 			// operation canceled
@@ -731,8 +722,10 @@ func UpdateSchedulerConfig(
 			time.Sleep(time.Second * 1)
 		}
 
-		if err != nil {
+		// delete invalidRooms key as EnsureCorrectRooms finished
+		models.RemoveInvalidRoomsKey(redisClient.Client, mr, schedulerName)
 
+		if err != nil {
 			l.WithError(err).Error("error during UpdateSchedulerConfig. Rolling back database")
 			dbRollbackErr := DBRollback(
 				ctx,
@@ -1016,7 +1009,7 @@ func ScaleScheduler(
 			timeoutScaledown,
 		)
 	} else {
-		logger.Infof("manually scaling scheduler %s to  %d GRUs", schedulerName, replicas)
+		logger.Infof("manually scaling scheduler %s to %d GRUs", schedulerName, replicas)
 		// get list of actual pods
 		pods, err := ListCurrentPods(mr, clientset, schedulerName)
 		if err != nil {

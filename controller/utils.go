@@ -189,7 +189,7 @@ func createNewRemoveOldPod(
 		db, clientset, configYAML, scheduler)
 
 	if err != nil {
-		logger.WithError(err).Debug("error creating pod")
+		logger.WithError(err).Errorf("error creating pod")
 		return false, false, err
 	}
 
@@ -199,6 +199,7 @@ func createNewRemoveOldPod(
 		logger, clientset, timeout, configYAML.Name,
 		[]v1.Pod{*newPod}, operationManager, mr)
 	if timedout || canceled || err != nil {
+		logger.Errorf("error waiting for pod to be created")
 		return timedout, canceled, err
 	}
 
@@ -207,7 +208,7 @@ func createNewRemoveOldPod(
 	err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
 		configYAML, pod.GetName(), reportersConstants.ReasonUpdate)
 	if err != nil && !strings.Contains(err.Error(), "redis") {
-		logger.WithError(err).Errorf("error deleting pod %s during rolling update", pod.GetName())
+		logger.WithError(err).Errorf("error deleting pod %s", pod.GetName())
 		return false, false, nil
 	}
 
@@ -219,7 +220,17 @@ func createNewRemoveOldPod(
 		logger, clientset, timeout, configYAML.Name,
 		[]v1.Pod{pod}, operationManager, mr)
 	if timedout || canceled {
+		logger.Errorf("error waiting for pod %s to be deleted", pod.GetName())
 		return timedout, canceled, nil
+	}
+
+	// Remove invalid rooms redis keys if in a rolling update operation
+	// in order to track progress correctly
+	if operationManager != nil {
+		err = models.RemoveInvalidRooms(redisClient, mr, configYAML.Name, []string{pod.GetName()})
+		if err != nil {
+			logger.WithError(err).Warnf("error removing room %s from invalidRooms redis key during rolling update", pod.GetName())
+		}
 	}
 
 	return false, false, nil
@@ -322,15 +333,6 @@ func waitTerminatingPods(
 					err = mr.WithSegment(models.SegmentPod, func() error {
 						return clientset.CoreV1().Pods(namespace).Delete(pod.GetName(), deleteOptions)
 					})
-					exit = false
-					break
-				}
-
-				if err != nil && !strings.Contains(err.Error(), "not found") {
-					logger.
-						WithError(err).
-						WithField("pod", pod.GetName()).
-						Info("error getting pod")
 					exit = false
 					break
 				}
