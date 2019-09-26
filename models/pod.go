@@ -21,7 +21,7 @@ import (
 
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/reporters"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -418,6 +418,10 @@ func IsPodReady(pod *Pod) bool {
 	}
 
 	return false
+}
+
+func IsPodTerminating(pod *v1.Pod) bool {
+	return pod.ObjectMeta.DeletionTimestamp != nil
 }
 
 // ValidatePodWaitingState returns nil if pod waiting reson is valid and error otherwise
