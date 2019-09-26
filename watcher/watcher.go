@@ -1483,8 +1483,6 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 					"operation": "watcher.kubeWatch.CreatePod",
 				})
 				if kubePod, ok := obj.(*v1.Pod); ok {
-					logger.Infof("pod %s created", kubePod.GetName())
-
 					// create Pod from v1.Pod
 					pod := &models.Pod{
 						Name:     kubePod.GetName(),
@@ -1516,8 +1514,6 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 				}
 
 				if kubePod != nil {
-					logger.Infof("pod %s deleted", kubePod.GetName())
-
 					// Remove pod from redis
 					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
 					if err != nil {
@@ -1534,8 +1530,6 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 				})
 
 				if kubePod, ok := newObj.(*v1.Pod); ok {
-					logger.Infof("pod %s updated", kubePod.GetName())
-
 					// create Pod from v1.Pod
 					pod := &models.Pod{
 						Name:     kubePod.GetName(),
