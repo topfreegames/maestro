@@ -348,8 +348,15 @@ func reportStatus(game, scheduler, status, gauge string) error {
 // ClearAll removes all room keys from redis
 func (r *Room) ClearAll(redisClient interfaces.RedisClient, mr *MixedMetricsReporter) error {
 	pipe := redisClient.TxPipeline()
+	var err error
+
+	err = RemoveFromPodMap(redisClient, mr, r.ID, r.SchedulerName)
+	if err != nil {
+		return err
+	}
+
 	r.clearAllWithPipe(pipe)
-	err := mr.WithSegment(SegmentPipeExec, func() error {
+	err = mr.WithSegment(SegmentPipeExec, func() error {
 		_, err := pipe.Exec()
 		return err
 	})
@@ -359,10 +366,16 @@ func (r *Room) ClearAll(redisClient interfaces.RedisClient, mr *MixedMetricsRepo
 // ClearAllMultipleRooms removes all rooms keys from redis
 func ClearAllMultipleRooms(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, rooms []*Room) error {
 	pipe := redisClient.TxPipeline()
+	var err error
 	for _, room := range rooms {
+		// remove from redis podMap
+		err = RemoveFromPodMap(redisClient, mr, room.ID, room.SchedulerName)
+		if err != nil {
+			return err
+		}
 		room.clearAllWithPipe(pipe)
 	}
-	err := mr.WithSegment(SegmentPipeExec, func() error {
+	err = mr.WithSegment(SegmentPipeExec, func() error {
 		_, err := pipe.Exec()
 		return err
 	})

@@ -24,10 +24,10 @@ import (
 	"github.com/topfreegames/extensions/clock"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	redis "github.com/topfreegames/extensions/redis"
-	kubernetesExtensions "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/constants"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -40,16 +40,19 @@ import (
 	"github.com/topfreegames/maestro/reporters"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
-func createRoomUsages(pods *v1.PodList) ([]*models.RoomUsage, map[string]int) {
-	roomUsages := make([]*models.RoomUsage, len(pods.Items))
-	roomUsagesIdxMap := make(map[string]int, len(pods.Items))
-	for i, pod := range pods.Items {
-		roomUsages[i] = &models.RoomUsage{Name: pod.Name, Usage: float64(math.MaxInt64)}
+func createRoomUsages(pods map[string]*models.Pod) ([]*models.RoomUsage, map[string]int) {
+	roomUsages := make([]*models.RoomUsage, len(pods))
+	roomUsagesIdxMap := make(map[string]int, len(pods))
+	i := 0
+	for podName, pod := range pods {
+		roomUsages[i] = &models.RoomUsage{Name: podName, Usage: float64(math.MaxInt64)}
 		roomUsagesIdxMap[pod.Name] = i
+		i++
 	}
 
 	return roomUsages, roomUsagesIdxMap
@@ -66,6 +69,7 @@ type Watcher struct {
 	RoomsStatusesReportPeriod int
 	EnsureCorrectRoomsPeriod  time.Duration
 	PodStatesCountPeriod      time.Duration
+	KubeCacheTTL              time.Duration
 	Config                    *viper.Viper
 	DB                        pginterfaces.DB
 	KubernetesClient          kubernetes.Interface
@@ -228,12 +232,12 @@ func (w *Watcher) Start() {
 
 	ticker := time.NewTicker(time.Duration(w.AutoScalingPeriod) * time.Second)
 	defer ticker.Stop()
-	tickerEnsure := time.NewTicker(w.EnsureCorrectRoomsPeriod)
-	defer tickerEnsure.Stop()
 	tickerStateCount := time.NewTicker(w.PodStatesCountPeriod)
 	defer tickerStateCount.Stop()
 
 	go w.reportRoomsStatusesRoutine()
+	kubeWatch, stopKubeWatch := w.configureKubeWatch()
+	go kubeWatch.Run(stopKubeWatch)
 
 	for w.Run == true {
 		l = w.Logger.WithFields(logrus.Fields{
@@ -246,6 +250,7 @@ func (w *Watcher) Start() {
 			w.PodStatesCount()
 		case sig := <-sigchan:
 			l.Warnf("caught signal %v: terminating\n", sig)
+			close(stopKubeWatch)
 			w.Run = false
 		}
 	}
@@ -328,17 +333,10 @@ func (w *Watcher) AddUtilizationMetricsToRedis() error {
 	}
 
 	// Load pods and set their usage to MaxInt64 for all resources
-	var pods *v1.PodList
-	err = w.MetricsReporter.WithSegment(models.SegmentPod, func() error {
-		var err error
-		pods, err = w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
-		return err
-	})
+	var pods map[string]*models.Pod
+	pods, err = w.listPods()
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods on namespace")
-		return err
-	} else if len(pods.Items) == 0 {
-		logger.Warn("empty list of pods on namespace")
 		return err
 	}
 
@@ -581,26 +579,29 @@ func (w *Watcher) forwardRemovalRoomEvent(logger *logrus.Entry, rooms []string) 
 	return nil
 }
 
-func (w *Watcher) listPods() (pods []v1.Pod, err error) {
-	k := w.KubernetesClient
-	podList, err := k.CoreV1().Pods(w.SchedulerName).List(
-		metav1.ListOptions{})
+func (w *Watcher) listPods() (podMap map[string]*models.Pod, err error) {
+	logger := w.Logger.WithFields(logrus.Fields{
+		"operation": "watcher.listPods",
+	})
+
+	podMap, err = models.GetPodMapFromRedis(w.RedisClient.Client, w.MetricsReporter, w.SchedulerName)
 	if err != nil {
+		logger.WithError(err).Error("failed to list pods on redis")
 		return nil, err
 	}
-
-	return podList.Items, nil
+	logger.Debug("got pod map from redis")
+	return podMap, nil
 }
 
 // filterPodsByName returns a []v1.Pod with pods which names are in podNames
-func (w *Watcher) filterPodsByName(logger *logrus.Entry, pods []v1.Pod, podNames []string) (filteredPods []v1.Pod) {
+func (w *Watcher) filterPodsByName(logger *logrus.Entry, pods map[string]*models.Pod, podNames []string) (filteredPods []*models.Pod) {
 	podNameMap := map[string]bool{}
 	for _, name := range podNames {
 		podNameMap[name] = true
 	}
 
-	for _, pod := range pods {
-		if podNameMap[pod.GetName()] {
+	for podName, pod := range pods {
+		if podNameMap[podName] {
 			filteredPods = append(filteredPods, pod)
 		}
 	}
@@ -609,13 +610,13 @@ func (w *Watcher) filterPodsByName(logger *logrus.Entry, pods []v1.Pod, podNames
 }
 
 // zombie rooms are the ones that are in terminating state but the pods doesn't exist
-func (w *Watcher) removeZombies(pods []v1.Pod, rooms []string) ([]string, error) {
+func (w *Watcher) removeZombies(pods map[string]*models.Pod, rooms []string) ([]string, error) {
 	zombieRooms := []*models.Room{}
 	zombieRoomsNames := []string{}
 
 	liveKubePods := map[string]bool{}
-	for _, pod := range pods {
-		liveKubePods[pod.GetName()] = true
+	for podName := range pods {
+		liveKubePods[podName] = true
 	}
 	for _, room := range rooms {
 		if _, ok := liveKubePods[room]; !ok {
@@ -637,7 +638,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 		"operation":   "watcher.RemoveDeadRooms",
 	})
 
-	pods := []v1.Pod{}
+	pods := map[string]*models.Pod{}
 
 	// get rooms with no ping
 	roomsNoPingSince, err := w.roomsWithNoPing(logger)
@@ -1119,10 +1120,10 @@ func (w *Watcher) checkMetricsTrigger(
 }
 
 func (w *Watcher) getInvalidPodsAndPodNames(
-	podList *v1.PodList,
+	podMap map[string]*models.Pod,
 	scheduler *models.Scheduler,
-) (invalidPods []v1.Pod, invalidPodNames []string, err error) {
-	concat := func(pods []v1.Pod, err error) error {
+) (invalidPods []*models.Pod, invalidPodNames []string, err error) {
+	concat := func(pods []*models.Pod, err error) error {
 		if err != nil {
 			return err
 		}
@@ -1130,19 +1131,19 @@ func (w *Watcher) getInvalidPodsAndPodNames(
 		return nil
 	}
 
-	err = concat(w.podsOfIncorrectVersion(podList, scheduler))
+	err = concat(w.podsOfIncorrectVersion(podMap, scheduler))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	err = concat(w.podsNotRegistered(podList))
+	err = concat(w.podsNotRegistered(podMap))
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if len(invalidPods) > 0 {
 		for _, pod := range invalidPods {
-			invalidPodNames = append(invalidPodNames, pod.GetName())
+			invalidPodNames = append(invalidPodNames, pod.Name)
 		}
 	}
 
@@ -1219,8 +1220,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	}
 
 	// list current pods
-	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
-	pods, err := controller.ListCurrentPods(w.MetricsReporter, k, w.SchedulerName)
+	pods, err := w.listPods()
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods on namespace")
 		return err
@@ -1235,6 +1235,8 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	}
 
 	if len(invalidPods) <= 0 {
+		// delete invalidRooms key for safety
+		models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
 		logger.Debug("no invalid pods to replace")
 		return nil
 	}
@@ -1306,16 +1308,16 @@ func (w *Watcher) EnsureCorrectRooms() error {
 }
 
 func (w *Watcher) podsNotRegistered(
-	pods *v1.PodList,
-) ([]v1.Pod, error) {
+	pods map[string]*models.Pod,
+) ([]*models.Pod, error) {
 	registered, err := models.GetAllRegisteredRooms(w.RedisClient.Client,
 		w.SchedulerName)
 	if err != nil {
 		return nil, err
 	}
 
-	notRegistered := []v1.Pod{}
-	for _, pod := range pods.Items {
+	notRegistered := []*models.Pod{}
+	for _, pod := range pods {
 		if _, ok := registered[pod.Name]; !ok {
 			notRegistered = append(notRegistered, pod)
 		}
@@ -1343,10 +1345,10 @@ func (w *Watcher) splitedVersion(version string) (majorInt, minorInt int, err er
 }
 
 func (w *Watcher) podsOfIncorrectVersion(
-	pods *v1.PodList,
+	pods map[string]*models.Pod,
 	scheduler *models.Scheduler,
-) ([]v1.Pod, error) {
-	incorrectPods := []v1.Pod{}
+) ([]*models.Pod, error) {
+	incorrectPods := []*models.Pod{}
 
 	schedulerMajorVersion, _, err := w.splitedVersion(scheduler.Version)
 	if err != nil {
@@ -1361,8 +1363,8 @@ func (w *Watcher) podsOfIncorrectVersion(
 		}
 	}
 
-	for _, pod := range pods.Items {
-		podMajorVersion, _, err := w.splitedVersion(pod.Labels["version"])
+	for _, pod := range pods {
+		podMajorVersion, _, err := w.splitedVersion(pod.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -1389,9 +1391,7 @@ func (w *Watcher) PodStatesCount() {
 
 	logger := w.Logger.WithField("method", "PodStatesCount")
 
-	logger.Info("listing pods on namespace")
-	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, context.Background())
-	pods, err := k.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
+	pods, err := w.listPods()
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods")
 		return
@@ -1406,7 +1406,7 @@ func (w *Watcher) PodStatesCount() {
 		v1.PodUnknown:   0,
 	}
 
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		stateCount[pod.Status.Phase]++
 		for _, status := range pod.Status.ContainerStatuses {
 			logger.Debugf("termination state: %+v", status)
@@ -1466,4 +1466,94 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 		return true
 	}
 	return false
+}
+
+func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
+	watchlist := cache.NewListWatchFromClient(w.KubernetesClient.CoreV1().RESTClient(), string(v1.ResourcePods), w.SchedulerName,
+		fields.Everything())
+
+	_, controller := cache.NewInformer(
+		watchlist,
+		&v1.Pod{},
+		0,
+		cache.ResourceEventHandlerFuncs{
+			// --- Kube Create
+			AddFunc: func(obj interface{}) {
+				logger := w.Logger.WithFields(logrus.Fields{
+					"operation": "watcher.kubeWatch.CreatePod",
+				})
+				if kubePod, ok := obj.(*v1.Pod); ok {
+					logger.Infof("pod %s created", kubePod.GetName())
+
+					// create Pod from v1.Pod
+					pod := &models.Pod{
+						Name:     kubePod.GetName(),
+						Version:  kubePod.GetLabels()["version"],
+						NodeName: kubePod.Spec.NodeName,
+						Status:   kubePod.Status,
+					}
+
+					err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
+					if err != nil {
+						logger.WithError(err).Error("failed to add pod to redis podMap key")
+					}
+				} else {
+					logger.Error("obj received is not of type *v1.Pod")
+				}
+			},
+			// --- Kube Delete
+			DeleteFunc: func(obj interface{}) {
+				logger := w.Logger.WithFields(logrus.Fields{
+					"operation": "watcher.kubeWatch.DeletePod",
+				})
+				var kubePod *v1.Pod
+				if deleted, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+					if _, ok := deleted.Obj.(*v1.Pod); ok {
+						kubePod = deleted.Obj.(*v1.Pod)
+					}
+				} else if _, ok := obj.(*v1.Pod); ok {
+					kubePod = obj.(*v1.Pod)
+				}
+
+				if kubePod != nil {
+					logger.Infof("pod %s deleted", kubePod.GetName())
+
+					// Remove pod from redis
+					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
+					if err != nil {
+						logger.WithError(err).Errorf("failed to remove pod %s from redis", kubePod.GetName())
+					}
+				} else {
+					logger.Error("obj received is not of type *v1.Pod or cache.DeletedFinalStateUnknown")
+				}
+			},
+			// --- Kube Update
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				logger := w.Logger.WithFields(logrus.Fields{
+					"operation": "watcher.kubeWatch.UpdatePod",
+				})
+
+				if kubePod, ok := newObj.(*v1.Pod); ok {
+					logger.Infof("pod %s updated", kubePod.GetName())
+
+					// create Pod from v1.Pod
+					pod := &models.Pod{
+						Name:     kubePod.GetName(),
+						Version:  kubePod.GetLabels()["version"],
+						NodeName: kubePod.Spec.NodeName,
+						Status:   kubePod.Status,
+					}
+
+					err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
+					if err != nil {
+						logger.WithError(err).Error("failed to update pod on redis podMap key")
+					}
+				} else {
+					logger.Error("obj received is not of type *v1.Pod")
+				}
+			},
+		},
+	)
+
+	return controller, make(chan struct{})
 }
