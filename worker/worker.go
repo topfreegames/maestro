@@ -28,7 +28,7 @@ import (
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	redis "github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 )
 

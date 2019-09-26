@@ -727,6 +727,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 			scheduler,
 			nil,
 			w.Config.GetInt("watcher.maxSurge"),
+			w.Config.GetInt("watcher.goroutinePoolSize"),
 			&clock.Clock{},
 		)
 
@@ -1283,6 +1284,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		scheduler,
 		operationManager,
 		w.Config.GetInt("watcher.maxSurge"),
+		w.Config.GetInt("watcher.goroutinePoolSize"),
 		&clock.Clock{},
 	)
 
