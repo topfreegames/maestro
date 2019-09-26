@@ -736,8 +736,8 @@ autoscaling:
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-					// Mock rolling update with rollback
-					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRollingUpdate, nil)
+					MockGetInvalidRooms(mockRedisClient, mockPipeline, configYaml.Name, 0, 0, nil)
+					MockRemoveInvalidRoomsKey(mockRedisClient, mockPipeline, configYaml.Name)
 
 					mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
 						goredis.NewStringStringMapResult(map[string]string{
@@ -1093,7 +1093,8 @@ autoscaling:
 					// Count to delete old versions if necessary
 					MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-					MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRollingUpdate, nil)
+					MockGetInvalidRooms(mockRedisClient, mockPipeline, configYaml.Name, 0, 0, nil)
+					MockRemoveInvalidRoomsKey(mockRedisClient, mockPipeline, configYaml.Name)
 
 					mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
 						goredis.NewStringStringMapResult(map[string]string{
@@ -2177,7 +2178,8 @@ game: game-name
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRollingUpdate, nil)
+				MockGetInvalidRooms(mockRedisClient, mockPipeline, configYaml.Name, 0, 0, nil)
+				MockRemoveInvalidRoomsKey(mockRedisClient, mockPipeline, configYaml.Name)
 
 				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
 					goredis.NewStringStringMapResult(map[string]string{
@@ -2262,7 +2264,8 @@ game: game-name
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRollingUpdate, nil)
+				MockGetInvalidRooms(mockRedisClient, mockPipeline, configYaml.Name, 0, 0, nil)
+				MockRemoveInvalidRoomsKey(mockRedisClient, mockPipeline, configYaml.Name)
 
 				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
 					goredis.NewStringStringMapResult(map[string]string{
@@ -2627,7 +2630,8 @@ game: game-name
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRollingUpdate, nil)
+				MockGetInvalidRooms(mockRedisClient, mockPipeline, configYaml.Name, 0, 0, nil)
+				MockRemoveInvalidRoomsKey(mockRedisClient, mockPipeline, configYaml.Name)
 
 				// Update scheduler rolling update status
 				calls.Append(
@@ -2726,7 +2730,9 @@ game: game-name
 
 				// Set new operation manager description
 				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRunning, nil)
-				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRollingUpdate, nil)
+
+				MockGetInvalidRooms(mockRedisClient, mockPipeline, configYaml1.Name, 0, 0, nil)
+				MockRemoveInvalidRoomsKey(mockRedisClient, mockPipeline, configYaml1.Name)
 
 				// Get scheduler from DB
 				MockSelectScheduler(jsonString, mockDb, nil)
@@ -2842,7 +2848,8 @@ game: game-name
 				// Count to delete old versions if necessary
 				MockCountNumberOfVersions(scheduler1, numberOfVersions, mockDb, nil)
 
-				MockAnySetDescription(opManager, mockRedisClient, models.OpManagerRollingUpdate, nil)
+				MockGetInvalidRooms(mockRedisClient, mockPipeline, configYaml.Name, 0, 0, nil)
+				MockRemoveInvalidRoomsKey(mockRedisClient, mockPipeline, configYaml.Name)
 
 				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
 					goredis.NewStringStringMapResult(map[string]string{

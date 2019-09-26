@@ -9,55 +9,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/middleware"
-	"github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/models"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 )
-
-func getOperationRollingProgress(
-	ctx context.Context, app *App, status map[string]string, schedulerName string,
-) (float64, string, error) {
-	scheduler := models.NewScheduler(schedulerName, "", "")
-	err := scheduler.Load(app.DBClient.WithContext(ctx))
-	if err != nil {
-		return 0, "error getting scheduler for getting progress", err
-	}
-
-	k := kubernetes.TryWithContext(app.KubernetesClient, ctx)
-	totalPods, err := k.CoreV1().Pods(schedulerName).List(
-		metav1.ListOptions{},
-	)
-	if err != nil {
-		return 0, "error getting pods from kubernetes", err
-	}
-	total := float64(len(totalPods.Items))
-
-	var new float64
-
-	podsUpdated, err := k.CoreV1().Pods(
-		schedulerName,
-	).List(metav1.ListOptions{
-		LabelSelector: labels.Set{"version": scheduler.Version}.String(),
-	})
-	if err != nil {
-		return 0, "error getting pods from kubernetes", err
-	}
-	for _, pod := range podsUpdated.Items {
-		if models.IsPodReady(&pod) {
-			new = new + 1.0
-		}
-	}
-
-	// if the percentage of gameservers with the actual version is 100% but the
-	// operation is not finished, the new scheduler version has not been stored as the actual version yet.
-	// it means that the rolling update didn't started and so the progress should be 0%
-	if status["description"] != models.OpManagerFinished && new/total > 0.99 {
-		return 0, "", nil
-	}
-
-	return 100.0 * new / total, "", nil
-}
 
 // OperationNotFoundError happens when opManager.Get(key) doesn't
 // find an associated operation
@@ -73,8 +26,8 @@ func (e *OperationNotFoundError) Error() string {
 }
 
 func getOperationStatus(
-	ctx context.Context, app *App, logger logrus.FieldLogger,
-	schedulerName, operationKey string,
+	ctx context.Context, app *App, logger *logrus.Entry,
+	mr *models.MixedMetricsReporter, schedulerName, operationKey string,
 ) (map[string]string, string, error) {
 	var empty map[string]string
 
@@ -89,15 +42,7 @@ func getOperationStatus(
 		return empty, "error getting scheduler for progress information", err
 	}
 
-	k := kubernetes.TryWithContext(app.KubernetesClient, ctx)
-	totalPods, err := k.CoreV1().Pods(schedulerName).List(
-		metav1.ListOptions{},
-	)
-	if err != nil {
-		return empty, "error getting pods from kubernetes", err
-	}
-
-	status, err := operationManager.GetOperationStatus(*scheduler, totalPods.Items)
+	status, err := operationManager.GetOperationStatus(mr, *scheduler)
 	if err != nil {
 		return status, "error getting operation status", err
 	}
@@ -123,6 +68,7 @@ func NewSchedulerOperationHandler(a *App) *SchedulerOperationHandler {
 
 func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	mr := metricsReporterFromCtx(r.Context())
 	schedulerName := vars["schedulerName"]
 	operationKey := vars["operationKey"]
 
@@ -137,7 +83,7 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	logger.Info("Starting scheduler operation status")
 
 	status, errorMsg, err := getOperationStatus(
-		r.Context(), g.App, logger, schedulerName, operationKey,
+		r.Context(), g.App, logger, mr, schedulerName, operationKey,
 	)
 	if err != nil {
 		if _, ok := err.(*OperationNotFoundError); ok {
@@ -179,6 +125,7 @@ func (g *SchedulerOperationCurrentStatusHandler) ServeHTTP(
 	w http.ResponseWriter, r *http.Request,
 ) {
 	vars := mux.Vars(r)
+	mr := metricsReporterFromCtx(r.Context())
 	schedulerName := vars["schedulerName"]
 
 	l := middleware.GetLogger(r.Context())
@@ -210,7 +157,7 @@ func (g *SchedulerOperationCurrentStatusHandler) ServeHTTP(
 	}
 
 	status, errorMsg, err := getOperationStatus(
-		r.Context(), g.App, logger, schedulerName, currOperation,
+		r.Context(), g.App, logger, mr, schedulerName, currOperation,
 	)
 	if err != nil {
 		if _, ok := err.(*OperationNotFoundError); ok {

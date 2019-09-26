@@ -15,7 +15,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
 
 	goredis "github.com/go-redis/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
@@ -301,29 +300,38 @@ func (o *OperationManager) SetError(err string) error {
 }
 
 func (o *OperationManager) getOperationRollingProgress(
-	scheduler Scheduler, totalPods []v1.Pod, status map[string]string,
-) float64 {
-	new := float64(0)
-	total := float64(len(totalPods))
+	mr *MixedMetricsReporter, scheduler Scheduler, status map[string]string,
+) (float64, error) {
+	progress := float64(0)
 
-	for _, pod := range totalPods {
-		if pod.GetObjectMeta().GetLabels()["version"] == scheduler.Version {
-			new++
-		}
+	roomsToUpdate, err := GetInvalidRoomsCount(o.redisClient, mr, scheduler.Name)
+	if err != nil {
+		return 0, err
+	}
+
+	old, err := GetCurrentInvalidRoomsCount(o.redisClient, mr, scheduler.Name)
+	if err != nil {
+		return 0, err
+	}
+
+	if roomsToUpdate <= 0 {
+		progress = 1
+	} else {
+		progress = 1 - float64(old)/float64(roomsToUpdate)
 	}
 
 	// if the percentage of gameservers with the actual version is 100% but the
 	// operation is not 'rolling update', the new scheduler version has not been stored as the actual version yet.
 	// it means that the rolling update didn't started and so the progress should be 0%
-	if status["description"] != OpManagerRollingUpdate && new/total > 0.99 {
-		return 0
+	if status["description"] != OpManagerRollingUpdate && progress > 0.99 {
+		return 0, nil
 	}
 
-	return 100.0 * new / total
+	return 100.0 * progress, nil
 }
 
 // GetOperationStatus returns an operation status with progress percentage
-func (o *OperationManager) GetOperationStatus(scheduler Scheduler, totalPods []v1.Pod) (map[string]string, error) {
+func (o *OperationManager) GetOperationStatus(mr *MixedMetricsReporter, scheduler Scheduler) (map[string]string, error) {
 	status, err := o.Get(o.operationKey)
 	if err != nil {
 		return nil, err
@@ -338,7 +346,7 @@ func (o *OperationManager) GetOperationStatus(scheduler Scheduler, totalPods []v
 		return status, nil
 	}
 
-	progress := o.getOperationRollingProgress(scheduler, totalPods, status)
+	progress, err := o.getOperationRollingProgress(mr, scheduler, status)
 
 	status["progress"] = strconv.FormatFloat(progress, 'f', 2, 64)
 	return status, nil

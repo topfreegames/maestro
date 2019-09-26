@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	maestroErrors "github.com/topfreegames/maestro/errors"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	reportersMocks "github.com/topfreegames/maestro/reporters/mocks"
 	yaml "gopkg.in/yaml.v2"
@@ -4525,7 +4526,7 @@ var _ = Describe("Watcher", func() {
 			testing.MockSelectScheduler(yaml1, mockDb, errDB)
 			err := w.EnsureCorrectRooms()
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(errDB))
+			Expect(err).To(Equal(maestroErrors.NewDatabaseError(errDB)))
 		})
 
 		It("should return error if fail to unmarshal yaml", func() {
@@ -4598,7 +4599,7 @@ var _ = Describe("Watcher", func() {
 			err := w.EnsureCorrectRooms()
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(hook.LastEntry().Message).To(Equal(fmt.Sprintf("error deleting pod %s during rolling update", podNames[1])))
+			Expect(hook.LastEntry().Message).To(Equal(fmt.Sprintf("error deleting pod %s", podNames[1])))
 		})
 
 		It("should delete invalid pods", func() {
