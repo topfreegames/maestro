@@ -5,6 +5,8 @@
 // migrations/0003-CreateSchedulerVersionsTable.sql
 // migrations/0004-AlterSchedulerTableAddVersion.sql
 // migrations/0005-AlterVersionType.sql
+// migrations/0006-AddStatusColumnToVersion.sql
+// migrations/0007-AddRollbackVersionColumnToVersion.sql
 // DO NOT EDIT!
 
 package migrations
@@ -87,7 +89,7 @@ func migrations0001CreateschedulertableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0001-CreateSchedulerTable.sql", size: 716, mode: os.FileMode(420), modTime: time.Unix(1555594840, 0)}
+	info := bindataFileInfo{name: "migrations/0001-CreateSchedulerTable.sql", size: 716, mode: os.FileMode(420), modTime: time.Unix(1563978252, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -107,7 +109,7 @@ func migrations0002CreateusertableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0002-CreateUserTable.sql", size: 658, mode: os.FileMode(420), modTime: time.Unix(1555594840, 0)}
+	info := bindataFileInfo{name: "migrations/0002-CreateUserTable.sql", size: 658, mode: os.FileMode(420), modTime: time.Unix(1563978252, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -127,7 +129,7 @@ func migrations0003CreateschedulerversionstableSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0003-CreateSchedulerVersionsTable.sql", size: 664, mode: os.FileMode(420), modTime: time.Unix(1555594840, 0)}
+	info := bindataFileInfo{name: "migrations/0003-CreateSchedulerVersionsTable.sql", size: 664, mode: os.FileMode(420), modTime: time.Unix(1563978252, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -147,7 +149,7 @@ func migrations0004AlterschedulertableaddversionSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0004-AlterSchedulerTableAddVersion.sql", size: 243, mode: os.FileMode(420), modTime: time.Unix(1555594840, 0)}
+	info := bindataFileInfo{name: "migrations/0004-AlterSchedulerTableAddVersion.sql", size: 243, mode: os.FileMode(420), modTime: time.Unix(1563978252, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -167,7 +169,47 @@ func migrations0005AlterversiontypeSql() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/0005-AlterVersionType.sql", size: 333, mode: os.FileMode(420), modTime: time.Unix(1555594840, 0)}
+	info := bindataFileInfo{name: "migrations/0005-AlterVersionType.sql", size: 333, mode: os.FileMode(420), modTime: time.Unix(1563978252, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _migrations0006AddstatuscolumntoversionSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x44\x8e\xc1\x4a\xc3\x40\x10\x86\xef\x79\x8a\x39\xea\x21\x5d\x2d\x14\xa4\x8a\x18\x6d\x15\x21\x5e\x24\xf7\xb0\xdd\x4c\x77\x17\x93\x9d\x65\x66\xb6\xc1\x47\xf2\x35\x7c\x32\x09\x56\x3c\xfe\x3f\xdf\xff\xf3\xd5\x35\x4c\x16\x45\x99\xaa\xba\x86\xa0\x9a\x65\x6b\x8c\x8f\x1a\xca\x61\xe5\x68\x32\x4a\xf9\xc8\x88\xde\x4e\x28\xe6\x1f\x5d\xe8\x36\x3a\x4c\x82\x03\x94\x34\x20\x83\x06\x84\xb7\xd7\x0e\xc6\xdf\x7a\xfb\x77\xb8\x35\x66\x9e\xe7\x15\x65\x4c\x42\x85\x1d\xae\x88\xbd\x39\x53\x62\xa6\xa8\xf5\x39\x2c\x8b\x27\xca\x9f\x1c\x7d\x50\xf8\xfe\x82\xf5\xd5\xf5\x0d\x74\x94\xe1\x99\x11\xe1\x65\x71\x80\xbb\x83\x75\x1f\x98\x86\x07\x3d\x7a\x47\x8b\xe3\x7d\x55\x35\x6d\xb7\x7f\x87\xae\x79\x6c\xf7\x20\x2e\xe0\x50\x46\xe4\xfe\x84\x2c\x91\x92\x40\xb3\xdb\x01\xd3\x38\xc6\xe4\xfb\x92\x07\xab\xd8\x8b\x5a\x2d\x02\x27\xcb\x2e\x58\xbe\x58\x6f\x36\x97\xb7\xd5\x4f\x00\x00\x00\xff\xff\x72\xed\xcd\x7a\x0e\x01\x00\x00")
+
+func migrations0006AddstatuscolumntoversionSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations0006AddstatuscolumntoversionSql,
+		"migrations/0006-AddStatusColumnToVersion.sql",
+	)
+}
+
+func migrations0006AddstatuscolumntoversionSql() (*asset, error) {
+	bytes, err := migrations0006AddstatuscolumntoversionSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/0006-AddStatusColumnToVersion.sql", size: 270, mode: os.FileMode(420), modTime: time.Unix(1569276907, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _migrations0007AddrollbackversioncolumntoversionSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x44\x8e\xc1\x4a\xc4\x30\x10\x86\xef\x7d\x8a\x39\xea\x21\x8d\x2e\x2c\x48\x15\xb1\xba\xab\x08\xf5\x22\xbd\x4b\x36\x9d\x4d\x82\x6d\x26\x4c\xa6\x5b\x7c\x24\x5f\xc3\x27\x93\xe0\x16\x8f\xf3\xf3\x7d\xc3\xa7\x14\x4c\x06\xb3\x30\x55\x4a\x81\x17\x49\xb9\xd1\xda\x05\xf1\xf3\xa1\xb6\x34\x69\xa1\x74\x64\x44\x67\x26\xcc\xfa\x1f\x2d\x74\x17\x2c\xc6\x8c\x03\xcc\x71\x40\x06\xf1\x08\x6f\xaf\x3d\x8c\x7f\x73\xb3\x3e\x6c\xb4\x5e\x96\xa5\xa6\x84\x31\xd3\xcc\x16\x6b\x62\xa7\xcf\x54\xd6\x53\x10\x75\x3e\x8a\xf1\x44\xe9\x8b\x83\xf3\x02\x3f\xdf\xb0\xb9\xba\xbe\x81\x9e\x12\x3c\x33\x22\xbc\x94\x06\xb8\x3b\x18\xfb\x89\x71\x78\x90\xa3\xb3\x54\x1a\xef\xab\xaa\xed\xfa\xfd\x3b\xf4\xed\x63\xb7\x87\x6c\x3d\x0e\xf3\x88\xfc\x71\x42\xce\x81\x62\x86\x76\xb7\x03\xa6\x71\x2c\xea\xba\xc2\xc9\xb0\xf5\x86\x2f\x36\xdb\xed\xe5\x6d\xf5\x1b\x00\x00\xff\xff\x65\x4e\x1c\x26\x09\x01\x00\x00")
+
+func migrations0007AddrollbackversioncolumntoversionSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations0007AddrollbackversioncolumntoversionSql,
+		"migrations/0007-AddRollbackVersionColumnToVersion.sql",
+	)
+}
+
+func migrations0007AddrollbackversioncolumntoversionSql() (*asset, error) {
+	bytes, err := migrations0007AddrollbackversioncolumntoversionSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/0007-AddRollbackVersionColumnToVersion.sql", size: 265, mode: os.FileMode(420), modTime: time.Unix(1569276907, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -229,6 +271,8 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/0003-CreateSchedulerVersionsTable.sql": migrations0003CreateschedulerversionstableSql,
 	"migrations/0004-AlterSchedulerTableAddVersion.sql": migrations0004AlterschedulertableaddversionSql,
 	"migrations/0005-AlterVersionType.sql": migrations0005AlterversiontypeSql,
+	"migrations/0006-AddStatusColumnToVersion.sql": migrations0006AddstatuscolumntoversionSql,
+	"migrations/0007-AddRollbackVersionColumnToVersion.sql": migrations0007AddrollbackversioncolumntoversionSql,
 }
 
 // AssetDir returns the file names below a certain
@@ -277,6 +321,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"0003-CreateSchedulerVersionsTable.sql": &bintree{migrations0003CreateschedulerversionstableSql, map[string]*bintree{}},
 		"0004-AlterSchedulerTableAddVersion.sql": &bintree{migrations0004AlterschedulertableaddversionSql, map[string]*bintree{}},
 		"0005-AlterVersionType.sql": &bintree{migrations0005AlterversiontypeSql, map[string]*bintree{}},
+		"0006-AddStatusColumnToVersion.sql": &bintree{migrations0006AddstatuscolumntoversionSql, map[string]*bintree{}},
+		"0007-AddRollbackVersionColumnToVersion.sql": &bintree{migrations0007AddrollbackversioncolumntoversionSql, map[string]*bintree{}},
 	}},
 }}
 

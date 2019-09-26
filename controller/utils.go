@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -21,7 +20,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	yaml "gopkg.in/yaml.v2"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -51,7 +50,7 @@ func SegmentAndReplacePods(
 	pods []*models.Pod,
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
-	maxSurge int,
+	maxSurge, goroutinePoolSize int,
 	clock clockinterfaces.Clock,
 ) (timeoutErr, cancelErr, err error) {
 	schedulerName := scheduler.Name
@@ -80,6 +79,7 @@ func SegmentAndReplacePods(
 			scheduler,
 			operationManager,
 			clock,
+			goroutinePoolSize,
 		)
 
 		if timedout {
@@ -117,17 +117,80 @@ func replacePodsAndWait(
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
 	clock clockinterfaces.Clock,
+	goroutinePoolSize int,
 ) (timedout, canceled bool, err error) {
-	timedout = false
-	canceled = false
-	var wg sync.WaitGroup
-	var mutex = &sync.Mutex{}
+	logger.Debug("starting to replace pods with new ones")
+	stop := make(chan struct{}, 1)
+	defer close(stop) // Dont leak goroutines
+	finishedReplace := make(chan struct{})
 
-	// create a chunk of pods (chunkSize = maxSurge) and remove a chunk of old ones
-	wg.Add(len(podsChunk))
+	timedoutChan := make(chan bool)
+	canceledChan := make(chan bool)
+	errChan := make(chan error)
+
+	pods := make(chan *models.Pod, len(podsChunk))
 	for _, pod := range podsChunk {
-		go func(pod *models.Pod) {
-			defer wg.Done()
+		pods <- pod
+	}
+
+	logger.Debugf("starting %d in-memory workers to replace pods", goroutinePoolSize)
+	for i := 0; i < goroutinePoolSize; i++ {
+		go replacePodWorker(
+			logger,
+			roomManager,
+			mr,
+			clientset,
+			db,
+			redisClient,
+			willTimeoutAt,
+			configYAML,
+			scheduler,
+			operationManager,
+			clock,
+			pods,
+			stop, finishedReplace,
+			timedoutChan, canceledChan, errChan,
+		)
+	}
+
+	select {
+	case err = <-errChan:
+		return false, false, err
+
+	case canceled = <-canceledChan:
+		return false, canceled, nil
+
+	case timedout = <-timedoutChan:
+		return timedout, false, nil
+
+	case <-finishedReplace:
+		logger.Debug("all pods were successfully replaced")
+		break
+	}
+
+	return timedout, canceled, err
+}
+
+func replacePodWorker(
+	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	willTimeoutAt time.Time,
+	configYAML *models.ConfigYAML,
+	scheduler *models.Scheduler,
+	operationManager *models.OperationManager,
+	clock clockinterfaces.Clock,
+	pods <-chan *models.Pod,
+	stop, finishedReplace chan struct{},
+	timedoutChan, canceledChan chan<- bool,
+	errChan chan<- error,
+) {
+	for {
+		select {
+		case pod := <-pods:
 			localTimedout, localCanceled, localErr := createNewRemoveOldPod(
 				logger,
 				roomManager,
@@ -139,32 +202,34 @@ func replacePodsAndWait(
 				configYAML,
 				scheduler,
 				operationManager,
-				mutex,
 				pod,
 				clock,
 			)
-			// if a routine is timedout or canceled,
-			// rolling update should stop
-			if localTimedout {
-				mutex.Lock()
-				timedout = localTimedout
-				mutex.Unlock()
-			}
-			if localCanceled {
-				mutex.Lock()
-				canceled = localCanceled
-				mutex.Unlock()
-			}
-			if localErr != nil {
-				mutex.Lock()
-				err = localErr
-				mutex.Unlock()
-			}
-		}(pod)
-	}
-	wg.Wait()
 
-	return timedout, canceled, err
+			if localErr != nil {
+				errChan <- localErr
+				return
+			}
+
+			if localCanceled {
+				canceledChan <- localCanceled
+				return
+			}
+
+			if localTimedout {
+				timedoutChan <- localTimedout
+				return
+			}
+
+			logger.Debugf("pods remaining to replace: %d", len(pods))
+			if len(pods) == 0 {
+				finishedReplace <- struct{}{}
+				return
+			}
+		case <-stop:
+			return
+		}
+	}
 }
 
 func createNewRemoveOldPod(
@@ -178,7 +243,6 @@ func createNewRemoveOldPod(
 	configYAML *models.ConfigYAML,
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
-	mutex *sync.Mutex,
 	pod *models.Pod,
 	clock clockinterfaces.Clock,
 ) (timedout, canceled bool, err error) {
