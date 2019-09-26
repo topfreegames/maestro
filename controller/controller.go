@@ -435,6 +435,7 @@ func ScaleUp(
 	err = waitForPods(
 		willTimeoutAt.Sub(time.Now()),
 		clientset,
+		redisClient,
 		configYAML.Name,
 		pods,
 		l,
