@@ -90,6 +90,7 @@ func (g *RoomPingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.RedisClient.Trace(ctx),
 		g.App.DBClient.WithContext(ctx),
 		kubernetesClient,
+		mr,
 		room, fmt.Sprintf("ping%s", strings.Title(payload.Status)),
 		"",
 		payload.Metadata,
@@ -184,6 +185,7 @@ func NewRoomEventHandler(a *App) *RoomEventHandler {
 // ServeHTTP method
 func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	mr := metricsReporterFromCtx(ctx)
 	l := middleware.GetLogger(ctx)
 	params := roomParamsFromContext(ctx)
 	payload := roomEventPayloadFromCtx(ctx)
@@ -216,6 +218,7 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.RedisClient.Trace(ctx),
 		g.App.DBClient.WithContext(ctx),
 		kubernetesClient,
+		mr,
 		room,
 		"roomEvent",
 		"",
@@ -298,6 +301,7 @@ func (g *RoomStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.App.RedisClient.Trace(ctx),
 		g.App.DBClient.WithContext(ctx),
 		kubernetesClient,
+		mr,
 		room, payload.Status, "",
 		payload.Metadata,
 		g.App.SchedulerCache,
@@ -328,6 +332,7 @@ func NewRoomAddressHandler(a *App) *RoomAddressHandler {
 // ServerHTTP method
 func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	mr := metricsReporterFromCtx(ctx)
 	l := middleware.GetLogger(ctx)
 	params := roomParamsFromContext(ctx)
 
@@ -340,7 +345,7 @@ func (h *RoomAddressHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	room := models.NewRoom(params.Name, params.Scheduler)
 	kubernetesClient := kubernetes.TryWithContext(h.App.KubernetesClient, ctx)
-	roomAddresses, err := h.App.RoomAddrGetter.Get(room, kubernetesClient, h.App.RedisClient.Trace(ctx))
+	roomAddresses, err := h.App.RoomAddrGetter.Get(room, kubernetesClient, h.App.RedisClient.Trace(ctx), mr)
 
 	if err != nil {
 		status := http.StatusInternalServerError

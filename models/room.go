@@ -424,6 +424,7 @@ func (r *Room) GetRoomInfos(
 	schedulerCache *SchedulerCache,
 	scheduler *Scheduler,
 	addrGetter AddrGetter,
+	mr *MixedMetricsReporter,
 ) (map[string]interface{}, error) {
 	if scheduler == nil {
 		cachedScheduler, err := schedulerCache.LoadScheduler(db, r.SchedulerName, true)
@@ -432,7 +433,7 @@ func (r *Room) GetRoomInfos(
 		}
 		scheduler = cachedScheduler.Scheduler
 	}
-	address, err := addrGetter.Get(r, kubernetesClient, redis)
+	address, err := addrGetter.Get(r, kubernetesClient, redis, mr)
 	if err != nil {
 		return nil, err
 	}

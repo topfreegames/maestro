@@ -170,7 +170,7 @@ func createPod(
 		env := append(configYAML.Env, namesEnvVars...)
 		err = mr.WithSegment(SegmentPod, func() error {
 			var err error
-			pod, err = NewPod(name, env, configYAML, clientset, redisClient)
+			pod, err = NewPod(name, env, configYAML, clientset, redisClient, mr)
 			return err
 		})
 	} else if configYAML.Version() == "v2" {
@@ -180,7 +180,7 @@ func createPod(
 			containers[i].Env = append(containers[i].Env, namesEnvVars...)
 		}
 
-		pod, err = NewPodWithContainers(name, containers, configYAML, clientset, redisClient)
+		pod, err = NewPodWithContainers(name, containers, configYAML, clientset, redisClient, mr)
 	}
 	if err != nil {
 		return nil, err

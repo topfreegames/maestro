@@ -569,9 +569,19 @@ func (w *Watcher) forwardRemovalRoomEvent(logger *logrus.Entry, rooms []string) 
 
 		_, err := eventforwarder.ForwardRoomEvent(
 			context.Background(),
-			w.EventForwarders, w.RedisClient.Client, w.DB, w.KubernetesClient,
-			room, models.RoomTerminated, eventforwarder.PingTimeoutEvent,
-			metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
+			w.EventForwarders,
+			w.RedisClient.Client,
+			w.DB,
+			w.KubernetesClient,
+			w.MetricsReporter,
+			room,
+			models.RoomTerminated,
+			eventforwarder.PingTimeoutEvent,
+			metadatas[roomName],
+			nil,
+			w.Logger,
+			w.RoomAddrGetter,
+		)
 		if err != nil {
 			logger.WithError(err).Error("pingTimeout event forward failed")
 		}
@@ -1491,6 +1501,7 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 						Version:       kubePod.GetLabels()["version"],
 						NodeName:      kubePod.Spec.NodeName,
 						Status:        kubePod.Status,
+						Spec:          kubePod.Spec,
 						IsTerminating: models.IsPodTerminating(kubePod),
 					}
 

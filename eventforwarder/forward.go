@@ -56,6 +56,7 @@ func ForwardRoomEvent(
 	redis redisinterfaces.RedisClient,
 	db pginterfaces.DB,
 	kubernetesClient kubernetes.Interface,
+	mr *models.MixedMetricsReporter,
 	room *models.Room,
 	status string,
 	eventType string,
@@ -115,7 +116,8 @@ func ForwardRoomEvent(
 					"game":   cachedScheduler.Scheduler.Game,
 				}
 				if eventType != PingTimeoutEvent && eventType != OccupiedTimeoutEvent {
-					infos, err = room.GetRoomInfos(redis, db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler, addrGetter)
+					infos, err = room.GetRoomInfos(redis, db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler, addrGetter, mr)
+
 					if err != nil {
 						l.WithError(err).Error("error getting room info from redis")
 						return nil, err

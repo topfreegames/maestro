@@ -138,6 +138,7 @@ type Pod struct {
 	Containers      []*Container
 	Version         string
 	Status          v1.PodStatus
+	Spec            v1.PodSpec
 	NodeName        string
 	Environment     string
 }
@@ -149,6 +150,7 @@ func NewPod(
 	configYaml *ConfigYAML,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
 ) (*Pod, error) {
 	pod := &Pod{
 		Name:            name,
@@ -179,7 +181,7 @@ func NewPod(
 		}
 	}
 	pod.Containers = []*Container{container}
-	err := pod.configureHostPorts(configYaml, clientset, redisClient)
+	err := pod.configureHostPorts(configYaml, clientset, redisClient, mr)
 
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruNew, map[string]interface{}{
@@ -198,6 +200,7 @@ func NewPodWithContainers(
 	configYaml *ConfigYAML,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
 ) (*Pod, error) {
 	pod := &Pod{
 		Game:            configYaml.Game,
@@ -206,7 +209,7 @@ func NewPodWithContainers(
 		ShutdownTimeout: configYaml.ShutdownTimeout,
 		Containers:      containers,
 	}
-	err := pod.configureHostPorts(configYaml, clientset, redisClient)
+	err := pod.configureHostPorts(configYaml, clientset, redisClient, mr)
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruNew, map[string]interface{}{
 			reportersConstants.TagGame:      configYaml.Game,
@@ -281,7 +284,7 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 	return nil
 }
 
-func getContainerWithName(name string, pod *v1.Pod) v1.Container {
+func getContainerWithName(name string, pod *Pod) v1.Container {
 	var container v1.Container
 
 	for _, container = range pod.Spec.Containers {
@@ -297,8 +300,9 @@ func (p *Pod) configureHostPorts(
 	configYaml *ConfigYAML,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
 ) error {
-	pod, err := clientset.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
+	pod, err := GetPodFromRedis(redisClient, mr, p.Name, p.Namespace)
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		return errors.NewKubernetesError("could not access kubernetes", err)
 	} else if err == nil {
@@ -508,6 +512,26 @@ func GetPodMapFromRedis(
 	}
 
 	return podMap, err
+}
+
+// GetPodCountFromRedis returns the pod count from redis podMap key
+func GetPodCountFromRedis(
+	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
+	schedulerName string,
+) (count int, err error) {
+	pipe := redisClient.TxPipeline()
+	cmd := pipe.HLen(GetPodMapRedisKey(schedulerName))
+	err = mr.WithSegment(SegmentPipeExec, func() error {
+		var err error
+		_, err = pipe.Exec()
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return int(cmd.Val()), err
 }
 
 // GetPodFromRedis returns a specific pod from redis
