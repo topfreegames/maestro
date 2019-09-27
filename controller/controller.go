@@ -564,7 +564,7 @@ func ScaleDown(
 				})
 				if err == nil && pod != nil {
 					exit = false
-				} else {
+				} else if pod != nil {
 					l.WithError(err).Error("scale down pod error")
 					exit = false
 				}
