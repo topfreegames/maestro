@@ -303,9 +303,9 @@ func (p *Pod) configureHostPorts(
 	mr *MixedMetricsReporter,
 ) error {
 	pod, err := GetPodFromRedis(redisClient, mr, p.Name, p.Namespace)
-	if err != nil && !strings.Contains(err.Error(), "not found") {
+	if err != nil {
 		return errors.NewKubernetesError("could not access kubernetes", err)
-	} else if err == nil {
+	} else if err == nil && pod != nil {
 		//pod exists, so just retrieve ports
 		for _, container := range p.Containers {
 			podContainer := getContainerWithName(container.Name, pod)
