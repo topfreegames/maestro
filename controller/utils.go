@@ -396,6 +396,12 @@ func waitTerminatingPods(
 				}
 
 				if p != nil {
+					//if pod.IsTerminating {
+					//	logger.WithField("pod", pod.Name).Debugf("pod is terminating")
+					//	exit = false
+					//	break
+					//}
+
 					logger.WithField("pod", pod.Name).Debugf("pod still exists, deleting again")
 					err = mr.WithSegment(models.SegmentPod, func() error {
 						return clientset.CoreV1().Pods(namespace).Delete(pod.Name, deleteOptions)
