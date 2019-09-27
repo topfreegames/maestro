@@ -368,6 +368,7 @@ func (p *Pod) MarshalToRedis() ([]byte, error) {
 		"version":       p.Version,
 		"nodeName":      p.NodeName,
 		"isTerminating": p.IsTerminating,
+		"spec":          p.Spec,
 	})
 }
 
