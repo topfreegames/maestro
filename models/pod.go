@@ -491,7 +491,11 @@ func GetPodMapFromRedis(
 
 	for podName, podStr := range cmd.Val() {
 		pod := &Pod{}
-		pod.UnmarshalFromRedis(podStr)
+		err = pod.UnmarshalFromRedis(podStr)
+		if err != nil {
+			return nil, err
+		}
+
 		podMap[podName] = pod
 	}
 
