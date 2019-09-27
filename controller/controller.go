@@ -383,7 +383,7 @@ func ScaleUp(
 
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 
-	existPendingPods, err := pendingPods(clientset, scheduler.Name, mr)
+	existPendingPods, err := pendingPods(clientset, redisClient, scheduler.Name, mr)
 	if err != nil {
 		return err
 	}
@@ -556,14 +556,15 @@ func ScaleDown(
 			return errors.New("timeout scaling down scheduler")
 		case <-ticker.C:
 			for _, name := range idleRooms {
+				var pod *models.Pod
 				err := mr.WithSegment(models.SegmentPod, func() error {
 					var err error
-					_, err = clientset.CoreV1().Pods(scheduler.Name).Get(name, metav1.GetOptions{})
+					pod, err = models.GetPodFromRedis(redisClient, mr, name, scheduler.Name)
 					return err
 				})
-				if err == nil {
+				if err == nil && pod != nil {
 					exit = false
-				} else if !strings.Contains(err.Error(), "not found") {
+				} else {
 					l.WithError(err).Error("scale down pod error")
 					exit = false
 				}
@@ -1012,12 +1013,12 @@ func ScaleScheduler(
 	} else {
 		logger.Infof("manually scaling scheduler %s to %d GRUs", schedulerName, replicas)
 		// get list of actual pods
-		pods, err := ListCurrentPods(mr, clientset, schedulerName)
+		podCount, err := models.GetPodCountFromRedis(redisClient, mr, schedulerName)
 		if err != nil {
 			return err
 		}
 
-		nPods := uint(len(pods.Items))
+		nPods := uint(podCount)
 		logger.Debugf("current number of pods: %d", nPods)
 
 		if replicas > nPods {

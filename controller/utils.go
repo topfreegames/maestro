@@ -541,7 +541,7 @@ func DeletePodAndRoom(
 	var pod *models.Pod
 	err := mr.WithSegment(models.SegmentPod, func() error {
 		var err error
-		pod, err = models.NewPod(name, nil, configYaml, clientset, redisClient)
+		pod, err = models.NewPod(name, nil, configYaml, clientset, redisClient, mr)
 		return err
 	})
 	if err != nil {
@@ -694,24 +694,21 @@ func waitForPods(
 
 func pendingPods(
 	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
 	namespace string,
 	mr *models.MixedMetricsReporter,
 ) (bool, error) {
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.Set{}.AsSelector().String(),
-		FieldSelector: fields.Everything().String(),
-	}
-	var pods *v1.PodList
+	var pods map[string]*models.Pod
 	err := mr.WithSegment(models.SegmentPod, func() error {
 		var err error
-		pods, err = clientset.CoreV1().Pods(namespace).List(listOptions)
+		pods, err = models.GetPodMapFromRedis(redisClient, mr, namespace)
 		return err
 	})
 	if err != nil {
 		return false, maestroErrors.NewKubernetesError("error when listing pods", err)
 	}
 
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		if pod.Status.Phase == v1.PodPending {
 			return true, nil
 		}
@@ -1253,7 +1250,7 @@ func deleteSchedulerHelper(
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 	// Delete pods and wait for graceful termination before deleting the namespace
 	err = mr.WithSegment(models.SegmentPod, func() error {
-		return namespace.DeletePods(clientset, redisClient, scheduler)
+		return namespace.DeletePods(clientset, redisClient, mr, scheduler)
 	})
 	if err != nil {
 		logger.WithError(err).Error("failed to delete namespace pods")
@@ -1271,15 +1268,15 @@ func deleteSchedulerHelper(
 		case <-timeoutPods.C:
 			return errors.New("timeout deleting scheduler pods")
 		case <-ticker.C:
-			var pods *v1.PodList
+			var podCount int
 			listErr := mr.WithSegment(models.SegmentPod, func() error {
 				var err error
-				pods, err = clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
+				podCount, err = models.GetPodCountFromRedis(redisClient, mr, scheduler.Name)
 				return err
 			})
 			if listErr != nil {
 				logger.WithError(listErr).Error("error listing pods")
-			} else if len(pods.Items) == 0 {
+			} else if podCount == 0 {
 				exit = true
 			}
 			logger.Debug("deleting scheduler pods")

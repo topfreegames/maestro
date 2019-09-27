@@ -73,9 +73,13 @@ func (n *Namespace) Delete(clientset kubernetes.Interface) error {
 }
 
 // DeletePods deletes all pods from a kubernetes namespace
-func (n *Namespace) DeletePods(clientset kubernetes.Interface,
-	redisClient redisinterfaces.RedisClient, s *Scheduler) error {
-	pods, err := clientset.CoreV1().Pods(n.Name).List(metav1.ListOptions{})
+func (n *Namespace) DeletePods(
+	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
+	s *Scheduler,
+) error {
+	podCount, err := GetPodCountFromRedis(redisClient, mr, s.Name)
 	if err != nil {
 		return errors.NewKubernetesError("delete namespace pods error", err)
 	}
@@ -84,7 +88,7 @@ func (n *Namespace) DeletePods(clientset kubernetes.Interface,
 		return errors.NewKubernetesError("delete namespace pods error", err)
 	}
 
-	for range pods.Items {
+	for i := 0; i < podCount; i++ {
 		reporters.Report(reportersConstants.EventGruDelete, map[string]interface{}{
 			reportersConstants.TagGame:      s.Game,
 			reportersConstants.TagScheduler: s.Name,
