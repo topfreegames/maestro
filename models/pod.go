@@ -134,6 +134,7 @@ type Pod struct {
 	ShutdownTimeout int
 	NodeAffinity    string
 	NodeToleration  string
+	IsTerminating   bool
 	Containers      []*Container
 	Version         string
 	Status          v1.PodStatus
@@ -375,10 +376,11 @@ func (p *Pod) configureHostPorts(
 func (p *Pod) MarshalToRedis() ([]byte, error) {
 
 	return json.Marshal(map[string]interface{}{
-		"name":     p.Name,
-		"status":   p.Status,
-		"version":  p.Version,
-		"nodeName": p.NodeName,
+		"name":          p.Name,
+		"status":        p.Status,
+		"version":       p.Version,
+		"nodeName":      p.NodeName,
+		"isTerminating": p.IsTerminating,
 	})
 }
 

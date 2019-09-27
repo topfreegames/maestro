@@ -1487,10 +1487,11 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 				if kubePod, ok := obj.(*v1.Pod); ok {
 					// create Pod from v1.Pod
 					pod := &models.Pod{
-						Name:     kubePod.GetName(),
-						Version:  kubePod.GetLabels()["version"],
-						NodeName: kubePod.Spec.NodeName,
-						Status:   kubePod.Status,
+						Name:          kubePod.GetName(),
+						Version:       kubePod.GetLabels()["version"],
+						NodeName:      kubePod.Spec.NodeName,
+						Status:        kubePod.Status,
+						IsTerminating: models.IsPodTerminating(kubePod),
 					}
 
 					err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
@@ -1534,10 +1535,11 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 				if kubePod, ok := newObj.(*v1.Pod); ok {
 					// create Pod from v1.Pod
 					pod := &models.Pod{
-						Name:     kubePod.GetName(),
-						Version:  kubePod.GetLabels()["version"],
-						NodeName: kubePod.Spec.NodeName,
-						Status:   kubePod.Status,
+						Name:          kubePod.GetName(),
+						Version:       kubePod.GetLabels()["version"],
+						NodeName:      kubePod.Spec.NodeName,
+						Status:        kubePod.Status,
+						IsTerminating: models.IsPodTerminating(kubePod),
 					}
 
 					err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
