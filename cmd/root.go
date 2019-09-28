@@ -82,9 +82,7 @@ func InitConfig() {
 }
 
 func launchPProf() {
-	if pprof {
-		fmt.Println("Starting PProf HTTP server")
-		config.SetDefault("pprof.address", "localhost:6060")
-		professor.Launch(config.GetString("pprof.address"))
-	}
+	fmt.Println("Starting PProf HTTP server")
+	config.SetDefault("pprof.address", "localhost:6060")
+	professor.Launch(config.GetString("pprof.address"))
 }
