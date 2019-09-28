@@ -236,8 +236,8 @@ func (w *Watcher) Start() {
 	defer tickerStateCount.Stop()
 
 	go w.reportRoomsStatusesRoutine()
-	kubeWatch, stopKubeWatch := w.configureKubeWatch()
-	go kubeWatch.Run(stopKubeWatch)
+	//kubeWatch, stopKubeWatch := w.configureKubeWatch()
+	//go kubeWatch.Run(stopKubeWatch)
 
 	for w.Run == true {
 		l = w.Logger.WithFields(logrus.Fields{
@@ -250,7 +250,7 @@ func (w *Watcher) Start() {
 			w.PodStatesCount()
 		case sig := <-sigchan:
 			l.Warnf("caught signal %v: terminating\n", sig)
-			close(stopKubeWatch)
+			//close(stopKubeWatch)
 			w.Run = false
 		}
 	}
