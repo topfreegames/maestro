@@ -1484,6 +1484,8 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 	watchlist := cache.NewListWatchFromClient(w.KubernetesClient.CoreV1().RESTClient(), string(v1.ResourcePods), w.SchedulerName,
 		fields.Everything())
 
+	localPodMap := map[string]struct{}{}
+
 	_, controller := cache.NewInformer(
 		watchlist,
 		&v1.Pod{},
@@ -1509,6 +1511,8 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 					if err != nil {
 						logger.WithError(err).Error("failed to add pod to redis podMap key")
 					}
+
+					localPodMap[pod.Name] = struct{}{}
 				} else {
 					logger.Error("obj received is not of type *v1.Pod")
 				}
@@ -1527,6 +1531,8 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 					kubePod = obj.(*v1.Pod)
 				}
 
+				delete(localPodMap, kubePod.Name)
+
 				if kubePod != nil {
 					// Remove pod from redis
 					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
@@ -1544,6 +1550,10 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 				})
 
 				if kubePod, ok := newObj.(*v1.Pod); ok {
+					if _, ok = localPodMap[kubePod.Name]; ok {
+						return
+					}
+
 					// create Pod from v1.Pod
 					pod := &models.Pod{
 						Name:          kubePod.GetName(),
