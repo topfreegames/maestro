@@ -1538,29 +1538,29 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 				}
 			},
 			// --- Kube Update
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				logger := w.Logger.WithFields(logrus.Fields{
-					"operation": "watcher.kubeWatch.UpdatePod",
-				})
-
-				if kubePod, ok := newObj.(*v1.Pod); ok {
-					// create Pod from v1.Pod
-					pod := &models.Pod{
-						Name:          kubePod.GetName(),
-						Version:       kubePod.GetLabels()["version"],
-						NodeName:      kubePod.Spec.NodeName,
-						Status:        kubePod.Status,
-						IsTerminating: models.IsPodTerminating(kubePod),
-					}
-
-					err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
-					if err != nil {
-						logger.WithError(err).Error("failed to update pod on redis podMap key")
-					}
-				} else {
-					logger.Error("obj received is not of type *v1.Pod")
-				}
-			},
+			//UpdateFunc: func(oldObj, newObj interface{}) {
+			//	logger := w.Logger.WithFields(logrus.Fields{
+			//		"operation": "watcher.kubeWatch.UpdatePod",
+			//	})
+			//
+			//	if kubePod, ok := newObj.(*v1.Pod); ok {
+			//		// create Pod from v1.Pod
+			//		pod := &models.Pod{
+			//			Name:          kubePod.GetName(),
+			//			Version:       kubePod.GetLabels()["version"],
+			//			NodeName:      kubePod.Spec.NodeName,
+			//			Status:        kubePod.Status,
+			//			IsTerminating: models.IsPodTerminating(kubePod),
+			//		}
+			//
+			//		err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
+			//		if err != nil {
+			//			logger.WithError(err).Error("failed to update pod on redis podMap key")
+			//		}
+			//	} else {
+			//		logger.Error("obj received is not of type *v1.Pod")
+			//	}
+			//},
 		},
 	)
 
