@@ -1531,9 +1531,9 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 					kubePod = obj.(*v1.Pod)
 				}
 
-				delete(localPodMap, kubePod.Name)
-
 				if kubePod != nil {
+					delete(localPodMap, kubePod.Name)
+
 					// Remove pod from redis
 					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
 					if err != nil {
