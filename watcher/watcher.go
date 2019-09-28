@@ -1489,7 +1489,7 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 	_, controller := cache.NewInformer(
 		watchlist,
 		&v1.Pod{},
-		0,
+		time.Minute,
 		cache.ResourceEventHandlerFuncs{
 			// --- Kube Create
 			AddFunc: func(obj interface{}) {
