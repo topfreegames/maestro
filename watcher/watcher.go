@@ -1486,7 +1486,7 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 
 	localPodMap := map[string]struct{}{}
 
-	si := cache.NewSharedInformer(watchlist, &v1.Pod{}, 0)
+	si := cache.NewSharedInformer(watchlist, &v1.Pod{}, time.Minute)
 	si.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		// --- Kube Create
 		AddFunc: func(obj interface{}) {
