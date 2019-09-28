@@ -247,7 +247,7 @@ func (w *Watcher) Start() {
 		case <-ticker.C:
 			w.watchRooms()
 		case <-tickerStateCount.C:
-			w.PodStatesCount()
+			//w.PodStatesCount()
 		case sig := <-sigchan:
 			l.Warnf("caught signal %v: terminating\n", sig)
 			close(stopKubeWatch)
