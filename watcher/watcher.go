@@ -23,7 +23,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/extensions/clock"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	redis "github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/constants"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1484,12 +1484,10 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 	watchlist := cache.NewListWatchFromClient(w.KubernetesClient.CoreV1().RESTClient(), string(v1.ResourcePods), w.SchedulerName,
 		fields.Everything())
 
-	localPodMap := map[string]struct{}{}
-
 	_, controller := cache.NewInformer(
 		watchlist,
 		&v1.Pod{},
-		0,
+		10*time.Second,
 		cache.ResourceEventHandlerFuncs{
 			// --- Kube Create
 			AddFunc: func(obj interface{}) {
@@ -1511,8 +1509,6 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 					if err != nil {
 						logger.WithError(err).Error("failed to add pod to redis podMap key")
 					}
-
-					localPodMap[pod.Name] = struct{}{}
 				} else {
 					logger.Error("obj received is not of type *v1.Pod")
 				}
@@ -1532,8 +1528,6 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 				}
 
 				if kubePod != nil {
-					delete(localPodMap, kubePod.Name)
-
 					// Remove pod from redis
 					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
 					if err != nil {
@@ -1550,10 +1544,6 @@ func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
 				})
 
 				if kubePod, ok := newObj.(*v1.Pod); ok {
-					if _, ok = localPodMap[kubePod.Name]; ok {
-						return
-					}
-
 					// create Pod from v1.Pod
 					pod := &models.Pod{
 						Name:          kubePod.GetName(),
