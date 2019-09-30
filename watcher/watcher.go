@@ -1533,7 +1533,7 @@ func (w *Watcher) configureKubeWatch() cache.Controller {
 
 	cfg := &cache.Config{
 		Queue:            fifo,
-		ListerWatcher:    watcher,
+		ListerWatcher:    watchlist,
 		ObjectType:       &v1.Pod{},
 		FullResyncPeriod: 0,
 		RetryOnError:     false,
