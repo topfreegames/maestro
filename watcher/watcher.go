@@ -1485,9 +1485,7 @@ func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
 	watchlist := cache.NewListWatchFromClient(w.KubernetesClient.CoreV1().RESTClient(), string(v1.ResourcePods), w.SchedulerName,
 		fields.Everything())
 
-	w, err := watchlist.Watch(metav1.ListOptions{
-		AllowWatchBookmarks: false,
-	})
+	watcher, err := watchlist.Watch(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -1496,7 +1494,7 @@ func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
 		select {
 		case <-stopCh:
 			return nil
-		case event := <-w.ResultChan():
+		case event := <-watcher.ResultChan():
 			switch event.Type {
 			case watch.Added, watch.Modified:
 				logger := w.Logger.WithFields(logrus.Fields{
@@ -1524,16 +1522,8 @@ func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
 				logger := w.Logger.WithFields(logrus.Fields{
 					"operation": "watcher.kubeWatch.DeletePod",
 				})
-				var kubePod *v1.Pod
-				if deleted, ok := event.Object.(cache.DeletedFinalStateUnknown); ok {
-					if _, ok := deleted.Obj.(*v1.Pod); ok {
-						kubePod = deleted.Obj.(*v1.Pod)
-					}
-				} else if _, ok := event.Object.(*v1.Pod); ok {
-					kubePod = obj.(*v1.Pod)
-				}
 
-				if kubePod != nil {
+				if kubePod, ok := event.Object.(*v1.Pod); ok {
 					// Remove pod from redis
 					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
 					if err != nil {
