@@ -236,8 +236,8 @@ func (w *Watcher) Start() {
 	defer tickerStateCount.Stop()
 
 	go w.reportRoomsStatusesRoutine()
-	kubeWatch, stopKubeWatch := w.configureKubeWatch()
-	go kubeWatch.Run(stopKubeWatch)
+	kubeWatchControll := w.configureKubeWatch()
+	go kubeWatchControll.Run(make(chan struct{}))
 
 	for w.Run == true {
 		l = w.Logger.WithFields(logrus.Fields{
@@ -1480,89 +1480,120 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 	return false
 }
 
-func (w *Watcher) configureKubeWatch() (cache.Controller, chan struct{}) {
+type podList struct {
+	sync.RWMutex
+	pods map[string]struct{}
+}
+
+func (p *podList) ListKeys() []string {
+	p.RLock()
+	defer p.RUnlock()
+	list := make([]string, 0, len(p.pods))
+	for key := range p.pods {
+		list = append(list, key)
+	}
+
+	return list
+}
+
+func (p *podList) GetByKey(key string) (interface{}, bool, error) {
+	p.RLock()
+	defer p.RUnlock()
+
+	data, ok := p.pods[key]
+	return data, ok, nil
+}
+
+func (p *podList) Add(key string) {
+	p.Lock()
+	defer p.Unlock()
+	p.pods[key] = struct{}{}
+}
+
+func (p *podList) Delete(key string) {
+	p.Lock()
+	defer p.Unlock()
+	delete(p.pods, key)
+}
+
+func (w *Watcher) configureKubeWatch() cache.Controller {
 	watchlist := cache.NewListWatchFromClient(w.KubernetesClient.CoreV1().RESTClient(), string(v1.ResourcePods), w.SchedulerName,
 		fields.Everything())
 
-	_, controller := cache.NewInformer(
-		watchlist,
-		&v1.Pod{},
-		10*time.Second,
-		cache.ResourceEventHandlerFuncs{
-			// --- Kube Create
-			AddFunc: func(obj interface{}) {
-				logger := w.Logger.WithFields(logrus.Fields{
-					"operation": "watcher.kubeWatch.CreatePod",
-				})
-				if kubePod, ok := obj.(*v1.Pod); ok {
-					// create Pod from v1.Pod
-					pod := &models.Pod{
-						Name:          kubePod.GetName(),
-						Version:       kubePod.GetLabels()["version"],
-						NodeName:      kubePod.Spec.NodeName,
-						Status:        kubePod.Status,
-						Spec:          kubePod.Spec,
-						IsTerminating: models.IsPodTerminating(kubePod),
+	keyNamePod := func(obj interface{}) (string, error) {
+		if kubePod, ok := obj.(*v1.Pod); ok {
+			return kubePod.GetName(), nil
+		}
+		return "", nil
+	}
+
+	clientState := podList{pods: make(map[string]struct{})}
+
+	fifo := cache.NewDeltaFIFO(keyNamePod, &clientState)
+
+	cfg := &cache.Config{
+		Queue:            fifo,
+		ListerWatcher:    watchlist,
+		ObjectType:       &v1.Pod{},
+		FullResyncPeriod: 0,
+		RetryOnError:     false,
+
+		Process: func(obj interface{}) error {
+			// from oldest to newest
+			for _, d := range obj.(cache.Deltas) {
+				switch d.Type {
+				case cache.Sync, cache.Added, cache.Updated:
+					logger := w.Logger.WithFields(logrus.Fields{
+						"operation": "watcher.kubeWatch.CreatePod",
+					})
+					if kubePod, ok := d.Object.(*v1.Pod); ok {
+						clientState.Add(kubePod.GetName())
+						// create Pod from v1.Pod
+						pod := &models.Pod{
+							Name:          kubePod.GetName(),
+							Version:       kubePod.GetLabels()["version"],
+							NodeName:      kubePod.Spec.NodeName,
+							Status:        kubePod.Status,
+							Spec:          kubePod.Spec,
+							IsTerminating: models.IsPodTerminating(kubePod),
+						}
+
+						err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
+						if err != nil {
+							logger.WithError(err).Error("failed to add pod to redis podMap key")
+						}
+					} else {
+						logger.Error("obj received is not of type *v1.Pod")
+					}
+				case cache.Deleted:
+					logger := w.Logger.WithFields(logrus.Fields{
+						"operation": "watcher.kubeWatch.DeletePod",
+					})
+					var kubePod *v1.Pod
+					if deleted, ok := d.Object.(cache.DeletedFinalStateUnknown); ok {
+						if _, ok := deleted.Obj.(*v1.Pod); ok {
+							kubePod = deleted.Obj.(*v1.Pod)
+						}
+					} else if _, ok := d.Object.(*v1.Pod); ok {
+						kubePod = obj.(*v1.Pod)
 					}
 
-					err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
-					if err != nil {
-						logger.WithError(err).Error("failed to add pod to redis podMap key")
-					}
-				} else {
-					logger.Error("obj received is not of type *v1.Pod")
-				}
-			},
-			// --- Kube Delete
-			DeleteFunc: func(obj interface{}) {
-				logger := w.Logger.WithFields(logrus.Fields{
-					"operation": "watcher.kubeWatch.DeletePod",
-				})
-				var kubePod *v1.Pod
-				if deleted, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-					if _, ok := deleted.Obj.(*v1.Pod); ok {
-						kubePod = deleted.Obj.(*v1.Pod)
-					}
-				} else if _, ok := obj.(*v1.Pod); ok {
-					kubePod = obj.(*v1.Pod)
-				}
+					if kubePod != nil {
+						clientState.Delete(podName)
 
-				if kubePod != nil {
-					// Remove pod from redis
-					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
-					if err != nil {
-						logger.WithError(err).Errorf("failed to remove pod %s from redis", kubePod.GetName())
+						// Remove pod from redis
+						err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
+						if err != nil {
+							logger.WithError(err).Errorf("failed to remove pod %s from redis", kubePod.GetName())
+						}
+					} else {
+						logger.Error("obj received is not of type *v1.Pod or cache.DeletedFinalStateUnknown")
 					}
-				} else {
-					logger.Error("obj received is not of type *v1.Pod or cache.DeletedFinalStateUnknown")
 				}
-			},
-			// --- Kube Update
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				logger := w.Logger.WithFields(logrus.Fields{
-					"operation": "watcher.kubeWatch.UpdatePod",
-				})
-
-				if kubePod, ok := newObj.(*v1.Pod); ok {
-					// create Pod from v1.Pod
-					pod := &models.Pod{
-						Name:          kubePod.GetName(),
-						Version:       kubePod.GetLabels()["version"],
-						NodeName:      kubePod.Spec.NodeName,
-						Status:        kubePod.Status,
-						IsTerminating: models.IsPodTerminating(kubePod),
-					}
-
-					err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
-					if err != nil {
-						logger.WithError(err).Error("failed to update pod on redis podMap key")
-					}
-				} else {
-					logger.Error("obj received is not of type *v1.Pod")
-				}
-			},
+			}
+			return nil
 		},
-	)
+	}
 
-	return controller, make(chan struct{})
+	return cache.New(cfg)
 }
