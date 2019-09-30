@@ -23,7 +23,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/extensions/clock"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	redis "github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/constants"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
