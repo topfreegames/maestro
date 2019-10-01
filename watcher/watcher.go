@@ -1500,6 +1500,8 @@ func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
 				logger := w.Logger.WithFields(logrus.Fields{
 					"operation": "watcher.kubeWatch.CreateOrUpdatePod",
 				})
+
+				logger.Debug("new pod detected: ", event.Type)
 				if kubePod, ok := event.Object.(*v1.Pod); ok {
 					// create Pod from v1.Pod
 					pod := &models.Pod{
@@ -1523,6 +1525,7 @@ func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
 					"operation": "watcher.kubeWatch.DeletePod",
 				})
 
+				logger.Debug("new pod removed")
 				if kubePod, ok := event.Object.(*v1.Pod); ok {
 					// Remove pod from redis
 					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
@@ -1532,8 +1535,9 @@ func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
 				} else {
 					logger.Error("obj received is not of type *v1.Pod or cache.DeletedFinalStateUnknown")
 				}
+			default:
+				w.Logger.Debug("not handled event: ", event.Type)
 			}
-
 		}
 
 	}
