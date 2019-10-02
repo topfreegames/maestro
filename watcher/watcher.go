@@ -12,7 +12,6 @@ import (
 	"errors"
 	e "errors"
 	"fmt"
-	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -1486,7 +1485,6 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 
 func (w *Watcher) configureWatcher() (watch.Interface, error) {
 	timeout := int64(5.0 * 60 * (rand.Float64() + 1.0))
-	log.Println("getNetWatcher", timeout)
 	return w.KubernetesClient.CoreV1().RESTClient().Get().
 		Namespace(w.SchedulerName).
 		Resource(string(v1.ResourcePods)).
@@ -1562,8 +1560,6 @@ loop:
 					logger.Error("obj received is not of type *v1.Pod or cache.DeletedFinalStateUnknown")
 				}
 			}
-
-			log.Println(event.Type, podName)
 		}
 	}
 	return nil
