@@ -9,9 +9,12 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	e "errors"
 	"fmt"
+	"log"
 	"math"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strconv"
@@ -41,7 +44,6 @@ import (
 	"github.com/topfreegames/maestro/reporters"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
@@ -1481,27 +1483,54 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 	return false
 }
 
-func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
-	watchlist := cache.NewListWatchFromClient(w.KubernetesClient.CoreV1().RESTClient(), string(v1.ResourcePods), w.SchedulerName,
-		fields.Everything())
+func (w *Watcher) configureWatcher() (watch.Interface, error) {
+	timeout := int64(5.0 * 60 * (rand.Float64() + 1.0))
+	log.Println("getNetWatcher", timeout)
+	return w.KubernetesClient.CoreV1().RESTClient().Get().
+		Namespace(w.SchedulerName).
+		Resource(string(v1.ResourcePods)).
+		VersionedParams(&metav1.ListOptions{
+			Watch:          true,
+			TimeoutSeconds: &timeout,
+			FieldSelector:  fields.Everything().String(),
+		}, metav1.ParameterCodec).
+		Watch()
+}
 
-	w, err := watchlist.Watch(metav1.ListOptions{
-		AllowWatchBookmarks: false,
-	})
-	if err != nil {
-		return err
-	}
+func (w *Watcher) watchPods(watcher watch.Interface, stopCh <-chan struct{}) error {
+	defer watcher.Stop()
 
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+
+	numberOfPods := 0
+
+loop:
 	for {
 		select {
 		case <-stopCh:
-			return nil
-		case event := <-w.ResultChan():
+			return errors.New("stop channel")
+
+		case <-ticker.C:
+			log.Println("Number of pods:", numberOfPods)
+		case event, ok := <-watcher.ResultChan():
+			if !ok {
+				break loopWatcher
+			}
+
+			podName := "Invalid Pod"
+			if kubePod, ok := event.Object.(*v1.Pod); ok {
+				podName = kubePod.GetName()
+			}
+
 			switch event.Type {
-			case watch.Added, watch.Modified:
+			case watch.Added:
+				numberOfPods++
 				logger := w.Logger.WithFields(logrus.Fields{
 					"operation": "watcher.kubeWatch.CreateOrUpdatePod",
 				})
+
+				logger.Debug("new pod detected: ", event.Type)
 				if kubePod, ok := event.Object.(*v1.Pod); ok {
 					// create Pod from v1.Pod
 					pod := &models.Pod{
@@ -1521,19 +1550,13 @@ func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
 					logger.Error("obj received is not of type *v1.Pod")
 				}
 			case watch.Deleted:
+				numberOfPods--
 				logger := w.Logger.WithFields(logrus.Fields{
 					"operation": "watcher.kubeWatch.DeletePod",
 				})
-				var kubePod *v1.Pod
-				if deleted, ok := event.Object.(cache.DeletedFinalStateUnknown); ok {
-					if _, ok := deleted.Obj.(*v1.Pod); ok {
-						kubePod = deleted.Obj.(*v1.Pod)
-					}
-				} else if _, ok := event.Object.(*v1.Pod); ok {
-					kubePod = obj.(*v1.Pod)
-				}
 
-				if kubePod != nil {
+				logger.Debug("new pod removed")
+				if kubePod, ok := event.Object.(*v1.Pod); ok {
 					// Remove pod from redis
 					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
 					if err != nil {
@@ -1544,8 +1567,22 @@ func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
 				}
 			}
 
+			log.Println(event.Type, podName)
+		}
+	}
+	return nil
+}
+
+func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
+	for {
+		watcher, err := w.configureWatcher()
+		if err != nil {
+			return err
 		}
 
+		if err := w.watchPods(watcher, stopCh); err != nil {
+			return err
+		}
 	}
 
 	return nil
