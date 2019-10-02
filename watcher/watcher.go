@@ -125,6 +125,7 @@ func NewWatcher(
 	occupiedTimeout int64,
 	eventForwarders []*eventforwarder.Info,
 ) *Watcher {
+	logger.Infof("%s", "Starting NewWatcher")
 	w := &Watcher{
 		Config:                  config,
 		Logger:                  logger,
@@ -240,7 +241,7 @@ func (w *Watcher) Start() {
 
 	go w.reportRoomsStatusesRoutine()
 	stopKubeWatch := make(chan struct{})
-	w.configureKubeWatch(stopKubeWatch)
+	go w.configureKubeWatch(stopKubeWatch)
 
 	for w.Run == true {
 		l = w.Logger.WithFields(logrus.Fields{
@@ -1500,22 +1501,19 @@ func (w *Watcher) configureWatcher() (watch.Interface, error) {
 func (w *Watcher) watchPods(watcher watch.Interface, stopCh <-chan struct{}) error {
 	defer watcher.Stop()
 
-	ticker := time.NewTicker(time.Second * 5)
-	defer ticker.Stop()
-
-	numberOfPods := 0
-
 loop:
 	for {
 		select {
 		case <-stopCh:
 			return errors.New("stop channel")
 
-		case <-ticker.C:
-			log.Println("Number of pods:", numberOfPods)
 		case event, ok := <-watcher.ResultChan():
 			if !ok {
-				break loopWatcher
+				break loop
+			}
+
+			if event.Type == watch.Error {
+				return nil
 			}
 
 			podName := "Invalid Pod"
@@ -1524,8 +1522,7 @@ loop:
 			}
 
 			switch event.Type {
-			case watch.Added:
-				numberOfPods++
+			case watch.Added, watch.Modified:
 				logger := w.Logger.WithFields(logrus.Fields{
 					"operation": "watcher.kubeWatch.CreateOrUpdatePod",
 				})
@@ -1550,7 +1547,6 @@ loop:
 					logger.Error("obj received is not of type *v1.Pod")
 				}
 			case watch.Deleted:
-				numberOfPods--
 				logger := w.Logger.WithFields(logrus.Fields{
 					"operation": "watcher.kubeWatch.DeletePod",
 				})
