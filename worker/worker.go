@@ -44,6 +44,7 @@ type Worker struct {
 	InCluster               bool
 	KubeconfigPath          string
 	KubernetesClient        kubernetes.Interface
+	KubernetesClientWatcher kubernetes.Interface
 	KubernetesMetricsClient metricsClient.Interface
 	Logger                  logrus.FieldLogger
 	MetricsReporter         *models.MixedMetricsReporter
@@ -145,11 +146,22 @@ func (w *Worker) configureKubernetesClient(kubernetesClientOrNil kubernetes.Inte
 		return err
 	}
 
+	timeout := w.Config.Get("extensions.kubernetesClient.timeout")
+	w.Config.Set("extensions.kubernetesClient.timeout", 0)
+	clientsetWatcher, _, err := extensions.GetKubernetesClient(w.Logger, w.Config, w.InCluster, w.KubeconfigPath)
+	if err != nil {
+		return err
+	}
+	w.Config.Set("extensions.kubernetesClient.timeout", timeout)
+
 	if w.KubernetesClient == nil {
 		w.KubernetesClient = clientset
 	}
 	if w.KubernetesMetricsClient == nil {
 		w.KubernetesMetricsClient = metricsClientset
+	}
+	if w.KubernetesClientWatcher == nil {
+		w.KubernetesClientWatcher = clientsetWatcher
 	}
 
 	return nil
@@ -301,7 +313,7 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 				w.MetricsReporter,
 				w.DB,
 				w.RedisClient,
-				w.KubernetesClient,
+				w.KubernetesClientWatcher,
 				w.KubernetesMetricsClient,
 				schedulerName,
 				gameName,
