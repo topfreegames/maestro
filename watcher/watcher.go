@@ -9,9 +9,11 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	e "errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strconv"
@@ -41,7 +43,6 @@ import (
 	"github.com/topfreegames/maestro/reporters"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
@@ -123,6 +124,7 @@ func NewWatcher(
 	occupiedTimeout int64,
 	eventForwarders []*eventforwarder.Info,
 ) *Watcher {
+	logger.Infof("%s", "Starting NewWatcher")
 	w := &Watcher{
 		Config:                  config,
 		Logger:                  logger,
@@ -238,7 +240,7 @@ func (w *Watcher) Start() {
 
 	go w.reportRoomsStatusesRoutine()
 	stopKubeWatch := make(chan struct{})
-	w.configureKubeWatch(stopKubeWatch)
+	go w.configureKubeWatch(stopKubeWatch)
 
 	for w.Run == true {
 		l = w.Logger.WithFields(logrus.Fields{
@@ -1481,20 +1483,37 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 	return false
 }
 
-func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
-	watchlist := cache.NewListWatchFromClient(w.KubernetesClient.CoreV1().RESTClient(), string(v1.ResourcePods), w.SchedulerName,
-		fields.Everything())
+func (w *Watcher) configureWatcher() (watch.Interface, error) {
+	timeout := int64(5.0 * 60 * (rand.Float64() + 1.0))
+	return w.KubernetesClient.CoreV1().RESTClient().Get().
+		Namespace(w.SchedulerName).
+		Resource(string(v1.ResourcePods)).
+		VersionedParams(&metav1.ListOptions{
+			Watch:          true,
+			TimeoutSeconds: &timeout,
+			FieldSelector:  fields.Everything().String(),
+		}, metav1.ParameterCodec).
+		Watch()
+}
 
-	watcher, err := watchlist.Watch(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
+func (w *Watcher) watchPods(watcher watch.Interface, stopCh <-chan struct{}) error {
+	defer watcher.Stop()
 
+loop:
 	for {
 		select {
 		case <-stopCh:
-			return nil
-		case event := <-watcher.ResultChan():
+			return errors.New("stop channel")
+
+		case event, ok := <-watcher.ResultChan():
+			if !ok {
+				break loop
+			}
+
+			if event.Type == watch.Error {
+				return nil
+			}
+
 			switch event.Type {
 			case watch.Added, watch.Modified:
 				logger := w.Logger.WithFields(logrus.Fields{
@@ -1535,11 +1554,22 @@ func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
 				} else {
 					logger.Error("obj received is not of type *v1.Pod or cache.DeletedFinalStateUnknown")
 				}
-			default:
-				w.Logger.Debug("not handled event: ", event.Type)
 			}
 		}
+	}
+	return nil
+}
 
+func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
+	for {
+		watcher, err := w.configureWatcher()
+		if err != nil {
+			return err
+		}
+
+		if err := w.watchPods(watcher, stopCh); err != nil {
+			return err
+		}
 	}
 
 	return nil
