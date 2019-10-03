@@ -417,7 +417,6 @@ func IsPodTerminating(pod *v1.Pod) bool {
 // ValidatePodWaitingState returns nil if pod waiting reson is valid and error otherwise
 // Errors checked:
 // - ErrImageNeverPull
-// - CrashLoopBackOff
 // - ErrImagePullBackOff
 // - ErrInvalidImageName
 func ValidatePodWaitingState(pod *Pod) error {
