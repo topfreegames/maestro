@@ -1514,11 +1514,6 @@ loop:
 				return nil
 			}
 
-			podName := "Invalid Pod"
-			if kubePod, ok := event.Object.(*v1.Pod); ok {
-				podName = kubePod.GetName()
-			}
-
 			switch event.Type {
 			case watch.Added, watch.Modified:
 				logger := w.Logger.WithFields(logrus.Fields{
