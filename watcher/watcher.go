@@ -692,10 +692,12 @@ func (w *Watcher) RemoveDeadRooms() error {
 			return err
 		}
 
-		l := logger.WithFields(logrus.Fields{
-			"rooms": fmt.Sprintf("%v", roomsRemoved),
-		})
-		l.Info("successfully deleted zombie rooms")
+		if len(roomsRemoved) > 0 {
+			l := logger.WithFields(logrus.Fields{
+				"rooms": fmt.Sprintf("%v", roomsRemoved),
+			})
+			l.Info("successfully deleted zombie rooms")
+		}
 	}
 
 	if len(roomsNoPingSince) > 0 || len(roomsOnOccupiedTimeout) > 0 {
@@ -1136,31 +1138,34 @@ func (w *Watcher) checkMetricsTrigger(
 }
 
 func (w *Watcher) getInvalidPodsAndPodNames(
+	logger logrus.FieldLogger,
 	podMap map[string]*models.Pod,
 	scheduler *models.Scheduler,
 ) (invalidPods []*models.Pod, invalidPodNames []string, err error) {
-	concat := func(pods []*models.Pod, err error) error {
-		if err != nil {
-			return err
-		}
-		invalidPods = append(invalidPods, pods...)
-		return nil
-	}
-
-	err = concat(w.podsOfIncorrectVersion(podMap, scheduler))
+	incorrectPods, err := w.podsOfIncorrectVersion(podMap, scheduler)
 	if err != nil {
 		return nil, nil, err
 	}
+	invalidPods = append(invalidPods, incorrectPods...)
 
-	err = concat(w.podsNotRegistered(podMap))
+	unregisteredPods, err := w.podsNotRegistered(podMap)
 	if err != nil {
 		return nil, nil, err
 	}
+	invalidPods = append(invalidPods, unregisteredPods...)
 
 	if len(invalidPods) > 0 {
 		for _, pod := range invalidPods {
 			invalidPodNames = append(invalidPodNames, pod.Name)
 		}
+	}
+
+	if len(invalidPods) > 0 {
+		logger.WithFields(logrus.Fields{
+			"invalidPods":      invalidPodNames,
+			"incorrectVersion": len(incorrectPods),
+			"unregistered":     len(unregisteredPods),
+		}).Info("replacing invalid pods")
 	}
 
 	return invalidPods, invalidPodNames, err
@@ -1244,7 +1249,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	// get invalid pods (wrong versions and pods not registered in redis)
 	logger.Info("searching for invalid pods")
-	invalidPods, invalidPodNames, err := w.getInvalidPodsAndPodNames(pods, scheduler)
+	invalidPods, invalidPodNames, err := w.getInvalidPodsAndPodNames(logger, pods, scheduler)
 	if err != nil {
 		logger.WithError(err).Error("failed to get invalid pods")
 		return err
@@ -1256,8 +1261,6 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		logger.Debug("no invalid pods to replace")
 		return nil
 	}
-
-	logger.WithField("invalidPods", invalidPodNames).Info("replacing invalid pods")
 
 	// get operation manager if it exists.
 	// It won't exist if not in a UpdateSchedulerConfig operation
@@ -1553,6 +1556,11 @@ loop:
 					if err != nil {
 						logger.WithError(err).Errorf("failed to remove pod %s from redis", kubePod.GetName())
 					}
+					room := models.NewRoom(kubePod.GetName(), w.SchedulerName)
+					err = room.ClearAll(w.RedisClient.Client, w.MetricsReporter)
+					if err != nil {
+						logger.WithError(err).Errorf("failed to clearAll %s from redis", kubePod.GetName())
+					}
 				} else {
 					logger.Error("obj received is not of type *v1.Pod or cache.DeletedFinalStateUnknown")
 				}
@@ -1573,6 +1581,4 @@ func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
 			return err
 		}
 	}
-
-	return nil
 }

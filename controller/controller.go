@@ -532,13 +532,6 @@ func ScaleDown(
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
 			deletionErr = err
-		} else {
-			room := models.NewRoom(roomName, scheduler.Name)
-			err = room.ClearAll(redisClientWithContext, mr)
-			if err != nil {
-				logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
-				return err
-			}
 		}
 	}
 
