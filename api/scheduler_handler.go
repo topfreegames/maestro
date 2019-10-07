@@ -583,12 +583,14 @@ func (g *SchedulerScaleHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 	db := g.App.DBClient.WithContext(r.Context())
 	err := controller.ScaleScheduler(
+		r.Context(),
 		logger,
 		g.App.RoomManager,
 		mr,
 		db,
-		g.App.RedisClient.Trace(r.Context()),
+		g.App.RedisClient,
 		g.App.KubernetesClient,
+		g.App.Config,
 		g.App.Config.GetInt("scaleUpTimeoutSeconds"), g.App.Config.GetInt("scaleDownTimeoutSeconds"),
 		scaleParams.ScaleUp, scaleParams.ScaleDown, scaleParams.Replicas,
 		params.SchedulerName,
