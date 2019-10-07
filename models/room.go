@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/go-redis/redis"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis/interfaces"
@@ -706,4 +708,25 @@ func GetInvalidRoomsCount(redisClient interfaces.RedisClient, mr *MixedMetricsRe
 		return nil
 	})
 	return count, err
+}
+
+// IsRoomReady returns true if a room is ready
+func IsRoomReady(logger logrus.FieldLogger, redisClient interfaces.RedisClient, schedulerName, roomName string) bool {
+	room := NewRoom(roomName, schedulerName)
+	pipe := redisClient.TxPipeline()
+	roomIsReady := pipe.SIsMember(GetRoomStatusSetRedisKey(schedulerName, StatusReady), room.GetRoomRedisKey())
+
+	_, err := pipe.Exec()
+	if err != nil {
+		logger.WithError(err).Error("failed to check room rediness")
+		return false
+	}
+
+	isReady, err := roomIsReady.Result()
+	if err != nil {
+		logger.WithError(err).Error("failed to check room rediness")
+		return false
+	}
+
+	return isReady
 }
