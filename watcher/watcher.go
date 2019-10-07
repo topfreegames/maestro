@@ -872,12 +872,14 @@ func (w *Watcher) AutoScale() error {
 
 		scaleDown := func() error {
 			return controller.ScaleDown(
+				context.Background(),
 				logger,
 				w.RoomManager,
 				w.MetricsReporter,
 				w.DB,
-				w.RedisClient.Client,
+				w.RedisClient,
 				w.KubernetesClient,
+				w.Config,
 				scheduler,
 				-scaling.Delta,
 				timeoutSec,
@@ -968,7 +970,7 @@ func (w *Watcher) transformLegacyInMetricsTrigger(autoScalingInfo *models.AutoSc
 		autoScalingInfo.Up.MetricsTrigger = append(
 			autoScalingInfo.Up.MetricsTrigger,
 			&models.ScalingPolicyMetricsTrigger{
-				Type:      models.LegacyAutoScalingPolicyType,
+				Type:      models.RoomAutoScalingPolicyType,
 				Usage:     autoScalingInfo.Up.Trigger.Usage,
 				Limit:     autoScalingInfo.Up.Trigger.Limit,
 				Threshold: autoScalingInfo.Up.Trigger.Threshold,
@@ -982,7 +984,7 @@ func (w *Watcher) transformLegacyInMetricsTrigger(autoScalingInfo *models.AutoSc
 		autoScalingInfo.Down.MetricsTrigger = append(
 			autoScalingInfo.Down.MetricsTrigger,
 			&models.ScalingPolicyMetricsTrigger{
-				Type:      models.LegacyAutoScalingPolicyType,
+				Type:      models.RoomAutoScalingPolicyType,
 				Usage:     autoScalingInfo.Down.Trigger.Usage,
 				Limit:     autoScalingInfo.Down.Trigger.Limit,
 				Threshold: autoScalingInfo.Down.Trigger.Threshold,
