@@ -645,19 +645,12 @@ func GetInvalidRoomsKey(schedulerName string) string {
 	return fmt.Sprintf("scheduler:%s:invalidRooms", schedulerName)
 }
 
-// GetInvalidRoomsCountKey gets the key for the string that keeps count of invalid rooms
-func GetInvalidRoomsCountKey(schedulerName string) string {
-	return fmt.Sprintf("scheduler:%s:invalidRooms:count", schedulerName)
-}
-
 // SetInvalidRooms save a room in invalid redis set
 // A room is considered invalid if its version is not the scheduler current version
 func SetInvalidRooms(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, schedulerName string, roomIDs []string) error {
 	pipe := redisClient.TxPipeline()
 	pipe.Del(GetInvalidRoomsKey(schedulerName))
-	pipe.Del(GetInvalidRoomsCountKey(schedulerName))
 	pipe.SAdd(GetInvalidRoomsKey(schedulerName), roomIDs)
-	pipe.Set(GetInvalidRoomsCountKey(schedulerName), len(roomIDs), 2*time.Hour)
 	return mr.WithSegment(SegmentPipeExec, func() error {
 		var err error
 		_, err = pipe.Exec()
@@ -684,7 +677,6 @@ func RemoveInvalidRooms(redisClient interfaces.RedisClient, mr *MixedMetricsRepo
 func RemoveInvalidRoomsKey(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, schedulerName string) error {
 	pipe := redisClient.TxPipeline()
 	pipe.Del(GetInvalidRoomsKey(schedulerName))
-	pipe.Del(GetInvalidRoomsCountKey(schedulerName))
 	err := mr.WithSegment(SegmentPipeExec, func() error {
 		var err error
 		_, err = pipe.Exec()
@@ -708,24 +700,6 @@ func GetCurrentInvalidRoomsCount(redisClient interfaces.RedisClient, mr *MixedMe
 			count = int(res.Val())
 		}
 		return err
-	})
-	return count, err
-}
-
-// GetInvalidRoomsCount returns the count of invalid rooms saved on InvalidRoomsCountKey
-func GetInvalidRoomsCount(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, schedulerName string) (int, error) {
-	count := 0
-	err := mr.WithSegment(SegmentGet, func() error {
-		var err error
-		c, err := redisClient.Get(GetInvalidRoomsCountKey(schedulerName)).Result()
-		if err == redis.Nil {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		count, err = strconv.Atoi(c)
-		return nil
 	})
 	return count, err
 }

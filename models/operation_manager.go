@@ -304,20 +304,20 @@ func (o *OperationManager) getOperationRollingProgress(
 ) (float64, error) {
 	progress := float64(0)
 
-	roomsToUpdate, err := GetInvalidRoomsCount(o.redisClient, mr, scheduler.Name)
+	roomsCount, err := GetPodCountFromRedis(o.redisClient, mr, scheduler.Name)
 	if err != nil {
 		return 0, err
 	}
 
-	old, err := GetCurrentInvalidRoomsCount(o.redisClient, mr, scheduler.Name)
+	invalidCount, err := GetCurrentInvalidRoomsCount(o.redisClient, mr, scheduler.Name)
 	if err != nil {
 		return 0, err
 	}
 
-	if roomsToUpdate <= 0 {
+	if roomsCount <= 0 {
 		progress = 1
 	} else {
-		progress = 1 - float64(old)/float64(roomsToUpdate)
+		progress = 1 - float64(invalidCount)/float64(roomsCount)
 	}
 
 	// if the percentage of gameservers with the actual version is 100% but the
