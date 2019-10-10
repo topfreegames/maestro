@@ -301,12 +301,16 @@ func (p *Pod) configureHostPorts(
 		for _, container := range p.Containers {
 			podContainer := getContainerWithName(container.Name, pod)
 			container.Ports = make([]*Port, len(podContainer.Ports))
-
+			portHostPortMap := map[int]int{}
 			for i, port := range podContainer.Ports {
+				// use same hostPort for the same port numbers with different protocols (TCP/UDP)
+				if portHostPortMap[int(port.ContainerPort)] == 0 {
+					portHostPortMap[int(port.ContainerPort)] = int(port.HostPort)
+				}
 				container.Ports[i] = &Port{
 					ContainerPort: int(port.ContainerPort),
 					Name:          port.Name,
-					HostPort:      int(port.HostPort),
+					HostPort:      portHostPortMap[int(port.ContainerPort)],
 					Protocol:      string(port.Protocol),
 				}
 			}
@@ -337,11 +341,16 @@ func (p *Pod) configureHostPorts(
 	for _, container := range p.Containers {
 		ports := GetRandomPorts(start, end, len(container.Ports))
 		containerPorts := make([]*Port, len(container.Ports))
+		portHostPortMap := map[int]int{}
 		for i, port := range ports {
+			// use same hostPort for the same port numbers with different protocols (TCP/UDP)
+			if portHostPortMap[container.Ports[i].ContainerPort] == 0 {
+				portHostPortMap[container.Ports[i].ContainerPort] = port
+			}
 			containerPorts[i] = &Port{
 				ContainerPort: container.Ports[i].ContainerPort,
 				Name:          container.Ports[i].Name,
-				HostPort:      port,
+				HostPort:      portHostPortMap[container.Ports[i].ContainerPort],
 				Protocol:      container.Ports[i].Protocol,
 			}
 		}
