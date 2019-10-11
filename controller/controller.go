@@ -1069,6 +1069,28 @@ func ScaleScheduler(
 				false,
 			)
 		} else if replicas < nPods {
+			// lock so autoscaler doesn't recreate rooms deleted
+			downscalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+			downscalingLock, _, err := AcquireLock(
+				ctx,
+				logger,
+				redisClient,
+				config,
+				nil,
+				downscalingLockKey,
+				scheduler.Name,
+			)
+			defer ReleaseLock(
+				logger,
+				redisClient,
+				downscalingLock,
+				scheduler.Name,
+			)
+			if err != nil {
+				logger.WithError(err).Error("not able to acquire downScalingLock. Not scaling down")
+				return err
+			}
+			
 			err = ScaleDown(
 				ctx,
 				logger,
