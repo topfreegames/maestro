@@ -500,6 +500,7 @@ func ScaleDown(
 		// SPop returns a random room name that can already selected
 		roomSet[pipe.SPop(readyKey)] = true
 	}
+	l.Debugf("popped %d ready rooms to scale down", amount)
 	err = mr.WithSegment(models.SegmentPipeExec, func() error {
 		var err error
 		_, err = pipe.Exec()
@@ -557,6 +558,16 @@ func ScaleDown(
 					return err
 				})
 				if err == nil && pod != nil {
+					if pod.IsTerminating {
+						logger.WithField("pod", pod.Name).Debugf("pod is terminating")
+						exit = false
+					}
+					logger.WithField("pod", pod.Name).Debugf("pod still exists, deleting again")
+					err := roomManager.Delete(logger, mr, clientset, redisClientWithContext, configYAML, pod.Name, reportersConstants.ReasonScaleDown)
+					if err != nil && !strings.Contains(err.Error(), "not found") {
+						logger.WithField("roomName", pod.Name).WithError(err).Error("error deleting room")
+						deletionErr = err
+					}
 					exit = false
 				} else if pod != nil {
 					l.WithError(err).Error("scale down pod error")

@@ -1525,7 +1525,7 @@ loop:
 					"operation": "watcher.kubeWatch.CreateOrUpdatePod",
 				})
 
-				logger.Debug("new pod detected: ", event.Type)
+				// logger.Debug("new pod detected: ", event.Type)
 				if kubePod, ok := event.Object.(*v1.Pod); ok {
 					// create Pod from v1.Pod
 					pod := &models.Pod{
@@ -1549,7 +1549,7 @@ loop:
 					"operation": "watcher.kubeWatch.DeletePod",
 				})
 
-				logger.Debug("new pod removed")
+				// logger.Debug("new pod removed")
 				if kubePod, ok := event.Object.(*v1.Pod); ok {
 					// Remove pod from redis
 					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
