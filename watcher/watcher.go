@@ -1288,6 +1288,8 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
 	timeoutDur := time.Duration(timeoutSec) * time.Second
 	willTimeoutAt := time.Now().Add(timeoutDur)
+
+	logger.Infof("replacing pods with %d seconds of timeout", timeoutSec)
 	timeoutErr, _, err := controller.SegmentAndReplacePods(
 		ctx,
 		logger,

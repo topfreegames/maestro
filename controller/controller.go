@@ -561,14 +561,22 @@ func ScaleDown(
 					if pod.IsTerminating {
 						logger.WithField("pod", pod.Name).Debugf("pod is terminating")
 						exit = false
+						continue
 					}
+
 					logger.WithField("pod", pod.Name).Debugf("pod still exists, deleting again")
 					err := roomManager.Delete(logger, mr, clientset, redisClientWithContext, configYAML, pod.Name, reportersConstants.ReasonScaleDown)
 					if err != nil && !strings.Contains(err.Error(), "not found") {
 						logger.WithField("roomName", pod.Name).WithError(err).Error("error deleting room")
 						deletionErr = err
+						exit = false
+					} else if err != nil && strings.Contains(err.Error(), "not found") {
+						logger.WithField("pod", pod.Name).Debugf("pod already deleted")
 					}
-					exit = false
+
+					if err == nil {
+						exit = false
+					}
 				} else if pod != nil {
 					l.WithError(err).Error("scale down pod error")
 					exit = false
@@ -1090,7 +1098,7 @@ func ScaleScheduler(
 				logger.WithError(err).Error("not able to acquire downScalingLock. Not scaling down")
 				return err
 			}
-			
+
 			err = ScaleDown(
 				ctx,
 				logger,

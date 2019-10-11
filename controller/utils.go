@@ -133,7 +133,7 @@ func replacePodsAndWait(
 		pods <- pod
 	}
 
-	logger.Debugf("starting %d in-memory workers to replace pods", goroutinePoolSize)
+	logger.Infof("starting %d in-memory workers to replace %d pods", goroutinePoolSize, len(podsChunk))
 	for i := 0; i < goroutinePoolSize; i++ {
 		go replacePodWorker(
 			logger,
