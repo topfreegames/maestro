@@ -243,8 +243,9 @@ func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room
 		for _, port := range roomSvc.Spec.Ports {
 			if port.NodePort != 0 {
 				rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
-					Name: port.Name,
-					Port: port.NodePort,
+					Name:     port.Name,
+					Port:     port.NodePort,
+					Protocol: string(port.Protocol),
 				})
 			}
 		}
@@ -262,8 +263,9 @@ func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room
 			for _, port := range container.Ports {
 				if port.HostPort != 0 {
 					rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
-						Name: port.Name,
-						Port: port.HostPort,
+						Name:     port.Name,
+						Port:     port.HostPort,
+						Protocol: string(port.Protocol),
 					})
 				}
 			}

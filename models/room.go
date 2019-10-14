@@ -63,14 +63,16 @@ func (r RoomAddresses) Clone() *RoomAddresses {
 
 // RoomPort struct
 type RoomPort struct {
-	Name string `json:"name"`
-	Port int32  `json:"port"`
+	Name     string `json:"name"`
+	Protocol string `json:"protocol"`
+	Port     int32  `json:"port"`
 }
 
 func (r RoomPort) Clone() *RoomPort {
 	return &RoomPort{
-		Name: r.Name,
-		Port: r.Port,
+		Name:     r.Name,
+		Port:     r.Port,
+		Protocol: r.Protocol,
 	}
 }
 
@@ -412,17 +414,35 @@ func (r *Room) GetRoomInfos(
 	if len(address.Ports) > 0 {
 		selectedPort = address.Ports[0].Port
 	}
-	for _, p := range address.Ports {
+	metadata := map[string]interface{}{
+		"ports":     make([]map[string]interface{}, len(address.Ports)),
+		"ipv6Label": address.Ipv6Label,
+	}
+	for i, p := range address.Ports {
 		if p.Name == "clientPort" {
 			selectedPort = p.Port
 		}
+		// save multiple defined ports in metadata to send to forwarders
+		metadata["ports"].([]map[string]interface{})[i] = map[string]interface{}{
+			"port":     p.Port,
+			"name":     p.Name,
+			"protocol": p.Protocol,
+		}
 	}
+	if metadata["ports"] != nil {
+		metadata["ports"], err = json.Marshal(metadata["ports"])
+		if err != nil {
+			return nil, err
+		}
+		metadata["ports"] = string(metadata["ports"].([]byte))
+	}
+
 	return map[string]interface{}{
-		"game":      scheduler.Game,
-		"roomId":    r.ID,
-		"host":      address.Host,
-		"ipv6Label": address.Ipv6Label,
-		"port":      selectedPort,
+		"game":     scheduler.Game,
+		"roomId":   r.ID,
+		"host":     address.Host,
+		"port":     selectedPort,
+		"metadata": metadata,
 	}, nil
 }
 
