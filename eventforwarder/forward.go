@@ -127,7 +127,9 @@ func ForwardRoomEvent(
 				}
 
 				for key, info := range metadata {
-					infos["metadata"].(map[string]interface{})[key] = info
+					if infos["metadata"] != nil {
+						infos["metadata"].(map[string]interface{})[key] = info
+					}
 				}
 				eventWasForwarded = true
 
