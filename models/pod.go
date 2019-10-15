@@ -336,7 +336,11 @@ func (p *Pod) configureHostPorts(
 	for _, container := range p.Containers {
 		totalAmountOfPorts := 0
 		for _, port := range container.Ports {
-			totalAmountOfPorts += port.Amount
+			amount := port.Amount
+			if amount == 0 {
+				amount = 1
+			}
+			totalAmountOfPorts += amount
 		}
 		ports := GetRandomPorts(start, end, totalAmountOfPorts)
 		containerPorts := []*Port{}
