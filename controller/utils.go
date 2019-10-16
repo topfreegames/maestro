@@ -487,8 +487,7 @@ func waitCreatingPods(
 					break
 				}
 
-				if len(createdPod.Status.Phase) == 0 {
-					//HACK! Trying to detect if we are running unit tests
+				if models.IsUnitTest(createdPod) {
 					break
 				}
 
@@ -499,6 +498,27 @@ func waitCreatingPods(
 						Error("error getting pod")
 					exit = false
 					break
+				}
+
+				if createdPod.Status.Phase != v1.PodRunning {
+					isPending, reason, message := models.PodPending(createdPod)
+					if isPending && strings.Contains(message, models.PodNotFitsHostPorts) {
+						l.WithFields(logrus.Fields{
+							"pod":     createdPod.Name,
+							"reason":  reason,
+							"message": message,
+						}).Error("pod's host port is not available in any node of the pool, watcher will delete it soon")
+						continue
+					} else {
+						l.WithFields(logrus.Fields{
+							"pod":     createdPod.Name,
+							"pending": isPending,
+							"reason":  reason,
+							"message": message,
+						}).Warn("pod is not running yet")
+						exit = false
+						break
+					}
 				}
 
 				if !(models.IsPodReady(createdPod) && models.IsRoomReadyOrOccupied(logger, redisClient, namespace, createdPod.Name)) {
