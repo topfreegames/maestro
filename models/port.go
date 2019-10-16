@@ -37,8 +37,8 @@ func GetPortRange(configYaml *ConfigYAML, redis redisinterfaces.RedisClient) (st
 }
 
 // GetRandomPorts returns n random ports within scheduler limits
-func GetRandomPorts(start, end, quantity int) []int {
-	return ThePortChooser.Choose(start, end, quantity)
+func GetRandomPorts(start, end, quantity int, excludingPorts []int) []int {
+	return ThePortChooser.Choose(start, end, quantity, excludingPorts)
 }
 
 // GetGlobalPortRange returns the port range used by default by maestro worker

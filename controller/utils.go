@@ -515,7 +515,7 @@ func waitCreatingPods(
 							"pending": isPending,
 							"reason":  reason,
 							"message": message,
-						}).Warn("pod is not running yet")
+						}).Debug("pod is not running yet")
 						exit = false
 						break
 					}

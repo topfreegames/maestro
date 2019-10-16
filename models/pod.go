@@ -342,6 +342,9 @@ func (p *Pod) configureHostPorts(
 		return fmt.Errorf("error reading global port range from redis: %s", err.Error())
 	}
 
+	// save ports already used to avoid duplication
+	usedPorts := []int{}
+
 	for _, container := range p.Containers {
 		totalAmountOfPorts := 0
 		for _, port := range container.Ports {
@@ -351,7 +354,8 @@ func (p *Pod) configureHostPorts(
 			}
 			totalAmountOfPorts += amount
 		}
-		ports := GetRandomPorts(start, end, totalAmountOfPorts)
+		ports := GetRandomPorts(start, end, totalAmountOfPorts, usedPorts)
+		usedPorts = append(usedPorts, ports...)
 		containerPorts := []*Port{}
 
 		for j, port := range container.Ports {
