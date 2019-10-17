@@ -521,7 +521,7 @@ func waitCreatingPods(
 					}
 				}
 
-				if !(models.IsPodReady(createdPod) && models.IsRoomReadyOrOccupied(logger, redisClient, namespace, createdPod.Name)) {
+				if !models.IsPodReady(createdPod) || !models.IsRoomReadyOrOccupied(logger, redisClient, namespace, createdPod.Name) {
 					logger.WithField("pod", createdPod.Name).Debug("pod not ready yet, waiting...")
 					err = models.ValidatePodWaitingState(createdPod)
 
