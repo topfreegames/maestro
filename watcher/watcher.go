@@ -1137,38 +1137,29 @@ func (w *Watcher) checkMetricsTrigger(
 	return scaling, nil
 }
 
-func (w *Watcher) getInvalidPodsAndPodNames(
+func (w *Watcher) getIncorrectAndUnregisteredPods(
 	logger logrus.FieldLogger,
 	podMap map[string]*models.Pod,
 	scheduler *models.Scheduler,
-) (invalidPods []*models.Pod, invalidPodNames []string, err error) {
+) (invalidPods, unregisteredPods []*models.Pod, err error) {
 	incorrectPods, err := w.podsOfIncorrectVersion(podMap, scheduler)
 	if err != nil {
 		return nil, nil, err
 	}
-	invalidPods = append(invalidPods, incorrectPods...)
 
-	unregisteredPods, err := w.podsNotRegistered(podMap)
+	unregisteredPods, err = w.podsNotRegistered(podMap)
 	if err != nil {
 		return nil, nil, err
-	}
-	invalidPods = append(invalidPods, unregisteredPods...)
-
-	if len(invalidPods) > 0 {
-		for _, pod := range invalidPods {
-			invalidPodNames = append(invalidPodNames, pod.Name)
-		}
 	}
 
 	if len(invalidPods) > 0 {
 		logger.WithFields(logrus.Fields{
-			"invalidPods":      invalidPodNames,
 			"incorrectVersion": len(incorrectPods),
 			"unregistered":     len(unregisteredPods),
 		}).Info("replacing invalid pods")
 	}
 
-	return invalidPods, invalidPodNames, err
+	return incorrectPods, unregisteredPods, err
 }
 
 func (w *Watcher) getOperation(ctx context.Context, logger logrus.FieldLogger) (operationManager *models.OperationManager, err error) {
@@ -1176,7 +1167,7 @@ func (w *Watcher) getOperation(ctx context.Context, logger logrus.FieldLogger) (
 		w.SchedulerName, w.RedisClient.Trace(ctx), logger,
 	)
 
-	currentOpKey, _ := operationManager.CurrentOperation()
+	currentOpKey, err := operationManager.CurrentOperation()
 	if err != nil {
 		return nil, err
 	}
@@ -1249,13 +1240,31 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	// get invalid pods (wrong versions and pods not registered in redis)
 	logger.Info("searching for invalid pods")
-	invalidPods, invalidPodNames, err := w.getInvalidPodsAndPodNames(logger, pods, scheduler)
+	incorrectPods, unregisteredPods, err := w.getIncorrectAndUnregisteredPods(logger, pods, scheduler)
 	if err != nil {
 		logger.WithError(err).Error("failed to get invalid pods")
 		return err
 	}
 
-	if len(invalidPods) <= 0 {
+	// get incorrect pod names
+	var incorrectPodNames []string
+	if len(incorrectPods) > 0 {
+		for _, pod := range incorrectPods {
+			incorrectPodNames = append(incorrectPodNames, pod.Name)
+		}
+	}
+
+	// get unregistered pod names
+	var unregisteredPodNames []string
+	if len(unregisteredPods) > 0 {
+		for _, pod := range unregisteredPods {
+			unregisteredPodNames = append(unregisteredPodNames, pod.Name)
+		}
+	}
+
+	invalidPods := append(incorrectPods, unregisteredPods...)
+
+	if len(incorrectPods) <= 0 {
 		// delete invalidRooms key for safety
 		models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
 		logger.Debug("no invalid pods to replace")
@@ -1272,15 +1281,26 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	// save invalid pods in redis to track rolling update progress
 	if operationManager != nil {
-		err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, invalidPodNames)
+		status, err := operationManager.Get(operationManager.GetOperationKey())
 		if err != nil {
 			logger.WithError(err).Error("error trying to save invalid rooms to track progress")
 			return err
 		}
-		err = operationManager.SetDescription(models.OpManagerRollingUpdate)
-		if err != nil {
-			logger.WithError(err).Error("error trying to set opmanager to rolling update status")
-			return err
+
+		// don't remove unregistered rooms if in a rolling update
+		invalidPods = incorrectPods
+
+		if status["description"] != models.OpManagerRollingUpdate {
+			err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, incorrectPodNames)
+			if err != nil {
+				logger.WithError(err).Error("error trying to save invalid rooms to track progress")
+				return err
+			}
+			err = operationManager.SetDescription(models.OpManagerRollingUpdate)
+			if err != nil {
+				logger.WithError(err).Error("error trying to set opmanager to rolling update status")
+				return err
+			}
 		}
 	}
 

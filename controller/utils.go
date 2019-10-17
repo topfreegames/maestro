@@ -221,7 +221,7 @@ func replacePodWorker(
 				return
 			}
 
-			logger.Debugf("pods remaining to replace: %d", len(pods))
+			logger.Infof("pods remaining to replace: %d", len(pods))
 			if len(pods) == 0 {
 				finishedReplace <- struct{}{}
 				return
