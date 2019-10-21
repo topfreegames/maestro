@@ -267,24 +267,25 @@ func createNewRemoveOldPod(
 		return timedout, canceled, err
 	}
 
-	// delete old pod
-	logger.Debugf("deleting pod %s", pod.Name)
-	err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
-		configYAML, pod.Name, reportersConstants.ReasonUpdate)
+	timedout, canceled, err = DeletePodsAndWait(
+		logger,
+		roomManager,
+		mr,
+		clientset,
+		redisClient,
+		willTimeoutAt,
+		configYAML,
+		scheduler,
+		operationManager,
+		[]*models.Pod{pod},
+		clock,
+	)
+
 	if err != nil && !strings.Contains(err.Error(), "redis") {
-		logger.WithError(err).Errorf("error deleting pod %s", pod.Name)
 		return false, false, nil
 	}
 
-	// wait for old pods to be deleted
-	// we assume that maxSurge == maxUnavailable as we can't set maxUnavailable yet
-	// so for every pod created in a chunk one is deleted right after it
-	timeout = willTimeoutAt.Sub(clock.Now())
-	timedout, canceled = waitTerminatingPods(
-		logger, clientset, redisClient, timeout, configYAML.Name,
-		[]*models.Pod{pod}, operationManager, mr)
 	if timedout || canceled {
-		logger.Errorf("error waiting for pod %s to be deleted", pod.Name)
 		return timedout, canceled, nil
 	}
 
@@ -295,6 +296,46 @@ func createNewRemoveOldPod(
 		if err != nil {
 			logger.WithError(err).Warnf("error removing room %s from invalidRooms redis key during rolling update", pod.Name)
 		}
+	}
+
+	return false, false, nil
+}
+
+// DeletePodsAndWait deletes a list of pods
+func DeletePodsAndWait(
+	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+	willTimeoutAt time.Time,
+	configYAML *models.ConfigYAML,
+	scheduler *models.Scheduler,
+	operationManager *models.OperationManager,
+	pods []*models.Pod,
+	clock clockinterfaces.Clock,
+) (timedout, canceled bool, err error) {
+
+	for _, pod := range pods {
+		logger.Debugf("deleting pod %s", pod.Name)
+		err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
+			configYAML, pod.Name, reportersConstants.ReasonUpdate)
+		if err != nil && !strings.Contains(err.Error(), "redis") {
+			logger.WithError(err).Errorf("error deleting pod %s", pod.Name)
+			return false, false, nil
+		}
+	}
+
+	// wait for old pods to be deleted
+	// we assume that maxSurge == maxUnavailable as we can't set maxUnavailable yet
+	// so for every pod created in a chunk one is deleted right after it
+	timeout := willTimeoutAt.Sub(clock.Now())
+	timedout, canceled = waitTerminatingPods(
+		logger, clientset, redisClient, timeout, configYAML.Name,
+		pods, operationManager, mr)
+	if timedout || canceled || err != nil {
+		logger.Error("error waiting for pods to be deleted")
+		return timedout, canceled, nil
 	}
 
 	return false, false, nil

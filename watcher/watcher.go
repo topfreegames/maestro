@@ -708,7 +708,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 				return err
 			}
 		}
-		podsToReplace := w.filterPodsByName(logger, pods, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
+		podsToDelete := w.filterPodsByName(logger, pods, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
 
 		// load scheduler from database
 		scheduler := models.NewScheduler(w.SchedulerName, "", "")
@@ -728,25 +728,22 @@ func (w *Watcher) RemoveDeadRooms() error {
 			return err
 		}
 
-		timeoutErr, _, err := controller.SegmentAndReplacePods(
-			context.Background(),
+		var timeoutErr bool
+		timeoutErr, _, err = controller.DeletePodsAndWait(
 			logger,
 			w.RoomManager,
 			w.MetricsReporter,
 			w.KubernetesClient,
-			w.DB,
 			w.RedisClient.Client,
 			willTimeoutAt,
 			configYAML,
-			podsToReplace,
 			scheduler,
 			nil,
-			w.Config.GetInt("watcher.maxSurge"),
-			w.Config.GetInt("watcher.goroutinePoolSize"),
+			podsToDelete,
 			&clock.Clock{},
 		)
 
-		if timeoutErr != nil {
+		if timeoutErr {
 			logger.WithError(err).Error("timeout replacing pods on RemoveDeadRooms")
 		}
 
@@ -754,7 +751,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 			logger.WithError(err).Error("replacing pods returned error on RemoveDeadRooms")
 		}
 
-		if timeoutErr == nil && err == nil {
+		if timeoutErr == false && err == nil {
 			l := logger.WithFields(logrus.Fields{
 				"rooms": fmt.Sprintf("%v", roomsNoPingSince),
 			})
