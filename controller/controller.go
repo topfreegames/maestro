@@ -133,7 +133,7 @@ func CreateScheduler(
 	}
 
 	logger.Info("creating pods of new scheduler")
-	err = ScaleUp(logger, roomManager, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true)
+	err = ScaleUp(logger, roomManager, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true, nil)
 	if err != nil {
 		logger.WithError(err).Error("error scaling up scheduler, deleting it")
 		if scheduler.LastScaleOpAt == int64(0) {
@@ -374,11 +374,13 @@ func ScaleUp(
 	scheduler *models.Scheduler,
 	amount, timeoutSec int,
 	initalOp bool,
+	config *viper.Viper,
 ) error {
 	l := logger.WithFields(logrus.Fields{
-		"source":    "scaleUp",
-		"scheduler": scheduler.Name,
-		"amount":    amount,
+		"source":       "scaleUp",
+		"scheduler":    scheduler.Name,
+		"amount":       amount,
+		"scaleUpLimit": config.GetInt("watcher.maxScaleUpAmount"),
 	})
 
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
@@ -1013,6 +1015,7 @@ func ScaleScheduler(
 			int(amountUp),
 			timeoutScaleup,
 			false,
+			nil,
 		)
 	} else if amountDown > 0 {
 		logger.Infof("manually scaling down scheduler %s in %d GRUs", schedulerName, amountDown)
@@ -1075,6 +1078,7 @@ func ScaleScheduler(
 				int(replicas-nPods),
 				timeoutScaleup,
 				false,
+				nil,
 			)
 		} else if replicas < nPods {
 			// lock so autoscaler doesn't recreate rooms deleted
@@ -1187,6 +1191,7 @@ func SetRoomStatus(
 					cachedScheduler.ConfigYAML.AutoScaling.Up.Delta,
 					config.GetInt("scaleUpTimeoutSeconds"),
 					false,
+					nil,
 				)
 				if err != nil {
 					log.WithError(err).Error(err)

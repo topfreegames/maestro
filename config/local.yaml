@@ -27,6 +27,7 @@ watcher:
   lockKey: "maestro-lock-key"
   lockTimeoutMs: 180000
   gracefulShutdownTimeout: 300
+  maxScaleUpAmount: 300
   maxSurge: 25
   goroutinePoolSize: 100
   cache:
