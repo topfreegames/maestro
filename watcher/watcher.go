@@ -151,6 +151,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("watcher.podStatesCountPeriod", 1*time.Minute)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
+	w.Config.SetDefault("watcher.maxScaleUpAmount", 300)
 	w.Config.SetDefault("watcher.gracefulShutdownTimeout", 300)
 	w.Config.SetDefault("pingTimeout", 30)
 	w.Config.SetDefault("occupiedTimeout", 60*60)
