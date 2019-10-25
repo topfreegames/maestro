@@ -847,12 +847,6 @@ func (w *Watcher) AutoScale() error {
 		l.Info("scheduler is subdimensioned, scaling up")
 		timeoutSec := w.Config.GetInt("scaleUpTimeoutSeconds")
 
-		// SAFETY - hard cap on scale up amount in order to not break etcd
-		if w.Config != nil && scaling.Delta > w.Config.GetInt("watcher.maxScaleUpAmount") {
-			l.Warnf("amount to scale up is higher than limit")
-			scaling.Delta = w.Config.GetInt("watcher.maxScaleUpAmount")
-		}
-
 		err = controller.ScaleUp(
 			logger,
 			w.RoomManager,
