@@ -409,6 +409,12 @@ func ScaleUp(
 		return err
 	}
 
+	// SAFETY - hard cap on scale up amount in order to not break etcd
+	if config != nil && amount > config.GetInt("watcher.maxScaleUpAmount") {
+		l.Warnf("amount to scale up is higher than limit")
+		amount = config.GetInt("watcher.maxScaleUpAmount")
+	}
+
 	pods := make([]*v1.Pod, amount)
 	var creationErr error
 	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
