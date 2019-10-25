@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -434,6 +435,7 @@ func ScaleUp(
 		return errors.New("timeout scaling up scheduler")
 	}
 
+	rand.Seed(time.Now().UnixNano())
 	err = waitForPods(
 		willTimeoutAt.Sub(time.Now()),
 		clientset,

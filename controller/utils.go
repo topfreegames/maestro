@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -53,6 +54,7 @@ func SegmentAndReplacePods(
 	maxSurge, goroutinePoolSize int,
 	clock clockinterfaces.Clock,
 ) (timeoutErr, cancelErr, err error) {
+	rand.Seed(time.Now().UnixNano())
 	schedulerName := scheduler.Name
 	l := logger.WithFields(logrus.Fields{
 		"source":    "SegmentAndReplacePods",
@@ -485,6 +487,9 @@ func waitCreatingPods(
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
+	retryNo := 0
+	backoffStart := time.Duration(1 * time.Second)
+
 	for {
 		exit := true
 		select {
@@ -507,11 +512,16 @@ func waitCreatingPods(
 				}
 
 				if createdPod == nil {
+					// apply exponential backoff
+					retryNo++
+					backoff := exponentialBackoff(backoffStart, retryNo)
+
 					exit = false
 					logger.
 						WithError(err).
 						WithField("pod", pod.GetName()).
-						Error("error creating pod, recreating...")
+						Errorf("error creating pod, recreating in %s (retry %d)", backoff, retryNo)
+					time.Sleep(backoff)
 
 					pod.ResourceVersion = ""
 					err = mr.WithSegment(models.SegmentPod, func() error {
@@ -527,6 +537,8 @@ func waitCreatingPods(
 					}
 					break
 				}
+
+				retryNo = 0
 
 				if models.IsUnitTest(createdPod) {
 					break
@@ -687,6 +699,9 @@ func waitForPods(
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
+	retryNo := 0
+	backoffStart := time.Duration(500 * time.Millisecond)
+
 	for {
 		exit := true
 		select {
@@ -700,9 +715,15 @@ func waitForPods(
 					var pod *models.Pod
 					pod, err := models.GetPodFromRedis(redisClient, mr, pods[i].GetName(), namespace)
 					if err != nil || pod == nil {
+						// apply exponential backoff
+						retryNo++
+						backoff := exponentialBackoff(backoffStart, retryNo)
+
 						//The pod does not exist (not even on Pending or ContainerCreating state), so create again
 						exit = false
-						l.WithError(err).Infof("error creating pod %s, recreating...", pods[i].GetName())
+						l.WithError(err).Infof("error creating pod %s, recreating in %s (retry %d)", pods[i].GetName(), backoff, retryNo)
+						time.Sleep(backoff)
+
 						pods[i].ResourceVersion = ""
 						err = mr.WithSegment(models.SegmentPod, func() error {
 							_, err = clientset.CoreV1().Pods(namespace).Create(pods[i])
@@ -715,6 +736,8 @@ func waitForPods(
 						if models.IsUnitTest(pod) {
 							break
 						}
+
+						retryNo = 0
 
 						if pod.Status.Phase != v1.PodRunning {
 							isPending, reason, message := models.PodPending(pod)
@@ -1389,4 +1412,12 @@ func deleteSchedulerHelper(
 	})
 
 	return nil
+}
+
+func exponentialBackoff(backoffStart time.Duration, retryNo int) time.Duration {
+	min := 1
+	max := int(math.Pow(2, float64(retryNo)))
+	k := rand.Intn(max-min) + min
+
+	return time.Duration(k * int(backoffStart))
 }
