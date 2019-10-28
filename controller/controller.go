@@ -377,11 +377,15 @@ func ScaleUp(
 	initalOp bool,
 	config *viper.Viper,
 ) error {
+	scaleUpLimit := 0
+	if config != nil {
+		scaleUpLimit = config.GetInt("watcher.maxScaleUpAmount")
+	}
 	l := logger.WithFields(logrus.Fields{
 		"source":       "scaleUp",
 		"scheduler":    scheduler.Name,
 		"amount":       amount,
-		"scaleUpLimit": config.GetInt("watcher.maxScaleUpAmount"),
+		"scaleUpLimit": scaleUpLimit,
 	})
 
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
