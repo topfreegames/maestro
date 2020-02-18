@@ -346,34 +346,19 @@ func (p *Pod) configureHostPorts(
 	usedPorts := []int{}
 
 	for _, container := range p.Containers {
-		totalAmountOfPorts := 0
-		for _, port := range container.Ports {
-			amount := port.Amount
-			if amount == 0 {
-				amount = 1
-			}
-			totalAmountOfPorts += amount
-		}
-		ports := GetRandomPorts(start, end, totalAmountOfPorts, usedPorts)
+		ports := GetRandomPorts(start, end, len(container.Ports), usedPorts)
 		usedPorts = append(usedPorts, ports...)
 		containerPorts := []*Port{}
 
-		for j, port := range container.Ports {
-			amount := port.Amount
-			if amount == 0 {
-				amount = 1
-			}
-			amountOfPorts := amount
-			for i := 0; i < amountOfPorts; i++ {
-				hostPort := ports[len(ports)-1]
-				ports = ports[:len(ports)-1]
-				containerPorts = append(containerPorts, &Port{
-					ContainerPort: container.Ports[j].ContainerPort,
-					Name:          fmt.Sprintf("%s-%d", container.Ports[j].Name, i),
-					HostPort:      hostPort,
-					Protocol:      container.Ports[j].Protocol,
-				})
-			}
+		for j := range container.Ports {
+			hostPort := ports[len(ports)-1]
+			ports = ports[:len(ports)-1]
+			containerPorts = append(containerPorts, &Port{
+				ContainerPort: container.Ports[j].ContainerPort,
+				Name:          container.Ports[j].Name,
+				HostPort:      hostPort,
+				Protocol:      container.Ports[j].Protocol,
+			})
 		}
 		container.Ports = containerPorts
 	}

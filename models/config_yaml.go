@@ -190,14 +190,6 @@ func (c *ConfigYAML) EnsureDefaultValues() {
 	if c.ImagePullPolicy == "" {
 		c.ImagePullPolicy = "Always"
 	}
-
-	for _, container := range c.Containers {
-		for _, port := range container.Ports {
-			if port.Amount == 0 {
-				port.Amount = 1
-			}
-		}
-	}
 }
 
 // Version returns the config version

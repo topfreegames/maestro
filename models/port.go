@@ -20,7 +20,6 @@ type Port struct {
 	ContainerPort int    `yaml:"containerPort" json:"containerPort" valid:"int64,required"`
 	Protocol      string `yaml:"protocol" json:"protocol" valid:"required"`
 	Name          string `yaml:"name" json:"name" valid:"required"`
-	Amount        int    `yaml:"amount"  json:"amount"`
 	HostPort      int    `yaml:"-" json:"-"`
 }
 
