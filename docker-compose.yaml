@@ -9,6 +9,7 @@ services:
     environment:
       - POSTGRES_DB=maestro
       - POSTGRES_USER=maestro
+      - POSTGRES_HOST_AUTH_METHOD=trust
   redis:
     image: redis:3.2-alpine
     ports:
