@@ -561,12 +561,12 @@ func AddToPodMap(
 	}
 
 	// Add pod to redis
-	_, err = redisClient.HMSet(
+	err = redisClient.HMSet(
 		GetPodMapRedisKey(schedulerName),
 		map[string]interface{}{
 			pod.Name: podStr,
 		},
-	).Result()
+	).Err()
 
 	return err
 }

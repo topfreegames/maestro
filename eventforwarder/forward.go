@@ -128,10 +128,12 @@ func ForwardRoomEvent(
 					infos["port"] = int32(0)
 				}
 
+				if infos["metadata"] == nil {
+					infos["metadata"] = make(map[string]interface{}, len(metadata))
+				}
+
 				for key, info := range metadata {
-					if infos["metadata"] != nil {
-						infos["metadata"].(map[string]interface{})[key] = info
-					}
+					infos["metadata"].(map[string]interface{})[key] = info
 				}
 				eventWasForwarded = true
 

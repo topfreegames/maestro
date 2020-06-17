@@ -135,6 +135,7 @@ func (w *Worker) configureForwarders() {
 
 func (w *Worker) configureKubernetesClient(kubernetesClientOrNil kubernetes.Interface, kubernetesMetricsClientOrNil metricsClient.Interface) error {
 	w.KubernetesClient = kubernetesClientOrNil
+	w.KubernetesClientWatcher = kubernetesClientOrNil
 	w.KubernetesMetricsClient = kubernetesMetricsClientOrNil
 
 	if w.KubernetesClient != nil && w.KubernetesMetricsClient != nil {

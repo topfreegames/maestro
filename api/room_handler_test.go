@@ -74,7 +74,7 @@ forwarders:
 			Image: "img",
 		}
 
-		pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
+		pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient, mmr)
 		if err != nil {
 			return err
 		}
@@ -1007,7 +1007,7 @@ forwarders:
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
+			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -1036,7 +1036,7 @@ forwarders:
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
+			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
