@@ -1234,7 +1234,7 @@ cmd:
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -1272,7 +1272,7 @@ cmd:
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -1337,7 +1337,7 @@ cmd:
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -1422,7 +1422,7 @@ cmd:
 				Return(goredis.NewStringResult(workerPortRange, nil)).
 				Times(amount)
 			mockPortChooser.EXPECT().
-				Choose(portStart, portEnd, 2).
+				Choose(portStart, portEnd, 2, gomock.Any()).
 				Return([]int{5000, 5001}).
 				Times(amount)
 
@@ -1463,7 +1463,7 @@ cmd:
 			for i := 0; i < nPorts; i++ {
 				ports[i] = portStart + i
 			}
-			mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts).Return(ports).Times(amount - 1)
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts, gomock.Any()).Return(ports).Times(amount - 1)
 
 			err = mt.MockSetScallingAmount(
 				mockRedisClient,
@@ -1520,7 +1520,7 @@ cmd:
 				Return(goredis.NewStringResult(workerPortRange, nil)).
 				Times(amount)
 			mockPortChooser.EXPECT().
-				Choose(portStart, portEnd, 2).
+				Choose(portStart, portEnd, 2, gomock.Any()).
 				Return([]int{5000, 5001}).
 				Times(amount)
 
@@ -1593,7 +1593,7 @@ cmd:
 				Return(goredis.NewStringResult(workerPortRange, nil)).
 				Times(configYaml1.AutoScaling.Max - currentRooms)
 			mockPortChooser.EXPECT().
-				Choose(portStart, portEnd, 2).
+				Choose(portStart, portEnd, 2, gomock.Any()).
 				Return([]int{5000, 5001}).
 				Times(configYaml1.AutoScaling.Max - currentRooms)
 
@@ -1684,7 +1684,7 @@ cmd:
 				Return(goredis.NewStringResult(workerPortRange, nil)).
 				Times(amount)
 			mockPortChooser.EXPECT().
-				Choose(portStart, portEnd, 2).
+				Choose(portStart, portEnd, 2, gomock.Any()).
 				Return([]int{5000, 5001}).
 				Times(amount * 2)
 
@@ -1811,7 +1811,7 @@ portRange:
 				for i := 0; i < nPorts; i++ {
 					ports[i] = portStart + i
 				}
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts).Return(ports)
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts, gomock.Any()).Return(ports)
 			}
 
 			err = mt.MockSetScallingAmount(
@@ -1933,7 +1933,7 @@ portRange:
 				for i := 0; i < nPorts; i++ {
 					ports[i] = configYaml.PortRange.Start + i
 				}
-				mockPortChooser.EXPECT().Choose(configYaml.PortRange.Start, configYaml.PortRange.End, nPorts).Return(ports)
+				mockPortChooser.EXPECT().Choose(configYaml.PortRange.Start, configYaml.PortRange.End, nPorts, gomock.Any()).Return(ports)
 			}
 
 			err = mt.MockSetScallingAmount(
@@ -2034,7 +2034,7 @@ portRange:
 				for i := 0; i < nPorts; i++ {
 					ports[i] = portStart + i
 				}
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts).Return(ports)
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts, gomock.Any()).Return(ports)
 			}
 
 			err = mt.MockSetScallingAmount(
@@ -2158,7 +2158,7 @@ portRange:
 				for i := 0; i < nPorts; i++ {
 					ports[i] = portStart + i
 				}
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts).Return(ports)
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts, gomock.Any()).Return(ports)
 			}
 
 			err = mt.MockSetScallingAmount(
@@ -4917,7 +4917,7 @@ containers:
 			Expect(err).NotTo(HaveOccurred())
 
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -4952,7 +4952,7 @@ containers:
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -4972,7 +4972,7 @@ containers:
 			Expect(err).NotTo(HaveOccurred())
 
 			for _, roomName := range expectedRooms {
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient)
+				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -5832,7 +5832,7 @@ containers:
 				for i := 0; i < nPorts; i++ {
 					ports[i] = portStart + i
 				}
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts).Return(ports)
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts, gomock.Any()).Return(ports)
 			}
 
 			err := mt.MockSetScallingAmount(
@@ -5891,7 +5891,7 @@ containers:
 				for i := 0; i < nPorts; i++ {
 					ports[i] = portStart + i
 				}
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts).Return(ports)
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts, gomock.Any()).Return(ports)
 			}
 
 			err := mt.MockSetScallingAmount(
@@ -5998,7 +5998,7 @@ containers:
 				for i := 0; i < nPorts; i++ {
 					ports[i] = portStart + i
 				}
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts).Return(ports)
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts, gomock.Any()).Return(ports)
 			}
 
 			err := mt.MockSetScallingAmount(
@@ -6058,7 +6058,7 @@ containers:
 				for i := 0; i < nPorts; i++ {
 					ports[i] = portStart + i
 				}
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts).Return(ports)
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, nPorts, gomock.Any()).Return(ports)
 			}
 
 			err := mt.MockSetScallingAmount(
@@ -6250,7 +6250,7 @@ containers:
 				Return(goredis.NewStringResult(workerPortRange, nil)).
 				Times(scaleUpAmount)
 			mockPortChooser.EXPECT().
-				Choose(portStart, portEnd, 2).
+				Choose(portStart, portEnd, 2, gomock.Any()).
 				Return([]int{5000, 5001}).
 				Times(scaleUpAmount)
 

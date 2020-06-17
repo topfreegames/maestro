@@ -9,6 +9,7 @@
 package models_test
 
 import (
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -47,7 +48,7 @@ var _ = Describe("Pod", func() {
 			reportersConstants.TagScheduler: "pong-free-for-all",
 		})
 
-		pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient)
+		pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient, mmr)
 		Expect(err).NotTo(HaveOccurred())
 
 		return pod, err
@@ -111,7 +112,7 @@ var _ = Describe("Pod", func() {
 		BeforeEach(func() {
 			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 				Return(goredis.NewStringResult(portRange, nil))
-			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2, gomock.Any()).Return([]int{5000, 5001})
 		})
 
 		It("should build correct pod struct", func() {
@@ -158,11 +159,11 @@ var _ = Describe("Pod", func() {
 		BeforeEach(func() {
 			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 				Return(goredis.NewStringResult(portRange, nil))
-			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1).Return([]int{5000})
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1, gomock.Any()).Return([]int{5000})
 		})
 
 		It("should create pod with two containers", func() {
-			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1).Return([]int{5001})
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1, gomock.Any()).Return([]int{5001})
 
 			mr.EXPECT().Report("gru.new", map[string]interface{}{
 				reportersConstants.TagGame:      "pong",
@@ -191,7 +192,7 @@ var _ = Describe("Pod", func() {
 						Command:  command,
 					},
 				},
-				configYaml, mockClientset, mockRedisClient,
+				configYaml, mockClientset, mockRedisClient, mmr,
 			)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -257,7 +258,7 @@ var _ = Describe("Pod", func() {
 				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
 
-			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1).Return([]int{5001})
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1, gomock.Any()).Return([]int{5001})
 
 			mr.EXPECT().Report("gru.new", map[string]interface{}{
 				reportersConstants.TagGame:      "pong",
@@ -286,7 +287,7 @@ var _ = Describe("Pod", func() {
 						Command:  command,
 					},
 				},
-				configYaml, mockClientset, mockRedisClient,
+				configYaml, mockClientset, mockRedisClient, mmr,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			firstPod.SetToleration(game)
@@ -315,7 +316,7 @@ var _ = Describe("Pod", func() {
 						Command:  command,
 					},
 				},
-				configYaml, mockClientset, mockRedisClient,
+				configYaml, mockClientset, mockRedisClient, mmr,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
@@ -378,7 +379,7 @@ var _ = Describe("Pod", func() {
 		BeforeEach(func() {
 			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 				Return(goredis.NewStringResult(portRange, nil))
-			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2, gomock.Any()).Return([]int{5000, 5001})
 		})
 
 		It("should create a pod in kubernetes", func() {
@@ -449,7 +450,7 @@ var _ = Describe("Pod", func() {
 				Cmd:             command,
 			}
 
-			pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient)
+			pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			podv1, err := pod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -546,7 +547,7 @@ var _ = Describe("Pod", func() {
 		BeforeEach(func() {
 			mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 				Return(goredis.NewStringResult(portRange, nil))
-			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
+			mockPortChooser.EXPECT().Choose(portStart, portEnd, 2, gomock.Any()).Return([]int{5000, 5001})
 		})
 
 		It("should delete a pod from kubernetes", func() {

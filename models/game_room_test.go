@@ -146,7 +146,7 @@ var _ = Describe("GameRoomManagement", func() {
 			It("Should create a pod", func() {
 				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(portRange, nil))
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2, gomock.Any()).Return([]int{5000, 5001})
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
@@ -251,7 +251,7 @@ var _ = Describe("GameRoomManagement", func() {
 			It("Should delete a pod", func() {
 				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(portRange, nil))
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2, gomock.Any()).Return([]int{5000, 5001})
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
@@ -314,7 +314,7 @@ var _ = Describe("GameRoomManagement", func() {
 			It("Should create a pod", func() {
 				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(portRange, nil))
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2, gomock.Any()).Return([]int{5000, 5001})
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {
@@ -483,7 +483,7 @@ var _ = Describe("GameRoomManagement", func() {
 			It("Should delete a pod", func() {
 				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(portRange, nil))
-				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2).Return([]int{5000, 5001})
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2, gomock.Any()).Return([]int{5000, 5001})
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 					func(schedulerName string, statusInfo map[string]interface{}) {

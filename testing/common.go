@@ -587,7 +587,7 @@ func MockGetPortsFromPool(
 			ports[i] = portStart + i
 		}
 		mockPortChooser.EXPECT().
-			Choose(portStart, portEnd, nPorts).
+			Choose(portStart, portEnd, nPorts, gomock.Any()).
 			Return(ports).
 			Times(callTimes)
 	}
@@ -633,7 +633,7 @@ func MockGetPortsFromPoolAnyTimes(
 			ports[i] = portStart + i
 		}
 		mockPortChooser.EXPECT().
-			Choose(portStart, portEnd, nPorts).
+			Choose(portStart, portEnd, nPorts, gomock.Any()).
 			Return(ports).
 			AnyTimes()
 	}
