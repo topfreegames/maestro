@@ -232,7 +232,7 @@ var _ = Describe("AddressGetter", func() {
 					Return(goredis.NewStringResult("", goredis.Nil))
 				_, err := addrGetter.Get(room, clientset, mockRedisClient, mmr)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal(`pod "pong-free-for-all-0" does not exist on redis podMap`))
+				Expect(err.Error()).To(Equal(`pod "pong-free-for-all-0" not found on redis podMap`))
 			})
 
 			It("should return no address if no node assigned to the room", func() {
@@ -373,7 +373,7 @@ var _ = Describe("AddressGetter", func() {
 					Return(goredis.NewStringResult("", goredis.Nil))
 				_, err := addrGetter.Get(room, clientset, mockRedisClient, mmr)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal(`pod "pong-free-for-all-0" does not exist on redis podMap`))
+				Expect(err.Error()).To(Equal(`pod "pong-free-for-all-0" not found on redis podMap`))
 			})
 
 			It("should return no address if no node assigned to the room", func() {

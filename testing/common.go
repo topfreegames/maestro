@@ -513,6 +513,20 @@ func MockCreateScheduler(
 	calls.Add(
 		mockRedisClient.EXPECT().
 			TxPipeline().
+			Return(mockPipeline))
+
+	calls.Add(
+		mockPipeline.EXPECT().
+			HGetAll(models.GetPodMapRedisKey(configYaml.Name)).
+			Return(goredis.NewStringStringMapResult(map[string]string{}, nil)))
+
+	calls.Add(mockPipeline.EXPECT().Exec())
+
+	calls.Add(MockAnyRunningPod(mockRedisClient, configYaml.Name, configYaml.AutoScaling.Min * 2))
+
+	calls.Add(
+		mockRedisClient.EXPECT().
+			TxPipeline().
 			Return(mockPipeline).
 			Times(configYaml.AutoScaling.Min))
 
@@ -537,9 +551,6 @@ func MockCreateScheduler(
 		mockPipeline.EXPECT().
 			Exec().
 			Times(configYaml.AutoScaling.Min))
-
-	calls.Append(
-		MockGetPortsFromPool(&configYaml, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd, 0))
 
 	calls.Append(
 		MockUpdateScheduler(mockDb, nil, nil))
@@ -1090,9 +1101,9 @@ func MockAnyRunningPod(
 	mockRedisClient *redismocks.MockRedisClient,
 	schedulerName string,
 	times int,
-) {
+) *gomock.Call {
 	runningPod := `{"status":{"phase":"Running", "conditions": [{"type":"Ready","status":"True"}]}}`
-	mockRedisClient.EXPECT().
+	return mockRedisClient.EXPECT().
 		HGet(models.GetPodMapRedisKey(schedulerName), gomock.Any()).
 		Return(goredis.NewStringResult(runningPod, nil)).
 		Times(times)

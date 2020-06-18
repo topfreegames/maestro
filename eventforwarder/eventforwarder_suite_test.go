@@ -1,6 +1,7 @@
 package eventforwarder_test
 
 import (
+	"testing"
 	"time"
 
 	"github.com/btcsuite/btcutil/base58"
@@ -16,7 +17,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"testing"
 
 	mt "github.com/topfreegames/maestro/testing"
 
@@ -24,6 +24,7 @@ import (
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
 	reportermock "github.com/topfreegames/maestro/reporters/mocks"
+	mtesting "github.com/topfreegames/maestro/testing"
 )
 
 func TestEventforwarder(t *testing.T) {
@@ -43,6 +44,7 @@ var (
 	mockReporter           *reportermock.MockReporter
 	room                   *models.Room
 	clientset              *fake.Clientset
+	mmr                    *models.MixedMetricsReporter
 	cache                  *models.SchedulerCache
 	metadata               map[string]interface{}
 	schedulerName          = "scheduler"
@@ -121,4 +123,8 @@ var _ = BeforeEach(func() {
 
 	room = models.NewRoom(roomName, schedulerName)
 	roomAddrGetter = models.NewRoomAddressesFromHostPort(logger, ipv6KubernetesLabelKey, false, 0)
+
+	fakeReporter := mtesting.FakeMetricsReporter{}
+	mmr = models.NewMixedMetricsReporter()
+	mmr.AddReporter(fakeReporter)
 })
