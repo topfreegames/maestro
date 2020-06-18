@@ -10,6 +10,7 @@ package models_test
 
 import (
 	"fmt"
+	"github.com/go-redis/redis"
 
 	"github.com/topfreegames/maestro/models"
 
@@ -110,14 +111,23 @@ var _ = Describe("Namespace", func() {
 
 		It("should fail if namespace does not exist", func() {
 			namespace := models.NewNamespace(name)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HLen(models.GetPodMapRedisKey(s.Name))
+			mockPipeline.EXPECT().Exec().Return(nil, redis.Nil)
+
 			err := namespace.DeletePods(clientset, mockRedisClient, mmr, s)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should succeed if namespace exists and has no pods", func() {
 			namespace := models.NewNamespace(name)
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HLen(models.GetPodMapRedisKey(s.Name)).Return(redis.NewIntResult(0, nil))
+			mockPipeline.EXPECT().Exec()
 
 			err = namespace.DeletePods(clientset, mockRedisClient, mmr, s)
 			Expect(err).NotTo(HaveOccurred())

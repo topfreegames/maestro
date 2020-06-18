@@ -48,6 +48,10 @@ var _ = Describe("Pod", func() {
 			reportersConstants.TagScheduler: "pong-free-for-all",
 		})
 
+		mockRedisClient.EXPECT().
+			HGet(models.GetPodMapRedisKey(configYaml.Name), name).
+			Return(goredis.NewStringResult("", goredis.Nil))
+
 		pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient, mmr)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -170,6 +174,10 @@ var _ = Describe("Pod", func() {
 				reportersConstants.TagScheduler: "pong-free-for-all",
 			})
 
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(configYaml.Name), name).
+				Return(goredis.NewStringResult("", goredis.Nil))
+
 			pod, err := models.NewPodWithContainers(
 				name,
 				[]*models.Container{
@@ -260,6 +268,10 @@ var _ = Describe("Pod", func() {
 
 			mockPortChooser.EXPECT().Choose(portStart, portEnd, 1, gomock.Any()).Return([]int{5001})
 
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(configYaml.Name), name).
+				Return(goredis.NewStringResult("", goredis.Nil))
+
 			mr.EXPECT().Report("gru.new", map[string]interface{}{
 				reportersConstants.TagGame:      "pong",
 				reportersConstants.TagScheduler: "pong-free-for-all",
@@ -293,6 +305,13 @@ var _ = Describe("Pod", func() {
 			firstPod.SetToleration(game)
 			podv1, err := firstPod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())
+
+			firstPod.Spec = podv1.Spec
+			jsonBytes, err := firstPod.MarshalToRedis()
+			Expect(err).NotTo(HaveOccurred())
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(configYaml.Name), name).
+				Return(goredis.NewStringResult(string(jsonBytes), nil))
 
 			pod, err := models.NewPodWithContainers(
 				name,
@@ -434,6 +453,10 @@ var _ = Describe("Pod", func() {
 		})
 
 		It("should create pod without requests and limits", func() {
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(configYaml.Name), name).
+				Return(goredis.NewStringResult("", goredis.Nil))
+
 			mr.EXPECT().Report("gru.new", map[string]interface{}{
 				reportersConstants.TagGame:      "pong",
 				reportersConstants.TagScheduler: "pong-free-for-all",

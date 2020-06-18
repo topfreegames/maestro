@@ -351,8 +351,8 @@ func (p *Pod) configureHostPorts(
 		containerPorts := []*Port{}
 
 		for j := range container.Ports {
-			hostPort := ports[len(ports)-1]
-			ports = ports[:len(ports)-1]
+			hostPort := ports[0]
+			ports = ports[1:]
 			containerPorts = append(containerPorts, &Port{
 				ContainerPort: container.Ports[j].ContainerPort,
 				Name:          container.Ports[j].Name,

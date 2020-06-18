@@ -351,13 +351,12 @@ func reportStatus(game, scheduler, status, gauge string) error {
 
 // ClearAll removes all room keys from redis
 func (r *Room) ClearAll(redisClient interfaces.RedisClient, mr *MixedMetricsReporter) error {
-	pipe := redisClient.TxPipeline()
-	var err error
-
-	err = RemoveFromPodMap(redisClient, mr, r.ID, r.SchedulerName)
+	err := RemoveFromPodMap(redisClient, mr, r.ID, r.SchedulerName)
 	if err != nil {
 		return err
 	}
+
+	pipe := redisClient.TxPipeline()
 
 	r.clearAllWithPipe(pipe)
 	err = mr.WithSegment(SegmentPipeExec, func() error {
