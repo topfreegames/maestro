@@ -3,6 +3,7 @@ package eventforwarder_test
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/topfreegames/maestro/eventforwarder"
@@ -29,6 +30,7 @@ var _ = Describe("Forward", func() {
 					"game":   gameName,
 					"metadata": map[string]interface{}{
 						"ipv6Label": ipv6Label,
+						"ports":     fmt.Sprintf(`[{"name":"port","port":%d,"protocol":""}]`, hostPort),
 					},
 				},
 				metadata,
@@ -173,6 +175,7 @@ var _ = Describe("Forward", func() {
 					"game":   gameName,
 					"metadata": map[string]interface{}{
 						"ipv6Label": "",
+						"ports":     fmt.Sprintf(`[{"name":"port","port":%d,"protocol":""}]`, hostPort),
 					},
 				},
 				metadata,
@@ -227,6 +230,7 @@ var _ = Describe("Forward", func() {
 					"game":   gameName,
 					"metadata": map[string]interface{}{
 						"ipv6Label": ipv6Label,
+						"ports":     fmt.Sprintf(`[{"name":"port","port":%d,"protocol":""}]`, hostPort),
 					},
 				},
 				metadata,

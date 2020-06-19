@@ -1085,7 +1085,7 @@ func MockListPods(
 	schedulerName string,
 	rooms []string,
 	err error,
-) {
+) *gomock.Call {
 	result := make(map[string]string, len(rooms))
 	for _, room := range rooms {
 		result[room] = fmt.Sprintf(`{"name": "%s", "version": "v1.0"}`, room)
@@ -1094,7 +1094,11 @@ func MockListPods(
 	mockPipeline.EXPECT().HGetAll(
 		models.GetPodMapRedisKey(schedulerName)).
 		Return(goredis.NewStringStringMapResult(result, nil))
-	mockPipeline.EXPECT().Exec().Return(nil, err)
+	execCall :=  mockPipeline.EXPECT().Exec()
+	if err != nil {
+		execCall.Return([]goredis.Cmder{}, err)
+	}
+	return execCall
 }
 
 func MockAnyRunningPod(
@@ -1190,6 +1194,26 @@ func MockSetScallingAmount(
 	mockPipeline.EXPECT().Exec()
 
 	return nil
+}
+
+func MockSetScallingAmountAndReturnExec(
+	mockRedis *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	configYaml *models.ConfigYAML,
+	currrentRooms int,
+) *gomock.Call {
+	mockRedis.EXPECT().TxPipeline().Return(mockPipeline)
+
+	creating := models.GetRoomStatusSetRedisKey(configYaml.Name, "creating")
+	ready := models.GetRoomStatusSetRedisKey(configYaml.Name, "ready")
+	occupied := models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied")
+	terminating := models.GetRoomStatusSetRedisKey(configYaml.Name, "terminating")
+
+	mockPipeline.EXPECT().SCard(creating).Return(goredis.NewIntResult(int64(0), nil))
+	mockPipeline.EXPECT().SCard(ready).Return(goredis.NewIntResult(int64(currrentRooms), nil))
+	mockPipeline.EXPECT().SCard(occupied).Return(goredis.NewIntResult(int64(0), nil))
+	mockPipeline.EXPECT().SCard(terminating).Return(goredis.NewIntResult(int64(0), nil))
+	return mockPipeline.EXPECT().Exec()
 }
 
 // MockSetScallingAmountWithRoomStatusCount mocks the call to adjust the scaling amount based on min and max limits

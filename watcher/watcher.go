@@ -880,7 +880,6 @@ func (w *Watcher) AutoScale() error {
 				w.DB,
 				w.RedisClient,
 				w.KubernetesClient,
-				w.Config,
 				scheduler,
 				-scaling.Delta,
 				timeoutSec,
