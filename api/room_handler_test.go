@@ -330,7 +330,7 @@ forwarders:
 						"region":    "us",
 						"ports":     "[]",
 					},
-				}, gomock.Any()).AnyTimes()
+				}, gomock.Any())
 
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(200))
