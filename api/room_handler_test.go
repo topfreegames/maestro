@@ -67,19 +67,24 @@ forwarders:
 	createNamespace := func(name string, clientset kubernetes.Interface) error {
 		return models.NewNamespace(name).Create(clientset)
 	}
-	createPod := func(name, namespace string, clientset kubernetes.Interface) error {
+	createPod := func(name, namespace string, clientset kubernetes.Interface) (*models.Pod, error) {
 		configYaml := &models.ConfigYAML{
 			Name:  namespace,
 			Game:  "game",
 			Image: "img",
 		}
 
-		pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
+		MockPodNotFound(mockRedisClient, namespace, name)
+		pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient, mmr)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		_, err = pod.Create(clientset)
-		return err
+		podv1, err := pod.Create(clientset)
+		if err != nil {
+			return nil, err
+		}
+		pod.Spec = podv1.Spec
+		return pod, nil
 	}
 
 	BeforeEach(func() { // Record HTTP responses.
@@ -257,10 +262,12 @@ forwarders:
 
 		Context("with eventforwarders", func() {
 			var app *api.App
+			var pod *models.Pod
 			game := "somegame"
 			BeforeEach(func() {
+				var err error
 				createNamespace(namespace, clientset)
-				err := createPod(roomName, namespace, clientset)
+				pod, err = createPod(roomName, namespace, clientset)
 				Expect(err).NotTo(HaveOccurred())
 				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -286,6 +293,12 @@ forwarders:
 						scheduler.YAML = yamlStr
 						scheduler.Game = game
 					})
+
+				jsonBytes, err := pod.MarshalToRedis()
+				Expect(err).NotTo(HaveOccurred())
+				mockRedisClient.EXPECT().
+					HGet(models.GetPodMapRedisKey(namespace), roomName).
+					Return(redis.NewStringResult(string(jsonBytes), nil))
 
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				mockRedisClient.EXPECT().
@@ -315,6 +328,7 @@ forwarders:
 					"metadata": map[string]interface{}{
 						"ipv6Label": "",
 						"region":    "us",
+						"ports":     "[]",
 					},
 				}, gomock.Any())
 
@@ -332,6 +346,13 @@ forwarders:
 					},
 				})
 				request, _ = http.NewRequest("PUT", url, reader)
+
+				jsonBytes, err := pod.MarshalToRedis()
+				Expect(err).NotTo(HaveOccurred())
+				mockRedisClient.EXPECT().
+					HGet(models.GetPodMapRedisKey(namespace), roomName).
+					Return(redis.NewStringResult(string(jsonBytes), nil))
+
 
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				MockLoadScheduler(namespace, mockDb).
@@ -363,6 +384,7 @@ forwarders:
 					"metadata": map[string]interface{}{
 						"ipv6Label": "",
 						"region":    "us",
+						"ports":     "[]",
 					},
 				}, gomock.Any())
 
@@ -541,10 +563,12 @@ forwarders:
 			Context("with eventforwarders", func() {
 				// TODO map status from api to something standard
 				var app *api.App
+				var pod *models.Pod
 				game := "somegame"
 				BeforeEach(func() {
+					var err error
 					createNamespace(namespace, clientset)
-					err := createPod(roomName, namespace, clientset)
+					pod, err = createPod(roomName, namespace, clientset)
 					Expect(err).NotTo(HaveOccurred())
 					app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 					Expect(err).NotTo(HaveOccurred())
@@ -584,6 +608,13 @@ forwarders:
 					})
 					request, _ = http.NewRequest("PUT", url, reader)
 
+					jsonBytes, err := pod.MarshalToRedis()
+					Expect(err).NotTo(HaveOccurred())
+					mockRedisClient.EXPECT().
+						HGet(models.GetPodMapRedisKey(namespace), roomName).
+						Return(redis.NewStringResult(string(jsonBytes), nil))
+
+
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
@@ -622,6 +653,12 @@ forwarders:
 					})
 					request, _ = http.NewRequest("PUT", url, reader)
 
+					jsonBytes, err := pod.MarshalToRedis()
+					Expect(err).NotTo(HaveOccurred())
+					mockRedisClient.EXPECT().
+						HGet(models.GetPodMapRedisKey(namespace), roomName).
+						Return(redis.NewStringResult(string(jsonBytes), nil))
+
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
@@ -649,6 +686,7 @@ forwarders:
 							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]interface{}{
 								"type":      "sometype",
 								"ipv6Label": "",
+								"ports":     "[]",
 							}))
 						})
 					mockEventForwarder2.EXPECT().Forward(gomock.Any(), status, gomock.Any(), gomock.Any()).Do(
@@ -658,6 +696,7 @@ forwarders:
 							Expect(infos["metadata"]).To(BeEquivalentTo(map[string]interface{}{
 								"type":      "sometype",
 								"ipv6Label": "",
+								"ports":     "[]",
 							}))
 						})
 
@@ -848,10 +887,12 @@ forwarders:
 	Describe("POST /scheduler/{schedulerName}/rooms/{roomName}/roomevent", func() {
 		url := "/scheduler/schedulerName/rooms/roomName/roomevent"
 		var app *api.App
+		var pod *models.Pod
 
 		BeforeEach(func() {
+			var err error
 			createNamespace(namespace, clientset)
-			err := createPod("roomName", namespace, clientset)
+			pod, err = createPod("roomName", namespace, clientset)
 			Expect(err).NotTo(HaveOccurred())
 			app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -898,6 +939,12 @@ forwarders:
 				scheduler.Game = game
 			})
 
+			jsonBytes, err := pod.MarshalToRedis()
+			Expect(err).NotTo(HaveOccurred())
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(namespace), "roomName").
+				Return(redis.NewStringResult(string(jsonBytes), nil))
+
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			mockEventForwarder1.EXPECT().Forward(gomock.Any(), "roomEvent", gomock.Any(), gomock.Any()).Return(
 				int32(500), "", errors.New("some error occurred"),
@@ -906,7 +953,7 @@ forwarders:
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(500))
 			var obj map[string]interface{}
-			err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj["code"]).To(Equal("MAE-000"))
 			Expect(obj["error"]).To(Equal("Room event forward failed"))
@@ -922,6 +969,13 @@ forwarders:
 				"metadata":  make(map[string]interface{}),
 			})
 			request, _ = http.NewRequest("POST", url, reader)
+
+			jsonBytes, err := pod.MarshalToRedis()
+			Expect(err).NotTo(HaveOccurred())
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(namespace), "roomName").
+				Return(redis.NewStringResult(string(jsonBytes), nil))
+
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			MockLoadScheduler("schedulerName", mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yamlStr
@@ -935,7 +989,7 @@ forwarders:
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(500))
 			var obj map[string]interface{}
-			err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj["code"]).To(Equal("MAE-000"))
 			Expect(obj["error"]).To(Equal("room event forward failed"))
@@ -957,6 +1011,12 @@ forwarders:
 				scheduler.Game = game
 			})
 
+			jsonBytes, err := pod.MarshalToRedis()
+			Expect(err).NotTo(HaveOccurred())
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(namespace), "roomName").
+				Return(redis.NewStringResult(string(jsonBytes), nil))
+
 			mockEventForwarder1.EXPECT().Forward(gomock.Any(), "roomEvent", gomock.Any(), gomock.Any()).Return(
 				int32(200), "all went well", nil,
 			)
@@ -964,7 +1024,7 @@ forwarders:
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(200))
 			var obj map[string]interface{}
-			err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
+			err = json.Unmarshal([]byte(recorder.Body.String()), &obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj["success"]).To(Equal(true))
 			Expect(obj["message"]).To(Equal("all went well"))
@@ -1007,10 +1067,20 @@ forwarders:
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(namespace), name).
+				Return(redis.NewStringResult("", redis.Nil))
+
+			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
+
+			jsonBytes, err := pod.MarshalToRedis()
+			Expect(err).NotTo(HaveOccurred())
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(namespace), "roomName").
+				Return(redis.NewStringResult(string(jsonBytes), nil))
 
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			url := fmt.Sprintf(
@@ -1036,13 +1106,21 @@ forwarders:
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient)
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(namespace), name).
+				Return(redis.NewStringResult("", redis.Nil))
+			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 			namespace := "unexisting-name"
+
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey("unexisting-name"), name).
+				Return(redis.NewStringResult("", redis.Nil))
+
 			url := fmt.Sprintf(
 				"/scheduler/%s/rooms/%s/address",
 				namespace,
@@ -1058,7 +1136,7 @@ forwarders:
 			err = json.Unmarshal(recorder.Body.Bytes(), &obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj).To(HaveKeyWithValue("code", "MAE-000"))
-			Expect(obj).To(HaveKeyWithValue("description", "pods \"roomName\" not found"))
+			Expect(obj).To(HaveKeyWithValue("description", "pod \"roomName\" not found on redis podMap"))
 			Expect(obj).To(HaveKeyWithValue("error", "Address handler error"))
 			Expect(obj).To(HaveKeyWithValue("success", false))
 		})

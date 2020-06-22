@@ -880,7 +880,6 @@ func (w *Watcher) AutoScale() error {
 				w.DB,
 				w.RedisClient,
 				w.KubernetesClient,
-				w.Config,
 				scheduler,
 				-scaling.Delta,
 				timeoutSec,
@@ -1263,7 +1262,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	invalidPods := append(incorrectPods, unregisteredPods...)
 
-	if len(incorrectPods) <= 0 {
+	if len(invalidPods) <= 0 {
 		// delete invalidRooms key for safety
 		models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
 		logger.Debug("no invalid pods to replace")
@@ -1351,8 +1350,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 func (w *Watcher) podsNotRegistered(
 	pods map[string]*models.Pod,
 ) ([]*models.Pod, error) {
-	registered, err := models.GetAllRegisteredRooms(w.RedisClient.Client,
-		w.SchedulerName)
+	registered, err := models.GetAllRegisteredRooms(w.RedisClient.Client, w.SchedulerName)
 	if err != nil {
 		return nil, err
 	}
@@ -1511,15 +1509,12 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 
 func (w *Watcher) configureWatcher() (watch.Interface, error) {
 	timeout := int64(5.0 * 60 * (rand.Float64() + 1.0))
-	return w.KubernetesClient.CoreV1().RESTClient().Get().
-		Namespace(w.SchedulerName).
-		Resource(string(v1.ResourcePods)).
-		VersionedParams(&metav1.ListOptions{
+	return w.KubernetesClient.CoreV1().Pods(w.SchedulerName).
+		Watch(metav1.ListOptions{
 			Watch:          true,
 			TimeoutSeconds: &timeout,
 			FieldSelector:  fields.Everything().String(),
-		}, metav1.ParameterCodec).
-		Watch()
+		})
 }
 
 func (w *Watcher) watchPods(watcher watch.Interface, stopCh <-chan struct{}) error {

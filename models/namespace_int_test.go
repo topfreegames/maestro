@@ -54,7 +54,7 @@ var _ = Describe("Namespace", func() {
 				Cmd:      []string{"command"},
 			}
 
-			pod, err := models.NewPod("name", []*models.EnvVar{}, configYaml, clientset, redisClient.Client)
+			pod, err := models.NewPod("name", []*models.EnvVar{}, configYaml, clientset, redisClient.Client, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -66,7 +66,7 @@ var _ = Describe("Namespace", func() {
 			}).Should(Equal(1))
 
 			s := &models.Scheduler{Name: "name", Game: "game"}
-			err = namespace.DeletePods(clientset, redisClient.Client, s)
+			err = namespace.DeletePods(clientset, redisClient.Client, mmr, s)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() int {

@@ -471,7 +471,6 @@ func ScaleDown(
 	db pginterfaces.DB,
 	redisClient *redis.Client,
 	clientset kubernetes.Interface,
-	config *viper.Viper,
 	scheduler *models.Scheduler,
 	amount, timeoutSec int,
 ) error {
@@ -1062,7 +1061,6 @@ func ScaleScheduler(
 			db,
 			redisClient,
 			clientset,
-			config,
 			scheduler,
 			int(amountDown),
 			timeoutScaledown,
@@ -1123,7 +1121,6 @@ func ScaleScheduler(
 				db,
 				redisClient,
 				clientset,
-				config,
 				scheduler,
 				int(nPods-replicas),
 				timeoutScaledown,

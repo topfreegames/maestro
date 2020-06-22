@@ -513,6 +513,20 @@ func MockCreateScheduler(
 	calls.Add(
 		mockRedisClient.EXPECT().
 			TxPipeline().
+			Return(mockPipeline))
+
+	calls.Add(
+		mockPipeline.EXPECT().
+			HGetAll(models.GetPodMapRedisKey(configYaml.Name)).
+			Return(goredis.NewStringStringMapResult(map[string]string{}, nil)))
+
+	calls.Add(mockPipeline.EXPECT().Exec())
+
+	calls.Add(MockAnyRunningPod(mockRedisClient, configYaml.Name, configYaml.AutoScaling.Min * 2))
+
+	calls.Add(
+		mockRedisClient.EXPECT().
+			TxPipeline().
 			Return(mockPipeline).
 			Times(configYaml.AutoScaling.Min))
 
@@ -537,9 +551,6 @@ func MockCreateScheduler(
 		mockPipeline.EXPECT().
 			Exec().
 			Times(configYaml.AutoScaling.Min))
-
-	calls.Append(
-		MockGetPortsFromPool(&configYaml, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd, 0))
 
 	calls.Append(
 		MockUpdateScheduler(mockDb, nil, nil))
@@ -587,7 +598,7 @@ func MockGetPortsFromPool(
 			ports[i] = portStart + i
 		}
 		mockPortChooser.EXPECT().
-			Choose(portStart, portEnd, nPorts).
+			Choose(portStart, portEnd, nPorts, gomock.Any()).
 			Return(ports).
 			Times(callTimes)
 	}
@@ -633,7 +644,7 @@ func MockGetPortsFromPoolAnyTimes(
 			ports[i] = portStart + i
 		}
 		mockPortChooser.EXPECT().
-			Choose(portStart, portEnd, nPorts).
+			Choose(portStart, portEnd, nPorts, gomock.Any()).
 			Return(ports).
 			AnyTimes()
 	}
@@ -1068,6 +1079,71 @@ func MockGetRegisteredRoomsPerStatus(
 	mockPipeline.EXPECT().Exec().Return(nil, err)
 }
 
+func MockListPods(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	rooms []string,
+	err error,
+) *gomock.Call {
+	result := make(map[string]string, len(rooms))
+	for _, room := range rooms {
+		result[room] = fmt.Sprintf(`{"name": "%s", "version": "v1.0"}`, room)
+	}
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().HGetAll(
+		models.GetPodMapRedisKey(schedulerName)).
+		Return(goredis.NewStringStringMapResult(result, nil))
+	execCall :=  mockPipeline.EXPECT().Exec()
+	if err != nil {
+		execCall.Return([]goredis.Cmder{}, err)
+	}
+	return execCall
+}
+
+func MockAnyRunningPod(
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	times int,
+) *gomock.Call {
+	runningPod := `{"status":{"phase":"Running", "conditions": [{"type":"Ready","status":"True"}]}}`
+	return mockRedisClient.EXPECT().
+		HGet(models.GetPodMapRedisKey(schedulerName), gomock.Any()).
+		Return(goredis.NewStringResult(runningPod, nil)).
+		Times(times)
+}
+
+func MockRunningPod(
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	podName string,
+) *gomock.Call {
+	runningPod := fmt.Sprintf(`{"name":"%s", "status":{"phase":"Running", "conditions": [{"type":"Ready","status":"True"}]}}`, podName)
+	return mockRedisClient.EXPECT().
+		HGet(models.GetPodMapRedisKey(schedulerName), podName).
+		Return(goredis.NewStringResult(runningPod, nil))
+}
+
+func MockPodNotFound(
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	podName string,
+) *gomock.Call {
+	return mockRedisClient.EXPECT().
+		HGet(models.GetPodMapRedisKey(schedulerName), podName).
+		Return(goredis.NewStringResult("", goredis.Nil))
+}
+
+func MockPodsNotFound(
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	amount int,
+) {
+	for i := 0; i < amount; i++ {
+		MockPodNotFound(mockRedisClient, schedulerName, fmt.Sprintf("room-%d", i))
+	}
+}
+
 // MockSavingRoomsMetricses mocks the call to redis to save a sorted set with pods metricses
 func MockSavingRoomsMetricses(
 	mockRedisClient *redismocks.MockRedisClient,
@@ -1118,6 +1194,26 @@ func MockSetScallingAmount(
 	mockPipeline.EXPECT().Exec()
 
 	return nil
+}
+
+func MockSetScallingAmountAndReturnExec(
+	mockRedis *redismocks.MockRedisClient,
+	mockPipeline *redismocks.MockPipeliner,
+	configYaml *models.ConfigYAML,
+	currrentRooms int,
+) *gomock.Call {
+	mockRedis.EXPECT().TxPipeline().Return(mockPipeline)
+
+	creating := models.GetRoomStatusSetRedisKey(configYaml.Name, "creating")
+	ready := models.GetRoomStatusSetRedisKey(configYaml.Name, "ready")
+	occupied := models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied")
+	terminating := models.GetRoomStatusSetRedisKey(configYaml.Name, "terminating")
+
+	mockPipeline.EXPECT().SCard(creating).Return(goredis.NewIntResult(int64(0), nil))
+	mockPipeline.EXPECT().SCard(ready).Return(goredis.NewIntResult(int64(currrentRooms), nil))
+	mockPipeline.EXPECT().SCard(occupied).Return(goredis.NewIntResult(int64(0), nil))
+	mockPipeline.EXPECT().SCard(terminating).Return(goredis.NewIntResult(int64(0), nil))
+	return mockPipeline.EXPECT().Exec()
 }
 
 // MockSetScallingAmountWithRoomStatusCount mocks the call to adjust the scaling amount based on min and max limits
@@ -1232,11 +1328,11 @@ func MockRedisReadyPop(
 	amount int,
 ) {
 	readyKey := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 	for i := 0; i < amount; i++ {
-		mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 		mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(fmt.Sprintf("room-%d", i), nil))
-		mockPipeline.EXPECT().Exec()
 	}
+	mockPipeline.EXPECT().Exec()
 }
 
 // MockClearAll mocks models.Room.ClearAll method
@@ -1275,6 +1371,7 @@ func MockClearAll(
 			mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(schedulerName, mt), room.ID)
 		}
 		mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
+		mockPipeline.EXPECT().HDel(models.GetPodMapRedisKey(schedulerName), room.ID)
 	}
 }
 
@@ -1285,6 +1382,8 @@ func MockScaleUp(
 	schedulerName string,
 	times int,
 ) {
+	MockListPods(mockPipeline, mockRedisClient, schedulerName, []string{}, nil)
+	MockAnyRunningPod(mockRedisClient, schedulerName, 2 * times)
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(times)
 	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 		func(schedulerName string, statusInfo map[string]interface{}) {
@@ -1331,7 +1430,7 @@ func TransformLegacyInMetricsTrigger(autoScalingInfo *models.AutoScaling) {
 		autoScalingInfo.Up.MetricsTrigger = append(
 			autoScalingInfo.Up.MetricsTrigger,
 			&models.ScalingPolicyMetricsTrigger{
-				Type:      models.LegacyAutoScalingPolicyType,
+				Type:      models.RoomAutoScalingPolicyType,
 				Usage:     autoScalingInfo.Up.Trigger.Usage,
 				Limit:     autoScalingInfo.Up.Trigger.Limit,
 				Threshold: autoScalingInfo.Up.Trigger.Threshold,
@@ -1345,7 +1444,7 @@ func TransformLegacyInMetricsTrigger(autoScalingInfo *models.AutoScaling) {
 		autoScalingInfo.Down.MetricsTrigger = append(
 			autoScalingInfo.Down.MetricsTrigger,
 			&models.ScalingPolicyMetricsTrigger{
-				Type:      models.LegacyAutoScalingPolicyType,
+				Type:      models.RoomAutoScalingPolicyType,
 				Usage:     autoScalingInfo.Down.Trigger.Usage,
 				Limit:     autoScalingInfo.Down.Trigger.Limit,
 				Threshold: autoScalingInfo.Down.Trigger.Threshold,
@@ -1410,7 +1509,7 @@ func CreatePod(clientset *fake.Clientset, cpuRequests, memRequests, schedulerNam
 }
 
 // CreateTestRooms returns a map of string slices with names of test rooms with the 4 possible status
-func CreateTestRooms(clientset *fake.Clientset, schedulerName string, expC *models.RoomsStatusCount) map[string][]string {
+func CreateTestRooms(clientset *fake.Clientset, schedulerName string, expC *models.RoomsStatusCount) ([]string, map[string][]string) {
 	rooms := make(map[string][]string, 4)
 	statusIdx := []string{models.StatusReady, models.StatusOccupied, models.StatusTerminating, models.StatusCreating}
 	statusCount := []int{expC.Ready, expC.Occupied, expC.Terminating, expC.Creating}
@@ -1418,14 +1517,17 @@ func CreateTestRooms(clientset *fake.Clientset, schedulerName string, expC *mode
 	rooms[models.StatusOccupied] = make([]string, expC.Occupied)
 	rooms[models.StatusCreating] = make([]string, expC.Creating)
 	rooms[models.StateTerminating] = make([]string, expC.Terminating)
+
+	roomNames := make([]string, 0, expC.Total())
 	for idx, numPods := range statusCount {
 		for i := 0; i < numPods; i++ {
 			roomName := fmt.Sprintf("test-%s-%d", statusIdx[idx], i)
+			roomNames = append(roomNames, roomName)
 			rooms[statusIdx[idx]][i] = fmt.Sprintf("scheduler:%s:rooms:%s", schedulerName, roomName)
 			CreatePod(clientset, "1.0", "1Ki", schedulerName, roomName, roomName)
 		}
 	}
-	return rooms
+	return roomNames, rooms
 }
 
 // CreatePodMetricsList returns a fakeMetricsClientset with reactor to PodMetricses Get call
@@ -1639,9 +1741,6 @@ func MockGetInvalidRooms(
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 	mockPipeline.EXPECT().Exec()
 	mockPipeline.EXPECT().SCard(models.GetInvalidRoomsKey(schedulerName)).Return(goredis.NewIntResult(int64(currentInvalidCount), nil))
-
-	retGet := goredis.NewStringResult(strconv.Itoa(invalidCount), err)
-	mockRedisClient.EXPECT().Get(models.GetInvalidRoomsCountKey(schedulerName)).Return(retGet)
 }
 
 // MockRemoveInvalidRoomsKey mocks removing invalid rooms keys from redis
@@ -1652,9 +1751,6 @@ func MockRemoveInvalidRoomsKey(
 ) {
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 	mockPipeline.EXPECT().Exec()
-
-	mockPipeline.EXPECT().
-		Del(models.GetInvalidRoomsCountKey(schedulerName))
 
 	mockPipeline.EXPECT().
 		Del(models.GetInvalidRoomsKey(schedulerName))

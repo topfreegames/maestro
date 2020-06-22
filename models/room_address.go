@@ -221,7 +221,7 @@ func getRoomAddresses(
 	}
 
 	if roomPod == nil {
-		return nil, fmt.Errorf("pod does not exist on redis podMap")
+		return nil, fmt.Errorf(`pod "%s" not found on redis podMap`, room.ID)
 	}
 
 	if len(roomPod.Spec.NodeName) == 0 {
