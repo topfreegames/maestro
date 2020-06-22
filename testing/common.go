@@ -1741,9 +1741,6 @@ func MockGetInvalidRooms(
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 	mockPipeline.EXPECT().Exec()
 	mockPipeline.EXPECT().SCard(models.GetInvalidRoomsKey(schedulerName)).Return(goredis.NewIntResult(int64(currentInvalidCount), nil))
-
-	// retGet := goredis.NewStringResult(strconv.Itoa(invalidCount), err)
-	// mockRedisClient.EXPECT().Get(models.GetInvalidRoomsCountKey(schedulerName)).Return(retGet)
 }
 
 // MockRemoveInvalidRoomsKey mocks removing invalid rooms keys from redis
@@ -1754,9 +1751,6 @@ func MockRemoveInvalidRoomsKey(
 ) {
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 	mockPipeline.EXPECT().Exec()
-
-	// mockPipeline.EXPECT().
-	// 	Del(models.GetInvalidRoomsCountKey(schedulerName))
 
 	mockPipeline.EXPECT().
 		Del(models.GetInvalidRoomsKey(schedulerName))

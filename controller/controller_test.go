@@ -1367,8 +1367,15 @@ cmd:
 	})
 
 	Describe("ScaleUp", func() {
+		var maxScaleUpAmount int
+
 		BeforeEach(func() {
+			maxScaleUpAmount = config.GetInt("watcher.maxScaleUpAmount")
 			config.Set("watcher.maxScaleUpAmount", 100)
+		})
+
+		AfterEach(func() {
+			config.Set("watcher.maxScaleUpAmount", maxScaleUpAmount)
 		})
 
 		It("should fail and return error if error creating pods and initial op", func() {
@@ -1715,8 +1722,15 @@ portRange:
 
 	Describe("ScaleDown", func() {
 
+		var maxScaleUpAmount int
+
 		BeforeEach(func() {
+			maxScaleUpAmount = config.GetInt("watcher.maxScaleUpAmount")
 			config.Set("watcher.maxScaleUpAmount", 100)
+		})
+
+		AfterEach(func() {
+			config.Set("watcher.maxScaleUpAmount", maxScaleUpAmount)
 		})
 
 		It("should succeed in scaling down", func() {
@@ -5542,8 +5556,15 @@ containers:
 	})
 
 	Describe("ScaleScheduler", func() {
+		var maxScaleUpAmount int
+
 		BeforeEach(func() {
+			maxScaleUpAmount = config.GetInt("watcher.maxScaleUpAmount")
 			config.Set("watcher.maxScaleUpAmount", 100)
+		})
+
+		AfterEach(func() {
+			config.Set("watcher.maxScaleUpAmount", maxScaleUpAmount)
 		})
 
 		It("should return error if more than one parameter is set", func() {
