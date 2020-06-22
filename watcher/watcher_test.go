@@ -885,7 +885,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, simSpec.deltaExpected)
 
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, simSpec.deltaExpected)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, simSpec.deltaExpected)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1097,7 +1097,7 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, 1)
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, 1)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, 1)
 
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 					Expect(scheduler.State).To(Equal("in-sync"))
@@ -1288,7 +1288,7 @@ var _ = Describe("Watcher", func() {
 				mockPipeline.EXPECT().Exec()
 
 				for _, name := range names {
-					testing.MockTerminatedPod(mockRedisClient, configYaml.Name, name)
+					testing.MockPodNotFound(mockRedisClient, configYaml.Name, name)
 				}
 
 				// UpdateScheduler
@@ -1589,7 +1589,7 @@ var _ = Describe("Watcher", func() {
 				}
 
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, 1)
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, 1)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, 1)
 
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 					Expect(scheduler.State).To(Equal("in-sync"))
@@ -1775,7 +1775,7 @@ var _ = Describe("Watcher", func() {
 
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Down.Delta)
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, configYaml.AutoScaling.Down.Delta)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, configYaml.AutoScaling.Down.Delta)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1892,7 +1892,7 @@ var _ = Describe("Watcher", func() {
 
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1967,7 +1967,7 @@ var _ = Describe("Watcher", func() {
 
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2321,7 +2321,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, deltaInt)
 
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, deltaInt)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, deltaInt)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2441,7 +2441,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
 
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2517,7 +2517,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
 
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2859,7 +2859,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, deltaInt)
 
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, deltaInt)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, deltaInt)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2979,7 +2979,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
 
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -3055,7 +3055,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
 
-				testing.MockTerminatedPods(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -3947,7 +3947,7 @@ var _ = Describe("Watcher", func() {
 				mockPipeline.EXPECT().HDel(models.GetPodMapRedisKey(configYaml.Name), roomName)
 				mockPipeline.EXPECT().Exec()
 
-				testing.MockTerminatedPod(mockRedisClient, configYaml.Name, roomName).After(runningCall)
+				testing.MockPodNotFound(mockRedisClient, configYaml.Name, roomName).After(runningCall)
 
 				room := models.NewRoom(roomName, schedulerName)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -4468,7 +4468,7 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Exec()
 
 			testing.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, &configYaml, nil, 1)
-			testing.MockTerminatedPod(mockRedisClient, w.SchedulerName, "room-2").After(runningPod)
+			testing.MockPodNotFound(mockRedisClient, w.SchedulerName, "room-2").After(runningPod)
 
 			err := w.EnsureCorrectRooms()
 

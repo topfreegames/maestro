@@ -1602,7 +1602,7 @@ game: game-name
 					Return(redis.NewStringResult("room-id", nil))
 				mockPipeline.EXPECT().Exec()
 
-				MockTerminatedPod(mockRedisClient, schedulerName, "room-id")
+				MockPodNotFound(mockRedisClient, schedulerName, "room-id")
 
 				port := 5000
 				pod := &v1.Pod{}
@@ -1767,7 +1767,7 @@ game: game-name
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				for _, name := range names {
 					mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
-					MockTerminatedPod(mockRedisClient, schedulerName, name)
+					MockPodNotFound(mockRedisClient, schedulerName, name)
 
 				}
 				mockPipeline.EXPECT().Exec()
@@ -1871,7 +1871,7 @@ game: game-name
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				for _, name := range names {
 					mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
-					MockTerminatedPod(mockRedisClient, schedulerName, name)
+					MockPodNotFound(mockRedisClient, schedulerName, name)
 
 				}
 				mockPipeline.EXPECT().Exec()

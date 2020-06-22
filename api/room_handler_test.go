@@ -74,7 +74,7 @@ forwarders:
 			Image: "img",
 		}
 
-		MockTerminatedPod(mockRedisClient, namespace, name)
+		MockPodNotFound(mockRedisClient, namespace, name)
 		pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient, mmr)
 		if err != nil {
 			return nil, err

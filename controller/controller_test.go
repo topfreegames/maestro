@@ -1240,7 +1240,7 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 
 			for _, roomName := range expectedRooms {
-				mt.MockTerminatedPod(mockRedisClient, configYaml.Name, roomName)
+				mt.MockPodNotFound(mockRedisClient, configYaml.Name, roomName)
 				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
@@ -1282,7 +1282,7 @@ cmd:
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				mt.MockTerminatedPod(mockRedisClient, scheduler.Name, roomName)
+				mt.MockPodNotFound(mockRedisClient, scheduler.Name, roomName)
 				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
@@ -1350,7 +1350,7 @@ cmd:
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				mt.MockTerminatedPod(mockRedisClient, scheduler.Name, roomName)
+				mt.MockPodNotFound(mockRedisClient, scheduler.Name, roomName)
 				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
@@ -1752,7 +1752,7 @@ portRange:
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
 				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
-				mt.MockTerminatedPod(mockRedisClient, configYaml1.Name, name)
+				mt.MockPodNotFound(mockRedisClient, configYaml1.Name, name)
 
 			}
 			mockPipeline.EXPECT().Exec()
@@ -1837,7 +1837,7 @@ portRange:
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
 				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
-				mt.MockTerminatedPod(mockRedisClient, configYaml.Name, name)
+				mt.MockPodNotFound(mockRedisClient, configYaml.Name, name)
 
 			}
 			mockPipeline.EXPECT().Exec()
@@ -4692,7 +4692,7 @@ containers:
 			Expect(err).NotTo(HaveOccurred())
 
 			for _, roomName := range expectedRooms {
-				mt.MockTerminatedPod(mockRedisClient, configYaml.Name, roomName)
+				mt.MockPodNotFound(mockRedisClient, configYaml.Name, roomName)
 				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
@@ -4733,7 +4733,7 @@ containers:
 			err := namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
-				mt.MockTerminatedPod(mockRedisClient, configYaml.Name, roomName)
+				mt.MockPodNotFound(mockRedisClient, configYaml.Name, roomName)
 				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
@@ -4754,7 +4754,7 @@ containers:
 			Expect(err).NotTo(HaveOccurred())
 
 			for _, roomName := range expectedRooms {
-				mt.MockTerminatedPod(mockRedisClient, configYaml.Name, roomName)
+				mt.MockPodNotFound(mockRedisClient, configYaml.Name, roomName)
 				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
@@ -5693,7 +5693,7 @@ containers:
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
 				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
-				mt.MockTerminatedPod(mockRedisClient, configYaml1.Name, name)
+				mt.MockPodNotFound(mockRedisClient, configYaml1.Name, name)
 			}
 			mockPipeline.EXPECT().Exec()
 
@@ -5821,7 +5821,7 @@ containers:
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, name := range names {
 				mockPipeline.EXPECT().SPop(readyKey).Return(goredis.NewStringResult(name, nil))
-				mt.MockTerminatedPod(mockRedisClient, configYaml1.Name, name)
+				mt.MockPodNotFound(mockRedisClient, configYaml1.Name, name)
 			}
 			mockPipeline.EXPECT().Exec()
 

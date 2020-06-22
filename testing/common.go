@@ -1124,7 +1124,7 @@ func MockRunningPod(
 		Return(goredis.NewStringResult(runningPod, nil))
 }
 
-func MockTerminatedPod(
+func MockPodNotFound(
 	mockRedisClient *redismocks.MockRedisClient,
 	schedulerName string,
 	podName string,
@@ -1134,13 +1134,13 @@ func MockTerminatedPod(
 		Return(goredis.NewStringResult("", goredis.Nil))
 }
 
-func MockTerminatedPods(
+func MockPodsNotFound(
 	mockRedisClient *redismocks.MockRedisClient,
 	schedulerName string,
 	amount int,
 ) {
 	for i := 0; i < amount; i++ {
-		MockTerminatedPod(mockRedisClient, schedulerName, fmt.Sprintf("room-%d", i))
+		MockPodNotFound(mockRedisClient, schedulerName, fmt.Sprintf("room-%d", i))
 	}
 }
 
