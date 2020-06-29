@@ -254,6 +254,10 @@ var _ = Describe("Room", func() {
 			payload := &models.RoomStatusPayload{Status: status}
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HDel(models.GetPodMapRedisKey(schedulerName), room.ID)
+			mockPipeline.EXPECT().Exec()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady), rKey)
 			mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(schedulerName, models.StatusReady), name)
 			for _, st := range allStatus {
@@ -379,6 +383,10 @@ var _ = Describe("Room", func() {
 			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HDel(models.GetPodMapRedisKey(scheduler), name)
+			mockPipeline.EXPECT().Exec()
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().Del(rKey)
 			mockPipeline.EXPECT().ZRem(pKey, room.ID)
 			for _, mt := range allMetrics {
@@ -398,22 +406,12 @@ var _ = Describe("Room", func() {
 			name := "pong-free-for-all-0"
 			scheduler := "pong-free-for-all"
 			room := models.NewRoom(name, scheduler)
-			rKey := room.GetRoomRedisKey()
-			pKey := models.GetRoomPingRedisKey(room.SchedulerName)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().Del(rKey)
-			for _, mt := range allMetrics {
-				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), room.ID)
-			}
-			mockPipeline.EXPECT().ZRem(pKey, room.ID)
-			for _, st := range allStatus {
-				mockPipeline.EXPECT().SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, st), rKey)
-				mockPipeline.EXPECT().ZRem(models.GetLastStatusRedisKey(room.SchedulerName, st), room.ID)
-			}
-			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{}, errors.New("some error in redis"))
-
+			mockPipeline.EXPECT().HDel(models.GetPodMapRedisKey(scheduler), name)
+			mockPipeline.EXPECT().Exec().Return(nil, errors.New("some error in redis"))
 			err := room.ClearAll(mockRedisClient, mmr)
+
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 		})

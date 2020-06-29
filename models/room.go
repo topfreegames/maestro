@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/go-redis/redis"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis/interfaces"
@@ -63,14 +65,16 @@ func (r RoomAddresses) Clone() *RoomAddresses {
 
 // RoomPort struct
 type RoomPort struct {
-	Name string `json:"name"`
-	Port int32  `json:"port"`
+	Name     string `json:"name"`
+	Protocol string `json:"protocol"`
+	Port     int32  `json:"port"`
 }
 
 func (r RoomPort) Clone() *RoomPort {
 	return &RoomPort{
-		Name: r.Name,
-		Port: r.Port,
+		Name:     r.Name,
+		Port:     r.Port,
+		Protocol: r.Protocol,
 	}
 }
 
@@ -347,9 +351,15 @@ func reportStatus(game, scheduler, status, gauge string) error {
 
 // ClearAll removes all room keys from redis
 func (r *Room) ClearAll(redisClient interfaces.RedisClient, mr *MixedMetricsReporter) error {
+	err := RemoveFromPodMap(redisClient, mr, r.ID, r.SchedulerName)
+	if err != nil {
+		return err
+	}
+
 	pipe := redisClient.TxPipeline()
+
 	r.clearAllWithPipe(pipe)
-	err := mr.WithSegment(SegmentPipeExec, func() error {
+	err = mr.WithSegment(SegmentPipeExec, func() error {
 		_, err := pipe.Exec()
 		return err
 	})
@@ -359,10 +369,16 @@ func (r *Room) ClearAll(redisClient interfaces.RedisClient, mr *MixedMetricsRepo
 // ClearAllMultipleRooms removes all rooms keys from redis
 func ClearAllMultipleRooms(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, rooms []*Room) error {
 	pipe := redisClient.TxPipeline()
+	var err error
 	for _, room := range rooms {
+		// remove from redis podMap
+		err = RemoveFromPodMap(redisClient, mr, room.ID, room.SchedulerName)
+		if err != nil {
+			return err
+		}
 		room.clearAllWithPipe(pipe)
 	}
-	err := mr.WithSegment(SegmentPipeExec, func() error {
+	err = mr.WithSegment(SegmentPipeExec, func() error {
 		_, err := pipe.Exec()
 		return err
 	})
@@ -409,6 +425,7 @@ func (r *Room) GetRoomInfos(
 	schedulerCache *SchedulerCache,
 	scheduler *Scheduler,
 	addrGetter AddrGetter,
+	mr *MixedMetricsReporter,
 ) (map[string]interface{}, error) {
 	if scheduler == nil {
 		cachedScheduler, err := schedulerCache.LoadScheduler(db, r.SchedulerName, true)
@@ -417,7 +434,7 @@ func (r *Room) GetRoomInfos(
 		}
 		scheduler = cachedScheduler.Scheduler
 	}
-	address, err := addrGetter.Get(r, kubernetesClient, redis)
+	address, err := addrGetter.Get(r, kubernetesClient, redis, mr)
 	if err != nil {
 		return nil, err
 	}
@@ -425,17 +442,35 @@ func (r *Room) GetRoomInfos(
 	if len(address.Ports) > 0 {
 		selectedPort = address.Ports[0].Port
 	}
-	for _, p := range address.Ports {
+	metadata := map[string]interface{}{
+		"ports":     make([]map[string]interface{}, len(address.Ports)),
+		"ipv6Label": address.Ipv6Label,
+	}
+	for i, p := range address.Ports {
 		if p.Name == "clientPort" {
 			selectedPort = p.Port
 		}
+		// save multiple defined ports in metadata to send to forwarders
+		metadata["ports"].([]map[string]interface{})[i] = map[string]interface{}{
+			"port":     p.Port,
+			"name":     p.Name,
+			"protocol": p.Protocol,
+		}
 	}
+	if metadata["ports"] != nil {
+		metadata["ports"], err = json.Marshal(metadata["ports"])
+		if err != nil {
+			return nil, err
+		}
+		metadata["ports"] = string(metadata["ports"].([]byte))
+	}
+
 	return map[string]interface{}{
-		"game":      scheduler.Game,
-		"roomId":    r.ID,
-		"host":      address.Host,
-		"ipv6Label": address.Ipv6Label,
-		"port":      selectedPort,
+		"game":     scheduler.Game,
+		"roomId":   r.ID,
+		"host":     address.Host,
+		"port":     selectedPort,
+		"metadata": metadata,
 	}, nil
 }
 
@@ -609,19 +644,12 @@ func GetInvalidRoomsKey(schedulerName string) string {
 	return fmt.Sprintf("scheduler:%s:invalidRooms", schedulerName)
 }
 
-// GetInvalidRoomsCountKey gets the key for the string that keeps count of invalid rooms
-func GetInvalidRoomsCountKey(schedulerName string) string {
-	return fmt.Sprintf("scheduler:%s:invalidRooms:count", schedulerName)
-}
-
 // SetInvalidRooms save a room in invalid redis set
 // A room is considered invalid if its version is not the scheduler current version
 func SetInvalidRooms(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, schedulerName string, roomIDs []string) error {
 	pipe := redisClient.TxPipeline()
 	pipe.Del(GetInvalidRoomsKey(schedulerName))
-	pipe.Del(GetInvalidRoomsCountKey(schedulerName))
 	pipe.SAdd(GetInvalidRoomsKey(schedulerName), roomIDs)
-	pipe.Set(GetInvalidRoomsCountKey(schedulerName), len(roomIDs), 2*time.Hour)
 	return mr.WithSegment(SegmentPipeExec, func() error {
 		var err error
 		_, err = pipe.Exec()
@@ -648,7 +676,6 @@ func RemoveInvalidRooms(redisClient interfaces.RedisClient, mr *MixedMetricsRepo
 func RemoveInvalidRoomsKey(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, schedulerName string) error {
 	pipe := redisClient.TxPipeline()
 	pipe.Del(GetInvalidRoomsKey(schedulerName))
-	pipe.Del(GetInvalidRoomsCountKey(schedulerName))
 	err := mr.WithSegment(SegmentPipeExec, func() error {
 		var err error
 		_, err = pipe.Exec()
@@ -676,20 +703,25 @@ func GetCurrentInvalidRoomsCount(redisClient interfaces.RedisClient, mr *MixedMe
 	return count, err
 }
 
-// GetInvalidRoomsCount returns the count of invalid rooms saved on InvalidRoomsCountKey
-func GetInvalidRoomsCount(redisClient interfaces.RedisClient, mr *MixedMetricsReporter, schedulerName string) (int, error) {
-	count := 0
-	err := mr.WithSegment(SegmentGet, func() error {
-		var err error
-		c, err := redisClient.Get(GetInvalidRoomsCountKey(schedulerName)).Result()
-		if err == redis.Nil {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		count, err = strconv.Atoi(c)
-		return nil
-	})
-	return count, err
+// IsRoomReadyOrOccupied returns true if a room is in ready or occupied status
+func IsRoomReadyOrOccupied(logger logrus.FieldLogger, redisClient interfaces.RedisClient, schedulerName, roomName string) bool {
+	room := NewRoom(roomName, schedulerName)
+	pipe := redisClient.TxPipeline()
+	roomIsReady := pipe.SIsMember(GetRoomStatusSetRedisKey(schedulerName, StatusReady), room.GetRoomRedisKey())
+	roomIsOccupied := pipe.SIsMember(GetRoomStatusSetRedisKey(schedulerName, StatusOccupied), room.GetRoomRedisKey())
+
+	_, err := pipe.Exec()
+	if err != nil {
+		logger.WithError(err).Error("failed to check room rediness")
+		return false
+	}
+
+	isReady, err := roomIsReady.Result()
+	isOccupied, err := roomIsOccupied.Result()
+	if err != nil {
+		logger.WithError(err).Error("failed to check room rediness")
+		return false
+	}
+
+	return isReady || isOccupied
 }

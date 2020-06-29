@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -133,7 +134,7 @@ func CreateScheduler(
 	}
 
 	logger.Info("creating pods of new scheduler")
-	err = ScaleUp(logger, roomManager, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true)
+	err = ScaleUp(logger, roomManager, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true, nil)
 	if err != nil {
 		logger.WithError(err).Error("error scaling up scheduler, deleting it")
 		if scheduler.LastScaleOpAt == int64(0) {
@@ -374,16 +375,22 @@ func ScaleUp(
 	scheduler *models.Scheduler,
 	amount, timeoutSec int,
 	initalOp bool,
+	config *viper.Viper,
 ) error {
+	scaleUpLimit := 0
+	if config != nil {
+		scaleUpLimit = config.GetInt("watcher.maxScaleUpAmount")
+	}
 	l := logger.WithFields(logrus.Fields{
-		"source":    "scaleUp",
-		"scheduler": scheduler.Name,
-		"amount":    amount,
+		"source":       "scaleUp",
+		"scheduler":    scheduler.Name,
+		"amount":       amount,
+		"scaleUpLimit": scaleUpLimit,
 	})
 
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 
-	existPendingPods, err := pendingPods(clientset, scheduler.Name, mr)
+	existPendingPods, err := pendingPods(clientset, redisClient, scheduler.Name, mr)
 	if err != nil {
 		return err
 	}
@@ -404,6 +411,12 @@ func ScaleUp(
 	)
 	if err != nil {
 		return err
+	}
+
+	// SAFETY - hard cap on scale up amount in order to not break etcd
+	if config != nil && amount > config.GetInt("watcher.maxScaleUpAmount") {
+		l.Warnf("amount to scale up is higher than limit")
+		amount = config.GetInt("watcher.maxScaleUpAmount")
 	}
 
 	pods := make([]*v1.Pod, amount)
@@ -432,9 +445,11 @@ func ScaleUp(
 		return errors.New("timeout scaling up scheduler")
 	}
 
+	rand.Seed(time.Now().UnixNano())
 	err = waitForPods(
 		willTimeoutAt.Sub(time.Now()),
 		clientset,
+		redisClient,
 		configYAML.Name,
 		pods,
 		l,
@@ -449,11 +464,12 @@ func ScaleUp(
 
 // ScaleDown scales down the number of rooms
 func ScaleDown(
+	ctx context.Context,
 	logger logrus.FieldLogger,
 	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
-	redisClient redisinterfaces.RedisClient,
+	redisClient *redis.Client,
 	clientset kubernetes.Interface,
 	scheduler *models.Scheduler,
 	amount, timeoutSec int,
@@ -464,15 +480,14 @@ func ScaleDown(
 		"amount":    amount,
 	})
 
-	// check if scheduler update is in place
-
+	redisClientWithContext := redisClient.Trace(ctx)
 	willTimeoutAt := time.Now().Add(time.Duration(timeoutSec) * time.Second)
 
 	l.Debug("accessing redis")
 	//TODO: check redis version and use SPopN if version is >= 3.2, since SPopN is O(1)
 	roomSet := make(map[*goredis.StringCmd]bool)
 	readyKey := models.GetRoomStatusSetRedisKey(scheduler.Name, models.StatusReady)
-	pipe := redisClient.TxPipeline()
+	pipe := redisClientWithContext.TxPipeline()
 	configYAML, err := models.NewConfigYAML(scheduler.YAML)
 	if err != nil {
 		return err
@@ -482,7 +497,7 @@ func ScaleDown(
 		logger,
 		mr,
 		db,
-		redisClient,
+		redisClientWithContext,
 		scheduler,
 		configYAML.AutoScaling.Max,
 		configYAML.AutoScaling.Min,
@@ -498,6 +513,7 @@ func ScaleDown(
 		// SPop returns a random room name that can already selected
 		roomSet[pipe.SPop(readyKey)] = true
 	}
+	l.Debugf("popped %d ready rooms to scale down", amount)
 	err = mr.WithSegment(models.SegmentPipeExec, func() error {
 		var err error
 		_, err = pipe.Exec()
@@ -526,17 +542,10 @@ func ScaleDown(
 	var deletionErr error
 
 	for _, roomName := range idleRooms {
-		err := roomManager.Delete(logger, mr, clientset, redisClient, configYAML, roomName, reportersConstants.ReasonScaleDown)
+		err := roomManager.Delete(logger, mr, clientset, redisClientWithContext, configYAML, roomName, reportersConstants.ReasonScaleDown)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			logger.WithField("roomName", roomName).WithError(err).Error("error deleting room")
 			deletionErr = err
-		} else {
-			room := models.NewRoom(roomName, scheduler.Name)
-			err = room.ClearAll(redisClient, mr)
-			if err != nil {
-				logger.WithField("roomName", roomName).WithError(err).Error("error removing room info from redis")
-				return err
-			}
 		}
 	}
 
@@ -555,14 +564,33 @@ func ScaleDown(
 			return errors.New("timeout scaling down scheduler")
 		case <-ticker.C:
 			for _, name := range idleRooms {
+				var pod *models.Pod
 				err := mr.WithSegment(models.SegmentPod, func() error {
 					var err error
-					_, err = clientset.CoreV1().Pods(scheduler.Name).Get(name, metav1.GetOptions{})
+					pod, err = models.GetPodFromRedis(redisClientWithContext, mr, name, scheduler.Name)
 					return err
 				})
-				if err == nil {
-					exit = false
-				} else if !strings.Contains(err.Error(), "not found") {
+				if err == nil && pod != nil {
+					if pod.IsTerminating {
+						logger.WithField("pod", pod.Name).Debugf("pod is terminating")
+						exit = false
+						continue
+					}
+
+					logger.WithField("pod", pod.Name).Debugf("pod still exists, deleting again")
+					err := roomManager.Delete(logger, mr, clientset, redisClientWithContext, configYAML, pod.Name, reportersConstants.ReasonScaleDown)
+					if err != nil && !strings.Contains(err.Error(), "not found") {
+						logger.WithField("roomName", pod.Name).WithError(err).Error("error deleting room")
+						deletionErr = err
+						exit = false
+					} else if err != nil && strings.Contains(err.Error(), "not found") {
+						logger.WithField("pod", pod.Name).Debugf("pod already deleted")
+					}
+
+					if err == nil {
+						exit = false
+					}
+				} else if pod != nil {
 					l.WithError(err).Error("scale down pod error")
 					exit = false
 				}
@@ -954,12 +982,14 @@ func UpdateSchedulerMin(
 
 // ScaleScheduler scale up or down, depending on what parameters are passed
 func ScaleScheduler(
+	ctx context.Context,
 	logger logrus.FieldLogger,
 	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	db pginterfaces.DB,
-	redisClient redisinterfaces.RedisClient,
+	redisClient *redis.Client,
 	clientset kubernetes.Interface,
+	config *viper.Viper,
 	timeoutScaleup, timeoutScaledown int,
 	amountUp, amountDown, replicas uint,
 	schedulerName string,
@@ -969,6 +999,8 @@ func ScaleScheduler(
 	if amountUp > 0 && amountDown > 0 || replicas > 0 && amountUp > 0 || replicas > 0 && amountDown > 0 {
 		return errors.New("invalid scale parameter: can't handle more than one parameter")
 	}
+
+	redisClientWithContext := redisClient.Trace(ctx)
 
 	scheduler := models.NewScheduler(schedulerName, "", "")
 	err = scheduler.Load(db)
@@ -988,16 +1020,41 @@ func ScaleScheduler(
 			roomManager,
 			mr,
 			db,
-			redisClient,
+			redisClientWithContext,
 			clientset,
 			scheduler,
 			int(amountUp),
 			timeoutScaleup,
 			false,
+			nil,
 		)
 	} else if amountDown > 0 {
 		logger.Infof("manually scaling down scheduler %s in %d GRUs", schedulerName, amountDown)
+
+		// lock so autoscaler doesn't recreate rooms deleted
+		downscalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+		downscalingLock, _, err := AcquireLock(
+			ctx,
+			logger,
+			redisClient,
+			config,
+			nil,
+			downscalingLockKey,
+			scheduler.Name,
+		)
+		defer ReleaseLock(
+			logger,
+			redisClient,
+			downscalingLock,
+			scheduler.Name,
+		)
+		if err != nil {
+			logger.WithError(err).Error("not able to acquire downScalingLock. Not scaling down")
+			return err
+		}
+
 		err = ScaleDown(
+			ctx,
 			logger,
 			roomManager,
 			mr,
@@ -1011,12 +1068,12 @@ func ScaleScheduler(
 	} else {
 		logger.Infof("manually scaling scheduler %s to %d GRUs", schedulerName, replicas)
 		// get list of actual pods
-		pods, err := ListCurrentPods(mr, clientset, schedulerName)
+		podCount, err := models.GetPodCountFromRedis(redisClientWithContext, mr, schedulerName)
 		if err != nil {
 			return err
 		}
 
-		nPods := uint(len(pods.Items))
+		nPods := uint(podCount)
 		logger.Debugf("current number of pods: %d", nPods)
 
 		if replicas > nPods {
@@ -1025,15 +1082,39 @@ func ScaleScheduler(
 				roomManager,
 				mr,
 				db,
-				redisClient,
+				redisClientWithContext,
 				clientset,
 				scheduler,
 				int(replicas-nPods),
 				timeoutScaleup,
 				false,
+				nil,
 			)
 		} else if replicas < nPods {
+			// lock so autoscaler doesn't recreate rooms deleted
+			downscalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), scheduler.Name)
+			downscalingLock, _, err := AcquireLock(
+				ctx,
+				logger,
+				redisClient,
+				config,
+				nil,
+				downscalingLockKey,
+				scheduler.Name,
+			)
+			defer ReleaseLock(
+				logger,
+				redisClient,
+				downscalingLock,
+				scheduler.Name,
+			)
+			if err != nil {
+				logger.WithError(err).Error("not able to acquire downScalingLock. Not scaling down")
+				return err
+			}
+
 			err = ScaleDown(
+				ctx,
 				logger,
 				roomManager,
 				mr,
@@ -1119,6 +1200,7 @@ func SetRoomStatus(
 					cachedScheduler.ConfigYAML.AutoScaling.Up.Delta,
 					config.GetInt("scaleUpTimeoutSeconds"),
 					false,
+					nil,
 				)
 				if err != nil {
 					log.WithError(err).Error(err)

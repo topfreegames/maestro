@@ -40,7 +40,7 @@ type ContainerIface interface {
 
 // AddrGetter return IP and ports of a room
 type AddrGetter interface {
-	Get(*Room, kubernetes.Interface, redisinterfaces.RedisClient) (*RoomAddresses, error)
+	Get(*Room, kubernetes.Interface, redisinterfaces.RedisClient, *MixedMetricsReporter) (*RoomAddresses, error)
 }
 
 // RoomManager should create and delete a game room

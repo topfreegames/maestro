@@ -9,17 +9,19 @@ package models
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"text/template"
 
+	"github.com/go-redis/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/reporters"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -132,8 +134,12 @@ type Pod struct {
 	ShutdownTimeout int
 	NodeAffinity    string
 	NodeToleration  string
+	IsTerminating   bool
 	Containers      []*Container
 	Version         string
+	Status          v1.PodStatus
+	Spec            v1.PodSpec
+	NodeName        string
 	Environment     string
 }
 
@@ -144,6 +150,7 @@ func NewPod(
 	configYaml *ConfigYAML,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
 ) (*Pod, error) {
 	pod := &Pod{
 		Name:            name,
@@ -174,7 +181,7 @@ func NewPod(
 		}
 	}
 	pod.Containers = []*Container{container}
-	err := pod.configureHostPorts(configYaml, clientset, redisClient)
+	err := pod.configureHostPorts(configYaml, clientset, redisClient, mr)
 
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruNew, map[string]interface{}{
@@ -193,6 +200,7 @@ func NewPodWithContainers(
 	configYaml *ConfigYAML,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
 ) (*Pod, error) {
 	pod := &Pod{
 		Game:            configYaml.Game,
@@ -201,7 +209,7 @@ func NewPodWithContainers(
 		ShutdownTimeout: configYaml.ShutdownTimeout,
 		Containers:      containers,
 	}
-	err := pod.configureHostPorts(configYaml, clientset, redisClient)
+	err := pod.configureHostPorts(configYaml, clientset, redisClient, mr)
 	if err == nil {
 		reporters.Report(reportersConstants.EventGruNew, map[string]interface{}{
 			reportersConstants.TagGame:      configYaml.Game,
@@ -276,7 +284,7 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 	return nil
 }
 
-func getContainerWithName(name string, pod *v1.Pod) v1.Container {
+func getContainerWithName(name string, pod *Pod) v1.Container {
 	var container v1.Container
 
 	for _, container = range pod.Spec.Containers {
@@ -292,16 +300,16 @@ func (p *Pod) configureHostPorts(
 	configYaml *ConfigYAML,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
 ) error {
-	pod, err := clientset.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
-	if err != nil && !strings.Contains(err.Error(), "not found") {
+	pod, err := GetPodFromRedis(redisClient, mr, p.Name, p.Namespace)
+	if err != nil {
 		return errors.NewKubernetesError("could not access kubernetes", err)
-	} else if err == nil {
+	} else if err == nil && pod != nil {
 		//pod exists, so just retrieve ports
 		for _, container := range p.Containers {
 			podContainer := getContainerWithName(container.Name, pod)
 			container.Ports = make([]*Port, len(podContainer.Ports))
-
 			for i, port := range podContainer.Ports {
 				container.Ports[i] = &Port{
 					ContainerPort: int(port.ContainerPort),
@@ -334,20 +342,45 @@ func (p *Pod) configureHostPorts(
 		return fmt.Errorf("error reading global port range from redis: %s", err.Error())
 	}
 
+	// save ports already used to avoid duplication
+	usedPorts := []int{}
+
 	for _, container := range p.Containers {
-		ports := GetRandomPorts(start, end, len(container.Ports))
-		containerPorts := make([]*Port, len(container.Ports))
-		for i, port := range ports {
-			containerPorts[i] = &Port{
-				ContainerPort: container.Ports[i].ContainerPort,
-				Name:          container.Ports[i].Name,
-				HostPort:      port,
-				Protocol:      container.Ports[i].Protocol,
-			}
+		ports := GetRandomPorts(start, end, len(container.Ports), usedPorts)
+		usedPorts = append(usedPorts, ports...)
+		containerPorts := []*Port{}
+
+		for j := range container.Ports {
+			hostPort := ports[0]
+			ports = ports[1:]
+			containerPorts = append(containerPorts, &Port{
+				ContainerPort: container.Ports[j].ContainerPort,
+				Name:          container.Ports[j].Name,
+				HostPort:      hostPort,
+				Protocol:      container.Ports[j].Protocol,
+			})
 		}
 		container.Ports = containerPorts
 	}
 	return nil
+}
+
+// MarshalToRedis stringfy pod object with the information to save on podMap redis key
+func (p *Pod) MarshalToRedis() ([]byte, error) {
+
+	return json.Marshal(map[string]interface{}{
+		"name":          p.Name,
+		"status":        p.Status,
+		"version":       p.Version,
+		"nodeName":      p.NodeName,
+		"isTerminating": p.IsTerminating,
+		"spec":          p.Spec,
+	})
+}
+
+// UnmarshalFromRedis loads pod string from redis podMap key in a *Pod object
+func (p *Pod) UnmarshalFromRedis(pod string) error {
+	return json.Unmarshal([]byte(pod), p)
 }
 
 //PodExists returns true if a pod exists on namespace
@@ -368,7 +401,7 @@ func PodExists(
 }
 
 // IsPodReady returns true if pod is ready
-func IsPodReady(pod *v1.Pod) bool {
+func IsPodReady(pod *Pod) bool {
 	status := &pod.Status
 	if status == nil {
 		return false
@@ -383,13 +416,16 @@ func IsPodReady(pod *v1.Pod) bool {
 	return false
 }
 
+func IsPodTerminating(pod *v1.Pod) bool {
+	return pod.ObjectMeta.DeletionTimestamp != nil
+}
+
 // ValidatePodWaitingState returns nil if pod waiting reson is valid and error otherwise
 // Errors checked:
 // - ErrImageNeverPull
-// - CrashLoopBackOff
 // - ErrImagePullBackOff
 // - ErrInvalidImageName
-func ValidatePodWaitingState(pod *v1.Pod) error {
+func ValidatePodWaitingState(pod *Pod) error {
 
 	for _, invalidState := range InvalidPodWaitingStates {
 		status := &pod.Status
@@ -418,7 +454,7 @@ func checkWaitingReason(status *v1.PodStatus, reason string) bool {
 
 // PodPending returns true if pod is with status Pending.
 // In this case, also returns reason for being pending and message.
-func PodPending(pod *v1.Pod) (isPending bool, reason, message string) {
+func PodPending(pod *Pod) (isPending bool, reason, message string) {
 	for _, condition := range pod.Status.Conditions {
 		if condition.Status == v1.ConditionFalse {
 			return true, condition.Reason, condition.Message
@@ -430,6 +466,120 @@ func PodPending(pod *v1.Pod) (isPending bool, reason, message string) {
 
 // IsUnitTest returns true if pod was created using fake client-go
 // and is not running in a kubernetes cluster.
-func IsUnitTest(pod *v1.Pod) bool {
+func IsUnitTest(pod *Pod) bool {
 	return len(pod.Status.Phase) == 0
+}
+
+// GetPodMapRedisKey gets the key for string that keeps the pod map from kube on redis
+func GetPodMapRedisKey(schedulerName string) string {
+	return fmt.Sprintf("scheduler:%s:podMap", schedulerName)
+}
+
+// GetPodMapFromRedis loads the pod map from redis
+func GetPodMapFromRedis(
+	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
+	schedulerName string,
+) (podMap map[string]*Pod, err error) {
+	pipe := redisClient.TxPipeline()
+	cmd := pipe.HGetAll(GetPodMapRedisKey(schedulerName))
+	err = mr.WithSegment(SegmentPipeExec, func() error {
+		var err error
+		_, err = pipe.Exec()
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	podMap = map[string]*Pod{}
+
+	for podName, podStr := range cmd.Val() {
+		pod := &Pod{}
+		err = pod.UnmarshalFromRedis(podStr)
+		if err != nil {
+			return nil, err
+		}
+
+		podMap[podName] = pod
+	}
+
+	return podMap, err
+}
+
+// GetPodCountFromRedis returns the pod count from redis podMap key
+func GetPodCountFromRedis(
+	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
+	schedulerName string,
+) (count int, err error) {
+	pipe := redisClient.TxPipeline()
+	cmd := pipe.HLen(GetPodMapRedisKey(schedulerName))
+	err = mr.WithSegment(SegmentPipeExec, func() error {
+		var err error
+		_, err = pipe.Exec()
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return int(cmd.Val()), err
+}
+
+// GetPodFromRedis returns a specific pod from redis
+func GetPodFromRedis(
+	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
+	podName, schedulerName string,
+) (pod *Pod, err error) {
+	podStr, err := redisClient.HGet(GetPodMapRedisKey(schedulerName), podName).Result()
+	if err == redis.Nil {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	pod = &Pod{}
+	err = pod.UnmarshalFromRedis(podStr)
+
+	return pod, err
+}
+
+// AddToPodMap adds a pod to redis podMap key
+func AddToPodMap(
+	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
+	pod *Pod,
+	schedulerName string,
+) error {
+	// convert Pod to []byte
+	podStr, err := pod.MarshalToRedis()
+	if err != nil {
+		return err
+	}
+
+	// Add pod to redis
+	err = redisClient.HMSet(
+		GetPodMapRedisKey(schedulerName),
+		map[string]interface{}{
+			pod.Name: podStr,
+		},
+	).Err()
+
+	return err
+}
+
+// RemoveFromPodMap removes a pod from redis podMap key
+func RemoveFromPodMap(
+	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
+	podName, schedulerName string,
+) error {
+	// Remove pod from redis
+	pipe := redisClient.TxPipeline()
+	pipe.HDel(GetPodMapRedisKey(schedulerName), podName)
+	_, err := pipe.Exec()
+	return err
 }

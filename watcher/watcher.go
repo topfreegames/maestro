@@ -9,9 +9,11 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	e "errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strconv"
@@ -23,11 +25,12 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/extensions/clock"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	redis "github.com/topfreegames/extensions/redis"
-	kubernetesExtensions "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
+	"github.com/topfreegames/extensions/redis"
 	"github.com/topfreegames/maestro/constants"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -44,12 +47,14 @@ import (
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
-func createRoomUsages(pods *v1.PodList) ([]*models.RoomUsage, map[string]int) {
-	roomUsages := make([]*models.RoomUsage, len(pods.Items))
-	roomUsagesIdxMap := make(map[string]int, len(pods.Items))
-	for i, pod := range pods.Items {
-		roomUsages[i] = &models.RoomUsage{Name: pod.Name, Usage: float64(math.MaxInt64)}
+func createRoomUsages(pods map[string]*models.Pod) ([]*models.RoomUsage, map[string]int) {
+	roomUsages := make([]*models.RoomUsage, len(pods))
+	roomUsagesIdxMap := make(map[string]int, len(pods))
+	i := 0
+	for podName, pod := range pods {
+		roomUsages[i] = &models.RoomUsage{Name: podName, Usage: float64(math.MaxInt64)}
 		roomUsagesIdxMap[pod.Name] = i
+		i++
 	}
 
 	return roomUsages, roomUsagesIdxMap
@@ -66,6 +71,7 @@ type Watcher struct {
 	RoomsStatusesReportPeriod int
 	EnsureCorrectRoomsPeriod  time.Duration
 	PodStatesCountPeriod      time.Duration
+	KubeCacheTTL              time.Duration
 	Config                    *viper.Viper
 	DB                        pginterfaces.DB
 	KubernetesClient          kubernetes.Interface
@@ -118,6 +124,7 @@ func NewWatcher(
 	occupiedTimeout int64,
 	eventForwarders []*eventforwarder.Info,
 ) *Watcher {
+	logger.Infof("%s", "Starting NewWatcher")
 	w := &Watcher{
 		Config:                  config,
 		Logger:                  logger,
@@ -144,6 +151,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("watcher.podStatesCountPeriod", 1*time.Minute)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
+	w.Config.SetDefault("watcher.maxScaleUpAmount", 300)
 	w.Config.SetDefault("watcher.gracefulShutdownTimeout", 300)
 	w.Config.SetDefault("pingTimeout", 30)
 	w.Config.SetDefault("occupiedTimeout", 60*60)
@@ -228,12 +236,12 @@ func (w *Watcher) Start() {
 
 	ticker := time.NewTicker(time.Duration(w.AutoScalingPeriod) * time.Second)
 	defer ticker.Stop()
-	tickerEnsure := time.NewTicker(w.EnsureCorrectRoomsPeriod)
-	defer tickerEnsure.Stop()
 	tickerStateCount := time.NewTicker(w.PodStatesCountPeriod)
 	defer tickerStateCount.Stop()
 
 	go w.reportRoomsStatusesRoutine()
+	stopKubeWatch := make(chan struct{})
+	go w.configureKubeWatch(stopKubeWatch)
 
 	for w.Run == true {
 		l = w.Logger.WithFields(logrus.Fields{
@@ -246,6 +254,7 @@ func (w *Watcher) Start() {
 			w.PodStatesCount()
 		case sig := <-sigchan:
 			l.Warnf("caught signal %v: terminating\n", sig)
+			close(stopKubeWatch)
 			w.Run = false
 		}
 	}
@@ -328,17 +337,10 @@ func (w *Watcher) AddUtilizationMetricsToRedis() error {
 	}
 
 	// Load pods and set their usage to MaxInt64 for all resources
-	var pods *v1.PodList
-	err = w.MetricsReporter.WithSegment(models.SegmentPod, func() error {
-		var err error
-		pods, err = w.KubernetesClient.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
-		return err
-	})
+	var pods map[string]*models.Pod
+	pods, err = w.listPods()
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods on namespace")
-		return err
-	} else if len(pods.Items) == 0 {
-		logger.Warn("empty list of pods on namespace")
 		return err
 	}
 
@@ -571,9 +573,19 @@ func (w *Watcher) forwardRemovalRoomEvent(logger *logrus.Entry, rooms []string) 
 
 		_, err := eventforwarder.ForwardRoomEvent(
 			context.Background(),
-			w.EventForwarders, w.RedisClient.Client, w.DB, w.KubernetesClient,
-			room, models.RoomTerminated, eventforwarder.PingTimeoutEvent,
-			metadatas[roomName], nil, w.Logger, w.RoomAddrGetter)
+			w.EventForwarders,
+			w.RedisClient.Client,
+			w.DB,
+			w.KubernetesClient,
+			w.MetricsReporter,
+			room,
+			models.RoomTerminated,
+			eventforwarder.PingTimeoutEvent,
+			metadatas[roomName],
+			nil,
+			w.Logger,
+			w.RoomAddrGetter,
+		)
 		if err != nil {
 			logger.WithError(err).Error("pingTimeout event forward failed")
 		}
@@ -581,26 +593,29 @@ func (w *Watcher) forwardRemovalRoomEvent(logger *logrus.Entry, rooms []string) 
 	return nil
 }
 
-func (w *Watcher) listPods() (pods []v1.Pod, err error) {
-	k := w.KubernetesClient
-	podList, err := k.CoreV1().Pods(w.SchedulerName).List(
-		metav1.ListOptions{})
+func (w *Watcher) listPods() (podMap map[string]*models.Pod, err error) {
+	logger := w.Logger.WithFields(logrus.Fields{
+		"operation": "watcher.listPods",
+	})
+
+	podMap, err = models.GetPodMapFromRedis(w.RedisClient.Client, w.MetricsReporter, w.SchedulerName)
 	if err != nil {
+		logger.WithError(err).Error("failed to list pods on redis")
 		return nil, err
 	}
-
-	return podList.Items, nil
+	logger.Debug("got pod map from redis")
+	return podMap, nil
 }
 
 // filterPodsByName returns a []v1.Pod with pods which names are in podNames
-func (w *Watcher) filterPodsByName(logger *logrus.Entry, pods []v1.Pod, podNames []string) (filteredPods []v1.Pod) {
+func (w *Watcher) filterPodsByName(logger *logrus.Entry, pods map[string]*models.Pod, podNames []string) (filteredPods []*models.Pod) {
 	podNameMap := map[string]bool{}
 	for _, name := range podNames {
 		podNameMap[name] = true
 	}
 
-	for _, pod := range pods {
-		if podNameMap[pod.GetName()] {
+	for podName, pod := range pods {
+		if podNameMap[podName] {
 			filteredPods = append(filteredPods, pod)
 		}
 	}
@@ -609,13 +624,13 @@ func (w *Watcher) filterPodsByName(logger *logrus.Entry, pods []v1.Pod, podNames
 }
 
 // zombie rooms are the ones that are in terminating state but the pods doesn't exist
-func (w *Watcher) removeZombies(pods []v1.Pod, rooms []string) ([]string, error) {
+func (w *Watcher) removeZombies(pods map[string]*models.Pod, rooms []string) ([]string, error) {
 	zombieRooms := []*models.Room{}
 	zombieRoomsNames := []string{}
 
 	liveKubePods := map[string]bool{}
-	for _, pod := range pods {
-		liveKubePods[pod.GetName()] = true
+	for podName := range pods {
+		liveKubePods[podName] = true
 	}
 	for _, room := range rooms {
 		if _, ok := liveKubePods[room]; !ok {
@@ -637,7 +652,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 		"operation":   "watcher.RemoveDeadRooms",
 	})
 
-	pods := []v1.Pod{}
+	pods := map[string]*models.Pod{}
 
 	// get rooms with no ping
 	roomsNoPingSince, err := w.roomsWithNoPing(logger)
@@ -678,10 +693,12 @@ func (w *Watcher) RemoveDeadRooms() error {
 			return err
 		}
 
-		l := logger.WithFields(logrus.Fields{
-			"rooms": fmt.Sprintf("%v", roomsRemoved),
-		})
-		l.Info("successfully deleted zombie rooms")
+		if len(roomsRemoved) > 0 {
+			l := logger.WithFields(logrus.Fields{
+				"rooms": fmt.Sprintf("%v", roomsRemoved),
+			})
+			l.Info("successfully deleted zombie rooms")
+		}
 	}
 
 	if len(roomsNoPingSince) > 0 || len(roomsOnOccupiedTimeout) > 0 {
@@ -692,7 +709,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 				return err
 			}
 		}
-		podsToReplace := w.filterPodsByName(logger, pods, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
+		podsToDelete := w.filterPodsByName(logger, pods, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
 
 		// load scheduler from database
 		scheduler := models.NewScheduler(w.SchedulerName, "", "")
@@ -712,24 +729,22 @@ func (w *Watcher) RemoveDeadRooms() error {
 			return err
 		}
 
-		timeoutErr, _, err := controller.SegmentAndReplacePods(
-			context.Background(),
+		var timeoutErr bool
+		timeoutErr, _, err = controller.DeletePodsAndWait(
 			logger,
 			w.RoomManager,
 			w.MetricsReporter,
 			w.KubernetesClient,
-			w.DB,
 			w.RedisClient.Client,
 			willTimeoutAt,
 			configYAML,
-			podsToReplace,
 			scheduler,
 			nil,
-			w.Config.GetInt("watcher.maxSurge"),
+			podsToDelete,
 			&clock.Clock{},
 		)
 
-		if timeoutErr != nil {
+		if timeoutErr {
 			logger.WithError(err).Error("timeout replacing pods on RemoveDeadRooms")
 		}
 
@@ -737,7 +752,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 			logger.WithError(err).Error("replacing pods returned error on RemoveDeadRooms")
 		}
 
-		if timeoutErr == nil && err == nil {
+		if timeoutErr == false && err == nil {
 			l := logger.WithFields(logrus.Fields{
 				"rooms": fmt.Sprintf("%v", roomsNoPingSince),
 			})
@@ -844,6 +859,7 @@ func (w *Watcher) AutoScale() error {
 			scaling.Delta,
 			timeoutSec,
 			false,
+			w.Config,
 		)
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
@@ -857,11 +873,12 @@ func (w *Watcher) AutoScale() error {
 
 		scaleDown := func() error {
 			return controller.ScaleDown(
+				context.Background(),
 				logger,
 				w.RoomManager,
 				w.MetricsReporter,
 				w.DB,
-				w.RedisClient.Client,
+				w.RedisClient,
 				w.KubernetesClient,
 				scheduler,
 				-scaling.Delta,
@@ -953,7 +970,7 @@ func (w *Watcher) transformLegacyInMetricsTrigger(autoScalingInfo *models.AutoSc
 		autoScalingInfo.Up.MetricsTrigger = append(
 			autoScalingInfo.Up.MetricsTrigger,
 			&models.ScalingPolicyMetricsTrigger{
-				Type:      models.LegacyAutoScalingPolicyType,
+				Type:      models.RoomAutoScalingPolicyType,
 				Usage:     autoScalingInfo.Up.Trigger.Usage,
 				Limit:     autoScalingInfo.Up.Trigger.Limit,
 				Threshold: autoScalingInfo.Up.Trigger.Threshold,
@@ -967,7 +984,7 @@ func (w *Watcher) transformLegacyInMetricsTrigger(autoScalingInfo *models.AutoSc
 		autoScalingInfo.Down.MetricsTrigger = append(
 			autoScalingInfo.Down.MetricsTrigger,
 			&models.ScalingPolicyMetricsTrigger{
-				Type:      models.LegacyAutoScalingPolicyType,
+				Type:      models.RoomAutoScalingPolicyType,
 				Usage:     autoScalingInfo.Down.Trigger.Usage,
 				Limit:     autoScalingInfo.Down.Trigger.Limit,
 				Threshold: autoScalingInfo.Down.Trigger.Threshold,
@@ -1118,35 +1135,29 @@ func (w *Watcher) checkMetricsTrigger(
 	return scaling, nil
 }
 
-func (w *Watcher) getInvalidPodsAndPodNames(
-	podList *v1.PodList,
+func (w *Watcher) getIncorrectAndUnregisteredPods(
+	logger logrus.FieldLogger,
+	podMap map[string]*models.Pod,
 	scheduler *models.Scheduler,
-) (invalidPods []v1.Pod, invalidPodNames []string, err error) {
-	concat := func(pods []v1.Pod, err error) error {
-		if err != nil {
-			return err
-		}
-		invalidPods = append(invalidPods, pods...)
-		return nil
-	}
-
-	err = concat(w.podsOfIncorrectVersion(podList, scheduler))
+) (invalidPods, unregisteredPods []*models.Pod, err error) {
+	incorrectPods, err := w.podsOfIncorrectVersion(podMap, scheduler)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	err = concat(w.podsNotRegistered(podList))
+	unregisteredPods, err = w.podsNotRegistered(podMap)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if len(invalidPods) > 0 {
-		for _, pod := range invalidPods {
-			invalidPodNames = append(invalidPodNames, pod.GetName())
-		}
+		logger.WithFields(logrus.Fields{
+			"incorrectVersion": len(incorrectPods),
+			"unregistered":     len(unregisteredPods),
+		}).Info("replacing invalid pods")
 	}
 
-	return invalidPods, invalidPodNames, err
+	return incorrectPods, unregisteredPods, err
 }
 
 func (w *Watcher) getOperation(ctx context.Context, logger logrus.FieldLogger) (operationManager *models.OperationManager, err error) {
@@ -1154,7 +1165,7 @@ func (w *Watcher) getOperation(ctx context.Context, logger logrus.FieldLogger) (
 		w.SchedulerName, w.RedisClient.Trace(ctx), logger,
 	)
 
-	currentOpKey, _ := operationManager.CurrentOperation()
+	currentOpKey, err := operationManager.CurrentOperation()
 	if err != nil {
 		return nil, err
 	}
@@ -1219,8 +1230,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	}
 
 	// list current pods
-	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, ctx)
-	pods, err := controller.ListCurrentPods(w.MetricsReporter, k, w.SchedulerName)
+	pods, err := w.listPods()
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods on namespace")
 		return err
@@ -1228,18 +1238,36 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	// get invalid pods (wrong versions and pods not registered in redis)
 	logger.Info("searching for invalid pods")
-	invalidPods, invalidPodNames, err := w.getInvalidPodsAndPodNames(pods, scheduler)
+	incorrectPods, unregisteredPods, err := w.getIncorrectAndUnregisteredPods(logger, pods, scheduler)
 	if err != nil {
 		logger.WithError(err).Error("failed to get invalid pods")
 		return err
 	}
 
+	// get incorrect pod names
+	var incorrectPodNames []string
+	if len(incorrectPods) > 0 {
+		for _, pod := range incorrectPods {
+			incorrectPodNames = append(incorrectPodNames, pod.Name)
+		}
+	}
+
+	// get unregistered pod names
+	var unregisteredPodNames []string
+	if len(unregisteredPods) > 0 {
+		for _, pod := range unregisteredPods {
+			unregisteredPodNames = append(unregisteredPodNames, pod.Name)
+		}
+	}
+
+	invalidPods := append(incorrectPods, unregisteredPods...)
+
 	if len(invalidPods) <= 0 {
+		// delete invalidRooms key for safety
+		models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
 		logger.Debug("no invalid pods to replace")
 		return nil
 	}
-
-	logger.WithField("invalidPods", invalidPodNames).Info("replacing invalid pods")
 
 	// get operation manager if it exists.
 	// It won't exist if not in a UpdateSchedulerConfig operation
@@ -1251,15 +1279,26 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	// save invalid pods in redis to track rolling update progress
 	if operationManager != nil {
-		err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, invalidPodNames)
+		status, err := operationManager.Get(operationManager.GetOperationKey())
 		if err != nil {
 			logger.WithError(err).Error("error trying to save invalid rooms to track progress")
 			return err
 		}
-		err = operationManager.SetDescription(models.OpManagerRollingUpdate)
-		if err != nil {
-			logger.WithError(err).Error("error trying to set opmanager to rolling update status")
-			return err
+
+		// don't remove unregistered rooms if in a rolling update
+		invalidPods = incorrectPods
+
+		if status["description"] != models.OpManagerRollingUpdate {
+			err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, incorrectPodNames)
+			if err != nil {
+				logger.WithError(err).Error("error trying to save invalid rooms to track progress")
+				return err
+			}
+			err = operationManager.SetDescription(models.OpManagerRollingUpdate)
+			if err != nil {
+				logger.WithError(err).Error("error trying to set opmanager to rolling update status")
+				return err
+			}
 		}
 	}
 
@@ -1267,6 +1306,8 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
 	timeoutDur := time.Duration(timeoutSec) * time.Second
 	willTimeoutAt := time.Now().Add(timeoutDur)
+
+	logger.Infof("replacing pods with %d seconds of timeout", timeoutSec)
 	timeoutErr, _, err := controller.SegmentAndReplacePods(
 		ctx,
 		logger,
@@ -1281,6 +1322,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		scheduler,
 		operationManager,
 		w.Config.GetInt("watcher.maxSurge"),
+		w.Config.GetInt("watcher.goroutinePoolSize"),
 		&clock.Clock{},
 	)
 
@@ -1306,16 +1348,15 @@ func (w *Watcher) EnsureCorrectRooms() error {
 }
 
 func (w *Watcher) podsNotRegistered(
-	pods *v1.PodList,
-) ([]v1.Pod, error) {
-	registered, err := models.GetAllRegisteredRooms(w.RedisClient.Client,
-		w.SchedulerName)
+	pods map[string]*models.Pod,
+) ([]*models.Pod, error) {
+	registered, err := models.GetAllRegisteredRooms(w.RedisClient.Client, w.SchedulerName)
 	if err != nil {
 		return nil, err
 	}
 
-	notRegistered := []v1.Pod{}
-	for _, pod := range pods.Items {
+	notRegistered := []*models.Pod{}
+	for _, pod := range pods {
 		if _, ok := registered[pod.Name]; !ok {
 			notRegistered = append(notRegistered, pod)
 		}
@@ -1343,10 +1384,10 @@ func (w *Watcher) splitedVersion(version string) (majorInt, minorInt int, err er
 }
 
 func (w *Watcher) podsOfIncorrectVersion(
-	pods *v1.PodList,
+	pods map[string]*models.Pod,
 	scheduler *models.Scheduler,
-) ([]v1.Pod, error) {
-	incorrectPods := []v1.Pod{}
+) ([]*models.Pod, error) {
+	incorrectPods := []*models.Pod{}
 
 	schedulerMajorVersion, _, err := w.splitedVersion(scheduler.Version)
 	if err != nil {
@@ -1361,8 +1402,8 @@ func (w *Watcher) podsOfIncorrectVersion(
 		}
 	}
 
-	for _, pod := range pods.Items {
-		podMajorVersion, _, err := w.splitedVersion(pod.Labels["version"])
+	for _, pod := range pods {
+		podMajorVersion, _, err := w.splitedVersion(pod.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -1389,9 +1430,7 @@ func (w *Watcher) PodStatesCount() {
 
 	logger := w.Logger.WithField("method", "PodStatesCount")
 
-	logger.Info("listing pods on namespace")
-	k := kubernetesExtensions.TryWithContext(w.KubernetesClient, context.Background())
-	pods, err := k.CoreV1().Pods(w.SchedulerName).List(metav1.ListOptions{})
+	pods, err := w.listPods()
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods")
 		return
@@ -1406,7 +1445,7 @@ func (w *Watcher) PodStatesCount() {
 		v1.PodUnknown:   0,
 	}
 
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		stateCount[pod.Status.Phase]++
 		for _, status := range pod.Status.ContainerStatuses {
 			logger.Debugf("termination state: %+v", status)
@@ -1466,4 +1505,96 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 		return true
 	}
 	return false
+}
+
+func (w *Watcher) configureWatcher() (watch.Interface, error) {
+	timeout := int64(5.0 * 60 * (rand.Float64() + 1.0))
+	return w.KubernetesClient.CoreV1().Pods(w.SchedulerName).
+		Watch(metav1.ListOptions{
+			Watch:          true,
+			TimeoutSeconds: &timeout,
+			FieldSelector:  fields.Everything().String(),
+		})
+}
+
+func (w *Watcher) watchPods(watcher watch.Interface, stopCh <-chan struct{}) error {
+	defer watcher.Stop()
+
+loop:
+	for {
+		select {
+		case <-stopCh:
+			return errors.New("stop channel")
+
+		case event, ok := <-watcher.ResultChan():
+			if !ok {
+				break loop
+			}
+
+			if event.Type == watch.Error {
+				return nil
+			}
+
+			switch event.Type {
+			case watch.Added, watch.Modified:
+				logger := w.Logger.WithFields(logrus.Fields{
+					"operation": "watcher.kubeWatch.CreateOrUpdatePod",
+				})
+
+				// logger.Debug("new pod detected: ", event.Type)
+				if kubePod, ok := event.Object.(*v1.Pod); ok {
+					// create Pod from v1.Pod
+					pod := &models.Pod{
+						Name:          kubePod.GetName(),
+						Version:       kubePod.GetLabels()["version"],
+						NodeName:      kubePod.Spec.NodeName,
+						Status:        kubePod.Status,
+						Spec:          kubePod.Spec,
+						IsTerminating: models.IsPodTerminating(kubePod),
+					}
+
+					err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
+					if err != nil {
+						logger.WithError(err).Error("failed to add pod to redis podMap key")
+					}
+				} else {
+					logger.Error("obj received is not of type *v1.Pod")
+				}
+			case watch.Deleted:
+				logger := w.Logger.WithFields(logrus.Fields{
+					"operation": "watcher.kubeWatch.DeletePod",
+				})
+
+				// logger.Debug("new pod removed")
+				if kubePod, ok := event.Object.(*v1.Pod); ok {
+					// Remove pod from redis
+					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
+					if err != nil {
+						logger.WithError(err).Errorf("failed to remove pod %s from redis", kubePod.GetName())
+					}
+					room := models.NewRoom(kubePod.GetName(), w.SchedulerName)
+					err = room.ClearAll(w.RedisClient.Client, w.MetricsReporter)
+					if err != nil {
+						logger.WithError(err).Errorf("failed to clearAll %s from redis", kubePod.GetName())
+					}
+				} else {
+					logger.Error("obj received is not of type *v1.Pod or cache.DeletedFinalStateUnknown")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
+	for {
+		watcher, err := w.configureWatcher()
+		if err != nil {
+			return err
+		}
+
+		if err := w.watchPods(watcher, stopCh); err != nil {
+			return err
+		}
+	}
 }

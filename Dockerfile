@@ -42,6 +42,8 @@ RUN cd /go/src/github.com/topfreegames/maestro && \
   
 FROM debian:buster-slim
 
+RUN apt update && apt install -y ca-certificates openssl
+
 WORKDIR /app
 
 COPY --from=build-env /app/maestro /app/maestro

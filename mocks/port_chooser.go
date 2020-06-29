@@ -33,13 +33,13 @@ func (m *MockPortChooser) EXPECT() *MockPortChooserMockRecorder {
 }
 
 // Choose mocks base method
-func (m *MockPortChooser) Choose(arg0, arg1, arg2 int) []int {
-	ret := m.ctrl.Call(m, "Choose", arg0, arg1, arg2)
+func (m *MockPortChooser) Choose(start, end, quantity int, excluding []int) []int {
+	ret := m.ctrl.Call(m, "Choose", start, end, quantity, excluding)
 	ret0, _ := ret[0].([]int)
 	return ret0
 }
 
 // Choose indicates an expected call of Choose
-func (mr *MockPortChooserMockRecorder) Choose(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Choose", reflect.TypeOf((*MockPortChooser)(nil).Choose), arg0, arg1, arg2)
+func (mr *MockPortChooserMockRecorder) Choose(start, end, quantity, excluding interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Choose", reflect.TypeOf((*MockPortChooser)(nil).Choose), start, end, quantity, excluding)
 }

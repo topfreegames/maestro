@@ -56,6 +56,7 @@ func ForwardRoomEvent(
 	redis redisinterfaces.RedisClient,
 	db pginterfaces.DB,
 	kubernetesClient kubernetes.Interface,
+	mr *models.MixedMetricsReporter,
 	room *models.Room,
 	status string,
 	eventType string,
@@ -115,23 +116,25 @@ func ForwardRoomEvent(
 					"game":   cachedScheduler.Scheduler.Game,
 				}
 				if eventType != PingTimeoutEvent && eventType != OccupiedTimeoutEvent {
-					infos, err = room.GetRoomInfos(redis, db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler, addrGetter)
-					metadata["ipv6Label"] = infos["ipv6Label"]
+					infos, err = room.GetRoomInfos(redis, db, kubernetesClient, schedulerCache, cachedScheduler.Scheduler, addrGetter, mr)
 
 					if err != nil {
 						l.WithError(err).Error("error getting room info from redis")
 						return nil, err
 					}
-
 					reportIpv6Status(infos, logger)
-					delete(infos, "ipv6Label")
-
 				} else { // fill host and port with zero values when pingTimeout or occupiedTimeout event so it won't break the GRPCForwarder
 					infos["host"] = ""
 					infos["port"] = int32(0)
 				}
 
-				infos["metadata"] = metadata
+				if infos["metadata"] == nil {
+					infos["metadata"] = make(map[string]interface{}, len(metadata))
+				}
+
+				for key, info := range metadata {
+					infos["metadata"].(map[string]interface{})[key] = info
+				}
 				eventWasForwarded = true
 
 				return ForwardEventToForwarders(ctx, enabledForwarders, status, infos, l)
@@ -316,7 +319,9 @@ func reportIpv6Status(
 		reportersConstants.TagStatus:   "success",
 	}
 
-	if infos["ipv6Label"] == nil || infos["ipv6Label"].(string) == "" {
+	if infos["metadata"] == nil ||
+		infos["metadata"].(map[string]interface{})["ipv6Label"] == nil ||
+		infos["metadata"].(map[string]interface{})["ipv6Label"].(string) == "" {
 		status[reportersConstants.TagStatus] = "failed"
 	}
 

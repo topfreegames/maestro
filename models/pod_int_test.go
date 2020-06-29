@@ -95,7 +95,7 @@ var _ = Describe("Pod", func() {
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod, err := models.NewPod(name, env, configYaml, clientset, redisClient.Client)
+			pod, err := models.NewPod(name, env, configYaml, clientset, redisClient.Client, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
 			pod.SetVersion("v1.0")

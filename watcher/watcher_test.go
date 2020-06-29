@@ -64,6 +64,12 @@ autoscaling:
       usage: 60
       time: 100
       threshold: 80
+    metricsTrigger:
+    - type: legacy
+      usage: 60
+      time: 100
+      threshold: 80
+      delta: 2
     cooldown: 200
   down:
     delta: 1
@@ -71,6 +77,12 @@ autoscaling:
       usage: 30
       time: 500
       threshold: 80
+    metricsTrigger:
+    - type: legacy
+      usage: 30
+      time: 500
+      threshold: 80
+      delta: -1
     cooldown: 500
 env:
   - name: MY_ENV_VAR
@@ -103,41 +115,13 @@ autoscaling:
       time: 100
       threshold: 80
       limit: 70
-    cooldown: 200
-  down:
-    delta: 1
-    trigger:
-      usage: 30
-      time: 500
-      threshold: 80
-    cooldown: 500
-env:
-  - name: MY_ENV_VAR
-    value: myvalue
-cmd:
-  - "./room"
-`
-	yamlWithMinZero = `
-name: controller-name
-game: controller
-image: controller/controller:v123
-occupiedTimeout: 300
-limits:
-  memory: "66Mi"
-  cpu: "2"
-limits:
-  memory: "66Mi"
-  cpu: "2"
-shutdownTimeout: 20
-autoscaling:
-  min: 0
-  up:
-    delta: 2
-    trigger:
+    metricsTrigger:
+    - type: legacy
       usage: 60
       time: 100
       threshold: 80
       limit: 70
+      delta: 2
     cooldown: 200
   down:
     delta: 1
@@ -145,50 +129,18 @@ autoscaling:
       usage: 30
       time: 500
       threshold: 80
-    cooldown: 500
-env:
-  - name: MY_ENV_VAR
-    value: myvalue
-cmd:
-  - "./room"
-`
-	yamlWithDownDelta5 = `
-name: controller-name
-game: controller
-image: controller/controller:v123
-occupiedTimeout: 300
-limits:
-  memory: "66Mi"
-  cpu: "2"
-limits:
-  memory: "66Mi"
-  cpu: "2"
-shutdownTimeout: 20
-autoscaling:
-  min: 3
-  up:
-    delta: 2
-    trigger:
-      usage: 60
-      time: 100
-      threshold: 80
-    cooldown: 200
-  down:
-    delta: 5
-    trigger:
+    metricsTrigger:
+    - type: legacy
       usage: 30
       time: 500
       threshold: 80
+      delta: -1
     cooldown: 500
 env:
   - name: MY_ENV_VAR
     value: myvalue
 cmd:
   - "./room"
-forwarders:
-  plugin:
-    name:
-      enabled: true
 `
 	yamlWithLegacyDownAndMetricsUpTrigger = `
 name: controller-name
@@ -216,10 +168,6 @@ autoscaling:
   up:
     delta: 1
     trigger:
-      usage: 70
-      time: 10
-    metricsTrigger:
-    - type: room
       usage: 50
       time: 200
       limit: 85
@@ -231,6 +179,12 @@ autoscaling:
       usage: 30
       time: 100
       threshold: 80
+    metricsTrigger:
+    - type: legacy
+      usage: 30
+      time: 100
+      threshold: 80
+      delta: -2
     cooldown: 60
 `
 	yamlWithLegacyUpAndMetricsDownTrigger = `
@@ -257,16 +211,16 @@ autoscaling:
   min: 2
   max: 10
   up:
-    delta: 2
-    trigger:
+    metricsTrigger:
+    - type: legacy
+      delta: 2
       usage: 50
       time: 200
       limit: 85
       threshold: 80
     cooldown: 30
   down:
-    metricsTrigger:
-    - type: room
+    trigger:
       usage: 30
       time: 100
       threshold: 80
@@ -533,26 +487,37 @@ var _ = Describe("Watcher", func() {
 			}
 
 			// ScaleUp
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
-			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-				func(schedulerName string, statusInfo map[string]interface{}) {
-					Expect(statusInfo["status"]).To(Equal("creating"))
-					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-				},
-			).Times(configYaml.AutoScaling.Up.Delta)
-			mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-			mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-			mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
+			testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Up.Delta)
 
 			// UpdateScheduler
 			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				w.Run = false
 			}, mockDb, nil, nil)
 
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().Del(models.GetInvalidRoomsKey(configYaml.Name))
+			mockPipeline.EXPECT().Exec()
+
+			names := make([]string, 0, configYaml.AutoScaling.Up.Delta)
+			for i := 0; i < configYaml.AutoScaling.Up.Delta; i++ {
+				names = append(names, fmt.Sprintf("room-%d", i))
+			}
+
+			testing.MockListPods(mockPipeline, mockRedisClient, configYaml.Name, names, nil)
+			mockRedisClient.EXPECT().HMSet(models.GetPodMapRedisKey(configYaml.Name), gomock.Any()).Return(redis.NewStatusResult("", nil)).AnyTimes()
+
 			// LeaveCriticalSection (unlock done by redis-lock)
 			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{terminationLockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
 			mockRedisClient.EXPECT().Eval(gomock.Any(), []string{downscalingLockKey}, gomock.Any()).Return(redis.NewCmdResult(nil, nil)).AnyTimes()
-			w.Start()
+
+			Expect(func() {
+				go func() {
+					defer GinkgoRecover()
+					w.Start()
+				}()
+			}).ShouldNot(Panic())
+			Eventually(func() bool { return w.Run }).Should(BeTrue())
+			time.Sleep(10 * time.Second)
 		})
 
 		It("should not panic if error acquiring lock", func() {
@@ -920,8 +885,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, simSpec.deltaExpected)
 
-				// Mock ClearAll
-				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, simSpec.deltaExpected)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, simSpec.deltaExpected)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -992,16 +956,7 @@ var _ = Describe("Watcher", func() {
 				}
 
 				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal("creating"))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
+				testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(base *models.Scheduler, query string, scheduler *models.Scheduler) {
@@ -1038,16 +993,7 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal("creating"))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any())
-				mockPipeline.EXPECT().Exec()
+				testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, 1)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1093,16 +1039,7 @@ var _ = Describe("Watcher", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal("creating"))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
+				testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1159,37 +1096,8 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				for i := 0; i < 5; i++ {
-					pod := &v1.Pod{}
-					pod.Name = fmt.Sprintf("room-%d", i)
-					pod.Spec.Containers = []v1.Container{
-						{Ports: []v1.ContainerPort{
-							{HostPort: int32(5000 + i), Name: "TCP"},
-						}},
-					}
-					pod.Status.Phase = v1.PodPending
-					_, err := clientset.CoreV1().Pods(configYaml.Name).Create(pod)
-					Expect(err).NotTo(HaveOccurred())
-				}
-
-				readyKey := models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady)
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult("room-0", nil))
-				mockPipeline.EXPECT().Exec()
-
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				for range allStatus {
-					mockPipeline.EXPECT().
-						SRem(gomock.Any(), gomock.Any())
-					mockPipeline.EXPECT().
-						ZRem(gomock.Any(), gomock.Any())
-				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
-				for _, mt := range allMetrics {
-					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any())
-				}
-				mockPipeline.EXPECT().Del(gomock.Any())
-				mockPipeline.EXPECT().Exec()
+				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, 1)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, 1)
 
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 					Expect(scheduler.State).To(Equal("in-sync"))
@@ -1328,18 +1236,12 @@ var _ = Describe("Watcher", func() {
 				var configYaml models.ConfigYAML
 				err := yaml.Unmarshal([]byte(yaml1), &configYaml)
 				Expect(err).NotTo(HaveOccurred())
+
 				scheduler := models.NewScheduler(configYaml.Name, configYaml.Game, yaml1)
+
 				scaleUpAmount := 5
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(scaleUpAmount)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(scaleUpAmount)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(scaleUpAmount)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(scaleUpAmount)
-				mockPipeline.EXPECT().Exec().Times(scaleUpAmount)
+
+				testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, 5)
 
 				err = testing.MockSetScallingAmount(
 					mockRedisClient,
@@ -1352,7 +1254,7 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true)
+				err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true, config)
 				Expect(err).NotTo(HaveOccurred())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -1386,20 +1288,7 @@ var _ = Describe("Watcher", func() {
 				mockPipeline.EXPECT().Exec()
 
 				for _, name := range names {
-					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-					room := models.NewRoom(name, scheduler.Name)
-					for _, status := range allStatus {
-						mockPipeline.EXPECT().
-							SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status), room.GetRoomRedisKey())
-						mockPipeline.EXPECT().
-							ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status), room.ID)
-					}
-					mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), room.ID)
-					for _, mt := range allMetrics {
-						mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(room.SchedulerName, mt), gomock.Any())
-					}
-					mockPipeline.EXPECT().Del(room.GetRoomRedisKey())
-					mockPipeline.EXPECT().Exec()
+					testing.MockPodNotFound(mockRedisClient, configYaml.Name, name)
 				}
 
 				// UpdateScheduler
@@ -1520,17 +1409,8 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal("creating"))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
+
+				testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1612,17 +1492,8 @@ var _ = Describe("Watcher", func() {
 					)
 				}
 
-				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal("creating"))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
+
+				testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1717,37 +1588,8 @@ var _ = Describe("Watcher", func() {
 					)
 				}
 
-				for i := 0; i < 5; i++ {
-					pod := &v1.Pod{}
-					pod.Name = fmt.Sprintf("room-%d", i)
-					pod.Spec.Containers = []v1.Container{
-						{Ports: []v1.ContainerPort{
-							{HostPort: int32(5000 + i), Name: "TCP"},
-						}},
-					}
-					pod.Status.Phase = v1.PodPending
-					_, err := clientset.CoreV1().Pods(configYaml.Name).Create(pod)
-					Expect(err).NotTo(HaveOccurred())
-				}
-
-				readyKey := models.GetRoomStatusSetRedisKey(configYaml.Name, models.StatusReady)
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult("room-0", nil))
-				mockPipeline.EXPECT().Exec()
-
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-				for range allStatus {
-					mockPipeline.EXPECT().
-						SRem(gomock.Any(), gomock.Any())
-					mockPipeline.EXPECT().
-						ZRem(gomock.Any(), gomock.Any())
-				}
-				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any())
-				for _, mt := range allMetrics {
-					mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(configYaml.Name, mt), gomock.Any())
-				}
-				mockPipeline.EXPECT().Del(gomock.Any())
-				mockPipeline.EXPECT().Exec()
+				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, 1)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, 1)
 
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 					Expect(scheduler.State).To(Equal("in-sync"))
@@ -1779,17 +1621,7 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal("creating"))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
+				testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1824,17 +1656,7 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				// ScaleUp
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
-					func(schedulerName string, statusInfo map[string]interface{}) {
-						Expect(statusInfo["status"]).To(Equal("creating"))
-						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
-					},
-				).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).Times(configYaml.AutoScaling.Up.Delta)
-				mockPipeline.EXPECT().Exec().Times(configYaml.AutoScaling.Up.Delta)
+				testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -1953,9 +1775,7 @@ var _ = Describe("Watcher", func() {
 
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Down.Delta)
-
-				// Mock ClearAll
-				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Down.Delta)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, configYaml.AutoScaling.Down.Delta)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2072,9 +1892,7 @@ var _ = Describe("Watcher", func() {
 
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
-
-				// Mock ClearAll
-				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2149,9 +1967,7 @@ var _ = Describe("Watcher", func() {
 
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
-
-				// Mock ClearAll
-				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2194,7 +2010,7 @@ var _ = Describe("Watcher", func() {
 					)
 				}
 
-				metricTrigger := configYaml.AutoScaling.Up.MetricsTrigger[0]
+				metricTrigger := mockAutoScaling.Up.MetricsTrigger[0]
 
 				// [Occupied / (Total + Delta)] = Usage/100
 				occupied := float64(expC.Occupied)
@@ -2492,7 +2308,7 @@ var _ = Describe("Watcher", func() {
 					)
 				}
 
-				metricTrigger := configYaml.AutoScaling.Down.MetricsTrigger[0]
+				metricTrigger := mockAutoScaling.Down.MetricsTrigger[0]
 
 				// [Occupied / (Total + Delta)] = Usage/100
 				occupied := float64(expC.Occupied)
@@ -2505,8 +2321,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, deltaInt)
 
-				// Mock ClearAll
-				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, deltaInt)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, deltaInt)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2626,8 +2441,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
 
-				// Mock ClearAll
-				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2703,8 +2517,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
 
-				// Mock ClearAll
-				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -2751,7 +2564,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockScaleUp(
 					mockPipeline, mockRedisClient,
 					configYaml.Name,
-					configYaml.AutoScaling.Up.Delta,
+					mockAutoScaling.Up.MetricsTrigger[0].Delta,
 				)
 
 				// Mock UpdateScheduler
@@ -2921,7 +2734,7 @@ var _ = Describe("Watcher", func() {
 				testing.MockScaleUp(
 					mockPipeline, mockRedisClient,
 					configYaml.Name,
-					configYaml.AutoScaling.Up.Delta,
+					mockAutoScaling.Up.MetricsTrigger[0].Delta,
 				)
 
 				// Mock UpdateScheduler
@@ -3046,8 +2859,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, deltaInt)
 
-				// Mock ClearAll
-				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, deltaInt)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, deltaInt)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -3167,8 +2979,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
 
-				// Mock ClearAll
-				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Min)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -3244,8 +3055,7 @@ var _ = Describe("Watcher", func() {
 				// Mock removal from redis ready set
 				testing.MockRedisReadyPop(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
 
-				// Mock ClearAll
-				testing.MockClearAll(mockPipeline, mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
+				testing.MockPodsNotFound(mockRedisClient, configYaml.Name, expC.Total()-configYaml.AutoScaling.Max)
 
 				// Mock UpdateScheduler
 				testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
@@ -4044,7 +3854,10 @@ var _ = Describe("Watcher", func() {
 				Game:  "game",
 				Image: "img",
 			}
-			pod, err := models.NewPod(name, nil, configYaml, clientset, mockRedisClient)
+			mockRedisClient.EXPECT().
+				HGet(models.GetPodMapRedisKey(configYaml.Name), name).
+				Return(redis.NewStringResult("", redis.Nil))
+			pod, err := models.NewPod(name, nil, configYaml, clientset, mockRedisClient, mr)
 			if err != nil {
 				return err
 			}
@@ -4074,13 +3887,14 @@ var _ = Describe("Watcher", func() {
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 		})
 
-		It("should call controller DeleteRoomsNoPingSince and DeleteRoomsOccupiedTimeout", func() {
+		It("should call controller roomsWithNoPing and roomsWithOccupationTimeout", func() {
 			schedulerName := configYaml.Name
 			pKey := models.GetRoomPingRedisKey(schedulerName)
 			lKey := models.GetLastStatusRedisKey(schedulerName, models.StatusOccupied)
 			ts := time.Now().Unix() - w.Config.GetInt64("pingTimeout")
 			createNamespace(schedulerName, clientset)
-			// DeleteRoomsNoPingSince
+
+			// roomsWithNoPing
 			expectedRooms := []string{"room1", "room2", "room3"}
 			mockRedisClient.EXPECT().ZRangeByScore(
 				pKey,
@@ -4090,9 +3904,9 @@ var _ = Describe("Watcher", func() {
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
-			}).Return(redis.NewStringSliceResult(expectedRooms, nil)).AnyTimes()
+			}).Return(redis.NewStringSliceResult([]string{"room1"}, nil)).AnyTimes()
 
-			// DeleteRoomsOccupiedTimeout
+			// roomsWithOccupationTimeout
 			ts = time.Now().Unix() - w.OccupiedTimeout
 			mockRedisClient.EXPECT().ZRangeByScore(
 				lKey,
@@ -4102,7 +3916,7 @@ var _ = Describe("Watcher", func() {
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
-			}).Return(redis.NewStringSliceResult(expectedRooms, nil)).AnyTimes()
+			}).Return(redis.NewStringSliceResult([]string{"room2","room3"}, nil)).AnyTimes()
 
 			for _, roomName := range expectedRooms {
 				err := createPod(roomName, schedulerName, clientset)
@@ -4123,9 +3937,18 @@ var _ = Describe("Watcher", func() {
 			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
 
 			// Mock get terminating rooms
+			testing.MockListPods(mockPipeline, mockRedisClient, schedulerName, []string{"room1","room2","room3"}, nil)
 			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{"scheduler:controller-name:rooms:room-0"}, schedulerName)
 
 			for _, roomName := range expectedRooms {
+				runningCall := testing.MockRunningPod(mockRedisClient, configYaml.Name, roomName)
+
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				mockPipeline.EXPECT().HDel(models.GetPodMapRedisKey(configYaml.Name), roomName)
+				mockPipeline.EXPECT().Exec()
+
+				testing.MockPodNotFound(mockRedisClient, configYaml.Name, roomName).After(runningCall)
+
 				room := models.NewRoom(roomName, schedulerName)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				for _, status := range allStatus {
@@ -4155,32 +3978,11 @@ var _ = Describe("Watcher", func() {
 					}, map[string]interface{}(nil))
 			}
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room1", "metadata")
-			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room2", "metadata")
-			mockPipeline.EXPECT().HGet("scheduler:controller-name:rooms:room3", "metadata")
-			mockPipeline.EXPECT().Exec().Return([]redis.Cmder{
-				redis.NewStringResult(`{"region": "us"}`, nil),
-				redis.NewStringResult(`{"region": "us"}`, nil),
-				redis.NewStringResult(`{"region": "us"}`, nil),
-			}, nil)
-
-			for _, roomName := range expectedRooms {
-				mockEventForwarder.EXPECT().Forward(gomock.Any(), models.RoomTerminated,
-					map[string]interface{}{
-						"game":     schedulerName,
-						"host":     "",
-						"port":     int32(0),
-						"roomId":   roomName,
-						"metadata": map[string]interface{}{"region": "us"},
-					}, map[string]interface{}(nil))
-			}
-
 			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 					scheduler.Game = schedulerName
-				}).Times(7)
+				}).Times(4)
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 		})
@@ -4245,8 +4047,13 @@ var _ = Describe("Watcher", func() {
 				})
 			}
 
+			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
+
 			// Mock get terminating rooms
+			testing.MockListPods(mockPipeline, mockRedisClient, schedulerName, []string{}, nil)
 			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, expectedRooms, schedulerName)
+
+			testing.MockListPods(mockPipeline, mockRedisClient, schedulerName, []string{}, nil)
 
 			testing.MockLoadScheduler(configYaml.Name, mockDb).
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -4339,7 +4146,8 @@ var _ = Describe("Watcher", func() {
 				)
 
 				// Create test rooms names for each status
-				rooms := testing.CreateTestRooms(clientset, configYaml.Name, expC)
+				roomNames, rooms := testing.CreateTestRooms(clientset, configYaml.Name, expC)
+				testing.MockListPods(mockPipeline, mockRedisClient, configYaml.Name, roomNames, nil)
 
 				// Mock saving CPU for all ready and occupied rooms
 				testing.MockSavingRoomsMetricses(
@@ -4415,7 +4223,8 @@ var _ = Describe("Watcher", func() {
 				)
 
 				// Create test rooms names for each status
-				rooms := testing.CreateTestRooms(clientset, configYaml.Name, expC)
+				roomNames, rooms := testing.CreateTestRooms(clientset, configYaml.Name, expC)
+				testing.MockListPods(mockPipeline, mockRedisClient, configYaml.Name, roomNames, nil)
 
 				// Mock saving CPU for all ready and occupied rooms
 				testing.MockSavingRoomsMetricses(
@@ -4485,6 +4294,7 @@ var _ = Describe("Watcher", func() {
 				)
 
 				fakeMetricsClient := testing.CreatePodsMetricsList(containerMetrics, []string{}, configYaml.Name, nil)
+				testing.MockListPods(mockPipeline, mockRedisClient, configYaml.Name, []string{}, nil)
 
 				w = watcher.NewWatcher(config,
 					logger,
@@ -4513,6 +4323,9 @@ var _ = Describe("Watcher", func() {
 			testing.MockLoadScheduler(configYaml.Name, mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
 				scheduler.YAML = yaml1
 			})
+
+			config.Set("watcher.goroutinePoolSize", 1)
+
 			w = watcher.NewWatcher(
 				config, logger, mr, mockDb, redisClient, clientset, metricsClientset,
 				configYaml.Name, configYaml.Game, occupiedTimeout,
@@ -4543,8 +4356,7 @@ var _ = Describe("Watcher", func() {
 
 		It("should return error if fail to read rooms from redis", func() {
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
-			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
-				w.SchedulerName, [][]string{}, errDB)
+			testing.MockListPods(mockPipeline, mockRedisClient, configYaml.Name, []string{}, errDB)
 
 			err := w.EnsureCorrectRooms()
 
@@ -4557,16 +4369,25 @@ var _ = Describe("Watcher", func() {
 			room := models.NewRoom(podNames[0], w.SchedulerName)
 
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
-			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
-				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
+			testing.MockListPods(mockPipeline, mockRedisClient, w.SchedulerName, podNames, nil)
+			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline, w.SchedulerName, [][]string{ {}, {room.GetRoomRedisKey()} }, nil)
 
 			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
 			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
 
 			// Create room
-			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
+			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 1)
 			testing.MockGetPortsFromPoolAnyTimes(&configYaml, mockRedisClient, mockPortChooser,
 				models.NewPortRange(5000, 6000).String(), 5000, 6000)
+
+			testing.MockAnyRunningPod(mockRedisClient, w.SchedulerName, 2)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "ready"), gomock.Any()).Return(redis.NewBoolResult(true, nil))
+			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied"), gomock.Any()).Return(redis.NewBoolResult(false, nil))
+			exec1 := mockPipeline.EXPECT().Exec().Return(nil,nil)
+
+			testing.MockRunningPod(mockRedisClient, w.SchedulerName, "room-2")
 
 			for _, podName := range podNames {
 				pod := &v1.Pod{}
@@ -4578,6 +4399,11 @@ var _ = Describe("Watcher", func() {
 			}
 
 			room = models.NewRoom(podNames[1], w.SchedulerName)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HDel(models.GetPodMapRedisKey(w.SchedulerName), room.ID)
+			exec2 := mockPipeline.EXPECT().Exec().Return(nil, nil).After(exec1)
+
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			for _, status := range allStatus {
 				mockPipeline.EXPECT().
@@ -4593,13 +4419,12 @@ var _ = Describe("Watcher", func() {
 				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(w.SchedulerName, mt), gomock.Any()).AnyTimes()
 			}
 			mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).AnyTimes()
-			mockPipeline.EXPECT().Exec().Return(nil, errDB)
-			mockPipeline.EXPECT().Exec().Return(nil, nil)
+			mockPipeline.EXPECT().Exec().Return(nil, errDB).After(exec2)
 
 			err := w.EnsureCorrectRooms()
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(hook.LastEntry().Message).To(Equal(fmt.Sprintf("error deleting pod %s", podNames[1])))
+			Expect(hook.Entries).To(testing.ContainLogMessage(fmt.Sprintf("error deleting pod %s", podNames[1])))
 		})
 
 		It("should delete invalid pods", func() {
@@ -4607,11 +4432,26 @@ var _ = Describe("Watcher", func() {
 			room := models.NewRoom(podNames[0], w.SchedulerName)
 
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
+			testing.MockListPods(mockPipeline, mockRedisClient, w.SchedulerName, podNames, nil)
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
 				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
 
 			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
 			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+
+			// Create room
+			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 1)
+			testing.MockGetPortsFromPoolAnyTimes(&configYaml, mockRedisClient, mockPortChooser,
+				models.NewPortRange(5000, 6000).String(), 5000, 6000)
+
+			testing.MockAnyRunningPod(mockRedisClient, w.SchedulerName, 2)
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "ready"), gomock.Any()).Return(redis.NewBoolResult(true, nil))
+			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied"), gomock.Any()).Return(redis.NewBoolResult(false, nil))
+			mockPipeline.EXPECT().Exec().Return(nil,nil)
+
+			runningPod := testing.MockRunningPod(mockRedisClient, w.SchedulerName, "room-2")
 
 			for _, podName := range podNames {
 				pod := &v1.Pod{}
@@ -4622,13 +4462,13 @@ var _ = Describe("Watcher", func() {
 				Expect(err).ToNot(HaveOccurred())
 			}
 
-			// Create room
-			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 1)
-			testing.MockGetPortsFromPoolAnyTimes(&configYaml, mockRedisClient, mockPortChooser,
-				models.NewPortRange(5000, 6000).String(), 5000, 6000)
-
 			// Delete old rooms
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HDel(models.GetPodMapRedisKey(w.SchedulerName), "room-2")
+			mockPipeline.EXPECT().Exec()
+
 			testing.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, &configYaml, nil, 1)
+			testing.MockPodNotFound(mockRedisClient, w.SchedulerName, "room-2").After(runningPod)
 
 			err := w.EnsureCorrectRooms()
 
@@ -4668,10 +4508,11 @@ var _ = Describe("Watcher", func() {
 			nPods := 3
 			reason := "bug"
 
+			pods := make(map[string]string)
 			for idx := 1; idx <= nPods; idx++ {
-				pod := &v1.Pod{}
-				pod.SetName(fmt.Sprintf("pod-%d", idx))
-				pod.SetNamespace(w.SchedulerName)
+				var pod models.Pod
+				pod.Name = fmt.Sprintf("pod-%d", idx)
+				pod.Namespace = w.SchedulerName
 				pod.Status = v1.PodStatus{
 					Phase: v1.PodPending,
 					ContainerStatuses: []v1.ContainerStatus{{
@@ -4682,10 +4523,18 @@ var _ = Describe("Watcher", func() {
 						},
 					}},
 				}
-
-				_, err := clientset.CoreV1().Pods(w.SchedulerName).Create(pod)
+				jsonBytes, err := pod.MarshalToRedis()
 				Expect(err).ToNot(HaveOccurred())
+				pods[pod.Name] = string(jsonBytes)
 			}
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().
+				HGetAll(models.GetPodMapRedisKey(w.SchedulerName)).
+				Return(redis.NewStringStringMapResult(pods, nil))
+			mockPipeline.EXPECT().Exec()
+
+			mockReporter.EXPECT().Report(reportersConstants.EventResponseTime, gomock.Any())
 
 			stateCount := map[v1.PodPhase]int{
 				v1.PodPending:   nPods,

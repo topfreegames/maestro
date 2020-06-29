@@ -1,0 +1,54 @@
+---
+name: test-1
+game: game
+occupiedTimeout: 1000
+shutdownTimeout: 100
+autoscaling:
+  min: 2
+  up:
+    cooldown: 5
+    delta: 1
+    trigger:
+      usage: 70
+      time: 60
+      threshold: 80
+  down:
+    cooldown: 5
+    delta: 1
+    trigger:
+      usage: 50
+      time: 60
+      threshold: 80
+containers:
+  - name: game
+    image: maestro-dev-room:latest
+    imagePullPolicy: Never
+    requests:
+      cpu: 10m
+      memory: 40Mi
+    limits:
+      cpu: 20m
+      memory: 60Mi
+    ports:
+      - containerPort: 8080
+        protocol: TCP
+        name: tcp
+    env:
+      - name: MAESTRO_HOST_PORT
+        value: 192.168.64.1:8080
+        valueFrom:
+          secretKeyRef:
+            name: ""
+            key: ""
+      - name: POLLING_INTERVAL_IN_SECONDS
+        value: "20"
+        valueFrom:
+          secretKeyRef:
+            name: ""
+            key: ""
+      - name: PING_INTERVAL_IN_SECONDS
+        value: "10"
+        valueFrom:
+          secretKeyRef:
+            name: ""
+            key: ""

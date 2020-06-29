@@ -12,8 +12,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -21,7 +21,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	yaml "gopkg.in/yaml.v2"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -48,12 +48,13 @@ func SegmentAndReplacePods(
 	redisClient redisinterfaces.RedisClient,
 	willTimeoutAt time.Time,
 	configYAML *models.ConfigYAML,
-	pods []v1.Pod,
+	pods []*models.Pod,
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
-	maxSurge int,
+	maxSurge, goroutinePoolSize int,
 	clock clockinterfaces.Clock,
 ) (timeoutErr, cancelErr, err error) {
+	rand.Seed(time.Now().UnixNano())
 	schedulerName := scheduler.Name
 	l := logger.WithFields(logrus.Fields{
 		"source":    "SegmentAndReplacePods",
@@ -80,6 +81,7 @@ func SegmentAndReplacePods(
 			scheduler,
 			operationManager,
 			clock,
+			goroutinePoolSize,
 		)
 
 		if timedout {
@@ -113,21 +115,84 @@ func replacePodsAndWait(
 	redisClient redisinterfaces.RedisClient,
 	willTimeoutAt time.Time,
 	configYAML *models.ConfigYAML,
-	podsChunk []v1.Pod,
+	podsChunk []*models.Pod,
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
 	clock clockinterfaces.Clock,
+	goroutinePoolSize int,
 ) (timedout, canceled bool, err error) {
-	timedout = false
-	canceled = false
-	var wg sync.WaitGroup
-	var mutex = &sync.Mutex{}
+	logger.Debug("starting to replace pods with new ones")
+	stop := make(chan struct{}, 1)
+	defer close(stop) // Dont leak goroutines
+	finishedReplace := make(chan struct{})
 
-	// create a chunk of pods (chunkSize = maxSurge) and remove a chunk of old ones
-	wg.Add(len(podsChunk))
+	timedoutChan := make(chan bool)
+	canceledChan := make(chan bool)
+	errChan := make(chan error)
+
+	pods := make(chan *models.Pod, len(podsChunk))
 	for _, pod := range podsChunk {
-		go func(pod v1.Pod) {
-			defer wg.Done()
+		pods <- pod
+	}
+
+	logger.Infof("starting %d in-memory workers to replace %d pods", goroutinePoolSize, len(podsChunk))
+	for i := 0; i < goroutinePoolSize; i++ {
+		go replacePodWorker(
+			logger,
+			roomManager,
+			mr,
+			clientset,
+			db,
+			redisClient,
+			willTimeoutAt,
+			configYAML,
+			scheduler,
+			operationManager,
+			clock,
+			pods,
+			stop, finishedReplace,
+			timedoutChan, canceledChan, errChan,
+		)
+	}
+
+	select {
+	case err = <-errChan:
+		return false, false, err
+
+	case canceled = <-canceledChan:
+		return false, canceled, nil
+
+	case timedout = <-timedoutChan:
+		return timedout, false, nil
+
+	case <-finishedReplace:
+		logger.Debug("all pods were successfully replaced")
+		break
+	}
+
+	return timedout, canceled, err
+}
+
+func replacePodWorker(
+	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	willTimeoutAt time.Time,
+	configYAML *models.ConfigYAML,
+	scheduler *models.Scheduler,
+	operationManager *models.OperationManager,
+	clock clockinterfaces.Clock,
+	pods <-chan *models.Pod,
+	stop, finishedReplace chan struct{},
+	timedoutChan, canceledChan chan<- bool,
+	errChan chan<- error,
+) {
+	for {
+		select {
+		case pod := <-pods:
 			localTimedout, localCanceled, localErr := createNewRemoveOldPod(
 				logger,
 				roomManager,
@@ -139,32 +204,34 @@ func replacePodsAndWait(
 				configYAML,
 				scheduler,
 				operationManager,
-				mutex,
 				pod,
 				clock,
 			)
-			// if a routine is timedout or canceled,
-			// rolling update should stop
-			if localTimedout {
-				mutex.Lock()
-				timedout = localTimedout
-				mutex.Unlock()
-			}
-			if localCanceled {
-				mutex.Lock()
-				canceled = localCanceled
-				mutex.Unlock()
-			}
-			if localErr != nil {
-				mutex.Lock()
-				err = localErr
-				mutex.Unlock()
-			}
-		}(pod)
-	}
-	wg.Wait()
 
-	return timedout, canceled, err
+			if localErr != nil {
+				errChan <- localErr
+				return
+			}
+
+			if localCanceled {
+				canceledChan <- localCanceled
+				return
+			}
+
+			if localTimedout {
+				timedoutChan <- localTimedout
+				return
+			}
+
+			logger.Infof("pods remaining to replace: %d", len(pods))
+			if len(pods) == 0 {
+				finishedReplace <- struct{}{}
+				return
+			}
+		case <-stop:
+			return
+		}
+	}
 }
 
 func createNewRemoveOldPod(
@@ -178,8 +245,7 @@ func createNewRemoveOldPod(
 	configYAML *models.ConfigYAML,
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
-	mutex *sync.Mutex,
-	pod v1.Pod,
+	pod *models.Pod,
 	clock clockinterfaces.Clock,
 ) (timedout, canceled bool, err error) {
 	logger.Debug("creating pod")
@@ -196,41 +262,82 @@ func createNewRemoveOldPod(
 	// wait for new pod to be created
 	timeout := willTimeoutAt.Sub(clock.Now())
 	timedout, canceled, err = waitCreatingPods(
-		logger, clientset, timeout, configYAML.Name,
+		logger, clientset, redisClient, timeout, configYAML.Name,
 		[]v1.Pod{*newPod}, operationManager, mr)
 	if timedout || canceled || err != nil {
 		logger.Errorf("error waiting for pod to be created")
 		return timedout, canceled, err
 	}
 
-	// delete old pod
-	logger.Debugf("deleting pod %s", pod.GetName())
-	err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
-		configYAML, pod.GetName(), reportersConstants.ReasonUpdate)
+	timedout, canceled, err = DeletePodsAndWait(
+		logger,
+		roomManager,
+		mr,
+		clientset,
+		redisClient,
+		willTimeoutAt,
+		configYAML,
+		scheduler,
+		operationManager,
+		[]*models.Pod{pod},
+		clock,
+	)
+
 	if err != nil && !strings.Contains(err.Error(), "redis") {
-		logger.WithError(err).Errorf("error deleting pod %s", pod.GetName())
 		return false, false, nil
 	}
 
-	// wait for old pods to be deleted
-	// we assume that maxSurge == maxUnavailable as we can't set maxUnavailable yet
-	// so for every pod created in a chunk one is deleted right after it
-	timeout = willTimeoutAt.Sub(clock.Now())
-	timedout, canceled = waitTerminatingPods(
-		logger, clientset, timeout, configYAML.Name,
-		[]v1.Pod{pod}, operationManager, mr)
 	if timedout || canceled {
-		logger.Errorf("error waiting for pod %s to be deleted", pod.GetName())
 		return timedout, canceled, nil
 	}
 
 	// Remove invalid rooms redis keys if in a rolling update operation
 	// in order to track progress correctly
 	if operationManager != nil {
-		err = models.RemoveInvalidRooms(redisClient, mr, configYAML.Name, []string{pod.GetName()})
+		err = models.RemoveInvalidRooms(redisClient, mr, configYAML.Name, []string{pod.Name})
 		if err != nil {
-			logger.WithError(err).Warnf("error removing room %s from invalidRooms redis key during rolling update", pod.GetName())
+			logger.WithError(err).Warnf("error removing room %s from invalidRooms redis key during rolling update", pod.Name)
 		}
+	}
+
+	return false, false, nil
+}
+
+// DeletePodsAndWait deletes a list of pods
+func DeletePodsAndWait(
+	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+	willTimeoutAt time.Time,
+	configYAML *models.ConfigYAML,
+	scheduler *models.Scheduler,
+	operationManager *models.OperationManager,
+	pods []*models.Pod,
+	clock clockinterfaces.Clock,
+) (timedout, canceled bool, err error) {
+
+	for _, pod := range pods {
+		logger.Debugf("deleting pod %s", pod.Name)
+		err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
+			configYAML, pod.Name, reportersConstants.ReasonUpdate)
+		if err != nil && !strings.Contains(err.Error(), "redis") {
+			logger.WithError(err).Errorf("error deleting pod %s", pod.Name)
+			return false, false, nil
+		}
+	}
+
+	// wait for old pods to be deleted
+	// we assume that maxSurge == maxUnavailable as we can't set maxUnavailable yet
+	// so for every pod created in a chunk one is deleted right after it
+	timeout := willTimeoutAt.Sub(clock.Now())
+	timedout, canceled = waitTerminatingPods(
+		logger, clientset, redisClient, timeout, configYAML.Name,
+		pods, operationManager, mr)
+	if timedout || canceled || err != nil {
+		logger.Error("error waiting for pods to be deleted")
+		return timedout, canceled, nil
 	}
 
 	return false, false, nil
@@ -291,9 +398,10 @@ func DBRollback(
 func waitTerminatingPods(
 	l logrus.FieldLogger,
 	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
 	timeout time.Duration,
 	namespace string,
-	deletedPods []v1.Pod,
+	deletedPods []*models.Pod,
 	operationManager *models.OperationManager,
 	mr *models.MixedMetricsReporter,
 ) (timedout, wasCanceled bool) {
@@ -320,28 +428,27 @@ func waitTerminatingPods(
 			}
 
 			for _, pod := range deletedPods {
-				err := mr.WithSegment(models.SegmentPod, func() error {
-					var err error
-					_, err = clientset.CoreV1().Pods(namespace).Get(
-						pod.GetName(), getOptions,
-					)
-					return err
-				})
-
-				if err == nil || !strings.Contains(err.Error(), "not found") {
-					logger.WithField("pod", pod.GetName()).Debugf("pod still exists, deleting again")
-					err = mr.WithSegment(models.SegmentPod, func() error {
-						return clientset.CoreV1().Pods(namespace).Delete(pod.GetName(), deleteOptions)
-					})
+				p, err := models.GetPodFromRedis(redisClient, mr, pod.Name, namespace)
+				if err != nil {
+					logger.
+						WithError(err).
+						WithField("pod", pod.Name).
+						Info("error getting pod")
 					exit = false
 					break
 				}
 
-				if err != nil && !strings.Contains(err.Error(), "not found") {
-					logger.
-						WithError(err).
-						WithField("pod", pod.GetName()).
-						Info("error getting pod")
+				if p != nil {
+					if pod.IsTerminating {
+						logger.WithField("pod", pod.Name).Debugf("pod is terminating")
+						exit = false
+						break
+					}
+
+					logger.WithField("pod", pod.Name).Debugf("pod still exists, deleting again")
+					err = mr.WithSegment(models.SegmentPod, func() error {
+						return clientset.CoreV1().Pods(namespace).Delete(pod.Name, deleteOptions)
+					})
 					exit = false
 					break
 				}
@@ -363,6 +470,7 @@ func waitTerminatingPods(
 func waitCreatingPods(
 	l logrus.FieldLogger,
 	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
 	timeout time.Duration,
 	namespace string,
 	createdPods []v1.Pod,
@@ -379,6 +487,12 @@ func waitCreatingPods(
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
+	var retryNo []int
+	for range createdPods {
+		retryNo = append(retryNo, 0)
+	}
+	backoffStart := time.Duration(1 * time.Second)
+
 	for {
 		exit := true
 		select {
@@ -389,27 +503,33 @@ func waitCreatingPods(
 				return false, true, nil
 			}
 
-			for _, pod := range createdPods {
-				var createdPod *v1.Pod
-				err := mr.WithSegment(models.SegmentPod, func() error {
-					var err error
-					createdPod, err = clientset.CoreV1().Pods(namespace).Get(
-						pod.GetName(), getOptions,
-					)
-					return err
-				})
+			for i, pod := range createdPods {
+				createdPod, err := models.GetPodFromRedis(redisClient, mr, pod.GetName(), namespace)
+				if err != nil {
+					logger.
+						WithError(err).
+						WithField("pod", pod.GetName()).
+						Error("error getting pod")
+					exit = false
+					break
+				}
 
-				if err != nil && strings.Contains(err.Error(), "not found") {
+				if createdPod == nil {
+					// apply exponential backoff
+					retryNo[i]++
+					backoff := exponentialBackoff(backoffStart, retryNo[i])
+
 					exit = false
 					logger.
 						WithError(err).
 						WithField("pod", pod.GetName()).
-						Error("error creating pod, recreating...")
+						Errorf("error creating pod, recreating in %s (retry %d)", backoff, retryNo[i])
 
 					pod.ResourceVersion = ""
 					err = mr.WithSegment(models.SegmentPod, func() error {
 						var err error
 						_, err = clientset.CoreV1().Pods(namespace).Create(&pod)
+						time.Sleep(backoff)
 						return err
 					})
 					if err != nil {
@@ -419,10 +539,11 @@ func waitCreatingPods(
 							Errorf("error recreating pod")
 					}
 					break
+				} else {
+					retryNo[i] = 0
 				}
 
-				if len(createdPod.Status.Phase) == 0 {
-					//HACK! Trying to detect if we are running unit tests
+				if models.IsUnitTest(createdPod) {
 					break
 				}
 
@@ -435,8 +556,29 @@ func waitCreatingPods(
 					break
 				}
 
-				if !models.IsPodReady(createdPod) {
-					logger.WithField("pod", createdPod.GetName()).Debug("pod not ready yet, waiting...")
+				if createdPod.Status.Phase != v1.PodRunning {
+					isPending, reason, message := models.PodPending(createdPod)
+					if isPending && strings.Contains(message, models.PodNotFitsHostPorts) {
+						l.WithFields(logrus.Fields{
+							"pod":     createdPod.Name,
+							"reason":  reason,
+							"message": message,
+						}).Error("pod's host port is not available in any node of the pool, watcher will delete it soon")
+						continue
+					} else {
+						l.WithFields(logrus.Fields{
+							"pod":     createdPod.Name,
+							"pending": isPending,
+							"reason":  reason,
+							"message": message,
+						}).Debug("pod is not running yet")
+						exit = false
+						break
+					}
+				}
+
+				if !models.IsPodReady(createdPod) || !models.IsRoomReadyOrOccupied(logger, redisClient, namespace, createdPod.Name) {
+					logger.WithField("pod", createdPod.Name).Debug("pod not ready yet, waiting...")
 					err = models.ValidatePodWaitingState(createdPod)
 
 					if err != nil {
@@ -475,7 +617,7 @@ func DeletePodAndRoom(
 	var pod *models.Pod
 	err := mr.WithSegment(models.SegmentPod, func() error {
 		var err error
-		pod, err = models.NewPod(name, nil, configYaml, clientset, redisClient)
+		pod, err = models.NewPod(name, nil, configYaml, clientset, redisClient, mr)
 		return err
 	})
 	if err != nil {
@@ -484,11 +626,11 @@ func DeletePodAndRoom(
 
 	err = roomManager.Delete(logger, mr, clientset, redisClient, configYaml,
 		pod.Name, reportersConstants.ReasonUpdate)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "not found") {
 		logger.
 			WithField("roomName", pod.Name).
 			WithError(err).
-			Error("error removing room info from redis")
+			Error("error removing pod from kube")
 		return err
 	}
 
@@ -505,15 +647,15 @@ func DeletePodAndRoom(
 	return nil
 }
 
-func segmentPods(pods []v1.Pod, maxSurge int) [][]v1.Pod {
+func segmentPods(pods []*models.Pod, maxSurge int) [][]*models.Pod {
 	if pods == nil || len(pods) == 0 {
-		return make([][]v1.Pod, 0)
+		return make([][]*models.Pod, 0)
 	}
 
 	totalLength := len(pods)
 	chunkLength := chunkLength(pods, maxSurge)
 	chunks := nChunks(pods, chunkLength)
-	podChunks := make([][]v1.Pod, chunks)
+	podChunks := make([][]*models.Pod, chunks)
 
 	for i := range podChunks {
 		start := i * chunkLength
@@ -528,20 +670,20 @@ func segmentPods(pods []v1.Pod, maxSurge int) [][]v1.Pod {
 	return podChunks
 }
 
-func chunkLength(pods []v1.Pod, maxSurge int) int {
+func chunkLength(pods []*models.Pod, maxSurge int) int {
 	denominator := 100.0 / float64(maxSurge)
 	lenPods := float64(len(pods))
 	return int(math.Ceil(lenPods / denominator))
 }
 
-func nChunks(pods []v1.Pod, chunkLength int) int {
+func nChunks(pods []*models.Pod, chunkLength int) int {
 	return int(math.Ceil(float64(len(pods)) / float64(chunkLength)))
 }
 
-func names(pods []v1.Pod) []string {
+func names(pods []*models.Pod) []string {
 	names := make([]string, len(pods))
 	for i, pod := range pods {
-		names[i] = pod.GetName()
+		names[i] = pod.Name
 	}
 	return names
 }
@@ -549,6 +691,7 @@ func names(pods []v1.Pod) []string {
 func waitForPods(
 	timeout time.Duration,
 	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
 	namespace string,
 	pods []*v1.Pod,
 	l logrus.FieldLogger,
@@ -558,6 +701,12 @@ func waitForPods(
 	defer timeoutTimer.Stop()
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
+
+	var retryNo []int
+	for range pods {
+		retryNo = append(retryNo, 0)
+	}
+	backoffStart := time.Duration(500 * time.Millisecond)
 
 	for {
 		exit := true
@@ -569,19 +718,21 @@ func waitForPods(
 		case <-ticker.C:
 			for i := range pods {
 				if pods[i] != nil {
-					var pod *v1.Pod
-					err := mr.WithSegment(models.SegmentPod, func() error {
-						var err error
-						pod, err = clientset.CoreV1().Pods(namespace).Get(pods[i].GetName(), metav1.GetOptions{})
-						return err
-					})
-					if err != nil {
+					var pod *models.Pod
+					pod, err := models.GetPodFromRedis(redisClient, mr, pods[i].GetName(), namespace)
+					if err != nil || pod == nil {
+						// apply exponential backoff
+						retryNo[i]++
+						backoff := exponentialBackoff(backoffStart, retryNo[i])
+
 						//The pod does not exist (not even on Pending or ContainerCreating state), so create again
 						exit = false
-						l.WithError(err).Infof("error creating pod %s, recreating...", pods[i].GetName())
+						l.WithError(err).Infof("error creating pod %s, recreating in %s (retry %d)", pods[i].GetName(), backoff, retryNo[i])
+
 						pods[i].ResourceVersion = ""
 						err = mr.WithSegment(models.SegmentPod, func() error {
 							_, err = clientset.CoreV1().Pods(namespace).Create(pods[i])
+							time.Sleep(backoff)
 							return err
 						})
 						if err != nil {
@@ -591,6 +742,8 @@ func waitForPods(
 						if models.IsUnitTest(pod) {
 							break
 						}
+
+						retryNo[i] = 0
 
 						if pod.Status.Phase != v1.PodRunning {
 							isPending, reason, message := models.PodPending(pod)
@@ -602,7 +755,7 @@ func waitForPods(
 								continue
 							} else {
 								l.WithFields(logrus.Fields{
-									"pod":     pod.GetName(),
+									"pod":     pod.Name,
 									"pending": isPending,
 									"reason":  reason,
 									"message": message,
@@ -631,24 +784,21 @@ func waitForPods(
 
 func pendingPods(
 	clientset kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
 	namespace string,
 	mr *models.MixedMetricsReporter,
 ) (bool, error) {
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.Set{}.AsSelector().String(),
-		FieldSelector: fields.Everything().String(),
-	}
-	var pods *v1.PodList
+	var pods map[string]*models.Pod
 	err := mr.WithSegment(models.SegmentPod, func() error {
 		var err error
-		pods, err = clientset.CoreV1().Pods(namespace).List(listOptions)
+		pods, err = models.GetPodMapFromRedis(redisClient, mr, namespace)
 		return err
 	})
 	if err != nil {
 		return false, maestroErrors.NewKubernetesError("error when listing pods", err)
 	}
 
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		if pod.Status.Phase == v1.PodPending {
 			return true, nil
 		}
@@ -1190,7 +1340,7 @@ func deleteSchedulerHelper(
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 	// Delete pods and wait for graceful termination before deleting the namespace
 	err = mr.WithSegment(models.SegmentPod, func() error {
-		return namespace.DeletePods(clientset, redisClient, scheduler)
+		return namespace.DeletePods(clientset, redisClient, mr, scheduler)
 	})
 	if err != nil {
 		logger.WithError(err).Error("failed to delete namespace pods")
@@ -1208,15 +1358,15 @@ func deleteSchedulerHelper(
 		case <-timeoutPods.C:
 			return errors.New("timeout deleting scheduler pods")
 		case <-ticker.C:
-			var pods *v1.PodList
+			var podCount int
 			listErr := mr.WithSegment(models.SegmentPod, func() error {
 				var err error
-				pods, err = clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
+				podCount, err = models.GetPodCountFromRedis(redisClient, mr, scheduler.Name)
 				return err
 			})
 			if listErr != nil {
 				logger.WithError(listErr).Error("error listing pods")
-			} else if len(pods.Items) == 0 {
+			} else if podCount == 0 {
 				exit = true
 			}
 			logger.Debug("deleting scheduler pods")
@@ -1268,4 +1418,12 @@ func deleteSchedulerHelper(
 	})
 
 	return nil
+}
+
+func exponentialBackoff(backoffStart time.Duration, retryNo int) time.Duration {
+	min := 1
+	max := int(math.Pow(2, float64(retryNo)))
+	k := rand.Intn(max-min) + min
+
+	return time.Duration(k * int(backoffStart))
 }

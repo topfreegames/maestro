@@ -1,6 +1,7 @@
 package eventforwarder_test
 
 import (
+	"github.com/go-redis/redis"
 	"time"
 
 	"github.com/btcsuite/btcutil/base58"
@@ -24,6 +25,7 @@ import (
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
 	reportermock "github.com/topfreegames/maestro/reporters/mocks"
+	mtesting "github.com/topfreegames/maestro/testing"
 )
 
 func TestEventforwarder(t *testing.T) {
@@ -43,6 +45,7 @@ var (
 	mockReporter           *reportermock.MockReporter
 	room                   *models.Room
 	clientset              *fake.Clientset
+	mmr                    *models.MixedMetricsReporter
 	cache                  *models.SchedulerCache
 	metadata               map[string]interface{}
 	schedulerName          = "scheduler"
@@ -108,8 +111,21 @@ var _ = BeforeEach(func() {
 			{Name: "port", HostPort: hostPort},
 		}},
 	}
-	_, err = clientset.CoreV1().Pods(schedulerName).Create(pod)
+	podv1, err := clientset.CoreV1().Pods(schedulerName).Create(pod)
 	Expect(err).NotTo(HaveOccurred())
+
+	var podModel models.Pod
+	podModel.Name = pod.Name
+	podModel.Namespace = pod.Namespace
+	podModel.Spec = pod.Spec
+	podModel.Status = podv1.Status
+
+	jsonBytes, err := podModel.MarshalToRedis()
+	Expect(err).NotTo(HaveOccurred())
+	mockRedisClient.EXPECT().
+		HGet(models.GetPodMapRedisKey(podModel.Namespace), podModel.Name).
+		Return(redis.NewStringResult(string(jsonBytes), nil)).
+		AnyTimes()
 
 	node := &v1.Node{}
 	node.SetLabels(nodeLabels)
@@ -121,4 +137,8 @@ var _ = BeforeEach(func() {
 
 	room = models.NewRoom(roomName, schedulerName)
 	roomAddrGetter = models.NewRoomAddressesFromHostPort(logger, ipv6KubernetesLabelKey, false, 0)
+
+	fakeReporter := mtesting.FakeMetricsReporter{}
+	mmr = models.NewMixedMetricsReporter()
+	mmr.AddReporter(fakeReporter)
 })

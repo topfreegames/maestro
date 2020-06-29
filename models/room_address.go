@@ -46,12 +46,15 @@ func NewRoomAddressesFromHostPort(
 
 // Get gets room public addresses
 func (r *RoomAddressesFromHostPort) Get(
-	room *Room, kubernetesClient kubernetes.Interface, redisClient redisinterfaces.RedisClient,
+	room *Room,
+	kubernetesClient kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
 ) (*RoomAddresses, error) {
 	if addrs := r.fromCache(redisClient, room); addrs != nil {
 		return addrs, nil
 	}
-	addrs, err := getRoomAddresses(false, r.ipv6KubernetesLabelKey, room, kubernetesClient)
+	addrs, err := getRoomAddresses(false, r.ipv6KubernetesLabelKey, room, kubernetesClient, redisClient, mr)
 	if err != nil {
 		return nil, err
 	}
@@ -136,12 +139,12 @@ func NewRoomAddressesFromNodePort(
 
 // Get gets room public addresses
 func (r *RoomAddressesFromNodePort) Get(
-	room *Room, kubernetesClient kubernetes.Interface, redisClient redisinterfaces.RedisClient,
+	room *Room, kubernetesClient kubernetes.Interface, redisClient redisinterfaces.RedisClient, mr *MixedMetricsReporter,
 ) (*RoomAddresses, error) {
 	if addrs := r.fromCache(redisClient, room); addrs != nil {
 		return addrs, nil
 	}
-	addrs, err := getRoomAddresses(true, r.ipv6KubernetesLabelKey, room, kubernetesClient)
+	addrs, err := getRoomAddresses(true, r.ipv6KubernetesLabelKey, room, kubernetesClient, redisClient, mr)
 	if err != nil {
 		return nil, err
 	}
@@ -203,11 +206,22 @@ func (r RoomAddressesFromNodePort) buildCacheKey(room *Room) string {
 	return fmt.Sprintf("room-addr-%s-%s", room.SchedulerName, room.ID)
 }
 
-func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room, kubernetesClient kubernetes.Interface) (*RoomAddresses, error) {
+func getRoomAddresses(
+	IsNodePort bool,
+	ipv6KubernetesLabelKey string,
+	room *Room,
+	kubernetesClient kubernetes.Interface,
+	redisClient redisinterfaces.RedisClient,
+	mr *MixedMetricsReporter,
+) (*RoomAddresses, error) {
 	rAddresses := &RoomAddresses{}
-	roomPod, err := kubernetesClient.CoreV1().Pods(room.SchedulerName).Get(room.ID, metav1.GetOptions{})
+	roomPod, err := GetPodFromRedis(redisClient, mr, room.ID, room.SchedulerName)
 	if err != nil {
 		return nil, err
+	}
+
+	if roomPod == nil {
+		return nil, fmt.Errorf(`pod "%s" not found on redis podMap`, room.ID)
 	}
 
 	if len(roomPod.Spec.NodeName) == 0 {
@@ -243,8 +257,9 @@ func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room
 		for _, port := range roomSvc.Spec.Ports {
 			if port.NodePort != 0 {
 				rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
-					Name: port.Name,
-					Port: port.NodePort,
+					Name:     port.Name,
+					Port:     port.NodePort,
+					Protocol: string(port.Protocol),
 				})
 			}
 		}
@@ -262,8 +277,9 @@ func getRoomAddresses(IsNodePort bool, ipv6KubernetesLabelKey string, room *Room
 			for _, port := range container.Ports {
 				if port.HostPort != 0 {
 					rAddresses.Ports = append(rAddresses.Ports, &RoomPort{
-						Name: port.Name,
-						Port: port.HostPort,
+						Name:     port.Name,
+						Port:     port.HostPort,
+						Protocol: string(port.Protocol),
 					})
 				}
 			}
