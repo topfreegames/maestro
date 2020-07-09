@@ -1262,13 +1262,6 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	invalidPods := append(incorrectPods, unregisteredPods...)
 
-	if len(invalidPods) <= 0 {
-		// delete invalidRooms key for safety
-		models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
-		logger.Debug("no invalid pods to replace")
-		return nil
-	}
-
 	// get operation manager if it exists.
 	// It won't exist if not in a UpdateSchedulerConfig operation
 	operationManager, err := w.getOperation(ctx, logger)
@@ -1289,10 +1282,12 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		invalidPods = incorrectPods
 
 		if status["description"] != models.OpManagerRollingUpdate {
-			err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, incorrectPodNames)
-			if err != nil {
-				logger.WithError(err).Error("error trying to save invalid rooms to track progress")
-				return err
+			if len(invalidPods) > 0 {
+				err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, incorrectPodNames)
+				if err != nil {
+					logger.WithError(err).Error("error trying to save invalid rooms to track progress")
+					return err
+				}
 			}
 			err = operationManager.SetDescription(models.OpManagerRollingUpdate)
 			if err != nil {
@@ -1300,6 +1295,13 @@ func (w *Watcher) EnsureCorrectRooms() error {
 				return err
 			}
 		}
+	}
+
+	if len(invalidPods) <= 0 {
+		// delete invalidRooms key for safety
+		models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
+		logger.Debug("no invalid pods to replace")
+		return nil
 	}
 
 	// replace invalid pods using rolling strategy
