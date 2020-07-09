@@ -494,6 +494,9 @@ var _ = Describe("Watcher", func() {
 				w.Run = false
 			}, mockDb, nil, nil)
 
+			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().Del(models.GetInvalidRoomsKey(configYaml.Name))
 			mockPipeline.EXPECT().Exec()
