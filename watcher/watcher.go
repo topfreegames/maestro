@@ -1289,6 +1289,10 @@ func (w *Watcher) EnsureCorrectRooms() error {
 					return err
 				}
 			}
+
+			logger.WithFields(logrus.Fields{
+				"operation": operationManager.GetOperationKey(),
+			}).Infof(`changing state from "%s" to "%s"`, status["description"], models.OpManagerRollingUpdate)
 			err = operationManager.SetDescription(models.OpManagerRollingUpdate)
 			if err != nil {
 				logger.WithError(err).Error("error trying to set opmanager to rolling update status")
