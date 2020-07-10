@@ -494,6 +494,9 @@ var _ = Describe("Watcher", func() {
 				w.Run = false
 			}, mockDb, nil, nil)
 
+			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().Del(models.GetInvalidRoomsKey(configYaml.Name))
 			mockPipeline.EXPECT().Exec()
@@ -4425,6 +4428,38 @@ var _ = Describe("Watcher", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hook.Entries).To(testing.ContainLogMessage(fmt.Sprintf("error deleting pod %s", podNames[1])))
+		})
+
+		It("should set state to rolling update when there is no invalid pods and a operation is running", func() {
+			testing.MockSelectScheduler(yaml1, mockDb, nil)
+			testing.MockListPods(mockPipeline, mockRedisClient, w.SchedulerName, []string{}, nil)
+			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
+				w.SchedulerName, [][]string{}, nil)
+
+			opKey := fmt.Sprintf("opmanager:%s:1234", configYaml.Name)
+			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+			mockRedisClient.EXPECT().
+				Get(opManager.BuildCurrOpKey()).
+				Return(redis.NewStringResult(opKey, nil))
+
+			mockRedisClient.EXPECT().
+				HGetAll(opKey).
+				Return(redis.NewStringStringMapResult(map[string]string{
+					"description": models.OpManagerRunning,
+				}, nil))
+
+			mockRedisClient.EXPECT().
+				HMSet(opKey, map[string]interface{}{
+					"description": models.OpManagerRollingUpdate,
+				}).Return(redis.NewStatusResult("", nil))
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().Del(models.GetInvalidRoomsKey(configYaml.Name))
+			mockPipeline.EXPECT().Exec()
+
+			err := w.EnsureCorrectRooms()
+
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should delete invalid pods", func() {
