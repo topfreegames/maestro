@@ -6471,6 +6471,7 @@ containers:
 				pods,
 				scheduler,
 				nil,
+				time.Second,
 				10,
 				1,
 			)
@@ -6512,6 +6513,7 @@ containers:
 				pods,
 				scheduler,
 				opManager,
+				time.Second,
 				10,
 				1,
 			)
@@ -6574,6 +6576,7 @@ containers:
 				pods,
 				scheduler,
 				opManager,
+				time.Second,
 				10,
 				1,
 			)
@@ -6627,6 +6630,7 @@ containers:
 				pods,
 				scheduler,
 				opManager,
+				time.Second,
 				10,
 				1,
 			)
@@ -6696,6 +6700,7 @@ containers:
 				pods,
 				scheduler,
 				opManager,
+				time.Second,
 				10,
 				1,
 			)

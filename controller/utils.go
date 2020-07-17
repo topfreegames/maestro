@@ -51,6 +51,7 @@ func SegmentAndReplacePods(
 	pods []*models.Pod,
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
+	cancelPollingPeriod time.Duration,
 	maxSurge, goroutinePoolSize int,
 ) (timeoutErr, cancelErr, err error) {
 	rand.Seed(time.Now().UnixNano())
@@ -66,7 +67,7 @@ func SegmentAndReplacePods(
 	inRollingUpdate := operationManager != nil
 
 	if inRollingUpdate {
-		go watchOperation(ctx, cancel, operationManager)
+		go watchOperation(ctx, cancel, logger, operationManager, cancelPollingPeriod)
 	}
 
 	// segment pods in chunks
@@ -110,20 +111,30 @@ func SegmentAndReplacePods(
 	return timeoutErr, cancelErr, err
 }
 
-func watchOperation(ctx context.Context, cancel func(), operationManager *models.OperationManager) {
+func watchOperation(
+	ctx context.Context,
+	cancel func(),
+	logger logrus.FieldLogger,
+	operationManager *models.OperationManager,
+	cancelPollingPeriod time.Duration,
+) {
 	canceled, err := operationManager.WasCanceled()
+	if err != nil {
+		logger.WithError(err).Warn("error reading operation status from redis")
+	}
 	if canceled && err  == nil {
 		cancel()
 		return
 	}
 
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(cancelPollingPeriod)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
 			canceled, err := operationManager.WasCanceled()
 			if err != nil {
+				logger.WithError(err).Warn("error reading operation status from redis")
 				continue
 			}
 			if canceled {

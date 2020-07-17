@@ -153,6 +153,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
 	w.Config.SetDefault("watcher.maxScaleUpAmount", 300)
 	w.Config.SetDefault("watcher.gracefulShutdownTimeout", 300)
+	w.Config.SetDefault("watcher.cancelPollingPeriod", "10s")
 	w.Config.SetDefault("pingTimeout", 30)
 	w.Config.SetDefault("occupiedTimeout", 60*60)
 	w.Config.SetDefault(constants.EnvironmentConfig, constants.ProdEnvironment)
@@ -1324,6 +1325,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		invalidPods,
 		scheduler,
 		operationManager,
+		w.Config.GetDuration("watcher.cancelPollingPeriod"),
 		w.Config.GetInt("watcher.maxSurge"),
 		w.Config.GetInt("watcher.goroutinePoolSize"),
 	)
