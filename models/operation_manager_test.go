@@ -77,7 +77,6 @@ var _ = Describe("OperationManager", func() {
 
 	BeforeEach(func() {
 		opManager = NewOperationManager(schedulerName, mockRedisClient, logger)
-		opManager.SetLoopTime(1 * time.Millisecond)
 	})
 
 	Describe("GetOperationKey", func() {
@@ -87,26 +86,11 @@ var _ = Describe("OperationManager", func() {
 	})
 
 	Describe("Start", func() {
-		It("should save on redis and start goroutine", func() {
+		It("should save on redis", func() {
 			mockStartOnRedis(initialStatus, nil)
-			mockGetStatusFromRedis(toMapStringString(initialStatus), nil)
-			mockGetStatusFromRedis(nil, nil)
 
 			err := opManager.Start(timeout, opName)
 			Expect(err).ToNot(HaveOccurred())
-
-			Eventually(opManager.IsStopped).Should(BeTrue())
-		})
-
-		It("should not return error if goroutine gets error from redis", func() {
-			mockStartOnRedis(initialStatus, nil)
-			mockGetStatusFromRedis(toMapStringString(initialStatus), errDB)
-			mockGetStatusFromRedis(nil, nil)
-
-			err := opManager.Start(timeout, opName)
-			Expect(err).ToNot(HaveOccurred())
-
-			Eventually(opManager.IsStopped).Should(BeTrue())
 		})
 
 		It("should return error if failed to save initial status on redis", func() {
@@ -119,13 +103,32 @@ var _ = Describe("OperationManager", func() {
 	})
 
 	Describe("WasCanceled", func() {
-		It("should return false if opManager was canceled", func() {
-			Expect(opManager.WasCanceled()).To(BeFalse())
+		It("should return false if opManager is nil", func() {
+			opManager = nil
+			canceled, err := opManager.WasCanceled()
+			Expect(canceled).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should return false if opManager is nil", func() {
-			var opManager *OperationManager
-			Expect(opManager.WasCanceled()).To(BeFalse())
+		It("should return false if operation exists", func() {
+			mockGetStatusFromRedis(toMapStringString(initialStatus), nil)
+			canceled, err := opManager.WasCanceled()
+			Expect(canceled).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return false if get error reading from redis", func() {
+			mockGetStatusFromRedis(nil, errors.New("redis error"))
+			canceled, err := opManager.WasCanceled()
+			Expect(canceled).To(BeFalse())
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return true if operation does not exists", func() {
+			mockGetStatusFromRedis(nil, nil)
+			canceled, err := opManager.WasCanceled()
+			Expect(canceled).To(BeTrue())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 

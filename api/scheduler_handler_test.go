@@ -1041,6 +1041,7 @@ autoscaling:
 					}
 					scheduler1.Version = "v1.0"
 
+					operationFinished := false
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 						Expect(m).To(HaveKeyWithValue("status", http.StatusOK))
@@ -1050,7 +1051,7 @@ autoscaling:
 					mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
 					mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 					mockPipeline.EXPECT().Exec().Do(func() {
-						opManager.StopLoop()
+						operationFinished = true
 					})
 
 					// Update scheduler
@@ -1115,7 +1116,7 @@ autoscaling:
 					Expect(response).To(HaveKeyWithValue("success", true))
 					Expect(response).To(HaveKey("operationKey"))
 
-					Eventually(opManager.IsStopped, 30*time.Second).Should(BeTrue())
+					Eventually(func() bool { return operationFinished }, time.Minute, time.Second).Should(BeTrue())
 				})
 
 				It("should asynchronously update scheduler and show error when occurred", func() {
@@ -1141,6 +1142,7 @@ autoscaling:
 						"not": "empty",
 					}, nil)).AnyTimes()
 
+					operationFinished := false
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 						Expect(m).To(HaveKeyWithValue("status", http.StatusInternalServerError))
@@ -1152,7 +1154,7 @@ autoscaling:
 					mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
 					mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 					mockPipeline.EXPECT().Exec().Do(func() {
-						opManager.StopLoop()
+						operationFinished = true
 					})
 
 					pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
@@ -1196,8 +1198,7 @@ autoscaling:
 					json.Unmarshal(recorder.Body.Bytes(), &response)
 					Expect(response).To(HaveKeyWithValue("success", true))
 					Expect(response).To(HaveKey("operationKey"))
-
-					Eventually(opManager.IsStopped, 30*time.Second).Should(BeTrue())
+					Eventually(func() bool { return operationFinished }, time.Minute, time.Second).Should(BeTrue())
 				})
 			})
 
@@ -2798,6 +2799,7 @@ game: game-name
 					"not": "empty",
 				}, nil)).AnyTimes()
 
+				operationFinished := false
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 					Expect(m).To(HaveKeyWithValue("status", http.StatusOK))
@@ -2807,7 +2809,7 @@ game: game-name
 				mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
 				mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 				mockPipeline.EXPECT().Exec().Do(func() {
-					opManager.StopLoop()
+					operationFinished = true
 				})
 
 				// Update scheduler
@@ -2870,8 +2872,7 @@ game: game-name
 				json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(response).To(HaveKeyWithValue("success", true))
 				Expect(recorder.Code).To(Equal(http.StatusOK))
-
-				Eventually(opManager.IsStopped, 30*time.Second).Should(BeTrue())
+				Eventually(func() bool { return operationFinished }, time.Minute, time.Second).Should(BeTrue())
 			})
 
 			It("should update image asynchronously and show error when occurred", func() {
@@ -2902,10 +2903,11 @@ game: game-name
 					Expect(m).To(HaveKeyWithValue("description", "failed to update scheduler image"))
 					Expect(m).To(HaveKeyWithValue("error", "redis error"))
 				})
+				operationFinished := false
 				mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
 				mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 				mockPipeline.EXPECT().Exec().Do(func() {
-					opManager.StopLoop()
+					operationFinished = true
 				})
 
 				newImageName := "new-image"
@@ -2936,8 +2938,7 @@ game: game-name
 				Expect(response).To(HaveKeyWithValue("success", true))
 				Expect(response).To(HaveKey("operationKey"))
 				Expect(recorder.Code).To(Equal(http.StatusOK))
-
-				Eventually(opManager.IsStopped, 1*time.Minute).Should(BeTrue())
+				Eventually(func() bool { return operationFinished }, time.Minute, time.Second).Should(BeTrue())
 			})
 		})
 
@@ -3317,10 +3318,11 @@ game: game-name
 					Expect(m).To(HaveKeyWithValue("operation", "UpdateSchedulerMin"))
 					Expect(m).To(HaveKeyWithValue("success", true))
 				})
+				operationFinished := false
 				mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
 				mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 				mockPipeline.EXPECT().Exec().Do(func() {
-					opManager.StopLoop()
+					operationFinished = true
 				})
 
 				scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
@@ -3373,8 +3375,7 @@ game: game-name
 				json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(response).To(HaveKeyWithValue("success", true))
 				Expect(response).To(HaveKey("operationKey"))
-
-				Eventually(opManager.IsStopped, 1*time.Minute).Should(BeTrue())
+				Eventually(func() bool { return operationFinished }, time.Minute, time.Second).Should(BeTrue())
 			})
 
 			It("should update min asynchronously and show error when occurred", func() {
@@ -3394,6 +3395,7 @@ game: game-name
 					"not": "empty",
 				}, nil)).AnyTimes()
 
+				operationFinished := false
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 					Expect(m).To(HaveKeyWithValue("status", http.StatusInternalServerError))
@@ -3404,7 +3406,7 @@ game: game-name
 				mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
 				mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 				mockPipeline.EXPECT().Exec().Do(func() {
-					opManager.StopLoop()
+					operationFinished = true
 				})
 
 				scheduler1 := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
@@ -3449,8 +3451,7 @@ game: game-name
 				json.Unmarshal(recorder.Body.Bytes(), &response)
 				Expect(response).To(HaveKeyWithValue("success", true))
 				Expect(response).To(HaveKey("operationKey"))
-
-				Eventually(opManager.IsStopped, 1*time.Minute).Should(BeTrue())
+				Eventually(func() bool { return operationFinished }, time.Minute, time.Second).Should(BeTrue())
 			})
 		})
 	})

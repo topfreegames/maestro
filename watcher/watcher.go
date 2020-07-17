@@ -722,6 +722,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 		timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
 		timeoutDur := time.Duration(timeoutSec) * time.Second
 		willTimeoutAt := time.Now().Add(timeoutDur)
+		ctx, _ := context.WithDeadline(context.Background(), willTimeoutAt)
 
 		configYAML, err := models.NewConfigYAML(scheduler.YAML)
 		if err != nil {
@@ -730,21 +731,18 @@ func (w *Watcher) RemoveDeadRooms() error {
 		}
 
 		var timeoutErr bool
-		timeoutErr, _, err = controller.DeletePodsAndWait(
+		timedout, err := controller.DeletePodsAndWait(
+			ctx,
 			logger,
 			w.RoomManager,
 			w.MetricsReporter,
 			w.KubernetesClient,
 			w.RedisClient.Client,
-			willTimeoutAt,
 			configYAML,
-			scheduler,
-			nil,
 			podsToDelete,
-			&clock.Clock{},
 		)
 
-		if timeoutErr {
+		if timedout {
 			logger.WithError(err).Error("timeout replacing pods on RemoveDeadRooms")
 		}
 
@@ -1139,8 +1137,8 @@ func (w *Watcher) getIncorrectAndUnregisteredPods(
 	logger logrus.FieldLogger,
 	podMap map[string]*models.Pod,
 	scheduler *models.Scheduler,
-) (invalidPods, unregisteredPods []*models.Pod, err error) {
-	incorrectPods, err := w.podsOfIncorrectVersion(podMap, scheduler)
+) (incorrectPods, unregisteredPods []*models.Pod, err error) {
+	incorrectPods, err = w.podsOfIncorrectVersion(podMap, scheduler)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1150,7 +1148,7 @@ func (w *Watcher) getIncorrectAndUnregisteredPods(
 		return nil, nil, err
 	}
 
-	if len(invalidPods) > 0 {
+	if len(incorrectPods) > 0 {
 		logger.WithFields(logrus.Fields{
 			"incorrectVersion": len(incorrectPods),
 			"unregistered":     len(unregisteredPods),
@@ -1170,11 +1168,11 @@ func (w *Watcher) getOperation(ctx context.Context, logger logrus.FieldLogger) (
 		return nil, err
 	}
 
-	operationManager.SetOperationKey(currentOpKey)
-
 	if currentOpKey == "" {
-		operationManager = nil
+		return nil, err
 	}
+
+	operationManager.SetOperationKey(currentOpKey)
 
 	return operationManager, err
 }
@@ -1315,7 +1313,6 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	logger.Infof("replacing pods with %d seconds of timeout", timeoutSec)
 	timeoutErr, _, err := controller.SegmentAndReplacePods(
-		ctx,
 		logger,
 		w.RoomManager,
 		w.MetricsReporter,
