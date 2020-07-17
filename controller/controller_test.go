@@ -6473,7 +6473,6 @@ containers:
 				nil,
 				10,
 				1,
-				&clock.Clock{},
 			)
 			Expect(timeoutErr).To(HaveOccurred())
 			Expect(cancelErr).ToNot(HaveOccurred())
@@ -6515,7 +6514,6 @@ containers:
 				opManager,
 				10,
 				1,
-				&clock.Clock{},
 			)
 			Expect(timeoutErr).ToNot(HaveOccurred())
 			Expect(cancelErr).To(HaveOccurred())
@@ -6533,7 +6531,7 @@ containers:
 				HGetAll(opManager.GetOperationKey()).
 				Return(goredis.NewStringStringMapResult(map[string]string{
 					"description": models.OpManagerRollingUpdate,
-				}, nil)).Times(5)
+				}, nil))
 
 			mockRedisClient.EXPECT().
 				HGetAll(opManager.GetOperationKey()).
@@ -6542,6 +6540,13 @@ containers:
 			mt.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml1, 0)
 			mt.MockGetPortsFromPoolAnyTimes(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
 			mt.MockAnyRunningPod(mockRedisClient, configYaml1.Name, 0)
+
+			mockPipeline.EXPECT().
+				SIsMember(models.GetRoomStatusSetRedisKey(configYaml1.Name, "ready"), gomock.Any()).
+				Return(goredis.NewBoolResult(true, nil))
+			mockPipeline.EXPECT().
+				SIsMember(models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied"), gomock.Any()).
+				Return(goredis.NewBoolResult(false, nil))
 
 			for _, pod := range pods {
 				podv1 := &v1.Pod{}
@@ -6571,7 +6576,6 @@ containers:
 				opManager,
 				10,
 				1,
-				&clock.Clock{},
 			)
 			Expect(timeoutErr).ToNot(HaveOccurred())
 			Expect(cancelErr).To(HaveOccurred())
@@ -6625,7 +6629,6 @@ containers:
 				opManager,
 				10,
 				1,
-				&clock.Clock{},
 			)
 			Expect(timeoutErr).ToNot(HaveOccurred())
 			Expect(cancelErr).ToNot(HaveOccurred())
@@ -6695,7 +6698,6 @@ containers:
 				opManager,
 				10,
 				1,
-				&clock.Clock{},
 			)
 			Expect(timeoutErr).ToNot(HaveOccurred())
 			Expect(cancelErr).ToNot(HaveOccurred())

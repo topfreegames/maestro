@@ -52,7 +52,6 @@ func SegmentAndReplacePods(
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
 	maxSurge, goroutinePoolSize int,
-	clock clockinterfaces.Clock,
 ) (timeoutErr, cancelErr, err error) {
 	rand.Seed(time.Now().UnixNano())
 	schedulerName := scheduler.Name
@@ -61,6 +60,15 @@ func SegmentAndReplacePods(
 		"scheduler": schedulerName,
 	})
 
+	ctx, cancel := context.WithDeadline(context.Background(), willTimeoutAt)
+	defer cancel()
+
+	inRollingUpdate := operationManager != nil
+
+	if inRollingUpdate {
+		go watchOperation(ctx, cancel, operationManager)
+	}
+
 	// segment pods in chunks
 	podChunks := segmentPods(pods, maxSurge)
 
@@ -68,73 +76,89 @@ func SegmentAndReplacePods(
 		l.Debugf("updating chunk %d: %v", i, names(chunk))
 
 		// replace chunk
-		timedout, canceled, errored := replacePodsAndWait(
-			l,
+		err := replacePodsAndWait(
+			ctx,
+			logger,
 			roomManager,
 			mr,
 			clientset,
 			db,
 			redisClient,
-			willTimeoutAt,
 			configYAML,
 			chunk,
 			scheduler,
-			operationManager,
-			clock,
+			inRollingUpdate,
 			goroutinePoolSize,
 		)
 
-		if timedout {
-			timeoutErr = errors.New("timedout waiting rooms to be replaced, rolled back")
-			l.WithError(timeoutErr).Error("operation timed out while replacing chunk of pods")
-			break
+		if err != nil {
+			l.WithError(err).Error("error replacing chunk of pods")
+			return nil, nil, err
 		}
+	}
 
-		if canceled {
-			cancelErr = errors.New("operation was canceled, rolled back")
-			l.WithError(cancelErr).Error("operation canceled while error replacing chunk of pods")
-			break
-		}
+	cancelReason := ctx.Err()
 
-		if errored != nil {
-			err = errored
-			l.WithError(errored).Error("error replacing chunk of pods")
-			break
-		}
+	if cancelReason == context.DeadlineExceeded {
+		timeoutErr = errors.New("timedout waiting rooms to be replaced, rolled back")
+		l.WithError(timeoutErr).Error("operation timed out while replacing chunk of pods")
+	} else if cancelReason == context.Canceled {
+		cancelErr = errors.New("operation was canceled, rolled back")
+		l.WithError(cancelErr).Error("operation canceled while error replacing chunk of pods")
 	}
 
 	return timeoutErr, cancelErr, err
 }
 
+func watchOperation(ctx context.Context, cancel func(), operationManager *models.OperationManager) {
+	canceled, err := operationManager.WasCanceled()
+	if canceled && err  == nil {
+		cancel()
+		return
+	}
+
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			canceled, err := operationManager.WasCanceled()
+			if err != nil {
+				continue
+			}
+			if canceled {
+				cancel()
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
 func replacePodsAndWait(
+	ctx context.Context,
 	logger logrus.FieldLogger,
 	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
 	db pginterfaces.DB,
 	redisClient redisinterfaces.RedisClient,
-	willTimeoutAt time.Time,
 	configYAML *models.ConfigYAML,
 	podsChunk []*models.Pod,
 	scheduler *models.Scheduler,
-	operationManager *models.OperationManager,
-	clock clockinterfaces.Clock,
+	inRollingUpdate bool,
 	goroutinePoolSize int,
-) (timedout, canceled bool, err error) {
+) (err error) {
 	logger.Debug("starting to replace pods with new ones")
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	finishedReplace := make(chan struct{})
-	canceledChan := make(chan struct{})
 	errChan := make(chan error)
 
 	pods := make(chan *models.Pod, len(podsChunk))
 	for _, pod := range podsChunk {
 		pods <- pod
 	}
-
-	inRollingUpdate := operationManager != nil
 
 	var wg sync.WaitGroup
 	logger.Infof("starting %d in-memory workers to replace %d pods", goroutinePoolSize, len(podsChunk))
@@ -159,42 +183,19 @@ func replacePodsAndWait(
 			)
 		}()
 	}
-	
-	if inRollingUpdate {
-		go func() {
-			for {
-				canceled, err := operationManager.WasCanceled()
-				if err != nil {
-					continue
-				}
-				if canceled {
-					close(canceledChan)
-					return
-				}
-			}
-		}()
-	}
-
-	duration := willTimeoutAt.Sub(clock.Now())
-	timeout := time.NewTimer(duration)
 
 	select {
 	case err = <-errChan:
 		logger.Error("operation terminated with error")
-	case <-canceledChan:
-		logger.Warn("operation was canceled")
-		canceled = true
-	case <-timeout.C:
-		logger.Warn("operation timedout")
-		timedout = true
+	case <-ctx.Done():
+		logger.Debug("operation timedout/canceled")
 	case <-finishedReplace:
 		logger.Debug("all pods were successfully replaced")
 	}
 
-	cancel()
 	wg.Wait()
 
-	return timedout, canceled, err
+	return err
 }
 
 func replacePodWorker(

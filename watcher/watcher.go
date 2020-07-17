@@ -1326,7 +1326,6 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		operationManager,
 		w.Config.GetInt("watcher.maxSurge"),
 		w.Config.GetInt("watcher.goroutinePoolSize"),
-		&clock.Clock{},
 	)
 
 	if err != nil {

@@ -4545,7 +4545,7 @@ var _ = Describe("Watcher", func() {
 
 			err := w.EnsureCorrectRooms()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(hook.Entries).To(testing.ContainLogMessage("operation was canceled"))
+			Expect(hook.Entries).To(testing.ContainLogMessage("operation canceled while error replacing chunk of pods"))
 		})
 	})
 

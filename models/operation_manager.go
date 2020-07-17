@@ -114,11 +114,11 @@ func (o *OperationManager) WasCanceled() (bool, error) {
 
 	l.Debug("checking if operation was canceled")
 	r, err := o.redisClient.HGetAll(o.operationKey).Result()
-	l.Debug("successfully accessed redis")
 
 	if err != nil {
 		return false, err
 	}
+	l.Debug("successfully accessed redis")
 
 	wasCanceled := r == nil || len(r) == 0
 	return wasCanceled, nil
