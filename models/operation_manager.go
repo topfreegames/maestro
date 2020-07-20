@@ -27,8 +27,6 @@ type OperationManager struct {
 	redisClient     redisinterfaces.RedisClient
 	logger          logrus.FieldLogger
 	operationKey    string
-	wasCanceledBool bool
-	continueLoop    bool
 	operationName   string
 	loopTime        time.Duration
 }
@@ -43,17 +41,9 @@ func NewOperationManager(
 		schedulerName: schedulerName,
 		redisClient:   redisClient,
 		logger:        logger,
-		continueLoop:  true,
-		loopTime:      10 * time.Second,
 	}
 	o.operationKey = o.buildKey()
 	return o
-}
-
-// SetLoopTime sets how much will wait to check again if operation was canceled
-// Default is 10s
-func (o *OperationManager) SetLoopTime(t time.Duration) {
-	o.loopTime = t
 }
 
 // GetOperationKey returns the operation key
@@ -108,62 +98,27 @@ func (o *OperationManager) Start(
 		return err
 	}
 
-	l.Debug("starting check loop on a goroutine")
-	go func() {
-		ticker := time.NewTicker(o.loopTime)
-		defer ticker.Stop()
-
-		for o.continueLoop {
-			select {
-			case <-ticker.C:
-				l.Debug("operationManager loop")
-				wasCanceled, err := o.wasCanceled()
-				if err != nil {
-					l.WithError(err).Warn("error getting operationKey on redis")
-					continue
-				}
-				if wasCanceled {
-					l.Debug("operation was canceled")
-					o.continueLoop = false
-					o.wasCanceledBool = true
-					continue
-				}
-
-				l.Debug("operation was not canceled, continuing...")
-			}
-		}
-	}()
-
 	return nil
 }
 
-// WasCanceled returns a channel that is true when operation was canceled
-func (o *OperationManager) WasCanceled() bool {
+func (o *OperationManager) WasCanceled() (bool, error) {
 	if o == nil {
-		return false
+		return false, nil
 	}
 
-	return o.wasCanceledBool
-}
-
-func (o *OperationManager) wasCanceled() (bool, error) {
 	l := o.logger.WithFields(logrus.Fields{
 		"source":       "OperationManager",
-		"operation":    "wasCanceled",
+		"operation":    "WasCanceled",
 		"operationKey": o.operationKey,
 	})
 
-	if !o.continueLoop {
-		return true, nil
-	}
-
 	l.Debug("checking if operation was canceled")
 	r, err := o.redisClient.HGetAll(o.operationKey).Result()
-	l.Debug("successfully accessed redis")
 
 	if err != nil {
 		return false, err
 	}
+	l.Debug("successfully accessed redis")
 
 	wasCanceled := r == nil || len(r) == 0
 	return wasCanceled, nil
@@ -171,9 +126,6 @@ func (o *OperationManager) wasCanceled() (bool, error) {
 
 // Cancel removes operationKey from redis and this cancels an operation
 func (o *OperationManager) Cancel(operationKey string) error {
-	o.wasCanceledBool = true
-	o.continueLoop = false
-
 	l := o.logger.WithFields(logrus.Fields{
 		"source":       "OperationManager",
 		"operation":    "Cancel",
@@ -201,8 +153,6 @@ func (o *OperationManager) Cancel(operationKey string) error {
 
 // Finish updates operationKey on redis to the finish state
 func (o *OperationManager) Finish(status int, description string, opErr error) error {
-	o.continueLoop = false
-
 	l := o.logger.WithFields(logrus.Fields{
 		"source":       "OperationManager",
 		"operation":    "Finish",
@@ -272,16 +222,6 @@ func (o *OperationManager) CurrentOperation() (string, error) {
 	}
 
 	return currOp, err
-}
-
-// StopLoop sets continueLoop to false
-func (o *OperationManager) StopLoop() {
-	o.continueLoop = false
-}
-
-// IsStopped returns true if operation manager is not in loop
-func (o *OperationManager) IsStopped() bool {
-	return !o.continueLoop
 }
 
 // SetDescription sets the description and error of the operation current state

@@ -192,8 +192,12 @@ autoscaling:
 			mockPipeline.EXPECT().Set(opManager.BuildCurrOpKey(), gomock.Any(), timeoutDur)
 			mockPipeline.EXPECT().Exec()
 
-			mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
+			mockRedisClient.EXPECT().HGetAll(gomock.Any()).
+				Return(goredis.NewStringStringMapResult(map[string]string{
+					"description": models.OpManagerWaitingLock,
+			}, nil))
 
+			operationFinished := false
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 				Expect(m).To(HaveKeyWithValue("status", http.StatusOK))
@@ -201,16 +205,14 @@ autoscaling:
 				Expect(m).To(HaveKeyWithValue("success", true))
 			})
 			mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
-			mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
-			mockPipeline.EXPECT().Exec().Do(func() {
-				opManager.StopLoop()
+			mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey()).Do(func(_ interface{}) {
+				operationFinished = true
 			})
+			mockPipeline.EXPECT().Exec()
 
 			version := "v1.0"
 			// Select version from database
 			MockSelectYamlWithVersion(yamlStringToRollbackTo, version, mockDb, nil)
-
-			calls := NewCalls()
 
 			configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
@@ -238,8 +240,6 @@ autoscaling:
 
 			MockUpdateVersionsTable(mockDb, nil)
 
-			calls.Finish()
-
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 
@@ -247,8 +247,7 @@ autoscaling:
 			json.Unmarshal(recorder.Body.Bytes(), &response)
 			Expect(response).To(HaveKeyWithValue("success", true))
 			Expect(response).To(HaveKey("operationKey"))
-
-			Eventually(opManager.IsStopped, 10*time.Second).Should(BeTrue())
+			Eventually(func() bool { return operationFinished }, time.Minute, time.Second).Should(BeTrue())
 		})
 
 		It("should save error on redis if failed", func() {
@@ -275,6 +274,7 @@ autoscaling:
 
 			mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(nil, nil)).AnyTimes()
 
+			operationFinished := false
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 				Expect(m).To(HaveKeyWithValue("status", http.StatusBadRequest))
@@ -286,7 +286,7 @@ autoscaling:
 			mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
 			mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
 			mockPipeline.EXPECT().Exec().Do(func() {
-				opManager.StopLoop()
+				operationFinished = true
 			})
 
 			version := "v1.0"
@@ -306,8 +306,7 @@ autoscaling:
 			json.Unmarshal(recorder.Body.Bytes(), &response)
 			Expect(response).To(HaveKeyWithValue("success", true))
 			Expect(response).To(HaveKey("operationKey"))
-
-			Eventually(opManager.IsStopped, 10*time.Second).Should(BeTrue())
+			Eventually(func() bool { return operationFinished }, time.Minute, time.Second).Should(BeTrue())
 		})
 	})
 })

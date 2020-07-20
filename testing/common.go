@@ -906,9 +906,7 @@ func MockOperationManager(
 	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any())
 	mockPipeline.EXPECT().Expire(gomock.Any(), 10*time.Minute)
 	mockPipeline.EXPECT().Del(opManager.BuildCurrOpKey())
-	mockPipeline.EXPECT().Exec().Do(func() {
-		opManager.StopLoop()
-	})
+	mockPipeline.EXPECT().Exec()
 }
 
 // MockDeleteRedisKey mocks a delete operation on redis
@@ -1107,10 +1105,15 @@ func MockAnyRunningPod(
 	times int,
 ) *gomock.Call {
 	runningPod := `{"status":{"phase":"Running", "conditions": [{"type":"Ready","status":"True"}]}}`
-	return mockRedisClient.EXPECT().
+	call := mockRedisClient.EXPECT().
 		HGet(models.GetPodMapRedisKey(schedulerName), gomock.Any()).
-		Return(goredis.NewStringResult(runningPod, nil)).
-		Times(times)
+		Return(goredis.NewStringResult(runningPod, nil))
+	if times > 0 {
+		call.Times(times)
+	} else {
+		call.AnyTimes()
+	}
+	return call
 }
 
 func MockRunningPod(
@@ -1127,7 +1130,7 @@ func MockRunningPod(
 func MockPodNotFound(
 	mockRedisClient *redismocks.MockRedisClient,
 	schedulerName string,
-	podName string,
+	podName interface{},
 ) *gomock.Call {
 	return mockRedisClient.EXPECT().
 		HGet(models.GetPodMapRedisKey(schedulerName), podName).

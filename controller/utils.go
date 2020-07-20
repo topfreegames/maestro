@@ -14,6 +14,7 @@ import (
 	"math"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -39,7 +40,6 @@ import (
 // SegmentAndReplacePods acts when a scheduler rolling update is needed.
 // It segment the list of current pods in chunks of size maxSurge and replace them with new ones
 func SegmentAndReplacePods(
-	ctx context.Context,
 	logger logrus.FieldLogger,
 	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
@@ -51,8 +51,8 @@ func SegmentAndReplacePods(
 	pods []*models.Pod,
 	scheduler *models.Scheduler,
 	operationManager *models.OperationManager,
+	cancelPollingPeriod time.Duration,
 	maxSurge, goroutinePoolSize int,
-	clock clockinterfaces.Clock,
 ) (timeoutErr, cancelErr, err error) {
 	rand.Seed(time.Now().UnixNano())
 	schedulerName := scheduler.Name
@@ -61,6 +61,15 @@ func SegmentAndReplacePods(
 		"scheduler": schedulerName,
 	})
 
+	ctx, cancel := context.WithDeadline(context.Background(), willTimeoutAt)
+	defer cancel()
+
+	inRollingUpdate := operationManager != nil
+
+	if inRollingUpdate {
+		go watchOperation(ctx, cancel, logger, operationManager, cancelPollingPeriod)
+	}
+
 	// segment pods in chunks
 	podChunks := segmentPods(pods, maxSurge)
 
@@ -68,66 +77,93 @@ func SegmentAndReplacePods(
 		l.Debugf("updating chunk %d: %v", i, names(chunk))
 
 		// replace chunk
-		timedout, canceled, errored := replacePodsAndWait(
-			l,
+		err := replacePodsAndWait(
+			ctx,
+			logger,
 			roomManager,
 			mr,
 			clientset,
 			db,
 			redisClient,
-			willTimeoutAt,
 			configYAML,
 			chunk,
 			scheduler,
-			operationManager,
-			clock,
+			inRollingUpdate,
 			goroutinePoolSize,
 		)
 
-		if timedout {
-			timeoutErr = errors.New("timedout waiting rooms to be replaced, rolled back")
-			l.WithError(timeoutErr).Error("error replacing chunk of pods")
-			break
+		if err != nil {
+			l.WithError(err).Error("error replacing chunk of pods")
+			return nil, nil, err
 		}
+	}
 
-		if canceled {
-			cancelErr = errors.New("operation was canceled, rolled back")
-			l.WithError(cancelErr).Error("error replacing chunk of pods")
-			break
-		}
+	cancelReason := ctx.Err()
 
-		if errored != nil {
-			err = errored
-			l.WithError(errored).Error("error replacing chunk of pods")
-			break
-		}
+	if cancelReason == context.DeadlineExceeded {
+		timeoutErr = errors.New("timedout waiting rooms to be replaced, rolled back")
+		l.WithError(timeoutErr).Error("operation timed out while replacing chunk of pods")
+	} else if cancelReason == context.Canceled {
+		cancelErr = errors.New("operation was canceled, rolled back")
+		l.WithError(cancelErr).Error("operation canceled while error replacing chunk of pods")
 	}
 
 	return timeoutErr, cancelErr, err
 }
 
+func watchOperation(
+	ctx context.Context,
+	cancel func(),
+	logger logrus.FieldLogger,
+	operationManager *models.OperationManager,
+	cancelPollingPeriod time.Duration,
+) {
+	canceled, err := operationManager.WasCanceled()
+	if err != nil {
+		logger.WithError(err).Warn("error reading operation status from redis")
+	}
+	if canceled && err  == nil {
+		cancel()
+		return
+	}
+
+	ticker := time.NewTicker(cancelPollingPeriod)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			canceled, err := operationManager.WasCanceled()
+			if err != nil {
+				logger.WithError(err).Warn("error reading operation status from redis")
+				continue
+			}
+			if canceled {
+				cancel()
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
 func replacePodsAndWait(
+	ctx context.Context,
 	logger logrus.FieldLogger,
 	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
 	db pginterfaces.DB,
 	redisClient redisinterfaces.RedisClient,
-	willTimeoutAt time.Time,
 	configYAML *models.ConfigYAML,
 	podsChunk []*models.Pod,
 	scheduler *models.Scheduler,
-	operationManager *models.OperationManager,
-	clock clockinterfaces.Clock,
+	inRollingUpdate bool,
 	goroutinePoolSize int,
-) (timedout, canceled bool, err error) {
+) (err error) {
 	logger.Debug("starting to replace pods with new ones")
-	stop := make(chan struct{}, 1)
-	defer close(stop) // Dont leak goroutines
-	finishedReplace := make(chan struct{})
 
-	timedoutChan := make(chan bool)
-	canceledChan := make(chan bool)
+	finishedReplace := make(chan struct{})
 	errChan := make(chan error)
 
 	pods := make(chan *models.Pod, len(podsChunk))
@@ -135,91 +171,82 @@ func replacePodsAndWait(
 		pods <- pod
 	}
 
+	var wg sync.WaitGroup
 	logger.Infof("starting %d in-memory workers to replace %d pods", goroutinePoolSize, len(podsChunk))
 	for i := 0; i < goroutinePoolSize; i++ {
-		go replacePodWorker(
-			logger,
-			roomManager,
-			mr,
-			clientset,
-			db,
-			redisClient,
-			willTimeoutAt,
-			configYAML,
-			scheduler,
-			operationManager,
-			clock,
-			pods,
-			stop, finishedReplace,
-			timedoutChan, canceledChan, errChan,
-		)
-	}
-
-	select {
-	case err = <-errChan:
-		return false, false, err
-
-	case canceled = <-canceledChan:
-		return false, canceled, nil
-
-	case timedout = <-timedoutChan:
-		return timedout, false, nil
-
-	case <-finishedReplace:
-		logger.Debug("all pods were successfully replaced")
-		break
-	}
-
-	return timedout, canceled, err
-}
-
-func replacePodWorker(
-	logger logrus.FieldLogger,
-	roomManager models.RoomManager,
-	mr *models.MixedMetricsReporter,
-	clientset kubernetes.Interface,
-	db pginterfaces.DB,
-	redisClient redisinterfaces.RedisClient,
-	willTimeoutAt time.Time,
-	configYAML *models.ConfigYAML,
-	scheduler *models.Scheduler,
-	operationManager *models.OperationManager,
-	clock clockinterfaces.Clock,
-	pods <-chan *models.Pod,
-	stop, finishedReplace chan struct{},
-	timedoutChan, canceledChan chan<- bool,
-	errChan chan<- error,
-) {
-	for {
-		select {
-		case pod := <-pods:
-			localTimedout, localCanceled, localErr := createNewRemoveOldPod(
+		wg.Add(1)
+		go func () {
+			defer wg.Done()
+			replacePodWorker(
+				ctx,
 				logger,
 				roomManager,
 				mr,
 				clientset,
 				db,
 				redisClient,
-				willTimeoutAt,
 				configYAML,
 				scheduler,
-				operationManager,
+				pods,
+				inRollingUpdate,
+				finishedReplace,
+				errChan,
+			)
+		}()
+	}
+
+	select {
+	case err = <-errChan:
+		logger.Error("operation terminated with error")
+	case <-ctx.Done():
+		logger.Debug("operation timedout/canceled")
+	case <-finishedReplace:
+		logger.Debug("all pods were successfully replaced")
+	}
+
+	wg.Wait()
+
+	return err
+}
+
+func replacePodWorker(
+	ctx context.Context,
+	logger logrus.FieldLogger,
+	roomManager models.RoomManager,
+	mr *models.MixedMetricsReporter,
+	clientset kubernetes.Interface,
+	db pginterfaces.DB,
+	redisClient redisinterfaces.RedisClient,
+	configYAML *models.ConfigYAML,
+	scheduler *models.Scheduler,
+	pods <-chan *models.Pod,
+	inRollingUpdate bool,
+	finishedReplace chan struct{},
+	errChan chan<- error,
+) {
+	for {
+		select {
+		case pod := <-pods:
+			canceled, err := createNewRemoveOldPod(
+				ctx,
+				logger,
+				roomManager,
+				mr,
+				clientset,
+				db,
+				redisClient,
+				configYAML,
+				scheduler,
 				pod,
-				clock,
+				inRollingUpdate,
 			)
 
-			if localErr != nil {
-				errChan <- localErr
+			if err != nil {
+				errChan <- err
 				return
 			}
 
-			if localCanceled {
-				canceledChan <- localCanceled
-				return
-			}
-
-			if localTimedout {
-				timedoutChan <- localTimedout
+			if canceled {
 				return
 			}
 
@@ -228,26 +255,25 @@ func replacePodWorker(
 				finishedReplace <- struct{}{}
 				return
 			}
-		case <-stop:
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
 func createNewRemoveOldPod(
+	ctx context.Context,
 	logger logrus.FieldLogger,
 	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
 	db pginterfaces.DB,
 	redisClient redisinterfaces.RedisClient,
-	willTimeoutAt time.Time,
 	configYAML *models.ConfigYAML,
 	scheduler *models.Scheduler,
-	operationManager *models.OperationManager,
 	pod *models.Pod,
-	clock clockinterfaces.Clock,
-) (timedout, canceled bool, err error) {
+	inRollingUpdate bool,
+) (canceled bool, err error) {
 	logger.Debug("creating pod")
 
 	// create new pod
@@ -256,67 +282,60 @@ func createNewRemoveOldPod(
 
 	if err != nil {
 		logger.WithError(err).Errorf("error creating pod")
-		return false, false, err
+		return false, err
 	}
 
 	// wait for new pod to be created
-	timeout := willTimeoutAt.Sub(clock.Now())
-	timedout, canceled, err = waitCreatingPods(
-		logger, clientset, redisClient, timeout, configYAML.Name,
-		[]v1.Pod{*newPod}, operationManager, mr)
-	if timedout || canceled || err != nil {
+	canceled, err = waitCreatingPods(
+		ctx, logger, clientset, redisClient, configYAML.Name,
+		[]v1.Pod{*newPod}, mr)
+	if canceled || err != nil {
 		logger.Errorf("error waiting for pod to be created")
-		return timedout, canceled, err
+		return canceled, err
 	}
 
-	timedout, canceled, err = DeletePodsAndWait(
+	canceled, err = DeletePodsAndWait(
+		ctx,
 		logger,
 		roomManager,
 		mr,
 		clientset,
 		redisClient,
-		willTimeoutAt,
 		configYAML,
-		scheduler,
-		operationManager,
 		[]*models.Pod{pod},
-		clock,
 	)
 
 	if err != nil && !strings.Contains(err.Error(), "redis") {
-		return false, false, nil
+		return false, nil
 	}
 
-	if timedout || canceled {
-		return timedout, canceled, nil
+	if canceled {
+		return true, nil
 	}
 
 	// Remove invalid rooms redis keys if in a rolling update operation
 	// in order to track progress correctly
-	if operationManager != nil {
+	if inRollingUpdate {
 		err = models.RemoveInvalidRooms(redisClient, mr, configYAML.Name, []string{pod.Name})
 		if err != nil {
 			logger.WithError(err).Warnf("error removing room %s from invalidRooms redis key during rolling update", pod.Name)
 		}
 	}
 
-	return false, false, nil
+	return false, nil
 }
 
 // DeletePodsAndWait deletes a list of pods
 func DeletePodsAndWait(
+	ctx context.Context,
 	logger logrus.FieldLogger,
 	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
-	willTimeoutAt time.Time,
 	configYAML *models.ConfigYAML,
-	scheduler *models.Scheduler,
-	operationManager *models.OperationManager,
 	pods []*models.Pod,
-	clock clockinterfaces.Clock,
-) (timedout, canceled bool, err error) {
+) (canceled bool, err error) {
 
 	for _, pod := range pods {
 		logger.Debugf("deleting pod %s", pod.Name)
@@ -324,23 +343,19 @@ func DeletePodsAndWait(
 			configYAML, pod.Name, reportersConstants.ReasonUpdate)
 		if err != nil && !strings.Contains(err.Error(), "redis") {
 			logger.WithError(err).Errorf("error deleting pod %s", pod.Name)
-			return false, false, nil
+			return  false, nil
 		}
 	}
 
 	// wait for old pods to be deleted
 	// we assume that maxSurge == maxUnavailable as we can't set maxUnavailable yet
 	// so for every pod created in a chunk one is deleted right after it
-	timeout := willTimeoutAt.Sub(clock.Now())
-	timedout, canceled = waitTerminatingPods(
-		logger, clientset, redisClient, timeout, configYAML.Name,
-		pods, operationManager, mr)
-	if timedout || canceled || err != nil {
-		logger.Error("error waiting for pods to be deleted")
-		return timedout, canceled, nil
+	canceled = waitTerminatingPods(ctx, logger, clientset, redisClient, configYAML.Name, pods, mr)
+	if canceled {
+		return canceled, nil
 	}
 
-	return false, false, nil
+	return false, nil
 }
 
 // DBRollback perform a rollback on a scheduler config in the database
@@ -396,15 +411,14 @@ func DBRollback(
 }
 
 func waitTerminatingPods(
+	ctx context.Context,
 	l logrus.FieldLogger,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
-	timeout time.Duration,
 	namespace string,
 	deletedPods []*models.Pod,
-	operationManager *models.OperationManager,
 	mr *models.MixedMetricsReporter,
-) (timedout, wasCanceled bool) {
+) (wasCanceled bool) {
 	logger := l.WithFields(logrus.Fields{
 		"source":    "controller.waitTerminatingPods",
 		"scheduler": namespace,
@@ -412,21 +426,16 @@ func waitTerminatingPods(
 
 	logger.Debugf("waiting for pods to terminate: %#v", names(deletedPods))
 
-	timeoutTimer := time.NewTimer(timeout)
-	defer timeoutTimer.Stop()
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		exit := true
 		select {
+		case <-ctx.Done():
+			logger.Warn("operation canceled/timedout waiting for rooms to be removed")
+			return true
 		case <-ticker.C:
-			// operationManger is nil when rolling back (rollback can't be canceled)
-			if operationManager != nil && operationManager.WasCanceled() {
-				logger.Warn("operation was canceled")
-				return false, true
-			}
-
 			for _, pod := range deletedPods {
 				p, err := models.GetPodFromRedis(redisClient, mr, pod.Name, namespace)
 				if err != nil {
@@ -453,9 +462,6 @@ func waitTerminatingPods(
 					break
 				}
 			}
-		case <-timeoutTimer.C:
-			logger.Error("timeout waiting for rooms to be removed")
-			return true, false
 		}
 
 		if exit {
@@ -464,26 +470,23 @@ func waitTerminatingPods(
 		}
 	}
 
-	return false, false
+	return false
 }
 
 func waitCreatingPods(
+	ctx context.Context,
 	l logrus.FieldLogger,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
-	timeout time.Duration,
 	namespace string,
 	createdPods []v1.Pod,
-	operationManager *models.OperationManager,
 	mr *models.MixedMetricsReporter,
-) (timedout, wasCanceled bool, err error) {
+) (canceled bool, err error) {
 	logger := l.WithFields(logrus.Fields{
 		"source":    "controller.waitCreatingPods",
 		"scheduler": namespace,
 	})
 
-	timeoutTimer := time.NewTimer(timeout)
-	defer timeoutTimer.Stop()
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
@@ -497,12 +500,6 @@ func waitCreatingPods(
 		exit := true
 		select {
 		case <-ticker.C:
-			// operationManger is nil when rolling back (rollback can't be canceled)
-			if operationManager != nil && operationManager.WasCanceled() {
-				logger.Warn("operation was canceled")
-				return false, true, nil
-			}
-
 			for i, pod := range createdPods {
 				createdPod, err := models.GetPodFromRedis(redisClient, mr, pod.GetName(), namespace)
 				if err != nil {
@@ -583,16 +580,16 @@ func waitCreatingPods(
 
 					if err != nil {
 						logger.WithField("pod", pod.GetName()).WithError(err).Error("invalid pod waiting state")
-						return false, false, err
+						return false, err
 					}
 
 					exit = false
 					break
 				}
 			}
-		case <-timeoutTimer.C:
-			logger.Error("timeout waiting for rooms to be created")
-			return true, false, nil
+		case <-ctx.Done():
+			logger.Warn("operation canceled/timeout waiting for rooms to be created")
+			return true, nil
 		}
 
 		if exit {
@@ -601,7 +598,7 @@ func waitCreatingPods(
 		}
 	}
 
-	return false, false, nil
+	return false, nil
 }
 
 // DeletePodAndRoom deletes the pod and removes the room from redis
@@ -1144,9 +1141,12 @@ func AcquireLock(
 			l.Warn("timeout while wating for redis lock")
 			return nil, false, errors.New("timeout while wating for redis lock")
 		case <-ticker.C:
-			if operationManager != nil && operationManager.WasCanceled() {
-				l.Warn("operation was canceled")
-				return nil, true, nil
+			if operationManager != nil {
+				canceled, err := operationManager.WasCanceled()
+				if canceled && err == nil {
+					l.Warn("operation was canceled")
+					return nil, true, nil
+				}
 			}
 
 			if err != nil {

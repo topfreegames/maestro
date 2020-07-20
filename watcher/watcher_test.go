@@ -4509,6 +4509,44 @@ var _ = Describe("Watcher", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("should stop when operation is canceled", func() {
+			testing.MockSelectScheduler(yaml1, mockDb, nil)
+			//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HGetAll(
+				models.GetPodMapRedisKey(configYaml.Name)).
+				Return(redis.NewStringStringMapResult(map[string]string{
+					"room-1": `{"name": "room-1", "version": "v2.0"}`,
+					"room-2": `{"name": "room-1", "version": "v2.0"}`,
+			}, nil))
+			//mockPipeline.EXPECT().Exec()
+
+			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline, w.SchedulerName, [][]string{}, nil)
+
+			opKey := fmt.Sprintf("opmanager:%s:operation", configYaml.Name)
+			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
+
+			mockRedisClient.EXPECT().Get(opManager.BuildCurrOpKey()).Return(redis.NewStringResult(opKey, nil))
+
+			call := mockRedisClient.EXPECT().HGetAll(opKey).Return(
+				redis.NewStringStringMapResult(map[string]string{
+					"description": models.OpManagerRollingUpdate,
+				}, nil)).Times(2)
+			mockRedisClient.EXPECT().HGetAll(opKey).
+				Return(redis.NewStringStringMapResult(map[string]string(nil), nil)).
+				After(call)
+
+			// Create room
+			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
+			testing.MockGetPortsFromPoolAnyTimes(&configYaml, mockRedisClient, mockPortChooser,
+				models.NewPortRange(5000, 6000).String(), 5000, 6000)
+
+			testing.MockPodNotFound(mockRedisClient, w.SchedulerName, gomock.Any()).AnyTimes()
+
+			err := w.EnsureCorrectRooms()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(hook.Entries).To(testing.ContainLogMessage("operation canceled while error replacing chunk of pods"))
+		})
 	})
 
 	Describe("PodStatesCount", func() {
