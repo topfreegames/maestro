@@ -7,6 +7,7 @@
 package api
 
 import (
+	"github.com/pkg/errors"
 	"github.com/topfreegames/extensions/middleware"
 	"net/http"
 	"strings"
@@ -39,26 +40,26 @@ func (m *WilliamMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	token = strings.TrimPrefix(token, "Bearer ")
 
 	if len(token) == 0 {
-		m.App.HandleError(w, http.StatusUnauthorized, "unauthorized", nil)
+		m.App.HandleError(w, http.StatusUnauthorized, "", errors.New("invalidd token"))
 		return
 	}
 
 	permission, resource, err := m.Resolver.ResolvePermission(m.App, r)
 	if err != nil {
 		logger.WithError(err).Error("error resolving permission")
-		m.App.HandleError(w, http.StatusInternalServerError, "internal server error", nil)
+		m.App.HandleError(w, http.StatusInternalServerError, "internal server error", err)
 		return
 	}
 
 	hasPermission, err := m.App.William.Check(token, permission, resource)
 	if err != nil {
 		logger.WithError(err).Error("error checking permission")
-		m.App.HandleError(w, http.StatusInternalServerError, "internal server error", nil)
+		m.App.HandleError(w, http.StatusInternalServerError, "internal server error", err)
 		return
 	}
 
 	if !hasPermission {
-		m.App.HandleError(w, http.StatusForbidden, "forbidden", nil)
+		m.App.HandleError(w, http.StatusForbidden, "forbidden", errors.New("user does not have permission on this resource"))
 		return
 	}
 	m.next.ServeHTTP(w, r)

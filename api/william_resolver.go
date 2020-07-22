@@ -21,7 +21,7 @@ type actionResolver struct {
 	action string
 }
 
-func (r actionResolver) ResolvePermission(app *App, req *http.Request) (permission, resource string, err error) {
+func (r *actionResolver) ResolvePermission(app *App, req *http.Request) (permission, resource string, err error) {
 	return r.action, "", nil
 }
 
@@ -30,7 +30,7 @@ type schedulerPathResolver struct {
 	varName string
 }
 
-func (r schedulerPathResolver) ResolvePermission(app *App, req *http.Request) (permission, resource string, err error) {
+func (r *schedulerPathResolver) ResolvePermission(app *App, req *http.Request) (permission, resource string, err error) {
 	vars := mux.Vars(req)
 	schedulerName, ok := vars[r.varName]
 	if !ok {
@@ -54,7 +54,7 @@ type gameQueryResolver struct {
 	queryParam string
 }
 
-func (r gameQueryResolver) ResolvePermission(app *App, req *http.Request) (permission, resource string, err error) {
+func (r *gameQueryResolver) ResolvePermission(app *App, req *http.Request) (permission, resource string, err error) {
 	game := req.URL.Query().Get(r.queryParam)
 	if game == "" {
 		game = "*"
@@ -63,13 +63,13 @@ func (r gameQueryResolver) ResolvePermission(app *App, req *http.Request) (permi
 }
 
 func ActionResolver(action string) PermissionResolver {
-	return actionResolver{action}
+	return &actionResolver{action}
 }
 
 func SchedulerPathResolver(action, varName string) PermissionResolver {
-	return schedulerPathResolver{action, varName}
+	return &schedulerPathResolver{action, varName}
 }
 
 func GameQueryResolver(action, queryParam string) PermissionResolver {
-	return gameQueryResolver{action, queryParam}
+	return &gameQueryResolver{action, queryParam}
 }

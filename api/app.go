@@ -630,6 +630,7 @@ func (a *App) configureLogin() {
 func (a *App) configureWilliam() {
 	permissions := []william.Permission{
 		{Action: "ListSchedulers", IncludeGame: true, IncludeScheduler: false},
+		{Action: "GetScheduler", IncludeGame: true, IncludeScheduler: true},
 		{Action: "CreateScheduler", IncludeGame: false, IncludeScheduler: false},
 		{Action: "UpdateScheduler", IncludeGame: true, IncludeScheduler: true},
 		{Action: "ScaleScheduler", IncludeGame: true, IncludeScheduler: true},

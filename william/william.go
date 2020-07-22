@@ -107,7 +107,7 @@ func buildAllPermissions(region string, permissions []Permission, schedulers []m
 	iamPermissions := make([]IAMPermission, 0)
 	iamPermissions = append(iamPermissions, IAMPermission{
 		Prefix:   "*",
-		Complete: false,
+		Complete: true,
 	})
 	for _, p := range permissions {
 		iamPermissions = append(
