@@ -7,80 +7,75 @@
 package api
 
 import (
+	e "errors"
+	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/maestro/api/auth"
+	"github.com/topfreegames/maestro/errors"
 	"net/http"
 	"strings"
-
-	e "errors"
-
-	"github.com/gorilla/mux"
-	"github.com/topfreegames/extensions/middleware"
-	"github.com/topfreegames/maestro/errors"
-	"github.com/topfreegames/maestro/models"
 )
 
 //AuthMiddleware ensure that this user has authorization to
 //execute an operation on the scheduler
 type AuthMiddleware struct {
-	App     *App
-	next    http.Handler
-	admins  []string
-	enabled bool
+	App      *App
+	next     http.Handler
+	admins   []string
+	resolver auth.PermissionResolver
 }
 
 // NewAuthMiddleware returns an access middleware
 // This middleware must come after BasicAuthMiddleware
 // and AccessMiddleware, otherwise won't do anything
-func NewAuthMiddleware(a *App) *AuthMiddleware {
+func NewAuthMiddleware(a *App, resolver auth.PermissionResolver) *AuthMiddleware {
 	return &AuthMiddleware{
-		App:     a,
-		admins:  strings.Split(a.Config.GetString("users.admin"), ","),
-		enabled: a.Config.GetBool("oauth.enabled"),
+		App:      a,
+		admins:   strings.Split(a.Config.GetString("users.admin"), ","),
+		resolver: resolver,
 	}
 }
 
 //ServeHTTP methods
 func (m *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := middleware.GetLogger(r.Context())
-
-	if !m.enabled {
-		logger.Debug("oauth disabled")
+	ctx := r.Context()
+	if auth.IsBasicAuthOkFromContext(ctx) {
 		m.next.ServeHTTP(w, r)
 		return
 	}
-
-	logger.Debug("checking auth")
-
-	isBasicAuthOK := isBasicAuthOkFromContext(r.Context())
-	if isBasicAuthOK {
-		logger.Debug("authorized user from basic auth")
-		m.next.ServeHTTP(w, r)
-		return
-	}
-
-	email := emailFromContext(r.Context())
-	if email == "" {
-		logger.Debug("user not sent")
-		m.App.HandleError(w, http.StatusUnauthorized, "",
-			errors.NewAccessError("user not sent",
-				e.New("user is empty (not using basicauth nor oauth) and auth is required")))
-		return
-	}
-
-	if !isAuth(email, m.admins) {
-		schedulerName := mux.Vars(r)["schedulerName"]
-		scheduler := models.NewScheduler(schedulerName, "", "")
-		scheduler.Load(m.App.DBClient.WithContext(r.Context()))
-		configYaml, _ := models.NewConfigYAML(scheduler.YAML)
-		if !isAuth(email, configYaml.AuthorizedUsers) {
-			logger.Debug("not authorized user")
-			m.App.HandleError(w, http.StatusUnauthorized, "",
-				errors.NewAccessError("not authorized user",
-					e.New("user is not admin and is not authorized to operate on this scheduler")))
+	if m.App.Config.GetBool("william.enabled") {
+		db := m.App.DBClient.WithContext(ctx)
+		logger := middleware.GetLogger(ctx)
+		authorized, err := auth.CheckWilliamPermission(db, logger, m.App.William, r, m.resolver)
+		if err != nil {
+			m.App.HandleError(w, http.StatusInternalServerError, "internal server error", err)
 			return
+		}
+		if !authorized {
+			m.App.HandleError(w,
+				http.StatusForbidden,
+				"forbidden",
+				errors.NewAccessError("not authorized user",
+					e.New("user is not authorized to operate on this resource")),
+			)
+		}
+	} else if m.App.Config.GetBool("oauth.enabled") {
+		db := m.App.DBClient.WithContext(ctx)
+		logger := middleware.GetLogger(ctx)
+		authorized, err := auth.CheckAuthorization(db, logger, r, m.admins)
+		if err != nil {
+			m.App.HandleError(w, http.StatusInternalServerError, "internal server error", err)
+			return
+		}
+		if !authorized {
+			m.App.HandleError(w,
+				http.StatusUnauthorized,
+				"unauthorized",
+				errors.NewAccessError("not authorized user",
+					e.New("user is not admin and is not authorized to operate on this scheduler")),
+			)
 		}
 	}
 
-	logger.Debug("authorized user")
 	m.next.ServeHTTP(w, r)
 }
 

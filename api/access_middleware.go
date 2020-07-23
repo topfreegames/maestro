@@ -7,149 +7,104 @@
 package api
 
 import (
-	"context"
 	"fmt"
+	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/maestro/api/auth"
 	"net/http"
 	"strings"
 
-	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/errors"
-	"github.com/topfreegames/maestro/login"
 )
 
 //AccessMiddleware guarantees that the user is logged
 type AccessMiddleware struct {
-	App     *App
-	next    http.Handler
-	enabled bool
+	App  *App
+	next http.Handler
 }
 
 // NewAccessMiddleware returns an access middleware
 func NewAccessMiddleware(a *App) *AccessMiddleware {
-	enabled := a.Config.GetBool("oauth.enabled")
 	return &AccessMiddleware{
-		App:     a,
-		enabled: enabled,
+		App: a,
 	}
 }
 
-const emailKey = contextKey("emailKey")
-
-func emailFromContext(ctx context.Context) string {
-	payload := ctx.Value(emailKey)
-	if payload == nil {
-		return ""
-	}
-	return payload.(string)
-}
-
-// NewContextWithEmail adds the email from oauth into context
-func NewContextWithEmail(ctx context.Context, email string) context.Context {
-	c := context.WithValue(ctx, emailKey, email)
-	return c
-}
-
-func basicAuthWithXForwardedUserEmail(
-	basicAuthUser, basicAuthPass string, r *http.Request,
-) (string, bool) {
-	if basicAuthUser == "" && basicAuthPass == "" {
-		return "", false
-	}
-	user, pass, ok := r.BasicAuth()
-	if !ok || user != basicAuthUser || pass != basicAuthPass {
-		return "", false
-	}
-	email := r.Header.Get("x-forwarded-user-email")
-	if email == "" {
-		return "", false
-	}
-	return email, true
-}
+var emptyErr = fmt.Errorf("")
 
 //ServeHTTP methods
 func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !m.enabled {
-		m.next.ServeHTTP(w, r)
-		return
+	ctx := r.Context()
+	logger := middleware.GetLogger(ctx)
+	if auth.BasicAuthEnabled(m.App.Config) {
+		logger.Debug("checking basic auth")
+		result, email := auth.CheckBasicAuth(m.App.Config, r)
+
+		// Basic Auth is valid, proceed to next handler
+		if result == auth.AuthenticationOk {
+			logger.Debug("basic auth ok")
+			ctx = auth.NewContextWithEmail(ctx, email)
+			ctx = auth.NewContextWithBasicAuthOK(ctx)
+			m.next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+
+		// Basic Auth is invalid, return unauthorized
+		if result == auth.AuthenticationInvalid {
+			logger.Debug("basic auth invalid")
+			m.App.HandleError(w, http.StatusUnauthorized, "authentication failed", fmt.Errorf("invalid basic auth"))
+			return
+		}
+
+		logger.Debug("basic auth missing")
+		// If basic auth is missing and `basicAuth.tryOauthIfUnset` is false return unauthorized
+		if !m.App.Config.GetBool("basicAuth.tryOauthIfUnset") {
+			logger.Debug("basic auth tryOauthIfUnset is false so unauthorized")
+			m.App.HandleError(w, http.StatusUnauthorized, "authentication failed", fmt.Errorf("no basic auth sent"))
+			return
+		}
 	}
 
-	// checking basic auth in case of x-forwarded-user-email
-	basicAuthUser := m.App.Config.GetString("basicauth.username")
-	basicAuthPass := m.App.Config.GetString("basicauth.password")
-	if email, ok := basicAuthWithXForwardedUserEmail(
-		basicAuthUser, basicAuthPass, r,
-	); ok {
-		ctx := NewContextWithEmail(r.Context(), email)
+	if m.App.Config.GetBool("william.enabled") {
+		logger.Debug("william enabled, checking token")
+		token := r.Header.Get("Authorization")
+		if len(token) == 0 {
+			logger.Debug("token empty")
+			m.App.HandleError(w, http.StatusUnauthorized, "", errors.NewAccessError("missing access token", emptyErr))
+			return
+		}
+
+		token = strings.TrimPrefix(token, "Bearer ")
+
+		if len(token) == 0 {
+			logger.Debug("no bearer token")
+			m.App.HandleError(w, http.StatusUnauthorized, "", errors.NewAccessError("Unauthorized access token", emptyErr))
+			return
+		}
+
+		logger.Debug("authenticated with william")
+	} else if m.App.Config.GetBool("oauth.enabled") {
+		logger.Debug("oauth enabled, checking token")
+
+		result, email, err := auth.CheckOauthToken(m.App.Login, m.App.DBClient.WithContext(ctx), logger, r, m.App.EmailDomains)
+		if err != nil {
+			if result == auth.AuthenticationError {
+				logger.Debug("authentication error")
+				m.App.HandleError(w, http.StatusInternalServerError, "", err)
+			} else {
+				logger.Debug("authentication invalid")
+				m.App.HandleError(w, http.StatusUnauthorized, "", err)
+			}
+			return
+		}
+
+		logger.Debug("token authenticated, putting email on context", email)
+
+		ctx = auth.NewContextWithEmail(r.Context(), email)
 		m.next.ServeHTTP(w, r.WithContext(ctx))
 		return
 	}
 
-	logger := middleware.GetLogger(r.Context())
-	logger.Debug("Checking access token")
-
-	accessToken := r.Header.Get("Authorization")
-	accessToken = strings.TrimPrefix(accessToken, "Bearer ")
-
-	token, err := login.GetToken(accessToken, m.App.DBClient.WithContext(r.Context()))
-	if err != nil {
-		m.App.HandleError(w, http.StatusInternalServerError, "", err)
-		return
-	}
-	if token.RefreshToken == "" {
-		m.App.HandleError(
-			w,
-			http.StatusUnauthorized,
-			"",
-			errors.NewAccessError("access token was not found on db", fmt.Errorf("access token error")),
-		)
-		return
-	}
-
-	msg, status, err := m.App.Login.Authenticate(token, m.App.DBClient.WithContext(r.Context()))
-	if err != nil {
-		logger.WithError(err).Error("error fetching googleapis")
-		m.App.HandleError(w, http.StatusInternalServerError, "Error fetching googleapis", err)
-		return
-	}
-
-	if status == http.StatusBadRequest {
-		logger.WithError(err).Error("error validating access token")
-		err := errors.NewAccessError("Unauthorized access token", fmt.Errorf(msg))
-		m.App.HandleError(w, http.StatusUnauthorized, "Unauthorized access token", err)
-		return
-	}
-
-	if status != http.StatusOK {
-		logger.WithError(err).Error("invalid access token")
-		err := errors.NewAccessError("invalid access token", fmt.Errorf(msg))
-		m.App.HandleError(w, status, "error validating access token", err)
-		return
-	}
-
-	email := msg
-	if !verifyEmailDomain(email, m.App.EmailDomains) {
-		logger.WithError(err).Error("Invalid email")
-		err := errors.NewAccessError(
-			"authorization access error",
-			fmt.Errorf("the email on OAuth authorization is not from domain %s", m.App.EmailDomains),
-		)
-		m.App.HandleError(w, http.StatusUnauthorized, "error validating access token", err)
-		return
-	}
-
-	ctx := NewContextWithEmail(r.Context(), email)
-
-	logger.Debug("Access token checked")
-	m.next.ServeHTTP(w, r.WithContext(ctx))
-}
-
-func verifyEmailDomain(email string, emailDomains []string) bool {
-	for _, domain := range emailDomains {
-		if strings.HasSuffix(email, domain) {
-			return true
-		}
-	}
-	return false
+	m.next.ServeHTTP(w, r)
 }
 
 //SetNext handler

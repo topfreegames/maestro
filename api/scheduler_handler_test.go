@@ -1543,7 +1543,7 @@ game: game-name
 						scheduler.YAML = yamlStr
 					})
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-				testing.MockScaleUp(mockPipeline, mockRedisClient, schedulerName,1)
+				testing.MockScaleUp(mockPipeline, mockRedisClient, schedulerName, 1)
 
 				err = MockSetScallingAmount(
 					mockRedisClient,
@@ -1813,8 +1813,8 @@ game: game-name
 
 				MockLoadScheduler(schedulerName, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
-					scheduler.YAML = yamlStr
-				})
+						scheduler.YAML = yamlStr
+					})
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().
@@ -1853,7 +1853,6 @@ game: game-name
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
 						scheduler.YAML = yamlStr
 					})
-
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().

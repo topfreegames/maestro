@@ -10,6 +10,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/topfreegames/maestro/api/auth"
 	"net/http"
 
 	"github.com/topfreegames/extensions/middleware"
@@ -94,7 +95,7 @@ func (l *LoginAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	db := l.App.DBClient.WithContext(r.Context())
 	//If the last error didn't occur, then the error from Authenticate method won't happen
 	email, _, _ := l.App.Login.Authenticate(token, db)
-	if !verifyEmailDomain(email, l.App.EmailDomains) {
+	if !auth.VerifyEmailDomain(email, l.App.EmailDomains) {
 		logger.WithError(err).Error("Invalid email")
 		err := errors.NewAccessError(
 			"authorization access error",

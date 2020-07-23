@@ -9,6 +9,7 @@
 package api_test
 
 import (
+	"github.com/topfreegames/maestro/api/auth"
 	"net/http"
 	"net/http/httptest"
 
@@ -30,7 +31,7 @@ var _ = Describe("AuthMiddleware", func() {
 	var dummyMiddleware = &DummyMiddleware{}
 
 	BeforeEach(func() {
-		authMiddleware = NewAuthMiddleware(app)
+		authMiddleware = NewAuthMiddleware(app, auth.ActionResolver("SomePermission"))
 		authMiddleware.SetNext(dummyMiddleware)
 
 		request, _ = http.NewRequest("GET", "/scheduler/{schedulerName}/any/route", nil)
@@ -45,38 +46,34 @@ var _ = Describe("AuthMiddleware", func() {
 			config.Set("oauth.enabled", false)
 
 			app.Config = config
-			authMiddleware = NewAuthMiddleware(app)
+			authMiddleware = NewAuthMiddleware(app, auth.ActionResolver("SomePermission"))
 			authMiddleware.SetNext(dummyMiddleware)
 
 			authMiddleware.ServeHTTP(recorder, request)
-			s, err := hook.LastEntry().String()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(s).To(ContainSubstring("oauth disabled"))
+			Expect(recorder.Code).To(Equal(http.StatusOK))
 		})
 
 		It("should return ok if from basicauth", func() {
 			request = request.WithContext(
-				NewContextWithBasicAuthOK(request.Context()))
+				auth.NewContextWithBasicAuthOK(request.Context()))
 
 			authMiddleware.ServeHTTP(recorder, request)
-			s, err := hook.LastEntry().String()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(s).To(ContainSubstring("authorized user from basic auth"))
+			Expect(recorder.Code).To(Equal(http.StatusOK))
 		})
 
 		It("should ok if admin", func() {
 			request = request.WithContext(
-				NewContextWithEmail(request.Context(), "user@example.com"))
+				auth.NewContextWithEmail(request.Context(), "user@example.com"))
+
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
 
 			authMiddleware.ServeHTTP(recorder, request)
-			s, err := hook.LastEntry().String()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(s).To(ContainSubstring("authorized user"))
+			Expect(recorder.Code).To(Equal(http.StatusOK))
 		})
 
 		It("should ok if not admin but authorized to scheduler", func() {
 			request = request.WithContext(
-				NewContextWithEmail(request.Context(), "scheduler_user@example.com"))
+				auth.NewContextWithEmail(request.Context(), "scheduler_user@example.com"))
 			request = mux.SetURLVars(request, map[string]string{"schedulerName": "scheduler-name"})
 
 			yamlStr := `name: scheduler-name
@@ -86,14 +83,12 @@ authorizedUsers:
 			MockSelectScheduler(yamlStr, mockDb, nil)
 
 			authMiddleware.ServeHTTP(recorder, request)
-			s, err := hook.LastEntry().String()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(s).To(ContainSubstring("authorized user"))
+			Expect(recorder.Code).To(Equal(http.StatusOK))
 		})
 
 		It("should ok if not admin and not authorized to scheduler", func() {
 			request = request.WithContext(
-				NewContextWithEmail(request.Context(), "not_a_scheduler_user@example.com"))
+				auth.NewContextWithEmail(request.Context(), "not_a_scheduler_user@example.com"))
 			request = mux.SetURLVars(request, map[string]string{"schedulerName": "scheduler-name"})
 
 			yamlStr := `name: scheduler-name
@@ -103,9 +98,7 @@ authorizedUsers:
 			MockSelectScheduler(yamlStr, mockDb, nil)
 
 			authMiddleware.ServeHTTP(recorder, request)
-			s, err := hook.LastEntry().String()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(s).To(ContainSubstring("not authorized user"))
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
 		})
 	})
 })

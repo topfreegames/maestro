@@ -22,6 +22,7 @@ func GetDefaultConfig() (*viper.Viper, error) {
 	cfg.AddConfigPath(".")
 	cfg.AddConfigPath("./config")
 	cfg.AddConfigPath("../config")
+	cfg.AddConfigPath("../../config")
 	cfg.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	cfg.AutomaticEnv()
 

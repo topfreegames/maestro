@@ -522,7 +522,7 @@ func MockCreateScheduler(
 
 	calls.Add(mockPipeline.EXPECT().Exec())
 
-	calls.Add(MockAnyRunningPod(mockRedisClient, configYaml.Name, configYaml.AutoScaling.Min * 2))
+	calls.Add(MockAnyRunningPod(mockRedisClient, configYaml.Name, configYaml.AutoScaling.Min*2))
 
 	calls.Add(
 		mockRedisClient.EXPECT().
@@ -1092,7 +1092,7 @@ func MockListPods(
 	mockPipeline.EXPECT().HGetAll(
 		models.GetPodMapRedisKey(schedulerName)).
 		Return(goredis.NewStringStringMapResult(result, nil))
-	execCall :=  mockPipeline.EXPECT().Exec()
+	execCall := mockPipeline.EXPECT().Exec()
 	if err != nil {
 		execCall.Return([]goredis.Cmder{}, err)
 	}
@@ -1386,7 +1386,7 @@ func MockScaleUp(
 	times int,
 ) {
 	MockListPods(mockPipeline, mockRedisClient, schedulerName, []string{}, nil)
-	MockAnyRunningPod(mockRedisClient, schedulerName, 2 * times)
+	MockAnyRunningPod(mockRedisClient, schedulerName, 2*times)
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(times)
 	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 		func(schedulerName string, statusInfo map[string]interface{}) {
