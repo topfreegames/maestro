@@ -141,7 +141,7 @@ var _ = Describe("GameRoomManagement", func() {
 			roomManager = &models.GameRoom{}
 		})
 
-		FDescribe("Create", func() {
+		Describe("Create", func() {
 			It("Should create a pod", func() {
 				mockRedisClient.EXPECT().
 					HGet(models.GetPodMapRedisKey(scheduler.Name), gomock.Any()).
