@@ -15,20 +15,14 @@ import (
 )
 
 type WilliamHandler struct {
-	App     *App
-	enabled bool
+	App *App
 }
 
 func NewWilliamHandler(a *App) *WilliamHandler {
-	return &WilliamHandler{App: a, enabled: a.Config.GetBool("william.enabled")}
+	return &WilliamHandler{App: a}
 }
 
 func (h *WilliamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !h.enabled {
-		h.App.HandleError(w, http.StatusNotFound, "not found", nil)
-		return
-	}
-
 	ctx := r.Context()
 
 	prefix := r.URL.Query().Get("prefix")

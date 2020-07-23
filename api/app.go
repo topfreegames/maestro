@@ -139,9 +139,11 @@ func (a *App) getRouter() *mux.Router {
 		NewLoginAccessHandler(a),
 	)).Methods("GET").Name("oauth")
 
-	r.Handle("/am", NewWilliamHandler(a)).
-		Methods("GET").
-		Name("william")
+	if a.Config.GetBool("william.enabled") {
+		r.Handle("/am", NewWilliamHandler(a)).
+			Methods("GET").
+			Name("william")
+	}
 
 	r.HandleFunc("/scheduler", Chain(
 		NewSchedulerListHandler(a),
