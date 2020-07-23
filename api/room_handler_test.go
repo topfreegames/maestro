@@ -75,7 +75,7 @@ forwarders:
 		}
 
 		MockPodNotFound(mockRedisClient, namespace, name)
-		pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient, mmr)
+		pod, err := models.NewPod(name, nil, configYaml, mockRedisClient, mmr)
 		if err != nil {
 			return nil, err
 		}
@@ -353,7 +353,6 @@ forwarders:
 					HGet(models.GetPodMapRedisKey(namespace), roomName).
 					Return(redis.NewStringResult(string(jsonBytes), nil))
 
-
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 				MockLoadScheduler(namespace, mockDb).
 					Do(func(scheduler *models.Scheduler, query string, modifier string) {
@@ -613,7 +612,6 @@ forwarders:
 					mockRedisClient.EXPECT().
 						HGet(models.GetPodMapRedisKey(namespace), roomName).
 						Return(redis.NewStringResult(string(jsonBytes), nil))
-
 
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
@@ -1071,7 +1069,7 @@ forwarders:
 				HGet(models.GetPodMapRedisKey(namespace), name).
 				Return(redis.NewStringResult("", redis.Nil))
 
-			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient, mmr)
+			pod, err := models.NewPod(name, nil, configYaml, mockRedisClient, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
@@ -1109,7 +1107,7 @@ forwarders:
 			mockRedisClient.EXPECT().
 				HGet(models.GetPodMapRedisKey(namespace), name).
 				Return(redis.NewStringResult("", redis.Nil))
-			pod, err := models.NewPod(name, nil, configYaml, mockClientset, mockRedisClient, mmr)
+			pod, err := models.NewPod(name, nil, configYaml, mockRedisClient, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())

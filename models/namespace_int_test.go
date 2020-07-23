@@ -54,7 +54,7 @@ var _ = Describe("Namespace", func() {
 				Cmd:      []string{"command"},
 			}
 
-			pod, err := models.NewPod("name", []*models.EnvVar{}, configYaml, clientset, redisClient.Client, mmr)
+			pod, err := models.NewPod("name", []*models.EnvVar{}, configYaml, redisClient.Client, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			_, err = pod.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())

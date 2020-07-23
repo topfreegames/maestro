@@ -16,7 +16,7 @@ import (
 	"fmt"
 
 	"github.com/topfreegames/maestro/models"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	goredis "github.com/go-redis/redis"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
@@ -52,7 +52,7 @@ var _ = Describe("Pod", func() {
 			HGet(models.GetPodMapRedisKey(configYaml.Name), name).
 			Return(goredis.NewStringResult("", goredis.Nil))
 
-		pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient, mmr)
+		pod, err := models.NewPod(name, env, configYaml, mockRedisClient, mmr)
 		Expect(err).NotTo(HaveOccurred())
 
 		return pod, err
@@ -200,7 +200,7 @@ var _ = Describe("Pod", func() {
 						Command:  command,
 					},
 				},
-				configYaml, mockClientset, mockRedisClient, mmr,
+				configYaml, mockRedisClient, mmr,
 			)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -299,7 +299,7 @@ var _ = Describe("Pod", func() {
 						Command:  command,
 					},
 				},
-				configYaml, mockClientset, mockRedisClient, mmr,
+				configYaml, mockRedisClient, mmr,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			firstPod.SetToleration(game)
@@ -335,7 +335,7 @@ var _ = Describe("Pod", func() {
 						Command:  command,
 					},
 				},
-				configYaml, mockClientset, mockRedisClient, mmr,
+				configYaml, mockRedisClient, mmr,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
@@ -473,7 +473,7 @@ var _ = Describe("Pod", func() {
 				Cmd:             command,
 			}
 
-			pod, err := models.NewPod(name, env, configYaml, mockClientset, mockRedisClient, mmr)
+			pod, err := models.NewPod(name, env, configYaml, mockRedisClient, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			podv1, err := pod.Create(mockClientset)
 			Expect(err).NotTo(HaveOccurred())

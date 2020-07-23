@@ -139,7 +139,9 @@ func NewWatcher(
 		EventForwarders:         eventForwarders,
 	}
 	w.loadConfigurationDefaults()
-	w.configure()
+	if err := w.configure(); err != nil {
+		logger.WithError(err).Error("error configuring watcher")
+	}
 	return w
 }
 
@@ -242,7 +244,7 @@ func (w *Watcher) Start() {
 
 	go w.reportRoomsStatusesRoutine()
 	stopKubeWatch := make(chan struct{})
-	go w.configureKubeWatch(stopKubeWatch)
+	go func() { _ = w.configureKubeWatch(stopKubeWatch)}()
 
 	for w.Run == true {
 		l = w.Logger.WithFields(logrus.Fields{
@@ -250,7 +252,7 @@ func (w *Watcher) Start() {
 		})
 		select {
 		case <-ticker.C:
-			w.watchRooms()
+			_ = w.watchRooms()
 		case <-tickerStateCount.C:
 			w.PodStatesCount()
 		case sig := <-sigchan:
@@ -272,7 +274,7 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 	for w.Run == true {
 		select {
 		case <-tickerRs.C:
-			w.ReportRoomsStatuses()
+			_ = w.ReportRoomsStatuses()
 		}
 	}
 }
@@ -281,18 +283,18 @@ func (w *Watcher) watchRooms() error {
 	l := w.Logger.WithFields(logrus.Fields{
 		"operation": "watcher.watchRooms.EnsureCorrectRooms",
 	})
-	w.WithDownscalingLock(l, w.EnsureCorrectRooms)
+	_, _ = w.WithDownscalingLock(l, w.EnsureCorrectRooms)
 
 	l = w.Logger.WithFields(logrus.Fields{
 		"operation": "watcher.watchRooms.RemoveDeadRooms",
 	})
-	w.WithDownscalingLock(l, w.RemoveDeadRooms)
+	_, _ = w.WithDownscalingLock(l, w.RemoveDeadRooms)
 
 	l = w.Logger.WithFields(logrus.Fields{
 		"operation": "watcher.watchRooms.AutoScale",
 	})
-	w.WithTerminationLock(l, w.AutoScale)
-	w.AddUtilizationMetricsToRedis()
+	_, _ = w.WithTerminationLock(l, w.AutoScale)
+	_ = w.AddUtilizationMetricsToRedis()
 	return nil
 }
 
@@ -353,7 +355,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() error {
 		return err
 	})
 	if err != nil {
-		logger.WithError(err).Error("failed to list pods metricses")
+		logger.WithError(err).Error("failed to list pods metrics")
 	}
 
 	for metric := range metricsMap {
@@ -381,7 +383,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() error {
 			}
 		}
 
-		scheduler.SavePodsMetricsUtilizationPipeAndExec(
+		_ = scheduler.SavePodsMetricsUtilizationPipeAndExec(
 			w.RedisClient.Client,
 			w.KubernetesMetricsClient,
 			w.MetricsReporter,
@@ -417,30 +419,30 @@ func (w *Watcher) ReportRoomsStatuses() error {
 	}
 
 	roomDataSlice := []RoomData{
-		RoomData{
+		{
 			models.StatusCreating,
 			fmt.Sprint(roomCountByStatus.Creating),
 		},
-		RoomData{
+		{
 			models.StatusReady,
 			fmt.Sprint(roomCountByStatus.Ready),
 		},
-		RoomData{
+		{
 			models.StatusOccupied,
 			fmt.Sprint(roomCountByStatus.Occupied),
 		},
-		RoomData{
+		{
 			models.StatusTerminating,
 			fmt.Sprint(roomCountByStatus.Terminating),
 		},
-		RoomData{
+		{
 			models.StatusReadyOrOccupied,
 			fmt.Sprint(roomCountByStatus.Ready + roomCountByStatus.Occupied),
 		},
 	}
 
 	for _, r := range roomDataSlice {
-		reporters.Report(reportersConstants.EventGruStatus, map[string]interface{}{
+		_ = reporters.Report(reportersConstants.EventGruStatus, map[string]interface{}{
 			reportersConstants.TagGame:      w.GameName,
 			reportersConstants.TagScheduler: w.SchedulerName,
 			"status":                        r.Status,
@@ -626,8 +628,8 @@ func (w *Watcher) filterPodsByName(logger *logrus.Entry, pods map[string]*models
 
 // zombie rooms are the ones that are in terminating state but the pods doesn't exist
 func (w *Watcher) removeZombies(pods map[string]*models.Pod, rooms []string) ([]string, error) {
-	zombieRooms := []*models.Room{}
-	zombieRoomsNames := []string{}
+	var zombieRooms []*models.Room
+	var zombieRoomsNames []string
 
 	liveKubePods := map[string]bool{}
 	for podName := range pods {

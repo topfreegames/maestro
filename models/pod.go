@@ -148,7 +148,6 @@ func NewPod(
 	name string,
 	envs []*EnvVar,
 	configYaml *ConfigYAML,
-	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
 	mr *MixedMetricsReporter,
 ) (*Pod, error) {
@@ -181,10 +180,10 @@ func NewPod(
 		}
 	}
 	pod.Containers = []*Container{container}
-	err := pod.configureHostPorts(configYaml, clientset, redisClient, mr)
+	err := pod.configureHostPorts(configYaml, redisClient, mr)
 
 	if err == nil {
-		reporters.Report(reportersConstants.EventGruNew, map[string]interface{}{
+		_ = reporters.Report(reportersConstants.EventGruNew, map[string]interface{}{
 			reportersConstants.TagGame:      configYaml.Game,
 			reportersConstants.TagScheduler: configYaml.Name,
 		})
@@ -198,7 +197,6 @@ func NewPodWithContainers(
 	name string,
 	containers []*Container,
 	configYaml *ConfigYAML,
-	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
 	mr *MixedMetricsReporter,
 ) (*Pod, error) {
@@ -209,9 +207,9 @@ func NewPodWithContainers(
 		ShutdownTimeout: configYaml.ShutdownTimeout,
 		Containers:      containers,
 	}
-	err := pod.configureHostPorts(configYaml, clientset, redisClient, mr)
+	err := pod.configureHostPorts(configYaml, redisClient, mr)
 	if err == nil {
-		reporters.Report(reportersConstants.EventGruNew, map[string]interface{}{
+		_ = reporters.Report(reportersConstants.EventGruNew, map[string]interface{}{
 			reportersConstants.TagGame:      configYaml.Game,
 			reportersConstants.TagScheduler: configYaml.Name,
 		})
@@ -273,13 +271,11 @@ func (p *Pod) Delete(clientset kubernetes.Interface,
 		return errors.NewKubernetesError("delete pod error", err)
 	}
 
-	if err == nil {
-		reporters.Report(reportersConstants.EventGruDelete, map[string]interface{}{
-			reportersConstants.TagGame:      p.Game,
-			reportersConstants.TagScheduler: p.Namespace,
-			reportersConstants.TagReason:    reason,
-		})
-	}
+	_ = reporters.Report(reportersConstants.EventGruDelete, map[string]interface{}{
+		reportersConstants.TagGame:      p.Game,
+		reportersConstants.TagScheduler: p.Namespace,
+		reportersConstants.TagReason:    reason,
+	})
 
 	return nil
 }
@@ -296,16 +292,17 @@ func getContainerWithName(name string, pod *Pod) v1.Container {
 	return container
 }
 
+// configureHostPorts will fail if it cannot access redis.
 func (p *Pod) configureHostPorts(
 	configYaml *ConfigYAML,
-	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
 	mr *MixedMetricsReporter,
 ) error {
 	pod, err := GetPodFromRedis(redisClient, mr, p.Name, p.Namespace)
 	if err != nil {
+		// TODO, FIXME(lhahn): this error is misleading.
 		return errors.NewKubernetesError("could not access kubernetes", err)
-	} else if err == nil && pod != nil {
+	} else if pod != nil {
 		//pod exists, so just retrieve ports
 		for _, container := range p.Containers {
 			podContainer := getContainerWithName(container.Name, pod)
@@ -343,12 +340,12 @@ func (p *Pod) configureHostPorts(
 	}
 
 	// save ports already used to avoid duplication
-	usedPorts := []int{}
+	var usedPorts []int
 
 	for _, container := range p.Containers {
 		ports := GetRandomPorts(start, end, len(container.Ports), usedPorts)
 		usedPorts = append(usedPorts, ports...)
-		containerPorts := []*Port{}
+		var containerPorts []*Port
 
 		for j := range container.Ports {
 			hostPort := ports[0]
