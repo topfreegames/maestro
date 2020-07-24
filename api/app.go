@@ -451,6 +451,7 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("schedulerCache.defaultExpiration", "5m")
 	a.Config.SetDefault("schedulerCache.cleanupInterval", "10m")
 	a.Config.SetDefault("schedulers.versions.toKeep", 100)
+	a.Config.SetDefault("basicauth.enabled", true)
 	a.Config.SetDefault("oauth.enabled", true)
 	a.Config.SetDefault("william.enabled", false)
 	a.Config.SetDefault("forwarders.grpc.matchmaking.timeout", 1*time.Second)

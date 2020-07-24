@@ -5,12 +5,6 @@ import (
 	"net/http"
 )
 
-func BasicAuthEnabled(config *viper.Viper) bool {
-	basicAuthUser := config.GetString("basicauth.username")
-	basicAuthPass := config.GetString("basicauth.password")
-	return basicAuthUser != "" && basicAuthPass != ""
-}
-
 func CheckBasicAuth(config *viper.Viper, r *http.Request) (AuthenticationResult, string) {
 	basicAuthUser := config.GetString("basicauth.username")
 	basicAuthPass := config.GetString("basicauth.password")

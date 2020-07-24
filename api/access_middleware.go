@@ -35,7 +35,7 @@ var emptyErr = fmt.Errorf("")
 func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := middleware.GetLogger(ctx)
-	if auth.BasicAuthEnabled(m.App.Config) {
+	if m.App.Config.GetBool("basicauth.enabled") {
 		logger.Debug("checking basic auth")
 		result, email := auth.CheckBasicAuth(m.App.Config, r)
 
@@ -81,7 +81,7 @@ func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		logger.Debug("authenticated with william")
+		logger.Debug("token received")
 	} else if m.App.Config.GetBool("oauth.enabled") {
 		logger.Debug("oauth enabled, checking token")
 
