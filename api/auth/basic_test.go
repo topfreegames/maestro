@@ -24,9 +24,9 @@ var _ = Describe("Basic Auth", func() {
 			request.Header.Add("x-forwarded-user-email", "user@email.com")
 			request.SetBasicAuth(config.GetString("basicauth.username"), config.GetString("basicauth.password"))
 
-			result, email := CheckBasicAuth(config, request)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(result).To(Equal(AuthenticationOk))
+			authPresent, authValid, email := CheckBasicAuth(config, request)
+			Expect(authPresent).To(BeTrue())
+			Expect(authValid).To(BeTrue())
 			Expect(email).To(Equal("user@email.com"))
 		})
 
@@ -36,8 +36,9 @@ var _ = Describe("Basic Auth", func() {
 
 			request.SetBasicAuth(config.GetString("basicauth.username"), config.GetString("basicauth.password"))
 
-			result, email := CheckBasicAuth(config, request)
-			Expect(result).To(Equal(AuthenticationOk))
+			authPresent, authValid, email := CheckBasicAuth(config, request)
+			Expect(authPresent).To(BeTrue())
+			Expect(authValid).To(BeTrue())
 			Expect(email).To(BeEmpty())
 		})
 
@@ -47,16 +48,17 @@ var _ = Describe("Basic Auth", func() {
 
 			request.SetBasicAuth("abcd", "1234")
 
-			result, _ := CheckBasicAuth(config, request)
-			Expect(result).To(Equal(AuthenticationInvalid))
+			authPresent, authValid, _ := CheckBasicAuth(config, request)
+			Expect(authPresent).To(BeTrue())
+			Expect(authValid).To(BeFalse())
 		})
 
 		It("should return AuthenticationMissing when basic auth is not sent", func() {
 			request, err := http.NewRequest("GET", "/scheduler", nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			result, _ := CheckBasicAuth(config, request)
-			Expect(result).To(Equal(AuthenticationMissing))
+			authPresent, _, _ := CheckBasicAuth(config, request)
+			Expect(authPresent).To(BeFalse())
 		})
 	})
 })

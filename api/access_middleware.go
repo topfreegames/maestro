@@ -37,10 +37,10 @@ func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.GetLogger(ctx)
 	if m.App.Config.GetBool("basicauth.enabled") {
 		logger.Debug("checking basic auth")
-		result, email := auth.CheckBasicAuth(m.App.Config, r)
+		authPresent, authValid, email := auth.CheckBasicAuth(m.App.Config, r)
 
 		// Basic Auth is valid, proceed to next handler
-		if result == auth.AuthenticationOk {
+		if authValid {
 			logger.Debug("basic auth ok")
 			ctx = auth.NewContextWithEmail(ctx, email)
 			ctx = auth.NewContextWithBasicAuthOK(ctx)
@@ -49,7 +49,7 @@ func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Basic Auth is invalid, return unauthorized
-		if result == auth.AuthenticationInvalid {
+		if authPresent {
 			logger.Debug("basic auth invalid")
 			m.App.HandleError(w, http.StatusUnauthorized, "authentication failed", fmt.Errorf("invalid basic auth"))
 			return
@@ -85,14 +85,14 @@ func (m *AccessMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if m.App.Config.GetBool("oauth.enabled") {
 		logger.Debug("oauth enabled, checking token")
 
-		result, email, err := auth.CheckOauthToken(m.App.Login, m.App.DBClient.WithContext(ctx), logger, r, m.App.EmailDomains)
+		email, err := auth.CheckOauthToken(m.App.Login, m.App.DBClient.WithContext(ctx), logger, r, m.App.EmailDomains)
 		if err != nil {
-			if result == auth.AuthenticationError {
-				logger.Debug("authentication error")
-				m.App.HandleError(w, http.StatusInternalServerError, "", err)
-			} else {
+			if _, ok := err.(*errors.AccessError); ok {
 				logger.Debug("authentication invalid")
 				m.App.HandleError(w, http.StatusUnauthorized, "", err)
+			} else {
+				logger.Debug("authentication error")
+				m.App.HandleError(w, http.StatusInternalServerError, "", err)
 			}
 			return
 		}

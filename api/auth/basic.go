@@ -5,18 +5,18 @@ import (
 	"net/http"
 )
 
-func CheckBasicAuth(config *viper.Viper, r *http.Request) (AuthenticationResult, string) {
+func CheckBasicAuth(config *viper.Viper, r *http.Request) (authPresent, authValid bool, email string) {
 	basicAuthUser := config.GetString("basicauth.username")
 	basicAuthPass := config.GetString("basicauth.password")
 	user, pass, ok := r.BasicAuth()
 	if !ok {
-		return AuthenticationMissing, ""
+		return false, false, ""
 	}
 	if basicAuthUser != user || basicAuthPass != pass {
-		return AuthenticationInvalid, ""
+		return true, false, ""
 	}
 
-	email := r.Header.Get("x-forwarded-user-email")
+	email = r.Header.Get("x-forwarded-user-email")
 
-	return AuthenticationOk, email
+	return true, true, email
 }

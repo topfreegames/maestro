@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/topfreegames/extensions/pg"
 	. "github.com/topfreegames/maestro/api/auth"
+	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/login"
 	"net/http"
 )
@@ -22,7 +23,7 @@ import (
 var _ = Describe("oauth", func() {
 	var domains = []string{"email.com"}
 	Describe("CheckOauthToken", func() {
-		It("should return AuthenticationOk when token is valid and email has valid domain", func() {
+		It("should return email when token is valid and email has valid domain", func() {
 			request, err := http.NewRequest("GET", "/scheduler", nil)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -38,13 +39,12 @@ var _ = Describe("oauth", func() {
 
 			mockLogin.EXPECT().Authenticate(gomock.Any(), mockDb).Return("user@email.com", http.StatusOK, nil)
 
-			result, email, err := CheckOauthToken(mockLogin, mockDb, logger, request, domains)
+			email, err := CheckOauthToken(mockLogin, mockDb, logger, request, domains)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(result).To(Equal(AuthenticationOk))
 			Expect(email).To(Equal("user@email.com"))
 		})
 
-		It("should return AuthenticationInvalid when token is valid and email doest not have a valid domain", func() {
+		It("should return AccessError when token is valid and email doest not have a valid domain", func() {
 			request, err := http.NewRequest("GET", "/scheduler", nil)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -60,12 +60,12 @@ var _ = Describe("oauth", func() {
 
 			mockLogin.EXPECT().Authenticate(gomock.Any(), mockDb).Return("user@email2.com", http.StatusOK, nil)
 
-			result, _, err := CheckOauthToken(mockLogin, mockDb, logger, request, domains)
+			_, err = CheckOauthToken(mockLogin, mockDb, logger, request, domains)
 			Expect(err).To(HaveOccurred())
-			Expect(result).To(Equal(AuthenticationInvalid))
+			Expect(err).To(BeAssignableToTypeOf(&errors.AccessError{}))
 		})
 
-		It("should return AuthenticationInvalid when token response status is different from 200", func() {
+		It("should return AccessError when token response status is different from 200", func() {
 			request, err := http.NewRequest("GET", "/scheduler", nil)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -81,12 +81,12 @@ var _ = Describe("oauth", func() {
 
 			mockLogin.EXPECT().Authenticate(gomock.Any(), mockDb).Return("user@email.com", http.StatusBadRequest, nil)
 
-			result, _, err := CheckOauthToken(mockLogin, mockDb, logger, request, domains)
+			_, err = CheckOauthToken(mockLogin, mockDb, logger, request, domains)
 			Expect(err).To(HaveOccurred())
-			Expect(result).To(Equal(AuthenticationInvalid))
+			Expect(err).To(BeAssignableToTypeOf(&errors.AccessError{}))
 		})
 
-		It("should return AuthenticationError when Authenticate returns error", func() {
+		It("should return an error when Authenticate returns error", func() {
 			request, err := http.NewRequest("GET", "/scheduler", nil)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -102,12 +102,12 @@ var _ = Describe("oauth", func() {
 
 			mockLogin.EXPECT().Authenticate(gomock.Any(), mockDb).Return("user@email.com", http.StatusBadRequest, fmt.Errorf("error"))
 
-			result, _, err := CheckOauthToken(mockLogin, mockDb, logger, request, domains)
+			_, err = CheckOauthToken(mockLogin, mockDb, logger, request, domains)
 			Expect(err).To(HaveOccurred())
-			Expect(result).To(Equal(AuthenticationError))
+			Expect(err).ToNot(BeAssignableToTypeOf(&errors.AccessError{}))
 		})
 
-		It("should return AuthenticationError when postgres returns error", func() {
+		It("should return an error when postgres returns error", func() {
 			request, err := http.NewRequest("GET", "/scheduler", nil)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -121,9 +121,9 @@ var _ = Describe("oauth", func() {
 					destToken.RefreshToken = "refresh-token"
 				}).Return(pg.NewTestResult(nil, 1), fmt.Errorf("error"))
 
-			result, _, err := CheckOauthToken(mockLogin, mockDb, logger, request, domains)
+			_, err = CheckOauthToken(mockLogin, mockDb, logger, request, domains)
 			Expect(err).To(HaveOccurred())
-			Expect(result).To(Equal(AuthenticationError))
+			Expect(err).ToNot(BeAssignableToTypeOf(&errors.AccessError{}))
 		})
 	})
 })

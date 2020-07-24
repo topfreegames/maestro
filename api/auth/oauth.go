@@ -17,7 +17,7 @@ func CheckOauthToken(
 	logger logrus.FieldLogger,
 	r *http.Request,
 	emailDomains []string,
-) (AuthenticationResult, string, error) {
+) (string, error) {
 	logger.Debug("Checking access token")
 
 	accessToken := r.Header.Get("Authorization")
@@ -25,25 +25,25 @@ func CheckOauthToken(
 
 	token, err := login.GetToken(accessToken, db)
 	if err != nil {
-		return AuthenticationError, "", err
+		return "", err
 	}
 	if token.RefreshToken == "" {
-		return AuthenticationInvalid, "", errors.NewAccessError("access token was not found on db", fmt.Errorf("access token error"))
+		return "", errors.NewAccessError("access token was not found on db", fmt.Errorf("access token error"))
 	}
 
 	msg, status, err := l.Authenticate(token, db)
 	if err != nil {
 		logger.WithError(err).Error("error fetching googleapis")
-		return AuthenticationError, "", errors.NewGenericError("Error fetching googleapis", err)
+		return "", errors.NewGenericError("Error fetching googleapis", err)
 	}
 
 	if status == http.StatusBadRequest {
 		logger.WithError(err).Error("error validating access token")
-		return AuthenticationInvalid, "", errors.NewAccessError("Unauthorized access token", fmt.Errorf(msg))
+		return "", errors.NewAccessError("Unauthorized access token", fmt.Errorf(msg))
 	}
 
 	if status != http.StatusOK {
-		return AuthenticationInvalid, "", errors.NewAccessError("invalid access token", fmt.Errorf(msg))
+		return "", errors.NewAccessError("invalid access token", fmt.Errorf(msg))
 	}
 
 	email := msg
@@ -53,10 +53,10 @@ func CheckOauthToken(
 			"authorization access error",
 			fmt.Errorf("the email on OAuth authorization is not from domain %s", emailDomains),
 		)
-		return AuthenticationInvalid, "", err
+		return "", err
 	}
 
 	logger.Debug("Access token checked")
 
-	return AuthenticationOk, email, nil
+	return email, nil
 }
