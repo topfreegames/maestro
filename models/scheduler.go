@@ -229,6 +229,13 @@ func LoadSchedulers(db interfaces.DB, names []string) ([]Scheduler, error) {
 	return schedulers, err
 }
 
+// LoadSchedulers loads all schedulers from database
+func LoadAllSchedulers(db interfaces.DB) ([]Scheduler, error) {
+	var schedulers []Scheduler
+	_, err := db.Query(&schedulers, "SELECT * FROM schedulers")
+	return schedulers, err
+}
+
 func (c *Scheduler) splitedVersion() (majorInt, minorInt int, err error) {
 	version := strings.Split(strings.TrimPrefix(c.Version, "v"), ".")
 	major, minor := version[0], "0"

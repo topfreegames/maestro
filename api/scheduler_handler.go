@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/topfreegames/maestro/api/auth"
 	"net/http"
 	"strings"
 	"time"
@@ -51,12 +52,12 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		"operation": "create",
 	})
 
-	email := emailFromContext(ctx)
+	email := auth.EmailFromContext(ctx)
 	db := g.App.DBClient.WithContext(ctx)
 	for _, payload := range configs {
 		logger.Debug("Creating scheduler...")
 
-		if email != "" && !isAuth(email, payload.AuthorizedUsers) {
+		if email != "" && !auth.IsAuth(email, payload.AuthorizedUsers) {
 			if payload.AuthorizedUsers == nil {
 				payload.AuthorizedUsers = []string{}
 			}
@@ -206,7 +207,7 @@ func (g *SchedulerUpdateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	mr := metricsReporterFromCtx(r.Context())
 	params := schedulerParamsFromContext(r.Context())
 	payload := configYamlFromCtx(r.Context())[0]
-	email := emailFromContext(r.Context())
+	email := auth.EmailFromContext(r.Context())
 
 	logger := l.WithFields(logrus.Fields{
 		"source":    "schedulerHandler",

@@ -11,6 +11,7 @@ import (
 	"context"
 	e "errors"
 	"fmt"
+	"github.com/topfreegames/maestro/api/auth"
 	"io"
 	"net"
 	"net/http"
@@ -40,6 +41,7 @@ import (
 	"github.com/topfreegames/maestro/login"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/william"
 	"k8s.io/client-go/kubernetes"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
@@ -69,6 +71,7 @@ type App struct {
 	EmailDomains            []string
 	Forwarders              []*eventforwarder.Info
 	SchedulerCache          *models.SchedulerCache
+	William                 *william.WilliamAuth
 	gracefulShutdown        *gracefulShutdown
 }
 
@@ -136,9 +139,16 @@ func (a *App) getRouter() *mux.Router {
 		NewLoginAccessHandler(a),
 	)).Methods("GET").Name("oauth")
 
+	if a.Config.GetBool("william.enabled") {
+		r.Handle("/am", NewWilliamHandler(a)).
+			Methods("GET").
+			Name("william")
+	}
+
 	r.HandleFunc("/scheduler", Chain(
 		NewSchedulerListHandler(a),
 		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.GameQueryResolver("ListSchedulers", "game")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -147,8 +157,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler", Chain(
 		NewSchedulerCreateHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.ActionResolver("CreateScheduler")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -159,7 +169,7 @@ func (a *App) getRouter() *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerUpdateHandler(a),
 		NewAccessMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("UpdateScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -170,8 +180,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerDeleteHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("DeleteScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -181,8 +191,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerStatusHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("GetScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -192,8 +202,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/config", Chain(
 		NewGetSchedulerConfigHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("GetScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -204,7 +214,7 @@ func (a *App) getRouter() *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}/releases", Chain(
 		NewGetSchedulerReleasesHandler(a),
 		NewAccessMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("GetScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -215,7 +225,7 @@ func (a *App) getRouter() *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}/diff", Chain(
 		NewSchedulerDiffHandler(a),
 		NewAccessMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("GetScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -226,7 +236,7 @@ func (a *App) getRouter() *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}/rollback", Chain(
 		NewSchedulerRollbackHandler(a),
 		NewAccessMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("UpdateScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -236,8 +246,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}", Chain(
 		NewSchedulerScaleHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("ScaleScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -248,8 +258,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/image", Chain(
 		NewSchedulerImageHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("UpdateScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -260,8 +270,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/min", Chain(
 		NewSchedulerUpdateMinHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("UpdateScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -272,8 +282,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/operations/current/status", Chain(
 		NewSchedulerOperationCurrentStatusHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("GetScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -282,8 +292,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/status", Chain(
 		NewSchedulerOperationHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("GetScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -292,8 +302,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/operations/current/cancel", Chain(
 		NewSchedulerOperationCancelCurrentHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("UpdateScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -302,8 +312,8 @@ func (a *App) getRouter() *mux.Router {
 
 	r.HandleFunc("/scheduler/{schedulerName}/operations/{operationKey}/cancel", Chain(
 		NewSchedulerOperationCancelHandler(a),
-		NewBasicAuthMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("UpdateScheduler", "schedulerName")),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
 		NewNewRelicMiddleware(a),
@@ -333,7 +343,7 @@ func (a *App) getRouter() *mux.Router {
 	r.HandleFunc("/scheduler/{schedulerName}/locks/{lockKey}", Chain(
 		NewSchedulerLockDeleteHandler(a),
 		NewAccessMiddleware(a),
-		NewAuthMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("UpdateScheduler", "schedulerName")),
 		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
 		NewSentryMiddleware(),
@@ -426,6 +436,7 @@ func (a *App) configureApp(
 	a.configureCache()
 	a.configureSentry()
 	a.configureLogin()
+	a.configureWilliam()
 	a.configureServer()
 	a.configureEnvironment()
 	return nil
@@ -440,7 +451,9 @@ func (a *App) loadConfigurationDefaults() {
 	a.Config.SetDefault("schedulerCache.defaultExpiration", "5m")
 	a.Config.SetDefault("schedulerCache.cleanupInterval", "10m")
 	a.Config.SetDefault("schedulers.versions.toKeep", 100)
+	a.Config.SetDefault("basicauth.enabled", true)
 	a.Config.SetDefault("oauth.enabled", true)
+	a.Config.SetDefault("william.enabled", false)
 	a.Config.SetDefault("forwarders.grpc.matchmaking.timeout", 1*time.Second)
 	a.Config.SetDefault("api.limitManager.keyTimeout", 1*time.Minute)
 	a.Config.SetDefault("jaeger.disabled", false)
@@ -598,6 +611,18 @@ func (a *App) configureEnvironment() {
 func (a *App) configureLogin() {
 	a.Login = login.NewLogin()
 	a.Login.Setup()
+}
+
+func (a *App) configureWilliam() {
+	permissions := []william.Permission{
+		{Action: "ListSchedulers", IncludeGame: true, IncludeScheduler: false},
+		{Action: "GetScheduler", IncludeGame: true, IncludeScheduler: true},
+		{Action: "CreateScheduler", IncludeGame: false, IncludeScheduler: false},
+		{Action: "UpdateScheduler", IncludeGame: true, IncludeScheduler: true},
+		{Action: "ScaleScheduler", IncludeGame: true, IncludeScheduler: true},
+		{Action: "DeleteScheduler", IncludeGame: true, IncludeScheduler: true},
+	}
+	a.William = william.NewWilliamAuth(a.Config, permissions)
 }
 
 //HandleError writes an error response with message and status

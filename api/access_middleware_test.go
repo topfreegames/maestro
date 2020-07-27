@@ -29,70 +29,70 @@ var _ = Describe("AccessMiddleware", func() {
 	)
 
 	yamlString = `{
-  "name": "scheduler-name",
-  "game": "game-name",
-  "image": "somens/someimage:v123",
-  "ports": [
-    {
-      "containerPort": 5050,
-      "protocol": "UDP",
-      "name": "port1"
-    },
-    {
-      "containerPort": 8888,
-      "protocol": "TCP",
-      "name": "port2"
-    }
-  ],
-  "limits": {
-    "memory": "128Mi",
-    "cpu": "1"
-  },
-  "shutdownTimeout": 180,
-  "autoscaling": {
-    "min": 100,
-    "up": {
-      "delta": 10,
-      "trigger": {
-        "usage": 70,
-        "time": 600
-      },
-      "cooldown": 300
-    },
-    "down": {
-      "delta": 2,
-      "trigger": {
-        "usage": 50,
-        "time": 900
-      },
-      "cooldown": 300
-    }
-  },
-  "env": [
-    {
-      "name": "EXAMPLE_ENV_VAR",
-      "value": "examplevalue"
-    },
-    {
-      "name": "ANOTHER_ENV_VAR",
-      "value": "anothervalue"
-    }
-  ],
-  "cmd": [
-    "./room-binary",
-    "-serverType",
-    "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
-  ],
-  "forwarders": {
-    "mockplugin": {
-      "mockfwd": {
-        "enabled": true,
-        "medatada": {
-          "send": "me"
-        }
-      }
-    }
-  }
+ "name": "scheduler-name",
+ "game": "game-name",
+ "image": "somens/someimage:v123",
+ "ports": [
+   {
+     "containerPort": 5050,
+     "protocol": "UDP",
+     "name": "port1"
+   },
+   {
+     "containerPort": 8888,
+     "protocol": "TCP",
+     "name": "port2"
+   }
+ ],
+ "limits": {
+   "memory": "128Mi",
+   "cpu": "1"
+ },
+ "shutdownTimeout": 180,
+ "autoscaling": {
+   "min": 100,
+   "up": {
+     "delta": 10,
+     "trigger": {
+       "usage": 70,
+       "time": 600
+     },
+     "cooldown": 300
+   },
+   "down": {
+     "delta": 2,
+     "trigger": {
+       "usage": 50,
+       "time": 900
+     },
+     "cooldown": 300
+   }
+ },
+ "env": [
+   {
+     "name": "EXAMPLE_ENV_VAR",
+     "value": "examplevalue"
+   },
+   {
+     "name": "ANOTHER_ENV_VAR",
+     "value": "anothervalue"
+   }
+ ],
+ "cmd": [
+   "./room-binary",
+   "-serverType",
+   "6a8e136b-2dc1-417e-bbe8-0f0a2d2df431"
+ ],
+ "forwarders": {
+   "mockplugin": {
+     "mockfwd": {
+       "enabled": true,
+       "medatada": {
+         "send": "me"
+       }
+     }
+   }
+ }
 }`
 
 	BeforeEach(func() {
@@ -123,6 +123,8 @@ var _ = Describe("AccessMiddleware", func() {
 
 				url := fmt.Sprintf("http://%s/scheduler", app.Address)
 				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).ToNot(HaveOccurred())
+
 				user := app.Config.GetString("basicauth.username")
 				pass := app.Config.GetString("basicauth.password")
 				request.Header.Add("X-Forwarded-User-Email", "user@example.com")
