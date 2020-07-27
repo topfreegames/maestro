@@ -395,7 +395,6 @@ func ScaleUp(
 		return err
 	}
 	if existPendingPods {
-		// TODO(lhahn): Important.
 		return errors.New("there are pending pods, check if there are enough CPU and memory to allocate new rooms")
 	}
 

@@ -185,8 +185,8 @@ func createPod(
 	}
 
 	if err != nil {
-		// NOTE: We will get an error here if we cannot access redis. This implies that redis is probably not accessible,
-		// se we were not successful in adding the room's keys as well. That is why we don't call room.ClearAll here.
+		// NOTE: We will get an error here if we cannot access redis. It is therefore not necessary to call room.ClearAll here,
+		// since it is likely that Redis is off.
 		return nil, err
 	}
 
