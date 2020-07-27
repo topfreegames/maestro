@@ -25,9 +25,9 @@ type Permission struct {
 }
 
 type IAMPermission struct {
-	Prefix   string
-	Alias    string
-	Complete bool
+	Prefix   string `json:"prefix"`
+	Alias    string `json:"alias"`
+	Complete bool   `json:"complete"`
 }
 
 type WilliamAuth struct {
