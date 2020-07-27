@@ -102,9 +102,9 @@ func (r *Room) GetRoomRedisKey() string {
 // RoomFromRedisKey gets the room name from redis key
 func RoomFromRedisKey(key string) string {
 	splits := strings.Split(key, ":")
-	len := len(splits)
+	length := len(splits)
 	for idx, split := range splits {
-		if split == "rooms" && idx+1 < len {
+		if split == "rooms" && idx+1 < length {
 			return splits[idx+1]
 		}
 	}
@@ -258,7 +258,7 @@ func (r *Room) addStatusToRedisPipeAndExec(
 
 	if reporters.HasReporters() {
 		var rFields *redis.StringStringMapCmd
-		mr.WithSegment(SegmentHGetAll, func() error {
+		_ = mr.WithSegment(SegmentHGetAll, func() error {
 			rFields = redisClient.HGetAll(r.GetRoomRedisKey())
 			return nil
 		})

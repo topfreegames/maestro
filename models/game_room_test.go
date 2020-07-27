@@ -16,15 +16,14 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	yaml "gopkg.in/yaml.v2"
-	"k8s.io/api/core/v1"
+	"github.com/topfreegames/maestro/models"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
+	"gopkg.in/yaml.v2"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
-
-	"github.com/topfreegames/maestro/models"
-	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 )
 
 const (
@@ -244,6 +243,82 @@ var _ = Describe("GameRoomManagement", func() {
 					mockRedisClient,
 					mockDb,
 					mockClientset,
+					configYaml,
+					scheduler,
+				)
+				Expect(err).To(HaveOccurred())
+			})
+			It("Should return error and remove created pod if service fails to create", func() {
+				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
+				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(goredis.NewStringStringMapResult(map[string]string{
+					"not": "empty",
+				}, nil)).AnyTimes()
+				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+					func(schedulerName string, statusInfo map[string]interface{}) {
+						Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+						Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+					},
+				)
+				mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(namespace, "creating"), gomock.Any())
+				mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(namespace), gomock.Any())
+				mockRedisClient.EXPECT().
+					HGet(models.GetPodMapRedisKey(scheduler.Name), gomock.Any()).
+					Return(goredis.NewStringResult("", goredis.Nil))
+
+				mockPipeline.EXPECT().Exec().AnyTimes()
+				mockPipeline.EXPECT().SCard(models.GetRoomStatusSetRedisKey(namespace, models.StatusCreating)).Return(goredis.NewIntResult(int64(2), nil))
+				mr.EXPECT().Report("gru.status", map[string]interface{}{
+					reportersConstants.TagGame:      game,
+					reportersConstants.TagScheduler: namespace,
+					"status":                        models.StatusCreating,
+					"gauge":                         "2",
+				})
+
+				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
+					Return(goredis.NewStringResult(portRange, nil))
+				mockPortChooser.EXPECT().Choose(portStart, portEnd, 2, gomock.Any()).Return([]int{5000, 5001})
+				mr.EXPECT().Report("gru.new", map[string]interface{}{
+					reportersConstants.TagGame:      game,
+					reportersConstants.TagScheduler: namespace,
+				})
+
+				//
+				// We expect here to delete all of the rooms keys on Redis, since Kubernetes failed to create the pod.
+				//
+				mockPipeline.EXPECT().
+					HDel(models.GetPodMapRedisKey(scheduler.Name), gomock.Any()).
+					Return(goredis.NewIntResult(int64(1), nil))
+
+				for _, s := range []string{
+					models.StatusCreating,
+					models.StatusReady,
+					models.StatusOccupied,
+					models.StatusTerminating,
+					models.StatusTerminated} {
+					mockPipeline.EXPECT().
+						SRem(models.GetRoomStatusSetRedisKey(scheduler.Name, s), gomock.Any()).
+						Return(goredis.NewIntResult(int64(1), nil))
+					mockPipeline.EXPECT().
+						ZRem(models.GetLastStatusRedisKey(scheduler.Name, s), gomock.Any()).
+						Return(goredis.NewIntResult(int64(1), nil))
+				}
+
+				mockPipeline.EXPECT().ZRem(models.GetRoomPingRedisKey(scheduler.Name), gomock.Any()).
+					Return(goredis.NewIntResult(int64(1), nil))
+				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, "cpu"), gomock.Any())
+				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(scheduler.Name, "mem"), gomock.Any())
+				mockPipeline.EXPECT().Del(gomock.Any()).Return(goredis.NewIntResult(int64(1), nil))
+
+				clientset := &fake.Clientset{}
+				clientset.Fake.AddReactor("create", "pods", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+					return true, nil, errors.New("failed to create pod")
+				})
+				_, err := roomManager.Create(
+					logger,
+					mmr,
+					mockRedisClient,
+					mockDb,
+					clientset,
 					configYaml,
 					scheduler,
 				)

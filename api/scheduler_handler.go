@@ -78,7 +78,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			timeoutSec,
 		)
 		if err != nil {
-			reporters.Report(reportersConstants.EventSchedulerCreate, map[string]interface{}{
+			_ = reporters.Report(reportersConstants.EventSchedulerCreate, map[string]interface{}{
 				"name":  payload.Name,
 				"game":  payload.Game,
 				"error": err,
@@ -93,7 +93,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			g.App.HandleError(w, status, "Create scheduler failed", err)
 			return
 		}
-		reporters.Report(reportersConstants.EventSchedulerCreate, map[string]interface{}{
+		_ = reporters.Report(reportersConstants.EventSchedulerCreate, map[string]interface{}{
 			"name": payload.Name,
 			"game": payload.Game,
 		})

@@ -122,7 +122,7 @@ func watchOperation(
 	if err != nil {
 		logger.WithError(err).Warn("error reading operation status from redis")
 	}
-	if canceled && err  == nil {
+	if canceled && err == nil {
 		cancel()
 		return
 	}
@@ -175,7 +175,7 @@ func replacePodsAndWait(
 	logger.Infof("starting %d in-memory workers to replace %d pods", goroutinePoolSize, len(podsChunk))
 	for i := 0; i < goroutinePoolSize; i++ {
 		wg.Add(1)
-		go func () {
+		go func() {
 			defer wg.Done()
 			replacePodWorker(
 				ctx,
@@ -343,7 +343,7 @@ func DeletePodsAndWait(
 			configYAML, pod.Name, reportersConstants.ReasonUpdate)
 		if err != nil && !strings.Contains(err.Error(), "redis") {
 			logger.WithError(err).Errorf("error deleting pod %s", pod.Name)
-			return  false, nil
+			return false, nil
 		}
 	}
 
@@ -614,7 +614,7 @@ func DeletePodAndRoom(
 	var pod *models.Pod
 	err := mr.WithSegment(models.SegmentPod, func() error {
 		var err error
-		pod, err = models.NewPod(name, nil, configYaml, clientset, redisClient, mr)
+		pod, err = models.NewPod(name, nil, configYaml, redisClient, mr)
 		return err
 	})
 	if err != nil {

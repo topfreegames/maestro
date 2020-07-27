@@ -152,6 +152,7 @@ func createPod(
 		return room.Create(redisClient, db, mr, scheduler)
 	})
 	if err != nil {
+		// We don't need to cleanup here, since a failure can only happen if redis fails as well.
 		return nil, err
 	}
 	namesEnvVars := []*EnvVar{
@@ -170,7 +171,7 @@ func createPod(
 		env := append(configYAML.Env, namesEnvVars...)
 		err = mr.WithSegment(SegmentPod, func() error {
 			var err error
-			pod, err = NewPod(name, env, configYAML, clientset, redisClient, mr)
+			pod, err = NewPod(name, env, configYAML, redisClient, mr)
 			return err
 		})
 	} else if configYAML.Version() == "v2" {
@@ -180,9 +181,12 @@ func createPod(
 			containers[i].Env = append(containers[i].Env, namesEnvVars...)
 		}
 
-		pod, err = NewPodWithContainers(name, containers, configYAML, clientset, redisClient, mr)
+		pod, err = NewPodWithContainers(name, containers, configYAML, redisClient, mr)
 	}
+
 	if err != nil {
+		// NOTE: We will get an error here if we cannot access redis. It is therefore not necessary to call room.ClearAll here,
+		// since it is likely that Redis is off.
 		return nil, err
 	}
 
@@ -198,10 +202,17 @@ func createPod(
 
 	var kubePod *v1.Pod
 	err = mr.WithSegment(SegmentPod, func() error {
+		// Here we are actually creating the pod on Kubernetes.
 		kubePod, err = pod.Create(clientset)
 		return err
 	})
 	if err != nil {
+		if roomClearErr := room.ClearAll(redisClient, mr); roomClearErr != nil {
+			logger.WithFields(logrus.Fields{
+				"id":     room.ID,
+				"status": room.Status,
+			}).Error("failed to clear room")
+		}
 		return nil, err
 	}
 	nodeName := kubePod.Spec.NodeName
