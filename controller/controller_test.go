@@ -1241,7 +1241,7 @@ cmd:
 
 			for _, roomName := range expectedRooms {
 				mt.MockPodNotFound(mockRedisClient, configYaml.Name, roomName)
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
+				pod, err := models.NewPod(roomName, nil, configYaml, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -1283,7 +1283,7 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
 				mt.MockPodNotFound(mockRedisClient, scheduler.Name, roomName)
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
+				pod, err := models.NewPod(roomName, nil, configYaml, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -1351,7 +1351,7 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
 				mt.MockPodNotFound(mockRedisClient, scheduler.Name, roomName)
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
+				pod, err := models.NewPod(roomName, nil, configYaml, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -1478,7 +1478,6 @@ cmd:
 
 			mt.MockAnyRunningPod(mockRedisClient, configYaml1.Name, (amount-1)*2)
 
-
 			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, false, config)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
@@ -1565,7 +1564,7 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlWithLimit)
 
-			mt.MockScaleUp(mockPipeline, mockRedisClient, configYaml1.Name, configYaml1.AutoScaling.Max - currentRooms)
+			mt.MockScaleUp(mockPipeline, mockRedisClient, configYaml1.Name, configYaml1.AutoScaling.Max-currentRooms)
 
 			mt.MockSetScallingAmount(mockRedisClient, mockPipeline, mockDb, clientset, &configYaml1, currentRooms, yamlWithLimit)
 			for i := 0; i < currentRooms; i++ {
@@ -4023,7 +4022,7 @@ portRange:
 			mockRedisClient.EXPECT().
 				HGetAll(opManager.GetOperationKey()).
 				Return(goredis.NewStringStringMapResult(map[string]string{
-				"description": models.OpManagerRunning,
+					"description": models.OpManagerRunning,
 				}, nil))
 			// Get redis lock
 			mt.MockRedisLock(mockRedisClient, configLockKey, lockTimeoutMs, true, nil)
@@ -4733,7 +4732,7 @@ containers:
 
 			for _, roomName := range expectedRooms {
 				mt.MockPodNotFound(mockRedisClient, configYaml.Name, roomName)
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
+				pod, err := models.NewPod(roomName, nil, configYaml, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -4774,7 +4773,7 @@ containers:
 			Expect(err).NotTo(HaveOccurred())
 			for _, roomName := range expectedRooms {
 				mt.MockPodNotFound(mockRedisClient, configYaml.Name, roomName)
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
+				pod, err := models.NewPod(roomName, nil, configYaml, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -4795,7 +4794,7 @@ containers:
 
 			for _, roomName := range expectedRooms {
 				mt.MockPodNotFound(mockRedisClient, configYaml.Name, roomName)
-				pod, err := models.NewPod(roomName, nil, configYaml, clientset, mockRedisClient, mr)
+				pod, err := models.NewPod(roomName, nil, configYaml, mockRedisClient, mr)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = pod.Create(clientset)
 				Expect(err).NotTo(HaveOccurred())
@@ -5151,7 +5150,6 @@ containers:
 				Expect(err).NotTo(HaveOccurred())
 			}
 			scheduler1.Version = "v1.0"
-
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HLen(models.GetPodMapRedisKey(scheduler1.Name)).Return(goredis.NewIntResult(0, nil))
@@ -6471,7 +6469,7 @@ containers:
 				pods,
 				scheduler,
 				nil,
-				10 * time.Second,
+				10*time.Second,
 				10,
 				1,
 			)
@@ -6513,7 +6511,7 @@ containers:
 				pods,
 				scheduler,
 				opManager,
-				10 * time.Second,
+				10*time.Second,
 				10,
 				1,
 			)
@@ -6576,7 +6574,7 @@ containers:
 				pods,
 				scheduler,
 				opManager,
-				10 * time.Second,
+				10*time.Second,
 				10,
 				1,
 			)
@@ -6630,7 +6628,7 @@ containers:
 				pods,
 				scheduler,
 				opManager,
-				10 * time.Second,
+				10*time.Second,
 				10,
 				1,
 			)
@@ -6663,7 +6661,7 @@ containers:
 			mockPipeline.EXPECT().
 				SIsMember(models.GetRoomStatusSetRedisKey(configYaml1.Name, "occupied"), gomock.Any()).
 				Return(goredis.NewBoolResult(false, nil))
-			mockPipeline.EXPECT().Exec().Return(nil,nil)
+			mockPipeline.EXPECT().Exec().Return(nil, nil)
 
 			runningPod := mt.MockRunningPod(mockRedisClient, configYaml1.Name, "room-1")
 
@@ -6700,7 +6698,7 @@ containers:
 				pods,
 				scheduler,
 				opManager,
-				10 * time.Second,
+				10*time.Second,
 				10,
 				1,
 			)

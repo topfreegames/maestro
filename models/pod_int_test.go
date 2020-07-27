@@ -13,7 +13,7 @@ import (
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/topfreegames/maestro/models"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	. "github.com/onsi/ginkgo"
@@ -95,7 +95,7 @@ var _ = Describe("Pod", func() {
 			err := ns.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			pod, err := models.NewPod(name, env, configYaml, clientset, redisClient.Client, mmr)
+			pod, err := models.NewPod(name, env, configYaml, redisClient.Client, mmr)
 			Expect(err).NotTo(HaveOccurred())
 			pod.SetToleration(game)
 			pod.SetVersion("v1.0")

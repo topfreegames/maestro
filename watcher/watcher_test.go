@@ -1412,7 +1412,6 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-
 				testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Up.Delta)
 
 				// UpdateScheduler
@@ -1494,7 +1493,6 @@ var _ = Describe("Watcher", func() {
 						trigger.Time/w.AutoScalingPeriod, trigger.Usage, 90, 1,
 					)
 				}
-
 
 				testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml.Name, configYaml.AutoScaling.Up.Delta)
 
@@ -3860,7 +3858,7 @@ var _ = Describe("Watcher", func() {
 			mockRedisClient.EXPECT().
 				HGet(models.GetPodMapRedisKey(configYaml.Name), name).
 				Return(redis.NewStringResult("", redis.Nil))
-			pod, err := models.NewPod(name, nil, configYaml, clientset, mockRedisClient, mr)
+			pod, err := models.NewPod(name, nil, configYaml, mockRedisClient, mr)
 			if err != nil {
 				return err
 			}
@@ -3919,7 +3917,7 @@ var _ = Describe("Watcher", func() {
 				max, err := strconv.Atoi(zrangeby.Max)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
-			}).Return(redis.NewStringSliceResult([]string{"room2","room3"}, nil)).AnyTimes()
+			}).Return(redis.NewStringSliceResult([]string{"room2", "room3"}, nil)).AnyTimes()
 
 			for _, roomName := range expectedRooms {
 				err := createPod(roomName, schedulerName, clientset)
@@ -3940,7 +3938,7 @@ var _ = Describe("Watcher", func() {
 			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 0)
 
 			// Mock get terminating rooms
-			testing.MockListPods(mockPipeline, mockRedisClient, schedulerName, []string{"room1","room2","room3"}, nil)
+			testing.MockListPods(mockPipeline, mockRedisClient, schedulerName, []string{"room1", "room2", "room3"}, nil)
 			testing.MockRemoveZombieRooms(mockPipeline, mockRedisClient, []string{"scheduler:controller-name:rooms:room-0"}, schedulerName)
 
 			for _, roomName := range expectedRooms {
@@ -4373,7 +4371,7 @@ var _ = Describe("Watcher", func() {
 
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
 			testing.MockListPods(mockPipeline, mockRedisClient, w.SchedulerName, podNames, nil)
-			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline, w.SchedulerName, [][]string{ {}, {room.GetRoomRedisKey()} }, nil)
+			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline, w.SchedulerName, [][]string{{}, {room.GetRoomRedisKey()}}, nil)
 
 			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
 			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
@@ -4388,7 +4386,7 @@ var _ = Describe("Watcher", func() {
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "ready"), gomock.Any()).Return(redis.NewBoolResult(true, nil))
 			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied"), gomock.Any()).Return(redis.NewBoolResult(false, nil))
-			exec1 := mockPipeline.EXPECT().Exec().Return(nil,nil)
+			exec1 := mockPipeline.EXPECT().Exec().Return(nil, nil)
 
 			testing.MockRunningPod(mockRedisClient, w.SchedulerName, "room-2")
 
@@ -4484,7 +4482,7 @@ var _ = Describe("Watcher", func() {
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "ready"), gomock.Any()).Return(redis.NewBoolResult(true, nil))
 			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied"), gomock.Any()).Return(redis.NewBoolResult(false, nil))
-			mockPipeline.EXPECT().Exec().Return(nil,nil)
+			mockPipeline.EXPECT().Exec().Return(nil, nil)
 
 			runningPod := testing.MockRunningPod(mockRedisClient, w.SchedulerName, "room-2")
 
@@ -4518,7 +4516,7 @@ var _ = Describe("Watcher", func() {
 				Return(redis.NewStringStringMapResult(map[string]string{
 					"room-1": `{"name": "room-1", "version": "v2.0"}`,
 					"room-2": `{"name": "room-1", "version": "v2.0"}`,
-			}, nil))
+				}, nil))
 			//mockPipeline.EXPECT().Exec()
 
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline, w.SchedulerName, [][]string{}, nil)
