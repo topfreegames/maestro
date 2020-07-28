@@ -105,6 +105,14 @@ func (w *WilliamAuth) Check(token, permission, resource string) (bool, error) {
 func buildAllPermissions(region string, permissions []Permission, schedulers []models.Scheduler) []IAMPermission {
 	games := groupByGames(schedulers)
 	iamPermissions := make([]IAMPermission, 0)
+	iamPermissions = append(iamPermissions, IAMPermission{
+		Prefix:   "*",
+		Complete: false,
+	})
+	iamPermissions = append(iamPermissions, IAMPermission{
+		Prefix:   "*::*",
+		Complete: true,
+	})
 	for _, p := range permissions {
 		iamPermissions = append(
 			iamPermissions,

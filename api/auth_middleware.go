@@ -57,6 +57,7 @@ func (m *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				errors.NewAccessError("not authorized user",
 					e.New("user is not authorized to operate on this resource")),
 			)
+			return
 		}
 	} else if m.App.Config.GetBool("oauth.enabled") {
 		db := m.App.DBClient.WithContext(ctx)
@@ -73,6 +74,7 @@ func (m *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				errors.NewAccessError("not authorized user",
 					e.New("user is not admin and is not authorized to operate on this scheduler")),
 			)
+			return
 		}
 	}
 
