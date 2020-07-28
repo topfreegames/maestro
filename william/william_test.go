@@ -67,6 +67,7 @@ var _ = Describe("WillimAuth", func() {
 
 			Expect(auth.Permissions(mockDb, "")).
 				To(Equal([]william.IAMPermission{
+					{Prefix: "*", Complete: false},
 					{Prefix: "ListSchedulers", Complete: false},
 					{Prefix: "CreateScheduler", Complete: false},
 					{Prefix: "UpdateScheduler", Complete: false},

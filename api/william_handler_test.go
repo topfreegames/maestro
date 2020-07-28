@@ -57,6 +57,7 @@ var _ = Describe("WilliamHandler", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(permissions).To(Equal([]william.IAMPermission{
+				{Prefix: "*", Complete: false},
 				{Prefix: "ListSchedulers", Complete: false},
 				{Prefix: "GetScheduler", Complete: false},
 				{Prefix: "CreateScheduler", Complete: false},
