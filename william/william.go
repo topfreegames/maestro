@@ -9,9 +9,9 @@ package william
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/models"
 	"net/http"
 	"net/url"
@@ -25,9 +25,9 @@ type Permission struct {
 }
 
 type IAMPermission struct {
-	Prefix   string
-	Alias    string
-	Complete bool
+	Prefix   string `json:"prefix"`
+	Alias    string `json:"alias"`
+	Complete bool   `json:"complete"`
 }
 
 type WilliamAuth struct {
@@ -73,7 +73,7 @@ func (w *WilliamAuth) Permissions(db interfaces.DB, prefix string) ([]IAMPermiss
 	return iamPermissions, nil
 }
 
-func (w *WilliamAuth) Check(token, permission, resource string) (bool, error) {
+func (w *WilliamAuth) Check(token, permission, resource string) error {
 	fullPermission := fmt.Sprintf("%s::RL::%s::%s", w.iamName, permission, w.region)
 	if len(resource) > 0 {
 		fullPermission = fmt.Sprintf("%s::%s", fullPermission, resource)
@@ -81,25 +81,25 @@ func (w *WilliamAuth) Check(token, permission, resource string) (bool, error) {
 	fullUrl := fmt.Sprintf("%s/permissions/has?permission=%s", w.url, url.QueryEscape(fullPermission))
 	request, err := http.NewRequest(http.MethodGet, fullUrl, nil)
 	if err != nil {
-		return false, errors.Wrapf(err, `error creating request for permision "%s"`, fullPermission)
+		return errors.NewGenericError(fmt.Sprintf(`error creating request for permision "%s"`, fullPermission), err)
 	}
 
 	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	response, err := w.client.Do(request)
 	if err != nil {
-		return false, errors.Wrapf(err, `error making request for permission "%s" on will.iam`, fullPermission)
+		return errors.NewGenericError(fmt.Sprintf(`error making request for permission "%s" on will.iam`, fullPermission), err)
 	}
 	defer response.Body.Close()
 	status := response.StatusCode
 	if status == http.StatusOK {
-		return true, nil
+		return nil
 	}
 	if status == http.StatusForbidden {
-		return false, nil
+		return errors.NewAuthError("user not authorized", fmt.Errorf(`user does not have permission "%s"`, fullPermission))
 	}
 
-	return false, fmt.Errorf(`will.iam returned invalid status code %d for permission "%s"`, status, fullPermission)
+	return errors.NewAccessError("user not authorized", fmt.Errorf(`user not authorized`))
 }
 
 func buildAllPermissions(region string, permissions []Permission, schedulers []models.Scheduler) []IAMPermission {
@@ -107,6 +107,10 @@ func buildAllPermissions(region string, permissions []Permission, schedulers []m
 	iamPermissions := make([]IAMPermission, 0)
 	iamPermissions = append(iamPermissions, IAMPermission{
 		Prefix:   "*",
+		Complete: false,
+	})
+	iamPermissions = append(iamPermissions, IAMPermission{
+		Prefix:   "*::*",
 		Complete: true,
 	})
 	for _, p := range permissions {

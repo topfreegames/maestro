@@ -76,21 +76,21 @@ func CheckWilliamPermission(
 	w *william.WilliamAuth,
 	r *http.Request,
 	resolver PermissionResolver,
-) (bool, error) {
+) error {
 	token := r.Header.Get("Authorization")
 	token = strings.TrimPrefix(token, "Bearer ")
 
 	permission, resource, err := resolver.ResolvePermission(db, r)
 	if err != nil {
 		logger.WithError(err).Error("error resolving permission")
-		return false, errors.NewAccessError("error resolving permission", err)
+		return errors.NewGenericError("error resolving permission", err)
 	}
 
-	hasPermission, err := w.Check(token, permission, resource)
+	err = w.Check(token, permission, resource)
 	if err != nil {
 		logger.WithError(err).Error("error checking permission")
-		return false, errors.NewAccessError("error checking permission", err)
+		return err
 	}
 
-	return hasPermission, nil
+	return nil
 }

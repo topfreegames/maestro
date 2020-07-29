@@ -7,10 +7,9 @@
 package api
 
 import (
-	e "errors"
 	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/maestro/api/auth"
-	"github.com/topfreegames/maestro/errors"
+	errors "github.com/topfreegames/maestro/errors"
 	"net/http"
 	"strings"
 )
@@ -45,34 +44,28 @@ func (m *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if m.App.Config.GetBool("william.enabled") {
 		db := m.App.DBClient.WithContext(ctx)
 		logger := middleware.GetLogger(ctx)
-		authorized, err := auth.CheckWilliamPermission(db, logger, m.App.William, r, m.resolver)
+		err := auth.CheckWilliamPermission(db, logger, m.App.William, r, m.resolver)
 		if err != nil {
-			m.App.HandleError(w, http.StatusInternalServerError, "internal server error", err)
+			if _, ok := err.(*errors.AccessError); ok {
+				m.App.HandleError(w, http.StatusUnauthorized, "unauthorized", err)
+			} else if _, ok := err.(*errors.AuthError); ok {
+				m.App.HandleError(w, http.StatusForbidden, "forbidden", err)
+			} else {
+				m.App.HandleError(w, http.StatusInternalServerError, "internal server error", err)
+			}
 			return
-		}
-		if !authorized {
-			m.App.HandleError(w,
-				http.StatusForbidden,
-				"forbidden",
-				errors.NewAccessError("not authorized user",
-					e.New("user is not authorized to operate on this resource")),
-			)
 		}
 	} else if m.App.Config.GetBool("oauth.enabled") {
 		db := m.App.DBClient.WithContext(ctx)
 		logger := middleware.GetLogger(ctx)
-		authorized, err := auth.CheckAuthorization(db, logger, r, m.admins)
+		err := auth.CheckAuthorization(db, logger, r, m.admins)
 		if err != nil {
-			m.App.HandleError(w, http.StatusInternalServerError, "internal server error", err)
+			if _, ok := err.(*errors.AccessError); ok {
+				m.App.HandleError(w, http.StatusUnauthorized, "unauthorized", err)
+			} else {
+				m.App.HandleError(w, http.StatusInternalServerError, "internal server error", err)
+			}
 			return
-		}
-		if !authorized {
-			m.App.HandleError(w,
-				http.StatusUnauthorized,
-				"unauthorized",
-				errors.NewAccessError("not authorized user",
-					e.New("user is not admin and is not authorized to operate on this scheduler")),
-			)
 		}
 	}
 

@@ -33,12 +33,15 @@ func (h *WilliamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"prefix":    prefix,
 	})
 
+	logger.Debug("getting permissions for prefix")
 	permissions, err := h.App.William.Permissions(h.App.DBClient.WithContext(ctx), prefix)
 	if err != nil {
 		logger.WithError(err).Error("error building permissions")
 		h.App.HandleError(w, http.StatusInternalServerError, "internal server error", err)
 		return
 	}
+
+	logger.Debugf("permissions found: %d", len(permissions))
 
 	bs, err := json.Marshal(permissions)
 	if err != nil {
