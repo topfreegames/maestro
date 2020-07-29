@@ -9,6 +9,8 @@
 package api_test
 
 import (
+	"encoding/json"
+	"github.com/onsi/gomega/ghttp"
 	"github.com/topfreegames/maestro/api/auth"
 	"net/http"
 	"net/http/httptest"
@@ -25,12 +27,23 @@ import (
 )
 
 var _ = Describe("AuthMiddleware", func() {
+	var server *ghttp.Server
 	var authMiddleware *AuthMiddleware
 	var request *http.Request
 	var recorder *httptest.ResponseRecorder
 	var dummyMiddleware = &DummyMiddleware{}
 
 	BeforeEach(func() {
+		server = ghttp.NewServer()
+		config.Set("william.url", server.URL())
+		config.Set("william.region", "us")
+		config.Set("william.iamName", "maestro")
+		config.Set("william.checkTimeout", "1s")
+
+		var err error
+		app, err = NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+		Expect(err).NotTo(HaveOccurred())
+
 		authMiddleware = NewAuthMiddleware(app, auth.ActionResolver("SomePermission"))
 		authMiddleware.SetNext(dummyMiddleware)
 
@@ -38,6 +51,10 @@ var _ = Describe("AuthMiddleware", func() {
 		request = request.WithContext(middleware.SetLogger(request.Context(), logger))
 
 		recorder = httptest.NewRecorder()
+	})
+
+	AfterEach(func() {
+		server.Close()
 	})
 
 	Describe("ServeHTTP", func() {
@@ -99,6 +116,53 @@ authorizedUsers:
 
 			authMiddleware.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("should ok if authorized on william", func() {
+			config.Set("william.enabled", "true")
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
+
+			request = mux.SetURLVars(request, map[string]string{"schedulerName": "scheduler-name"})
+			request.Header.Add("Authorization", "Bearer token")
+
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/permissions/has", "permission=maestro::RL::SomePermission::us"),
+					ghttp.VerifyHeader(http.Header{
+						"Authorization": []string{"Bearer token"},
+					}),
+					ghttp.RespondWith(http.StatusOK, nil),
+				),
+			)
+
+			authMiddleware.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+		})
+
+		It("should return unauthorized if not authorized on william", func() {
+			config.Set("william.enabled", "true")
+			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
+
+			request = mux.SetURLVars(request, map[string]string{"schedulerName": "scheduler-name"})
+			request.Header.Add("Authorization", "Bearer token")
+
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/permissions/has", "permission=maestro::RL::SomePermission::us"),
+					ghttp.VerifyHeader(http.Header{
+						"Authorization": []string{"Bearer token"},
+					}),
+					ghttp.RespondWith(http.StatusForbidden, nil),
+				),
+			)
+
+			authMiddleware.ServeHTTP(recorder, request)
+			Expect(recorder.Code).To(Equal(http.StatusForbidden))
+
+			var responseMap map[string]string
+			err := json.Unmarshal(recorder.Body.Bytes(), &responseMap)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(responseMap).To(HaveKeyWithValue("code", "MAE-006"))
 		})
 	})
 })

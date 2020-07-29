@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/topfreegames/maestro/api/auth"
+	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/testing"
 	"net/http"
 )
@@ -34,37 +35,36 @@ authorizedUsers:
 			request = mux.SetURLVars(request, map[string]string{"schedulerName": "scheduler-name"})
 		})
 
-		It("should return true when email is admin", func() {
+		It("should return no error when email is admin", func() {
 			request = request.WithContext(NewContextWithEmail(request.Context(), "user@email.com"))
 
-			authorized, err := CheckAuthorization(mockDb, logger, request, admins)
+			err := CheckAuthorization(mockDb, logger, request, admins)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(authorized).To(BeTrue())
 		})
 
-		It("should return true when email is not admin but is authorized in scheduler", func() {
+		It("should return no error when email is not admin but is authorized in scheduler", func() {
 			request = request.WithContext(NewContextWithEmail(request.Context(), "scheduler_user@example.com"))
 
 			testing.MockSelectScheduler(yamlStr, mockDb, nil)
 
-			authorized, err := CheckAuthorization(mockDb, logger, request, admins)
+			err := CheckAuthorization(mockDb, logger, request, admins)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(authorized).To(BeTrue())
 		})
 
-		It("should return false when email is not admin and is not authorized in scheduler", func() {
+		It("should return AccessError when email is not admin and is not authorized in scheduler", func() {
 			request = request.WithContext(NewContextWithEmail(request.Context(), "user@example.com"))
 
 			testing.MockSelectScheduler(yamlStr, mockDb, nil)
 
-			authorized, err := CheckAuthorization(mockDb, logger, request, admins)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(authorized).To(BeFalse())
+			err := CheckAuthorization(mockDb, logger, request, admins)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(BeAssignableToTypeOf(&errors.AccessError{}))
 		})
 
-		It("should return error when email is not found on context", func() {
-			_, err := CheckAuthorization(mockDb, logger, request, admins)
+		It("should return AccessError when email is not found on context", func() {
+			err := CheckAuthorization(mockDb, logger, request, admins)
 			Expect(err).To(HaveOccurred())
+			Expect(err).To(BeAssignableToTypeOf(&errors.AccessError{}))
 		})
 
 		It("should return error when postgres returns error", func() {
@@ -72,8 +72,9 @@ authorizedUsers:
 
 			testing.MockSelectScheduler(yamlStr, mockDb, fmt.Errorf("error"))
 
-			_, err := CheckAuthorization(mockDb, logger, request, admins)
+			err := CheckAuthorization(mockDb, logger, request, admins)
 			Expect(err).To(HaveOccurred())
+			Expect(err).ToNot(BeAssignableToTypeOf(&errors.AccessError{}))
 		})
 	})
 })

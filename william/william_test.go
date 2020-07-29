@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/topfreegames/extensions/pg/mocks"
+	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/william"
 	"net/http"
@@ -167,7 +168,7 @@ var _ = Describe("WillimAuth", func() {
 			config.Set("william.url", "localhost")
 		})
 
-		It("should return true when response status is 200", func() {
+		It("should return no error when response status is 200", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/permissions/has", "permission=maestro::RL::CreateScheduler::us"),
@@ -178,10 +179,10 @@ var _ = Describe("WillimAuth", func() {
 				),
 			)
 
-			Expect(auth.Check("token", "CreateScheduler", "")).To(BeTrue())
+			Expect(auth.Check("token", "CreateScheduler", "")).ToNot(HaveOccurred())
 		})
 
-		It("should return false when response status is 403", func() {
+		It("should return AuthError when response status is 403", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/permissions/has", "permission=maestro::RL::UpdateScheduler::us::game1::game1-green"),
@@ -192,10 +193,12 @@ var _ = Describe("WillimAuth", func() {
 				),
 			)
 
-			Expect(auth.Check("token", "UpdateScheduler", "game1::game1-green")).To(BeFalse())
+			err := auth.Check("token", "UpdateScheduler", "game1::game1-green")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(BeAssignableToTypeOf(&errors.AuthError{}))
 		})
 
-		It("should return error when response status is different from 200 or 403", func() {
+		It("should return AccessError when response status is different from 200 or 403", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/permissions/has", "permission=maestro::RL::UpdateScheduler::us::game1::game1-green"),
@@ -206,9 +209,9 @@ var _ = Describe("WillimAuth", func() {
 				),
 			)
 
-			hasPermission, err := auth.Check("token", "UpdateScheduler", "game1::game1-green")
-			Expect(hasPermission).To(BeFalse())
+			err := auth.Check("token", "UpdateScheduler", "game1::game1-green")
 			Expect(err).To(HaveOccurred())
+			Expect(err).To(BeAssignableToTypeOf(&errors.AccessError{}))
 		})
 	})
 })
