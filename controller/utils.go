@@ -432,7 +432,7 @@ func waitTerminatingPods(
 	for {
 		exit := true
 
-		// go select statement chooses "randomly" when two branches are available, sot it can make select ignore
+		// go select statement chooses "randomly" when two branches are available, so it can make select ignore
 		// ctx.Done() for iterations. This check prevents to enter select if the context was already cancelled.
 		if ctx.Err() != nil {
 			logger.Warn("operation canceled/timedout waiting for rooms to be removed")
@@ -507,7 +507,7 @@ func waitCreatingPods(
 	for {
 		exit := true
 
-		// go select statement chooses "randomly" when two branches are available, sot it can make select ignore
+		// go select statement chooses "randomly" when two branches are available, so it can make select ignore
 		// ctx.Done() for iterations. This check prevents to enter select if the context was already cancelled.
 		if ctx.Err() != nil {
 			logger.Warn("operation canceled/timeout waiting for rooms to be created")
