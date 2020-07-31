@@ -6586,6 +6586,7 @@ containers:
 		It("should return error when it fails to create pod", func() {
 			pods := []*models.Pod{
 				&models.Pod{Name: "room-1"},
+				&models.Pod{Name: "room-2"},
 			}
 
 			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, string(configYaml1.ToYAML()))
@@ -6614,8 +6615,32 @@ containers:
 			mockPipeline.EXPECT().
 				ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
 
+			mockPipeline.EXPECT().Exec()
+
+			mockRedisClient.EXPECT().
+				TxPipeline().
+				Return(mockPipeline)
+
+			mockPipeline.EXPECT().
+				HMSet(gomock.Any(), gomock.Any()).
+				Do(func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				})
+
+			mockPipeline.EXPECT().
+				SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"),
+					gomock.Any())
+
+			mockPipeline.EXPECT().
+				ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
+
 			mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis error"))
 
+			mt.MockGetPortsFromPoolAnyTimes(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockPodNotFound(mockRedisClient, configYaml1.Name, gomock.Any()).AnyTimes()
+
+			now := time.Now()
 			timeoutErr, cancelErr, err := controller.SegmentAndReplacePods(
 				logger,
 				roomManager,
@@ -6623,14 +6648,14 @@ containers:
 				clientset,
 				mockDb,
 				mockRedisClient,
-				time.Now().Add(time.Minute),
+				now.Add(time.Minute),
 				&configYaml1,
 				pods,
 				scheduler,
 				opManager,
 				10*time.Second,
-				10,
-				1,
+				100,
+				2,
 			)
 			Expect(timeoutErr).ToNot(HaveOccurred())
 			Expect(cancelErr).ToNot(HaveOccurred())

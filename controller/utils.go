@@ -163,13 +163,15 @@ func replacePodsAndWait(
 ) (err error) {
 	logger.Debug("starting to replace pods with new ones")
 
-	finishedReplace := make(chan struct{})
-	errChan := make(chan error)
+	childCtx, cancel := context.WithCancel(ctx)
+
+	errChan := make(chan error, goroutinePoolSize)
 
 	pods := make(chan *models.Pod, len(podsChunk))
 	for _, pod := range podsChunk {
 		pods <- pod
 	}
+	close(pods)
 
 	var wg sync.WaitGroup
 	logger.Infof("starting %d in-memory workers to replace %d pods", goroutinePoolSize, len(podsChunk))
@@ -177,8 +179,8 @@ func replacePodsAndWait(
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			replacePodWorker(
-				ctx,
+			err := replacePodWorker(
+				childCtx,
 				logger,
 				roomManager,
 				mr,
@@ -189,22 +191,23 @@ func replacePodsAndWait(
 				scheduler,
 				pods,
 				inRollingUpdate,
-				finishedReplace,
-				errChan,
 			)
+			// if there's an error in any of the workers cancel the operation
+			if err != nil {
+				cancel()
+				errChan <- err
+			}
 		}()
 	}
 
+	wg.Wait()
+
 	select {
 	case err = <-errChan:
-		logger.Error("operation terminated with error")
-	case <-ctx.Done():
-		logger.Debug("operation timedout/canceled")
-	case <-finishedReplace:
-		logger.Debug("all pods were successfully replaced")
+		logger.WithError(err).Debug("error replacing pods")
+	default:
+		logger.WithError(err).Trace("replacePodsAndWait finished successfully")
 	}
-
-	wg.Wait()
 
 	return err
 }
@@ -221,12 +224,14 @@ func replacePodWorker(
 	scheduler *models.Scheduler,
 	pods <-chan *models.Pod,
 	inRollingUpdate bool,
-	finishedReplace chan struct{},
-	errChan chan<- error,
-) {
+) error {
 	for {
 		select {
-		case pod := <-pods:
+		case pod, ok := <-pods:
+			// this case is executed even after pods channel was closed we need this check
+			if !ok {
+				return nil
+			}
 			canceled, err := createNewRemoveOldPod(
 				ctx,
 				logger,
@@ -242,21 +247,16 @@ func replacePodWorker(
 			)
 
 			if err != nil {
-				errChan <- err
-				return
+				return err
 			}
 
 			if canceled {
-				return
+				return nil
 			}
 
 			logger.Infof("pods remaining to replace: %d", len(pods))
-			if len(pods) == 0 {
-				finishedReplace <- struct{}{}
-				return
-			}
 		case <-ctx.Done():
-			return
+			return nil
 		}
 	}
 }
@@ -431,6 +431,14 @@ func waitTerminatingPods(
 
 	for {
 		exit := true
+
+		// go select statement chooses "randomly" when two branches are available, sot it can make select ignore
+		// ctx.Done() for iterations. This check prevents to enter select if the context was already cancelled.
+		if ctx.Err() != nil {
+			logger.Warn("operation canceled/timedout waiting for rooms to be removed")
+			return true
+		}
+
 		select {
 		case <-ctx.Done():
 			logger.Warn("operation canceled/timedout waiting for rooms to be removed")
@@ -498,7 +506,18 @@ func waitCreatingPods(
 
 	for {
 		exit := true
+
+		// go select statement chooses "randomly" when two branches are available, sot it can make select ignore
+		// ctx.Done() for iterations. This check prevents to enter select if the context was already cancelled.
+		if ctx.Err() != nil {
+			logger.Warn("operation canceled/timeout waiting for rooms to be created")
+			return true, nil
+		}
+
 		select {
+		case <-ctx.Done():
+			logger.Warn("operation canceled/timeout waiting for rooms to be created")
+			return true, nil
 		case <-ticker.C:
 			for i, pod := range createdPods {
 				createdPod, err := models.GetPodFromRedis(redisClient, mr, pod.GetName(), namespace)
@@ -587,9 +606,6 @@ func waitCreatingPods(
 					break
 				}
 			}
-		case <-ctx.Done():
-			logger.Warn("operation canceled/timeout waiting for rooms to be created")
-			return true, nil
 		}
 
 		if exit {
