@@ -6583,7 +6583,63 @@ containers:
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should return error when it fails to create pod", func() {
+		It("should return error when it fails to create pod with goroutinePoolSize == 1", func() {
+			pods := []*models.Pod{
+				&models.Pod{Name: "room-1"},
+				&models.Pod{Name: "room-2"},
+			}
+
+			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, string(configYaml1.ToYAML()))
+
+			mockRedisClient.EXPECT().
+				HGetAll(opManager.GetOperationKey()).
+				Return(goredis.NewStringStringMapResult(map[string]string{
+					"description": models.OpManagerRollingUpdate,
+				}, nil)).AnyTimes()
+
+			mockRedisClient.EXPECT().
+				TxPipeline().
+				Return(mockPipeline)
+
+			mockPipeline.EXPECT().
+				HMSet(gomock.Any(), gomock.Any()).
+				Do(func(schedulerName string, statusInfo map[string]interface{}) {
+					Expect(statusInfo["status"]).To(Equal(models.StatusCreating))
+					Expect(statusInfo["lastPing"]).To(BeNumerically("~", time.Now().Unix(), 1))
+				})
+
+			mockPipeline.EXPECT().
+				SAdd(models.GetRoomStatusSetRedisKey(configYaml1.Name, "creating"),
+					gomock.Any())
+
+			mockPipeline.EXPECT().
+				ZAdd(models.GetRoomPingRedisKey(configYaml1.Name), gomock.Any())
+
+			mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis error"))
+
+			now := time.Now()
+			timeoutErr, cancelErr, err := controller.SegmentAndReplacePods(
+				logger,
+				roomManager,
+				mr,
+				clientset,
+				mockDb,
+				mockRedisClient,
+				now.Add(time.Minute),
+				&configYaml1,
+				pods,
+				scheduler,
+				opManager,
+				10*time.Second,
+				100,
+				1,
+			)
+			Expect(timeoutErr).ToNot(HaveOccurred())
+			Expect(cancelErr).ToNot(HaveOccurred())
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return error when it fails to create pod with goroutinePoolSize > 1", func() {
 			pods := []*models.Pod{
 				&models.Pod{Name: "room-1"},
 				&models.Pod{Name: "room-2"},
