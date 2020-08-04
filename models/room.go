@@ -712,14 +712,14 @@ func IsRoomReadyOrOccupied(logger logrus.FieldLogger, redisClient interfaces.Red
 
 	_, err := pipe.Exec()
 	if err != nil {
-		logger.WithError(err).Error("failed to check room rediness")
+		logger.WithError(err).Error("failed to check room readiness")
 		return false
 	}
 
 	isReady, err := roomIsReady.Result()
 	isOccupied, err := roomIsOccupied.Result()
 	if err != nil {
-		logger.WithError(err).Error("failed to check room rediness")
+		logger.WithError(err).Error("failed to check room readiness")
 		return false
 	}
 

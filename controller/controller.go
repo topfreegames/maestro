@@ -390,12 +390,14 @@ func ScaleUp(
 
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 
-	existPendingPods, err := pendingPods(clientset, redisClient, scheduler.Name, mr)
+	shouldNotProceedErr, err := shouldScaleUpProceed(l, redisClient, scheduler.Name, mr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to check whether scale up should proceed: %s", err)
 	}
-	if existPendingPods {
-		return errors.New("there are pending pods, check if there are enough CPU and memory to allocate new rooms")
+
+	if shouldNotProceedErr != nil {
+		l.WithError(shouldNotProceedErr).Error("scale up should not proceed")
+		return shouldNotProceedErr
 	}
 
 	amount, err = SetScalingAmount(
@@ -425,7 +427,7 @@ func ScaleUp(
 
 	j := 0
 	for i := 0; i < amount; i++ {
-		pod, err := roomManager.Create(l, mr, redisClient, db, clientset, configYAML, scheduler)
+		pod, _, err := roomManager.Create(l, mr, redisClient, db, clientset, configYAML, scheduler)
 		if err != nil {
 			l.WithError(err).Error("scale up error")
 			if initalOp {
@@ -665,7 +667,7 @@ func UpdateSchedulerConfig(
 		return nil
 	}
 
-	operationManager.SetDescription(models.OpManagerRunning)
+	_ = operationManager.SetDescription(models.OpManagerRunning)
 
 	scheduler, oldConfig, err := LoadScheduler(
 		mr,
@@ -751,7 +753,7 @@ func UpdateSchedulerConfig(
 		}
 
 		// delete invalidRooms key as EnsureCorrectRooms finished
-		models.RemoveInvalidRoomsKey(redisClient.Client, mr, schedulerName)
+		_ = models.RemoveInvalidRoomsKey(redisClient.Client, mr, schedulerName)
 
 		if err != nil {
 			l.WithError(err).Error("error during UpdateSchedulerConfig. Rolling back database")

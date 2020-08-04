@@ -263,8 +263,11 @@ func (g *GRPCForwarder) RoomEvent(ctx context.Context, infos, fwdMetadata map[st
 }
 
 //Forward send room or player status to specified server
-func (g *GRPCForwarder) Forward(ctx context.Context, event string, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
-
+func (g *GRPCForwarder) Forward(
+	ctx context.Context,
+	event string,
+	infos, fwdMetadata map[string]interface{},
+) (status int32, message string, err error) {
 	// Add forwarder metadata (from maestro config) to request
 	metadata := map[string]interface{}{}
 	if g.metadata != nil {

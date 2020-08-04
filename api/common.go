@@ -18,6 +18,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 )
 
+// NOTE(lhahn): This function has race conditions. It is not safe to be called from multiple threads.
 func getOperationManager(
 	ctx context.Context,
 	app *App,
@@ -37,7 +38,7 @@ func getOperationManager(
 		return nil, fmt.Errorf("operation key already in progress: %s", currOperation)
 	}
 
-	mr.WithSegment(models.SegmentPipeExec, func() error {
+	_ = mr.WithSegment(models.SegmentPipeExec, func() error {
 		return opManager.Start(time.Duration(timeoutSec)*time.Second, opName)
 	})
 	logger.Infof("operation key: %s", opManager.GetOperationKey())

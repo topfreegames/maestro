@@ -80,7 +80,7 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		"operationKey": operationKey,
 	})
 
-	logger.Info("Starting scheduler operation status")
+	logger.Debug("Starting scheduler operation status")
 
 	status, errorMsg, err := getOperationStatus(
 		r.Context(), g.App, logger, mr, schedulerName, operationKey,
@@ -103,7 +103,7 @@ func (g *SchedulerOperationHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	bts, _ := json.Marshal(status)
 	WriteBytes(w, http.StatusOK, bts)
-	logger.Info("Successfully wrote status response")
+	logger.Debug("Successfully wrote status response")
 }
 
 // SchedulerOperationCurrentStatusHandler returns the current status

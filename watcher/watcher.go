@@ -124,7 +124,6 @@ func NewWatcher(
 	occupiedTimeout int64,
 	eventForwarders []*eventforwarder.Info,
 ) *Watcher {
-	logger.Infof("%s", "Starting NewWatcher")
 	w := &Watcher{
 		Config:                  config,
 		Logger:                  logger,
@@ -244,9 +243,9 @@ func (w *Watcher) Start() {
 
 	go w.reportRoomsStatusesRoutine()
 	stopKubeWatch := make(chan struct{})
-	go func() { _ = w.configureKubeWatch(stopKubeWatch)}()
+	go func() { _ = w.configureKubeWatch(stopKubeWatch) }()
 
-	for w.Run == true {
+	for w.Run {
 		l = w.Logger.WithFields(logrus.Fields{
 			"operation": "watcher.Start",
 		})
@@ -280,20 +279,34 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 }
 
 func (w *Watcher) watchRooms() error {
-	l := w.Logger.WithFields(logrus.Fields{
-		"operation": "watcher.watchRooms.EnsureCorrectRooms",
-	})
-	_, _ = w.WithDownscalingLock(l, w.EnsureCorrectRooms)
+	{
+		l := w.Logger.WithFields(logrus.Fields{
+			"operation": "watcher.watchRooms.EnsureCorrectRooms",
+		})
+		// FIXME(lhahn): this here blocks on replace pods.
+		_, _ = w.WithDownscalingLock(l, w.EnsureCorrectRooms)
+	}
+	{
+		l := w.Logger.WithFields(logrus.Fields{
+			"operation": "watcher.watchRooms.RemoveDeadRooms",
+		})
+		_, err := w.WithDownscalingLock(l, w.RemoveDeadRooms)
+		if err != nil {
+			l.WithError(err).Error("fail on remove dead rooms")
+		}
+	}
+	{
+		l := w.Logger.WithFields(logrus.Fields{
+			"operation": "watcher.watchRooms.AutoScale",
+		})
 
-	l = w.Logger.WithFields(logrus.Fields{
-		"operation": "watcher.watchRooms.RemoveDeadRooms",
-	})
-	_, _ = w.WithDownscalingLock(l, w.RemoveDeadRooms)
+		// FIXME(lhahn): AutoScale takes too long.
+		_, err := w.WithTerminationLock(l, w.AutoScale)
+		if err != nil {
+			l.WithError(err).Error("fail on auto scale")
+		}
+	}
 
-	l = w.Logger.WithFields(logrus.Fields{
-		"operation": "watcher.watchRooms.AutoScale",
-	})
-	_, _ = w.WithTerminationLock(l, w.AutoScale)
 	_ = w.AddUtilizationMetricsToRedis()
 	return nil
 }
@@ -305,7 +318,7 @@ func (w *Watcher) AddUtilizationMetricsToRedis() error {
 		"operation":   "addUtilizationMetricsToRedis",
 		"scheduler":   w.SchedulerName,
 	})
-	logger.Info("starting to add utilization metrics to redis")
+	logger.Debug("starting to add utilization metrics to redis")
 
 	scheduler, _, _, err := controller.GetSchedulerScalingInfo(
 		logger,
@@ -660,21 +673,19 @@ func (w *Watcher) RemoveDeadRooms() error {
 	// get rooms with no ping
 	roomsNoPingSince, err := w.roomsWithNoPing(logger)
 	if err != nil {
-		logger.WithError(err).Error("failed to list rooms that are not pinging")
-		return err
+		return fmt.Errorf("failed to list rooms that are not pinging: %s", err)
 	}
 
 	// get rooms with occupation timeout
 	roomsOnOccupiedTimeout, err := w.roomsWithOccupationTimeout(logger)
 	if err != nil {
-		logger.WithError(err).Error("failed to list rooms that are on occupied timeout state")
-		return err
+		return fmt.Errorf("failed to list rooms that are on occupied timeout state: %s", err)
 	}
 
 	// get rooms registered
 	rooms, err := models.GetRooms(w.RedisClient.Client, w.SchedulerName, w.MetricsReporter)
 	if err != nil {
-		logger.WithError(err).Error("error listing registered rooms")
+		return fmt.Errorf("failed listing registered rooms: %s", err)
 	}
 
 	// append rooms with no ping and on occupation timeout
@@ -685,22 +696,20 @@ func (w *Watcher) RemoveDeadRooms() error {
 	if len(rooms) > 0 {
 		pods, err = w.listPods()
 		if err != nil {
-			logger.WithError(err).Error("failed to list pods on namespace")
-			return err
+			return fmt.Errorf("failed to list pods on namespace: %s", err)
 		}
 
 		// zombie rooms are the ones that are registered but the pods doesn't exist
 		roomsRemoved, err := w.removeZombies(pods, rooms)
 		if err != nil {
-			logger.WithError(err).Error("failed to remove zombie rooms")
-			return err
+			return fmt.Errorf("failed to remove zombie rooms: %s", err)
 		}
 
 		if len(roomsRemoved) > 0 {
 			l := logger.WithFields(logrus.Fields{
 				"rooms": fmt.Sprintf("%v", roomsRemoved),
 			})
-			l.Info("successfully deleted zombie rooms")
+			l.Warn("successfully deleted zombie rooms")
 		}
 	}
 
@@ -708,8 +717,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 		if len(pods) <= 0 {
 			pods, err = w.listPods()
 			if err != nil {
-				logger.WithError(err).Error("failed to list pods on namespace")
-				return err
+				return fmt.Errorf("failed to list pods on namespace: %s", err)
 			}
 		}
 		podsToDelete := w.filterPodsByName(logger, pods, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
@@ -718,8 +726,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 		scheduler := models.NewScheduler(w.SchedulerName, "", "")
 		err = scheduler.Load(w.DB)
 		if err != nil {
-			logger.WithError(err).Error("error accessing db while removing dead rooms")
-			return err
+			return fmt.Errorf("error accessing db while removing dead rooms: %s", err)
 		}
 
 		timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
@@ -729,11 +736,9 @@ func (w *Watcher) RemoveDeadRooms() error {
 
 		configYAML, err := models.NewConfigYAML(scheduler.YAML)
 		if err != nil {
-			logger.WithError(err).Error("failed to unmarshal config yaml")
-			return err
+			return fmt.Errorf("failed to unmarshal config yaml: %s", err)
 		}
 
-		var timeoutErr bool
 		timedout, err := controller.DeletePodsAndWait(
 			ctx,
 			logger,
@@ -746,26 +751,26 @@ func (w *Watcher) RemoveDeadRooms() error {
 		)
 
 		if timedout {
-			logger.WithError(err).Error("timeout replacing pods on RemoveDeadRooms")
+			return errors.New("timeout replacing pods on RemoveDeadRooms")
 		}
 
 		if err != nil {
-			logger.WithError(err).Error("replacing pods returned error on RemoveDeadRooms")
+			return fmt.Errorf("replacing pods returned error on RemoveDeadRooms: %s", err)
 		}
 
-		if timeoutErr == false && err == nil {
-			l := logger.WithFields(logrus.Fields{
+		if len(roomsNoPingSince) > 0 {
+			logger.WithFields(logrus.Fields{
 				"rooms": fmt.Sprintf("%v", roomsNoPingSince),
-			})
-			l.Info("successfully deleted rooms that were not pinging")
+			}).Info("successfully deleted rooms that were not pinging")
+		}
 
-			l = logger.WithFields(logrus.Fields{
+		if len(roomsOnOccupiedTimeout) > 0 {
+			logger.WithFields(logrus.Fields{
 				"rooms": fmt.Sprintf("%v", roomsOnOccupiedTimeout),
-			})
-			l.Info("successfully deleted rooms that expired occupied timeout")
+			}).Info("successfully deleted rooms that expired occupied timeout")
 		}
 	}
-	logger.Info("finish check of dead rooms")
+	logger.Debug("finish check of dead rooms")
 	return nil
 }
 
@@ -789,7 +794,6 @@ func (w *Watcher) AutoScale() error {
 		"operation":   "autoScale",
 		"scheduler":   w.SchedulerName,
 	})
-	logger.Info("starting auto scale")
 
 	scheduler, autoScalingInfo, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
 		logger,
@@ -803,14 +807,12 @@ func (w *Watcher) AutoScale() error {
 			w.Run = false
 			return err
 		}
-		logger.WithError(err).Error("failed to get scheduler scaling info")
-		return err
+		return fmt.Errorf("failed to get scheduler scaling info: %s", err)
 	}
 
 	err = w.updateOccupiedTimeout(scheduler)
 	if err != nil {
-		logger.WithError(err).Error("failed to update scheduler occupied timeout")
-		return err
+		return fmt.Errorf("failed to update scheduler occupied timeout: %s", err)
 	}
 
 	l := logger.WithFields(logrus.Fields{
@@ -828,8 +830,7 @@ func (w *Watcher) AutoScale() error {
 		scheduler,
 	)
 	if err != nil {
-		logger.WithError(err).Error("failed to create namespace")
-		return err
+		return fmt.Errorf("failed to create namespace: %s", err)
 	}
 
 	nowTimestamp := time.Now().Unix()
@@ -841,8 +842,7 @@ func (w *Watcher) AutoScale() error {
 		nowTimestamp,
 	)
 	if err != nil {
-		logger.WithError(err).Error("failed to get scheduler occupancy info")
-		return err
+		return fmt.Errorf("failed to get scheduler occupancy info: %s", err)
 	}
 
 	if scaling.Delta > 0 {
@@ -899,17 +899,18 @@ func (w *Watcher) AutoScale() error {
 			scheduler.LastScaleOpAt = nowTimestamp
 		}
 	} else {
-		l.Infof("scheduler '%s': state is as expected", scheduler.Name)
+		l.Debugf("scheduler '%s': state is as expected", scheduler.Name)
 	}
 
 	if err != nil {
+		// TODO, FIXME(lhahn): why are we not returning the error here? is it intentional?
 		logger.WithError(err).Error("error scaling scheduler")
 	}
 
 	if scaling.ChangedState {
 		err = controller.UpdateSchedulerState(logger, w.MetricsReporter, w.DB, scheduler)
 		if err != nil {
-			logger.WithError(err).Error("failed to update scheduler info")
+			return fmt.Errorf("failed to update scheduler info: %s", err)
 		}
 	}
 	return nil
@@ -1218,7 +1219,7 @@ func (w *Watcher) rollbackSchedulerVersion(
 func (w *Watcher) EnsureCorrectRooms() error {
 	ctx := context.Background()
 	logger := w.Logger.WithField("operation", "EnsureCorrectRooms")
-	logger.Info("loading scheduler from database")
+	logger.Debug("loading scheduler from database")
 
 	w.gracefulShutdown.wg.Add(1)
 	defer w.gracefulShutdown.wg.Done()
@@ -1238,7 +1239,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	}
 
 	// get invalid pods (wrong versions and pods not registered in redis)
-	logger.Info("searching for invalid pods")
+	logger.Debug("searching for invalid pods")
 	incorrectPods, unregisteredPods, err := w.getIncorrectAndUnregisteredPods(logger, pods, scheduler)
 	if err != nil {
 		logger.WithError(err).Error("failed to get invalid pods")
@@ -1273,6 +1274,8 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	// save invalid pods in redis to track rolling update progress
 	if operationManager != nil {
+		logger.Info("update scheduler config operation happening")
+
 		status, err := operationManager.Get(operationManager.GetOperationKey())
 		if err != nil {
 			logger.WithError(err).Error("error trying to save invalid rooms to track progress")
@@ -1293,7 +1296,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 			logger.WithFields(logrus.Fields{
 				"operation": operationManager.GetOperationKey(),
-			}).Infof(`changing state from "%s" to "%s"`, status["description"], models.OpManagerRollingUpdate)
+			}).Debugf(`changing state from "%s" to "%s"`, status["description"], models.OpManagerRollingUpdate)
 			err = operationManager.SetDescription(models.OpManagerRollingUpdate)
 			if err != nil {
 				logger.WithError(err).Error("error trying to set opmanager to rolling update status")
@@ -1304,7 +1307,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 
 	if len(invalidPods) <= 0 {
 		// delete invalidRooms key for safety
-		models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
+		_ = models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
 		logger.Debug("no invalid pods to replace")
 		return nil
 	}
@@ -1313,6 +1316,17 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	timeoutSec := w.Config.GetInt("updateTimeoutSeconds")
 	timeoutDur := time.Duration(timeoutSec) * time.Second
 	willTimeoutAt := time.Now().Add(timeoutDur)
+
+	// We need to make sure that at least one goroutine is going to be used for the update of the pods,
+	// otherwise the operation will timeout.
+	goroutinePoolSize := w.Config.GetInt("watcher.goroutinePoolSize")
+	if goroutinePoolSize == 0 {
+		logger.Warn("watcher.goroutinePoolSize was 0, assigning it to 1")
+		goroutinePoolSize = 1
+	}
+
+	// TODO, FIXME(lhahn): remove this.
+	timeoutSec = 120
 
 	logger.Infof("replacing pods with %d seconds of timeout", timeoutSec)
 	timeoutErr, _, err := controller.SegmentAndReplacePods(
@@ -1329,14 +1343,14 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		operationManager,
 		w.Config.GetDuration("watcher.cancelPollingPeriod"),
 		w.Config.GetInt("watcher.maxSurge"),
-		w.Config.GetInt("watcher.goroutinePoolSize"),
+		goroutinePoolSize,
 	)
 
 	if err != nil {
 		// if operationManager != nil there is a scheduler update in place
 		if operationManager != nil {
 			logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms during update scheduler config")
-			operationManager.SetError(err.Error())
+			_ = operationManager.SetError(err.Error())
 		} else {
 			logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms. Rolling back")
 			w.rollbackSchedulerVersion(ctx, logger, scheduler, &configYAML)
@@ -1346,7 +1360,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	if timeoutErr != nil {
 		logger.WithError(err).Error("timeout replacing pods on EnsureCorrectRooms")
 		if operationManager != nil {
-			operationManager.SetDescription(models.OpManagerTimedout)
+			_ = operationManager.SetDescription(models.OpManagerTimedout)
 		}
 	}
 
@@ -1361,7 +1375,7 @@ func (w *Watcher) podsNotRegistered(
 		return nil, err
 	}
 
-	notRegistered := []*models.Pod{}
+	var notRegistered []*models.Pod
 	for _, pod := range pods {
 		if _, ok := registered[pod.Name]; !ok {
 			notRegistered = append(notRegistered, pod)
@@ -1370,7 +1384,7 @@ func (w *Watcher) podsNotRegistered(
 	return notRegistered, nil
 }
 
-func (w *Watcher) splitedVersion(version string) (majorInt, minorInt int, err error) {
+func splitedVersion(version string) (majorInt, minorInt int, err error) {
 	splitted := strings.Split(strings.TrimPrefix(version, "v"), ".")
 	major, minor := splitted[0], "0"
 	if len(splitted) > 1 {
@@ -1393,27 +1407,28 @@ func (w *Watcher) podsOfIncorrectVersion(
 	pods map[string]*models.Pod,
 	scheduler *models.Scheduler,
 ) ([]*models.Pod, error) {
-	incorrectPods := []*models.Pod{}
+	var incorrectPods []*models.Pod
 
-	schedulerMajorVersion, _, err := w.splitedVersion(scheduler.Version)
+	schedulerMajorVersion, _, err := splitedVersion(scheduler.Version)
 	if err != nil {
 		return nil, err
 	}
 
 	schedulerMajorRollbackVersion := -1
 	if scheduler.RollbackVersion != "" {
-		schedulerMajorRollbackVersion, _, err = w.splitedVersion(scheduler.RollbackVersion)
+		schedulerMajorRollbackVersion, _, err = splitedVersion(scheduler.RollbackVersion)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	for _, pod := range pods {
-		podMajorVersion, _, err := w.splitedVersion(pod.Version)
+		podMajorVersion, _, err := splitedVersion(pod.Version)
 		if err != nil {
 			return nil, err
 		}
 
+		// TODO(lhahn): what does this mean?
 		// if a rollback happened consider 2 versions as correct:
 		// actual version(after DB rollback) and the version the rolled-back-to version (the one before corrupt version)
 		if podMajorVersion != schedulerMajorVersion && podMajorVersion != schedulerMajorRollbackVersion {
@@ -1466,7 +1481,7 @@ func (w *Watcher) PodStatesCount() {
 
 	for state, count := range stateCount {
 		logger.Debugf("sending pods status to statsd: {%s:%d}", state, count)
-		reporters.Report(reportersConstants.EventPodStatus, map[string]interface{}{
+		_ = reporters.Report(reportersConstants.EventPodStatus, map[string]interface{}{
 			reportersConstants.TagPodStatus: state,
 			reportersConstants.TagGame:      w.GameName,
 			reportersConstants.TagScheduler: w.SchedulerName,
@@ -1476,7 +1491,7 @@ func (w *Watcher) PodStatesCount() {
 
 	for reason, count := range restartCount {
 		logger.Debugf("sending result to statsd: {%s:%d}", reason, count)
-		reporters.Report(reportersConstants.EventPodLastStatus, map[string]interface{}{
+		_ = reporters.Report(reportersConstants.EventPodLastStatus, map[string]interface{}{
 			reportersConstants.TagGame:      w.GameName,
 			reportersConstants.TagScheduler: w.SchedulerName,
 			reportersConstants.TagReason:    reason,

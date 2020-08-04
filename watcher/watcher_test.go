@@ -1421,8 +1421,9 @@ var _ = Describe("Watcher", func() {
 					Expect(scheduler.LastScaleOpAt).To(BeNumerically("~", time.Now().Unix(), 1))
 				}, mockDb, errDB, nil)
 
-				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-				Expect(hook.Entries).To(testing.ContainLogMessage("failed to update scheduler info"))
+				Expect(func() { err = w.AutoScale() }).ShouldNot(Panic())
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to update scheduler info"))
 			})
 
 			It("should not scale up if half of the points are below threshold", func() {
@@ -1706,8 +1707,10 @@ var _ = Describe("Watcher", func() {
 					scheduler.YAML = yaml1
 				}).Return(pg.NewTestResult(nil, 0), errors.New("some cool error in pg"))
 
-				Expect(func() { w.AutoScale() }).ShouldNot(Panic())
-				Expect(hook.Entries).To(testing.ContainLogMessage("failed to get scheduler scaling info"))
+				var err error
+				Expect(func() { err = w.AutoScale() }).ShouldNot(Panic())
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to get scheduler scaling info"))
 			})
 		})
 

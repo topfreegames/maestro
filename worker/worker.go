@@ -323,7 +323,6 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 			)
 			w.Watchers[schedulerName].Run = true // Avoids race condition
 			w.startWatcher(w.Watchers[schedulerName])
-			l.WithField("name", schedulerName).Info("started watcher for scheduler")
 		}
 	}
 }

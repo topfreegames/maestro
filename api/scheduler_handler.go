@@ -11,10 +11,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/topfreegames/maestro/api/auth"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/topfreegames/maestro/api/auth"
 
 	"github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	maestroErrors "github.com/topfreegames/maestro/errors"
@@ -184,7 +185,7 @@ func (g *SchedulerUpdateHandler) update(
 			"status":      status,
 		}).Error("error updating scheduler config")
 	}
-	reporters.Report(reportersConstants.EventSchedulerUpdate, map[string]interface{}{
+	_ = reporters.Report(reportersConstants.EventSchedulerUpdate, map[string]interface{}{
 		"name":  configYaml.Name,
 		"game":  configYaml.Game,
 		"error": err,

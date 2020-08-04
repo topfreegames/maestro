@@ -277,7 +277,7 @@ func createNewRemoveOldPod(
 	logger.Debug("creating pod")
 
 	// create new pod
-	newPod, err := roomManager.Create(logger, mr, redisClient,
+	newPod, room, err := roomManager.Create(logger, mr, redisClient,
 		db, clientset, configYAML, scheduler)
 
 	if err != nil {
@@ -289,9 +289,37 @@ func createNewRemoveOldPod(
 	canceled, err = waitCreatingPods(
 		ctx, logger, clientset, redisClient, configYAML.Name,
 		[]v1.Pod{*newPod}, mr)
-	if canceled || err != nil {
-		logger.Errorf("error waiting for pod to be created")
-		return canceled, err
+
+	if err != nil {
+		// Since the created pod is in an invalid waiting state, we need to rollback our changes by
+		// removing the bogus pod and the keys on Redis.
+		logger.WithError(err).Warn("created pod was in an invalid state, removing it")
+
+		canceled, deleteErr := DeletePodsAndWait(
+			ctx,
+			logger,
+			roomManager,
+			mr,
+			clientset,
+			redisClient,
+			configYAML,
+			// The function only uses the name of the pod.
+			[]*models.Pod{{Name: newPod.Name}},
+		)
+		if deleteErr != nil {
+			return false, fmt.Errorf("failed to delete bogus pod: %s", deleteErr)
+		}
+		if canceled {
+			return true, nil
+		}
+		if clearErr := room.ClearAll(redisClient, mr); clearErr != nil {
+			return false, fmt.Errorf("failed to clear bogus room from redis: %s", clearErr)
+		}
+		return false, fmt.Errorf("failed to replace old pod with newer: %s", err)
+	}
+
+	if canceled {
+		return true, nil
 	}
 
 	canceled, err = DeletePodsAndWait(
@@ -305,6 +333,7 @@ func createNewRemoveOldPod(
 		[]*models.Pod{pod},
 	)
 
+	// TODO(lhahn): WTF is this?
 	if err != nil && !strings.Contains(err.Error(), "redis") {
 		return false, nil
 	}
@@ -502,7 +531,7 @@ func waitCreatingPods(
 	for range createdPods {
 		retryNo = append(retryNo, 0)
 	}
-	backoffStart := time.Duration(1 * time.Second)
+	backoffStart := 1 * time.Second
 
 	for {
 		exit := true
@@ -522,6 +551,7 @@ func waitCreatingPods(
 			for i, pod := range createdPods {
 				createdPod, err := models.GetPodFromRedis(redisClient, mr, pod.GetName(), namespace)
 				if err != nil {
+					// TODO(lhahn): if we failed to get the pod on redis, shouldn't we return an error here?
 					logger.
 						WithError(err).
 						WithField("pod", pod.GetName()).
@@ -537,7 +567,6 @@ func waitCreatingPods(
 
 					exit = false
 					logger.
-						WithError(err).
 						WithField("pod", pod.GetName()).
 						Errorf("error creating pod, recreating in %s (retry %d)", backoff, retryNo[i])
 
@@ -545,6 +574,7 @@ func waitCreatingPods(
 					err = mr.WithSegment(models.SegmentPod, func() error {
 						var err error
 						_, err = clientset.CoreV1().Pods(namespace).Create(&pod)
+						// TODO(lhahn): why is the backoff sleep here?
 						time.Sleep(backoff)
 						return err
 					})
@@ -563,13 +593,13 @@ func waitCreatingPods(
 					break
 				}
 
-				if err != nil && !strings.Contains(err.Error(), "not found") {
-					logger.
-						WithError(err).
-						WithField("pod", pod.GetName()).
-						Error("error getting pod")
-					exit = false
-					break
+				logger.Debugf("pod %s in phase %s\n", createdPod.Name, createdPod.Status.Phase)
+
+				if err := models.ValidatePodWaitingState(createdPod); err != nil {
+					// If one created pod is in an invalid state, we assume we cannot recover from it by waiting,
+					// se we just return an error.
+					logger.WithField("pod", pod.GetName()).WithError(err).Error("invalid pod waiting state")
+					return false, err
 				}
 
 				if createdPod.Status.Phase != v1.PodRunning {
@@ -593,15 +623,10 @@ func waitCreatingPods(
 					}
 				}
 
-				if !models.IsPodReady(createdPod) || !models.IsRoomReadyOrOccupied(logger, redisClient, namespace, createdPod.Name) {
-					logger.WithField("pod", createdPod.Name).Debug("pod not ready yet, waiting...")
-					err = models.ValidatePodWaitingState(createdPod)
+				isPodReady := models.IsPodReady(createdPod)
+				isRoomReadyOrOccupied := models.IsRoomReadyOrOccupied(logger, redisClient, namespace, createdPod.Name)
 
-					if err != nil {
-						logger.WithField("pod", pod.GetName()).WithError(err).Error("invalid pod waiting state")
-						return false, err
-					}
-
+				if !isPodReady || !isRoomReadyOrOccupied {
 					exit = false
 					break
 				}
@@ -719,7 +744,7 @@ func waitForPods(
 	for range pods {
 		retryNo = append(retryNo, 0)
 	}
-	backoffStart := time.Duration(500 * time.Millisecond)
+	backoffStart := 500 * time.Millisecond
 
 	for {
 		exit := true
@@ -772,7 +797,7 @@ func waitForPods(
 									"pending": isPending,
 									"reason":  reason,
 									"message": message,
-								}).Warn("pod is not running yet")
+								}).Info("pod is not running yet")
 								exit = false
 								break
 							}
@@ -795,29 +820,66 @@ func waitForPods(
 	return nil
 }
 
-func pendingPods(
-	clientset kubernetes.Interface,
+// This function verifies whether a scale up should proceed or not.
+// A scale up will be blocked in the following cases:
+// - There are pending pods.
+// - There are pods on states that we consider to be invalid for waiting (see models.ValidatePodWaitingState).
+func shouldScaleUpProceed(
+	logger logrus.FieldLogger,
 	redisClient redisinterfaces.RedisClient,
 	namespace string,
 	mr *models.MixedMetricsReporter,
-) (bool, error) {
+) (stopReason error, redisErr error) {
 	var pods map[string]*models.Pod
 	err := mr.WithSegment(models.SegmentPod, func() error {
 		var err error
 		pods, err = models.GetPodMapFromRedis(redisClient, mr, namespace)
 		return err
 	})
+
 	if err != nil {
-		return false, maestroErrors.NewKubernetesError("error when listing pods", err)
+		// TODO(lhahn): NewKubernetesError seems to be misleading here.
+		return nil, maestroErrors.NewKubernetesError("error when listing pods", err)
 	}
 
+	if pendingPods(pods) {
+		return errors.New("cannot proceed with scale up, since there are pending pods"), nil
+	}
+
+	if err := podsInInvalidWaitingState(logger, redisClient, namespace, pods); err != nil {
+		return fmt.Errorf("invalid pod waiting state: %s", err), nil
+	}
+
+	// Everything is fine, scale up can proceed.
+	return nil, nil
+}
+
+func podsInInvalidWaitingState(
+	logger logrus.FieldLogger,
+	redisClient redisinterfaces.RedisClient,
+	namespace string,
+	pods map[string]*models.Pod,
+) error {
 	for _, pod := range pods {
-		if pod.Status.Phase == v1.PodPending {
-			return true, nil
+		if models.IsPodReady(pod) && models.IsRoomReadyOrOccupied(logger, redisClient, namespace, pod.Name) {
+			continue
+		}
+
+		if err := models.ValidatePodWaitingState(pod); err != nil {
+			logger.WithField("pod", pod.Name).WithError(err).Error("invalid pod waiting state")
+			return err
 		}
 	}
+	return nil
+}
 
-	return false, nil
+func pendingPods(pods map[string]*models.Pod) bool {
+	for _, pod := range pods {
+		if pod.Status.Phase == v1.PodPending {
+			return true
+		}
+	}
+	return false
 }
 
 func getSchedulersAndGlobalPortRanges(
@@ -1140,8 +1202,9 @@ func AcquireLock(
 	defer timeout.Stop()
 
 	l := logger.WithFields(logrus.Fields{
-		"source":    "AcquireLock",
-		"scheduler": schedulerName,
+		"source":        "AcquireLock",
+		"scheduler":     schedulerName,
+		"lockTimeoutMs": lockTimeoutMS,
 	})
 
 	for {
@@ -1154,8 +1217,8 @@ func AcquireLock(
 		)
 		select {
 		case <-timeout.C:
-			l.Warn("timeout while wating for redis lock")
-			return nil, false, errors.New("timeout while wating for redis lock")
+			l.Warn("timeout while waiting for redis lock")
+			return nil, false, errors.New("timeout while waiting for redis lock")
 		case <-ticker.C:
 			if operationManager != nil {
 				canceled, err := operationManager.WasCanceled()
