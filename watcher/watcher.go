@@ -1325,9 +1325,6 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		goroutinePoolSize = 1
 	}
 
-	// TODO, FIXME(lhahn): remove this.
-	timeoutSec = 120
-
 	logger.Infof("replacing pods with %d seconds of timeout", timeoutSec)
 	timeoutErr, _, err := controller.SegmentAndReplacePods(
 		logger,
