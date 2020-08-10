@@ -8,6 +8,8 @@
 package william
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/pg/interfaces"
@@ -100,6 +102,46 @@ func (w *WilliamAuth) Check(token, permission, resource string) error {
 	}
 
 	return errors.NewAccessError("user not authorized", fmt.Errorf(`user not authorized`))
+}
+
+func (w *WilliamAuth) CheckMany(token, permission string, resources []string) ([]bool, error) {
+	permissions := make([]string, len(resources))
+	for _, resource := range resources {
+		fullPermission := fmt.Sprintf("%s::RL::%s::%s::%s", w.iamName, permission, w.region, resource)
+		permissions = append(permissions, fullPermission)
+	}
+
+	jsonBody, err := json.Marshal(permissions)
+	if err != nil {
+		return nil, errors.NewGenericError("error marshaling permissions array", err)
+	}
+
+	fullUrl := fmt.Sprintf("%s/permissions/hasMany", w.url)
+	request, err := http.NewRequest(http.MethodPost, fullUrl, bytes.NewReader(jsonBody))
+	if err != nil {
+		return nil, errors.NewGenericError("error creating request", err)
+	}
+
+	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	response, err := w.client.Do(request)
+	if err != nil {
+		return nil, errors.NewGenericError("error making request on will.iam", err)
+	}
+	defer response.Body.Close()
+
+	status := response.StatusCode
+	if status != http.StatusOK {
+		return nil, errors.NewGenericError("will.iam invalid response error", fmt.Errorf("will.iam response status code (%d) not ok", status))
+	}
+
+	var results []bool
+	err = json.NewDecoder(response.Body).Decode(&results)
+	if err != nil {
+		return nil, errors.NewGenericError("will.iam invalid response error", fmt.Errorf("error decoding response body"))
+	}
+
+	return results, nil
 }
 
 func buildAllPermissions(region string, permissions []Permission, schedulers []models.Scheduler) []IAMPermission {

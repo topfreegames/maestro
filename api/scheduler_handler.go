@@ -327,8 +327,18 @@ func (g *SchedulerListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		"source":    "schedulerHandler",
 		"operation": "list",
 	})
+
 	db := g.App.DBClient.WithContext(r.Context())
-	names, err := controller.ListSchedulersNames(l, mr, db)
+
+	var names []string
+	var err error
+
+	game := r.URL.Query().Get("game")
+	if len(game) > 0 {
+		names, err = controller.ListSchedulersNamesByGame(mr, db, game)
+	} else {
+		names, err = controller.ListSchedulersNames(l, mr, db)
+	}
 	if err != nil {
 		status := http.StatusInternalServerError
 		logger.WithError(err).Error("List scheduler failed.")

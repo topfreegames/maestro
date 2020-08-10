@@ -321,6 +321,20 @@ func ListSchedulersNames(logger logrus.FieldLogger, mr *models.MixedMetricsRepor
 	return names, nil
 }
 
+// ListSchedulersNamesByGame list all scheduler names by game
+func ListSchedulersNamesByGame(mr *models.MixedMetricsReporter, db pginterfaces.DB, game string) ([]string, error) {
+	var names []string
+	err := mr.WithSegment(models.SegmentSelect, func() error {
+		var err error
+		names, err = models.ListSchedulersNamesByGame(db, game)
+		return err
+	})
+	if err != nil {
+		return []string{}, err
+	}
+	return names, nil
+}
+
 // DeleteUnavailableRooms delete rooms that are not available
 func DeleteUnavailableRooms(
 	logger logrus.FieldLogger,

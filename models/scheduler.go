@@ -455,6 +455,20 @@ func (c *Scheduler) SavePodsMetricsUtilizationPipeAndExec(
 	})
 }
 
+// ListSchedulersNamesByGame list all schedulers names by game
+func ListSchedulersNamesByGame(db interfaces.DB, game string) ([]string, error) {
+	var schedulers []Scheduler
+	_, err := db.Query(&schedulers, "SELECT name FROM schedulers WHERE game = ?", game)
+	if err != nil && err.Error() != "pg: no rows in result set" {
+		return []string{}, err
+	}
+	names := make([]string, len(schedulers))
+	for idx, scheduler := range schedulers {
+		names[idx] = scheduler.Name
+	}
+	return names, nil
+}
+
 // ListSchedulersNames list all schedulers names
 func ListSchedulersNames(db interfaces.DB) ([]string, error) {
 	var schedulers []Scheduler
