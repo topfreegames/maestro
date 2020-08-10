@@ -86,7 +86,7 @@ func CheckWilliamPermission(
 		return errors.NewGenericError("error resolving permission", err)
 	}
 
-	err = w.Check(token, permission, resource)
+	err = w.Check(logger, token, permission, resource)
 	if err != nil {
 		logger.WithError(err).Error("error checking permission")
 		return err

@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
@@ -75,12 +76,14 @@ func (w *WilliamAuth) Permissions(db interfaces.DB, prefix string) ([]IAMPermiss
 	return iamPermissions, nil
 }
 
-func (w *WilliamAuth) Check(token, permission, resource string) error {
+func (w *WilliamAuth) Check(logger logrus.FieldLogger, token, permission, resource string) error {
 	fullPermission := fmt.Sprintf("%s::RL::%s::%s", w.iamName, permission, w.region)
 	if len(resource) > 0 {
 		fullPermission = fmt.Sprintf("%s::%s", fullPermission, resource)
 	}
 	fullUrl := fmt.Sprintf("%s/permissions/has?permission=%s", w.url, url.QueryEscape(fullPermission))
+
+	logger.Debugf(`Checking permission "%s" on will.iam with url "%s"`, fullPermission, w.url)
 	request, err := http.NewRequest(http.MethodGet, fullUrl, nil)
 	if err != nil {
 		return errors.NewGenericError(fmt.Sprintf(`error creating request for permision "%s"`, fullPermission), err)
@@ -94,6 +97,9 @@ func (w *WilliamAuth) Check(token, permission, resource string) error {
 	}
 	defer response.Body.Close()
 	status := response.StatusCode
+
+	logger.Debug(`Response for request "%s" with status code %d"`, fullUrl, status)
+
 	if status == http.StatusOK {
 		return nil
 	}
