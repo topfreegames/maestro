@@ -223,7 +223,7 @@ func ForwardEventToForwarders(
 	event string,
 	infos map[string]interface{},
 	logger logrus.FieldLogger,
-) (*Response, error, error) {
+) (resp *Response, warning error, err error) {
 	logger.WithFields(logrus.Fields{
 		"forwarders": len(forwarders),
 		"infos":      infos,
@@ -257,7 +257,7 @@ func ForwardEventToForwarders(
 		}
 	}
 
-	resp := &Response{
+	resp = &Response{
 		Code:    respCode,
 		Message: strings.Join(respMessage, ";"),
 	}
