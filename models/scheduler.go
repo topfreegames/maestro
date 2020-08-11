@@ -117,8 +117,9 @@ type AutoScaling struct {
 
 // Forwarder has the configuration for the event forwarders
 type Forwarder struct {
-	Enabled  bool                   `yaml:"enabled" json:"enabled"`
-	Metadata map[string]interface{} `yaml:"metadata" json:"metadata"`
+	Enabled         bool                   `yaml:"enabled" json:"enabled"`
+	ForwardResponse bool                   `yaml:"forwardResponse" json:"forwardResponse"`
+	Metadata        map[string]interface{} `yaml:"metadata" json:"metadata"`
 }
 
 // Container represents a container inside a pod

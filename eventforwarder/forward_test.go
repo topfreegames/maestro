@@ -258,6 +258,146 @@ var _ = Describe("Forward", func() {
 			Expect(err.Error()).To(Equal(errMsg))
 		})
 
+		It("should forward room event but not return its response", func() {
+			yaml := `name: scheduler
+game: game
+forwarders:
+  mockplugin:
+    mockfwd:
+      enabled: true
+      forwardResponse: false
+`
+			mt.MockLoadScheduler(schedulerName, mockDB).
+				Do(func(scheduler *models.Scheduler, _ string, _ string) {
+					*scheduler = *models.NewScheduler(schedulerName, gameName, yaml)
+				})
+			_, err := cache.LoadScheduler(mockDB, schedulerName, false)
+			Expect(err).NotTo(HaveOccurred())
+
+			ctx := context.Background()
+			mockEventForwarder.EXPECT().Forward(
+				ctx,
+				models.StatusReady,
+				map[string]interface{}{
+					"host":   nodeAddress,
+					"port":   hostPort,
+					"roomId": roomName,
+					"game":   gameName,
+					"metadata": map[string]interface{}{
+						"ipv6Label": ipv6Label,
+						"ports":     fmt.Sprintf(`[{"name":"port","port":%d,"protocol":""}]`, hostPort),
+					},
+				},
+				metadata,
+			).Return(int32(200), "success", nil)
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]interface{}{
+				reportersConstants.TagGame:      gameName,
+				reportersConstants.TagScheduler: schedulerName,
+				reportersConstants.TagHostname:  Hostname(),
+				reportersConstants.TagRoute:     RouteRoomEvent,
+				reportersConstants.TagStatus:    "success",
+			})
+
+			mockReporter.EXPECT().Report(reportersConstants.EventNodeIpv6Status, map[string]interface{}{
+				reportersConstants.TagNodeHost: nodeAddress,
+				reportersConstants.TagStatus:   "success",
+			})
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
+
+			response, err := ForwardRoomEvent(
+				ctx,
+				mockForwarders,
+				mockRedisClient,
+				mockDB,
+				clientset,
+				mmr,
+				room,
+				models.StatusReady,
+				"",
+				nil,
+				cache,
+				logger,
+				roomAddrGetter,
+			)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response.Code).To(Equal(0))
+			Expect(response.Message).To(Equal(""))
+		})
+
+		It("should return as success but report error if forward fails", func() {
+			yaml := `name: scheduler
+game: game
+forwarders:
+  mockplugin:
+    mockfwd:
+      enabled: true
+      forwardResponse: false
+`
+			mt.MockLoadScheduler(schedulerName, mockDB).
+				Do(func(scheduler *models.Scheduler, _ string, _ string) {
+					*scheduler = *models.NewScheduler(schedulerName, gameName, yaml)
+				})
+			_, err := cache.LoadScheduler(mockDB, schedulerName, false)
+			Expect(err).NotTo(HaveOccurred())
+
+			errMsg := "event forward failed"
+			ctx := context.Background()
+			noIpv6roomAddrGetter := models.NewRoomAddressesFromHostPort(logger, "", false, 0)
+			mockEventForwarder.EXPECT().Forward(
+				ctx,
+				models.StatusReady,
+				map[string]interface{}{
+					"host":   nodeAddress,
+					"port":   hostPort,
+					"roomId": roomName,
+					"game":   gameName,
+					"metadata": map[string]interface{}{
+						"ipv6Label": "",
+						"ports":     fmt.Sprintf(`[{"name":"port","port":%d,"protocol":""}]`, hostPort),
+					},
+				},
+				metadata,
+			).Return(int32(0), "", errors.New(errMsg))
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCStatus, map[string]interface{}{
+				reportersConstants.TagGame:      gameName,
+				reportersConstants.TagScheduler: schedulerName,
+				reportersConstants.TagHostname:  Hostname(),
+				reportersConstants.TagRoute:     RouteRoomEvent,
+				reportersConstants.TagStatus:    "failed",
+				reportersConstants.TagReason:    errMsg,
+			})
+
+			mockReporter.EXPECT().Report(reportersConstants.EventNodeIpv6Status, map[string]interface{}{
+				reportersConstants.TagNodeHost: nodeAddress,
+				reportersConstants.TagStatus:   "failed",
+			})
+
+			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
+
+			response, err := ForwardRoomEvent(
+				ctx,
+				mockForwarders,
+				mockRedisClient,
+				mockDB,
+				clientset,
+				mmr,
+				room,
+				models.StatusReady,
+				"",
+				nil,
+				cache,
+				logger,
+				noIpv6roomAddrGetter,
+			)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response).To(BeNil())
+		})
+
 		It("should not report if scheduler has no forwarders", func() {
 			yaml := `name: scheduler
 game: game

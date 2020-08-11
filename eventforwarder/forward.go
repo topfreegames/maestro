@@ -25,8 +25,9 @@ type Response struct {
 // Forwarder is the struct that defines a forwarder with its EventForwarder as configured
 // in maestro and the metadata configured for each scheduler
 type Forwarder struct {
-	Func     EventForwarder
-	Metadata map[string]interface{}
+	Func           EventForwarder
+	ReturnResponse bool
+	Metadata       map[string]interface{}
 }
 
 func getEnabledForwarders(
@@ -40,7 +41,7 @@ func getEnabledForwarders(
 				if fwd.Enabled {
 					enabledForwarders = append(
 						enabledForwarders,
-						&Forwarder{configuredFwdInfo.Forwarder, fwd.Metadata},
+						&Forwarder{configuredFwdInfo.Forwarder, fwd.ForwardResponse, fwd.Metadata},
 					)
 				}
 			}
@@ -66,6 +67,7 @@ func ForwardRoomEvent(
 	addrGetter models.AddrGetter,
 ) (res *Response, err error) {
 	var eventWasForwarded bool
+	var warning error
 	startTime := time.Now()
 	defer func() {
 		reportRPCStatus(
@@ -76,6 +78,7 @@ func ForwardRoomEvent(
 			logger,
 			err,
 			time.Now().Sub(startTime),
+			warning,
 		)
 	}()
 
@@ -137,7 +140,8 @@ func ForwardRoomEvent(
 				}
 				eventWasForwarded = true
 
-				return ForwardEventToForwarders(ctx, enabledForwarders, status, infos, l)
+				res, warning, err = ForwardEventToForwarders(ctx, enabledForwarders, status, infos, l)
+				return res, err
 			}
 		}
 	}
@@ -160,6 +164,7 @@ func ForwardPlayerEvent(
 	logger logrus.FieldLogger,
 ) (resp *Response, err error) {
 	var eventWasForwarded bool
+	var warning error
 	startTime := time.Now()
 	defer func() {
 		reportRPCStatus(
@@ -170,6 +175,7 @@ func ForwardPlayerEvent(
 			logger,
 			err,
 			time.Now().Sub(startTime),
+			warning,
 		)
 	}()
 
@@ -196,7 +202,8 @@ func ForwardPlayerEvent(
 			}).Debug("got enabled forwarders")
 			if len(enabledForwarders) > 0 {
 				eventWasForwarded = true
-				return ForwardEventToForwarders(ctx, enabledForwarders, event, metadata, l)
+				resp, warning, err = ForwardEventToForwarders(ctx, enabledForwarders, event, metadata, l)
+				return resp, err
 			}
 		}
 	}
@@ -204,14 +211,19 @@ func ForwardPlayerEvent(
 	return nil, nil
 }
 
-// ForwardEventToForwarders forwards
+// ForwardEventToForwarders forwards the event, in case wheere `ReturnMessage`
+// the forwarder result won't be used. It returns the response which consists in
+// the last forwarder response, an error representing a warning (this happen
+// when a forwarder that has `ReturnMessage = false` returns an error) and an
+// error representing a failure on a `Forward` call.
+// TODO: check if a failure on one forwarder should affect all the forwarders
 func ForwardEventToForwarders(
 	ctx context.Context,
 	forwarders []*Forwarder,
 	event string,
 	infos map[string]interface{},
 	logger logrus.FieldLogger,
-) (*Response, error) {
+) (*Response, error, error) {
 	logger.WithFields(logrus.Fields{
 		"forwarders": len(forwarders),
 		"infos":      infos,
@@ -221,8 +233,18 @@ func ForwardEventToForwarders(
 	respMessage := []string{}
 	for _, f := range forwarders {
 		code, message, err := f.Func.Forward(ctx, event, infos, f.Metadata)
+		if !f.ReturnResponse {
+			if err != nil {
+				// if there is any error on a forward that does not return the
+				// response we set it as a "warning"
+				return nil, err, nil
+			}
+
+			continue
+		}
+
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		// return the highest code received
 		// if a forwarder returns 200 and another 500 we should return 500 to indicate the error
@@ -234,15 +256,17 @@ func ForwardEventToForwarders(
 			respMessage = append(respMessage, message)
 		}
 	}
+
 	resp := &Response{
 		Code:    respCode,
 		Message: strings.Join(respMessage, ";"),
 	}
-	return resp, nil
+	return resp, nil, nil
 }
 
-// reportRPCStatus sends to StatsD success true if err is null
-// and false otherwise
+// reportRPCStatus sends RPC status to StatsD. In case where
+// `eventForwarderErr` or `eventForwarderWarning` are not nil we send it as
+// `failure`, otherwise it is sent as `success`.
 func reportRPCStatus(
 	eventWasForwarded bool,
 	schedulerName, forwardRoute string,
@@ -251,6 +275,7 @@ func reportRPCStatus(
 	logger logrus.FieldLogger,
 	eventForwarderErr error,
 	responseTime time.Duration,
+	eventForwarderWarning error,
 ) {
 	if !reporters.HasReporters() {
 		return
@@ -284,6 +309,11 @@ func reportRPCStatus(
 	if eventForwarderErr != nil {
 		status[reportersConstants.TagStatus] = "failed"
 		status[reportersConstants.TagReason] = eventForwarderErr.Error()
+	}
+
+	if eventForwarderWarning != nil {
+		status[reportersConstants.TagStatus] = "failed"
+		status[reportersConstants.TagReason] = eventForwarderWarning.Error()
 	}
 
 	reporterErr := reporters.Report(reportersConstants.EventRPCStatus, status)

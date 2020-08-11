@@ -7,6 +7,44 @@ import (
 )
 
 var _ = Describe("ConfigYaml", func() {
+	Describe("NewCofigYaml", func() {
+		It("should define default value for forwarder", func() {
+			configYaml, _ := NewConfigYAML(`name: scheduler-name
+game: game
+image: nginx:alpine
+ports:
+- containerPort: 8080
+  protocol: TCP
+  name: tcp
+limits:
+  cpu: 100m
+  memory: 100Mi
+requests:
+  cpu: 50m
+  memory: 50Mi
+cmd: ["/bin/bash", "-c", "./start.sh"]
+env:
+- name: ENV_1
+  value: VALUE_1
+containers: []
+forwarders:
+  grpc:
+    sampleGRPC:
+      enabled: true
+      metadata: {}
+    anotherGRPC:
+      enabled: true
+      metadata: {}
+`)
+
+			for _, pluginType := range configYaml.Forwarders {
+				for _, plugin := range pluginType {
+					Expect(plugin.ForwardResponse).To(Equal(DefaultForwarderForwardResponse))
+				}
+			}
+		})
+	})
+
 	Describe("ToYaml", func() {
 		It("should return yaml for version v1", func() {
 			configYaml, _ := NewConfigYAML(`name: scheduler-name
