@@ -1145,7 +1145,10 @@ func SetRoomStatus(
 ) error {
 	log := logger.WithFields(logrus.Fields{
 		"operation": "SetRoomStatus",
+		"status":    roomPayload.Status,
 	})
+
+	log.Debug("Updating room status")
 
 	cachedScheduler, err := schedulerCache.LoadScheduler(db, room.SchedulerName, true)
 	if err != nil {
@@ -1158,7 +1161,7 @@ func SetRoomStatus(
 		return err
 	}
 
-	if roomPayload.Status != models.StatusOccupied {
+	if roomPayload.Status != models.StatusOccupied || !cachedScheduler.ConfigYAML.AutoScaling.EnablePanicScale {
 		return nil
 	}
 

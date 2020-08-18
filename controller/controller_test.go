@@ -55,6 +55,7 @@ requests:
   cpu: "2"
 shutdownTimeout: 20
 autoscaling:
+  enablePanicScale: true
   min: 3
   up:
     delta: 2
@@ -136,6 +137,47 @@ containers:
   cmd:
     - "./helper"
 `
+	yamlWithoutPanic = `
+name: controller-name
+game: controller
+image: controller/controller:v123
+affinity: maestro-dedicated
+toleration: maestro
+ports:
+  - containerPort: 1234
+    protocol: UDP
+    name: port1
+  - containerPort: 7654
+    protocol: TCP
+    name: port2
+limits:
+  memory: "66Mi"
+  cpu: "2"
+requests:
+  memory: "66Mi"
+  cpu: "2"
+shutdownTimeout: 20
+autoscaling:
+  min: 3
+  up:
+    delta: 2
+    trigger:
+      usage: 60
+      time: 100
+    cooldown: 200
+  down:
+    delta: 1
+    trigger:
+      usage: 30
+      time: 500
+    cooldown: 500
+env:
+  - name: MY_ENV_VAR
+    value: myvalue
+cmd:
+  - "./room"
+`
+
 	yamlWithLimit = `
 name: controller-name
 game: controller
@@ -5923,6 +5965,48 @@ containers:
 			"scheduler:controller-name:status:terminated",
 		}
 		room := models.NewRoom(roomName, schedulerName)
+
+		It("should not scale up if panic lock is disabled", func() {
+			var configYaml models.ConfigYAML
+			err := yaml.Unmarshal([]byte(yamlWithoutPanic), &configYaml)
+			Expect(err).ToNot(HaveOccurred())
+
+			status := "ready"
+
+			mt.MockLoadScheduler(configYaml.Name, mockDb).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, yaml1)
+				})
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().HMSet(rKey, map[string]interface{}{
+				"lastPing": time.Now().Unix(),
+				"status":   status,
+			})
+			mockPipeline.EXPECT().ZAdd(pKey, gomock.Any())
+			mockPipeline.EXPECT().ZRem(lKey, roomName)
+			mockPipeline.EXPECT().SAdd(sKey, rKey)
+			for _, key := range allStatusKeys {
+				if !strings.Contains(key, status) {
+					mockPipeline.EXPECT().SRem(key, rKey)
+				}
+			}
+			mockPipeline.EXPECT().Exec()
+
+			err = controller.SetRoomStatus(
+				logger,
+				roomManager,
+				mockRedisClient,
+				mockDb,
+				mr,
+				clientset,
+				&models.RoomStatusPayload{Status: status},
+				config,
+				room,
+				schedulerCache,
+			)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
 		It("should not scale up if has enough ready rooms", func() {
 			status := "ready"
