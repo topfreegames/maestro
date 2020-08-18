@@ -109,10 +109,11 @@ type ScalingPolicy struct {
 
 // AutoScaling has the configuration for the GRU's auto scaling
 type AutoScaling struct {
-	Min  int            `yaml:"min" json:"min" valid:"int64"`
-	Max  int            `yaml:"max" json:"max" valid:"int64"`
-	Up   *ScalingPolicy `yaml:"up" json:"up" valid:"int64"`
-	Down *ScalingPolicy `yaml:"down" json:"down" valid:"int64"`
+	Min              int            `yaml:"min" json:"min" valid:"int64"`
+	Max              int            `yaml:"max" json:"max" valid:"int64"`
+	Up               *ScalingPolicy `yaml:"up" json:"up" valid:"int64"`
+	Down             *ScalingPolicy `yaml:"down" json:"down" valid:"int64"`
+	EnablePanicScale bool           `yaml:"enablePanicScale" json:"enablePanicScale" valid:"bool"`
 }
 
 // Forwarder has the configuration for the event forwarders

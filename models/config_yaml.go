@@ -154,8 +154,9 @@ func (c *ConfigYAML) EnsureDefaultValues() {
 
 	if c.AutoScaling == nil {
 		c.AutoScaling = &AutoScaling{
-			Up:   defaultScalingPolicy,
-			Down: defaultScalingPolicy,
+			Up:               defaultScalingPolicy,
+			Down:             defaultScalingPolicy,
+			EnablePanicScale: false,
 		}
 	}
 
