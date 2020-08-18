@@ -61,6 +61,11 @@ It is the period to wait before running another scaling if it is needed. Cooldow
 ## Min and Max
 These are hard caps for the total number of rooms (ready, occupied and creating) that can exist simultaneously. If Max is set to 0, it means that the scheduler can scale up indefinitely.
 
+## Panic Scale
+A **panic scale** happens when a new room is set to occupied and the percentage of occupied rooms is above the limit so it triggers a scale up.
+
+This behaviour is deprecated and disabled by default but can be enabled with `enablePanicScale` flag.
+
 ## Requests
 Containers resources requests. It is required to define these values in order to use resource triggers(cpu and memory)
 
