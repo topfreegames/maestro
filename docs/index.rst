@@ -19,6 +19,7 @@ Contents:
    cli
    testing
    autoscaling
+   forwarders
 
 Indices and tables
 ==================

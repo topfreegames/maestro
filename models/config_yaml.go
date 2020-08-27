@@ -9,6 +9,10 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// DefaultForwarderForwardResponse is the default value set to `Forwarder`
+// `ForwardResponse` property.
+const DefaultForwarderForwardResponse = true
+
 // ConfigYAMLv1 is the ConfigYAML before refactor to n containers per pod
 type ConfigYAMLv1 struct {
 	Name            string                           `yaml:"name"`
@@ -297,4 +301,23 @@ func (c *ConfigYAML) HasPorts() bool {
 		}
 	}
 	return false
+}
+
+// UnmarshalYAML implements a custom way to unmarshal the `Forward` type. This
+// is done in order to set default values to the type.
+// TODO: make a pattern to set default values for the scheduler config, instead
+//       of having this or the `EnsureDefaultValues`.
+func (f *Forwarder) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// We define a "temporary" type in order to avoid creating a recursion on
+	// `Forward` unmarshal.
+	type rawForwarder Forwarder
+	raw := rawForwarder{ForwardResponse: DefaultForwarderForwardResponse}
+	err := unmarshal(&raw)
+	if err != nil {
+		return err
+	}
+
+	*f = Forwarder(raw)
+
+	return nil
 }
