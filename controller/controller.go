@@ -392,7 +392,7 @@ func ScaleUp(
 
 	shouldNotProceedErr, err := shouldScaleUpProceed(l, redisClient, scheduler.Name, mr)
 	if err != nil {
-		return fmt.Errorf("failed to check whether scale up should proceed: %s", err)
+		return fmt.Errorf("failed to check whether scale up should proceed: %w", err)
 	}
 
 	if shouldNotProceedErr != nil {
@@ -1129,7 +1129,7 @@ func ScaleScheduler(
 			)
 		}
 	}
-	return nil
+	return err
 }
 
 // SetRoomStatus updates room status and scales up if necessary

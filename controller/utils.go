@@ -37,6 +37,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var PendingPodsError = errors.New("there still pending pods")
+
 // SegmentAndReplacePods acts when a scheduler rolling update is needed.
 // It segment the list of current pods in chunks of size maxSurge and replace them with new ones
 func SegmentAndReplacePods(
@@ -843,11 +845,11 @@ func shouldScaleUpProceed(
 	}
 
 	if pendingPods(pods) {
-		return errors.New("cannot proceed with scale up, since there are pending pods"), nil
+		return PendingPodsError, nil
 	}
 
 	if err := podsInInvalidWaitingState(logger, redisClient, namespace, pods); err != nil {
-		return fmt.Errorf("invalid pod waiting state: %s", err), nil
+		return fmt.Errorf("invalid pod waiting state: %w", err), nil
 	}
 
 	// Everything is fine, scale up can proceed.

@@ -1552,7 +1552,7 @@ cmd:
 
 			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cannot proceed with scale up, since there are pending pods"))
+			Expect(err.Error()).To(ContainSubstring("there still pending pods"))
 		})
 
 		It("should scale up to max if scaling amount is higher than max", func() {
@@ -5701,6 +5701,50 @@ containers:
 			pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pods.Items).To(HaveLen(int(amountUp)))
+		})
+
+		It("should return error if scaleup fails with iamounUp positive", func() {
+			var amountUp, amountDown, replicas uint = 4, 0, 0
+
+			mt.MockLoadScheduler(configYaml1.Name, mockDb).
+				Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
+				})
+
+			pods := make(map[string]string, int(amountUp))
+			for i := 0; i < int(amountUp); i++ {
+				pod := &models.Pod{}
+				pod.Name = fmt.Sprintf("room-%d", i)
+				pod.Status.Phase = v1.PodRunning
+				if i == 0 {
+					pod.Status.Phase = v1.PodPending
+				}
+				jsonBytes, err := pod.MarshalToRedis()
+				Expect(err).NotTo(HaveOccurred())
+				pods[pod.Name] = string(jsonBytes)
+			}
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().
+				HGetAll(models.GetPodMapRedisKey(configYaml1.Name)).
+				Return(goredis.NewStringStringMapResult(pods, nil))
+			mockPipeline.EXPECT().Exec()
+
+
+			err = controller.ScaleScheduler(
+				context.Background(),
+				logger,
+				roomManager,
+				mr,
+				mockDb,
+				redisClient,
+				clientset,
+				config,
+				60, 60,
+				amountUp, amountDown, replicas,
+				configYaml1.Name,
+			)
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should scaledown if amountDown is positive", func() {
