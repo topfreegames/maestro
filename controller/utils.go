@@ -256,7 +256,9 @@ func replacePodWorker(
 
 			logger.Infof("pods remaining to replace: %d", len(pods))
 
-			return nil
+			if len(pods) == 0 {
+				return nil
+			}
 		case <-ctx.Done():
 			return nil
 		}
