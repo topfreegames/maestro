@@ -9,11 +9,9 @@ package watcher
 
 import (
 	"context"
-	"errors"
 	e "errors"
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 	"os/signal"
 	"strconv"
@@ -23,26 +21,29 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/clock"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis"
-	"github.com/topfreegames/maestro/constants"
-	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/watch"
-
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/autoscaler"
+	"github.com/topfreegames/maestro/constants"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
+	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	v1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	informersv1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
+	listersv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
@@ -91,6 +92,9 @@ type Watcher struct {
 	EventForwarders           []*eventforwarder.Info
 	ScaleInfo                 *models.ScaleInfo
 	AutoScaler                *autoscaler.AutoScaler
+	Informer                  cache.SharedIndexInformer
+	Lister                    listersv1.PodNamespaceLister
+	Queue                     workqueue.RateLimitingInterface
 }
 
 type scaling struct {
@@ -138,6 +142,7 @@ func NewWatcher(
 		OccupiedTimeout:         occupiedTimeout,
 		EventForwarders:         eventForwarders,
 	}
+
 	w.loadConfigurationDefaults()
 	if err := w.configure(); err != nil {
 		logger.WithError(err).Error("error configuring watcher")
@@ -188,6 +193,7 @@ func (w *Watcher) configure() error {
 	w.configureTimeout(configYaml)
 	w.configureAutoScale(configYaml)
 	w.configureEnvironment()
+	w.configureKubeWatch()
 
 	w.MetricsReporter.AddReporter(&models.DogStatsdMetricsReporter{
 		Scheduler: w.SchedulerName,
@@ -244,7 +250,8 @@ func (w *Watcher) Start() {
 
 	go w.reportRoomsStatusesRoutine()
 	stopKubeWatch := make(chan struct{})
-	go func() { _ = w.configureKubeWatch(stopKubeWatch)}()
+	go w.Informer.Run(stopKubeWatch)
+	go w.watchPods(stopKubeWatch)
 
 	for w.Run == true {
 		l = w.Logger.WithFields(logrus.Fields{
@@ -1513,94 +1520,128 @@ func (w *Watcher) checkIfUsageIsAboveLimit(
 	return false
 }
 
-func (w *Watcher) configureWatcher() (watch.Interface, error) {
-	timeout := int64(5.0 * 60 * (rand.Float64() + 1.0))
-	return w.KubernetesClient.CoreV1().Pods(w.SchedulerName).
-		Watch(metav1.ListOptions{
-			Watch:          true,
-			TimeoutSeconds: &timeout,
-			FieldSelector:  fields.Everything().String(),
-		})
-}
-
-func (w *Watcher) watchPods(watcher watch.Interface, stopCh <-chan struct{}) error {
-	defer watcher.Stop()
-
-loop:
-	for {
-		select {
-		case <-stopCh:
-			return errors.New("stop channel")
-
-		case event, ok := <-watcher.ResultChan():
-			if !ok {
-				break loop
-			}
-
-			if event.Type == watch.Error {
-				return nil
-			}
-
-			switch event.Type {
-			case watch.Added, watch.Modified:
-				logger := w.Logger.WithFields(logrus.Fields{
-					"operation": "watcher.kubeWatch.CreateOrUpdatePod",
-				})
-
-				// logger.Debug("new pod detected: ", event.Type)
-				if kubePod, ok := event.Object.(*v1.Pod); ok {
-					// create Pod from v1.Pod
-					pod := &models.Pod{
-						Name:          kubePod.GetName(),
-						Version:       kubePod.GetLabels()["version"],
-						NodeName:      kubePod.Spec.NodeName,
-						Status:        kubePod.Status,
-						Spec:          kubePod.Spec,
-						IsTerminating: models.IsPodTerminating(kubePod),
-					}
-
-					err := models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
-					if err != nil {
-						logger.WithError(err).Error("failed to add pod to redis podMap key")
-					}
-				} else {
-					logger.Error("obj received is not of type *v1.Pod")
-				}
-			case watch.Deleted:
-				logger := w.Logger.WithFields(logrus.Fields{
-					"operation": "watcher.kubeWatch.DeletePod",
-				})
-
-				// logger.Debug("new pod removed")
-				if kubePod, ok := event.Object.(*v1.Pod); ok {
-					// Remove pod from redis
-					err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, kubePod.GetName(), w.SchedulerName)
-					if err != nil {
-						logger.WithError(err).Errorf("failed to remove pod %s from redis", kubePod.GetName())
-					}
-					room := models.NewRoom(kubePod.GetName(), w.SchedulerName)
-					err = room.ClearAll(w.RedisClient.Client, w.MetricsReporter)
-					if err != nil {
-						logger.WithError(err).Errorf("failed to clearAll %s from redis", kubePod.GetName())
-					}
-				} else {
-					logger.Error("obj received is not of type *v1.Pod or cache.DeletedFinalStateUnknown")
-				}
-			}
-		}
+func (w *Watcher) podEventHandler(key string) error {
+	_, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		return err
 	}
+
+	kubePod, err := w.Lister.Get(name)
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			return err
+		}
+
+		// Pod does not exists on informer cache so it we need to remove it from redis
+
+		logger := w.Logger.WithFields(logrus.Fields{
+			"operation": "watcher.kubeWatch.DeletePod",
+		})
+
+		err := models.RemoveFromPodMap(w.RedisClient.Client, w.MetricsReporter, name, w.SchedulerName)
+		if err != nil {
+			logger.WithError(err).Errorf("failed to remove pod %s from redis", name)
+			return err
+		}
+
+		room := models.NewRoom(name, w.SchedulerName)
+		err = room.ClearAll(w.RedisClient.Client, w.MetricsReporter)
+		if err != nil {
+			logger.WithError(err).Errorf("failed to clearAll %s from redis", name)
+			return err
+		}
+
+		return nil
+	}
+
+	// Update pod in redis when it exists in informer cache
+
+	logger := w.Logger.WithFields(logrus.Fields{
+		"operation": "watcher.kubeWatch.CreateOrUpdatePod",
+	})
+
+	pod := &models.Pod{
+		Name:          kubePod.GetName(),
+		Version:       kubePod.GetLabels()["version"],
+		NodeName:      kubePod.Spec.NodeName,
+		Status:        kubePod.Status,
+		Spec:          kubePod.Spec,
+		IsTerminating: models.IsPodTerminating(kubePod),
+	}
+
+	err = models.AddToPodMap(w.RedisClient.Client, w.MetricsReporter, pod, w.SchedulerName)
+	if err != nil {
+		logger.WithError(err).Error("failed to add pod to redis podMap key")
+		return err
+	}
+
 	return nil
 }
 
-func (w *Watcher) configureKubeWatch(stopCh <-chan struct{}) error {
+func (w *Watcher) processItem(obj interface{}) {
+	// Always need to mark obj as done in queue
+	defer w.Queue.Done(obj)
+
+	key, ok := obj.(string)
+	if !ok {
+		// Object is not a string so we skip, shouldn't happen
+		w.Queue.Forget(obj)
+		return
+	}
+
+	err := w.podEventHandler(key)
+	if err != nil {
+		// An error happened so we requeue it so it can processed again later
+		w.Queue.AddRateLimited(key)
+		return
+	}
+
+	w.Queue.Forget(obj)
+}
+
+func (w *Watcher) processWork() {
 	for {
-		watcher, err := w.configureWatcher()
-		if err != nil {
-			return err
+		obj, shutdown := w.Queue.Get()
+		if shutdown {
+			return
 		}
 
-		if err := w.watchPods(watcher, stopCh); err != nil {
-			return err
-		}
+		w.processItem(obj)
 	}
+}
+
+func (w *Watcher) watchPods(stopCh <-chan struct{}) {
+	defer w.Queue.ShutDown()
+
+	if !cache.WaitForCacheSync(stopCh, w.Informer.HasSynced) {
+		return
+	}
+
+	wait.Until(w.processWork, time.Second, stopCh)
+}
+
+func (w *Watcher) configureKubeWatch() {
+	w.Informer = informersv1.NewPodInformer(w.KubernetesClient, w.SchedulerName, 30*time.Second, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	w.Lister = listersv1.NewPodLister(w.Informer.GetIndexer()).Pods(w.SchedulerName)
+	w.Queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), w.SchedulerName)
+	w.Informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			key, err := cache.MetaNamespaceKeyFunc(obj)
+			if err == nil {
+				w.Queue.Add(key)
+			}
+		},
+		UpdateFunc: func(old interface{}, new interface{}) {
+			key, err := cache.MetaNamespaceKeyFunc(new)
+			if err == nil {
+				w.Queue.Add(key)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+			if err == nil {
+				w.Queue.Add(key)
+			}
+		},
+	})
 }
