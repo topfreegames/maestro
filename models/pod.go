@@ -10,6 +10,7 @@ package models
 import (
 	"bytes"
 	"encoding/json"
+	goerrors "errors"
 	"fmt"
 	"strings"
 	"text/template"
@@ -364,7 +365,6 @@ func (p *Pod) configureHostPorts(
 
 // MarshalToRedis stringfy pod object with the information to save on podMap redis key
 func (p *Pod) MarshalToRedis() ([]byte, error) {
-
 	return json.Marshal(map[string]interface{}{
 		"name":          p.Name,
 		"status":        p.Status,
@@ -404,6 +404,7 @@ func IsPodReady(pod *Pod) bool {
 		return false
 	}
 
+	// TODO(lhahn): is this correct? it only checks one conditions even though there is an array.
 	for _, condition := range status.Conditions {
 		if condition.Type == v1.PodReady {
 			return condition.Status == v1.ConditionTrue
@@ -417,20 +418,21 @@ func IsPodTerminating(pod *v1.Pod) bool {
 	return pod.ObjectMeta.DeletionTimestamp != nil
 }
 
-// ValidatePodWaitingState returns nil if pod waiting reson is valid and error otherwise
+// ValidatePodWaitingState returns nil if pod waiting reason is valid and error otherwise
 // Errors checked:
 // - ErrImageNeverPull
 // - ErrImagePullBackOff
 // - ErrInvalidImageName
-func ValidatePodWaitingState(pod *Pod) error {
+// - ErrImagePull
+var InvalidPodWaitingStateErr = goerrors.New("invalid pod waiting state")
 
+func ValidatePodWaitingState(pod *Pod) error {
 	for _, invalidState := range InvalidPodWaitingStates {
 		status := &pod.Status
 		if checkWaitingReason(status, invalidState) {
-			return fmt.Errorf("one or more containers in pod are in %s", invalidState)
+			return fmt.Errorf("%s: one or more containers in pod are in %s", InvalidPodWaitingStateErr, invalidState)
 		}
 	}
-
 	return nil
 }
 

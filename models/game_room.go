@@ -32,7 +32,7 @@ func (g *GameRoom) Create(
 	clientset kubernetes.Interface,
 	configYAML *ConfigYAML,
 	scheduler *Scheduler,
-) (*v1.Pod, error) {
+) (*v1.Pod, *Room, error) {
 	return createPod(
 		logger,
 		mr,
@@ -77,8 +77,8 @@ func (g *GameRoomWithService) Create(
 	clientset kubernetes.Interface,
 	configYAML *ConfigYAML,
 	scheduler *Scheduler,
-) (*v1.Pod, error) {
-	pod, err := createPod(
+) (*v1.Pod, *Room, error) {
+	pod, room, err := createPod(
 		logger,
 		mr,
 		redisClient,
@@ -89,13 +89,13 @@ func (g *GameRoomWithService) Create(
 		constants.DevEnvironment,
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	svc := NewService(pod.Name, configYAML)
 	_, err = svc.Create(clientset)
 	if err != nil {
-		deletePod(
+		_ = deletePod(
 			logger,
 			mr,
 			clientset,
@@ -104,10 +104,10 @@ func (g *GameRoomWithService) Create(
 			pod.Name,
 			"failed_to_create_service_for_pod",
 		)
-		return nil, err
+		return nil, nil, err
 	}
 
-	return pod, nil
+	return pod, room, nil
 }
 
 // Delete removes a pod and the service that exposes it
@@ -144,7 +144,7 @@ func createPod(
 	configYAML *ConfigYAML,
 	scheduler *Scheduler,
 	environment string,
-) (*v1.Pod, error) {
+) (*v1.Pod, *Room, error) {
 	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
 	name := fmt.Sprintf("%s-%s", configYAML.Name, randID)
 	room := NewRoom(name, configYAML.Name)
@@ -153,7 +153,7 @@ func createPod(
 	})
 	if err != nil {
 		// We don't need to cleanup here, since a failure can only happen if redis fails as well.
-		return nil, err
+		return nil, nil, err
 	}
 	namesEnvVars := []*EnvVar{
 		{
@@ -187,7 +187,7 @@ func createPod(
 	if err != nil {
 		// NOTE: We will get an error here if we cannot access redis. It is therefore not necessary to call room.ClearAll here,
 		// since it is likely that Redis is off.
-		return nil, err
+		return nil, nil, err
 	}
 
 	if configYAML.NodeAffinity != "" {
@@ -213,7 +213,7 @@ func createPod(
 				"status": room.Status,
 			}).Error("failed to clear room")
 		}
-		return nil, err
+		return nil, nil, err
 	}
 	nodeName := kubePod.Spec.NodeName
 	logger.WithFields(logrus.Fields{
@@ -221,7 +221,7 @@ func createPod(
 		"name": name,
 	}).Info("Created GRU (pod) successfully.")
 
-	return kubePod, nil
+	return kubePod, room, nil
 }
 
 func deletePod(

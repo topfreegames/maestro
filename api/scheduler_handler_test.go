@@ -33,7 +33,7 @@ import (
 	"github.com/topfreegames/maestro/login"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/testing"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 var _ = Describe("Scheduler Handler", func() {
@@ -699,7 +699,7 @@ autoscaling:
 						Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 						err = app.RoomManager.Delete(logger, mmr, clientset, mockRedisClient, &configYaml, pod.Name, "deletion_reason")
 						Expect(err).NotTo(HaveOccurred())
-						_, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml, scheduler1)
+						_, _, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml, scheduler1)
 						Expect(err).NotTo(HaveOccurred())
 					}
 					scheduler1.Version = "v1.0"
@@ -1036,7 +1036,7 @@ autoscaling:
 						Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 						err = app.RoomManager.Delete(logger, mmr, clientset, mockRedisClient, &configYaml, pod.Name, "deletion_reason")
 						Expect(err).NotTo(HaveOccurred())
-						_, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml, scheduler1)
+						_, _, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml, scheduler1)
 						Expect(err).NotTo(HaveOccurred())
 					}
 					scheduler1.Version = "v1.0"
@@ -2103,7 +2103,7 @@ game: game-name
 					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 					err = app.RoomManager.Delete(logger, mmr, clientset, mockRedisClient, &configYaml, pod.Name, "deletion_reason")
 					Expect(err).NotTo(HaveOccurred())
-					_, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml, scheduler1)
+					_, _, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml, scheduler1)
 					Expect(err).NotTo(HaveOccurred())
 				}
 				scheduler1.Version = "v1.0"
@@ -2197,7 +2197,7 @@ game: game-name
 					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 					err = app.RoomManager.Delete(logger, mmr, clientset, mockRedisClient, &configYaml, pod.Name, "deletion_reason")
 					Expect(err).NotTo(HaveOccurred())
-					_, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml, scheduler1)
+					_, _, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml, scheduler1)
 					Expect(err).NotTo(HaveOccurred())
 				}
 				scheduler1.Version = "v1.0"
@@ -2571,7 +2571,7 @@ game: game-name
 					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 					err = app.RoomManager.Delete(logger, mmr, clientset, mockRedisClient, &configYaml1, pod.Name, "deletion_reason")
 					Expect(err).NotTo(HaveOccurred())
-					_, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml1, scheduler1)
+					_, _, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml1, scheduler1)
 					Expect(err).NotTo(HaveOccurred())
 				}
 				scheduler1.Version = "v1.0"
@@ -2690,7 +2690,7 @@ game: game-name
 					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 					err = app.RoomManager.Delete(logger, mmr, clientset, mockRedisClient, &configYaml1, pod.Name, "deletion_reason")
 					Expect(err).NotTo(HaveOccurred())
-					_, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml1, scheduler1)
+					_, _, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml1, scheduler1)
 					Expect(err).NotTo(HaveOccurred())
 				}
 				scheduler1.Version = "v1.0"
@@ -2789,7 +2789,7 @@ game: game-name
 					Expect(pod.ObjectMeta.Labels["version"]).To(Equal("v1.0"))
 					err = app.RoomManager.Delete(logger, mmr, clientset, mockRedisClient, &configYaml, pod.Name, "deletion_reason")
 					Expect(err).NotTo(HaveOccurred())
-					_, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml, scheduler1)
+					_, _, err = app.RoomManager.Create(logger, mmr, mockRedisClient, mockDb, clientset, &configYaml, scheduler1)
 					Expect(err).NotTo(HaveOccurred())
 				}
 				scheduler1.Version = "v1.0"

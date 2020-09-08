@@ -31,7 +31,7 @@ type EventForwarder interface {
 
 // LoadEventForwardersFromConfig returns a slice of configured eventforwarders
 func LoadEventForwardersFromConfig(config *viper.Viper, logger logrus.FieldLogger) []*Info {
-	forwarders := []*Info{}
+	var forwarders []*Info
 	forwardersConfig := config.GetStringMap("forwarders")
 	if len(forwardersConfig) > 0 {
 		for plugin, v := range forwardersConfig {

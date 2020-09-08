@@ -175,7 +175,7 @@ var _ = Describe("GameRoomManagement", func() {
 					reportersConstants.TagScheduler: namespace,
 				})
 
-				podv1, err := roomManager.Create(
+				podv1, _, err := roomManager.Create(
 					logger,
 					mmr,
 					mockRedisClient,
@@ -237,7 +237,7 @@ var _ = Describe("GameRoomManagement", func() {
 					"not": "empty",
 				}, nil)).AnyTimes()
 
-				_, err := roomManager.Create(
+				_, _, err := roomManager.Create(
 					logger,
 					mmr,
 					mockRedisClient,
@@ -313,7 +313,7 @@ var _ = Describe("GameRoomManagement", func() {
 				clientset.Fake.AddReactor("create", "pods", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, errors.New("failed to create pod")
 				})
-				_, err := roomManager.Create(
+				_, _, err := roomManager.Create(
 					logger,
 					mmr,
 					mockRedisClient,
@@ -360,7 +360,7 @@ var _ = Describe("GameRoomManagement", func() {
 					reportersConstants.TagScheduler: namespace,
 				})
 
-				podv1, err := roomManager.Create(
+				podv1, _, err := roomManager.Create(
 					logger,
 					mmr,
 					mockRedisClient,
@@ -427,7 +427,7 @@ var _ = Describe("GameRoomManagement", func() {
 					reportersConstants.TagScheduler: namespace,
 				})
 
-				podv1, err := roomManager.Create(
+				podv1, _, err := roomManager.Create(
 					logger,
 					mmr,
 					mockRedisClient,
@@ -495,7 +495,7 @@ var _ = Describe("GameRoomManagement", func() {
 					"not": "empty",
 				}, nil)).AnyTimes()
 
-				_, err := roomManager.Create(
+				_, _, err := roomManager.Create(
 					logger,
 					mmr,
 					mockRedisClient,
@@ -550,7 +550,7 @@ var _ = Describe("GameRoomManagement", func() {
 				clientset.Fake.AddReactor("create", "services", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, errors.New("Failed to create service for pod")
 				})
-				_, err := roomManager.Create(
+				_, _, err := roomManager.Create(
 					logger,
 					mmr,
 					mockRedisClient,
@@ -605,7 +605,7 @@ var _ = Describe("GameRoomManagement", func() {
 					reportersConstants.TagScheduler: namespace,
 				})
 
-				podv1, err := roomManager.Create(
+				podv1, _, err := roomManager.Create(
 					logger,
 					mmr,
 					mockRedisClient,

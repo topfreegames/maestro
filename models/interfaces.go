@@ -52,7 +52,7 @@ type RoomManager interface {
 		db pginterfaces.DB,
 		clientset kubernetes.Interface,
 		configYAML *ConfigYAML,
-		scheduler *Scheduler) (*v1.Pod, error)
+		scheduler *Scheduler) (*v1.Pod, *Room, error)
 	Delete(
 		logger logrus.FieldLogger,
 		mr *MixedMetricsReporter,
