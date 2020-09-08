@@ -392,7 +392,7 @@ func ScaleUp(
 
 	shouldNotProceedErr, err := shouldScaleUpProceed(l, redisClient, scheduler.Name, mr)
 	if err != nil {
-		return fmt.Errorf("failed to check whether scale up should proceed: %w", err)
+		return fmt.Errorf("failed to check whether scale up should proceed: %s", err)
 	}
 
 	if shouldNotProceedErr != nil {

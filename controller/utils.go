@@ -849,7 +849,7 @@ func shouldScaleUpProceed(
 	}
 
 	if err := podsInInvalidWaitingState(logger, redisClient, namespace, pods); err != nil {
-		return fmt.Errorf("invalid pod waiting state: %w", err), nil
+		return fmt.Errorf("invalid pod waiting state: %s", err), nil
 	}
 
 	// Everything is fine, scale up can proceed.

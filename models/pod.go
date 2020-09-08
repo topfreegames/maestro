@@ -430,7 +430,7 @@ func ValidatePodWaitingState(pod *Pod) error {
 	for _, invalidState := range InvalidPodWaitingStates {
 		status := &pod.Status
 		if checkWaitingReason(status, invalidState) {
-			return fmt.Errorf("%w: one or more containers in pod are in %s", InvalidPodWaitingStateErr, invalidState)
+			return fmt.Errorf("%s: one or more containers in pod are in %s", InvalidPodWaitingStateErr, invalidState)
 		}
 	}
 	return nil
