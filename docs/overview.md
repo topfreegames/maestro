@@ -15,6 +15,16 @@ room occupation, i.e. is the room occupied or available. The rooms communicate
 directly with the matchmaker in order to register and
 unregister themselves from the matchmaking.
 
+## Ecosystem
+
+The Maestro ecosystem is composed by:
+
+- maestro: the service itself
+- maestro-cli: a wrapper for the maestro-api endpoints
+- maestro-client: a client lib for Unity and cocos2dx, responsible for calling
+  maestro HTTP routes defined in the [room protocol](#room-protocol). It also
+  must catch sigterm/sigkill and handle the room graceful shutdown.
+
 ## Definitions
 
 Maestro uses some abstractions, based on Kubernetes resources, in order to
@@ -79,16 +89,6 @@ room itself. It is responsible for:
 - Saving the scheduler config in a database that will be consulted by the
   watcher;
 - Managing the pool of GRUs with each GRU host ip and port;
-
-### maestro-cli
-
-The CLI is a wrapper for the maestro-api endpoints.
-
-### maestro-client
-
-A client lib for Unity and cocos2dx responsible for calling maestro HTTP routes
-defined in the [room protocol](#room-protocol). It also must catch
-sigterm/sigkill and handle the room graceful shutdown.
 
 ## Configuring Maestro
 
