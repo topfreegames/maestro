@@ -57,6 +57,8 @@ these entities, except Postgres and Redis, run in the same Kubernetes cluster.
 The diagram below depicts the integration between services and we provide a
 description of each component responsibility.
 
+![diagram](./architecture.jpg "Maestro Architecture")
+
 ### API
 
 The API is the connection of Maestro to the external world and with the GRUs
