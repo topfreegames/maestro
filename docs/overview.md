@@ -1,15 +1,18 @@
 Overview
 ========
 
-Maestro is a Kubernetes Game Room Scheduler.
+Maestro is a Kubernetes-native game server scheduler.
 
 ## Goal
 
-Have an unified system that automatically scales game rooms regardless of the
-protocol (TCP, UDP). This system is related to a matchmaker but does not handle
-the specificities of a match such as how many players fit in a room. It only
-deals with high level room occupation, i.e. is the room occupied or available.
-The rooms communicate directly with the matchmaker in order to register and
+Maestro goal is to provide an unified system that automatically scales game
+rooms, regardless of the transport layer protocol (TCP, UDP). It's also
+responsible for dealing with 
+
+This system is related to a matchmaker but does not handle the specificities of
+a match such as how many players fit in a room. It only deals with high level
+room occupation, i.e. is the room occupied or available. The rooms communicate
+directly with the matchmaker in order to register and
 unregister themselves from the matchmaking.
 
 Let us define a Game Room Unity (GRU) as a Kubernetes service (type nodePort)
