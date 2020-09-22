@@ -644,7 +644,7 @@ func DeletePodAndRoom(
 	}
 
 	err = roomManager.Delete(logger, mr, clientset, redisClient, configYaml,
-		pod.Name, reportersConstants.ReasonUpdate)
+		pod.Name, reason)
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		logger.
 			WithField("roomName", pod.Name).
