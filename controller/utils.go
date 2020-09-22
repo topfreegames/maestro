@@ -300,6 +300,7 @@ func createNewRemoveOldPod(
 
 	canceled, err = DeletePodsAndWait(
 		ctx,
+		reportersConstants.ReasonUpdate,
 		logger,
 		roomManager,
 		mr,
@@ -332,6 +333,7 @@ func createNewRemoveOldPod(
 // DeletePodsAndWait deletes a list of pods
 func DeletePodsAndWait(
 	ctx context.Context,
+	reason string,
 	logger logrus.FieldLogger,
 	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
@@ -344,7 +346,7 @@ func DeletePodsAndWait(
 	for _, pod := range pods {
 		logger.Debugf("deleting pod %s", pod.Name)
 		err = DeletePodAndRoom(logger, roomManager, mr, clientset, redisClient,
-			configYAML, pod.Name, reportersConstants.ReasonUpdate)
+			configYAML, pod.Name, reason)
 		if err != nil && !strings.Contains(err.Error(), "redis") {
 			logger.WithError(err).Errorf("error deleting pod %s", pod.Name)
 			return false, nil
