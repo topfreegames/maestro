@@ -47,6 +47,17 @@ not allow more than one schedulers to be defined in the same namespace.
 
 ## Architecture
 
+Here, we provide an overview of the service architecture.
+
+The first component is **maestro-api**, which is the connection of Maestro to
+the external world and with the GRUs themselves. It is responsible for:
+
+- Receiving and processing client operations requests over schedulers;
+- Listening to [GRU status](#room-protocol), through healthchecks;
+- Storing scheduler configurations in the database. They will be consulted by
+  the other entities, like the `watcher`;
+- Managing the pool of GRUs, keeping track of each host IP and port.
+
 Maestro is a game room scheduler that is composed by a controller, a watcher, a
 worker, an API and a CLI. In the future we may have an UI for displaying metrics
 such as:
@@ -78,17 +89,6 @@ horizontally. Each scheduler (i.e. maestro scalable entity) has its own watcher.
 
 The worker ensures that all valid schedulers (i.e. schedulers that exist in the
 database) have running watchers.
-
-### maestro-api
-
-The API is the connection of Maestro to the external world and with the game
-room itself. It is responsible for:
-
-- Managing GRUs status and healthcheck (status are: creating, ready, occupied,
-  terminating and terminated);
-- Saving the scheduler config in a database that will be consulted by the
-  watcher;
-- Managing the pool of GRUs with each GRU host ip and port;
 
 ## Configuring Maestro
 
