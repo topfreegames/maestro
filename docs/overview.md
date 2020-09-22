@@ -15,10 +15,25 @@ room occupation, i.e. is the room occupied or available. The rooms communicate
 directly with the matchmaker in order to register and
 unregister themselves from the matchmaking.
 
-Let us define a Game Room Unity (GRU) as a Kubernetes service (type nodePort)
-associated with a single pod. This restriction is made because in AWS we cannot
-load balance UDP. We're using containerized applications and Kubernetes in order
-to simplify the management and scaling of the game rooms.
+## Definitions
+
+Maestro uses some abstractions, based on Kubernetes resources, in order to
+implement its service.
+
+A **Game Room Unity (GRU)** is where the game server logic will run and clients
+will connect to execute their matches. It's the most atomic entity in a Maestro
+architecture.
+
+One could define a GRU as a Kubernetes service (type nodePort) associated with a
+single pod. This restriction is made because in AWS we cannot load balance UDP.
+We're using containerized applications and Kubernetes in order to simplify the
+management and scaling of the game rooms.
+
+A **scheduler** is a specification for a set of GRUs. It defines the image,
+variables, computing and networks resources, permissions and other
+configurations for these GRUs. One can define them as a Kubernetes deployment
+strongly attached to a namespace. This restriction is made because Maestro does
+not allow more than one schedulers to be defined in the same namespace.
 
 ## Architecture
 
