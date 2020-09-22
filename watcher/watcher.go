@@ -743,6 +743,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 		var timeoutErr bool
 		timedout, err := controller.DeletePodsAndWait(
 			ctx,
+			reportersConstants.ReasonPingTimeout,
 			logger,
 			w.RoomManager,
 			w.MetricsReporter,
