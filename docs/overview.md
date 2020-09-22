@@ -132,20 +132,9 @@ A JSON file equivalent to the yaml above can also be used.
 
 Game rooms have four different statuses:
 
-  - Creating
-
-    From the time maestro starts creating the GRU in Kubernetes until a room ready is received.
-
-  - Ready
-
-    From the time room ready is called until a match started is received. It means the room is available for matches.
-
-  - Occupied
-
-    From the time match started is called until a match ended is received. It means the room is not available for matches.
-
-  - Terminating
-
-    From the time a sigkill/sigterm signal is received by the room until the GRU is no longer available in Kubernetes.
+  - **Creating**: from the time maestro starts creating the GRU in Kubernetes until a room ready is received. 
+  - **Ready**: from the time room ready is called until a match started is received. It means the room is available for matches.
+  - **Occupied**: from the time match started is called until a match ended is received. It means the room is not available for matches.
+  - **Terminating**: from the time a sigkill/sigterm signal is received by the room until the GRU is no longer available in Kubernetes.
 
 Maestro's auto scaling policies are based on the number of rooms that are in ready state.
