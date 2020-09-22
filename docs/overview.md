@@ -25,6 +25,10 @@ The Maestro ecosystem is composed by:
   maestro HTTP routes defined in the [room protocol](#room-protocol). It also
   must catch sigterm/sigkill and handle the room graceful shutdown.
 
+In the future, we may have an UI for displaying metrics such as percentage of
+rooms usage, room occupation rates and rooms resource metrics, like CPU and
+memory.
+
 ## Definitions
 
 Maestro uses some abstractions, based on Kubernetes resources, in order to
@@ -47,10 +51,16 @@ not allow more than one schedulers to be defined in the same namespace.
 
 ## Architecture
 
-Here, we provide an overview of the service architecture.
+Here, we provide an overview of the service architecture. Maestro requires that
+these entities, except Postgres and Redis, run in the same Kubernetes cluster.
 
-The first component is **maestro-api**, which is the connection of Maestro to
-the external world and with the GRUs themselves. It is responsible for:
+The diagram below depicts the integration between services and we provide a
+description of each component responsibility.
+
+### API
+
+The API is the connection of Maestro to the external world and with the GRUs
+themselves. It is responsible for:
 
 - Receiving and processing client operations requests over schedulers;
 - Listening to [GRU status](#room-protocol), through healthchecks;
@@ -58,37 +68,46 @@ the external world and with the GRUs themselves. It is responsible for:
   the other entities, like the `watcher`;
 - Managing the pool of GRUs, keeping track of each host IP and port.
 
-Maestro is a game room scheduler that is composed by a controller, a watcher, a
-worker, an API and a CLI. In the future we may have an UI for displaying metrics
-such as:
+Then, we have **maestro-worker**. They are instanced on demand, 
 
-- % of rooms usage
-- rate of room occupation increase/decrease
-- rooms cpu and memory usage
-- etc.
+### Postgres
 
-### maestro-controller
+Postgres is the storage for schedulers' desired state. They hold the actual
+configuration a scheduler should have for their GRUs, keeping track of the
+progress status of this configurations, its version and for what game they
+should be applied. At the end, GRUs of a given scheduler should reflect the
+state described at Postgres.
 
-The controller is responsible for managing the Game Room Unities (GRUs). It
-creates and gracefully terminates GRUs according to auto scaling policies
-defined by the user. It makes use of the Kubernetes cluster's API endpoints in
-order to have updated information about the GRUs managed by Maestro. It is also
-responsible for persisting relevant information in the database and managing
-rooms statuses.
+### Redis
 
-### maestro-watcher
+Redis holds schedulers and GRUs current states, providing a picture of the
+cluster actual state. 
 
-The watcher ensures that at any time the Game Room Unities (GRUs) state is as
-expected. If the scaling policies say that one should have 10 GRUs of a given
-type, the watcher will ask the controller to create or terminate GRUs as needed.
-The desired state is kept in a database that is consulted by the watcher (via
-controller) each time it runs. It has a lock so Maestro can be scaled
-horizontally. Each scheduler (i.e. maestro scalable entity) has its own watcher.
+Hence, Maestro API and workers would frequently consult this storage in order to
+obtain schedulers state and checking if they are already matching the desired
+state at Postgres. If they don't, they would perform operations in order to
+reach these states and update Redis according.
 
-### maestro-worker
+### Worker
 
-The worker ensures that all valid schedulers (i.e. schedulers that exist in the
-database) have running watchers.
+The worker entity implements two logic flows:
+
+1. **Controller**: it manages the Game Room Unities (GRUs). It creates and
+   gracefully terminates GRUs according to auto scaling policies defined by the
+   user. It makes use of the Kubernetes cluster's API endpoints in order to have
+   updated information about the GRUs managed by Maestro. It is also responsible
+   for persisting relevant information in the database and managing rooms
+   statuses.
+
+2. **Watcher**: ensures that GRUs state is as expected. If the scaling policies
+   say that one should have 10 GRUs of a given type, the watcher will ask the
+   controller to create or terminate GRUs as needed. The desired state is kept
+   in a database that is consulted by the watcher (via controller) each time it
+   runs. It has a lock so Maestro can be scaled horizontally. Each scheduler has
+   its own watcher.
+
+Given that, workers must ensure that all valid schedulers (i.e. schedulers that
+exist in the database) have running watchers.
 
 ## Configuring Maestro
 
