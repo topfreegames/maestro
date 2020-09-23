@@ -88,24 +88,40 @@ reach these states and update Redis according.
 
 ### Worker
 
-The worker entity implements two logic flows:
+Workers implement the core logic of Maestro, being responsible of guaranteeing
+that old states are deleted, new states are applied and scaling policies are
+being followed.
 
-1. **Controller**: it manages the Game Room Unities (GRUs). It creates and
-   gracefully terminates GRUs according to auto scaling policies defined by the
-   user. It makes use of the Kubernetes cluster's API endpoints in order to have
-   updated information about the GRUs managed by Maestro. It is also responsible
-   for persisting relevant information in the database and managing rooms
-   statuses.
+As soon it starts, the worker obtain schedulers' states from Postgres and start
+a **watcher process** for each scheduler. Through a loop, a worker will guarantee
+that each scheduler will its own watcher process, creating new process for new
+schedulers and keeping already created ones healthy.
 
-2. **Watcher**: ensures that GRUs state is as expected. If the scaling policies
-   say that one should have 10 GRUs of a given type, the watcher will ask the
-   controller to create or terminate GRUs as needed. The desired state is kept
-   in a database that is consulted by the watcher (via controller) each time it
-   runs. It has a lock so Maestro can be scaled horizontally. Each scheduler has
-   its own watcher.
+Since workers are horizontally scaled, its possible a scheduler has more than
+one watcher process managing it, across different workers. Given that, Maestro
+implement locks, which are responsible for avoiding race conditions between
+scheduler watcher process along distinct workers instances.
 
-Given that, workers must ensure that all valid schedulers (i.e. schedulers that
-exist in the database) have running watchers.
+#### Watcher Process
+
+The watcher process is instanced at each worker and is responsible for managing
+a single scheduler. Through loops, it executes the following responsibilities:
+
+1. **Update the scheduler GRU states at Redis.** It does that querying Maestro API,
+   in a separate routine of its own;
+   
+2. **Guarantee that GRUs states are in sync with Postgres.** It does using the
+   scheduler configuration version. Whenever GRUs are not using the desired
+   version, the watcher executes routines to ensure that. Major versions changes
+   trigger pods updates, while minor and patch version doesn't;
+
+3. **Remove dead GRUs.** It does that by checking which GRUs are not signaling a
+   healthy state between the configured healthcheck interval. Dead rooms are
+   commanded to die and their data are cleaned from Redis.
+
+4. **Execute auto scaling policies.** It does that by checking used resources
+   and rooms over scheduler GRUs and deciding if upscales or downscales should
+   be applied.
 
 ## Configuring Maestro
 
