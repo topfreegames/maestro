@@ -78,10 +78,11 @@ state described at Postgres.
 
 ### Redis
 
-Redis holds schedulers and GRUs current states, providing a picture of the
-cluster actual state. 
+Redis is responsible for caching the Kubernetes cluster state, obtained through
+Kubernetes API. Hence, it reflects Maestro's schedulers current states,
+preventing Maestro API and workers from flooding Kubernetes API.
 
-Hence, Maestro API and workers would frequently consult this storage in order to
+Maestro API and workers would frequently consult this storage in order to
 obtain schedulers state and checking if they are already matching the desired
 state at Postgres. If they don't, they would perform operations in order to
 reach these states and update Redis according.
