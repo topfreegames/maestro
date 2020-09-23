@@ -6,8 +6,6 @@
 Maestro documentation
 =====================
 
-Contents:
-
 .. _docs:
 
 .. toctree::
@@ -22,9 +20,3 @@ Contents:
    autoscaling
    forwarders
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
