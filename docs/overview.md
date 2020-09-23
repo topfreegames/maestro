@@ -6,8 +6,7 @@ Maestro is a Kubernetes-native game server scheduler.
 ## Goal
 
 Maestro goal is to provide an unified system that automatically scales game
-rooms, regardless of the transport layer protocol (TCP, UDP). It's also
-responsible for dealing with 
+rooms, regardless of the transport layer protocol (TCP, UDP).
 
 This system is related to a matchmaker but does not handle the specificities of
 a match such as how many players fit in a room. It only deals with high level
