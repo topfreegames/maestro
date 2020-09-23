@@ -62,15 +62,11 @@ description of each component responsibility.
 ### API
 
 The API is the connection of Maestro to the external world and with the GRUs
-themselves. It is responsible for:
+themselves. It talks HTTP and is responsible for:
 
-- Receiving and processing client operations requests over schedulers;
+- Receiving and processing client operation requests over schedulers;
 - Listening to [GRU status](#room-protocol), through healthchecks;
-- Storing scheduler configurations in the database. They will be consulted by
-  the other entities, like the `watcher`;
-- Managing the pool of GRUs, keeping track of each host IP and port.
-
-Then, we have **maestro-worker**. They are instanced on demand, 
+- Storing scheduler desired states in Postgres.
 
 ### Postgres
 
