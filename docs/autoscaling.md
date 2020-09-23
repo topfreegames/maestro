@@ -173,3 +173,23 @@ metricsTrigger:
     limit: 90           
 cooldown: 300           
 ```
+
+## Best Practices
+
+### Upscaling
+
+Maestro upscale can take some time. Hence, it's recommended to use a little
+lower upscale usage configuration (e.g. 60) to have a good number of unoccupied
+rooms, in case of a huge load of matches.
+
+### Downscaling
+
+For downscaling configuration, it's recommended to use a value lower than the
+upscaling usage (e.g. 50), in order to prevent an upscaling/downscaling cycle
+that can keep the scheduler locked for updates.
+
+### Access Peaks
+
+When you expect a great income of matches, it's recommended to pre-scale the
+scheduler by increasing the minimum number of rooms in the scheduler and
+minimize eventual problems due to slow scales.
