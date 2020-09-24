@@ -1,54 +1,132 @@
 Overview
 ========
 
-Maestro is a Kubernetes Game Room Scheduler.
+Maestro is a Kubernetes-native game server scheduler.
 
 ## Goal
 
-Have an unified system that automatically scales game rooms regardless of the protocol (TCP, UDP). This system is related to a matchmaker but does not handle the specificities of a match such as how many players fit in a room. It only deals with high level room occupation, i.e. is the room occupied or available. The rooms communicate directly with the matchmaker in order to register and unregister themselves from the matchmaking.
+Maestro goal is to provide an unified system that automatically scales game
+rooms, regardless of the transport layer protocol (TCP, UDP).
 
-Let us define a Game Room Unity (GRU) as a Kubernetes service (type nodePort) associated with a single pod. This restriction is made because in AWS we cannot load balance UDP. We're using containerized applications and Kubernetes in order to simplify the management and scaling of the game rooms.
+This system is related to a matchmaker but does not handle the specificities of
+a match such as how many players fit in a room. It only deals with high level
+room occupation, i.e. is the room occupied or available. The rooms communicate
+directly with the matchmaker in order to register and
+unregister themselves from the matchmaking.
+
+## Ecosystem
+
+The Maestro ecosystem is composed by:
+
+- maestro: the service itself
+- maestro-cli: a wrapper for the maestro-api endpoints
+- maestro-client: a client lib for Unity and cocos2dx, responsible for calling
+  maestro HTTP routes defined in the [room protocol](#room-protocol). It also
+  must catch sigterm/sigkill and handle the room graceful shutdown.
+
+In the future, we may have an UI for displaying metrics such as percentage of
+rooms usage, room occupation rates and rooms resource metrics, like CPU and
+memory.
+
+## Definitions
+
+Maestro uses some abstractions, based on Kubernetes resources, in order to
+implement its service.
+
+A **Game Room Unity (GRU)** is where the game server logic will run and clients
+will connect to execute their matches. It's the most atomic entity in a Maestro
+architecture.
+
+One could define a GRU as a Kubernetes service (type nodePort) associated with a
+single pod. This restriction is made because in AWS we cannot load balance UDP.
+We're using containerized applications and Kubernetes in order to simplify the
+management and scaling of the game rooms.
+
+A **scheduler** is a specification for a set of GRUs. It defines the image,
+variables, computing and networks resources, permissions and other
+configurations for these GRUs. One can define them as a Kubernetes deployment
+strongly attached to a namespace. This restriction is made because Maestro does
+not allow more than one schedulers to be defined in the same namespace.
 
 ## Architecture
 
-Maestro is a game room scheduler that is composed by a controller, a watcher, a worker, an API and a CLI. In the future we may have an UI for displaying metrics such as:
+Here, we provide an overview of the service architecture. Maestro requires that
+these entities, except Postgres and Redis, run in the same Kubernetes cluster.
 
-- % of rooms usage
-- rate of room occupation increase/decrease
-- rooms cpu and memory usage
-- etc.
+The diagram below depicts the integration between services and we provide a
+description of each component responsibility.
 
-### maestro-controller
+![diagram](./architecture.jpg "Maestro Architecture")
 
-The controller is responsible for managing the Game Room Unities (GRUs). It creates and gracefully terminates GRUs according to auto scaling policies defined by the user. It makes use of the Kubernetes cluster's API endpoints in order to have updated information about the GRUs managed by Maestro. It is also responsible for persisting relevant information in the database and managing rooms statuses.
+### API
 
-### maestro-watcher
+The API is the connection of Maestro to the external world and with the GRUs
+themselves. It talks HTTP and is responsible for:
 
-The watcher ensures that at any time the Game Room Unities (GRUs) state is as expected. If the scaling policies say that one should have 10 GRUs of a given type, the watcher will ask the controller to create or terminate GRUs as needed. The desired state is kept in a database that is consulted by the watcher (via controller) each time it runs. It has a lock so Maestro can be scaled horizontally. Each scheduler (i.e. maestro scalable entity) has its own watcher.
+- Receiving and processing client operation requests over schedulers;
+- Listening to [GRU status](#room-protocol), through healthchecks;
+- Storing scheduler desired states in Postgres.
 
-### maestro-worker
+### Postgres
 
-The worker ensures that all valid schedulers (i.e. schedulers that exist in the database) have running watchers.
+Postgres is the storage for schedulers' desired state. They hold the actual
+configuration a scheduler should have for their GRUs, keeping track of the
+progress status of this configurations, its version and for what game they
+should be applied. At the end, GRUs of a given scheduler should reflect the
+state described at Postgres.
 
-### maestro-api
+### Redis
 
-The API is the connection of Maestro to the external world and with the game room itself. It is responsible for:
+Redis is responsible for caching the Kubernetes cluster state, obtained through
+Kubernetes API. Hence, it reflects Maestro's schedulers current states,
+preventing Maestro API and workers from flooding Kubernetes API.
 
-- Managing GRUs status and healthcheck (status are: creating, ready, occupied, terminating and terminated);
-- Saving the scheduler config in a database that will be consulted by the watcher;
-- Managing the pool of GRUs with each GRU host ip and port;
+Maestro API and workers would frequently consult this storage in order to
+obtain schedulers state and checking if they are already matching the desired
+state at Postgres. If they don't, they would perform operations in order to
+reach these states and update Redis according.
 
-### maestro-cli
+### Worker
 
-The CLI is a wrapper for the maestro-api endpoints.
+Workers implement the core logic of Maestro, being responsible of guaranteeing
+that old states are deleted, new states are applied and scaling policies are
+being followed.
 
-### maestro-client
+As soon it starts, the worker obtain schedulers' states from Postgres and start
+a **watcher process** for each scheduler. Through a loop, a worker will guarantee
+that each scheduler will its own watcher process, creating new process for new
+schedulers and keeping already created ones healthy.
 
-A client lib for Unity and cocos2dx responsible for calling maestro HTTP routes defined in the [room protocol](#room-protocol). It also must catch sigterm/sigkill and handle the room graceful shutdown.
+Since workers are horizontally scaled, its possible a scheduler has more than
+one watcher process managing it, across different workers. Given that, Maestro
+implement locks, which are responsible for avoiding race conditions between
+scheduler watcher process along distinct workers instances.
+
+#### Watcher Process
+
+The watcher process is instanced at each worker and is responsible for managing
+a single scheduler. Through loops, it executes the following responsibilities:
+
+1. **Update the scheduler GRU states at Redis.** It does that querying Maestro API,
+   in a separate routine of its own;
+   
+2. **Guarantee that GRUs states are in sync with Postgres.** It does using the
+   scheduler configuration version. Whenever GRUs are not using the desired
+   version, the watcher executes routines to ensure that. Major versions changes
+   trigger pods updates, while minor and patch version doesn't;
+
+3. **Remove dead GRUs.** It does that by checking which GRUs are not signaling a
+   healthy state between the configured healthcheck interval. Dead rooms are
+   commanded to die and their data are cleaned from Redis.
+
+4. **Execute auto scaling policies.** It does that by checking used resources
+   and rooms over scheduler GRUs and deciding if upscales or downscales should
+   be applied.
 
 ## Configuring Maestro
 
-The maestro binary receives a list of config files and spawn one maestro-controller for each config.
+The maestro binary receives a list of config files and spawn one
+maestro-controller for each config.
 
 The config file must have the following information:
 
@@ -132,20 +210,14 @@ A JSON file equivalent to the yaml above can also be used.
 
 Game rooms have four different statuses:
 
-  - Creating
+  - **Creating**: from the time maestro starts creating the GRU in Kubernetes
+    until a room ready is received. 
+  - **Ready**: from the time room ready is called until a match started is
+    received. It means the room is available for matches.
+  - **Occupied**: from the time match started is called until a match ended is
+    received. It means the room is not available for matches.
+  - **Terminating**: from the time a sigkill/sigterm signal is received by the
+    room until the GRU is no longer available in Kubernetes.
 
-    From the time maestro starts creating the GRU in Kubernetes until a room ready is received.
-
-  - Ready
-
-    From the time room ready is called until a match started is received. It means the room is available for matches.
-
-  - Occupied
-
-    From the time match started is called until a match ended is received. It means the room is not available for matches.
-
-  - Terminating
-
-    From the time a sigkill/sigterm signal is received by the room until the GRU is no longer available in Kubernetes.
-
-Maestro's auto scaling policies are based on the number of rooms that are in ready state.
+Maestro's auto scaling policies are based on the number of rooms that are in
+ready state.
