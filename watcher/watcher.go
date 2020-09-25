@@ -155,7 +155,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("watcher.autoScalingPeriod", 10)
 	w.Config.SetDefault("watcher.roomsStatusesReportPeriod", 10)
 	w.Config.SetDefault("watcher.ensureCorrectRoomsPeriod", 10*time.Minute)
-	w.Config.SetDefault("watcher.podStatesCountPeriod", 1*time.Minute)
+	w.Config.SetDefault("watcher.podStatesCountPeriod", 10*time.Second)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
 	w.Config.SetDefault("watcher.maxScaleUpAmount", 300)
@@ -245,8 +245,6 @@ func (w *Watcher) Start() {
 
 	ticker := time.NewTicker(time.Duration(w.AutoScalingPeriod) * time.Second)
 	defer ticker.Stop()
-	tickerStateCount := time.NewTicker(w.PodStatesCountPeriod)
-	defer tickerStateCount.Stop()
 
 	go w.reportRoomsStatusesRoutine()
 	stopKubeWatch := make(chan struct{})
@@ -260,8 +258,6 @@ func (w *Watcher) Start() {
 		select {
 		case <-ticker.C:
 			_ = w.watchRooms()
-		case <-tickerStateCount.C:
-			w.PodStatesCount()
 		case sig := <-sigchan:
 			l.Warnf("caught signal %v: terminating\n", sig)
 			close(stopKubeWatch)
@@ -275,12 +271,17 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 	w.gracefulShutdown.wg.Add(1)
 	defer w.gracefulShutdown.wg.Done()
 
-	tickerRs := time.NewTicker(time.Duration(w.RoomsStatusesReportPeriod) * time.Second)
-	defer tickerRs.Stop()
+	podStateCountTicker := time.NewTicker(w.PodStatesCountPeriod)
+	defer podStateCountTicker.Stop()
+
+	roomStatusTicker := time.NewTicker(time.Duration(w.RoomsStatusesReportPeriod) * time.Second)
+	defer roomStatusTicker.Stop()
 
 	for w.Run == true {
 		select {
-		case <-tickerRs.C:
+		case <-podStateCountTicker.C:
+			w.PodStatesCount()
+		case <-roomStatusTicker.C:
 			_ = w.ReportRoomsStatuses()
 		}
 	}
