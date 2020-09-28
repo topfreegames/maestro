@@ -155,7 +155,7 @@ func (w *Watcher) loadConfigurationDefaults() {
 	w.Config.SetDefault("watcher.autoScalingPeriod", 10)
 	w.Config.SetDefault("watcher.roomsStatusesReportPeriod", 10)
 	w.Config.SetDefault("watcher.ensureCorrectRoomsPeriod", 10*time.Minute)
-	w.Config.SetDefault("watcher.podStatesCountPeriod", 10*time.Second)
+	w.Config.SetDefault("watcher.podStatesCountPeriod", 30*time.Second)
 	w.Config.SetDefault("watcher.lockKey", "maestro-lock-key")
 	w.Config.SetDefault("watcher.lockTimeoutMs", 180000)
 	w.Config.SetDefault("watcher.maxScaleUpAmount", 300)
