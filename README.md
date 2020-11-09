@@ -138,7 +138,8 @@ A JSON file equivalent to the yaml above can also be used.
 To run on dev:
 
 1) Start [Minikube](https://kubernetes.io/docs/tutorials/stateless-application/hello-minikube/) with **hyperkit vm driver**
-as it will create a bridge for minikube to access services on your host machine
+as it will create a bridge for minikube to access services on your host machine. You can do that with ```--driver``` flag, 
+such as: ```minikube start --driver=hyperkit```. 
 
 2) Make sure that Minikube **metrics-server** and **heapster** addons are enabled otherwise metrics autoscaler won't work:
 ```
@@ -146,7 +147,7 @@ minikube addons enable metrics-server
 minikube addons enable heapster
 ```
 
-3) Build dev-room docker image on Minikube env. (optional)
+3) Build dev-room docker image on Minikube env. (optional) 
 ```
 eval $(minikube docker-env)
 make build-dev-room
@@ -155,16 +156,21 @@ eval $(minikube docker-env -u)
 
 This image contain a simple Python API to simulate room behaviour. Its code can be found [here](/dev-room).
 
-4) Start dependencies
+4) Run setup
+```
+make setup
+```
+
+5) Start dependencies
 ```
 make deps
 make drop
 make migrate
 ```
 
-5) Start worker with `make work-dev` and api with `make run-dev`
+6) Start worker with `make work-dev` and api with `make run-dev`
 
-6) With [maestro-cli](https://github.com/topfreegames/maestro-cli), access maestro with context `local`. For example:
+7) With [maestro-cli](https://github.com/topfreegames/maestro-cli), access maestro with context `local`. For example:
 
 ```
 maestro -c local create manifests/scheduler-config-1.yaml
