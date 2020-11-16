@@ -122,38 +122,6 @@ func CreateScheduler(
 		return err
 	}
 
-	logger.Info("creating ports pool if necessary")
-	usesPortRange, err := checkPortRange(nil, configYAML, logger, db, redisClient)
-	if err != nil {
-		logger.WithError(err).Error("error checking port range, deleting scheduler")
-		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
-		if deleteErr != nil {
-			logger.WithError(err).Error("error deleting scheduler after check port range error")
-		}
-		return err
-	}
-
-	logger.Info("creating pods of new scheduler")
-	err = ScaleUp(logger, roomManager, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true, nil)
-	if err != nil {
-		logger.WithError(err).Error("error scaling up scheduler, deleting it")
-		if scheduler.LastScaleOpAt == int64(0) {
-			// this prevents error: null value in column \"last_scale_op_at\" violates not-null constraint
-			scheduler.LastScaleOpAt = int64(1)
-		}
-		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
-		if deleteErr != nil {
-			logger.WithError(err).Error("error deleting scheduler after scale up error")
-			return deleteErr
-		}
-
-		if usesPortRange {
-			logger.Info("deleting newly created ports pool due to scheduler creation error")
-		}
-
-		return err
-	}
-
 	scheduler.State = models.StateInSync
 	scheduler.StateLastChangedAt = time.Now().Unix()
 	scheduler.LastScaleOpAt = time.Now().Unix()
