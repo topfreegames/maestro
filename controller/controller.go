@@ -122,6 +122,17 @@ func CreateScheduler(
 		return err
 	}
 
+	logger.Info("creating ports pool if necessary")
+	_, err = checkPortRange(nil, configYAML, logger, db, redisClient)
+	if err != nil {
+		logger.WithError(err).Error("error checking port range, deleting scheduler")
+		deleteErr := deleteSchedulerHelper(logger, mr, db, redisClient, clientset, scheduler, namespace, timeoutSec)
+		if deleteErr != nil {
+			logger.WithError(err).Error("error deleting scheduler after check port range error")
+		}
+		return err
+	}
+
 	scheduler.State = models.StateInSync
 	scheduler.StateLastChangedAt = time.Now().Unix()
 	scheduler.LastScaleOpAt = time.Now().Unix()
