@@ -767,22 +767,8 @@ autoscaling:
 					Expect(err).NotTo(HaveOccurred())
 
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
-					// testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml1.Name, configYaml1.AutoScaling.Min)
 					MockInsertScheduler(mockDb, nil)
 					MockUpdateScheduler(mockDb, nil, nil)
-
-					/*
-					err = MockSetScallingAmount(
-						mockRedisClient,
-						mockPipeline,
-						mockDb,
-						clientset,
-						&configYaml1,
-						0,
-						yamlString1,
-					)
-					Expect(err).NotTo(HaveOccurred())
-					*/
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
