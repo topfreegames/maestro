@@ -311,23 +311,11 @@ var _ = Describe("Scheduler Handler", func() {
 				It("returns a status code of 201 and success body", func() {
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 
-					testing.MockScaleUp(mockPipeline, mockRedisClient, "scheduler-name", 10)
 					MockInsertScheduler(mockDb, nil)
 					MockUpdateScheduler(mockDb, nil, nil)
 
 					var configYaml1 models.ConfigYAML
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml1)
-					Expect(err).NotTo(HaveOccurred())
-
-					err = MockSetScallingAmount(
-						mockRedisClient,
-						mockPipeline,
-						mockDb,
-						clientset,
-						&configYaml1,
-						0,
-						yamlString,
-					)
 					Expect(err).NotTo(HaveOccurred())
 
 					app.Router.ServeHTTP(recorder, request)
@@ -389,31 +377,15 @@ autoscaling:
 					Expect(err).NotTo(HaveOccurred())
 
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
-					testing.MockScaleUp(mockPipeline, mockRedisClient, "scheduler-name-1", 1)
 					MockInsertScheduler(mockDb, nil)
 					MockUpdateScheduler(mockDb, nil, nil)
 
-					testing.MockScaleUp(mockPipeline, mockRedisClient, "scheduler-name-2", 1)
 					MockInsertScheduler(mockDb, nil)
 					MockUpdateScheduler(mockDb, nil, nil)
 
 					var configYaml1 models.ConfigYAML
 					err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 					Expect(err).NotTo(HaveOccurred())
-
-					for i := 0; i < 2; i++ {
-						configYaml1.Name = fmt.Sprintf("%s-%s-%d", strings.Split(configYaml1.Name, "-")[0], strings.Split(configYaml1.Name, "-")[1], i+1)
-						err = MockSetScallingAmount(
-							mockRedisClient,
-							mockPipeline,
-							mockDb,
-							clientset,
-							&configYaml1,
-							0,
-							yamlString,
-						)
-						Expect(err).NotTo(HaveOccurred())
-					}
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -680,9 +652,8 @@ autoscaling:
 
 					pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 					Expect(err).NotTo(HaveOccurred())
-					Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+					Expect(pods.Items).To(HaveLen(0))
 
-					MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, len(pods.Items))
 					mockRedisClient.EXPECT().
 						Get(models.GlobalPortsPoolKey).
 						Return(goredis.NewStringResult(workerPortRange, nil)).
@@ -796,10 +767,11 @@ autoscaling:
 					Expect(err).NotTo(HaveOccurred())
 
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).Times(2)
-					testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml1.Name, configYaml1.AutoScaling.Min)
+					// testing.MockScaleUp(mockPipeline, mockRedisClient, configYaml1.Name, configYaml1.AutoScaling.Min)
 					MockInsertScheduler(mockDb, nil)
 					MockUpdateScheduler(mockDb, nil, nil)
 
+					/*
 					err = MockSetScallingAmount(
 						mockRedisClient,
 						mockPipeline,
@@ -810,6 +782,7 @@ autoscaling:
 						yamlString1,
 					)
 					Expect(err).NotTo(HaveOccurred())
+					*/
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -817,7 +790,7 @@ autoscaling:
 
 					pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 					Expect(err).NotTo(HaveOccurred())
-					Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+					Expect(pods.Items).To(HaveLen(0))
 
 					// Update scheduler
 					yamlString2 := `
@@ -1010,9 +983,8 @@ autoscaling:
 
 					pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 					Expect(err).NotTo(HaveOccurred())
-					Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+					Expect(pods.Items).To(HaveLen(0))
 
-					MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, len(pods.Items))
 					mockRedisClient.EXPECT().
 						Get(models.GlobalPortsPoolKey).
 						Return(goredis.NewStringResult(workerPortRange, nil)).
@@ -1159,7 +1131,7 @@ autoscaling:
 
 					pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 					Expect(err).NotTo(HaveOccurred())
-					Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+					Expect(pods.Items).To(HaveLen(0))
 
 					// Update scheduler
 					var configYaml2 models.ConfigYAML
@@ -2084,9 +2056,8 @@ game: game-name
 				newImageName := "new-image"
 				pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
-				MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, len(pods.Items))
 				mockRedisClient.EXPECT().
 					Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(workerPortRange, nil)).
@@ -2177,9 +2148,8 @@ game: game-name
 				newImageName := "new-image"
 				pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
-				MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, len(pods.Items))
 				mockRedisClient.EXPECT().
 					Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(workerPortRange, nil)).
@@ -2358,7 +2328,7 @@ game: game-name
 				newImageName := "new-image"
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
 				// Update scheduler
 				body := map[string]interface{}{"image": newImageName}
@@ -2395,7 +2365,7 @@ game: game-name
 
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
 				// Update scheduler
 				body := map[string]interface{}{"image": newImageName}
@@ -2428,7 +2398,7 @@ game: game-name
 				newSchedulerName := "new-scheduler"
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
 				// Update scheduler
 				body := map[string]interface{}{}
@@ -2456,7 +2426,7 @@ game: game-name
 				newSchedulerName := "new-scheduler"
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
 				// Update scheduler
 				url := fmt.Sprintf("/scheduler/%s/image", newSchedulerName)
@@ -2481,7 +2451,7 @@ game: game-name
 				newSchedulerName := "new-scheduler"
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
 				// Update scheduler
 				body := map[string]interface{}{"image": "new-image"}
@@ -2509,7 +2479,7 @@ game: game-name
 				newSchedulerName := "new-scheduler"
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 				config.Set("basicauth.tryOauthIfUnset", false)
 
 				// Update scheduler
@@ -2551,9 +2521,8 @@ game: game-name
 
 				pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
-				MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml1, len(pods.Items))
 				mockRedisClient.EXPECT().
 					Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(workerPortRange, nil)).
@@ -2670,9 +2639,8 @@ game: game-name
 
 				pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml1.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
-				MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml1, len(pods.Items))
 				mockRedisClient.EXPECT().
 					Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(workerPortRange, nil)).
@@ -2763,9 +2731,8 @@ game: game-name
 				newImageName := "new-image"
 				pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
-				MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, len(pods.Items))
 				mockRedisClient.EXPECT().
 					Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(workerPortRange, nil)).
@@ -2912,7 +2879,7 @@ game: game-name
 				newImageName := "new-image"
 				pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(pods.Items).To(HaveLen(configYaml.AutoScaling.Min))
+				Expect(pods.Items).To(HaveLen(0))
 
 				// Update scheduler
 				body := map[string]interface{}{"image": newImageName}
@@ -2952,16 +2919,39 @@ game: game-name
 				request, err := http.NewRequest("POST", url, reader)
 				Expect(err).NotTo(HaveOccurred())
 
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
 				err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())
-
-				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-				MockScaleUp(mockPipeline, mockRedisClient, configYaml1.Name, configYaml1.AutoScaling.Min)
 
 				MockInsertScheduler(mockDb, nil)
 				MockUpdateScheduler(mockDb, nil, nil)
 
 				mockRedisClient.EXPECT().Ping().AnyTimes()
+
+				app.Router.ServeHTTP(recorder, request)
+				Expect(recorder.Code).To(Equal(http.StatusCreated))
+				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
+
+				user = app.Config.GetString("basicauth.username")
+				pass = app.Config.GetString("basicauth.password")
+
+				// Scale scheduler
+				body := map[string]interface{}{"scaleup": configYaml1.AutoScaling.Min}
+				bts, _ := json.Marshal(body)
+				reader = strings.NewReader(string(bts))
+				url = fmt.Sprintf("/scheduler/%s", configYaml1.Name)
+				request, err = http.NewRequest("POST", url, reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+				MockLoadScheduler(configYaml1.Name, mockDb).
+					Do(func(scheduler *models.Scheduler, query string, modifier string) {
+						*scheduler = *models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
+					})
+
+				MockScaleUp(mockPipeline, mockRedisClient, configYaml1.Name, configYaml1.AutoScaling.Min)
 
 				err = MockSetScallingAmount(
 					mockRedisClient,
@@ -2974,12 +2964,9 @@ game: game-name
 				)
 				Expect(err).NotTo(HaveOccurred())
 
+				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
-				Expect(recorder.Code).To(Equal(http.StatusCreated))
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
-
-				user = app.Config.GetString("basicauth.username")
-				pass = app.Config.GetString("basicauth.password")
 			})
 
 			It("should update min", func() {
