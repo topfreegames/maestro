@@ -156,7 +156,7 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if resp.Code != 200 {
+	if resp != nil && resp.Code != 200 {
 		err := errors.New(resp.Message)
 		logger.WithError(err).Error("Player event forward failed.")
 		g.App.HandleError(w, resp.Code, "player event forward failed", err)
