@@ -11,8 +11,6 @@ install:
 - wget -q ${HELM_URL}/${HELM_TGZ}
 - tar xzfv ${HELM_TGZ}
 - PATH=`pwd`/linux-amd64/:$PATH
-- helm repo add stable https://charts.helm.sh/stable
-- helm update
 - helm init --client-only
 - sudo apt-get install python-pip
 - sudo -H pip install s3cmd
