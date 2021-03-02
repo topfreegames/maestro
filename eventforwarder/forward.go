@@ -257,6 +257,10 @@ func ForwardEventToForwarders(
 		}
 	}
 
+	if respCode == 0 {
+		return nil, nil, nil
+	}
+
 	resp = &Response{
 		Code:    respCode,
 		Message: strings.Join(respMessage, ";"),

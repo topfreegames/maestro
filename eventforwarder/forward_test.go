@@ -323,8 +323,7 @@ forwarders:
 			)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(response.Code).To(Equal(0))
-			Expect(response.Message).To(Equal(""))
+			Expect(response).To(BeNil())
 		})
 
 		It("should return as success but report error if forward fails", func() {
@@ -454,7 +453,7 @@ game: game
 
 			mockReporter.EXPECT().Report(reportersConstants.EventRPCDuration, gomock.Any())
 
-			response, err := ForwardPlayerEvent(
+			_, err := ForwardPlayerEvent(
 				ctx,
 				mockForwarders,
 				mockDB,
@@ -467,7 +466,6 @@ game: game
 			)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(response).NotTo(BeNil())
 		})
 
 		It("should report fail if event forward fails", func() {
