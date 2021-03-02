@@ -11,6 +11,8 @@ install:
 - wget -q ${HELM_URL}/${HELM_TGZ}
 - tar xzfv ${HELM_TGZ}
 - PATH=`pwd`/linux-amd64/:$PATH
+- helm repo add stable https://charts.helm.sh/stable
+- helm update
 - helm init --client-only
 - sudo apt-get install python-pip
 - sudo -H pip install s3cmd
@@ -25,7 +27,7 @@ env:
   global:
   - S3CMD_ZIP=master.zip
   - S3CMD_URL=https://github.com/s3tools/s3cmd/archive
-  - HELM_URL=https://storage.googleapis.com/kubernetes-helm
+  - HELM_URL=https://get.helm.sh
   - HELM_TGZ=helm-v2.4.1-linux-amd64.tar.gz
   - secure: DgyQ0pT+P+aMj3iCshPiHmG7sDx95QVC3Qq+ITD2769dz1Sep6Bvz99emLM84b5g1V3aT7hvjg+RE/A8yrpCHZfuiNeiNY5XQR58zaKcShoRmYxyuSJPLUxbu12AVrbaQJFbwEs5evc2BDHBAN1+YTaEGIkAeEfAjyw4DpxZZNm8NHB5JHSKuZmcdoPz7ASdysenLzWxon/fxRB5nXVK2Jky/+0uFhMpJPJhvpQBE0SLrZ6L9mSduIehcrnl/qvJnVIWZDkMb1qRgSDZ3rXSFk05T1bZtbeQXQRWcz2AtHfvmhR51ufsfI7tZ/n65U/J40hq8OcSLjJyA4GOy0Xt7Vai0pjOyv5XBvwyCqTcl1ptm3Yf5aW75kiCsMlBGXv8dK8vI7IY4iXLPnipSKVK1UkgCfSQNRsHlf0vJ21k/7KRAZnhmtS39WcVapOed/UoXIWDgMH5PcrnkuZPylLONlHSE5pbevnObHsRGh86YSAxx0RS+RXJ2qlF6l8QYT5S0TDDHtpJ9qlJHpD6jJCMm9/0txTBgMDfaksmFLVnEEKhZrWW/lDk8YCDNz+Sb2Pq1cBRXzi2+i10b21XS4pYBbxyNecanwxNtr8Bia7yQbJHZF1zByUz4IaMA1pX7B2XGA46gDpav6edKWtN9es/HBxH8FgH7EG1dECjGBNXlw8=
   - secure: No6skbtjA8gQKB/Z6cOAgyPMIJ4yt++yCo0JRQxEeKHP4sTK8gdZ2Xpt0Lk6XXQcBfpz2IG06hsfGkMznnKIdcCh2IT1Y4Iwj7U2k5fAgRoWxGWNi9EGms08fRaW6DEHxAEI1dqpw8GSpDZsiHM4ZlM32QYu25/v1lVDOSCwbGmKq85FctIlxpuiUdZwrM4FY9AzI3x5tcYMUGiVsVdl+kEVcphImurLuzxDSBXH1/tb5dRYDv4Qo6bfnj5kIWDNPpEH1sK8jddjQ46BP13Ad9KAhNPcIvx6oerMvHiZ9VKFzYuo0fety9Ax/jxZdppNSvs3PtbM9slR1qKOlOSyYS00nTH5j+xvhygurJ9ffcmbZFqeFLI7rEHcT8BYGGZgK6Hb4nbuqp6julWndfpcjqntxCThKp5/z74aZn1jPshVh+0Zud48ne9kHpAqwReW8MsKVPAObzGIUcZypdQt6TYb4AvJtvea81Z9KB2jleBDOC7YggbMGKE/5PjfQREry39ba6WVCOv0b4tgDjAdlIP2/XPJ34CS69YF5dC8dVAegJ+PzTNEwPwXbGywRxuU9SoXHS+V6YswcEhRvNYgpL3vmzj6tmM3oOOg/fX0vtWddguN8romoGHCJbYnNjEMvP10x6tcZSBxz5DzxWhGfBnnpNxtqmvfm0aKw7azbD0=
