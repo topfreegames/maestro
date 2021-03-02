@@ -156,16 +156,20 @@ func (g *PlayerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if resp != nil && resp.Code != 200 {
-		err := errors.New(resp.Message)
-		logger.WithError(err).Error("Player event forward failed.")
-		g.App.HandleError(w, resp.Code, "player event forward failed", err)
-		return
+	message := ""
+	if resp != nil {
+		message = resp.Message
+		if resp.Code != 200 {
+			err := errors.New(resp.Message)
+			logger.WithError(err).Error("Player event forward failed.")
+			g.App.HandleError(w, resp.Code, "player event forward failed", err)
+			return
+		}
 	}
 
 	resBytes, _ := json.Marshal(map[string]interface{}{
 		"success": true,
-		"message": resp.Message,
+		"message": message,
 	})
 	Write(w, http.StatusOK, string(resBytes))
 	logger.Debug("Performed player event forward.")
@@ -234,16 +238,20 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if resp != nil && resp.Code != 200 {
-		err := errors.New(resp.Message)
-		logger.WithError(err).Error("Room event forward failed.")
-		g.App.HandleError(w, resp.Code, "room event forward failed", err)
-		return
+	message := ""
+	if resp != nil {
+		message = resp.Message
+		if resp.Code != 200 {
+			err := errors.New(resp.Message)
+			logger.WithError(err).Error("Player event forward failed.")
+			g.App.HandleError(w, resp.Code, "player event forward failed", err)
+			return
+		}
 	}
 
 	resBytes, _ := json.Marshal(map[string]interface{}{
 		"success": true,
-		"message": resp.Message,
+		"message": message,
 	})
 	Write(w, http.StatusOK, string(resBytes))
 	logger.Debug("Performed room event forward.")
