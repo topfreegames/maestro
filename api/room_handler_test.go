@@ -58,10 +58,13 @@ forwarders:
   mockplugin:
     mockfwd:
       enabled: true
+      forwardResponse: true
     anothermockfwd:
       enabled: true
+      forwardResponse: true
     disabledmockfwd:
       enabled: false
+      forwardResponse: true
 `
 
 	createNamespace := func(name string, clientset kubernetes.Interface) error {

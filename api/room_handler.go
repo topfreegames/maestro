@@ -243,8 +243,8 @@ func (g *RoomEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		message = resp.Message
 		if resp.Code != 200 {
 			err := errors.New(resp.Message)
-			logger.WithError(err).Error("Player event forward failed.")
-			g.App.HandleError(w, resp.Code, "player event forward failed", err)
+			logger.WithError(err).Error("Room event forward failed.")
+			g.App.HandleError(w, resp.Code, "room event forward failed", err)
 			return
 		}
 	}
