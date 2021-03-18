@@ -1625,7 +1625,8 @@ func (w *Watcher) watchPods(stopCh <-chan struct{}) {
 func (w *Watcher) configureKubeWatch() {
 	w.Informer = informersv1.NewPodInformer(w.KubernetesClient, w.SchedulerName, 30*time.Second, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	w.Lister = listersv1.NewPodLister(w.Informer.GetIndexer()).Pods(w.SchedulerName)
-	w.Queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), w.SchedulerName)
+	rateLimiter := workqueue.NewItemFastSlowRateLimiter(20 * time.Millisecond, 500 * time.Millisecond, 5)
+	w.Queue = workqueue.NewNamedRateLimitingQueue(rateLimiter, w.SchedulerName)
 	w.Informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			key, err := cache.MetaNamespaceKeyFunc(obj)
