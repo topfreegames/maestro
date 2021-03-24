@@ -61,14 +61,6 @@
   version = "2017.04.17"
 
 [[projects]]
-  branch = "master"
-  digest = "1:c46fd324e7902268373e1b337436a6377c196e2dbd7b35624c6256d29d494e78"
-  name = "github.com/codahale/hdrhistogram"
-  packages = ["."]
-  pruneopts = ""
-  revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
-
-[[projects]]
   digest = "1:0deddd908b6b4b768cfc272c16ee61e7088a60f7fe2f06c547bd3d8e1f8b8e77"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -446,7 +438,7 @@
   revision = "9b8c753e8dfb382618ba8fa19b4197b5dcb0434c"
 
 [[projects]]
-  digest = "1:78fb99d6011c2ae6c72f3293a83951311147b12b06a5ffa43abf750c4fab6ac5"
+  digest = "1:b0507210d286ef45cac3af88d5be7abbfdda35fc354ee51db1014e33212f182a"
   name = "github.com/opentracing/opentracing-go"
   packages = [
     ".",
@@ -454,8 +446,8 @@
     "log",
   ]
   pruneopts = ""
-  revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
-  version = "v1.0.2"
+  revision = "d34af3eaa63c4d08ab54863a4bdd0daa45212e12"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:894aef961c056b6d85d12bac890bf60c44e99b46292888bfa66caf529f804457"
@@ -647,13 +639,14 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:acdc8a34ebf61772eed1f00cad6667f37b8f2618bf958eb59d3e28c690703ad8"
+  digest = "1:53d327353fe718eeb2810f1c43ab71540a35d1b14b28f2c11c18dc0b96b7c41b"
   name = "github.com/uber/jaeger-client-go"
   packages = [
     ".",
     "config",
     "internal/baggage",
     "internal/baggage/remote",
+    "internal/reporterstats",
     "internal/spanlog",
     "internal/throttler",
     "internal/throttler/remote",
@@ -665,19 +658,28 @@
     "thrift-gen/jaeger",
     "thrift-gen/sampling",
     "thrift-gen/zipkincore",
+    "transport",
     "utils",
   ]
   pruneopts = ""
-  revision = "b043381d944715b469fd6b37addfd30145ca1758"
-  version = "v2.14.0"
+  revision = "121ee6fb26fd9617fc30d0d95569a39c30ca3b76"
+  version = "v2.25.0"
 
 [[projects]]
-  digest = "1:ea30f571b4be9978d3a538cf2107c5341aee6d085e8e61468613a8c8e164d15a"
+  digest = "1:61a33b5ca337f7f8774e37f14d3331ffcac998f453de2a71a804d2663962797d"
   name = "github.com/uber/jaeger-lib"
   packages = ["metrics"]
   pruneopts = ""
-  revision = "4267858c0679cd4e47cefed8d7f70fd386cfb567"
-  version = "v1.4.0"
+  revision = "913f2d19ac0541c6e986209adcec4904c1a565b6"
+  version = "v2.4.0"
+
+[[projects]]
+  digest = "1:31e0d99c1d16170fe209bc535a749da299e1cbe10d8273ab185a4b767786bdd5"
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  pruneopts = ""
+  revision = "12f27ba2637fa0e13772a4f05fa46a5d18d53182"
+  version = "v1.7.0"
 
 [[projects]]
   branch = "master"
@@ -1114,7 +1116,6 @@
     "github.com/topfreegames/extensions/dogstatsd",
     "github.com/topfreegames/extensions/dogstatsd/mocks",
     "github.com/topfreegames/extensions/http",
-    "github.com/topfreegames/extensions/jaeger",
     "github.com/topfreegames/extensions/middleware",
     "github.com/topfreegames/extensions/pg",
     "github.com/topfreegames/extensions/pg/interfaces",
@@ -1125,11 +1126,13 @@
     "github.com/topfreegames/extensions/router",
     "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes",
     "github.com/topfreegames/protos/maestro/grpc/generated",
+    "github.com/uber/jaeger-client-go/config",
     "golang.org/x/oauth2",
     "golang.org/x/oauth2/google",
     "google.golang.org/grpc",
     "gopkg.in/yaml.v2",
     "k8s.io/api/core/v1",
+    "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/fields",
@@ -1139,10 +1142,10 @@
     "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/util/yaml",
-    "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/informers/core/v1",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",
+    "k8s.io/client-go/listers/core/v1",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",

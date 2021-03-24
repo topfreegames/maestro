@@ -23,7 +23,6 @@ import (
 
 	raven "github.com/getsentry/raven-go"
 	newrelic "github.com/newrelic/go-agent"
-	"github.com/topfreegames/extensions/jaeger"
 	"github.com/topfreegames/extensions/middleware"
 	"github.com/topfreegames/extensions/pg"
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
@@ -44,6 +43,8 @@ import (
 	"github.com/topfreegames/maestro/william"
 	"k8s.io/client-go/kubernetes"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
+	opentracing "github.com/opentracing/opentracing-go"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
 )
 
 type gracefulShutdown struct {
@@ -418,8 +419,8 @@ func (a *App) configureApp(
 	metricsClientsetOrNil metricsClient.Interface,
 ) error {
 	a.loadConfigurationDefaults()
-	a.configureJaeger()
 	a.configureLogger()
+	a.configureJaeger()
 	a.configureForwarders()
 	if err := a.configureDatabase(dbOrNil, dbCtxOrNil); err != nil {
 		return err
@@ -467,20 +468,20 @@ func (a *App) loadConfigurationDefaults() {
 }
 
 func (a *App) configureJaeger() {
-	l := a.Logger.WithFields(logrus.Fields{
-		"operation": "configureJaeger",
-	})
 
-	opts := jaeger.Options{
-		Disabled:    a.Config.GetBool("jaeger.disabled"),
-		Probability: a.Config.GetFloat64("jaeger.samplingProbability"),
-		ServiceName: "maestro",
-	}
-
-	_, err := jaeger.Configure(opts)
+	cfg, err := jaegercfg.FromEnv()
 	if err != nil {
-		l.Error("failed to initalize jaeger")
+		a.Logger.Error("Could not parse Jaeger env vars: %s", err.Error())
+		return
 	}
+
+	tracer, _, err := cfg.NewTracer()
+	if err != nil {
+		a.Logger.Error("Could not initialize jaeger tracer: %s", err.Error())
+		return
+	}
+
+	opentracing.SetGlobalTracer(tracer)
 }
 
 func (a *App) configureCache() {

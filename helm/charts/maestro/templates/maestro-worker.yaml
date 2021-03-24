@@ -58,4 +58,6 @@ spec:
                   key: newrelickey
             {{- end}}
             {{- end}}
+            - name: JAEGER_DISABLED
+              value: "{{ .Values.jaeger_disabled | default "true" }}"
       terminationGracePeriodSeconds: 600
