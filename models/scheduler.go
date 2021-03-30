@@ -314,7 +314,7 @@ func (c *Scheduler) UpdateState(db interfaces.DB) error {
 // UpdateVersionStatus updates a scheduler_version rolling_update_status in the database
 func (c *Scheduler) UpdateVersionStatus(db interfaces.DB) error {
 	_, err := db.Query(c, `UPDATE scheduler_versions
-	SET (rolling_update_status) = (?rolling_update_status)
+	SET rolling_update_status = ?rolling_update_status
 	WHERE name=?name AND version=?version`, c)
 	if err != nil {
 		err = fmt.Errorf("error updating status on scheduler_versions: %s", err.Error())

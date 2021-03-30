@@ -139,7 +139,7 @@ func MockUpdateVersionsTable(
 
 	calls.Add(mockDb.EXPECT().
 		Query(gomock.Any(), `UPDATE scheduler_versions
-	SET (rolling_update_status) = (?rolling_update_status)
+	SET rolling_update_status = ?rolling_update_status
 	WHERE name=?name AND version=?version`, gomock.Any()).
 		Return(pg.NewTestResult(nil, 1), errDB))
 
