@@ -19,9 +19,9 @@ setup-hooks:
 
 setup-ci:
 	@go get github.com/mattn/goveralls
-	@go get github.com/onsi/ginkgo/ginkgo@f40a49d81e5c
 	@go get -u github.com/wadey/gocovmerge
 	@go get -u github.com/jteeuwen/go-bindata/...
+	@GO111MODULE=on go get github.com/onsi/ginkgo/ginkgo@f40a49d81e5c
 	@GO111MODULE=on go get -v
 	@GO111MODULE=on go mod download
 
