@@ -11,6 +11,7 @@ import (
 	"context"
 	e "errors"
 	"fmt"
+	goredis "github.com/go-redis/redis"
 	"github.com/topfreegames/maestro/api/auth"
 	"io"
 	"net"
@@ -522,6 +523,16 @@ func (a *App) configureDatabase(dbOrNil pginterfaces.DB, dbCtxOrNil pginterfaces
 }
 
 func (a *App) configureRedisClient(redisClientOrNil redisinterfaces.RedisClient, redisTraceWrapperOrNil redisinterfaces.TraceWrapper) error {
+	if redisClientOrNil == nil {
+		options, err := goredis.ParseURL(a.Config.GetString("extensions.redis.url"))
+		if err != nil {
+			return err
+		}
+		options.ReadTimeout = a.Config.GetDuration("extensions.redis.readTimeout")
+		options.WriteTimeout = a.Config.GetDuration("extensions.redis.writeTimeout")
+		redisClientOrNil = goredis.NewClient(options)
+	}
+
 	redisClient, err := extensions.GetRedisClient(a.Logger, a.Config, redisClientOrNil, redisTraceWrapperOrNil)
 	if err != nil {
 		return err

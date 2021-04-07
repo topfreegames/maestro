@@ -9,6 +9,7 @@ package worker
 
 import (
 	"fmt"
+	goredis "github.com/go-redis/redis"
 	"os"
 	"os/signal"
 	"runtime"
@@ -183,15 +184,17 @@ func (w *Worker) configureDatabase(dbOrNil pginterfaces.DB) error {
 }
 
 func (w *Worker) configureRedisClient(redisClientOrNil redisinterfaces.RedisClient) error {
-	if redisClientOrNil != nil {
-		redisClient, err := redis.NewClient("extensions.redis", w.Config, redisClientOrNil)
+	if redisClientOrNil == nil {
+		options, err := goredis.ParseURL(w.Config.GetString("extensions.redis.url"))
 		if err != nil {
 			return err
 		}
-		w.RedisClient = redisClient
-		return nil
+		options.ReadTimeout = w.Config.GetDuration("extensions.redis.readTimeout")
+		options.WriteTimeout = w.Config.GetDuration("extensions.redis.writeTimeout")
+		redisClientOrNil = goredis.NewClient(options)
 	}
-	redisClient, err := extensions.GetRedisClient(w.Logger, w.Config)
+
+	redisClient, err := redis.NewClient("extensions.redis", w.Config, redisClientOrNil)
 	if err != nil {
 		return err
 	}
