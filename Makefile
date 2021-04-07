@@ -7,6 +7,7 @@
 
 MY_IP=`ifconfig | grep --color=none -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep --color=none -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' | head -n 1`
 TEST_PACKAGES=`find . -type f -name "*.go" ! \( -path "*vendor*" \) | sed -En "s/([^\.])\/.*/\1/p" | uniq`
+export GO111MODULE=on
 
 .PHONY: plugins
 
@@ -21,9 +22,9 @@ setup-ci:
 	@go get github.com/mattn/goveralls
 	@go get -u github.com/wadey/gocovmerge
 	@go get -u github.com/jteeuwen/go-bindata/...
-	@GO111MODULE=on go get github.com/onsi/ginkgo/ginkgo@f40a49d81e5c
-	@GO111MODULE=on go get -v
-	@GO111MODULE=on go mod download
+	@go get github.com/onsi/ginkgo/ginkgo@f40a49d81e5c
+	@go get -v
+	@go mod download
 
 build:
 	@mkdir -p bin && go build -o ./bin/maestro main.go
@@ -109,7 +110,7 @@ unit-board:
 	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
 
 unit-run:
-	@GO111MODULE=on ginkgo -tags unit -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements ${TEST_PACKAGES}
+	@ginkgo -tags unit -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements ${TEST_PACKAGES}
 
 gather-unit-profiles:
 	@mkdir -p _build
