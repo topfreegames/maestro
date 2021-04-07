@@ -23,6 +23,7 @@ setup-ci:
 	@go get -u github.com/wadey/gocovmerge
 	@go get -u github.com/jteeuwen/go-bindata/...
 	@GO111MODULE=on go get -v
+	@GO111MODULE=on go mod download
 
 build:
 	@mkdir -p bin && go build -o ./bin/maestro main.go
