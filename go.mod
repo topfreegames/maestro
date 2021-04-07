@@ -4,12 +4,15 @@ go 1.12
 
 require (
 	cloud.google.com/go v0.34.0
+	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/DataDog/datadog-go v0.0.0-20170427165718-0ddda6bee211
 	github.com/GuiaBolso/darwin v0.0.0-20170210191649-86919dfcf808
+	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20161001163130-7b3beb6df3c4
 	github.com/bsm/redis-lock v6.0.0+incompatible
 	github.com/btcsuite/btcutil v0.0.0-20180706230648-ab6388e0c60a
 	github.com/certifi/gocertifi v0.0.0-20170417193930-a9c833d2837d
+	github.com/client9/misspell v0.3.4 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.9
@@ -17,8 +20,9 @@ require (
 	github.com/getsentry/raven-go v0.0.0-20170310193735-b68337dbf03e
 	github.com/go-pg/pg v6.13.2+incompatible
 	github.com/go-redis/redis v6.12.0+incompatible
+	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gogo/protobuf v1.2.1
-	github.com/golang/mock v1.1.1
+	github.com/golang/mock v1.0.0
 	github.com/golang/protobuf v1.4.2
 	github.com/google/btree v1.0.0
 	github.com/google/gofuzz v1.0.0
@@ -31,6 +35,7 @@ require (
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hashicorp/hcl v0.0.0-20170217164738-630949a3c5fa
+	github.com/hpcloud/tail v1.0.0 // indirect
 	github.com/imdario/mergo v0.0.0-20160216103600-3e95a51e0639
 	github.com/inconshreveable/mousetrap v1.0.0
 	github.com/jinzhu/inflection v0.0.0-20170102125226-1c35d901db3d
@@ -46,8 +51,9 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/newrelic/go-agent v1.9.0
-	github.com/onsi/ginkgo v1.16.1
-	github.com/onsi/gomega v1.10.1
+	github.com/nxadm/tail v1.4.8 // indirect
+	github.com/onsi/ginkgo v1.3.2-0.20170409210154-f40a49d81e5c
+	github.com/onsi/gomega v1.4.1
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pelletier/go-toml v1.2.0
 	github.com/petar/GoLLRB v0.0.0-20190514000832-33fb24c13b99
@@ -73,6 +79,7 @@ require (
 	github.com/wadey/gocovmerge v0.0.0-20160331181800-b5bfa59ec0ad // indirect
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3 // indirect
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
@@ -81,9 +88,11 @@ require (
 	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/appengine v1.4.0
 	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8
-	google.golang.org/grpc v1.23.0
+	google.golang.org/grpc v1.14.0
+	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/inf.v0 v0.9.1
 	gopkg.in/yaml.v2 v2.3.0
+	honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc // indirect
 	k8s.io/api v0.0.0-20190805182141-5e2f71e44c7f
 	k8s.io/apimachinery v0.0.0-20190629003722-e20a3a656cff
 	k8s.io/client-go v10.0.0+incompatible
