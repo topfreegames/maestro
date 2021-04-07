@@ -11,7 +11,6 @@ TEST_PACKAGES=`find . -type f -name "*.go" ! \( -path "*vendor*" \) | sed -En "s
 .PHONY: plugins
 
 setup: setup-hooks
-	@go env -w GO111MODULE=on
 	@go get -u github.com/jteeuwen/go-bindata/...
 	@go get -u github.com/wadey/gocovmerge
 
@@ -19,12 +18,11 @@ setup-hooks:
 	@cd .git/hooks && ln -sf ./hooks/pre-commit.sh pre-commit
 
 setup-ci:
-	@go env -w GO111MODULE=on
 	@go get github.com/mattn/goveralls
 	@go get github.com/onsi/ginkgo/ginkgo
 	@go get -u github.com/wadey/gocovmerge
 	@go get -u github.com/jteeuwen/go-bindata/...
-	@go get -v
+	@GO111MODULE=on go get -v
 
 build:
 	@mkdir -p bin && go build -o ./bin/maestro main.go
