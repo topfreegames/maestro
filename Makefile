@@ -4,27 +4,22 @@
 # Licensed under the MIT license:
 # http://www.opensource.org/licenses/mit-license
 # Copyright © 2017 Top Free Games <backend@tfgco.com>
-
+GOBINPATH ?= $(GOPATH)/bin
 MY_IP=`ifconfig | grep --color=none -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep --color=none -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' | head -n 1`
-TEST_PACKAGES=`find . -type f -name "*.go" ! \( -path "*vendor*" \) | sed -En "s/([^\.])\/.*/\1/p" | uniq`
-export GO111MODULE=on
-
 .PHONY: plugins
 
-setup: setup-hooks
-	@go get -u github.com/jteeuwen/go-bindata/...
-	@go get -u github.com/wadey/gocovmerge
+setup:
+	@go install github.com/jteeuwen/go-bindata/...
+	@go install github.com/wadey/gocovmerge
 
 setup-hooks:
 	@cd .git/hooks && ln -sf ./hooks/pre-commit.sh pre-commit
 
 setup-ci:
-	@go get github.com/mattn/goveralls
-	@go get -u github.com/wadey/gocovmerge
-	@go get -u github.com/jteeuwen/go-bindata/...
-	@go get github.com/onsi/ginkgo/ginkgo@f40a49d81e5c
-	@go get -v
-	@go mod download
+	@go install github.com/mattn/goveralls
+	@go install github.com/wadey/gocovmerge
+	@go install github.com/jteeuwen/go-bindata/...
+	@go install github.com/onsi/ginkgo/ginkgo@f40a49d81e5c
 
 build:
 	@mkdir -p bin && go build -o ./bin/maestro main.go
@@ -43,7 +38,7 @@ cross-build-linux-amd64:
 	@chmod a+x ./bin/maestro-linux-amd64
 
 assets:
-	@go-bindata -o migrations/migrations.go -pkg migrations migrations/*.sql
+	@cd migrations && $(GOBINPATH)/go-bindata -o migrations.go -pkg migrations *.sql
 
 migrate: assets
 	@go run main.go migrate -c ./config/local.yaml
@@ -110,7 +105,7 @@ unit-board:
 	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
 
 unit-run:
-	@ginkgo -tags unit -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements ${TEST_PACKAGES}
+	@$(GOBINPATH)/ginkgo -tags unit -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements ./...
 
 gather-unit-profiles:
 	@mkdir -p _build
@@ -128,7 +123,7 @@ integration-board:
 integration-run:
 	@ MAESTRO_EXTENSIONS_PG_HOST=${MY_IP}                   \
     MAESTRO_EXTENSIONS_REDIS_URL=redis://${MY_IP}:6333    \
-    ginkgo -tags integration -cover -r                    \
+    $(GOBINPATH)/ginkgo -tags integration -cover -r                    \
       -randomizeAllSpecs -randomizeSuites                 \
       -skipMeasurements worker api models controller;
 
@@ -141,7 +136,7 @@ gather-integration-profiles:
 
 merge-profiles:
 	@mkdir -p _build
-	@gocovmerge _build/*.out > _build/coverage-all.out
+	@$(GOBINPATH)/gocovmerge _build/*.out > _build/coverage-all.out
 
 test-coverage-func coverage-func: merge-profiles
 	@echo

@@ -19,17 +19,18 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-FROM golang:1.12.9-buster AS build-env
+FROM golang:1.16.3-buster AS build-env
 
 MAINTAINER TFG Co <backend@tfgco.com>
 
 RUN mkdir -p /app/bin
 
 RUN apt update && apt install --no-install-recommends -y postgresql git make libc-dev gcc
-RUN go get -u github.com/jteeuwen/go-bindata/...
+RUN go install github.com/jteeuwen/go-bindata/...
 
 ADD . /go/src/github.com/topfreegames/maestro
 RUN cd /go/src/github.com/topfreegames/maestro && \
+  make setup && \
   make build && \
   make plugins-linux && \
   make assets && \
@@ -39,7 +40,7 @@ RUN cd /go/src/github.com/topfreegames/maestro && \
   mv scripts /app/scripts && \
   mv migrations /app/migrations && \
   mv Makefile /app/Makefile
-  
+
 FROM debian:buster-slim
 
 RUN apt update && apt install -y ca-certificates openssl
