@@ -11,22 +11,19 @@ TEST_PACKAGES=`find . -type f -name "*.go" ! \( -path "*vendor*" \) | sed -En "s
 .PHONY: plugins
 
 setup: setup-hooks
-	@go get -u github.com/golang/dep/cmd/dep
 	@go get -u github.com/jteeuwen/go-bindata/...
 	@go get -u github.com/wadey/gocovmerge
-	@dep ensure
 
 setup-hooks:
 	@cd .git/hooks && ln -sf ./hooks/pre-commit.sh pre-commit
 
 setup-ci:
 	@go get github.com/mattn/goveralls
-	@go get -u github.com/golang/dep/cmd/dep
-	@go get github.com/onsi/ginkgo/ginkgo
 	@go get -u github.com/wadey/gocovmerge
 	@go get -u github.com/jteeuwen/go-bindata/...
-	@dep ensure -v
-	@dep ensure -update github.com/topfreegames/extensions
+	@GO111MODULE=on go get github.com/onsi/ginkgo/ginkgo@f40a49d81e5c
+	@GO111MODULE=on go get -v
+	@GO111MODULE=on go mod download
 
 build:
 	@mkdir -p bin && go build -o ./bin/maestro main.go
@@ -112,7 +109,7 @@ unit-board:
 	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
 
 unit-run:
-	@ginkgo -tags unit -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements ${TEST_PACKAGES}
+	@GO111MODULE=on ginkgo -tags unit -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements ${TEST_PACKAGES}
 
 gather-unit-profiles:
 	@mkdir -p _build
