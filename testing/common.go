@@ -504,53 +504,8 @@ func MockCreateScheduler(
 	err := yaml.Unmarshal([]byte(yamlStr), &configYaml)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	err = MockSetScallingAmount(mockRedisClient, mockPipeline, mockDb, clientset, &configYaml, 0, yamlStr)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
 	calls.Append(
 		MockInsertScheduler(mockDb, nil))
-
-	calls.Add(
-		mockRedisClient.EXPECT().
-			TxPipeline().
-			Return(mockPipeline))
-
-	calls.Add(
-		mockPipeline.EXPECT().
-			HGetAll(models.GetPodMapRedisKey(configYaml.Name)).
-			Return(goredis.NewStringStringMapResult(map[string]string{}, nil)))
-
-	calls.Add(mockPipeline.EXPECT().Exec())
-
-	calls.Add(MockAnyRunningPod(mockRedisClient, configYaml.Name, configYaml.AutoScaling.Min*2))
-
-	calls.Add(
-		mockRedisClient.EXPECT().
-			TxPipeline().
-			Return(mockPipeline).
-			Times(configYaml.AutoScaling.Min))
-
-	calls.Add(
-		mockPipeline.EXPECT().
-			HMSet(gomock.Any(), gomock.Any()).Do(
-			func(schedulerName string, statusInfo map[string]interface{}) {
-				gomega.Expect(statusInfo["status"]).To(gomega.Equal(models.StatusCreating))
-				gomega.Expect(statusInfo["lastPing"]).To(gomega.BeNumerically("~", time.Now().Unix(), 1))
-			},
-		).Times(configYaml.AutoScaling.Min))
-
-	calls.Add(
-		mockPipeline.EXPECT().
-			ZAdd(models.GetRoomPingRedisKey(configYaml.Name), gomock.Any()).
-			Times(configYaml.AutoScaling.Min))
-	calls.Add(
-		mockPipeline.EXPECT().
-			SAdd(models.GetRoomStatusSetRedisKey(configYaml.Name, "creating"), gomock.Any()).
-			Times(configYaml.AutoScaling.Min))
-	calls.Add(
-		mockPipeline.EXPECT().
-			Exec().
-			Times(configYaml.AutoScaling.Min))
 
 	calls.Append(
 		MockUpdateScheduler(mockDb, nil, nil))
