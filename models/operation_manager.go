@@ -23,12 +23,12 @@ import (
 // OperationManager controls wheter a maestro operation should
 // continue or not
 type OperationManager struct {
-	schedulerName   string
-	redisClient     redisinterfaces.RedisClient
-	logger          logrus.FieldLogger
-	operationKey    string
-	operationName   string
-	loopTime        time.Duration
+	schedulerName string
+	redisClient   redisinterfaces.RedisClient
+	logger        logrus.FieldLogger
+	operationKey  string
+	operationName string
+	loopTime      time.Duration
 }
 
 // NewOperationManager returns an instance of operation manager

@@ -33,6 +33,7 @@ import (
 	logininterfaces "github.com/topfreegames/maestro/login/interfaces"
 
 	"github.com/gorilla/mux"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/maestro/errors"
@@ -42,10 +43,9 @@ import (
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/william"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"k8s.io/client-go/kubernetes"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
-	opentracing "github.com/opentracing/opentracing-go"
-	jaegercfg "github.com/uber/jaeger-client-go/config"
 )
 
 type gracefulShutdown struct {

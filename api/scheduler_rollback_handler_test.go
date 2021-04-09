@@ -195,7 +195,7 @@ autoscaling:
 			mockRedisClient.EXPECT().HGetAll(gomock.Any()).
 				Return(goredis.NewStringStringMapResult(map[string]string{
 					"description": models.OpManagerWaitingLock,
-			}, nil))
+				}, nil))
 
 			operationFinished := false
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)

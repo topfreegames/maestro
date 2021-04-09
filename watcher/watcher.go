@@ -609,7 +609,7 @@ func (w *Watcher) listPods() (podMap map[string]*models.Pod, err error) {
 		"operation": "watcher.listPods",
 	})
 
-	podMap, err = models.GetPodMapFromRedis(w.RedisClient.Client, w.MetricsReporter, w.SchedulerName)
+	podMap, err = models.GetPodMapFromRedis(w.Config, w.RedisClient.Client, w.MetricsReporter, w.SchedulerName)
 	if err != nil {
 		logger.WithError(err).Error("failed to list pods on redis")
 		return nil, err
@@ -870,6 +870,7 @@ func (w *Watcher) AutoScale() error {
 			timeoutSec,
 			false,
 			w.Config,
+			true,
 		)
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
@@ -1625,7 +1626,7 @@ func (w *Watcher) watchPods(stopCh <-chan struct{}) {
 func (w *Watcher) configureKubeWatch() {
 	w.Informer = informersv1.NewPodInformer(w.KubernetesClient, w.SchedulerName, 30*time.Second, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	w.Lister = listersv1.NewPodLister(w.Informer.GetIndexer()).Pods(w.SchedulerName)
-	rateLimiter := workqueue.NewItemFastSlowRateLimiter(20 * time.Millisecond, 500 * time.Millisecond, 5)
+	rateLimiter := workqueue.NewItemFastSlowRateLimiter(20*time.Millisecond, 500*time.Millisecond, 5)
 	w.Queue = workqueue.NewNamedRateLimitingQueue(rateLimiter, w.SchedulerName)
 	w.Informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {

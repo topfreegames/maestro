@@ -39,6 +39,7 @@ var deleteOptions = &metav1.DeleteOptions{}
 
 // CreateScheduler creates a new scheduler from a yaml configuration
 func CreateScheduler(
+	config *viper.Viper,
 	logger logrus.FieldLogger,
 	roomManager models.RoomManager,
 	mr *models.MixedMetricsReporter,
@@ -134,7 +135,7 @@ func CreateScheduler(
 	}
 
 	logger.Info("creating pods of new scheduler")
-	err = ScaleUp(logger, roomManager, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true, nil)
+	err = ScaleUp(logger, roomManager, mr, db, redisClient, clientset, scheduler, configYAML.AutoScaling.Min, timeoutSec, true, config, false)
 	if err != nil {
 		logger.WithError(err).Error("error scaling up scheduler, deleting it")
 		if scheduler.LastScaleOpAt == int64(0) {
@@ -376,9 +377,10 @@ func ScaleUp(
 	amount, timeoutSec int,
 	initalOp bool,
 	config *viper.Viper,
+	shouldRespectLimit bool,
 ) error {
 	scaleUpLimit := 0
-	if config != nil {
+	if shouldRespectLimit {
 		scaleUpLimit = config.GetInt("watcher.maxScaleUpAmount")
 	}
 	l := logger.WithFields(logrus.Fields{
@@ -390,7 +392,7 @@ func ScaleUp(
 
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 
-	existPendingPods, err := pendingPods(clientset, redisClient, scheduler.Name, mr)
+	existPendingPods, err := pendingPods(config, redisClient, scheduler.Name, mr)
 	if err != nil {
 		return err
 	}
@@ -414,9 +416,9 @@ func ScaleUp(
 	}
 
 	// SAFETY - hard cap on scale up amount in order to not break etcd
-	if config != nil && amount > config.GetInt("watcher.maxScaleUpAmount") {
+	if shouldRespectLimit && amount > scaleUpLimit {
 		l.Warnf("amount to scale up is higher than limit")
-		amount = config.GetInt("watcher.maxScaleUpAmount")
+		amount = scaleUpLimit
 	}
 
 	pods := make([]*v1.Pod, amount)
@@ -1026,7 +1028,8 @@ func ScaleScheduler(
 			int(amountUp),
 			timeoutScaleup,
 			false,
-			nil,
+			config,
+			false,
 		)
 	} else if amountDown > 0 {
 		logger.Infof("manually scaling down scheduler %s in %d GRUs", schedulerName, amountDown)
@@ -1088,7 +1091,8 @@ func ScaleScheduler(
 				int(replicas-nPods),
 				timeoutScaleup,
 				false,
-				nil,
+				config,
+				false,
 			)
 		} else if replicas < nPods {
 			// lock so autoscaler doesn't recreate rooms deleted
@@ -1203,7 +1207,8 @@ func SetRoomStatus(
 					cachedScheduler.ConfigYAML.AutoScaling.Up.Delta,
 					config.GetInt("scaleUpTimeoutSeconds"),
 					false,
-					nil,
+					config,
+					false,
 				)
 				if err != nil {
 					log.WithError(err).Error(err)

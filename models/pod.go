@@ -11,10 +11,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/go-redis/redis"
 	"strings"
 	"text/template"
 
-	"github.com/go-redis/redis"
+	"github.com/spf13/viper"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -474,34 +475,47 @@ func GetPodMapRedisKey(schedulerName string) string {
 
 // GetPodMapFromRedis loads the pod map from redis
 func GetPodMapFromRedis(
+	config *viper.Viper,
 	redisClient redisinterfaces.RedisClient,
 	mr *MixedMetricsReporter,
 	schedulerName string,
 ) (podMap map[string]*Pod, err error) {
-	pipe := redisClient.TxPipeline()
-	cmd := pipe.HGetAll(GetPodMapRedisKey(schedulerName))
-	err = mr.WithSegment(SegmentPipeExec, func() error {
-		var err error
-		_, err = pipe.Exec()
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
+	// The RedisClient interface does not have HSCAN and this is the only way to extract the *redis.Client inside it
+	pageSize := config.GetInt64("podListPageSize")
+	redisKey := GetPodMapRedisKey(schedulerName)
+	podMap = make(map[string]*Pod)
 
-	podMap = map[string]*Pod{}
-
-	for podName, podStr := range cmd.Val() {
-		pod := &Pod{}
-		err = pod.UnmarshalFromRedis(podStr)
+	for cursor := uint64(0); ; {
+		var results []string
+		err := mr.WithSegment(SegmentHScan, func() error {
+			pipeline := redisClient.TxPipeline()
+			cmd := pipeline.HScan(redisKey, 0, "*", pageSize)
+			_, err := pipeline.Exec()
+			if err != nil {
+				return err
+			}
+			results, cursor = cmd.Val()
+			return nil
+		})
 		if err != nil {
 			return nil, err
 		}
 
-		podMap[podName] = pod
+		// results from HScan is a []string in the following ["key1","value1","key2","value2",...]
+		for i := 0; i < len(results); i += 2 {
+			pod := new(Pod)
+			err = pod.UnmarshalFromRedis(results[i+1])
+			if err != nil {
+				return nil, err
+			}
+			podMap[results[i]] = pod
+		}
+		if cursor == 0 {
+			break
+		}
 	}
 
-	return podMap, err
+	return podMap, nil
 }
 
 // GetPodCountFromRedis returns the pod count from redis podMap key
