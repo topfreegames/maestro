@@ -489,7 +489,7 @@ func GetPodMapFromRedis(
 		var results []string
 		err := mr.WithSegment(SegmentHScan, func() error {
 			pipeline := redisClient.TxPipeline()
-			cmd := pipeline.HScan(redisKey, 0, "*", pageSize)
+			cmd := pipeline.HScan(redisKey, cursor, "*", pageSize)
 			_, err := pipeline.Exec()
 			if err != nil {
 				return err
