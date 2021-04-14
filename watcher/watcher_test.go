@@ -1257,7 +1257,7 @@ var _ = Describe("Watcher", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true, config)
+				err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true, config, true)
 				Expect(err).NotTo(HaveOccurred())
 
 				// Mock MetricsTrigger Up get usage percentages
@@ -4511,12 +4511,12 @@ var _ = Describe("Watcher", func() {
 		It("should stop when operation is canceled", func() {
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
 			//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HGetAll(
-				models.GetPodMapRedisKey(configYaml.Name)).
-				Return(redis.NewStringStringMapResult(map[string]string{
-					"room-1": `{"name": "room-1", "version": "v2.0"}`,
-					"room-2": `{"name": "room-1", "version": "v2.0"}`,
-				}, nil))
+			mockPipeline.EXPECT().
+				HScan(models.GetPodMapRedisKey(configYaml.Name), uint64(0), "*", gomock.Any()).
+				Return(redis.NewScanCmdResult([]string{
+					"room-1", `{"name": "room-1", "version": "v2.0"}`,
+					"room-2", `{"name": "room-1", "version": "v2.0"}`,
+				}, 0, nil))
 			//mockPipeline.EXPECT().Exec()
 
 			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline, w.SchedulerName, [][]string{}, nil)
@@ -4579,7 +4579,7 @@ var _ = Describe("Watcher", func() {
 			nPods := 3
 			reason := "bug"
 
-			pods := make(map[string]string)
+			pods := make([]string, 0)
 			for idx := 1; idx <= nPods; idx++ {
 				var pod models.Pod
 				pod.Name = fmt.Sprintf("pod-%d", idx)
@@ -4596,13 +4596,13 @@ var _ = Describe("Watcher", func() {
 				}
 				jsonBytes, err := pod.MarshalToRedis()
 				Expect(err).ToNot(HaveOccurred())
-				pods[pod.Name] = string(jsonBytes)
+				pods = append(pods, pod.Name, string(jsonBytes))
 			}
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().
-				HGetAll(models.GetPodMapRedisKey(w.SchedulerName)).
-				Return(redis.NewStringStringMapResult(pods, nil))
+				HScan(models.GetPodMapRedisKey(w.SchedulerName), uint64(0), "*", gomock.Any()).
+				Return(redis.NewScanCmdResult(pods, 0, nil))
 			mockPipeline.EXPECT().Exec()
 
 			mockReporter.EXPECT().Report(reportersConstants.EventResponseTime, gomock.Any())

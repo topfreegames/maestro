@@ -669,8 +669,8 @@ autoscaling:
 			Context("when all services are healthy", func() {
 				It("returns a status code of 200 and success body", func() {
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
-					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-						logger, app.RoomManager, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
+					MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb,
+						logger, app.RoomManager, mmr, yamlString, timeoutSec)
 
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml)
 					Expect(err).NotTo(HaveOccurred())
@@ -999,8 +999,8 @@ autoscaling:
 
 				It("should asynchronously update scheduler", func() {
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
-					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-						logger, app.RoomManager, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
+					MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb,
+						logger, app.RoomManager, mmr, yamlString, timeoutSec)
 
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml)
 					Expect(err).NotTo(HaveOccurred())
@@ -1121,8 +1121,8 @@ autoscaling:
 
 				It("should asynchronously update scheduler and show error when occurred", func() {
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
-					MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-						logger, app.RoomManager, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
+					MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb,
+						logger, app.RoomManager, mmr, yamlString, timeoutSec)
 
 					err := yaml.Unmarshal([]byte(yamlString), &configYaml)
 					Expect(err).NotTo(HaveOccurred())
@@ -2065,8 +2065,8 @@ game: game-name
 				err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())
 
-				MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-					logger, app.RoomManager, mmr, yamlString, timeoutSec, nil, workerPortRange, portStart, portEnd)
+				MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb,
+					logger, app.RoomManager, mmr, yamlString, timeoutSec)
 
 				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, yamlString)
 
@@ -2654,8 +2654,8 @@ game: game-name
 }`
 
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
-				MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-					logger, app.RoomManager, mmr, jsonString, timeoutSec, nil, workerPortRange, portStart, portEnd)
+				MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb,
+					logger, app.RoomManager, mmr, jsonString, timeoutSec)
 
 				err := json.Unmarshal([]byte(jsonString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())

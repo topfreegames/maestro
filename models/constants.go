@@ -37,6 +37,9 @@ const SegmentPod = "Kubernetes/Pod"
 //SegmentMetrics represents a segment
 const SegmentMetrics = "Kubernetes/Metrics"
 
+//SegmentHScan represents a segment
+const SegmentHScan = "Redis/HScan"
+
 //SegmentHGetAll represents a segment
 const SegmentHGetAll = "Redis/HGetAll"
 

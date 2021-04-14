@@ -266,12 +266,12 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"migrations/0001-CreateSchedulerTable.sql": migrations0001CreateschedulertableSql,
-	"migrations/0002-CreateUserTable.sql": migrations0002CreateusertableSql,
-	"migrations/0003-CreateSchedulerVersionsTable.sql": migrations0003CreateschedulerversionstableSql,
-	"migrations/0004-AlterSchedulerTableAddVersion.sql": migrations0004AlterschedulertableaddversionSql,
-	"migrations/0005-AlterVersionType.sql": migrations0005AlterversiontypeSql,
-	"migrations/0006-AddStatusColumnToVersion.sql": migrations0006AddstatuscolumntoversionSql,
+	"migrations/0001-CreateSchedulerTable.sql":              migrations0001CreateschedulertableSql,
+	"migrations/0002-CreateUserTable.sql":                   migrations0002CreateusertableSql,
+	"migrations/0003-CreateSchedulerVersionsTable.sql":      migrations0003CreateschedulerversionstableSql,
+	"migrations/0004-AlterSchedulerTableAddVersion.sql":     migrations0004AlterschedulertableaddversionSql,
+	"migrations/0005-AlterVersionType.sql":                  migrations0005AlterversiontypeSql,
+	"migrations/0006-AddStatusColumnToVersion.sql":          migrations0006AddstatuscolumntoversionSql,
 	"migrations/0007-AddRollbackVersionColumnToVersion.sql": migrations0007AddrollbackversioncolumntoversionSql,
 }
 
@@ -314,14 +314,15 @@ type bintree struct {
 	Func     func() (*asset, error)
 	Children map[string]*bintree
 }
+
 var _bintree = &bintree{nil, map[string]*bintree{
 	"migrations": &bintree{nil, map[string]*bintree{
-		"0001-CreateSchedulerTable.sql": &bintree{migrations0001CreateschedulertableSql, map[string]*bintree{}},
-		"0002-CreateUserTable.sql": &bintree{migrations0002CreateusertableSql, map[string]*bintree{}},
-		"0003-CreateSchedulerVersionsTable.sql": &bintree{migrations0003CreateschedulerversionstableSql, map[string]*bintree{}},
-		"0004-AlterSchedulerTableAddVersion.sql": &bintree{migrations0004AlterschedulertableaddversionSql, map[string]*bintree{}},
-		"0005-AlterVersionType.sql": &bintree{migrations0005AlterversiontypeSql, map[string]*bintree{}},
-		"0006-AddStatusColumnToVersion.sql": &bintree{migrations0006AddstatuscolumntoversionSql, map[string]*bintree{}},
+		"0001-CreateSchedulerTable.sql":              &bintree{migrations0001CreateschedulertableSql, map[string]*bintree{}},
+		"0002-CreateUserTable.sql":                   &bintree{migrations0002CreateusertableSql, map[string]*bintree{}},
+		"0003-CreateSchedulerVersionsTable.sql":      &bintree{migrations0003CreateschedulerversionstableSql, map[string]*bintree{}},
+		"0004-AlterSchedulerTableAddVersion.sql":     &bintree{migrations0004AlterschedulertableaddversionSql, map[string]*bintree{}},
+		"0005-AlterVersionType.sql":                  &bintree{migrations0005AlterversiontypeSql, map[string]*bintree{}},
+		"0006-AddStatusColumnToVersion.sql":          &bintree{migrations0006AddstatuscolumntoversionSql, map[string]*bintree{}},
 		"0007-AddRollbackVersionColumnToVersion.sql": &bintree{migrations0007AddrollbackversioncolumntoversionSql, map[string]*bintree{}},
 	}},
 }}
@@ -372,4 +373,3 @@ func _filePath(dir, name string) string {
 	cannonicalName := strings.Replace(name, "\\", "/", -1)
 	return filepath.Join(append([]string{dir}, strings.Split(cannonicalName, "/")...)...)
 }
-

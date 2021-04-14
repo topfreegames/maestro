@@ -30,22 +30,22 @@ import (
 )
 
 var (
-	hook                   *test.Hook
-	logger                 *logrus.Logger
-	metricsClientset       *metricsFake.Clientset
-	mockCtrl               *gomock.Controller
-	config                 *viper.Viper
-	mockDb                 *pgmocks.MockDB
-	mockPipeline           *redismocks.MockPipeliner
-	mockRedisClient        *redismocks.MockRedisClient
-	mockRedisTraceWrapper  *redismocks.MockTraceWrapper
-	mockClock              *clockmocks.MockClock
-	mockPortChooser        *mocks.MockPortChooser
-	redisClient            *redis.Client
-	mr                     *models.MixedMetricsReporter
-	schedulerCache         *models.SchedulerCache
-	err                    error
-	allStatus              = []string{
+	hook                  *test.Hook
+	logger                *logrus.Logger
+	metricsClientset      *metricsFake.Clientset
+	mockCtrl              *gomock.Controller
+	config                *viper.Viper
+	mockDb                *pgmocks.MockDB
+	mockPipeline          *redismocks.MockPipeliner
+	mockRedisClient       *redismocks.MockRedisClient
+	mockRedisTraceWrapper *redismocks.MockTraceWrapper
+	mockClock             *clockmocks.MockClock
+	mockPortChooser       *mocks.MockPortChooser
+	redisClient           *redis.Client
+	mr                    *models.MixedMetricsReporter
+	schedulerCache        *models.SchedulerCache
+	err                   error
+	allStatus             = []string{
 		models.StatusCreating,
 		models.StatusReady,
 		models.StatusOccupied,

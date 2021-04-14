@@ -296,8 +296,8 @@ var _ = Describe("AddressGetter", func() {
 				Expect(roomAddresses.Ports).To(HaveLen(1))
 				Expect(roomAddresses.Ports[0]).To(Equal(
 					&models.RoomPort{
-						Name: "TCP",
-						Port: port,
+						Name:     "TCP",
+						Port:     port,
 						Protocol: "TCP",
 					}))
 			})
@@ -347,8 +347,8 @@ var _ = Describe("AddressGetter", func() {
 				Expect(roomAddresses.Ports).To(HaveLen(1))
 				Expect(roomAddresses.Ports[0]).To(Equal(
 					&models.RoomPort{
-						Name: "TCP",
-						Port: port,
+						Name:     "TCP",
+						Port:     port,
 						Protocol: "TCP",
 					}))
 			})

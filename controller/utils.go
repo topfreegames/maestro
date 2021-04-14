@@ -802,7 +802,7 @@ func waitForPods(
 }
 
 func pendingPods(
-	clientset kubernetes.Interface,
+	config *viper.Viper,
 	redisClient redisinterfaces.RedisClient,
 	namespace string,
 	mr *models.MixedMetricsReporter,
@@ -810,7 +810,7 @@ func pendingPods(
 	var pods map[string]*models.Pod
 	err := mr.WithSegment(models.SegmentPod, func() error {
 		var err error
-		pods, err = models.GetPodMapFromRedis(redisClient, mr, namespace)
+		pods, err = models.GetPodMapFromRedis(config, redisClient, mr, namespace)
 		return err
 	})
 	if err != nil {

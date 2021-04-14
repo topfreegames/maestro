@@ -2,6 +2,7 @@ package testing
 
 import (
 	"fmt"
+	"github.com/onsi/ginkgo"
 	"strconv"
 	"time"
 
@@ -485,6 +486,7 @@ func MockCreateRoomsWithPorts(
 
 // MockCreateScheduler mocks the creation of a scheduler
 func MockCreateScheduler(
+	config *viper.Viper,
 	clientset kubernetes.Interface,
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
@@ -494,9 +496,6 @@ func MockCreateScheduler(
 	mr *models.MixedMetricsReporter,
 	yamlStr string,
 	timeoutSec int,
-	mockPortChooser *mocks.MockPortChooser,
-	workerPortRange string,
-	portStart, portEnd int,
 ) (calls *Calls) {
 	calls = NewCalls()
 
@@ -517,8 +516,8 @@ func MockCreateScheduler(
 
 	calls.Add(
 		mockPipeline.EXPECT().
-			HGetAll(models.GetPodMapRedisKey(configYaml.Name)).
-			Return(goredis.NewStringStringMapResult(map[string]string{}, nil)))
+			HScan(models.GetPodMapRedisKey(configYaml.Name), uint64(0), "*", gomock.Any()).
+			Return(goredis.NewScanCmdResult([]string{}, 0, nil)))
 
 	calls.Add(mockPipeline.EXPECT().Exec())
 
@@ -555,7 +554,7 @@ func MockCreateScheduler(
 	calls.Append(
 		MockUpdateScheduler(mockDb, nil, nil))
 
-	err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml, timeoutSec)
+	err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml, timeoutSec)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return calls
@@ -1084,14 +1083,14 @@ func MockListPods(
 	rooms []string,
 	err error,
 ) *gomock.Call {
-	result := make(map[string]string, len(rooms))
+	result := make([]string, 0, len(rooms)*2)
 	for _, room := range rooms {
-		result[room] = fmt.Sprintf(`{"name": "%s", "version": "v1.0"}`, room)
+		result = append(result, room, fmt.Sprintf(`{"name": "%s", "version": "v1.0"}`, room))
 	}
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-	mockPipeline.EXPECT().HGetAll(
-		models.GetPodMapRedisKey(schedulerName)).
-		Return(goredis.NewStringStringMapResult(result, nil))
+	mockPipeline.EXPECT().
+		HScan(models.GetPodMapRedisKey(schedulerName), uint64(0), "*", gomock.Any()).
+		Return(goredis.NewScanCmdResult(result, 0, err))
 	execCall := mockPipeline.EXPECT().Exec()
 	if err != nil {
 		execCall.Return([]goredis.Cmder{}, err)
@@ -1390,6 +1389,7 @@ func MockScaleUp(
 	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(times)
 	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
 		func(schedulerName string, statusInfo map[string]interface{}) {
+			defer ginkgo.GinkgoRecover()
 			gomega.Expect(statusInfo["status"]).To(gomega.Equal("creating"))
 			gomega.Expect(statusInfo["lastPing"]).To(gomega.BeNumerically("~", time.Now().Unix(), 1))
 		},

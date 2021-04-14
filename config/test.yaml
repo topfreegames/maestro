@@ -1,3 +1,4 @@
+podListPageSize: 500
 extensions:
   pg:
     host: "localhost"
@@ -27,7 +28,8 @@ watcher:
   lockKey: "maestro-lock-key"
   lockTimeoutMs: 180000
   gracefulShutdownTimeout: 300
-  maxSurge: 25
+  maxSurge: 100
+  maxScaleUpAmount: 200
 worker:
   syncPeriod: 10
   gracefulShutdownTimeout: 300

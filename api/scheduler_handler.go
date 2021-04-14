@@ -68,6 +68,7 @@ func (g *SchedulerCreateHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		kubernetesClient := kubernetes.TryWithContext(g.App.KubernetesClient, ctx)
 		timeoutSec := g.App.Config.GetInt("scaleUpTimeoutSeconds")
 		err := controller.CreateScheduler(
+			g.App.Config,
 			l,
 			g.App.RoomManager,
 			mr,

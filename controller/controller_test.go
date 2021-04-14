@@ -392,7 +392,7 @@ var _ = Describe("Controller", func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			err := controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err := controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).NotTo(HaveOccurred())
 
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
@@ -468,7 +468,7 @@ cmd:
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).NotTo(HaveOccurred())
 
 			ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
@@ -556,7 +556,7 @@ portRange:
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+				err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 				Expect(err).NotTo(HaveOccurred())
 
 				ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
@@ -635,7 +635,7 @@ portRange:
 
 				mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
 
-				err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+				err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("scheduler trying to use ports used by pool 'global'"))
 
@@ -657,7 +657,7 @@ portRange:
 			configYaml1.AutoScaling.Max = 1
 			configYaml1.AutoScaling.Min = configYaml1.AutoScaling.Max + 1
 
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("autoscaling min is greater than max")))
 
@@ -672,7 +672,7 @@ portRange:
 			Expect(err).NotTo(HaveOccurred())
 
 			// Empty Requests
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
 
@@ -680,12 +680,12 @@ portRange:
 			configYaml1.Requests = &models.Resources{}
 			configYaml1.Requests.CPU = ""
 
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
 
 			// CPU Down
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
 
@@ -693,12 +693,12 @@ portRange:
 			configYaml1.Requests = &models.Resources{}
 			configYaml1.Requests.CPU = "1"
 
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.memory in order to use mem autoscaling")))
 
 			// Mem Down
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.memory in order to use mem autoscaling")))
 
@@ -706,7 +706,7 @@ portRange:
 			Expect(err).NotTo(HaveOccurred())
 
 			// Empty Requests
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
 
@@ -714,12 +714,12 @@ portRange:
 			configYaml1.Containers[0].Requests = &models.Resources{}
 			configYaml1.Containers[0].Requests.CPU = ""
 
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
 
 			// CPU Down
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.cpu in order to use cpu autoscaling")))
 
@@ -727,12 +727,12 @@ portRange:
 			configYaml1.Containers[0].Requests = &models.Resources{}
 			configYaml1.Containers[0].Requests.CPU = "1"
 
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.memory in order to use mem autoscaling")))
 
 			// Mem Down
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprint("must set requests.memory in order to use mem autoscaling")))
 
@@ -750,7 +750,7 @@ portRange:
 			err = namespace.Create(clientset)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Sprintf("namespace \"%s\" already exists", configYaml1.Name)))
 
@@ -779,7 +779,7 @@ portRange:
 
 			mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", configYaml1.Name)
 
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(errDB.Error()))
 
@@ -832,7 +832,7 @@ portRange:
 				Times(2)
 			mockPipeline.EXPECT().Exec().Times(2).After(errorExec)
 
-			err = controller.CreateScheduler(logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
+			err = controller.CreateScheduler(config, logger, roomManager, mr, mockDb, mockRedisClient, clientset, &configYaml1, timeoutSec)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 
@@ -1427,14 +1427,14 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 
-			firstExec := mt.MockSetScallingAmountAndReturnExec(
+			firstExec := mt.MockListPods(mockPipeline, mockRedisClient, configYaml1.Name, []string{}, nil)
+
+			secondExec := mt.MockSetScallingAmountAndReturnExec(
 				mockRedisClient,
 				mockPipeline,
 				&configYaml1,
 				0,
-			)
-
-			secondExec := mt.MockListPods(mockPipeline, mockRedisClient, configYaml1.Name, []string{}, nil).After(firstExec)
+			).After(firstExec)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
@@ -1450,7 +1450,7 @@ cmd:
 				Return([]goredis.Cmder{}, errors.New("some error in redis")).
 				After(secondExec)
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 
@@ -1480,7 +1480,7 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 
 			start := time.Now().UnixNano()
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			elapsed := time.Now().UnixNano() - start
 			Expect(err).NotTo(HaveOccurred())
 			Expect(elapsed).To(BeNumerically(">=", 100*time.Millisecond))
@@ -1520,7 +1520,7 @@ cmd:
 
 			mt.MockAnyRunningPod(mockRedisClient, configYaml1.Name, (amount-1)*2)
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, false, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, false, config, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in redis"))
 
@@ -1561,7 +1561,7 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 
 			timeoutSec = 0
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timeout scaling up scheduler"))
 		})
@@ -1573,7 +1573,7 @@ cmd:
 			Expect(err).NotTo(HaveOccurred())
 			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 
-			pods := make(map[string]string, amount)
+			pods := make([]string, 0, amount*2)
 			for i := 0; i < amount; i++ {
 				pod := &models.Pod{}
 				pod.Name = fmt.Sprintf("room-%d", i)
@@ -1583,16 +1583,16 @@ cmd:
 				}
 				jsonBytes, err := pod.MarshalToRedis()
 				Expect(err).NotTo(HaveOccurred())
-				pods[pod.Name] = string(jsonBytes)
+				pods = append(pods, pod.Name, string(jsonBytes))
 			}
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().
-				HGetAll(models.GetPodMapRedisKey(configYaml1.Name)).
-				Return(goredis.NewStringStringMapResult(pods, nil))
+				HScan(models.GetPodMapRedisKey(configYaml1.Name), uint64(0), "*", gomock.Any()).
+				Return(goredis.NewScanCmdResult(pods, 0, nil))
 			mockPipeline.EXPECT().Exec()
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("there are pending pods, check if there are enough CPU and memory to allocate new rooms"))
 		})
@@ -1616,7 +1616,7 @@ cmd:
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).ToNot(HaveOccurred())
 			pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -1643,7 +1643,7 @@ cmd:
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).ToNot(HaveOccurred())
 			pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -1669,7 +1669,7 @@ cmd:
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).ToNot(HaveOccurred())
 			pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -1696,7 +1696,7 @@ cmd:
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).NotTo(HaveOccurred())
 
 			pods, err := clientset.CoreV1().Pods(configYaml1.Name).List(metav1.ListOptions{})
@@ -1752,7 +1752,7 @@ portRange:
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).NotTo(HaveOccurred())
 
 			pods, err := clientset.CoreV1().Pods(configYaml.Name).List(metav1.ListOptions{})
@@ -1795,7 +1795,7 @@ portRange:
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true, config, true)
 			Expect(err).NotTo(HaveOccurred())
 
 			// ScaleDown
@@ -1880,8 +1880,7 @@ portRange:
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset,
-				scheduler, scaleUpAmount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true, config, true)
 
 			// ScaleDown
 			scaleDownAmount := 2
@@ -1969,8 +1968,7 @@ portRange:
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset,
-				scheduler, scaleUpAmount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true, config, true)
 
 			// ScaleDown
 			scaleDownAmount := 2
@@ -3355,8 +3353,8 @@ containers:
 
 			scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
 
-			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-				logger, roomManager, mr, yaml1, timeoutSec, mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb,
+				logger, roomManager, mr, yaml1, timeoutSec)
 
 			yaml2 = `
 name: controller-name
@@ -3714,8 +3712,8 @@ portRange:
 				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(workerPortRange, nil))
 
-				mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-					logger, roomManager, mr, yaml1, timeoutSec, mockPortChooser, workerPortRange, 20000, 20010)
+				mt.MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb,
+					logger, roomManager, mr, yaml1, timeoutSec)
 
 				yaml2 = `
 name: controller-name-ports
@@ -3906,8 +3904,8 @@ portRange:
 				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(workerPortRange, nil))
 
-				mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-					logger, roomManager, mr, yaml1, timeoutSec, mockPortChooser, workerPortRange, 20000, 20010)
+				mt.MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb,
+					logger, roomManager, mr, yaml1, timeoutSec)
 
 				yaml2 = `
 name: controller-name-ports
@@ -4659,8 +4657,8 @@ containers:
 `
 				configYaml, _ := models.NewConfigYAML(yamlString)
 
-				mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-					logger, roomManager, mr, yamlString, timeoutSec, mockPortChooser, workerPortRange, portStart, portEnd)
+				mt.MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb,
+					logger, roomManager, mr, yamlString, timeoutSec)
 
 				scheduler := models.NewScheduler(configYaml.Name, configYaml.Game, yamlString)
 				pods, err := clientset.CoreV1().Pods(scheduler.Name).List(metav1.ListOptions{})
@@ -4890,8 +4888,8 @@ containers:
 		var scheduler1 *models.Scheduler
 
 		BeforeEach(func() {
-			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb,
-				logger, roomManager, mr, yaml1, timeoutSec, mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb,
+				logger, roomManager, mr, yaml1, timeoutSec)
 
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
@@ -5169,8 +5167,7 @@ containers:
 			var namespace = configYaml.Name
 
 			// Create scheduler
-			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb, logger, roomManager, mr, yaml2, timeoutSec,
-				mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb, logger, roomManager, mr, yaml2, timeoutSec)
 
 			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -5296,8 +5293,7 @@ containers:
 			var namespace = configYaml.Name
 
 			// Create scheduler
-			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb, logger, roomManager, mr, yaml2, timeoutSec,
-				mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb, logger, roomManager, mr, yaml2, timeoutSec)
 
 			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -5355,8 +5351,7 @@ containers:
 			var namespace = configYaml.Name
 
 			// Create scheduler
-			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb, logger, roomManager, mr, yaml2, timeoutSec,
-				mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb, logger, roomManager, mr, yaml2, timeoutSec)
 
 			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -5415,8 +5410,7 @@ containers:
 			var namespace = configYaml.Name
 
 			// Create scheduler
-			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb, logger, roomManager, mr, yaml2, timeoutSec,
-				mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb, logger, roomManager, mr, yaml2, timeoutSec)
 
 			pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -5474,8 +5468,7 @@ containers:
 		var scheduler1 *models.Scheduler
 
 		BeforeEach(func() {
-			mt.MockCreateScheduler(clientset, mockRedisClient, mockPipeline, mockDb, logger, roomManager, mr, yaml1, timeoutSec,
-				mockPortChooser, workerPortRange, portStart, portEnd)
+			mt.MockCreateScheduler(config, clientset, mockRedisClient, mockPipeline, mockDb, logger, roomManager, mr, yaml1, timeoutSec)
 
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
 			Expect(err).NotTo(HaveOccurred())
@@ -5765,7 +5758,7 @@ containers:
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true, config, true)
 			Expect(err).NotTo(HaveOccurred())
 
 			downscalingLockKey := models.GetSchedulerDownScalingLockKey(config.GetString("watcher.lockKey"), configYaml1.Name)
@@ -5886,8 +5879,7 @@ containers:
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset,
-				scheduler, scaleUpAmount, timeoutSec, true, config)
+			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, scaleUpAmount, timeoutSec, true, config, true)
 			Expect(err).NotTo(HaveOccurred())
 
 			// ScaleDown
