@@ -179,7 +179,7 @@ var _ = Describe("WillimAuth", func() {
 				),
 			)
 
-			Expect(auth.Check("token", "CreateScheduler", "")).ToNot(HaveOccurred())
+			Expect(auth.Check(logger, "token", "CreateScheduler", "")).ToNot(HaveOccurred())
 		})
 
 		It("should return AuthError when response status is 403", func() {
@@ -193,7 +193,7 @@ var _ = Describe("WillimAuth", func() {
 				),
 			)
 
-			err := auth.Check("token", "UpdateScheduler", "game1::game1-green")
+			err := auth.Check(logger, "token", "UpdateScheduler", "game1::game1-green")
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(BeAssignableToTypeOf(&errors.AuthError{}))
 		})
@@ -209,7 +209,7 @@ var _ = Describe("WillimAuth", func() {
 				),
 			)
 
-			err := auth.Check("token", "UpdateScheduler", "game1::game1-green")
+			err := auth.Check(logger, "token", "UpdateScheduler", "game1::game1-green")
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(BeAssignableToTypeOf(&errors.AccessError{}))
 		})

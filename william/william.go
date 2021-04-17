@@ -8,7 +8,10 @@
 package william
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
@@ -73,12 +76,14 @@ func (w *WilliamAuth) Permissions(db interfaces.DB, prefix string) ([]IAMPermiss
 	return iamPermissions, nil
 }
 
-func (w *WilliamAuth) Check(token, permission, resource string) error {
+func (w *WilliamAuth) Check(logger logrus.FieldLogger, token, permission, resource string) error {
 	fullPermission := fmt.Sprintf("%s::RL::%s::%s", w.iamName, permission, w.region)
 	if len(resource) > 0 {
 		fullPermission = fmt.Sprintf("%s::%s", fullPermission, resource)
 	}
 	fullUrl := fmt.Sprintf("%s/permissions/has?permission=%s", w.url, url.QueryEscape(fullPermission))
+
+	logger.Debugf(`Checking permission "%s" on will.iam with url "%s"`, fullPermission, w.url)
 	request, err := http.NewRequest(http.MethodGet, fullUrl, nil)
 	if err != nil {
 		return errors.NewGenericError(fmt.Sprintf(`error creating request for permision "%s"`, fullPermission), err)
@@ -92,6 +97,9 @@ func (w *WilliamAuth) Check(token, permission, resource string) error {
 	}
 	defer response.Body.Close()
 	status := response.StatusCode
+
+	logger.Debug(`Response for request "%s" with status code %d"`, fullUrl, status)
+
 	if status == http.StatusOK {
 		return nil
 	}
@@ -100,6 +108,46 @@ func (w *WilliamAuth) Check(token, permission, resource string) error {
 	}
 
 	return errors.NewAccessError("user not authorized", fmt.Errorf(`user not authorized`))
+}
+
+func (w *WilliamAuth) CheckMany(token, permission string, resources []string) ([]bool, error) {
+	permissions := make([]string, len(resources))
+	for _, resource := range resources {
+		fullPermission := fmt.Sprintf("%s::RL::%s::%s::%s", w.iamName, permission, w.region, resource)
+		permissions = append(permissions, fullPermission)
+	}
+
+	jsonBody, err := json.Marshal(permissions)
+	if err != nil {
+		return nil, errors.NewGenericError("error marshaling permissions array", err)
+	}
+
+	fullUrl := fmt.Sprintf("%s/permissions/hasMany", w.url)
+	request, err := http.NewRequest(http.MethodPost, fullUrl, bytes.NewReader(jsonBody))
+	if err != nil {
+		return nil, errors.NewGenericError("error creating request", err)
+	}
+
+	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	response, err := w.client.Do(request)
+	if err != nil {
+		return nil, errors.NewGenericError("error making request on will.iam", err)
+	}
+	defer response.Body.Close()
+
+	status := response.StatusCode
+	if status != http.StatusOK {
+		return nil, errors.NewGenericError("will.iam invalid response error", fmt.Errorf("will.iam response status code (%d) not ok", status))
+	}
+
+	var results []bool
+	err = json.NewDecoder(response.Body).Decode(&results)
+	if err != nil {
+		return nil, errors.NewGenericError("will.iam invalid response error", fmt.Errorf("error decoding response body"))
+	}
+
+	return results, nil
 }
 
 func buildAllPermissions(region string, permissions []Permission, schedulers []models.Scheduler) []IAMPermission {

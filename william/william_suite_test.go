@@ -11,6 +11,8 @@ package william_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 
 	"testing"
 
@@ -23,6 +25,7 @@ import (
 
 var (
 	config   *viper.Viper
+	logger   *logrus.Logger
 	mockCtrl *gomock.Controller
 	mockDb   *pgmocks.MockDB
 )
@@ -39,5 +42,6 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
+	logger, _ = test.NewNullLogger()
 	mockCtrl.Finish()
 })
