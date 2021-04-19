@@ -4365,7 +4365,7 @@ var _ = Describe("Watcher", func() {
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
 
 			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
-			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, opManager.GetOperationKey(), nil)
 			testing.MockGetCurrentOperation(opManager, mockRedisClient, models.OpManagerRollingUpdate)
 
 			// Create room

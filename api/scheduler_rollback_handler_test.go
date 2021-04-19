@@ -182,7 +182,7 @@ autoscaling:
 			scheduler1 := models.NewScheduler(configYaml.Name, configYaml.Game, yamlStringToRollbackTo)
 
 			opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
-			MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+			MockGetCurrentOperationKey(opManager, mockRedisClient, "", nil)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
@@ -262,7 +262,7 @@ autoscaling:
 			yaml.Unmarshal([]byte(yamlStringToRollbackTo), &configYaml)
 
 			opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
-			MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+			MockGetCurrentOperationKey(opManager, mockRedisClient, "", nil)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
