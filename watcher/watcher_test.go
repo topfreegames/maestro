@@ -401,6 +401,7 @@ var _ = Describe("Watcher", func() {
 			config.Set("watcher.autoScalingPeriod", 1)
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 		})
+
 		It("should start watcher", func() {
 			// Testing here if no scaling needs to be done
 			err := yaml.Unmarshal([]byte(yaml1), &configYaml)
@@ -419,9 +420,6 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				})
-
-			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
-				configYaml.Name, [][]string{}, nil)
 
 			w = watcher.NewWatcher(config, logger, mr, mockDb, redisClient, clientset, metricsClientset,
 				configYaml.Name, configYaml.Game, occupiedTimeout, []*eventforwarder.Info{})
@@ -493,9 +491,6 @@ var _ = Describe("Watcher", func() {
 			testing.MockUpdateSchedulerStatusAndDo(func(_ *models.Scheduler, _ string, scheduler *models.Scheduler) {
 				w.Run = false
 			}, mockDb, nil, nil)
-
-			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
-			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().Del(models.GetInvalidRoomsKey(configYaml.Name))
@@ -4365,126 +4360,39 @@ var _ = Describe("Watcher", func() {
 			Expect(err).To(Equal(errDB))
 		})
 
-		It("should log error and not return if fail to delete pod", func() {
-			podNames := []string{"room-1", "room-2"}
-			room := models.NewRoom(podNames[0], w.SchedulerName)
-
-			testing.MockSelectScheduler(yaml1, mockDb, nil)
-			testing.MockListPods(mockPipeline, mockRedisClient, w.SchedulerName, podNames, nil)
-			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline, w.SchedulerName, [][]string{{}, {room.GetRoomRedisKey()}}, nil)
-
-			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
-			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
-
-			// Create room
-			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 1)
-			testing.MockGetPortsFromPoolAnyTimes(&configYaml, mockRedisClient, mockPortChooser,
-				models.NewPortRange(5000, 6000).String(), 5000, 6000)
-
-			testing.MockAnyRunningPod(mockRedisClient, w.SchedulerName, 2)
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "ready"), gomock.Any()).Return(redis.NewBoolResult(true, nil))
-			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied"), gomock.Any()).Return(redis.NewBoolResult(false, nil))
-			exec1 := mockPipeline.EXPECT().Exec().Return(nil, nil)
-
-			testing.MockRunningPod(mockRedisClient, w.SchedulerName, "room-2")
-
-			for _, podName := range podNames {
-				pod := &v1.Pod{}
-				pod.SetName(podName)
-				pod.SetNamespace(w.SchedulerName)
-				pod.SetLabels(map[string]string{"version": "v1.0"})
-				_, err := clientset.CoreV1().Pods(w.SchedulerName).Create(pod)
-				Expect(err).ToNot(HaveOccurred())
-			}
-
-			room = models.NewRoom(podNames[1], w.SchedulerName)
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().HDel(models.GetPodMapRedisKey(w.SchedulerName), room.ID)
-			exec2 := mockPipeline.EXPECT().Exec().Return(nil, nil).After(exec1)
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			for _, status := range allStatus {
-				mockPipeline.EXPECT().
-					SRem(models.GetRoomStatusSetRedisKey(room.SchedulerName, status),
-						room.GetRoomRedisKey()).AnyTimes()
-				mockPipeline.EXPECT().
-					ZRem(models.GetLastStatusRedisKey(room.SchedulerName, status),
-						room.ID).AnyTimes()
-			}
-			mockPipeline.EXPECT().
-				ZRem(models.GetRoomPingRedisKey(w.SchedulerName), room.ID).AnyTimes()
-			for _, mt := range allMetrics {
-				mockPipeline.EXPECT().ZRem(models.GetRoomMetricsRedisKey(w.SchedulerName, mt), gomock.Any()).AnyTimes()
-			}
-			mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).AnyTimes()
-			mockPipeline.EXPECT().Exec().Return(nil, errDB).After(exec2)
-
-			err := w.EnsureCorrectRooms()
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(hook.Entries).To(testing.ContainLogMessage(fmt.Sprintf("error deleting pod %s", podNames[1])))
-		})
-
-		It("should set state to rolling update when there is no invalid pods and a operation is running", func() {
-			testing.MockSelectScheduler(yaml1, mockDb, nil)
-			testing.MockListPods(mockPipeline, mockRedisClient, w.SchedulerName, []string{}, nil)
-			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
-				w.SchedulerName, [][]string{}, nil)
-
-			opKey := fmt.Sprintf("opmanager:%s:1234", configYaml.Name)
-			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
-			mockRedisClient.EXPECT().
-				Get(opManager.BuildCurrOpKey()).
-				Return(redis.NewStringResult(opKey, nil))
-
-			mockRedisClient.EXPECT().
-				HGetAll(opKey).
-				Return(redis.NewStringStringMapResult(map[string]string{
-					"description": models.OpManagerRunning,
-				}, nil))
-
-			mockRedisClient.EXPECT().
-				HMSet(opKey, map[string]interface{}{
-					"description": models.OpManagerRollingUpdate,
-				}).Return(redis.NewStatusResult("", nil))
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().Del(models.GetInvalidRoomsKey(configYaml.Name))
-			mockPipeline.EXPECT().Exec()
-
-			err := w.EnsureCorrectRooms()
-
-			Expect(err).ToNot(HaveOccurred())
-		})
-
 		It("should delete invalid pods", func() {
 			podNames := []string{"room-1", "room-2"}
-			room := models.NewRoom(podNames[0], w.SchedulerName)
-
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
-			testing.MockListPods(mockPipeline, mockRedisClient, w.SchedulerName, podNames, nil)
-			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline,
-				w.SchedulerName, [][]string{{room.GetRoomRedisKey()}}, nil)
 
 			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
 			testing.MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+			testing.MockGetCurrentOperation(opManager, mockRedisClient, models.OpManagerRollingUpdate)
 
 			// Create room
 			testing.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml, 1)
 			testing.MockGetPortsFromPoolAnyTimes(&configYaml, mockRedisClient, mockPortChooser,
 				models.NewPortRange(5000, 6000).String(), 5000, 6000)
 
-			testing.MockAnyRunningPod(mockRedisClient, w.SchedulerName, 2)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().
+				HScan(models.GetPodMapRedisKey(configYaml.Name), uint64(0), "*", gomock.Any()).
+				Return(redis.NewScanCmdResult([]string{
+					"room-1", `{"name": "room-1", "version": "v1.0"}`,
+					"room-2", `{"name": "room-2", "version": "v0.0"}`,
+				}, 0, nil))
+			mockPipeline.EXPECT().Exec().Return(nil, nil)
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "ready"), gomock.Any()).Return(redis.NewBoolResult(true, nil))
-			mockPipeline.EXPECT().SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied"), gomock.Any()).Return(redis.NewBoolResult(false, nil))
+			mockPipeline.EXPECT().
+				SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "ready"), gomock.Any()).
+				Return(redis.NewBoolResult(true, nil))
+			mockPipeline.EXPECT().
+				SIsMember(models.GetRoomStatusSetRedisKey(configYaml.Name, "occupied"), gomock.Any()).
+				Return(redis.NewBoolResult(false, nil))
 			mockPipeline.EXPECT().Exec().Return(nil, nil)
 
 			runningPod := testing.MockRunningPod(mockRedisClient, w.SchedulerName, "room-2")
+			testing.MockAnyRunningPod(mockRedisClient, w.SchedulerName, 2)
 
 			for _, podName := range podNames {
 				pod := &v1.Pod{}
@@ -4503,23 +4411,22 @@ var _ = Describe("Watcher", func() {
 			testing.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, &configYaml, nil, 1)
 			testing.MockPodNotFound(mockRedisClient, w.SchedulerName, "room-2").After(runningPod)
 
-			err := w.EnsureCorrectRooms()
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().SRem(models.GetInvalidRoomsKey(configYaml.Name), []string{"room-2"})
+			mockPipeline.EXPECT().Exec()
 
+			err := w.EnsureCorrectRooms()
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should stop when operation is canceled", func() {
 			testing.MockSelectScheduler(yaml1, mockDb, nil)
-			//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().
 				HScan(models.GetPodMapRedisKey(configYaml.Name), uint64(0), "*", gomock.Any()).
 				Return(redis.NewScanCmdResult([]string{
 					"room-1", `{"name": "room-1", "version": "v2.0"}`,
-					"room-2", `{"name": "room-1", "version": "v2.0"}`,
+					"room-2", `{"name": "room-1", "version": "v0.0"}`,
 				}, 0, nil))
-			//mockPipeline.EXPECT().Exec()
-
-			testing.MockGetRegisteredRooms(mockRedisClient, mockPipeline, w.SchedulerName, [][]string{}, nil)
 
 			opKey := fmt.Sprintf("opmanager:%s:operation", configYaml.Name)
 			opManager := models.NewOperationManager(configYaml.Name, mockRedisClient, logger)

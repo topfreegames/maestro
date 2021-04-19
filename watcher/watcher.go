@@ -945,6 +945,7 @@ func (w *Watcher) checkState(
 	if scheduler.State == models.StateCreating || scheduler.State == models.StateTerminating {
 		return scaling, nil
 	}
+
 	// Rooms below Min
 	if roomCount.Available() < autoScalingInfo.Min {
 		scaling.Delta = autoScalingInfo.Min - roomCount.Available()
@@ -1146,31 +1147,6 @@ func (w *Watcher) checkMetricsTrigger(
 	return scaling, nil
 }
 
-func (w *Watcher) getIncorrectAndUnregisteredPods(
-	logger logrus.FieldLogger,
-	podMap map[string]*models.Pod,
-	scheduler *models.Scheduler,
-) (incorrectPods, unregisteredPods []*models.Pod, err error) {
-	incorrectPods, err = w.podsOfIncorrectVersion(podMap, scheduler)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	unregisteredPods, err = w.podsNotRegistered(podMap)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if len(incorrectPods) > 0 {
-		logger.WithFields(logrus.Fields{
-			"incorrectVersion": len(incorrectPods),
-			"unregistered":     len(unregisteredPods),
-		}).Info("replacing invalid pods")
-	}
-
-	return incorrectPods, unregisteredPods, err
-}
-
 func (w *Watcher) getOperation(ctx context.Context, logger logrus.FieldLogger) (operationManager *models.OperationManager, err error) {
 	operationManager = models.NewOperationManager(
 		w.SchedulerName, w.RedisClient.Trace(ctx), logger,
@@ -1247,31 +1223,19 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		return err
 	}
 
-	// get invalid pods (wrong versions and pods not registered in redis)
-	logger.Info("searching for invalid pods")
-	incorrectPods, unregisteredPods, err := w.getIncorrectAndUnregisteredPods(logger, pods, scheduler)
+	// get invalid pods (wrong versions)
+	incorrectPods, err := w.podsOfIncorrectVersion(pods, scheduler)
 	if err != nil {
 		logger.WithError(err).Error("failed to get invalid pods")
 		return err
 	}
 
-	// get incorrect pod names
-	var incorrectPodNames []string
-	if len(incorrectPods) > 0 {
-		for _, pod := range incorrectPods {
-			incorrectPodNames = append(incorrectPodNames, pod.Name)
-		}
+	if len(incorrectPods) <= 0 {
+		// delete invalidRooms key for safety
+		models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
+		logger.Debug("no invalid pods to replace")
+		return nil
 	}
-
-	// get unregistered pod names
-	var unregisteredPodNames []string
-	if len(unregisteredPods) > 0 {
-		for _, pod := range unregisteredPods {
-			unregisteredPodNames = append(unregisteredPodNames, pod.Name)
-		}
-	}
-
-	invalidPods := append(incorrectPods, unregisteredPods...)
 
 	// get operation manager if it exists.
 	// It won't exist if not in a UpdateSchedulerConfig operation
@@ -1281,42 +1245,41 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		return err
 	}
 
-	// save invalid pods in redis to track rolling update progress
-	if operationManager != nil {
-		status, err := operationManager.Get(operationManager.GetOperationKey())
-		if err != nil {
-			logger.WithError(err).Error("error trying to save invalid rooms to track progress")
-			return err
-		}
+	// if there is no operation, we don't have anything to do here
+	if operationManager == nil {
+		logger.Debug("skipping EnsureCorrectRooms")
+		return nil
+	}
 
-		// don't remove unregistered rooms if in a rolling update
-		invalidPods = incorrectPods
+	// get incorrect pod names
+	var incorrectPodNames []string
+	for _, pod := range incorrectPods {
+		incorrectPodNames = append(incorrectPodNames, pod.Name)
+	}
 
-		if status["description"] != models.OpManagerRollingUpdate {
-			if len(invalidPods) > 0 {
-				err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, incorrectPodNames)
-				if err != nil {
-					logger.WithError(err).Error("error trying to save invalid rooms to track progress")
-					return err
-				}
-			}
+	status, err := operationManager.Get(operationManager.GetOperationKey())
+	if err != nil {
+		logger.WithError(err).Error("error trying to save invalid rooms to track progress")
+		return err
+	}
 
-			logger.WithFields(logrus.Fields{
-				"operation": operationManager.GetOperationKey(),
-			}).Infof(`changing state from "%s" to "%s"`, status["description"], models.OpManagerRollingUpdate)
-			err = operationManager.SetDescription(models.OpManagerRollingUpdate)
+	if status["description"] != models.OpManagerRollingUpdate {
+		if len(incorrectPods) > 0 {
+			err = models.SetInvalidRooms(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName, incorrectPodNames)
 			if err != nil {
-				logger.WithError(err).Error("error trying to set opmanager to rolling update status")
+				logger.WithError(err).Error("error trying to save invalid rooms to track progress")
 				return err
 			}
 		}
-	}
 
-	if len(invalidPods) <= 0 {
-		// delete invalidRooms key for safety
-		models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
-		logger.Debug("no invalid pods to replace")
-		return nil
+		logger.WithFields(logrus.Fields{
+			"operation": operationManager.GetOperationKey(),
+		}).Infof(`changing state from "%s" to "%s"`, status["description"], models.OpManagerRollingUpdate)
+		err = operationManager.SetDescription(models.OpManagerRollingUpdate)
+		if err != nil {
+			logger.WithError(err).Error("error trying to set opmanager to rolling update status")
+			return err
+		}
 	}
 
 	// replace invalid pods using rolling strategy
@@ -1334,7 +1297,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		w.RedisClient.Client,
 		willTimeoutAt,
 		&configYAML,
-		invalidPods,
+		incorrectPods,
 		scheduler,
 		operationManager,
 		w.Config.GetDuration("watcher.cancelPollingPeriod"),
@@ -1361,23 +1324,6 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	}
 
 	return nil
-}
-
-func (w *Watcher) podsNotRegistered(
-	pods map[string]*models.Pod,
-) ([]*models.Pod, error) {
-	registered, err := models.GetAllRegisteredRooms(w.RedisClient.Client, w.SchedulerName)
-	if err != nil {
-		return nil, err
-	}
-
-	notRegistered := []*models.Pod{}
-	for _, pod := range pods {
-		if _, ok := registered[pod.Name]; !ok {
-			notRegistered = append(notRegistered, pod)
-		}
-	}
-	return notRegistered, nil
 }
 
 func (w *Watcher) splitedVersion(version string) (majorInt, minorInt int, err error) {
