@@ -1230,7 +1230,7 @@ func (w *Watcher) EnsureCorrectRooms() error {
 		return err
 	}
 
-	if len(incorrectPods) <= 0 {
+	if len(incorrectPods) == 0 {
 		// delete invalidRooms key for safety
 		models.RemoveInvalidRoomsKey(w.RedisClient.Trace(ctx), w.MetricsReporter, w.SchedulerName)
 		logger.Debug("no invalid pods to replace")
