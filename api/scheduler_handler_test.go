@@ -1018,7 +1018,7 @@ autoscaling:
 						Return(goredis.NewStringResult(workerPortRange, nil)).
 						AnyTimes()
 
-					MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+					MockGetCurrentOperationKey(opManager, mockRedisClient, "", nil)
 					MockOperationManagerStart(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
 					mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
@@ -1128,7 +1128,7 @@ autoscaling:
 					Expect(err).NotTo(HaveOccurred())
 
 					opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
-					MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+					MockGetCurrentOperationKey(opManager, mockRedisClient, "", nil)
 
 					mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 					mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
@@ -2771,7 +2771,7 @@ game: game-name
 					Return(goredis.NewStringResult(workerPortRange, nil)).
 					AnyTimes()
 
-				MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+				MockGetCurrentOperationKey(opManager, mockRedisClient, "", nil)
 				MockOperationManagerStart(opManager, timeoutDur, mockRedisClient, mockPipeline)
 
 				mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
@@ -2881,7 +2881,7 @@ game: game-name
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
 
-				MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+				MockGetCurrentOperationKey(opManager, mockRedisClient, "", nil)
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 					Expect(m).To(HaveKeyWithValue("operation", "UpdateSchedulerImage"))
@@ -3297,7 +3297,7 @@ game: game-name
 			It("should update min asynchronously", func() {
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
-				MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+				MockGetCurrentOperationKey(opManager, mockRedisClient, "", nil)
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
@@ -3380,7 +3380,7 @@ game: game-name
 			It("should update min asynchronously and show error when occurred", func() {
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient).AnyTimes()
 				opManager = models.NewOperationManager(configYaml1.Name, mockRedisClient, logger)
-				MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+				MockGetCurrentOperationKey(opManager, mockRedisClient, "", nil)
 
 				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {

@@ -136,7 +136,7 @@ var _ = Describe("SchedulerOperationHandler", func() {
 				gomock.Any(), mockRedisClient,
 			).Return(mockRedisClient)
 			var err error
-			MockGetCurrentOperationKey(opManager, mockRedisClient, err)
+			MockGetCurrentOperationKey(opManager, mockRedisClient, "", err)
 			status := map[string]string{
 				"operating": "false",
 			}

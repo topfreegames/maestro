@@ -893,7 +893,7 @@ func MockOperationManager(
 	mockRedisClient *redismocks.MockRedisClient,
 	mockPipeline *redismocks.MockPipeliner,
 ) {
-	MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
+	MockGetCurrentOperationKey(opManager, mockRedisClient, "", nil)
 	MockOperationManagerStart(opManager, timeout, mockRedisClient, mockPipeline)
 
 	mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
@@ -924,12 +924,26 @@ func MockDeleteRedisKey(
 func MockGetCurrentOperationKey(
 	opManager *models.OperationManager,
 	mockRedisClient *redismocks.MockRedisClient,
+	opKey string,
 	err error,
 ) {
 	mockRedisClient.EXPECT().
 		Get(opManager.BuildCurrOpKey()).
-		Return(goredis.NewStringResult("", err))
+		Return(goredis.NewStringResult(opKey, err))
 }
+
+func MockGetCurrentOperation(
+	opManager *models.OperationManager,
+	mockRedisClient *redismocks.MockRedisClient,
+	description string,
+) {
+	mockRedisClient.EXPECT().HGetAll(gomock.Any()).Return(
+		goredis.NewStringStringMapResult(map[string]string{
+			"description": description,
+		}, nil),
+	).AnyTimes()
+}
+
 
 // MockSetDescription mocks the set description call
 func MockSetDescription(
