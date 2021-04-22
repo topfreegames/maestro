@@ -1594,46 +1594,7 @@ cmd:
 
 			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("there are pending or failed pods"))
-		})
-
-		It("should return error and not scale up if there are failed pods", func() {
-			amount := 5
-			var configYaml1 models.ConfigYAML
-			err := yaml.Unmarshal([]byte(yaml1), &configYaml1)
-			Expect(err).NotTo(HaveOccurred())
-			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, yaml1)
-
-			pods := make([]string, 0, amount*2)
-			for i := 0; i < amount; i++ {
-				pod := &models.Pod{}
-				pod.Name = fmt.Sprintf("room-%d", i)
-				pod.Status.Phase = v1.PodRunning
-				if i == 0 {
-					pod.Status.ContainerStatuses = []v1.ContainerStatus{
-						{
-							State: v1.ContainerState{
-								Waiting: &v1.ContainerStateWaiting{
-									Reason: "ErrImagePull",
-								},
-							},
-						},
-					}
-				}
-				jsonBytes, err := pod.MarshalToRedis()
-				Expect(err).NotTo(HaveOccurred())
-				pods = append(pods, pod.Name, string(jsonBytes))
-			}
-
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().
-				HScan(models.GetPodMapRedisKey(configYaml1.Name), uint64(0), "*", gomock.Any()).
-				Return(goredis.NewScanCmdResult(pods, 0, nil))
-			mockPipeline.EXPECT().Exec()
-
-			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("there are pending or failed pods"))
+			Expect(err.Error()).To(Equal("there are pending pods, check if there are enough CPU and memory to allocate new rooms"))
 		})
 
 		It("should scale up to max if scaling amount is higher than max", func() {
@@ -6901,49 +6862,6 @@ containers:
 			Expect(timeoutErr).ToNot(HaveOccurred())
 			Expect(cancelErr).ToNot(HaveOccurred())
 			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should return error when a pod is with error", func() {
-			pods := []*models.Pod{
-				&models.Pod{Name: "room-1"},
-			}
-
-			scheduler := models.NewScheduler(configYaml1.Name, configYaml1.Game, string(configYaml1.ToYAML()))
-
-			mockRedisClient.EXPECT().
-				HGetAll(opManager.GetOperationKey()).
-				Return(goredis.NewStringStringMapResult(map[string]string{
-					"description": models.OpManagerRollingUpdate,
-				}, nil)).AnyTimes()
-
-			mt.MockCreateRoomsAnyTimes(mockRedisClient, mockPipeline, &configYaml1, 1)
-			mt.MockGetPortsFromPoolAnyTimes(&configYaml1, mockRedisClient, mockPortChooser, workerPortRange, portStart, portEnd)
-
-			runningPodJSON := `{"name":"room-1", "status":{"phase":"Pending", "containerStatuses": [{"state": {"waiting": {"reason": "ErrImagePull"}}}]}}`
-			mockRedisClient.EXPECT().
-				HGet(models.GetPodMapRedisKey(configYaml1.Name), gomock.Any()).
-				Return(goredis.NewStringResult(runningPodJSON, nil)).
-				Times(2)
-
-			timeoutErr, cancelErr, err := controller.SegmentAndReplacePods(
-				logger,
-				roomManager,
-				mr,
-				clientset,
-				mockDb,
-				mockRedisClient,
-				time.Now().Add(time.Minute),
-				&configYaml1,
-				pods,
-				scheduler,
-				opManager,
-				10*time.Second,
-				10,
-				1,
-			)
-			Expect(timeoutErr).ToNot(HaveOccurred())
-			Expect(cancelErr).ToNot(HaveOccurred())
-			Expect(err).To(HaveOccurred())
 		})
 	})
 })

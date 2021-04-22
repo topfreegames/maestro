@@ -392,12 +392,12 @@ func ScaleUp(
 
 	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
 
-	existPendingPods, err := pendingOrFailedPods(config, redisClient, scheduler.Name, mr)
+	existPendingPods, err := pendingPods(config, redisClient, scheduler.Name, mr)
 	if err != nil {
 		return err
 	}
 	if existPendingPods {
-		return errors.New("there are pending or failed pods")
+		return errors.New("there are pending pods, check if there are enough CPU and memory to allocate new rooms")
 	}
 
 	amount, err = SetScalingAmount(
