@@ -124,8 +124,6 @@ var InvalidPodWaitingStates = []string{
 	"ErrImagePullBackOff",
 	"ImagePullBackOff",
 	"ErrInvalidImageName",
-	"ErrImagePull",
-	"CrashLoopBackOff",
 }
 
 // OperationManager description constants

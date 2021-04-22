@@ -579,11 +579,6 @@ func waitCreatingPods(
 				}
 
 				if createdPod.Status.Phase != v1.PodRunning {
-					if err := models.ValidatePodWaitingState(createdPod); err != nil {
-						l.WithError(err).Error("pod has error, aborting the pods creation")
-						return false, err
-					}
-
 					isPending, reason, message := models.PodPending(createdPod)
 					if isPending && strings.Contains(message, models.PodNotFitsHostPorts) {
 						l.WithFields(logrus.Fields{
@@ -770,11 +765,6 @@ func waitForPods(
 						retryNo[i] = 0
 
 						if pod.Status.Phase != v1.PodRunning {
-							if err := models.ValidatePodWaitingState(pod); err != nil {
-								l.WithError(err).Error("pod has error, aborting the pods creation")
-								return err
-							}
-
 							isPending, reason, message := models.PodPending(pod)
 							if isPending && strings.Contains(message, models.PodNotFitsHostPorts) {
 								l.WithFields(logrus.Fields{
@@ -811,7 +801,7 @@ func waitForPods(
 	return nil
 }
 
-func pendingOrFailedPods(
+func pendingPods(
 	config *viper.Viper,
 	redisClient redisinterfaces.RedisClient,
 	namespace string,
@@ -829,10 +819,6 @@ func pendingOrFailedPods(
 
 	for _, pod := range pods {
 		if pod.Status.Phase == v1.PodPending {
-			return true, nil
-		}
-
-		if err := models.ValidatePodWaitingState(pod); err != nil {
 			return true, nil
 		}
 	}
