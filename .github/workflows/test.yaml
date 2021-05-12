@@ -16,13 +16,15 @@ jobs:
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-    - name: Run tests
+    - name: Run ginkgo tests
+      continue-on-error: true
       env:
         GOBINPATH: ~/go/bin/
       run: |
         make setup-ci
-        make test-ci
-    - name: Send coverage
+        make ginkgo-run
+    - name: Run tests
       env:
-        COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: ~/go/bin/goveralls -coverprofile=_build/coverage-all.out -service=github
+        GOBINPATH: ~/go/bin/
+      run: |
+        make unit-run

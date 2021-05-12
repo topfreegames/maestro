@@ -1,5 +1,5 @@
 name: Publish
-on: push
+on: workflow_dispatch
 jobs:
   build-and-push:
     name: Build and Publish
