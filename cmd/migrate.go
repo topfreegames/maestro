@@ -58,7 +58,7 @@ func getMigrations() []darwin.Migration {
 }
 
 func (lg *logger) panicf(msg string, args ...interface{}) {
-	fMsg := fmt.Sprintf(msg, args)
+	fMsg := fmt.Sprintf(msg, args...)
 	lg.pipe.Write([]byte(fMsg))
 	lg.pipe.Write(newline)
 	panic(fMsg)

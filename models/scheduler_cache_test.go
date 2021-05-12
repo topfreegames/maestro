@@ -4,7 +4,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/topfreegames/extensions/pg"
+	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	. "github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/testing"
 
@@ -38,11 +42,20 @@ autoscaling:
 		configYaml         *ConfigYAML
 		timeout, purgeTime time.Duration = 5 * time.Minute, 10 * time.Minute
 		err                error
+		mockCtrl           *gomock.Controller
+		mockDb             *pgmocks.MockDB
+		logger             *logrus.Logger
 	)
 
 	BeforeEach(func() {
 		configYaml, err = NewConfigYAML(yamlStr)
 		Expect(err).NotTo(HaveOccurred())
+
+		logger, _ = test.NewNullLogger()
+		logger.Level = logrus.DebugLevel
+
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockDb = pgmocks.NewMockDB(mockCtrl)
 	})
 
 	Describe("LoadScheduler", func() {

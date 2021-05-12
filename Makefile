@@ -104,8 +104,11 @@ unit-board:
 	@echo "\033[1;34m=         Unit Tests         -\033[0m"
 	@echo "\033[1;34m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\033[0m"
 
-unit-run:
+ginkgo-run:
 	@$(GOBINPATH)/ginkgo -tags unit -cover -r -randomizeAllSpecs -randomizeSuites -skipMeasurements ./...
+
+unit-run:
+	@go test -count=1 ./...
 
 gather-unit-profiles:
 	@mkdir -p _build
