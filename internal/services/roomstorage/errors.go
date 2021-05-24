@@ -2,58 +2,59 @@ package roomstorage
 
 import "fmt"
 
-type Error interface {
-	error
-
-	Kind() ErrorKind
-}
-
-type ErrorKind int
+type errorKind int
 
 const (
-	ErrorInternal ErrorKind = iota
-	ErrorRoomNotFound
-	ErrorRoomAlreadyExists
+	errorKindInternal errorKind = iota
+	errorKindRoomNotFound
+	errorKindRoomAlreadyExists
 )
 
-type stateStorageError struct {
-	kind ErrorKind
+var (
+	InternalError = &roomStorageError{kind: errorKindInternal}
+	RoomNotFoundError = &roomStorageError{kind: errorKindRoomNotFound}
+	RoomAlreadyExistsError = &roomStorageError{kind: errorKindRoomAlreadyExists}
+)
+
+type roomStorageError struct {
+	kind errorKind
 	msg  string
 	err  error
 }
 
-var _ Error = (*stateStorageError)(nil)
-
-func (e stateStorageError) Unwrap() error {
+func (e *roomStorageError) Unwrap() error {
 	return e.err
 }
 
-func (e stateStorageError) Error() string {
+func (e *roomStorageError) Error() string {
 	return fmt.Sprintf("error: %s, reason: %s", e.msg, e.err)
 }
 
-func (e stateStorageError) Kind() ErrorKind {
-	return e.kind
+func (e *roomStorageError) Is(other error) bool {
+	if err, ok := other.(*roomStorageError); ok {
+		return e.kind == err.kind
+	}
+	return false
 }
 
-func WrapError(msg string, err error) Error {
-	return &stateStorageError{
-		kind: ErrorInternal,
+func WrapError(msg string, err error) *roomStorageError {
+	return &roomStorageError{
+		kind: errorKindInternal,
 		msg:  msg,
 		err:  err,
 	}
 }
 
-func NewRoomNotFoundError(scheduler, roomID string) Error {
-	return &stateStorageError{
-		kind: ErrorRoomNotFound,
+func NewRoomNotFoundError(scheduler, roomID string) *roomStorageError {
+	return &roomStorageError{
+		kind: errorKindRoomNotFound,
 		msg:  fmt.Sprintf("room %s not found for scheduler %s", roomID, scheduler),
 	}
 }
 
-func NewRoomAlreadyExistsError(scheduler, roomID string) Error {
-	return &stateStorageError{
-		kind: ErrorRoomAlreadyExists,
+func NewRoomAlreadyExistsError(scheduler, roomID string) *roomStorageError {
+	return &roomStorageError{
+		kind: errorKindRoomAlreadyExists,
 		msg:  fmt.Sprintf("room %s already exists in scheduler %s", roomID, scheduler),
 	}
 }

@@ -23,7 +23,7 @@ var dbNumber int32 = 0
 var lastPing = time.Unix(time.Now().Unix(), 0)
 var redisContainer *gnomock.Container
 
-func getRedisConnection(t *testing.T) *redis.Client {
+func getRedisConnection() *redis.Client {
 	db := atomic.AddInt32(&dbNumber, 1)
 	return redis.NewClient(&redis.Options{
 		Addr: redisContainer.DefaultAddress(),
@@ -70,15 +70,14 @@ func assertRedisStateNonExistent(t *testing.T, client *redis.Client, room *entit
 	require.Error(t, pingCmd.Err())
 }
 
-func requireErrorKind(t *testing.T, kind roomstorage.ErrorKind, err error) {
+func requireErrorKind(t *testing.T, expected error, err error) {
 	require.Error(t, err)
-	require.Implements(t, (*roomstorage.Error)(nil), err)
-	require.Equal(t, err.(roomstorage.Error).Kind(), kind)
+	require.ErrorIs(t, expected, err)
 }
 
 func TestRedisStateStorage_CreateRoom(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection(t)
+	client := getRedisConnection()
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room without metadata", func(t *testing.T) {
@@ -131,14 +130,14 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			},
 		}
 
-		requireErrorKind(t, roomstorage.ErrorRoomAlreadyExists, storage.CreateRoom(ctx, secondRoom))
+		requireErrorKind(t, roomstorage.RoomAlreadyExistsError, storage.CreateRoom(ctx, secondRoom))
 		assertRedisState(t, client, firstRoom)
 	})
 }
 
 func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection(t)
+	client := getRedisConnection()
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room without metadata", func(t *testing.T) {
@@ -185,13 +184,13 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 			},
 		}
 
-		requireErrorKind(t, roomstorage.ErrorRoomNotFound, storage.UpdateRoom(ctx, room))
+		requireErrorKind(t, roomstorage.RoomNotFoundError, storage.UpdateRoom(ctx, room))
 	})
 }
 
 func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection(t)
+	client := getRedisConnection()
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room exists", func(t *testing.T) {
@@ -208,13 +207,13 @@ func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 	})
 
 	t.Run("game room nonexistent", func(t *testing.T) {
-		requireErrorKind(t, roomstorage.ErrorRoomNotFound, storage.RemoveRoom(ctx, "game", "room-2"))
+		requireErrorKind(t, roomstorage.RoomNotFoundError, storage.RemoveRoom(ctx, "game", "room-2"))
 	})
 }
 
 func TestRedisStateStorage_GetRoom(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection(t)
+	client := getRedisConnection()
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room without metadata", func(t *testing.T) {
@@ -252,13 +251,13 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 
 	t.Run("error when getting non existent room", func(t *testing.T) {
 		_, err := storage.GetRoom(ctx, "game", "room-3")
-		requireErrorKind(t, roomstorage.ErrorRoomNotFound, err)
+		requireErrorKind(t, roomstorage.RoomNotFoundError, err)
 	})
 }
 
 func TestRedisStateStorage_SetRoomStatus(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection(t)
+	client := getRedisConnection()
 	storage := NewRedisStateStorage(client)
 
 	room := &entities.GameRoom{
@@ -276,7 +275,7 @@ func TestRedisStateStorage_SetRoomStatus(t *testing.T) {
 
 func TestRedisStateStorage_GetAllRoomIDs(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection(t)
+	client := getRedisConnection()
 	storage := NewRedisStateStorage(client)
 
 	rooms := []*entities.GameRoom{
@@ -323,7 +322,7 @@ func TestRedisStateStorage_GetAllRoomIDs(t *testing.T) {
 
 func TestRedisStateStorage_GetRoomIDsByLastPing(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection(t)
+	client := getRedisConnection()
 	storage := NewRedisStateStorage(client)
 
 	rooms := []*entities.GameRoom{
@@ -370,7 +369,7 @@ func TestRedisStateStorage_GetRoomIDsByLastPing(t *testing.T) {
 
 func TestRedisStateStorage_GetRoomCount(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection(t)
+	client := getRedisConnection()
 	storage := NewRedisStateStorage(client)
 
 	rooms := []*entities.GameRoom{
@@ -417,7 +416,7 @@ func TestRedisStateStorage_GetRoomCount(t *testing.T) {
 
 func TestRedisStateStorage_GetRoomCountByStatus(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection(t)
+	client := getRedisConnection()
 	storage := NewRedisStateStorage(client)
 
 	rooms := []*entities.GameRoom{
