@@ -1,4 +1,4 @@
-package statestorage
+package roomstorage
 
 import (
 	"context"
@@ -6,8 +6,7 @@ import (
 	"time"
 )
 
-
-type StateStorage interface {
+type RoomStorage interface {
 	GetRoom(ctx context.Context, scheduler string, roomID string) (*entities.GameRoom, error)
 	CreateRoom(ctx context.Context, room *entities.GameRoom) error
 	UpdateRoom(ctx context.Context, room *entities.GameRoom) error

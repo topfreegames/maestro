@@ -1,8 +1,8 @@
-package statestorage
+package roomstorage
 
 import "fmt"
 
-type StateStorageError interface {
+type Error interface {
 	error
 
 	Kind() ErrorKind
@@ -22,7 +22,7 @@ type stateStorageError struct {
 	err  error
 }
 
-var _ StateStorageError = (*stateStorageError)(nil)
+var _ Error = (*stateStorageError)(nil)
 
 func (e stateStorageError) Unwrap() error {
 	return e.err
@@ -36,7 +36,7 @@ func (e stateStorageError) Kind() ErrorKind {
 	return e.kind
 }
 
-func WrapError(msg string, err error) StateStorageError {
+func WrapError(msg string, err error) Error {
 	return &stateStorageError{
 		kind: ErrorInternal,
 		msg:  msg,
@@ -44,14 +44,14 @@ func WrapError(msg string, err error) StateStorageError {
 	}
 }
 
-func NewRoomNotFoundError(scheduler, roomID string) StateStorageError {
+func NewRoomNotFoundError(scheduler, roomID string) Error {
 	return &stateStorageError{
 		kind: ErrorRoomNotFound,
 		msg:  fmt.Sprintf("room %s not found for scheduler %s", roomID, scheduler),
 	}
 }
 
-func NewRoomAlreadyExistsError(scheduler, roomID string) StateStorageError {
+func NewRoomAlreadyExistsError(scheduler, roomID string) Error {
 	return &stateStorageError{
 		kind: ErrorRoomAlreadyExists,
 		msg:  fmt.Sprintf("room %s already exists in scheduler %s", roomID, scheduler),

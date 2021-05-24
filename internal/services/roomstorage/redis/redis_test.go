@@ -11,7 +11,7 @@ import (
 	predis "github.com/orlangure/gnomock/preset/redis"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/entities"
-	"github.com/topfreegames/maestro/internal/services/statestorage"
+	"github.com/topfreegames/maestro/internal/services/roomstorage"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -70,10 +70,10 @@ func assertRedisStateNonExistent(t *testing.T, client *redis.Client, room *entit
 	require.Error(t, pingCmd.Err())
 }
 
-func requireErrorKind(t *testing.T, kind statestorage.ErrorKind, err error) {
+func requireErrorKind(t *testing.T, kind roomstorage.ErrorKind, err error) {
 	require.Error(t, err)
-	require.Implements(t, (*statestorage.StateStorageError)(nil), err)
-	require.Equal(t, err.(statestorage.StateStorageError).Kind(), kind)
+	require.Implements(t, (*roomstorage.Error)(nil), err)
+	require.Equal(t, err.(roomstorage.Error).Kind(), kind)
 }
 
 func TestRedisStateStorage_CreateRoom(t *testing.T) {
@@ -131,7 +131,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			},
 		}
 
-		requireErrorKind(t, statestorage.ErrorRoomAlreadyExists, storage.CreateRoom(ctx, secondRoom))
+		requireErrorKind(t, roomstorage.ErrorRoomAlreadyExists, storage.CreateRoom(ctx, secondRoom))
 		assertRedisState(t, client, firstRoom)
 	})
 }
@@ -185,7 +185,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 			},
 		}
 
-		requireErrorKind(t, statestorage.ErrorRoomNotFound, storage.UpdateRoom(ctx, room))
+		requireErrorKind(t, roomstorage.ErrorRoomNotFound, storage.UpdateRoom(ctx, room))
 	})
 }
 
@@ -208,7 +208,7 @@ func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 	})
 
 	t.Run("game room nonexistent", func(t *testing.T) {
-		requireErrorKind(t, statestorage.ErrorRoomNotFound, storage.RemoveRoom(ctx, "game", "room-2"))
+		requireErrorKind(t, roomstorage.ErrorRoomNotFound, storage.RemoveRoom(ctx, "game", "room-2"))
 	})
 }
 
@@ -252,7 +252,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 
 	t.Run("error when getting non existent room", func(t *testing.T) {
 		_, err := storage.GetRoom(ctx, "game", "room-3")
-		requireErrorKind(t, statestorage.ErrorRoomNotFound, err)
+		requireErrorKind(t, roomstorage.ErrorRoomNotFound, err)
 	})
 }
 
