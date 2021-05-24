@@ -110,6 +110,12 @@ ginkgo-run:
 unit-run:
 	@go test -count=1 ./...
 
+unit-partial-run:
+	@go test -count=1 ./internal/...
+
+integration-partial-run:
+	@go test -tags=integration -count=1 ./internal/...
+
 gather-unit-profiles:
 	@mkdir -p _build
 	@echo "mode: count" > _build/coverage-unit.out
