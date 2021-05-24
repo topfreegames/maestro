@@ -23,8 +23,8 @@ jobs:
       run: |
         make setup-ci
         make ginkgo-run
-  internal-unit:
-    name: Internal package unit tests
+  partial-unit:
+    name: Partial package unit tests
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go
@@ -42,9 +42,9 @@ jobs:
       env:
         GOBINPATH: ~/go/bin/
       run: |
-        make unit-internal-run
-  internal-integration:
-    name: Internal package integration tests
+        make unit-partial-run
+  partial-integration:
+    name: Partial package integration tests
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go
@@ -62,4 +62,4 @@ jobs:
       env:
         GOBINPATH: ~/go/bin/
       run: |
-        make integration-internal-run
+        make integration-partial-run
