@@ -11,8 +11,8 @@ const (
 )
 
 var (
-	InternalError = &roomStorageError{kind: errorKindInternal}
-	RoomNotFoundError = &roomStorageError{kind: errorKindRoomNotFound}
+	InternalError          = &roomStorageError{kind: errorKindInternal}
+	RoomNotFoundError      = &roomStorageError{kind: errorKindRoomNotFound}
 	RoomAlreadyExistsError = &roomStorageError{kind: errorKindRoomAlreadyExists}
 )
 
