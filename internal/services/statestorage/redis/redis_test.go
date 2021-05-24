@@ -1,26 +1,45 @@
+//+build integration
+
 package redis
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/go-redis/redis"
 	"github.com/orlangure/gnomock"
 	predis "github.com/orlangure/gnomock/preset/redis"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/entities"
+	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func createRedis(t *testing.T) *redis.Client {
-	preset := predis.Preset()
-	container, err := gnomock.Start(preset)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = gnomock.Stop(container) })
+var dbNumber int32 = 0
+var lastPing = time.Unix(time.Now().Unix(), 0)
+var redisContainer *gnomock.Container
+
+func getRedisConnection(t *testing.T) *redis.Client {
+	db := atomic.AddInt32(&dbNumber, 1)
 	return redis.NewClient(&redis.Options{
-		Addr: container.DefaultAddress(),
+		Addr: redisContainer.DefaultAddress(),
+		DB:   int(db),
 	})
+}
+
+func TestMain(m *testing.M) {
+	var err error
+	redisContainer, err = gnomock.Start(predis.Preset())
+	if err != nil {
+		fmt.Println("print error here")
+		os.Exit(1)
+	}
+	code := m.Run()
+	_ = gnomock.Stop(redisContainer)
+	os.Exit(code)
 }
 
 func assertRedisState(t *testing.T, client *redis.Client, room *entities.GameRoom) {
@@ -51,11 +70,9 @@ func assertRedisStateNonExistent(t *testing.T, client *redis.Client, room *entit
 	require.Error(t, pingCmd.Err())
 }
 
-var lastPing = time.Unix(time.Now().Unix(), 0)
-
 func TestRedisStateStorage_CreateRoom(t *testing.T) {
 	ctx := context.Background()
-	client := createRedis(t)
+	client := getRedisConnection(t)
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room without metadata", func(t *testing.T) {
@@ -115,7 +132,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 
 func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 	ctx := context.Background()
-	client := createRedis(t)
+	client := getRedisConnection(t)
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room without metadata", func(t *testing.T) {
@@ -168,7 +185,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 
 func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 	ctx := context.Background()
-	client := createRedis(t)
+	client := getRedisConnection(t)
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room exists", func(t *testing.T) {
@@ -191,9 +208,8 @@ func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 
 func TestRedisStateStorage_GetRoom(t *testing.T) {
 	ctx := context.Background()
-	client := createRedis(t)
+	client := getRedisConnection(t)
 	storage := NewRedisStateStorage(client)
-
 
 	t.Run("game room without metadata", func(t *testing.T) {
 		expectedRoom := &entities.GameRoom{
@@ -236,7 +252,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 
 func TestRedisStateStorage_SetRoomStatus(t *testing.T) {
 	ctx := context.Background()
-	client := createRedis(t)
+	client := getRedisConnection(t)
 	storage := NewRedisStateStorage(client)
 
 	room := &entities.GameRoom{
@@ -254,10 +270,10 @@ func TestRedisStateStorage_SetRoomStatus(t *testing.T) {
 
 func TestRedisStateStorage_GetAllRoomIDs(t *testing.T) {
 	ctx := context.Background()
-	client := createRedis(t)
+	client := getRedisConnection(t)
 	storage := NewRedisStateStorage(client)
 
-	rooms := []*entities.GameRoom {
+	rooms := []*entities.GameRoom{
 		{
 			ID:         "room-1",
 			Scheduler:  "game",
@@ -296,15 +312,15 @@ func TestRedisStateStorage_GetAllRoomIDs(t *testing.T) {
 
 	allRooms, err := storage.GetAllRoomIDs(ctx, "game")
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"room-1","room-2","room-3","room-4","room-5"}, allRooms)
+	require.ElementsMatch(t, []string{"room-1", "room-2", "room-3", "room-4", "room-5"}, allRooms)
 }
 
 func TestRedisStateStorage_GetRoomIDsByLastPing(t *testing.T) {
 	ctx := context.Background()
-	client := createRedis(t)
+	client := getRedisConnection(t)
 	storage := NewRedisStateStorage(client)
 
-	rooms := []*entities.GameRoom {
+	rooms := []*entities.GameRoom{
 		{
 			ID:         "room-1",
 			Scheduler:  "game",
@@ -343,15 +359,15 @@ func TestRedisStateStorage_GetRoomIDsByLastPing(t *testing.T) {
 
 	allRooms, err := storage.GetRoomIDsByLastPing(ctx, "game", time.Unix(3, 0))
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"room-1","room-2","room-3"}, allRooms)
+	require.ElementsMatch(t, []string{"room-1", "room-2", "room-3"}, allRooms)
 }
 
 func TestRedisStateStorage_GetRoomCount(t *testing.T) {
 	ctx := context.Background()
-	client := createRedis(t)
+	client := getRedisConnection(t)
 	storage := NewRedisStateStorage(client)
 
-	rooms := []*entities.GameRoom {
+	rooms := []*entities.GameRoom{
 		{
 			ID:         "room-1",
 			Scheduler:  "game",
@@ -395,10 +411,10 @@ func TestRedisStateStorage_GetRoomCount(t *testing.T) {
 
 func TestRedisStateStorage_GetRoomCountByStatus(t *testing.T) {
 	ctx := context.Background()
-	client := createRedis(t)
+	client := getRedisConnection(t)
 	storage := NewRedisStateStorage(client)
 
-	rooms := []*entities.GameRoom {
+	rooms := []*entities.GameRoom{
 		{
 			ID:         "room-1",
 			Scheduler:  "game",
@@ -435,13 +451,13 @@ func TestRedisStateStorage_GetRoomCountByStatus(t *testing.T) {
 		require.NoError(t, storage.CreateRoom(ctx, room))
 	}
 
-	roomCountByStatus := map[entities.GameRoomStatus]int {
-		entities.GameStatusPending: 1,
-		entities.GameStatusUnready: 0,
-		entities.GameStatusReady: 2,
-		entities.GameStatusOccupied: 1,
+	roomCountByStatus := map[entities.GameRoomStatus]int{
+		entities.GameStatusPending:     1,
+		entities.GameStatusUnready:     0,
+		entities.GameStatusReady:       2,
+		entities.GameStatusOccupied:    1,
 		entities.GameStatusTerminating: 1,
-		entities.GameStatusError: 0,
+		entities.GameStatusError:       0,
 	}
 
 	for status, expectedCount := range roomCountByStatus {
