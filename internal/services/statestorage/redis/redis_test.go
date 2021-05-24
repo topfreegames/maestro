@@ -34,8 +34,7 @@ func TestMain(m *testing.M) {
 	var err error
 	redisContainer, err = gnomock.Start(predis.Preset())
 	if err != nil {
-		fmt.Println("print error here")
-		os.Exit(1)
+		panic(fmt.Sprintf("error creating redis docker instance: %s\n", err))
 	}
 	code := m.Run()
 	_ = gnomock.Stop(redisContainer)
