@@ -2,7 +2,6 @@ package kubernetes
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/topfreegames/maestro/internal/entities"
 	"github.com/topfreegames/maestro/internal/services/runtime"
@@ -22,10 +21,10 @@ func (k *kubernetes) CreateScheduler(ctx context.Context, scheduler *entities.Sc
 	_, err := k.clientset.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			return runtime.ErrSchedulerAlreadyExists
+			return runtime.NewErrSchedulerAlreadyExists(scheduler.ID)
 		}
 
-		return fmt.Errorf("%w: %s", runtime.ErrUnknown, err)
+		return runtime.NewErrUnknown(err)
 	}
 
 	return nil
@@ -35,10 +34,10 @@ func (k *kubernetes) DeleteScheduler(ctx context.Context, scheduler *entities.Sc
 	err := k.clientset.CoreV1().Namespaces().Delete(ctx, scheduler.ID, metav1.DeleteOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return runtime.ErrSchedulerNotFound
+			return runtime.NewErrSchedulerNotFound(scheduler.ID)
 		}
 
-		return fmt.Errorf("%w: %s", runtime.ErrUnknown, err)
+		return runtime.NewErrUnknown(err)
 	}
 
 	return nil
