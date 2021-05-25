@@ -1,5 +1,5 @@
 package entities
 
 type Scheduler struct {
-	Name string
+	ID string
 }

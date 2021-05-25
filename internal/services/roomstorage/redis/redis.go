@@ -25,13 +25,13 @@ func NewRedisStateStorage(client *redis.Client) *redisStateStorage {
 func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string) (*entities.GameRoom, error) {
 	room := &entities.GameRoom{
 		ID:        roomID,
-		Scheduler: entities.Scheduler{Name: scheduler},
+		Scheduler: entities.Scheduler{ID: scheduler},
 	}
 
 	p := r.client.WithContext(ctx).Pipeline()
-	metadataCmd := p.Get(getRoomRedisKey(room.Scheduler.Name, room.ID))
-	statusCmd := p.ZScore(getRoomStatusSetRedisKey(room.Scheduler.Name), room.ID)
-	pingCmd := p.ZScore(getRoomPingRedisKey(room.Scheduler.Name), room.ID)
+	metadataCmd := p.Get(getRoomRedisKey(room.Scheduler.ID, room.ID))
+	statusCmd := p.ZScore(getRoomStatusSetRedisKey(room.Scheduler.ID), room.ID)
+	pingCmd := p.ZScore(getRoomPingRedisKey(room.Scheduler.ID), room.ID)
 	_, err := p.Exec()
 	if err != nil {
 		if err == redis.Nil {
@@ -57,12 +57,12 @@ func (r *redisStateStorage) CreateRoom(ctx context.Context, room *entities.GameR
 	}
 
 	p := r.client.WithContext(ctx).TxPipeline()
-	roomCmd := p.SetNX(getRoomRedisKey(room.Scheduler.Name, room.ID), metadataJson, 0)
-	statusCmd := p.ZAddNX(getRoomStatusSetRedisKey(room.Scheduler.Name), redis.Z{
+	roomCmd := p.SetNX(getRoomRedisKey(room.Scheduler.ID, room.ID), metadataJson, 0)
+	statusCmd := p.ZAddNX(getRoomStatusSetRedisKey(room.Scheduler.ID), redis.Z{
 		Member: room.ID,
 		Score:  float64(room.Status),
 	})
-	pingCmd := p.ZAddNX(getRoomPingRedisKey(room.Scheduler.Name), redis.Z{
+	pingCmd := p.ZAddNX(getRoomPingRedisKey(room.Scheduler.ID), redis.Z{
 		Member: room.ID,
 		Score:  float64(room.LastPingAt.Unix()),
 	})
@@ -73,7 +73,7 @@ func (r *redisStateStorage) CreateRoom(ctx context.Context, room *entities.GameR
 	}
 
 	if !roomCmd.Val() || statusCmd.Val() < 1 || pingCmd.Val() < 1 {
-		return roomstorage.NewRoomAlreadyExistsError(room.Scheduler.Name, room.ID)
+		return roomstorage.NewRoomAlreadyExistsError(room.Scheduler.ID, room.ID)
 	}
 
 	return nil
@@ -86,12 +86,12 @@ func (r *redisStateStorage) UpdateRoom(ctx context.Context, room *entities.GameR
 	}
 
 	p := r.client.WithContext(ctx).TxPipeline()
-	roomCmd := p.SetXX(getRoomRedisKey(room.Scheduler.Name, room.ID), metadataJson, 0)
-	p.ZAddXXCh(getRoomStatusSetRedisKey(room.Scheduler.Name), redis.Z{
+	roomCmd := p.SetXX(getRoomRedisKey(room.Scheduler.ID, room.ID), metadataJson, 0)
+	p.ZAddXXCh(getRoomStatusSetRedisKey(room.Scheduler.ID), redis.Z{
 		Member: room.ID,
 		Score:  float64(room.Status),
 	})
-	p.ZAddXXCh(getRoomPingRedisKey(room.Scheduler.Name), redis.Z{
+	p.ZAddXXCh(getRoomPingRedisKey(room.Scheduler.ID), redis.Z{
 		Member: room.ID,
 		Score:  float64(room.LastPingAt.Unix()),
 	})
@@ -102,7 +102,7 @@ func (r *redisStateStorage) UpdateRoom(ctx context.Context, room *entities.GameR
 	}
 
 	if !roomCmd.Val() {
-		return roomstorage.NewRoomNotFoundError(room.Scheduler.Name, room.ID)
+		return roomstorage.NewRoomNotFoundError(room.Scheduler.ID, room.ID)
 	}
 
 	return nil
