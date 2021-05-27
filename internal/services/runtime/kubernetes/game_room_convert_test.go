@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/services/runtime"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -483,6 +484,100 @@ func TestConvertGameSpec(t *testing.T) {
 			} else {
 				require.Nil(t, res.Spec.TerminationGracePeriodSeconds)
 			}
+		})
+	}
+}
+
+func TestConvertPodStatus(t *testing.T) {
+	cases := map[string]struct {
+		pod            *v1.Pod
+		expectedStatus runtime.RuntimeGameRoomStatus
+	}{
+		"ready": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Conditions: []v1.PodCondition{
+						{Type: v1.PodReady, Status: v1.ConditionTrue},
+					},
+				},
+			},
+			expectedStatus: runtime.RuntimeGameRoomStatus{
+				Type: runtime.RuntimeGameRoomStatusTypeReady,
+				Reason: "",
+			},
+		},
+		"pending no conditions present": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodPending,
+				},
+			},
+			expectedStatus: runtime.RuntimeGameRoomStatus{
+				Type: runtime.RuntimeGameRoomStatusTypePending,
+				Reason: "",
+			},
+		},
+		"pending scheduled": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodPending,
+					Conditions: []v1.PodCondition{
+						{Type: v1.PodScheduled, Status: v1.ConditionTrue},
+					},
+				},
+			},
+			expectedStatus: runtime.RuntimeGameRoomStatus{
+				Type: runtime.RuntimeGameRoomStatusTypePending,
+				Reason: "",
+			},
+		},
+		"pod in crashloop": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+					Conditions: []v1.PodCondition{
+						{Type: v1.PodReady, Status: v1.ConditionFalse},
+						{Type: v1.PodScheduled, Status: v1.ConditionTrue},
+						{Type: v1.ContainersReady, Status: v1.ConditionFalse},
+						{Type: v1.ContainersReady, Status: v1.ConditionFalse},
+					},
+					ContainerStatuses: []v1.ContainerStatus{
+						{State: v1.ContainerState{Waiting: &v1.ContainerStateWaiting{Reason: "CrashLoopBackOff", Message: "retrying"}}},
+					},
+				},
+			},
+			expectedStatus: runtime.RuntimeGameRoomStatus{
+				Type: runtime.RuntimeGameRoomStatusTypeError,
+				Reason: "CrashLoopBackOff: retrying",
+			},
+		},
+		"pod with container error": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+					Conditions: []v1.PodCondition{
+						{Type: v1.PodReady, Status: v1.ConditionFalse},
+						{Type: v1.PodScheduled, Status: v1.ConditionTrue},
+						{Type: v1.ContainersReady, Status: v1.ConditionFalse},
+						{Type: v1.ContainersReady, Status: v1.ConditionFalse},
+					},
+					ContainerStatuses: []v1.ContainerStatus{
+						{State: v1.ContainerState{Waiting: &v1.ContainerStateWaiting{Reason: "RunContainerError", Message: "failed to find executable"}}},
+					},
+				},
+			},
+			expectedStatus: runtime.RuntimeGameRoomStatus{
+				Type: runtime.RuntimeGameRoomStatusTypeError,
+				Reason: "RunContainerError: failed to find executable",
+			},
+		},
+	}
+
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			res := convertPodStatus(test.pod)
+			require.Equal(t, test.expectedStatus.Type, res.Type)
+			require.Equal(t, test.expectedStatus.Reason, res.Reason)
 		})
 	}
 }

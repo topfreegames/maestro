@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/services/runtime"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -27,6 +28,17 @@ const (
 	schedulerLabelKey = "maestro-scheduler"
 	versionLabelKey   = "version"
 )
+
+// invalidPodWaitingStates are all the states that are not accepted in a waiting pod.
+var invalidPodWaitingStates = []string{
+	"ErrImageNeverPull",
+	"ErrImagePullBackOff",
+	"ImagePullBackOff",
+	"ErrInvalidImageName",
+	"ErrImagePull",
+	"CrashLoopBackOff",
+	"RunContainerError",
+}
 
 func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomSpec entities.GameRoomSpec) (*v1.Pod, error) {
 	pod := &v1.Pod{
@@ -192,4 +204,48 @@ func convertTerminationGracePeriod(spec entities.GameRoomSpec) *int64 {
 	}
 
 	return &seconds
+}
+
+func convertPodStatus(pod *v1.Pod) runtime.RuntimeGameRoomStatus {
+	if pod.ObjectMeta.DeletionTimestamp != nil {
+		return runtime.RuntimeGameRoomStatus{Type: runtime.RuntimeGameRoomStatusTypeTerminating}
+	}
+
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		state := containerStatus.State
+		if state.Waiting != nil {
+			for _, invalidState := range invalidPodWaitingStates {
+				if state.Waiting.Reason == invalidState {
+					return runtime.RuntimeGameRoomStatus{
+						Type:   runtime.RuntimeGameRoomStatusTypeError,
+						Reason: fmt.Sprintf("%s: %s", state.Waiting.Reason, state.Waiting.Message),
+					}
+				}
+			}
+		}
+	}
+
+	var podReady v1.ConditionStatus
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == v1.PodReady {
+			podReady = condition.Status
+		}
+
+		if condition.Status == v1.ConditionFalse {
+			return runtime.RuntimeGameRoomStatus {
+				Type:   runtime.RuntimeGameRoomStatusTypePending,
+				Reason: fmt.Sprintf("%s: %s", condition.Reason, condition.Message),
+			}
+		}
+	}
+
+	if podReady == v1.ConditionTrue {
+		return runtime.RuntimeGameRoomStatus{Type: runtime.RuntimeGameRoomStatusTypeReady}
+	}
+
+	if pod.Status.Phase == v1.PodPending {
+		return runtime.RuntimeGameRoomStatus{Type: runtime.RuntimeGameRoomStatusTypePending}
+	}
+
+	return runtime.RuntimeGameRoomStatus{Type: runtime.RuntimeGameRoomStatusTypeUnknown}
 }
