@@ -28,6 +28,17 @@ const (
 	versionLabelKey   = "version"
 )
 
+// invalidPodWaitingStates are all the states that are not accepted in a waiting pod.
+var invalidPodWaitingStates = []string{
+	"ErrImageNeverPull",
+	"ErrImagePullBackOff",
+	"ImagePullBackOff",
+	"ErrInvalidImageName",
+	"ErrImagePull",
+	"CrashLoopBackOff",
+	"RunContainerError",
+}
+
 func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomSpec entities.GameRoomSpec) (*v1.Pod, error) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -192,4 +203,57 @@ func convertTerminationGracePeriod(spec entities.GameRoomSpec) *int64 {
 	}
 
 	return &seconds
+}
+
+func convertPodStatus(pod *v1.Pod) entities.GameRoomInstanceStatus {
+	if pod.ObjectMeta.DeletionTimestamp != nil {
+		return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstanceTerminating}
+	}
+
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		state := containerStatus.State
+		if state.Waiting != nil {
+			for _, invalidState := range invalidPodWaitingStates {
+				if state.Waiting.Reason == invalidState {
+					return entities.GameRoomInstanceStatus{
+						Type:        entities.GameRoomInstanceError,
+						Description: fmt.Sprintf("%s: %s", state.Waiting.Reason, state.Waiting.Message),
+					}
+				}
+			}
+		}
+	}
+
+	var podReady v1.ConditionStatus
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == v1.PodReady {
+			podReady = condition.Status
+		}
+
+		if condition.Status == v1.ConditionFalse {
+			return entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstancePending,
+				Description: fmt.Sprintf("%s: %s", condition.Reason, condition.Message),
+			}
+		}
+	}
+
+	if podReady == v1.ConditionTrue {
+		return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstanceReady}
+	}
+
+	if pod.Status.Phase == v1.PodPending {
+		return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstancePending}
+	}
+
+	return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstanceUnknown}
+}
+
+func convertPod(pod *v1.Pod) entities.GameRoomInstance {
+	return entities.GameRoomInstance{
+		ID:          pod.ObjectMeta.Name,
+		SchedulerID: pod.ObjectMeta.Namespace,
+		Version:     pod.ObjectMeta.Labels[versionLabelKey],
+		Status:      convertPodStatus(pod),
+	}
 }

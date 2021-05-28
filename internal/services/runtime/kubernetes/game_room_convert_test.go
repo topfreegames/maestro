@@ -486,3 +486,146 @@ func TestConvertGameSpec(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertPodStatus(t *testing.T) {
+	cases := map[string]struct {
+		pod            *v1.Pod
+		expectedStatus entities.GameRoomInstanceStatus
+	}{
+		"ready": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Conditions: []v1.PodCondition{
+						{Type: v1.PodReady, Status: v1.ConditionTrue},
+					},
+				},
+			},
+			expectedStatus: entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstanceReady,
+				Description: "",
+			},
+		},
+		"pending no conditions present": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodPending,
+				},
+			},
+			expectedStatus: entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstancePending,
+				Description: "",
+			},
+		},
+		"pending scheduled": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodPending,
+					Conditions: []v1.PodCondition{
+						{Type: v1.PodScheduled, Status: v1.ConditionTrue},
+					},
+				},
+			},
+			expectedStatus: entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstancePending,
+				Description: "",
+			},
+		},
+		"pod in crashloop": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+					Conditions: []v1.PodCondition{
+						{Type: v1.PodReady, Status: v1.ConditionFalse},
+						{Type: v1.PodScheduled, Status: v1.ConditionTrue},
+						{Type: v1.ContainersReady, Status: v1.ConditionFalse},
+						{Type: v1.ContainersReady, Status: v1.ConditionFalse},
+					},
+					ContainerStatuses: []v1.ContainerStatus{
+						{State: v1.ContainerState{Waiting: &v1.ContainerStateWaiting{Reason: "CrashLoopBackOff", Message: "retrying"}}},
+					},
+				},
+			},
+			expectedStatus: entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstanceError,
+				Description: "CrashLoopBackOff: retrying",
+			},
+		},
+		"pod with container error": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+					Conditions: []v1.PodCondition{
+						{Type: v1.PodReady, Status: v1.ConditionFalse},
+						{Type: v1.PodScheduled, Status: v1.ConditionTrue},
+						{Type: v1.ContainersReady, Status: v1.ConditionFalse},
+						{Type: v1.ContainersReady, Status: v1.ConditionFalse},
+					},
+					ContainerStatuses: []v1.ContainerStatus{
+						{State: v1.ContainerState{Waiting: &v1.ContainerStateWaiting{Reason: "RunContainerError", Message: "failed to find executable"}}},
+					},
+				},
+			},
+			expectedStatus: entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstanceError,
+				Description: "RunContainerError: failed to find executable",
+			},
+		},
+	}
+
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			res := convertPodStatus(test.pod)
+			require.Equal(t, test.expectedStatus.Type, res.Type)
+			require.Equal(t, test.expectedStatus.Description, res.Description)
+		})
+	}
+}
+
+func TestConvertPod(t *testing.T) {
+	cases := map[string]struct {
+		pod              *v1.Pod
+		expectedInstance entities.GameRoomInstance
+	}{
+		"id": {
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod-id",
+				},
+			},
+			expectedInstance: entities.GameRoomInstance{
+				ID: "pod-id",
+			},
+		},
+		"scheduler": {
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "some-scheduler",
+				},
+			},
+			expectedInstance: entities.GameRoomInstance{
+				SchedulerID: "some-scheduler",
+			},
+		},
+		"version": {
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						versionLabelKey: "v1.1.0",
+					},
+				},
+			},
+			expectedInstance: entities.GameRoomInstance{
+				Version: "v1.1.0",
+			},
+		},
+	}
+
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			res := convertPod(test.pod)
+			require.Equal(t, test.expectedInstance.ID, res.ID)
+			require.Equal(t, test.expectedInstance.SchedulerID, res.SchedulerID)
+			require.Equal(t, test.expectedInstance.Version, res.Version)
+		})
+	}
+}

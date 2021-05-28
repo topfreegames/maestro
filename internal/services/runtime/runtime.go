@@ -18,4 +18,15 @@ type Runtime interface {
 	CreateGameRoom(ctx context.Context, gameRoom *entities.GameRoom, spec entities.GameRoomSpec) error
 	// DeleteGameRoom Deletes a game room on the runtime.
 	DeleteGameRoom(ctx context.Context, gameRoom *entities.GameRoom) error
+	// WathGameRooms Watches for changes of a scheduler game rooms.
+	WatchGameRooms(ctx context.Context, scheduler *entities.Scheduler) (RuntimeWatcher, error)
+}
+
+// RuntimeWatcher defines a process of watcher, it will have a chan with the
+// changes on the Runtime, and also a way to stop watching.
+type RuntimeWatcher interface {
+	// ResultChan returns the channel where the changes will be forwarded.
+	ResultChan() chan RuntimeGameInstanceEvent
+	// Stop stops the watcher.
+	Stop()
 }
