@@ -50,7 +50,7 @@ func (kw *kubernetesWatcher) addFunc(obj interface{}) {
 }
 
 func (kw *kubernetesWatcher) updateFunc(obj interface{}, newObj interface{}) {
-	kw.processEvent(runtime.RuntimeGameInstanceEventTypeUpdated, obj)
+	kw.processEvent(runtime.RuntimeGameInstanceEventTypeUpdated, newObj)
 }
 
 func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
