@@ -26,7 +26,7 @@ type Runtime interface {
 // changes on the Runtime, and also a way to stop watching.
 type RuntimeWatcher interface {
 	// ResultChan returns the channel where the changes will be forwarded.
-	ResultChan() chan RuntimeEvent
+	ResultChan() chan RuntimeGameInstanceEvent
 	// Stop stops the watcher.
 	Stop()
 }

@@ -18,12 +18,12 @@ var (
 )
 
 type kubernetesWatcher struct {
-	resultsChan chan runtime.RuntimeEvent
+	resultsChan chan runtime.RuntimeGameInstanceEvent
 	stopChan    chan struct{}
 	stopOnce    sync.Once
 }
 
-func (kw *kubernetesWatcher) ResultChan() chan runtime.RuntimeEvent {
+func (kw *kubernetesWatcher) ResultChan() chan runtime.RuntimeGameInstanceEvent {
 	return kw.resultsChan
 }
 
@@ -33,34 +33,33 @@ func (kw *kubernetesWatcher) Stop() {
 	})
 }
 
-func (kw *kubernetesWatcher) processEvent(eventType runtime.RuntimeEventType, obj interface{}) {
+func (kw *kubernetesWatcher) processEvent(eventType runtime.RuntimeGameInstanceEventType, obj interface{}) {
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		return
 	}
 
-	kw.resultsChan <- runtime.RuntimeEvent{
-		Type:       eventType,
-		GameRoomID: pod.ObjectMeta.Name,
-		Status:     convertPodStatus(pod),
+	kw.resultsChan <- runtime.RuntimeGameInstanceEvent{
+		Type:     eventType,
+		Instance: convertPod(pod),
 	}
 }
 
 func (kw *kubernetesWatcher) addFunc(obj interface{}) {
-	kw.processEvent(runtime.RuntimeEventAdded, obj)
+	kw.processEvent(runtime.RuntimeGameInstanceEventTypeAdded, obj)
 }
 
 func (kw *kubernetesWatcher) updateFunc(obj interface{}, newObj interface{}) {
-	kw.processEvent(runtime.RuntimeEventUpdated, obj)
+	kw.processEvent(runtime.RuntimeGameInstanceEventTypeUpdated, obj)
 }
 
 func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
-	kw.processEvent(runtime.RuntimeEventDeleted, obj)
+	kw.processEvent(runtime.RuntimeGameInstanceEventTypeDeleted, obj)
 }
 
 func (k *kubernetes) WatchGameRooms(ctx context.Context, scheduler *entities.Scheduler) (runtime.RuntimeWatcher, error) {
 	watcher := &kubernetesWatcher{
-		resultsChan: make(chan runtime.RuntimeEvent, eventsChanSize),
+		resultsChan: make(chan runtime.RuntimeGameInstanceEvent, eventsChanSize),
 		stopChan:    make(chan struct{}),
 	}
 

@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/entities"
-	"github.com/topfreegames/maestro/internal/services/runtime"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -491,7 +490,7 @@ func TestConvertGameSpec(t *testing.T) {
 func TestConvertPodStatus(t *testing.T) {
 	cases := map[string]struct {
 		pod            *v1.Pod
-		expectedStatus runtime.RuntimeGameRoomStatus
+		expectedStatus entities.GameRoomInstanceStatus
 	}{
 		"ready": {
 			pod: &v1.Pod{
@@ -501,9 +500,9 @@ func TestConvertPodStatus(t *testing.T) {
 					},
 				},
 			},
-			expectedStatus: runtime.RuntimeGameRoomStatus{
-				Type: runtime.RuntimeGameRoomStatusTypeReady,
-				Reason: "",
+			expectedStatus: entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstanceReady,
+				Description: "",
 			},
 		},
 		"pending no conditions present": {
@@ -512,9 +511,9 @@ func TestConvertPodStatus(t *testing.T) {
 					Phase: v1.PodPending,
 				},
 			},
-			expectedStatus: runtime.RuntimeGameRoomStatus{
-				Type: runtime.RuntimeGameRoomStatusTypePending,
-				Reason: "",
+			expectedStatus: entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstancePending,
+				Description: "",
 			},
 		},
 		"pending scheduled": {
@@ -526,9 +525,9 @@ func TestConvertPodStatus(t *testing.T) {
 					},
 				},
 			},
-			expectedStatus: runtime.RuntimeGameRoomStatus{
-				Type: runtime.RuntimeGameRoomStatusTypePending,
-				Reason: "",
+			expectedStatus: entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstancePending,
+				Description: "",
 			},
 		},
 		"pod in crashloop": {
@@ -546,9 +545,9 @@ func TestConvertPodStatus(t *testing.T) {
 					},
 				},
 			},
-			expectedStatus: runtime.RuntimeGameRoomStatus{
-				Type: runtime.RuntimeGameRoomStatusTypeError,
-				Reason: "CrashLoopBackOff: retrying",
+			expectedStatus: entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstanceError,
+				Description: "CrashLoopBackOff: retrying",
 			},
 		},
 		"pod with container error": {
@@ -566,9 +565,9 @@ func TestConvertPodStatus(t *testing.T) {
 					},
 				},
 			},
-			expectedStatus: runtime.RuntimeGameRoomStatus{
-				Type: runtime.RuntimeGameRoomStatusTypeError,
-				Reason: "RunContainerError: failed to find executable",
+			expectedStatus: entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstanceError,
+				Description: "RunContainerError: failed to find executable",
 			},
 		},
 	}
@@ -577,7 +576,56 @@ func TestConvertPodStatus(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			res := convertPodStatus(test.pod)
 			require.Equal(t, test.expectedStatus.Type, res.Type)
-			require.Equal(t, test.expectedStatus.Reason, res.Reason)
+			require.Equal(t, test.expectedStatus.Description, res.Description)
+		})
+	}
+}
+
+func TestConvertPod(t *testing.T) {
+	cases := map[string]struct {
+		pod              *v1.Pod
+		expectedInstance entities.GameRoomInstance
+	}{
+		"id": {
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod-id",
+				},
+			},
+			expectedInstance: entities.GameRoomInstance{
+				ID: "pod-id",
+			},
+		},
+		"scheduler": {
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "some-scheduler",
+				},
+			},
+			expectedInstance: entities.GameRoomInstance{
+				SchedulerID: "some-scheduler",
+			},
+		},
+		"version": {
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						versionLabelKey: "v1.1.0",
+					},
+				},
+			},
+			expectedInstance: entities.GameRoomInstance{
+				Version: "v1.1.0",
+			},
+		},
+	}
+
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			res := convertPod(test.pod)
+			require.Equal(t, test.expectedInstance.ID, res.ID)
+			require.Equal(t, test.expectedInstance.SchedulerID, res.SchedulerID)
+			require.Equal(t, test.expectedInstance.Version, res.Version)
 		})
 	}
 }

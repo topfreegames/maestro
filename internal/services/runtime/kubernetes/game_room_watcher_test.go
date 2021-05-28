@@ -1,4 +1,4 @@
-//+build abc
+//+build integration
 
 package kubernetes
 
@@ -57,9 +57,9 @@ func TestGameRoomsWatch(t *testing.T) {
 		require.NoError(t, err)
 
 		event := <-watcher.ResultChan()
-		require.Equal(t, runtime.RuntimeEventAdded, event.Type)
-		require.Equal(t, gameRoom.ID, event.GameRoomID)
-		require.Equal(t, runtime.RuntimeGameRoomStatusTypePending, event.Status.Type)
+		require.Equal(t, runtime.RuntimeGameInstanceEventTypeAdded, event.Type)
+		require.Equal(t, gameRoom.ID, event.Instance.ID)
+		require.Equal(t, entities.GameRoomInstancePending, event.Instance.Status.Type)
 	})
 
 	t.Run("watch pod becoming ready", func(t *testing.T) {
@@ -87,9 +87,9 @@ func TestGameRoomsWatch(t *testing.T) {
 		require.Eventually(t, func() bool {
 			select {
 			case event := <-watcher.ResultChan():
-				if event.Type == runtime.RuntimeEventUpdated &&
-					event.GameRoomID == gameRoom.ID &&
-					event.Status.Type == runtime.RuntimeGameRoomStatusTypeReady {
+				if event.Type == runtime.RuntimeGameInstanceEventTypeUpdated &&
+					event.Instance.ID == gameRoom.ID &&
+					event.Instance.Status.Type == entities.GameRoomInstanceReady {
 					return true
 				}
 			default:
@@ -125,9 +125,9 @@ func TestGameRoomsWatch(t *testing.T) {
 		require.Eventually(t, func() bool {
 			select {
 			case event := <-watcher.ResultChan():
-				if event.Type == runtime.RuntimeEventUpdated &&
-					event.GameRoomID == gameRoom.ID &&
-					event.Status.Type == runtime.RuntimeGameRoomStatusTypeError {
+				if event.Type == runtime.RuntimeGameInstanceEventTypeUpdated &&
+					event.Instance.ID == gameRoom.ID &&
+					event.Instance.Status.Type == entities.GameRoomInstanceError {
 					return true
 				}
 			default:
@@ -165,8 +165,8 @@ func TestGameRoomsWatch(t *testing.T) {
 		require.Eventually(t, func() bool {
 			select {
 			case event := <-watcher.ResultChan():
-				if event.Type == runtime.RuntimeEventDeleted &&
-					event.GameRoomID == gameRoom.ID {
+				if event.Type == runtime.RuntimeGameInstanceEventTypeDeleted &&
+					event.Instance.ID == gameRoom.ID {
 					return true
 				}
 			default:

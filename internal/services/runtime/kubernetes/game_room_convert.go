@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/topfreegames/maestro/internal/entities"
-	"github.com/topfreegames/maestro/internal/services/runtime"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -206,9 +205,9 @@ func convertTerminationGracePeriod(spec entities.GameRoomSpec) *int64 {
 	return &seconds
 }
 
-func convertPodStatus(pod *v1.Pod) runtime.RuntimeGameRoomStatus {
+func convertPodStatus(pod *v1.Pod) entities.GameRoomInstanceStatus {
 	if pod.ObjectMeta.DeletionTimestamp != nil {
-		return runtime.RuntimeGameRoomStatus{Type: runtime.RuntimeGameRoomStatusTypeTerminating}
+		return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstanceTerminating}
 	}
 
 	for _, containerStatus := range pod.Status.ContainerStatuses {
@@ -216,9 +215,9 @@ func convertPodStatus(pod *v1.Pod) runtime.RuntimeGameRoomStatus {
 		if state.Waiting != nil {
 			for _, invalidState := range invalidPodWaitingStates {
 				if state.Waiting.Reason == invalidState {
-					return runtime.RuntimeGameRoomStatus{
-						Type:   runtime.RuntimeGameRoomStatusTypeError,
-						Reason: fmt.Sprintf("%s: %s", state.Waiting.Reason, state.Waiting.Message),
+					return entities.GameRoomInstanceStatus{
+						Type:        entities.GameRoomInstanceError,
+						Description: fmt.Sprintf("%s: %s", state.Waiting.Reason, state.Waiting.Message),
 					}
 				}
 			}
@@ -232,20 +231,29 @@ func convertPodStatus(pod *v1.Pod) runtime.RuntimeGameRoomStatus {
 		}
 
 		if condition.Status == v1.ConditionFalse {
-			return runtime.RuntimeGameRoomStatus {
-				Type:   runtime.RuntimeGameRoomStatusTypePending,
-				Reason: fmt.Sprintf("%s: %s", condition.Reason, condition.Message),
+			return entities.GameRoomInstanceStatus{
+				Type:        entities.GameRoomInstancePending,
+				Description: fmt.Sprintf("%s: %s", condition.Reason, condition.Message),
 			}
 		}
 	}
 
 	if podReady == v1.ConditionTrue {
-		return runtime.RuntimeGameRoomStatus{Type: runtime.RuntimeGameRoomStatusTypeReady}
+		return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstanceReady}
 	}
 
 	if pod.Status.Phase == v1.PodPending {
-		return runtime.RuntimeGameRoomStatus{Type: runtime.RuntimeGameRoomStatusTypePending}
+		return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstancePending}
 	}
 
-	return runtime.RuntimeGameRoomStatus{Type: runtime.RuntimeGameRoomStatusTypeUnknown}
+	return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstanceUnknown}
+}
+
+func convertPod(pod *v1.Pod) entities.GameRoomInstance {
+	return entities.GameRoomInstance{
+		ID:          pod.ObjectMeta.Name,
+		SchedulerID: pod.ObjectMeta.Namespace,
+		Version:     pod.ObjectMeta.Labels[versionLabelKey],
+		Status:      convertPodStatus(pod),
+	}
 }
