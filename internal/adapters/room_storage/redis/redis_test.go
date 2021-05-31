@@ -18,8 +18,8 @@ import (
 	"github.com/orlangure/gnomock"
 	predis "github.com/orlangure/gnomock/preset/redis"
 	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/internal/adapters/room_storage"
 	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/services/room_storage"
 )
 
 var dbNumber int32 = 0

@@ -9,7 +9,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
 	"github.com/go-redis/redis"
-	"github.com/topfreegames/maestro/internal/services/instance_storage"
+	"github.com/topfreegames/maestro/internal/adapters/instance_storage"
 )
 
 type redisInstanceStorage struct {

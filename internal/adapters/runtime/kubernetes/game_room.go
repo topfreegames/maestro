@@ -5,7 +5,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
-	"github.com/topfreegames/maestro/internal/services/runtime"
+	"github.com/topfreegames/maestro/internal/adapters/runtime"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

@@ -12,8 +12,8 @@ import (
 	"github.com/orlangure/gnomock"
 	"github.com/orlangure/gnomock/preset/k3s"
 	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/internal/adapters/runtime"
 	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/services/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kube "k8s.io/client-go/kubernetes"
 )

@@ -13,8 +13,8 @@ import (
 	"github.com/orlangure/gnomock"
 	"github.com/orlangure/gnomock/preset/k3s"
 	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/internal/adapters/runtime"
 	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/services/runtime"
 )
 
 func TestSchedulerCreation(t *testing.T) {

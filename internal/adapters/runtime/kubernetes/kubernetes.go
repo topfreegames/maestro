@@ -1,7 +1,7 @@
 package kubernetes
 
 import (
-	"github.com/topfreegames/maestro/internal/services/runtime"
+	"github.com/topfreegames/maestro/internal/adapters/runtime"
 	kube "k8s.io/client-go/kubernetes"
 )
 
