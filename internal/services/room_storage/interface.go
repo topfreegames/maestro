@@ -1,9 +1,10 @@
-package roomstorage
+package room_storage
 
 import (
 	"context"
-	"github.com/topfreegames/maestro/internal/entities"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/entities"
 )
 
 // RoomStorage is an interface for retrieving and updating room status and ping information

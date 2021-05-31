@@ -1,4 +1,4 @@
-package roomstorage
+package room_storage
 
 import "fmt"
 

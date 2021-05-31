@@ -6,17 +6,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-redis/redis"
-	"github.com/orlangure/gnomock"
-	predis "github.com/orlangure/gnomock/preset/redis"
-	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/entities"
-	"github.com/topfreegames/maestro/internal/services/roomstorage"
 	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/go-redis/redis"
+	"github.com/orlangure/gnomock"
+	predis "github.com/orlangure/gnomock/preset/redis"
+	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/services/room_storage"
 )
 
 var dbNumber int32 = 0
@@ -130,7 +131,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			},
 		}
 
-		requireErrorKind(t, roomstorage.RoomAlreadyExistsError, storage.CreateRoom(ctx, secondRoom))
+		requireErrorKind(t, room_storage.RoomAlreadyExistsError, storage.CreateRoom(ctx, secondRoom))
 		assertRedisState(t, client, firstRoom)
 	})
 }
@@ -184,7 +185,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 			},
 		}
 
-		requireErrorKind(t, roomstorage.RoomNotFoundError, storage.UpdateRoom(ctx, room))
+		requireErrorKind(t, room_storage.RoomNotFoundError, storage.UpdateRoom(ctx, room))
 	})
 }
 
@@ -207,7 +208,7 @@ func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 	})
 
 	t.Run("game room nonexistent", func(t *testing.T) {
-		requireErrorKind(t, roomstorage.RoomNotFoundError, storage.RemoveRoom(ctx, "game", "room-2"))
+		requireErrorKind(t, room_storage.RoomNotFoundError, storage.RemoveRoom(ctx, "game", "room-2"))
 	})
 }
 
@@ -251,7 +252,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 
 	t.Run("error when getting non existent room", func(t *testing.T) {
 		_, err := storage.GetRoom(ctx, "game", "room-3")
-		requireErrorKind(t, roomstorage.RoomNotFoundError, err)
+		requireErrorKind(t, room_storage.RoomNotFoundError, err)
 	})
 }
 
