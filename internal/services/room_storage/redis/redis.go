@@ -8,8 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
 	"github.com/go-redis/redis"
-	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/services/room_storage"
 )
 
@@ -23,8 +25,8 @@ func NewRedisStateStorage(client *redis.Client) *redisStateStorage {
 	return &redisStateStorage{client: client}
 }
 
-func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string) (*entities.GameRoom, error) {
-	room := &entities.GameRoom{
+func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string) (*game_room.GameRoom, error) {
+	room := &game_room.GameRoom{
 		ID:        roomID,
 		Scheduler: entities.Scheduler{ID: scheduler},
 	}
@@ -41,7 +43,7 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 		return nil, room_storage.WrapError("error storing room on redis", err)
 	}
 
-	room.Status = entities.GameRoomStatus(statusCmd.Val())
+	room.Status = game_room.GameRoomStatus(statusCmd.Val())
 	room.LastPingAt = time.Unix(int64(pingCmd.Val()), 0)
 	err = json.NewDecoder(strings.NewReader(metadataCmd.Val())).Decode(&room.Metadata)
 	if err != nil {
@@ -51,7 +53,7 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 	return room, nil
 }
 
-func (r *redisStateStorage) CreateRoom(ctx context.Context, room *entities.GameRoom) error {
+func (r *redisStateStorage) CreateRoom(ctx context.Context, room *game_room.GameRoom) error {
 	metadataJson, err := json.Marshal(room.Metadata)
 	if err != nil {
 		return err
@@ -80,7 +82,7 @@ func (r *redisStateStorage) CreateRoom(ctx context.Context, room *entities.GameR
 	return nil
 }
 
-func (r *redisStateStorage) UpdateRoom(ctx context.Context, room *entities.GameRoom) error {
+func (r *redisStateStorage) UpdateRoom(ctx context.Context, room *game_room.GameRoom) error {
 	metadataJson, err := json.Marshal(room.Metadata)
 	if err != nil {
 		return err
@@ -127,7 +129,7 @@ func (r *redisStateStorage) RemoveRoom(ctx context.Context, scheduler, roomID st
 	return nil
 }
 
-func (r *redisStateStorage) SetRoomStatus(ctx context.Context, scheduler, roomID string, status entities.GameRoomStatus) error {
+func (r *redisStateStorage) SetRoomStatus(ctx context.Context, scheduler, roomID string, status game_room.GameRoomStatus) error {
 	err := r.client.WithContext(ctx).ZAddXXCh(getRoomStatusSetRedisKey(scheduler), redis.Z{
 		Member: roomID,
 		Score:  float64(status),
@@ -166,7 +168,7 @@ func (r *redisStateStorage) GetRoomCount(ctx context.Context, scheduler string) 
 	return int(count), nil
 }
 
-func (r *redisStateStorage) GetRoomCountByStatus(ctx context.Context, scheduler string, status entities.GameRoomStatus) (int, error) {
+func (r *redisStateStorage) GetRoomCountByStatus(ctx context.Context, scheduler string, status game_room.GameRoomStatus) (int, error) {
 	client := r.client.WithContext(ctx)
 	statusIntStr := fmt.Sprint(int(status))
 	count, err := client.ZCount(getRoomStatusSetRedisKey(scheduler), statusIntStr, statusIntStr).Result()

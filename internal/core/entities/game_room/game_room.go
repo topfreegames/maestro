@@ -1,7 +1,8 @@
-package entities
+package game_room
 
 import (
 	"fmt"
+	"time"
 )
 
 type GameRoomStatus int
@@ -21,25 +22,6 @@ const (
 	GameStatusError
 )
 
-func GameRoomStatusFromString(status string) (GameRoomStatus, error) {
-	switch status {
-	case "pending":
-		return GameStatusPending, nil
-	case "unready":
-		return GameStatusUnready, nil
-	case "ready":
-		return GameStatusReady, nil
-	case "occupied":
-		return GameStatusOccupied, nil
-	case "terminating":
-		return GameStatusTerminating, nil
-	case "error":
-		return GameStatusError, nil
-	default:
-		return GameStatusPending, fmt.Errorf("error: invalid GameRoomStatus string: %s", status)
-	}
-}
-
 func (status GameRoomStatus) String() string {
 	switch status {
 	case GameStatusPending:
@@ -57,4 +39,12 @@ func (status GameRoomStatus) String() string {
 	default:
 		panic(fmt.Sprintf("invalid value for GameRoomStatus: %d", int(status)))
 	}
+}
+
+type GameRoom struct {
+	ID          string
+	SchedulerID string
+	Status      GameRoomStatus
+	Metadata    map[string]interface{}
+	LastPingAt  time.Time
 }

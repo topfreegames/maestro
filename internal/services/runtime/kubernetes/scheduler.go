@@ -3,7 +3,7 @@ package kubernetes
 import (
 	"context"
 
-	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/services/runtime"
 
 	v1 "k8s.io/api/core/v1"

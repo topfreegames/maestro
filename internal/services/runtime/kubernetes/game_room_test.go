@@ -7,10 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
 	"github.com/orlangure/gnomock"
 	"github.com/orlangure/gnomock/preset/k3s"
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/services/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kube "k8s.io/client-go/kubernetes"
@@ -41,9 +43,9 @@ func TestGameRoomCreation(t *testing.T) {
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		gameRoom := &entities.GameRoom{Scheduler: *scheduler}
-		gameRoomSpec := entities.GameRoomSpec{
-			Containers: []entities.GameRoomContainer{
+		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
+		gameRoomSpec := game_room.Spec{
+			Containers: []game_room.Container{
 				{
 					Name:  "nginx",
 					Image: "nginx:stable-alpine",
@@ -67,10 +69,10 @@ func TestGameRoomCreation(t *testing.T) {
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		gameRoom := &entities.GameRoom{Scheduler: *scheduler}
+		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
 		// no containers, meaning it will fail (bacause it can be a pod
 		// without containers).
-		gameRoomSpec := entities.GameRoomSpec{}
+		gameRoomSpec := game_room.Spec{}
 		err = kubernetesRuntime.CreateGameRoom(ctx, gameRoom, gameRoomSpec)
 		require.Error(t, err)
 		require.ErrorIs(t, err, runtime.ErrInvalidGameRoomSpec)
@@ -106,9 +108,9 @@ func TestGameRoomDeletion(t *testing.T) {
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		gameRoom := &entities.GameRoom{Scheduler: *scheduler}
-		gameRoomSpec := entities.GameRoomSpec{
-			Containers: []entities.GameRoomContainer{
+		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
+		gameRoomSpec := game_room.Spec{
+			Containers: []game_room.Container{
 				{
 					Name:  "nginx",
 					Image: "nginx:stable-alpine",
@@ -142,7 +144,7 @@ func TestGameRoomDeletion(t *testing.T) {
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		gameRoom := &entities.GameRoom{
+		gameRoom := &game_room.GameRoom{
 			// force a name, so that the delete can run.
 			ID:        "game-room-inexistent-room-id",
 			Scheduler: *scheduler,

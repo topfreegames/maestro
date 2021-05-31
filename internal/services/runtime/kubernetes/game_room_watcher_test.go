@@ -7,12 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
 	kube "k8s.io/client-go/kubernetes"
 
 	"github.com/orlangure/gnomock"
 	"github.com/orlangure/gnomock/preset/k3s"
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/services/runtime"
 )
 
@@ -43,9 +45,9 @@ func TestGameRoomsWatch(t *testing.T) {
 		defer watcher.Stop()
 		require.NoError(t, err)
 
-		gameRoom := &entities.GameRoom{Scheduler: *scheduler}
-		gameRoomSpec := entities.GameRoomSpec{
-			Containers: []entities.GameRoomContainer{
+		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
+		gameRoomSpec := game_room.Spec{
+			Containers: []game_room.Container{
 				{
 					Name:  "nginx",
 					Image: "nginx:stable-alpine",
@@ -59,7 +61,7 @@ func TestGameRoomsWatch(t *testing.T) {
 		event := <-watcher.ResultChan()
 		require.Equal(t, runtime.RuntimeGameInstanceEventTypeAdded, event.Type)
 		require.Equal(t, gameRoom.ID, event.Instance.ID)
-		require.Equal(t, entities.GameRoomInstancePending, event.Instance.Status.Type)
+		require.Equal(t, game_room.InstancePending, event.Instance.Status.Type)
 	})
 
 	t.Run("watch pod becoming ready", func(t *testing.T) {
@@ -71,9 +73,9 @@ func TestGameRoomsWatch(t *testing.T) {
 		defer watcher.Stop()
 		require.NoError(t, err)
 
-		gameRoom := &entities.GameRoom{Scheduler: *scheduler}
-		gameRoomSpec := entities.GameRoomSpec{
-			Containers: []entities.GameRoomContainer{
+		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
+		gameRoomSpec := game_room.Spec{
+			Containers: []game_room.Container{
 				{
 					Name:  "nginx",
 					Image: "nginx:stable-alpine",
@@ -89,7 +91,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			case event := <-watcher.ResultChan():
 				if event.Type == runtime.RuntimeGameInstanceEventTypeUpdated &&
 					event.Instance.ID == gameRoom.ID &&
-					event.Instance.Status.Type == entities.GameRoomInstanceReady {
+					event.Instance.Status.Type == game_room.InstanceReady {
 					return true
 				}
 			default:
@@ -108,9 +110,9 @@ func TestGameRoomsWatch(t *testing.T) {
 		defer watcher.Stop()
 		require.NoError(t, err)
 
-		gameRoom := &entities.GameRoom{Scheduler: *scheduler}
-		gameRoomSpec := entities.GameRoomSpec{
-			Containers: []entities.GameRoomContainer{
+		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
+		gameRoomSpec := game_room.Spec{
+			Containers: []game_room.Container{
 				{
 					Name:    "nginx",
 					Image:   "nginx:stable-alpine",
@@ -127,7 +129,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			case event := <-watcher.ResultChan():
 				if event.Type == runtime.RuntimeGameInstanceEventTypeUpdated &&
 					event.Instance.ID == gameRoom.ID &&
-					event.Instance.Status.Type == entities.GameRoomInstanceError {
+					event.Instance.Status.Type == game_room.InstanceError {
 					return true
 				}
 			default:
@@ -146,9 +148,9 @@ func TestGameRoomsWatch(t *testing.T) {
 		defer watcher.Stop()
 		require.NoError(t, err)
 
-		gameRoom := &entities.GameRoom{Scheduler: *scheduler}
-		gameRoomSpec := entities.GameRoomSpec{
-			Containers: []entities.GameRoomContainer{
+		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
+		gameRoomSpec := game_room.Spec{
+			Containers: []game_room.Container{
 				{
 					Name:  "nginx",
 					Image: "nginx:stable-alpine",

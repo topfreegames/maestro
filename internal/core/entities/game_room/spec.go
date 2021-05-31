@@ -1,11 +1,11 @@
-package entities
+package game_room
 
 import "time"
 
-type GameRoomSpec struct {
+type Spec struct {
 	Version                string
 	TerminationGracePeriod time.Duration
-	Containers             []GameRoomContainer
+	Containers             []Container
 
 	// NOTE: consider moving it to a kubernetes-specific option?
 	Toleration string

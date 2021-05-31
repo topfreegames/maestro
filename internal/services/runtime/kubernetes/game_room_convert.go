@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
+	"github.com/topfreegames/maestro/internal/core/entities"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -39,7 +41,7 @@ var invalidPodWaitingStates = []string{
 	"RunContainerError",
 }
 
-func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomSpec entities.GameRoomSpec) (*v1.Pod, error) {
+func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", scheduler.ID),
@@ -70,7 +72,7 @@ func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomSpec entities.Gam
 	return pod, nil
 }
 
-func convertContainer(container entities.GameRoomContainer) (v1.Container, error) {
+func convertContainer(container game_room.Container) (v1.Container, error) {
 	podContainer := v1.Container{
 		Name:    container.Name,
 		Image:   container.Image,
@@ -110,7 +112,7 @@ func convertContainer(container entities.GameRoomContainer) (v1.Container, error
 	return podContainer, nil
 }
 
-func convertContainerPort(port entities.GameRoomContainerPort) (v1.ContainerPort, error) {
+func convertContainerPort(port game_room.ContainerPort) (v1.ContainerPort, error) {
 	var kubePortProtocol v1.Protocol
 	switch protocol := strings.ToLower(port.Protocol); protocol {
 	case "tcp":
@@ -131,7 +133,7 @@ func convertContainerPort(port entities.GameRoomContainerPort) (v1.ContainerPort
 	}, nil
 }
 
-func convertContainerResources(resources entities.GameRoomContainerResources) (v1.ResourceList, error) {
+func convertContainerResources(resources game_room.ContainerResources) (v1.ResourceList, error) {
 	resourceList := v1.ResourceList{}
 
 	if resources.CPU != "" {
@@ -155,14 +157,14 @@ func convertContainerResources(resources entities.GameRoomContainerResources) (v
 	return resourceList, nil
 }
 
-func convertContainerEnvironment(env entities.GameRoomContainerEnvironment) v1.EnvVar {
+func convertContainerEnvironment(env game_room.ContainerEnvironment) v1.EnvVar {
 	return v1.EnvVar{
 		Name:  env.Name,
 		Value: env.Value,
 	}
 }
 
-func convertSpecTolerations(spec entities.GameRoomSpec) []v1.Toleration {
+func convertSpecTolerations(spec game_room.Spec) []v1.Toleration {
 	if spec.Toleration == "" {
 		return []v1.Toleration{}
 	}
@@ -172,7 +174,7 @@ func convertSpecTolerations(spec entities.GameRoomSpec) []v1.Toleration {
 	}
 }
 
-func convertSpecAffinity(spec entities.GameRoomSpec) *v1.Affinity {
+func convertSpecAffinity(spec game_room.Spec) *v1.Affinity {
 	if spec.Affinity == "" {
 		return nil
 	}
@@ -196,7 +198,7 @@ func convertSpecAffinity(spec entities.GameRoomSpec) *v1.Affinity {
 	}
 }
 
-func convertTerminationGracePeriod(spec entities.GameRoomSpec) *int64 {
+func convertTerminationGracePeriod(spec game_room.Spec) *int64 {
 	seconds := int64(spec.TerminationGracePeriod.Seconds())
 	if seconds == int64(0) {
 		return nil
@@ -205,9 +207,9 @@ func convertTerminationGracePeriod(spec entities.GameRoomSpec) *int64 {
 	return &seconds
 }
 
-func convertPodStatus(pod *v1.Pod) entities.GameRoomInstanceStatus {
+func convertPodStatus(pod *v1.Pod) game_room.InstanceStatus {
 	if pod.ObjectMeta.DeletionTimestamp != nil {
-		return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstanceTerminating}
+		return game_room.InstanceStatus{Type: game_room.InstanceTerminating}
 	}
 
 	for _, containerStatus := range pod.Status.ContainerStatuses {
@@ -215,8 +217,8 @@ func convertPodStatus(pod *v1.Pod) entities.GameRoomInstanceStatus {
 		if state.Waiting != nil {
 			for _, invalidState := range invalidPodWaitingStates {
 				if state.Waiting.Reason == invalidState {
-					return entities.GameRoomInstanceStatus{
-						Type:        entities.GameRoomInstanceError,
+					return game_room.InstanceStatus{
+						Type:        game_room.InstanceError,
 						Description: fmt.Sprintf("%s: %s", state.Waiting.Reason, state.Waiting.Message),
 					}
 				}
@@ -231,26 +233,26 @@ func convertPodStatus(pod *v1.Pod) entities.GameRoomInstanceStatus {
 		}
 
 		if condition.Status == v1.ConditionFalse {
-			return entities.GameRoomInstanceStatus{
-				Type:        entities.GameRoomInstancePending,
+			return game_room.InstanceStatus{
+				Type:        game_room.InstancePending,
 				Description: fmt.Sprintf("%s: %s", condition.Reason, condition.Message),
 			}
 		}
 	}
 
 	if podReady == v1.ConditionTrue {
-		return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstanceReady}
+		return game_room.InstanceStatus{Type: game_room.InstanceReady}
 	}
 
 	if pod.Status.Phase == v1.PodPending {
-		return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstancePending}
+		return game_room.InstanceStatus{Type: game_room.InstancePending}
 	}
 
-	return entities.GameRoomInstanceStatus{Type: entities.GameRoomInstanceUnknown}
+	return game_room.InstanceStatus{Type: game_room.InstanceUnknown}
 }
 
-func convertPod(pod *v1.Pod) entities.GameRoomInstance {
-	return entities.GameRoomInstance{
+func convertPod(pod *v1.Pod) game_room.Instance {
+	return game_room.Instance{
 		ID:          pod.ObjectMeta.Name,
 		SchedulerID: pod.ObjectMeta.Namespace,
 		Version:     pod.ObjectMeta.Labels[versionLabelKey],

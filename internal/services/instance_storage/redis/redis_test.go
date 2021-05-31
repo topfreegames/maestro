@@ -11,11 +11,12 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
 	"github.com/go-redis/redis"
 	"github.com/orlangure/gnomock"
 	predis "github.com/orlangure/gnomock/preset/redis"
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/entities"
 )
 
 var dbNumber int32 = 0
@@ -44,8 +45,8 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func assertInstanceRedis(t *testing.T, client *redis.Client, expectedInstance *entities.GameRoomInstance) {
-	actualInstance := new(entities.GameRoomInstance)
+func assertInstanceRedis(t *testing.T, client *redis.Client, expectedInstance *game_room.Instance) {
+	actualInstance := new(game_room.Instance)
 	instanceJson, err := client.HGet(getPodMapRedisKey("game"), "1").Result()
 	require.NoError(t, err)
 	require.NoError(t, json.NewDecoder(strings.NewReader(instanceJson)).Decode(actualInstance))
@@ -55,22 +56,22 @@ func assertInstanceRedis(t *testing.T, client *redis.Client, expectedInstance *e
 func TestRedisInstanceStorage_AddInstance(t *testing.T) {
 	client := getRedisConnection(t)
 	storage := NewRedisInstanceStorage(client, 0)
-	instance := &entities.GameRoomInstance{
+	instance := &game_room.Instance{
 		ID:          "1",
 		SchedulerID: "game",
 		Version:     "1",
-		Status: entities.GameRoomInstanceStatus{
-			Type: entities.GameRoomInstancePending,
+		Status: game_room.InstanceStatus{
+			Type: game_room.InstancePending,
 		},
 	}
 
 	require.NoError(t, storage.AddInstance(context.Background(), instance))
 	assertInstanceRedis(t, client, instance)
 
-	instance.Status.Type = entities.GameRoomInstanceReady
-	instance.Address = &entities.GameRoomAddress{
+	instance.Status.Type = game_room.InstanceReady
+	instance.Address = &game_room.Address{
 		Host: "host",
-		Ports: []entities.GameRoomPort{
+		Ports: []game_room.Port{
 			{
 				Name:     "game",
 				Port:     7000,
@@ -86,16 +87,16 @@ func TestRedisInstanceStorage_AddInstance(t *testing.T) {
 func TestRedisInstanceStorage_GetInstance(t *testing.T) {
 	t.Run("when instance exists", func(t *testing.T) {
 		storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
-		instance := &entities.GameRoomInstance{
+		instance := &game_room.Instance{
 			ID:          "1",
 			SchedulerID: "game",
 			Version:     "1",
-			Status: entities.GameRoomInstanceStatus{
-				Type: entities.GameRoomInstanceReady,
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstanceReady,
 			},
-			Address: &entities.GameRoomAddress{
+			Address: &game_room.Address{
 				Host: "host",
-				Ports: []entities.GameRoomPort{
+				Ports: []game_room.Port{
 					{
 						Name:     "game",
 						Port:     7000,
@@ -121,16 +122,16 @@ func TestRedisInstanceStorage_GetInstance(t *testing.T) {
 func TestRedisInstanceStorage_RemoveInstance(t *testing.T) {
 	t.Run("when instance exists", func(t *testing.T) {
 		storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
-		instance := &entities.GameRoomInstance{
+		instance := &game_room.Instance{
 			ID:          "1",
 			SchedulerID: "game",
 			Version:     "1",
-			Status: entities.GameRoomInstanceStatus{
-				Type: entities.GameRoomInstanceReady,
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstanceReady,
 			},
-			Address: &entities.GameRoomAddress{
+			Address: &game_room.Address{
 				Host: "host",
-				Ports: []entities.GameRoomPort{
+				Ports: []game_room.Port{
 					{
 						Name:     "game",
 						Port:     7000,
@@ -152,17 +153,17 @@ func TestRedisInstanceStorage_RemoveInstance(t *testing.T) {
 
 func TestRedisInstanceStorage_GetAllInstances(t *testing.T) {
 	storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
-	instances := []*entities.GameRoomInstance{
+	instances := []*game_room.Instance{
 		{
 			ID:          "1",
 			SchedulerID: "game",
 			Version:     "1",
-			Status: entities.GameRoomInstanceStatus{
-				Type: entities.GameRoomInstanceReady,
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstanceReady,
 			},
-			Address: &entities.GameRoomAddress{
+			Address: &game_room.Address{
 				Host: "host",
-				Ports: []entities.GameRoomPort{
+				Ports: []game_room.Port{
 					{
 						Name:     "game",
 						Port:     7000,
@@ -175,13 +176,13 @@ func TestRedisInstanceStorage_GetAllInstances(t *testing.T) {
 			ID:          "2",
 			SchedulerID: "game",
 			Version:     "1",
-			Status: entities.GameRoomInstanceStatus{
-				Type:        entities.GameRoomInstanceError,
+			Status: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
 				Description: "error",
 			},
-			Address: &entities.GameRoomAddress{
+			Address: &game_room.Address{
 				Host: "host",
-				Ports: []entities.GameRoomPort{
+				Ports: []game_room.Port{
 					{
 						Name:     "game",
 						Port:     7000,
@@ -202,17 +203,17 @@ func TestRedisInstanceStorage_GetAllInstances(t *testing.T) {
 
 func TestRedisInstanceStorage_GetInstanceCount(t *testing.T) {
 	storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
-	instances := []*entities.GameRoomInstance{
+	instances := []*game_room.Instance{
 		{
 			ID:          "1",
 			SchedulerID: "game",
 			Version:     "1",
-			Status: entities.GameRoomInstanceStatus{
-				Type: entities.GameRoomInstanceReady,
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstanceReady,
 			},
-			Address: &entities.GameRoomAddress{
+			Address: &game_room.Address{
 				Host: "host",
-				Ports: []entities.GameRoomPort{
+				Ports: []game_room.Port{
 					{
 						Name:     "game",
 						Port:     7000,
@@ -225,13 +226,13 @@ func TestRedisInstanceStorage_GetInstanceCount(t *testing.T) {
 			ID:          "2",
 			SchedulerID: "game",
 			Version:     "1",
-			Status: entities.GameRoomInstanceStatus{
-				Type:        entities.GameRoomInstanceError,
+			Status: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
 				Description: "error",
 			},
-			Address: &entities.GameRoomAddress{
+			Address: &game_room.Address{
 				Host: "host",
-				Ports: []entities.GameRoomPort{
+				Ports: []game_room.Port{
 					{
 						Name:     "game",
 						Port:     7000,

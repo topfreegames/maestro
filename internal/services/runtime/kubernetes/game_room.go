@@ -3,13 +3,14 @@ package kubernetes
 import (
 	"context"
 
-	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
 	"github.com/topfreegames/maestro/internal/services/runtime"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (k *kubernetes) CreateGameRoom(ctx context.Context, gameRoom *entities.GameRoom, gameRoomSpec entities.GameRoomSpec) error {
+func (k *kubernetes) CreateGameRoom(ctx context.Context, gameRoom *game_room.GameRoom, gameRoomSpec game_room.Spec) error {
 	pod, err := convertGameRoomSpec(gameRoom.Scheduler, gameRoomSpec)
 	if err != nil {
 		return runtime.NewErrGameRoomConversion(err)
@@ -28,7 +29,7 @@ func (k *kubernetes) CreateGameRoom(ctx context.Context, gameRoom *entities.Game
 	return nil
 }
 
-func (k *kubernetes) DeleteGameRoom(ctx context.Context, gameRoom *entities.GameRoom) error {
+func (k *kubernetes) DeleteGameRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	err := k.clientset.CoreV1().Pods(gameRoom.Scheduler.ID).Delete(ctx, gameRoom.ID, metav1.DeleteOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {

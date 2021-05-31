@@ -1,6 +1,8 @@
 package runtime
 
-import "github.com/topfreegames/maestro/internal/entities"
+import (
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+)
 
 type RuntimeGameInstanceEventType int
 
@@ -21,5 +23,5 @@ const (
 // run time, check RuntimeGameInstanceEventType to see which event is avaiable.
 type RuntimeGameInstanceEvent struct {
 	Type     RuntimeGameInstanceEventType
-	Instance entities.GameRoomInstance
+	Instance game_room.Instance
 }

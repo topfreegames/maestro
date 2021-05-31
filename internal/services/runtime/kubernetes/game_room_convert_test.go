@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/core/entities"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,12 +22,12 @@ func int64Pointer(n int64) *int64 {
 
 func TestConvertContainerResources(t *testing.T) {
 	cases := map[string]struct {
-		containerResources entities.GameRoomContainerResources
+		containerResources game_room.ContainerResources
 		expectedKubernetes v1.ResourceList
 		withError          bool
 	}{
 		"only with memory": {
-			containerResources: entities.GameRoomContainerResources{
+			containerResources: game_room.ContainerResources{
 				Memory: "100Mi",
 			},
 			expectedKubernetes: v1.ResourceList{
@@ -33,7 +35,7 @@ func TestConvertContainerResources(t *testing.T) {
 			},
 		},
 		"only with CPU": {
-			containerResources: entities.GameRoomContainerResources{
+			containerResources: game_room.ContainerResources{
 				CPU: "100m",
 			},
 			expectedKubernetes: v1.ResourceList{
@@ -41,7 +43,7 @@ func TestConvertContainerResources(t *testing.T) {
 			},
 		},
 		"with memory and CPU": {
-			containerResources: entities.GameRoomContainerResources{
+			containerResources: game_room.ContainerResources{
 				Memory: "100Mi",
 				CPU:    "100m",
 			},
@@ -51,13 +53,13 @@ func TestConvertContainerResources(t *testing.T) {
 			},
 		},
 		"with invalid memory": {
-			containerResources: entities.GameRoomContainerResources{
+			containerResources: game_room.ContainerResources{
 				Memory: "100abc",
 			},
 			withError: true,
 		},
 		"with invalid CPU": {
-			containerResources: entities.GameRoomContainerResources{
+			containerResources: game_room.ContainerResources{
 				CPU: "100abc",
 			},
 			withError: true,
@@ -81,12 +83,12 @@ func TestConvertContainerResources(t *testing.T) {
 
 func TestConvertContainerPort(t *testing.T) {
 	cases := map[string]struct {
-		containerPort      entities.GameRoomContainerPort
+		containerPort      game_room.ContainerPort
 		expectedKubernetes v1.ContainerPort
 		withError          bool
 	}{
 		"tcp port": {
-			containerPort: entities.GameRoomContainerPort{
+			containerPort: game_room.ContainerPort{
 				Name:     "testtcp",
 				Protocol: "tcp",
 				Port:     5555,
@@ -98,7 +100,7 @@ func TestConvertContainerPort(t *testing.T) {
 			},
 		},
 		"udp port": {
-			containerPort: entities.GameRoomContainerPort{
+			containerPort: game_room.ContainerPort{
 				Name:     "testudp",
 				Protocol: "udp",
 				Port:     5555,
@@ -112,7 +114,7 @@ func TestConvertContainerPort(t *testing.T) {
 			},
 		},
 		"invalid protocol port": {
-			containerPort: entities.GameRoomContainerPort{
+			containerPort: game_room.ContainerPort{
 				Name:     "testsctp",
 				Protocol: "sctp",
 				Port:     5555,
@@ -141,11 +143,11 @@ func TestConvertContainerPort(t *testing.T) {
 
 func TestConvertContainerEnvironment(t *testing.T) {
 	cases := map[string]struct {
-		containerEnvironment entities.GameRoomContainerEnvironment
+		containerEnvironment game_room.ContainerEnvironment
 		expectedKubernetes   v1.EnvVar
 	}{
 		"name value environment": {
-			containerEnvironment: entities.GameRoomContainerEnvironment{
+			containerEnvironment: game_room.ContainerEnvironment{
 				Name:  "SAMPLE",
 				Value: "value",
 			},
@@ -167,12 +169,12 @@ func TestConvertContainerEnvironment(t *testing.T) {
 
 func TestConvertSpecTolerations(t *testing.T) {
 	cases := map[string]struct {
-		spec               entities.GameRoomSpec
+		spec               game_room.Spec
 		expectedKubernetes v1.Toleration
 		empty              bool
 	}{
 		"with toleration": {
-			spec: entities.GameRoomSpec{Toleration: "maestro-sample"},
+			spec: game_room.Spec{Toleration: "maestro-sample"},
 			expectedKubernetes: v1.Toleration{
 				Key:      tolerationKey,
 				Operator: tolerationOperator,
@@ -181,7 +183,7 @@ func TestConvertSpecTolerations(t *testing.T) {
 			},
 		},
 		"with no tolerations": {
-			spec:  entities.GameRoomSpec{},
+			spec:  game_room.Spec{},
 			empty: true,
 		},
 	}
@@ -205,12 +207,12 @@ func TestConvertSpecTolerations(t *testing.T) {
 
 func TestConvertSpecAffinity(t *testing.T) {
 	cases := map[string]struct {
-		spec             entities.GameRoomSpec
+		spec             game_room.Spec
 		expectedSelector v1.NodeSelectorRequirement
 		empty            bool
 	}{
 		"with affinity": {
-			spec: entities.GameRoomSpec{Affinity: "maestro-sample"},
+			spec: game_room.Spec{Affinity: "maestro-sample"},
 			expectedSelector: v1.NodeSelectorRequirement{
 				Key:      "maestro-sample",
 				Operator: affinityOperator,
@@ -218,7 +220,7 @@ func TestConvertSpecAffinity(t *testing.T) {
 			},
 		},
 		"with no affinity": {
-			spec:  entities.GameRoomSpec{},
+			spec:  game_room.Spec{},
 			empty: true,
 		},
 	}
@@ -241,20 +243,20 @@ func TestConvertSpecAffinity(t *testing.T) {
 
 func TestConvertTerminationGracePeriod(t *testing.T) {
 	cases := map[string]struct {
-		spec                  entities.GameRoomSpec
+		spec                  game_room.Spec
 		expectedPeriodSeconds int64
 		empty                 bool
 	}{
 		"with duration": {
-			spec:                  entities.GameRoomSpec{TerminationGracePeriod: 10 * time.Second},
+			spec:                  game_room.Spec{TerminationGracePeriod: 10 * time.Second},
 			expectedPeriodSeconds: 10,
 		},
 		"with 0 duration": {
-			spec:  entities.GameRoomSpec{TerminationGracePeriod: 0},
+			spec:  game_room.Spec{TerminationGracePeriod: 0},
 			empty: true,
 		},
 		"without duration": {
-			spec:  entities.GameRoomSpec{},
+			spec:  game_room.Spec{},
 			empty: true,
 		},
 	}
@@ -275,25 +277,25 @@ func TestConvertTerminationGracePeriod(t *testing.T) {
 
 func TestConvertContainer(t *testing.T) {
 	cases := map[string]struct {
-		container         entities.GameRoomContainer
+		container         game_room.Container
 		expectedContainer v1.Container
 		withError         bool
 	}{
 		"with empty container": {
-			container:         entities.GameRoomContainer{},
+			container:         game_room.Container{},
 			expectedContainer: v1.Container{},
 		},
 		"with simple container": {
-			container:         entities.GameRoomContainer{Name: "simple", Image: "image"},
+			container:         game_room.Container{Name: "simple", Image: "image"},
 			expectedContainer: v1.Container{Name: "simple", Image: "image"},
 		},
 		"with options container": {
-			container: entities.GameRoomContainer{
+			container: game_room.Container{
 				Name:        "complete",
 				Image:       "image",
 				Command:     []string{"some", "command"},
-				Environment: []entities.GameRoomContainerEnvironment{{Name: "env", Value: "value"}},
-				Ports:       []entities.GameRoomContainerPort{{Port: 2222, Protocol: "tcp"}},
+				Environment: []game_room.ContainerEnvironment{{Name: "env", Value: "value"}},
+				Ports:       []game_room.ContainerPort{{Port: 2222, Protocol: "tcp"}},
 			},
 			expectedContainer: v1.Container{
 				Name:    "complete",
@@ -326,18 +328,18 @@ func TestConvertContainer(t *testing.T) {
 
 func TestConvertGameSpec(t *testing.T) {
 	cases := map[string]struct {
-		gameRoom    *entities.GameRoom
-		gameSpec    entities.GameRoomSpec
+		gameRoom    *game_room.GameRoom
+		gameSpec    game_room.Spec
 		expectedPod v1.Pod
 		withError   bool
 	}{
 		"without containers": {
-			gameRoom: &entities.GameRoom{
+			gameRoom: &game_room.GameRoom{
 				Scheduler: entities.Scheduler{
 					ID: "sample",
 				},
 			},
-			gameSpec: entities.GameRoomSpec{
+			gameSpec: game_room.Spec{
 				Version: "version",
 			},
 			expectedPod: v1.Pod{
@@ -352,16 +354,16 @@ func TestConvertGameSpec(t *testing.T) {
 			},
 		},
 		"with containers": {
-			gameRoom: &entities.GameRoom{
+			gameRoom: &game_room.GameRoom{
 				Scheduler: entities.Scheduler{
 					ID: "sample",
 				},
 			},
-			gameSpec: entities.GameRoomSpec{
+			gameSpec: game_room.Spec{
 				Version: "version",
-				Containers: []entities.GameRoomContainer{
-					entities.GameRoomContainer{},
-					entities.GameRoomContainer{},
+				Containers: []game_room.Container{
+					game_room.Container{},
+					game_room.Container{},
 				},
 			},
 			expectedPod: v1.Pod{
@@ -382,12 +384,12 @@ func TestConvertGameSpec(t *testing.T) {
 			},
 		},
 		"with toleration": {
-			gameRoom: &entities.GameRoom{
+			gameRoom: &game_room.GameRoom{
 				Scheduler: entities.Scheduler{
 					ID: "sample",
 				},
 			},
-			gameSpec: entities.GameRoomSpec{
+			gameSpec: game_room.Spec{
 				Version:    "version",
 				Toleration: "some-toleration",
 			},
@@ -408,12 +410,12 @@ func TestConvertGameSpec(t *testing.T) {
 			},
 		},
 		"with affinity": {
-			gameRoom: &entities.GameRoom{
+			gameRoom: &game_room.GameRoom{
 				Scheduler: entities.Scheduler{
 					ID: "sample",
 				},
 			},
-			gameSpec: entities.GameRoomSpec{
+			gameSpec: game_room.Spec{
 				Version:  "version",
 				Affinity: "sample-affinity",
 			},
@@ -432,12 +434,12 @@ func TestConvertGameSpec(t *testing.T) {
 			},
 		},
 		"with termination grace period": {
-			gameRoom: &entities.GameRoom{
+			gameRoom: &game_room.GameRoom{
 				Scheduler: entities.Scheduler{
 					ID: "sample",
 				},
 			},
-			gameSpec: entities.GameRoomSpec{
+			gameSpec: game_room.Spec{
 				Version:                "version",
 				TerminationGracePeriod: 10 * time.Second,
 			},
@@ -490,7 +492,7 @@ func TestConvertGameSpec(t *testing.T) {
 func TestConvertPodStatus(t *testing.T) {
 	cases := map[string]struct {
 		pod            *v1.Pod
-		expectedStatus entities.GameRoomInstanceStatus
+		expectedStatus game_room.InstanceStatus
 	}{
 		"ready": {
 			pod: &v1.Pod{
@@ -500,8 +502,8 @@ func TestConvertPodStatus(t *testing.T) {
 					},
 				},
 			},
-			expectedStatus: entities.GameRoomInstanceStatus{
-				Type:        entities.GameRoomInstanceReady,
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstanceReady,
 				Description: "",
 			},
 		},
@@ -511,8 +513,8 @@ func TestConvertPodStatus(t *testing.T) {
 					Phase: v1.PodPending,
 				},
 			},
-			expectedStatus: entities.GameRoomInstanceStatus{
-				Type:        entities.GameRoomInstancePending,
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstancePending,
 				Description: "",
 			},
 		},
@@ -525,8 +527,8 @@ func TestConvertPodStatus(t *testing.T) {
 					},
 				},
 			},
-			expectedStatus: entities.GameRoomInstanceStatus{
-				Type:        entities.GameRoomInstancePending,
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstancePending,
 				Description: "",
 			},
 		},
@@ -545,8 +547,8 @@ func TestConvertPodStatus(t *testing.T) {
 					},
 				},
 			},
-			expectedStatus: entities.GameRoomInstanceStatus{
-				Type:        entities.GameRoomInstanceError,
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
 				Description: "CrashLoopBackOff: retrying",
 			},
 		},
@@ -565,8 +567,8 @@ func TestConvertPodStatus(t *testing.T) {
 					},
 				},
 			},
-			expectedStatus: entities.GameRoomInstanceStatus{
-				Type:        entities.GameRoomInstanceError,
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
 				Description: "RunContainerError: failed to find executable",
 			},
 		},
@@ -584,7 +586,7 @@ func TestConvertPodStatus(t *testing.T) {
 func TestConvertPod(t *testing.T) {
 	cases := map[string]struct {
 		pod              *v1.Pod
-		expectedInstance entities.GameRoomInstance
+		expectedInstance game_room.Instance
 	}{
 		"id": {
 			pod: &v1.Pod{
@@ -592,7 +594,7 @@ func TestConvertPod(t *testing.T) {
 					Name: "pod-id",
 				},
 			},
-			expectedInstance: entities.GameRoomInstance{
+			expectedInstance: game_room.Instance{
 				ID: "pod-id",
 			},
 		},
@@ -602,7 +604,7 @@ func TestConvertPod(t *testing.T) {
 					Namespace: "some-scheduler",
 				},
 			},
-			expectedInstance: entities.GameRoomInstance{
+			expectedInstance: game_room.Instance{
 				SchedulerID: "some-scheduler",
 			},
 		},
@@ -614,7 +616,7 @@ func TestConvertPod(t *testing.T) {
 					},
 				},
 			},
-			expectedInstance: entities.GameRoomInstance{
+			expectedInstance: game_room.Instance{
 				Version: "v1.1.0",
 			},
 		},

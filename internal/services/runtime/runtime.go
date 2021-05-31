@@ -3,7 +3,9 @@ package runtime
 import (
 	"context"
 
-	"github.com/topfreegames/maestro/internal/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
+	"github.com/topfreegames/maestro/internal/core/entities"
 )
 
 // Runtime defines an interface implemented by the services that manages
@@ -15,9 +17,9 @@ type Runtime interface {
 	DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	// CreateGameRoom Creates a game room on the runtime using the specification
 	// inside the GameRoom.
-	CreateGameRoom(ctx context.Context, gameRoom *entities.GameRoom, spec entities.GameRoomSpec) error
+	CreateGameRoom(ctx context.Context, gameRoom *game_room.GameRoom, spec game_room.Spec) error
 	// DeleteGameRoom Deletes a game room on the runtime.
-	DeleteGameRoom(ctx context.Context, gameRoom *entities.GameRoom) error
+	DeleteGameRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
 	// WathGameRooms Watches for changes of a scheduler game rooms.
 	WatchGameRooms(ctx context.Context, scheduler *entities.Scheduler) (RuntimeWatcher, error)
 }

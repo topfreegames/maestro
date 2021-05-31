@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
 	"github.com/go-redis/redis"
-	"github.com/topfreegames/maestro/internal/entities"
 	"github.com/topfreegames/maestro/internal/services/instance_storage"
 )
 
@@ -16,8 +17,8 @@ type redisInstanceStorage struct {
 	scanPageSize int64
 }
 
-func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string, roomId string) (*entities.GameRoomInstance, error) {
-	var instance entities.GameRoomInstance
+func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string, roomId string) (*game_room.Instance, error) {
+	var instance game_room.Instance
 	instanceJson, err := r.client.WithContext(ctx).HGet(getPodMapRedisKey(scheduler), roomId).Result()
 	if err == redis.Nil {
 		return nil, instance_storage.NewInstanceNotFoundError(scheduler, roomId)
@@ -32,7 +33,7 @@ func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string,
 	return &instance, nil
 }
 
-func (r redisInstanceStorage) AddInstance(ctx context.Context, instance *entities.GameRoomInstance) error {
+func (r redisInstanceStorage) AddInstance(ctx context.Context, instance *game_room.Instance) error {
 	instanceJson, err := json.Marshal(instance)
 	if err != nil {
 		return instance_storage.WrapError("error marshalling instance json", err)
@@ -55,11 +56,11 @@ func (r redisInstanceStorage) RemoveInstance(ctx context.Context, scheduler stri
 	return nil
 }
 
-func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler string) ([]*entities.GameRoomInstance, error) {
+func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler string) ([]*game_room.Instance, error) {
 	client := r.client.WithContext(ctx)
 	redisKey := getPodMapRedisKey(scheduler)
 	cursor := uint64(0)
-	pods := make([]*entities.GameRoomInstance, 0)
+	pods := make([]*game_room.Instance, 0)
 	for {
 		var err error
 		var results []string
@@ -71,7 +72,7 @@ func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler str
 
 		// results from HScan is a []string in the following ["key1","value1","key2","value2",...]
 		for i := 0; i < len(results); i += 2 {
-			var instance entities.GameRoomInstance
+			var instance game_room.Instance
 			err = json.NewDecoder(strings.NewReader(results[i+1])).Decode(&instance)
 			if err != nil {
 				return nil, instance_storage.WrapError("error unmarshalling instance json", err)
