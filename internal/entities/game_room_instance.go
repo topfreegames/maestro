@@ -18,27 +18,27 @@ const (
 )
 
 type GameRoomInstanceStatus struct {
-	Type GameRoomInstanceStatusType
+	Type GameRoomInstanceStatusType `json:"type"`
 	// Description has more information about the status. For example, if we have a
 	// status Error, it will tell us which error it is.
-	Description string
+	Description string `json:"description"`
 }
 
 type GameRoomPort struct {
-	Name     string
-	Port     int32
-	Protocol string
+	Name     string `json:"name"`
+	Port     int32  `json:"port"`
+	Protocol string `json:"protocol"`
 }
 
 type GameRoomAddress struct {
-	Host  string
-	Ports []GameRoomPort
+	Host  string         `json:"host"`
+	Ports []GameRoomPort `json:"ports"`
 }
 
 type GameRoomInstance struct {
-	ID          string
-	SchedulerID string
-	Version     string
-	Status      GameRoomInstanceStatus
-	Address     *GameRoomAddress
+	ID          string                 `json:"id"`
+	SchedulerID string                 `json:"schedulerId"`
+	Version     string                 `json:"version"`
+	Status      GameRoomInstanceStatus `json:"status"`
+	Address     *GameRoomAddress       `json:"address"`
 }
