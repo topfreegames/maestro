@@ -53,7 +53,7 @@ func assertInstanceRedis(t *testing.T, client *redis.Client, expectedInstance *g
 	require.Equal(t, expectedInstance, actualInstance)
 }
 
-func TestRedisInstanceStorage_AddInstance(t *testing.T) {
+func TestRedisInstanceStorage_UpsertInstance(t *testing.T) {
 	client := getRedisConnection(t)
 	storage := NewRedisInstanceStorage(client, 0)
 	instance := &game_room.Instance{
@@ -65,7 +65,7 @@ func TestRedisInstanceStorage_AddInstance(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, storage.AddInstance(context.Background(), instance))
+	require.NoError(t, storage.UpsertInstance(context.Background(), instance))
 	assertInstanceRedis(t, client, instance)
 
 	instance.Status.Type = game_room.InstanceReady
@@ -80,7 +80,7 @@ func TestRedisInstanceStorage_AddInstance(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, storage.AddInstance(context.Background(), instance))
+	require.NoError(t, storage.UpsertInstance(context.Background(), instance))
 	assertInstanceRedis(t, client, instance)
 }
 
@@ -106,7 +106,7 @@ func TestRedisInstanceStorage_GetInstance(t *testing.T) {
 			},
 		}
 
-		require.NoError(t, storage.AddInstance(context.Background(), instance))
+		require.NoError(t, storage.UpsertInstance(context.Background(), instance))
 		actualInstance, err := storage.GetInstance(context.Background(), "game", "1")
 		require.NoError(t, err)
 		require.Equal(t, instance, actualInstance)
@@ -141,13 +141,13 @@ func TestRedisInstanceStorage_RemoveInstance(t *testing.T) {
 			},
 		}
 
-		require.NoError(t, storage.AddInstance(context.Background(), instance))
-		require.NoError(t, storage.RemoveInstance(context.Background(), "game", "1"))
+		require.NoError(t, storage.UpsertInstance(context.Background(), instance))
+		require.NoError(t, storage.DeleteInstance(context.Background(), "game", "1"))
 	})
 
 	t.Run("when instance does not exists", func(t *testing.T) {
 		storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
-		require.Error(t, storage.RemoveInstance(context.Background(), "game", "1"))
+		require.Error(t, storage.DeleteInstance(context.Background(), "game", "1"))
 	})
 }
 
@@ -194,7 +194,7 @@ func TestRedisInstanceStorage_GetAllInstances(t *testing.T) {
 	}
 
 	for _, instance := range instances {
-		require.NoError(t, storage.AddInstance(context.Background(), instance))
+		require.NoError(t, storage.UpsertInstance(context.Background(), instance))
 	}
 	actualInstances, err := storage.GetAllInstances(context.Background(), "game")
 	require.NoError(t, err)
@@ -244,7 +244,7 @@ func TestRedisInstanceStorage_GetInstanceCount(t *testing.T) {
 	}
 
 	for _, instance := range instances {
-		require.NoError(t, storage.AddInstance(context.Background(), instance))
+		require.NoError(t, storage.UpsertInstance(context.Background(), instance))
 	}
 	count, err := storage.GetInstanceCount(context.Background(), "game")
 	require.NoError(t, err)

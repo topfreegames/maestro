@@ -1,4 +1,4 @@
-package room_storage
+package ports
 
 import (
 	"context"
@@ -16,8 +16,8 @@ type RoomStorage interface {
 	CreateRoom(ctx context.Context, room *game_room.GameRoom) error
 	// UpdateRoom updates a room and returns an error if the room does not exists
 	UpdateRoom(ctx context.Context, room *game_room.GameRoom) error
-	// RemoveRoom deletes a room and returns an error if the room does not exists
-	RemoveRoom(ctx context.Context, scheduler string, roomID string) error
+	// DeleteRoom deletes a room and returns an error if the room does not exists
+	DeleteRoom(ctx context.Context, scheduler string, roomID string) error
 	// SetRoomStatus sets only the status of a specific room
 	SetRoomStatus(ctx context.Context, scheduler string, roomID string, status game_room.GameRoomStatus) error
 

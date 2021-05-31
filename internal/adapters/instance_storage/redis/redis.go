@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
+
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
 	"github.com/go-redis/redis"
-	"github.com/topfreegames/maestro/internal/adapters/instance_storage"
 )
 
 type redisInstanceStorage struct {
@@ -17,41 +20,44 @@ type redisInstanceStorage struct {
 	scanPageSize int64
 }
 
-func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string, roomId string) (*game_room.Instance, error) {
+func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string, instanceId string) (*game_room.Instance, error) {
 	var instance game_room.Instance
-	instanceJson, err := r.client.WithContext(ctx).HGet(getPodMapRedisKey(scheduler), roomId).Result()
+	podMapRedisKey := getPodMapRedisKey(scheduler)
+	instanceJson, err := r.client.WithContext(ctx).HGet(getPodMapRedisKey(scheduler), instanceId).Result()
 	if err == redis.Nil {
-		return nil, instance_storage.NewInstanceNotFoundError(scheduler, roomId)
+		return nil, errors.NewErrNotFound("instance %s not found in scheduler %s", instanceId, scheduler)
 	}
 	if err != nil {
-		return nil, instance_storage.WrapError("error getting instance from redis", err)
+		return nil, errors.NewErrUnexpected("error reading member %s in hash %s", instanceId, podMapRedisKey).WithError(err)
 	}
 	err = json.NewDecoder(strings.NewReader(instanceJson)).Decode(&instance)
 	if err != nil {
-		return nil, instance_storage.WrapError("error unmarshalling instance json", err)
+		return nil, errors.NewErrEncoding("error unmarshalling room %s json", instanceId).WithError(err)
 	}
 	return &instance, nil
 }
 
-func (r redisInstanceStorage) AddInstance(ctx context.Context, instance *game_room.Instance) error {
+func (r redisInstanceStorage) UpsertInstance(ctx context.Context, instance *game_room.Instance) error {
 	instanceJson, err := json.Marshal(instance)
 	if err != nil {
-		return instance_storage.WrapError("error marshalling instance json", err)
+		return errors.NewErrUnexpected("error marshalling room %s json", instance.ID).WithError(err)
 	}
-	err = r.client.WithContext(ctx).HSet(getPodMapRedisKey(instance.SchedulerID), instance.ID, instanceJson).Err()
+	podMapRedisKey := getPodMapRedisKey(instance.SchedulerID)
+	err = r.client.WithContext(ctx).HSet(podMapRedisKey, instance.ID, instanceJson).Err()
 	if err != nil {
-		return instance_storage.WrapError("error adding instance to redis", err)
+		return errors.NewErrUnexpected("error updating member %s from hash %s", instance.ID, podMapRedisKey).WithError(err)
 	}
 	return nil
 }
 
-func (r redisInstanceStorage) RemoveInstance(ctx context.Context, scheduler string, roomId string) error {
-	deleted, err := r.client.WithContext(ctx).HDel(getPodMapRedisKey(scheduler), roomId).Result()
+func (r redisInstanceStorage) DeleteInstance(ctx context.Context, scheduler string, instanceId string) error {
+	podMapRedisKey := getPodMapRedisKey(scheduler)
+	deleted, err := r.client.WithContext(ctx).HDel(getPodMapRedisKey(scheduler), instanceId).Result()
 	if err != nil {
-		return instance_storage.WrapError("error removing instance from redis", err)
+		return errors.NewErrUnexpected("error removing member %s from hash %s", instanceId, podMapRedisKey).WithError(err)
 	}
 	if deleted == 0 {
-		return instance_storage.NewInstanceNotFoundError(scheduler, roomId)
+		return errors.NewErrNotFound("instance %s not found in scheduler %s", instanceId, scheduler)
 	}
 	return nil
 }
@@ -60,14 +66,14 @@ func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler str
 	client := r.client.WithContext(ctx)
 	redisKey := getPodMapRedisKey(scheduler)
 	cursor := uint64(0)
-	pods := make([]*game_room.Instance, 0)
+	instances := make([]*game_room.Instance, 0)
 	for {
 		var err error
 		var results []string
 
 		results, cursor, err := client.HScan(redisKey, cursor, "*", r.scanPageSize).Result()
 		if err != nil {
-			return nil, instance_storage.WrapError("error scanning instance map on redis", err)
+			return nil, errors.NewErrUnexpected("error scanning %s on redis", redisKey).WithError(err)
 		}
 
 		// results from HScan is a []string in the following ["key1","value1","key2","value2",...]
@@ -75,26 +81,27 @@ func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler str
 			var instance game_room.Instance
 			err = json.NewDecoder(strings.NewReader(results[i+1])).Decode(&instance)
 			if err != nil {
-				return nil, instance_storage.WrapError("error unmarshalling instance json", err)
+				return nil, errors.NewErrEncoding("error unmarshalling instance %s json", results[i]).WithError(err)
 			}
-			pods = append(pods, &instance)
+			instances = append(instances, &instance)
 		}
 		if cursor == 0 {
 			break
 		}
 	}
-	return pods, nil
+	return instances, nil
 }
 
 func (r redisInstanceStorage) GetInstanceCount(ctx context.Context, scheduler string) (int, error) {
-	count, err := r.client.WithContext(ctx).HLen(getPodMapRedisKey(scheduler)).Result()
+	podMapRedisKey := getPodMapRedisKey(scheduler)
+	count, err := r.client.WithContext(ctx).HLen(podMapRedisKey).Result()
 	if err != nil {
-		return 0, instance_storage.WrapError("error counting instances on redis", err)
+		return 0, errors.NewErrUnexpected("error counting %s on redis", podMapRedisKey).WithError(err)
 	}
 	return int(count), nil
 }
 
-var _ instance_storage.RoomInstanceStorage = (*redisInstanceStorage)(nil)
+var _ ports.GameRoomInstanceStorage = (*redisInstanceStorage)(nil)
 
 func NewRedisInstanceStorage(client *redis.Client, scanPageSize int) *redisInstanceStorage {
 	return &redisInstanceStorage{client: client, scanPageSize: int64(scanPageSize)}
