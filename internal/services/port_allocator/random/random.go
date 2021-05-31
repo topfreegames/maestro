@@ -20,7 +20,6 @@ func NewRandomPortAllocator(portRange *port_allocator.PortRange) *RandomPortAllo
 }
 
 func (r *RandomPortAllocator) Allocate(quantity int) ([]int32, error) {
-	// ports := make([]int32, quantity)
 	ports := []int32{}
 	alreadyAllocated := make(map[int32]struct{})
 
