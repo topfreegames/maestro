@@ -1,7 +1,9 @@
-package runtime
+package ports
 
 import (
 	"context"
+
+	"github.com/topfreegames/maestro/internal/adapters/runtime"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
@@ -17,7 +19,7 @@ type Runtime interface {
 	DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	// CreateGameRoom Creates a game room on the runtime using the specification
 	// inside the GameRoom.
-	CreateGameRoom(ctx context.Context, gameRoom *game_room.GameRoom, spec game_room.Spec) error
+	CreateGameRoom(ctx context.Context, schedulerId string, spec game_room.Spec) error
 	// DeleteGameRoom Deletes a game room on the runtime.
 	DeleteGameRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
 	// WathGameRooms Watches for changes of a scheduler game rooms.
@@ -28,7 +30,7 @@ type Runtime interface {
 // changes on the Runtime, and also a way to stop watching.
 type RuntimeWatcher interface {
 	// ResultChan returns the channel where the changes will be forwarded.
-	ResultChan() chan RuntimeGameInstanceEvent
+	ResultChan() chan runtime.RuntimeGameInstanceEvent
 	// Stop stops the watcher.
 	Stop()
 }

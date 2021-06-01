@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/topfreegames/maestro/internal/adapters/runtime"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	v1 "k8s.io/api/core/v1"
@@ -57,7 +59,7 @@ func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
 	kw.processEvent(runtime.RuntimeGameInstanceEventTypeDeleted, obj)
 }
 
-func (k *kubernetes) WatchGameRooms(ctx context.Context, scheduler *entities.Scheduler) (runtime.RuntimeWatcher, error) {
+func (k *kubernetes) WatchGameRooms(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
 	watcher := &kubernetesWatcher{
 		resultsChan: make(chan runtime.RuntimeGameInstanceEvent, eventsChanSize),
 		stopChan:    make(chan struct{}),
