@@ -1,6 +1,6 @@
-//+build !integration
+//+build unit
 
-package port_allocator
+package entities
 
 import (
 	"testing"
@@ -12,50 +12,51 @@ func TestParsePortRange(t *testing.T) {
 	cases := map[string]struct {
 		rangeStr          string
 		expectedPortRange *PortRange
-		withError         error
+		total             int32
+		withError         bool
 	}{
 		"valid format": {
 			rangeStr:          "1000-2000",
-			expectedPortRange: &PortRange{Start: 1000, End: 2000, Total: 1000},
+			total:             1001,
+			expectedPortRange: &PortRange{Start: 1000, End: 2000},
 		},
 		"invalid format": {
 			rangeStr:          "abc",
 			expectedPortRange: nil,
-			withError:         ErrPortRangeInvalidFormat,
+			withError:         true,
 		},
 		"missing end": {
 			rangeStr:          "1000",
 			expectedPortRange: nil,
-			withError:         ErrPortRangeInvalidFormat,
+			withError:         true,
 		},
 		"invalid start value": {
 			rangeStr:          "abc-2000",
 			expectedPortRange: nil,
-			withError:         ErrPortRangeInvalidValue,
+			withError:         true,
 		},
 		"invalid end value": {
 			rangeStr:          "abc-2000",
 			expectedPortRange: nil,
-			withError:         ErrPortRangeInvalidValue,
+			withError:         true,
 		},
 		"empty end": {
 			rangeStr:          "1000-",
 			expectedPortRange: nil,
-			withError:         ErrPortRangeInvalidValue,
+			withError:         true,
 		},
 		"end lower than start": {
 			rangeStr:          "1000-999",
 			expectedPortRange: nil,
-			withError:         ErrPortRangeEndLowerThanStart,
+			withError:         true,
 		},
 	}
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
 			portRange, err := ParsePortRange(test.rangeStr)
-			if test.withError != nil {
+			if test.withError {
 				require.Error(t, err)
-				require.ErrorIs(t, err, test.withError)
 				return
 			}
 
@@ -63,7 +64,7 @@ func TestParsePortRange(t *testing.T) {
 			require.NotNil(t, portRange)
 			require.Equal(t, test.expectedPortRange.Start, portRange.Start)
 			require.Equal(t, test.expectedPortRange.End, portRange.End)
-			require.Equal(t, test.expectedPortRange.Total, portRange.Total)
+			require.Equal(t, test.total, portRange.Total())
 		})
 	}
 }

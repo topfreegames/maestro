@@ -1,4 +1,4 @@
-package port_allocator
+package entities
 
 import (
 	"fmt"
@@ -12,7 +12,11 @@ const portRangeDelimiter = "-"
 type PortRange struct {
 	Start int32
 	End   int32
-	Total int32
+}
+
+// Total returns the total ports avaiable.
+func (p *PortRange) Total() int32 {
+	return (p.End - p.Start) + 1
 }
 
 // ParsePortRange parses the provided string into a PortRange. The string must
@@ -29,22 +33,22 @@ type PortRange struct {
 func ParsePortRange(rangeStr string) (*PortRange, error) {
 	split := strings.Split(rangeStr, "-")
 	if len(split) != 2 {
-		return nil, ErrPortRangeInvalidFormat
+		return nil, fmt.Errorf("invalid port range format it must follow \"start-end\"")
 	}
 
 	start, err := strconv.Atoi(split[0])
 	if err != nil {
-		return nil, fmt.Errorf("%w: failed to covert start: %s", ErrPortRangeInvalidValue, err)
+		return nil, fmt.Errorf("failed to covert start, invalid port range value: %s", err)
 	}
 
 	end, err := strconv.Atoi(split[1])
 	if err != nil {
-		return nil, fmt.Errorf("%w: failed to covert end: %s", ErrPortRangeInvalidValue, err)
+		return nil, fmt.Errorf("failed to covert end, invalid port range value: %s", err)
 	}
 
 	if start > end {
-		return nil, ErrPortRangeEndLowerThanStart
+		return nil, fmt.Errorf("port range end must be higher than start")
 	}
 
-	return &PortRange{Start: int32(start), End: int32(end), Total: int32(end - start)}, nil
+	return &PortRange{Start: int32(start), End: int32(end)}, nil
 }
