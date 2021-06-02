@@ -7,13 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-
 	"github.com/orlangure/gnomock"
 	"github.com/orlangure/gnomock/preset/k3s"
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/adapters/runtime"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kube "k8s.io/client-go/kubernetes"
 )
@@ -43,7 +42,6 @@ func TestGameRoomCreation(t *testing.T) {
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
 		gameRoomSpec := game_room.Spec{
 			Containers: []game_room.Container{
 				{
@@ -52,7 +50,7 @@ func TestGameRoomCreation(t *testing.T) {
 				},
 			},
 		}
-		err = kubernetesRuntime.CreateGameRoom(ctx, gameRoom, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
 		require.NoError(t, err)
 
 		pods, err := client.CoreV1().Pods(scheduler.ID).List(ctx, metav1.ListOptions{})
@@ -61,6 +59,7 @@ func TestGameRoomCreation(t *testing.T) {
 		require.Len(t, pods.Items[0].Spec.Containers, 1)
 		require.Equal(t, gameRoomSpec.Containers[0].Name, pods.Items[0].Spec.Containers[0].Name)
 		require.Equal(t, gameRoomSpec.Containers[0].Image, pods.Items[0].Spec.Containers[0].Image)
+		require.Equal(t, instance.ID, pods.Items[0].ObjectMeta.Name)
 	})
 
 	t.Run("fail with wrong game room spec", func(t *testing.T) {
@@ -69,13 +68,12 @@ func TestGameRoomCreation(t *testing.T) {
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
 		// no containers, meaning it will fail (bacause it can be a pod
 		// without containers).
 		gameRoomSpec := game_room.Spec{}
-		err = kubernetesRuntime.CreateGameRoom(ctx, gameRoom, gameRoomSpec)
+		_, err = kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
 		require.Error(t, err)
-		require.ErrorIs(t, err, runtime.ErrInvalidGameRoomSpec)
+		require.ErrorIs(t, err, errors.ErrInvalidArgument)
 
 		pods, err := client.CoreV1().Pods(scheduler.ID).List(ctx, metav1.ListOptions{})
 		require.NoError(t, err)
@@ -108,7 +106,6 @@ func TestGameRoomDeletion(t *testing.T) {
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
 		gameRoomSpec := game_room.Spec{
 			Containers: []game_room.Container{
 				{
@@ -117,14 +114,14 @@ func TestGameRoomDeletion(t *testing.T) {
 				},
 			},
 		}
-		err = kubernetesRuntime.CreateGameRoom(ctx, gameRoom, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
 		require.NoError(t, err)
 
 		pods, err := client.CoreV1().Pods(scheduler.ID).List(ctx, metav1.ListOptions{})
 		require.NoError(t, err)
 		require.Len(t, pods.Items, 1)
 
-		err = kubernetesRuntime.DeleteGameRoom(ctx, gameRoom)
+		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, instance)
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -144,14 +141,14 @@ func TestGameRoomDeletion(t *testing.T) {
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		gameRoom := &game_room.GameRoom{
+		gameRoomInstance := &game_room.Instance{
 			// force a name, so that the delete can run.
-			ID:        "game-room-inexistent-room-id",
-			Scheduler: *scheduler,
+			ID:          "game-room-inexistent-room-id",
+			SchedulerID: scheduler.ID,
 		}
 
-		err = kubernetesRuntime.DeleteGameRoom(ctx, gameRoom)
+		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, gameRoomInstance)
 		require.Error(t, err)
-		require.ErrorIs(t, err, runtime.ErrGameRoomNotFound)
+		require.ErrorIs(t, err, errors.ErrNotFound)
 	})
 }

@@ -1,4 +1,4 @@
-//+build !integration
+//+build unit
 
 package kubernetes
 
@@ -6,10 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -328,17 +326,13 @@ func TestConvertContainer(t *testing.T) {
 
 func TestConvertGameSpec(t *testing.T) {
 	cases := map[string]struct {
-		gameRoom    *game_room.GameRoom
+		schedulerID string
 		gameSpec    game_room.Spec
 		expectedPod v1.Pod
 		withError   bool
 	}{
 		"without containers": {
-			gameRoom: &game_room.GameRoom{
-				Scheduler: entities.Scheduler{
-					ID: "sample",
-				},
-			},
+			schedulerID: "sample",
 			gameSpec: game_room.Spec{
 				Version: "version",
 			},
@@ -354,11 +348,7 @@ func TestConvertGameSpec(t *testing.T) {
 			},
 		},
 		"with containers": {
-			gameRoom: &game_room.GameRoom{
-				Scheduler: entities.Scheduler{
-					ID: "sample",
-				},
-			},
+			schedulerID: "sample",
 			gameSpec: game_room.Spec{
 				Version: "version",
 				Containers: []game_room.Container{
@@ -384,11 +374,7 @@ func TestConvertGameSpec(t *testing.T) {
 			},
 		},
 		"with toleration": {
-			gameRoom: &game_room.GameRoom{
-				Scheduler: entities.Scheduler{
-					ID: "sample",
-				},
-			},
+			schedulerID: "sample",
 			gameSpec: game_room.Spec{
 				Version:    "version",
 				Toleration: "some-toleration",
@@ -410,11 +396,7 @@ func TestConvertGameSpec(t *testing.T) {
 			},
 		},
 		"with affinity": {
-			gameRoom: &game_room.GameRoom{
-				Scheduler: entities.Scheduler{
-					ID: "sample",
-				},
-			},
+			schedulerID: "sample",
 			gameSpec: game_room.Spec{
 				Version:  "version",
 				Affinity: "sample-affinity",
@@ -434,11 +416,7 @@ func TestConvertGameSpec(t *testing.T) {
 			},
 		},
 		"with termination grace period": {
-			gameRoom: &game_room.GameRoom{
-				Scheduler: entities.Scheduler{
-					ID: "sample",
-				},
-			},
+			schedulerID: "sample",
 			gameSpec: game_room.Spec{
 				Version:                "version",
 				TerminationGracePeriod: 10 * time.Second,
@@ -461,7 +439,7 @@ func TestConvertGameSpec(t *testing.T) {
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			res, err := convertGameRoomSpec(test.gameRoom.Scheduler, test.gameSpec)
+			res, err := convertGameRoomSpec(test.schedulerID, test.gameSpec)
 			if test.withError {
 				require.Error(t, err)
 				return
@@ -625,6 +603,7 @@ func TestConvertPod(t *testing.T) {
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
 			res := convertPod(test.pod)
+			require.NotNil(t, res)
 			require.Equal(t, test.expectedInstance.ID, res.ID)
 			require.Equal(t, test.expectedInstance.SchedulerID, res.SchedulerID)
 			require.Equal(t, test.expectedInstance.Version, res.Version)

@@ -1,11 +1,11 @@
 package kubernetes
 
 import (
-	"github.com/topfreegames/maestro/internal/adapters/runtime"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	kube "k8s.io/client-go/kubernetes"
 )
 
-var _ runtime.Runtime = (*kubernetes)(nil)
+var _ ports.Runtime = (*kubernetes)(nil)
 
 type kubernetes struct {
 	clientset kube.Interface

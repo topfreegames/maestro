@@ -5,9 +5,6 @@ import (
 	"strings"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-
-	"github.com/topfreegames/maestro/internal/core/entities"
-
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,14 +38,14 @@ var invalidPodWaitingStates = []string{
 	"RunContainerError",
 }
 
-func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
+func convertGameRoomSpec(schedulerID string, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-", scheduler.ID),
-			Namespace:    scheduler.ID,
+			GenerateName: fmt.Sprintf("%s-", schedulerID),
+			Namespace:    schedulerID,
 			Labels: map[string]string{
 				maestroLabelKey:   maestroLabelValue,
-				schedulerLabelKey: scheduler.ID,
+				schedulerLabelKey: schedulerID,
 				versionLabelKey:   gameRoomSpec.Version,
 			},
 		},
@@ -251,8 +248,8 @@ func convertPodStatus(pod *v1.Pod) game_room.InstanceStatus {
 	return game_room.InstanceStatus{Type: game_room.InstanceUnknown}
 }
 
-func convertPod(pod *v1.Pod) game_room.Instance {
-	return game_room.Instance{
+func convertPod(pod *v1.Pod) *game_room.Instance {
+	return &game_room.Instance{
 		ID:          pod.ObjectMeta.Name,
 		SchedulerID: pod.ObjectMeta.Namespace,
 		Version:     pod.ObjectMeta.Labels[versionLabelKey],
