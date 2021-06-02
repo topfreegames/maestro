@@ -3,7 +3,6 @@ package kubernetes
 import (
 	"context"
 
-	"github.com/topfreegames/maestro/internal/adapters/runtime"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -13,7 +12,7 @@ import (
 func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, schedulerID string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
 	pod, err := convertGameRoomSpec(schedulerID, gameRoomSpec)
 	if err != nil {
-		return nil, runtime.NewErrGameRoomConversion(err)
+		return nil, errors.NewErrInvalidArgument("invalid game room spec: %s", err)
 	}
 
 	pod, err = k.clientset.CoreV1().Pods(schedulerID).Create(ctx, pod, metav1.CreateOptions{})
