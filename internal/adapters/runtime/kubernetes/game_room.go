@@ -3,40 +3,39 @@ package kubernetes
 import (
 	"context"
 
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-
 	"github.com/topfreegames/maestro/internal/adapters/runtime"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (k *kubernetes) CreateGameRoom(ctx context.Context, gameRoom *game_room.GameRoom, gameRoomSpec game_room.Spec) error {
-	pod, err := convertGameRoomSpec(gameRoom.Scheduler, gameRoomSpec)
+func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, schedulerID string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
+	pod, err := convertGameRoomSpec(schedulerID, gameRoomSpec)
 	if err != nil {
-		return runtime.NewErrGameRoomConversion(err)
+		return nil, runtime.NewErrGameRoomConversion(err)
 	}
 
-	pod, err = k.clientset.CoreV1().Pods(gameRoom.Scheduler.ID).Create(ctx, pod, metav1.CreateOptions{})
+	pod, err = k.clientset.CoreV1().Pods(schedulerID).Create(ctx, pod, metav1.CreateOptions{})
 	if err != nil {
-		if errors.IsInvalid(err) {
-			return runtime.NewErrInvalidGameRoomSpec(gameRoom.ID, err)
+		if kerrors.IsInvalid(err) {
+			return nil, errors.NewErrInvalidArgument("invalid game room spec: %s", err)
 		}
 
-		return runtime.NewErrUnknown(err)
+		return nil, errors.NewErrUnexpected("error create game room instance: %s", err)
 	}
 
-	gameRoom.ID = pod.ObjectMeta.Name
-	return nil
+	return convertPod(pod), nil
 }
 
-func (k *kubernetes) DeleteGameRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
-	err := k.clientset.CoreV1().Pods(gameRoom.Scheduler.ID).Delete(ctx, gameRoom.ID, metav1.DeleteOptions{})
+func (k *kubernetes) DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error {
+	err := k.clientset.CoreV1().Pods(gameRoomInstance.SchedulerID).Delete(ctx, gameRoomInstance.ID, metav1.DeleteOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return runtime.NewErrGameRoomNotFound(gameRoom.ID)
+		if kerrors.IsNotFound(err) {
+			return errors.NewErrNotFound("game room '%s' already exists", gameRoomInstance.ID)
 		}
 
-		return runtime.NewErrUnknown(err)
+		return errors.NewErrUnexpected("error deleting game room instance: %s", err)
 	}
 
 	return nil

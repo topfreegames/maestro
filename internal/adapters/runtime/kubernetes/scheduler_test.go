@@ -6,15 +6,14 @@ import (
 	"context"
 	"testing"
 
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kube "k8s.io/client-go/kubernetes"
-
 	"github.com/orlangure/gnomock"
 	"github.com/orlangure/gnomock/preset/k3s"
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/adapters/runtime"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kube "k8s.io/client-go/kubernetes"
 )
 
 func TestSchedulerCreation(t *testing.T) {
@@ -51,7 +50,7 @@ func TestSchedulerCreation(t *testing.T) {
 
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.Error(t, err)
-		require.ErrorIs(t, err, runtime.ErrSchedulerAlreadyExists)
+		require.ErrorIs(t, err, errors.ErrAlreadyExists)
 	})
 }
 
@@ -90,6 +89,6 @@ func TestSchedulerDeletion(t *testing.T) {
 		scheduler := &entities.Scheduler{ID: "conflict-scheduler-test"}
 		err = kubernetesRuntime.DeleteScheduler(ctx, scheduler)
 		require.Error(t, err)
-		require.ErrorIs(t, err, runtime.ErrSchedulerNotFound)
+		require.ErrorIs(t, err, errors.ErrNotFound)
 	})
 }

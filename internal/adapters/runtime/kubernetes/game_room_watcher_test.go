@@ -14,7 +14,6 @@ import (
 	"github.com/orlangure/gnomock"
 	"github.com/orlangure/gnomock/preset/k3s"
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/adapters/runtime"
 	"github.com/topfreegames/maestro/internal/core/entities"
 )
 
@@ -41,11 +40,10 @@ func TestGameRoomsWatch(t *testing.T) {
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		watcher, err := kubernetesRuntime.WatchGameRooms(ctx, scheduler)
+		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
 		defer watcher.Stop()
 		require.NoError(t, err)
 
-		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
 		gameRoomSpec := game_room.Spec{
 			Containers: []game_room.Container{
 				{
@@ -55,12 +53,12 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		err = kubernetesRuntime.CreateGameRoom(ctx, gameRoom, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
 		require.NoError(t, err)
 
 		event := <-watcher.ResultChan()
-		require.Equal(t, runtime.RuntimeGameInstanceEventTypeAdded, event.Type)
-		require.Equal(t, gameRoom.ID, event.Instance.ID)
+		require.Equal(t, game_room.InstanceEventTypeAdded, event.Type)
+		require.Equal(t, instance.ID, event.Instance.ID)
 		require.Equal(t, game_room.InstancePending, event.Instance.Status.Type)
 	})
 
@@ -69,11 +67,10 @@ func TestGameRoomsWatch(t *testing.T) {
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		watcher, err := kubernetesRuntime.WatchGameRooms(ctx, scheduler)
+		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
 		defer watcher.Stop()
 		require.NoError(t, err)
 
-		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
 		gameRoomSpec := game_room.Spec{
 			Containers: []game_room.Container{
 				{
@@ -83,14 +80,14 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		err = kubernetesRuntime.CreateGameRoom(ctx, gameRoom, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
 			select {
 			case event := <-watcher.ResultChan():
-				if event.Type == runtime.RuntimeGameInstanceEventTypeUpdated &&
-					event.Instance.ID == gameRoom.ID &&
+				if event.Type == game_room.InstanceEventTypeUpdated &&
+					event.Instance.ID == instance.ID &&
 					event.Instance.Status.Type == game_room.InstanceReady {
 					return true
 				}
@@ -106,11 +103,10 @@ func TestGameRoomsWatch(t *testing.T) {
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		watcher, err := kubernetesRuntime.WatchGameRooms(ctx, scheduler)
+		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
 		defer watcher.Stop()
 		require.NoError(t, err)
 
-		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
 		gameRoomSpec := game_room.Spec{
 			Containers: []game_room.Container{
 				{
@@ -121,14 +117,14 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		err = kubernetesRuntime.CreateGameRoom(ctx, gameRoom, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
 			select {
 			case event := <-watcher.ResultChan():
-				if event.Type == runtime.RuntimeGameInstanceEventTypeUpdated &&
-					event.Instance.ID == gameRoom.ID &&
+				if event.Type == game_room.InstanceEventTypeUpdated &&
+					event.Instance.ID == instance.ID &&
 					event.Instance.Status.Type == game_room.InstanceError {
 					return true
 				}
@@ -144,11 +140,10 @@ func TestGameRoomsWatch(t *testing.T) {
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		watcher, err := kubernetesRuntime.WatchGameRooms(ctx, scheduler)
+		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
 		defer watcher.Stop()
 		require.NoError(t, err)
 
-		gameRoom := &game_room.GameRoom{Scheduler: *scheduler}
 		gameRoomSpec := game_room.Spec{
 			Containers: []game_room.Container{
 				{
@@ -158,17 +153,17 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		err = kubernetesRuntime.CreateGameRoom(ctx, gameRoom, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
 		require.NoError(t, err)
 
-		err = kubernetesRuntime.DeleteGameRoom(ctx, gameRoom)
+		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, instance)
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
 			select {
 			case event := <-watcher.ResultChan():
-				if event.Type == runtime.RuntimeGameInstanceEventTypeDeleted &&
-					event.Instance.ID == gameRoom.ID {
+				if event.Type == game_room.InstanceEventTypeDeleted &&
+					event.Instance.ID == instance.ID {
 					return true
 				}
 			default:

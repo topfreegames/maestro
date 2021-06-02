@@ -5,10 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/ports"
-
-	"github.com/topfreegames/maestro/internal/adapters/runtime"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
@@ -20,12 +19,12 @@ var (
 )
 
 type kubernetesWatcher struct {
-	resultsChan chan runtime.RuntimeGameInstanceEvent
+	resultsChan chan game_room.InstanceEvent
 	stopChan    chan struct{}
 	stopOnce    sync.Once
 }
 
-func (kw *kubernetesWatcher) ResultChan() chan runtime.RuntimeGameInstanceEvent {
+func (kw *kubernetesWatcher) ResultChan() chan game_room.InstanceEvent {
 	return kw.resultsChan
 }
 
@@ -35,33 +34,33 @@ func (kw *kubernetesWatcher) Stop() {
 	})
 }
 
-func (kw *kubernetesWatcher) processEvent(eventType runtime.RuntimeGameInstanceEventType, obj interface{}) {
+func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType, obj interface{}) {
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		return
 	}
 
-	kw.resultsChan <- runtime.RuntimeGameInstanceEvent{
+	kw.resultsChan <- game_room.InstanceEvent{
 		Type:     eventType,
 		Instance: convertPod(pod),
 	}
 }
 
 func (kw *kubernetesWatcher) addFunc(obj interface{}) {
-	kw.processEvent(runtime.RuntimeGameInstanceEventTypeAdded, obj)
+	kw.processEvent(game_room.InstanceEventTypeAdded, obj)
 }
 
 func (kw *kubernetesWatcher) updateFunc(obj interface{}, newObj interface{}) {
-	kw.processEvent(runtime.RuntimeGameInstanceEventTypeUpdated, newObj)
+	kw.processEvent(game_room.InstanceEventTypeUpdated, newObj)
 }
 
 func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
-	kw.processEvent(runtime.RuntimeGameInstanceEventTypeDeleted, obj)
+	kw.processEvent(game_room.InstanceEventTypeDeleted, obj)
 }
 
-func (k *kubernetes) WatchGameRooms(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
+func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
 	watcher := &kubernetesWatcher{
-		resultsChan: make(chan runtime.RuntimeGameInstanceEvent, eventsChanSize),
+		resultsChan: make(chan game_room.InstanceEvent, eventsChanSize),
 		stopChan:    make(chan struct{}),
 	}
 
