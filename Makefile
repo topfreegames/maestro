@@ -201,6 +201,6 @@ plugins:
 .PHONY: mocks
 
 mocks:
-  @mockgen -source=internal/core/ports/port_allocator.go -destination=internal/adapters/port_allocator/mock/mock.go -package=mock
-  @mockgen -source=internal/core/ports/runtime.go -destination=internal/adapters/runtime/mock/mock.go -package=mock
-  @mockgen -source=internal/core/ports/room_storage.go -destination=internal/adapters/room_storage/mock/mock.go -package=mock
+	@mockgen -source=internal/core/ports/port_allocator.go -destination=internal/adapters/port_allocator/mock/mock.go -package=mock
+	@mockgen -source=internal/core/ports/runtime.go -destination=internal/adapters/runtime/mock/mock.go -package=mock
+	@mockgen -source=internal/core/ports/room_storage.go -destination=internal/adapters/room_storage/mock/mock.go -package=mock
