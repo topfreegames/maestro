@@ -201,5 +201,6 @@ plugins:
 .PHONY: mocks
 
 mocks:
-	@mockgen github.com/topfreegames/maestro/models PortChooser | sed 's/mock_models/mocks/' > mocks/port_chooser.go
-	@echo 'port chooser mock on ./mocks/port_chooser.go'
+	@mockgen -source=internal/core/ports/port_allocator.go -destination=internal/adapters/port_allocator/mock/mock.go -package=mock
+	@mockgen -source=internal/core/ports/runtime.go -destination=internal/adapters/runtime/mock/mock.go -package=mock
+	@mockgen -source=internal/core/ports/room_storage.go -destination=internal/adapters/room_storage/mock/mock.go -package=mock
