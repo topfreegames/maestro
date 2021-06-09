@@ -3,6 +3,7 @@ package room_manager
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -10,11 +11,13 @@ import (
 )
 
 type RoomManager struct {
-	clock           ports.Clock
-	portAllocator   ports.PortAllocator
-	roomStorage     ports.RoomStorage
-	instanceStorage ports.GameRoomInstanceStorage
-	runtime         ports.Runtime
+	clock                  ports.Clock
+	portAllocator          ports.PortAllocator
+	roomStorage            ports.RoomStorage
+	instanceStorage        ports.GameRoomInstanceStorage
+	runtime                ports.Runtime
+	roomStatusWatchers     []chan *game_room.GameRoom
+	roomStatusWatchersLock sync.Mutex
 }
 
 func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime) *RoomManager {
