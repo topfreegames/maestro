@@ -11,9 +11,10 @@ import (
 // room.
 var validStatusTransitions = map[game_room.GameRoomStatus]map[game_room.GameRoomStatus]struct{}{
 	game_room.GameStatusPending: {
-		game_room.GameStatusReady:   struct{}{},
-		game_room.GameStatusUnready: struct{}{},
-		game_room.GameStatusError:   struct{}{},
+		game_room.GameStatusReady:       struct{}{},
+		game_room.GameStatusTerminating: struct{}{},
+		game_room.GameStatusUnready:     struct{}{},
+		game_room.GameStatusError:       struct{}{},
 	},
 	game_room.GameStatusReady: {
 		game_room.GameStatusOccupied:    struct{}{},
@@ -27,9 +28,10 @@ var validStatusTransitions = map[game_room.GameRoomStatus]map[game_room.GameRoom
 		game_room.GameStatusError:       struct{}{},
 	},
 	game_room.GameStatusOccupied: {
-		game_room.GameStatusReady:   struct{}{},
-		game_room.GameStatusUnready: struct{}{},
-		game_room.GameStatusError:   struct{}{},
+		game_room.GameStatusReady:       struct{}{},
+		game_room.GameStatusTerminating: struct{}{},
+		game_room.GameStatusUnready:     struct{}{},
+		game_room.GameStatusError:       struct{}{},
 	},
 	game_room.GameStatusError: {
 		game_room.GameStatusTerminating: struct{}{},
