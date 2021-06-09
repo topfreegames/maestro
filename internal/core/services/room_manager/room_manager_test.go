@@ -14,6 +14,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
+	ismock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	rsmock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
@@ -27,8 +28,9 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	portAllocator := pamock.NewMockPortAllocator(mockCtrl)
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
-	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, runtime)
+	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime)
 	scheduler := entities.Scheduler{
 		ID: "game",
 		Spec: game_room.Spec{
@@ -97,4 +99,30 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		SchedulerID: "game",
 		Version:     "1",
 	}, instance)
+}
+
+func TestRoomManager_DeleteRoom(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
+	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	roomManager := NewRoomManager(
+		clockmock.NewFakeClock(time.Now()),
+		pamock.NewMockPortAllocator(mockCtrl),
+		roomStorage,
+		instanceStorage,
+		runtime,
+	)
+
+	nextStatus := game_room.GameStatusTerminating
+	gameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady}
+	instance := &game_room.Instance{ID: "test-instance"}
+	instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(instance, nil)
+	roomStorage.EXPECT().SetRoomStatus(context.Background(), gameRoom.SchedulerID, gameRoom.ID, nextStatus).Return(nil)
+	runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(nil)
+
+	err := roomManager.DeleteRoom(context.Background(), gameRoom)
+	require.NoError(t, err)
 }

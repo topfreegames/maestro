@@ -2,6 +2,7 @@ package room_manager
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -9,18 +10,20 @@ import (
 )
 
 type RoomManager struct {
-	clock         ports.Clock
-	portAllocator ports.PortAllocator
-	roomStorage   ports.RoomStorage
-	runtime       ports.Runtime
+	clock           ports.Clock
+	portAllocator   ports.PortAllocator
+	roomStorage     ports.RoomStorage
+	instanceStorage ports.GameRoomInstanceStorage
+	runtime         ports.Runtime
 }
 
-func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, runtime ports.Runtime) *RoomManager {
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime) *RoomManager {
 	return &RoomManager{
-		clock:         clock,
-		portAllocator: portAllocator,
-		roomStorage:   roomStorage,
-		runtime:       runtime,
+		clock:           clock,
+		portAllocator:   portAllocator,
+		roomStorage:     roomStorage,
+		instanceStorage: instanceStorage,
+		runtime:         runtime,
 	}
 }
 
@@ -58,4 +61,25 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 	}
 
 	return room, instance, err
+}
+
+func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
+	instance, err := m.instanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
+	if err != nil {
+		// TODO(gabriel.corado): deal better with instance not found.
+		return fmt.Errorf("unable to fetch game room instance from storage: %w", err)
+	}
+
+	err = m.runtime.DeleteGameRoomInstance(ctx, instance)
+	if err != nil {
+		// TODO(gabriel.corado): deal better with instance not found.
+		return fmt.Errorf("failed to delete instance on the runtime: %w", err)
+	}
+
+	err = m.SetRoomStatus(ctx, gameRoom, game_room.GameStatusTerminating)
+	if err != nil {
+		return fmt.Errorf("failed to update game room status to terminating: %w", err)
+	}
+
+	return nil
 }
