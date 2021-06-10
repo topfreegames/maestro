@@ -82,6 +82,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073
 	golang.org/x/text v0.3.5
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
