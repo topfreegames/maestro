@@ -2,9 +2,9 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"testing"
 
@@ -52,11 +52,8 @@ func TestMain(m *testing.M) {
 // inside the operations.
 type testOperationDefinition struct{}
 
-func (d *testOperationDefinition) ShouldExecute(currentOperations []operation.Operation) bool {
-	return false
-}
 func (d *testOperationDefinition) Marshal() []byte            { return []byte{} }
-func (d *testOperationDefinition) Unmarshal() ([]byte, error) { return []byte{}, nil }
+func (d *testOperationDefinition) Unmarshal(raw []byte) error { return nil }
 func (d *testOperationDefinition) Name() string               { return "testOperationDefinition" }
 
 func TestCreateOperation(t *testing.T) {
@@ -74,16 +71,19 @@ func TestCreateOperation(t *testing.T) {
 		err := storage.CreateOperation(context.Background(), op)
 		require.NoError(t, err)
 
-		encodedOp, err := client.LPop(storage.buildSchedulerPendingOperationsKey(op.SchedulerName)).Bytes()
+		opID, err := client.LPop(storage.buildSchedulerPendingOperationsKey(op.SchedulerName)).Result()
 		require.NoError(t, err)
+		require.Equal(t, op.ID, opID)
 
-		var result storageOp
-		err = json.Unmarshal(encodedOp, &result)
+		operationStored, err := client.HGetAll(storage.buildSchedulerOperationKey(op.SchedulerName, opID)).Result()
 		require.NoError(t, err)
+		require.Equal(t, op.ID, operationStored[idRedisKey])
+		require.Equal(t, op.SchedulerName, operationStored[schedulerNameRedisKey])
+		require.Equal(t, op.Definition.Name(), operationStored[definitionNameRedisKey])
 
-		require.Equal(t, op.ID, result.ID)
-		require.Equal(t, op.Status, result.Status)
-		require.Equal(t, op.Definition.Name(), result.DefinitionName)
+		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
+		require.NoError(t, err)
+		require.Equal(t, op.Status, operation.Status(intStatus))
 	})
 
 	t.Run("fails on redis", func(t *testing.T) {

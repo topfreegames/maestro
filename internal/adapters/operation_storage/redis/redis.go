@@ -2,13 +2,22 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/go-redis/redis"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+)
+
+const (
+	// list of hash keys used on redis
+	idRedisKey                 = "id"
+	schedulerNameRedisKey      = "schedulerName"
+	statusRedisKey             = "status"
+	definitionNameRedisKey     = "definitionName"
+	definitionContentsRedisKey = "definitionContents"
 )
 
 var _ ports.OperationStorage = (*redisOperationStorage)(nil)
@@ -23,34 +32,21 @@ func NewRedisOperationStorage(client *redis.Client) *redisOperationStorage {
 	return &redisOperationStorage{client}
 }
 
-// storageOp operation representation used by the storage. It will be used to
-// encode/decode operations that come from Redis.
-type storageOp struct {
-	ID             string           `json:"id"`
-	Status         operation.Status `json:"status"`
-	Contents       []byte           `json:"contents"`
-	DefinitionName string           `json:"definition_name"`
-}
-
-// newStorageOp creates a storageOp from `operation.Operation`.
-func newStorageOp(op *operation.Operation) *storageOp {
-	return &storageOp{
-		ID:             op.ID,
-		Status:         op.Status,
-		Contents:       op.Definition.Marshal(),
-		DefinitionName: op.Definition.Name(),
-	}
-}
-
 // CreateOperation marshal and pushes the operation to the scheduler pending
 // operations list.
 func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operation.Operation) error {
-	opBytes, err := json.Marshal(newStorageOp(op))
-	if err != nil {
-		return errors.NewErrEncoding("failed to encode redis value: %s", err)
-	}
+	pipe := r.client.WithContext(ctx).Pipeline()
+	pipe.RPush(r.buildSchedulerPendingOperationsKey(op.SchedulerName), op.ID)
+	// TODO(gabrielcorado): consider moving to go-redis v4 to avoid using HMSet.
+	pipe.HMSet(r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+		idRedisKey:                 op.ID,
+		schedulerNameRedisKey:      op.SchedulerName,
+		statusRedisKey:             strconv.Itoa(int(op.Status)),
+		definitionNameRedisKey:     op.Definition.Name(),
+		definitionContentsRedisKey: op.Definition.Marshal(),
+	})
 
-	err = r.client.WithContext(ctx).RPush(r.buildSchedulerPendingOperationsKey(op.SchedulerName), opBytes).Err()
+	_, err := pipe.Exec()
 	if err != nil {
 		return errors.NewErrUnexpected("failed to create operation on redis: %s", err)
 	}
@@ -58,6 +54,10 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 	return nil
 }
 
+func (r *redisOperationStorage) buildSchedulerOperationKey(schedulerName, opID string) string {
+	return fmt.Sprintf("operations:%s:%s", schedulerName, opID)
+}
+
 func (r *redisOperationStorage) buildSchedulerPendingOperationsKey(schedulerName string) string {
-	return fmt.Sprintf("operations:%s:pending", schedulerName)
+	return fmt.Sprintf("operations:%s:lists:pending", schedulerName)
 }

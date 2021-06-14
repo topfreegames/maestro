@@ -15,11 +15,8 @@ import (
 
 type testOperationDefinition struct{}
 
-func (d *testOperationDefinition) ShouldExecute(currentOperations []operation.Operation) bool {
-	return false
-}
 func (d *testOperationDefinition) Marshal() []byte            { return []byte{} }
-func (d *testOperationDefinition) Unmarshal() ([]byte, error) { return []byte{}, nil }
+func (d *testOperationDefinition) Unmarshal(raw []byte) error { return nil }
 func (d *testOperationDefinition) Name() string               { return "testOperationDefinition" }
 
 type newOpMatcher struct {
