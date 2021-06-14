@@ -35,16 +35,16 @@ func TestSchedulerCreation(t *testing.T) {
 
 	kubernetesRuntime := New(client)
 	t.Run("create single scheduler", func(t *testing.T) {
-		scheduler := &entities.Scheduler{ID: "single-scheduler-test"}
+		scheduler := &entities.Scheduler{Name: "single-scheduler-test"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		_, err := client.CoreV1().Namespaces().Get(ctx, scheduler.ID, metav1.GetOptions{})
+		_, err := client.CoreV1().Namespaces().Get(ctx, scheduler.Name, metav1.GetOptions{})
 		require.NoError(t, err)
 	})
 
 	t.Run("fail to create scheduler with the same name", func(t *testing.T) {
-		scheduler := &entities.Scheduler{ID: "conflict-scheduler-test"}
+		scheduler := &entities.Scheduler{Name: "conflict-scheduler-test"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
@@ -73,20 +73,20 @@ func TestSchedulerDeletion(t *testing.T) {
 
 	kubernetesRuntime := New(client)
 	t.Run("delete scheduler", func(t *testing.T) {
-		scheduler := &entities.Scheduler{ID: "scheduler-test"}
+		scheduler := &entities.Scheduler{Name: "scheduler-test"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
 		err = kubernetesRuntime.DeleteScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		ns, err := client.CoreV1().Namespaces().Get(ctx, scheduler.ID, metav1.GetOptions{})
+		ns, err := client.CoreV1().Namespaces().Get(ctx, scheduler.Name, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.Equal(t, v1.NamespaceTerminating, ns.Status.Phase)
 	})
 
 	t.Run("fail to delete inexistent scheduler", func(t *testing.T) {
-		scheduler := &entities.Scheduler{ID: "conflict-scheduler-test"}
+		scheduler := &entities.Scheduler{Name: "conflict-scheduler-test"}
 		err = kubernetesRuntime.DeleteScheduler(ctx, scheduler)
 		require.Error(t, err)
 		require.ErrorIs(t, err, errors.ErrNotFound)

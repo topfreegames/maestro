@@ -36,7 +36,7 @@ func TestGameRoomsWatch(t *testing.T) {
 
 	kubernetesRuntime := New(client)
 	t.Run("watch pod addition", func(t *testing.T) {
-		scheduler := &entities.Scheduler{ID: "watch-room-addition"}
+		scheduler := &entities.Scheduler{Name: "watch-room-addition"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
@@ -53,7 +53,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
 		require.NoError(t, err)
 
 		event := <-watcher.ResultChan()
@@ -63,7 +63,7 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod becoming ready", func(t *testing.T) {
-		scheduler := &entities.Scheduler{ID: "watch-room-ready"}
+		scheduler := &entities.Scheduler{Name: "watch-room-ready"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
@@ -80,7 +80,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -99,7 +99,7 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod with error", func(t *testing.T) {
-		scheduler := &entities.Scheduler{ID: "watch-room-error"}
+		scheduler := &entities.Scheduler{Name: "watch-room-error"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
@@ -117,7 +117,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -136,7 +136,7 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod deletion", func(t *testing.T) {
-		scheduler := &entities.Scheduler{ID: "watch-room-delete"}
+		scheduler := &entities.Scheduler{Name: "watch-room-delete"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
@@ -153,7 +153,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.ID, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
 		require.NoError(t, err)
 
 		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, instance)

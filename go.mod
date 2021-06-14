@@ -18,6 +18,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/getlantern/deepcopy v0.0.0-20140913144530-b923171e8640
 	github.com/getsentry/raven-go v0.0.0-20170310193735-b68337dbf03e
+	github.com/ghodss/yaml v1.0.0
 	github.com/go-pg/pg v6.13.2+incompatible
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
@@ -82,7 +83,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073
 	golang.org/x/text v0.3.5
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba

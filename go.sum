@@ -121,6 +121,7 @@ github.com/getlantern/deepcopy v0.0.0-20140913144530-b923171e8640 h1:iKoUYqpveF/
 github.com/getlantern/deepcopy v0.0.0-20140913144530-b923171e8640/go.mod h1:AEugkNu3BjBxyz958nJ5holD9PRjta6iprcoUauDbU4=
 github.com/getsentry/raven-go v0.0.0-20170310193735-b68337dbf03e h1:TZUsOLDmcVtECY8aWgJCN7DRJr6kQbhXIKKs9hDEsGY=
 github.com/getsentry/raven-go v0.0.0-20170310193735-b68337dbf03e/go.mod h1:KungGk8q33+aIAZUIVWZDr2OfAEBsO49PX4NzFV5kcQ=
+github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/go-chi/chi v4.0.2+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxmMeXJVKy9tTv1XzQ=
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=

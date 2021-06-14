@@ -46,14 +46,14 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 			portIndex++
 		}
 	}
-	instance, err := m.runtime.CreateGameRoomInstance(ctx, scheduler.ID, scheduler.Spec)
+	instance, err := m.runtime.CreateGameRoomInstance(ctx, scheduler.Name, scheduler.Spec)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	room := &game_room.GameRoom{
 		ID:          instance.ID,
-		SchedulerID: scheduler.ID,
+		SchedulerID: scheduler.Name,
 		Status:      game_room.GameStatusPending,
 		LastPingAt:  m.clock.Now(),
 	}
