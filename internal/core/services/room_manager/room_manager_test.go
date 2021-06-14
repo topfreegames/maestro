@@ -32,7 +32,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	fakeClock := clockmock.NewFakeClock(now)
 	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime)
 	scheduler := entities.Scheduler{
-		ID: "game",
+		Name: "game",
 		Spec: game_room.Spec{
 			Containers: []game_room.Container{
 				{
@@ -53,7 +53,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	}
 
 	portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-	runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.ID, game_room.Spec{
+	runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
 		Containers: []game_room.Container{
 			{
 				Name: "container1",

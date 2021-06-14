@@ -1,0 +1,150 @@
+package pg
+
+import (
+	"context"
+	"strings"
+
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
+
+	"github.com/go-pg/pg"
+
+	"github.com/topfreegames/maestro/internal/core/ports"
+
+	"github.com/topfreegames/maestro/internal/core/entities"
+)
+
+var _ ports.SchedulerStorage = (*schedulerStorage)(nil)
+
+type schedulerStorage struct {
+	db *pg.DB
+}
+
+func NewSchedulerStorage(opts *pg.Options) *schedulerStorage {
+	return &schedulerStorage{db: pg.Connect(opts)}
+}
+
+const (
+	queryGetScheduler = `
+SELECT
+	s.id, s.name, s.game, s.yaml, s.state, s.state_last_changed_at, last_scale_op_at, s.created_at, s.updated_at, s.version,
+	v.rolling_update_status, v.rollback_version
+FROM schedulers s join scheduler_versions v
+	ON s.name=v.name AND v.version=s.version
+WHERE s.name = ?`
+	queryGetSchedulers    = `SELECT * FROM schedulers WHERE name IN (?)`
+	queryGetAllSchedulers = `SELECT * FROM schedulers`
+	queryInsertScheduler  = `
+INSERT INTO schedulers (name, game, yaml, state, version, state_last_changed_at)
+	VALUES (?name, ?game, ?yaml, ?state, ?version, extract(epoch from now()))
+	RETURNING id`
+	queryUpdateScheduler = `
+UPDATE schedulers
+	SET (name, game, yaml, state, version, updated_at, state_last_changed_at)
+      = (?name, ?game, ?yaml, ?state, ?version, now(), extract(epoch from now()))
+	WHERE name=?name`
+	queryDeleteScheduler = `DELETE FROM schedulers WHERE name = ?`
+	queryInsertVersion   = `
+INSERT INTO scheduler_versions (name, version, yaml, rollback_version)
+	VALUES (?, ?, ?, ?)
+	ON CONFLICT DO NOTHING`
+)
+
+func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error) {
+	client := s.db.WithContext(ctx)
+	var dbScheduler Scheduler
+	_, err := client.QueryOne(&dbScheduler, queryGetScheduler, name)
+	if err == pg.ErrNoRows {
+		return nil, errors.NewErrNotFound("scheduler %s not found", name)
+	}
+	if err != nil {
+		return nil, errors.NewErrUnexpected("error getting scheduler %s", name).WithError(err)
+	}
+	scheduler, err := dbScheduler.ToScheduler()
+	if err != nil {
+		return nil, errors.NewErrEncoding("error decoding scheduler %s", name).WithError(err)
+	}
+	return scheduler, nil
+}
+
+func (s schedulerStorage) GetSchedulers(ctx context.Context, names []string) ([]*entities.Scheduler, error) {
+	client := s.db.WithContext(ctx)
+	var dbSchedulers []Scheduler
+	_, err := client.Query(&dbSchedulers, queryGetSchedulers, pg.In(names))
+	if err != nil {
+		return nil, errors.NewErrUnexpected("error getting schedulers").WithError(err)
+	}
+	schedulers := make([]*entities.Scheduler, len(dbSchedulers))
+	for i := range dbSchedulers {
+		scheduler, err := dbSchedulers[i].ToScheduler()
+		if err != nil {
+			return nil, errors.NewErrEncoding("error decoding scheduler %s", dbSchedulers[i].Name).WithError(err)
+		}
+		schedulers[i] = scheduler
+	}
+	return schedulers, nil
+}
+
+func (s schedulerStorage) GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error) {
+	client := s.db.WithContext(ctx)
+	var dbSchedulers []Scheduler
+	_, err := client.Query(&dbSchedulers, queryGetAllSchedulers)
+	if err != nil {
+		return nil, errors.NewErrUnexpected("error getting schedulers").WithError(err)
+	}
+	schedulers := make([]*entities.Scheduler, len(dbSchedulers))
+	for i := range dbSchedulers {
+		scheduler, err := dbSchedulers[i].ToScheduler()
+		if err != nil {
+			return nil, errors.NewErrEncoding("error decoding scheduler %s", dbSchedulers[i].Name).WithError(err)
+		}
+		schedulers[i] = scheduler
+	}
+	return schedulers, nil
+}
+
+func (s schedulerStorage) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	client := s.db.WithContext(ctx)
+	dbScheduler := NewDBScheduler(scheduler)
+	_, err := client.Exec(queryInsertScheduler, dbScheduler)
+	if err != nil {
+		if strings.Contains(err.Error(), "schedulers_name_unique") {
+			return errors.NewErrAlreadyExists("error creating scheduler %s", dbScheduler.Name)
+		}
+		return errors.NewErrUnexpected("error creating scheduler %s", dbScheduler.Name).WithError(err)
+	}
+	_, err = client.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+	if err != nil {
+		return errors.NewErrUnexpected("error creating scheduler %s version %s", dbScheduler.Name, dbScheduler.Version).WithError(err)
+	}
+	return nil
+}
+
+func (s schedulerStorage) UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	client := s.db.WithContext(ctx)
+	dbScheduler := NewDBScheduler(scheduler)
+	_, err := client.ExecOne(queryUpdateScheduler, dbScheduler)
+	if err == pg.ErrNoRows {
+		return errors.NewErrNotFound("scheduler %s not found", dbScheduler.Name)
+	}
+	if err != nil {
+		return errors.NewErrUnexpected("error updating scheduler %s", dbScheduler.Name).WithError(err)
+	}
+	_, err = client.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+	if err != nil {
+		return errors.NewErrUnexpected("error creating version %s for scheduler %s", dbScheduler.Version, dbScheduler.Name).WithError(err)
+	}
+
+	return nil
+}
+
+func (s schedulerStorage) DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	client := s.db.WithContext(ctx)
+	_, err := client.ExecOne(queryDeleteScheduler, scheduler.Name)
+	if err == pg.ErrNoRows {
+		return errors.NewErrNotFound("scheduler %s not found", scheduler.Name)
+	}
+	if err != nil {
+		return errors.NewErrUnexpected("error updating scheduler %s", scheduler.Name).WithError(err)
+	}
+	return nil
+}

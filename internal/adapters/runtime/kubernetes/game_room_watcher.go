@@ -67,7 +67,7 @@ func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *enti
 	podsInformer := informers.NewSharedInformerFactoryWithOptions(
 		k.clientset,
 		defaultResyncTime,
-		informers.WithNamespace(scheduler.ID),
+		informers.WithNamespace(scheduler.Name),
 	).Core().V1().Pods().Informer()
 
 	podsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
