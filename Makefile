@@ -205,3 +205,4 @@ mocks:
 	@mockgen -source=internal/core/ports/runtime.go -destination=internal/adapters/runtime/mock/mock.go -package=mock
 	@mockgen -source=internal/core/ports/room_storage.go -destination=internal/adapters/room_storage/mock/mock.go -package=mock
 	@mockgen -source=internal/core/ports/instance_storage.go -destination=internal/adapters/instance_storage/mock/mock.go -package=mock
+	@mockgen -source=internal/core/ports/operation_storage.go -destination=internal/adapters/operation_storage/mock/mock.go -package=mock
