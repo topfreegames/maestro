@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/adapters/scheduler_storage/pg/migrations"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -141,7 +142,7 @@ func TestMain(m *testing.M) {
 	}
 
 	postgresDB = pg.Connect(opts)
-	if err := migrate(postgresDB); err != nil {
+	if _, err := migrations.Migrate(opts); err != nil {
 		panic(fmt.Sprintf("error preparing postgres database: %s\n", err))
 	}
 
