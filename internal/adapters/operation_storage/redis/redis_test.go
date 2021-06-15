@@ -48,27 +48,20 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// TODO(gabrielcorado): consider moving this "test" operation as a NoopOperation
-// inside the operations.
-type testOperationDefinition struct{}
-
-func (d *testOperationDefinition) Marshal() []byte            { return []byte{} }
-func (d *testOperationDefinition) Unmarshal(raw []byte) error { return nil }
-func (d *testOperationDefinition) Name() string               { return "testOperationDefinition" }
-
 func TestCreateOperation(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		client := getRedisConnection(t)
 		storage := NewRedisOperationStorage(client)
 
 		op := &operation.Operation{
-			ID:            "some-op-id",
-			SchedulerName: "test-scheduler",
-			Status:        operation.StatusPending,
-			Definition:    &testOperationDefinition{},
+			ID:             "some-op-id",
+			SchedulerName:  "test-scheduler",
+			Status:         operation.StatusPending,
+			DefinitionName: "test-definition",
 		}
 
-		err := storage.CreateOperation(context.Background(), op)
+		contents := []byte("hello test")
+		err := storage.CreateOperation(context.Background(), op, contents)
 		require.NoError(t, err)
 
 		opID, err := client.LPop(storage.buildSchedulerPendingOperationsKey(op.SchedulerName)).Result()
@@ -79,7 +72,8 @@ func TestCreateOperation(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, op.ID, operationStored[idRedisKey])
 		require.Equal(t, op.SchedulerName, operationStored[schedulerNameRedisKey])
-		require.Equal(t, op.Definition.Name(), operationStored[definitionNameRedisKey])
+		require.Equal(t, op.DefinitionName, operationStored[definitionNameRedisKey])
+		require.Equal(t, string(contents), operationStored[definitionContentsRedisKey])
 
 		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
 		require.NoError(t, err)
@@ -91,16 +85,65 @@ func TestCreateOperation(t *testing.T) {
 		storage := NewRedisOperationStorage(client)
 
 		op := &operation.Operation{
-			ID:            "some-op-id",
-			SchedulerName: "test-scheduler",
-			Status:        operation.StatusPending,
-			Definition:    &testOperationDefinition{},
+			ID:             "some-op-id",
+			SchedulerName:  "test-scheduler",
+			Status:         operation.StatusPending,
+			DefinitionName: "test-definition",
 		}
 
 		// "drop" redis connection
 		client.Close()
 
-		err := storage.CreateOperation(context.Background(), op)
+		err := storage.CreateOperation(context.Background(), op, []byte{})
 		require.ErrorIs(t, errors.ErrUnexpected, err)
+	})
+}
+
+func TestGetOperation(t *testing.T) {
+	t.Run("with success", func(t *testing.T) {
+		client := getRedisConnection(t)
+		storage := NewRedisOperationStorage(client)
+
+		op := &operation.Operation{
+			ID:             "some-op-id",
+			SchedulerName:  "test-scheduler",
+			Status:         operation.StatusPending,
+			DefinitionName: "test-definition",
+		}
+
+		contents := []byte("hello test")
+		err := storage.CreateOperation(context.Background(), op, contents)
+		require.NoError(t, err)
+
+		operationStored, definitionContents, err := storage.GetOperation(context.Background(), op.SchedulerName, op.ID)
+		require.NoError(t, err)
+		require.Equal(t, contents, definitionContents)
+		require.Equal(t, op.ID, operationStored.ID)
+		require.Equal(t, op.SchedulerName, operationStored.SchedulerName)
+		require.Equal(t, op.Status, operationStored.Status)
+		require.Equal(t, op.DefinitionName, operationStored.DefinitionName)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		client := getRedisConnection(t)
+		storage := NewRedisOperationStorage(client)
+
+		operationStored, definitionContents, err := storage.GetOperation(context.Background(), "test-scheduler", "inexistent-id")
+		require.ErrorIs(t, errors.ErrNotFound, err)
+		require.Nil(t, operationStored)
+		require.Nil(t, definitionContents)
+	})
+
+	t.Run("fails on redis", func(t *testing.T) {
+		client := getRedisConnection(t)
+		storage := NewRedisOperationStorage(client)
+
+		// "drop" redis connection
+		client.Close()
+
+		operationStored, definitionContents, err := storage.GetOperation(context.Background(), "test-scheduler", "some-op-id")
+		require.ErrorIs(t, errors.ErrUnexpected, err)
+		require.Nil(t, operationStored)
+		require.Nil(t, definitionContents)
 	})
 }

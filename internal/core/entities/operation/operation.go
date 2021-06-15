@@ -18,8 +18,8 @@ const (
 )
 
 type Operation struct {
-	ID            string
-	Status        Status
-	Definition    Definition
-	SchedulerName string
+	ID             string
+	Status         Status
+	DefinitionName string
+	SchedulerName  string
 }

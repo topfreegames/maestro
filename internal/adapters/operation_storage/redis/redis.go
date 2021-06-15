@@ -34,7 +34,7 @@ func NewRedisOperationStorage(client *redis.Client) *redisOperationStorage {
 
 // CreateOperation marshal and pushes the operation to the scheduler pending
 // operations list.
-func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operation.Operation) error {
+func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operation.Operation, definitionContents []byte) error {
 	pipe := r.client.WithContext(ctx).Pipeline()
 	pipe.RPush(r.buildSchedulerPendingOperationsKey(op.SchedulerName), op.ID)
 	// TODO(gabrielcorado): consider moving to go-redis v4 to avoid using HMSet.
@@ -42,8 +42,8 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 		idRedisKey:                 op.ID,
 		schedulerNameRedisKey:      op.SchedulerName,
 		statusRedisKey:             strconv.Itoa(int(op.Status)),
-		definitionNameRedisKey:     op.Definition.Name(),
-		definitionContentsRedisKey: op.Definition.Marshal(),
+		definitionNameRedisKey:     op.DefinitionName,
+		definitionContentsRedisKey: definitionContents,
 	})
 
 	_, err := pipe.Exec()
@@ -52,6 +52,31 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 	}
 
 	return nil
+}
+
+func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, []byte, error) {
+	res, err := r.client.WithContext(ctx).HGetAll(fmt.Sprintf("operations:%s:%s", schedulerName, operationID)).Result()
+	if err != nil {
+		return nil, nil, errors.NewErrUnexpected("failed to fetch operation: %s", err)
+	}
+
+	if len(res) == 0 {
+		return nil, nil, errors.NewErrNotFound("operation %s not found in scheduler %s", operationID, schedulerName)
+	}
+
+	statusInt, err := strconv.Atoi(res[statusRedisKey])
+	if err != nil {
+		return nil, nil, errors.NewErrEncoding("failed to parse operation status: %s", err)
+	}
+
+	op := &operation.Operation{
+		ID: res[idRedisKey],
+		SchedulerName: res[schedulerNameRedisKey],
+		DefinitionName: res[definitionNameRedisKey],
+		Status: operation.Status(statusInt),
+	}
+
+	return op, []byte(res[definitionContentsRedisKey]), nil
 }
 
 func (r *redisOperationStorage) buildSchedulerOperationKey(schedulerName, opID string) string {
