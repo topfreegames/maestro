@@ -7,5 +7,7 @@ import (
 )
 
 type OperationStorage interface {
-	CreateOperation(ctx context.Context, operation *operation.Operation) error
+	CreateOperation(ctx context.Context, operation *operation.Operation, definitionContent []byte) error
+	// GetOperation returns the operation and the definition contents.
+	GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, []byte, error)
 }
