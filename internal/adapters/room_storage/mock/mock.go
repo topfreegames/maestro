@@ -11,6 +11,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	game_room "github.com/topfreegames/maestro/internal/core/entities/game_room"
+	ports "github.com/topfreegames/maestro/internal/core/ports"
 )
 
 // MockRoomStorage is a mock of RoomStorage interface.
@@ -165,4 +166,68 @@ func (m *MockRoomStorage) UpdateRoom(ctx context.Context, room *game_room.GameRo
 func (mr *MockRoomStorageMockRecorder) UpdateRoom(ctx, room interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRoom", reflect.TypeOf((*MockRoomStorage)(nil).UpdateRoom), ctx, room)
+}
+
+// WatchRoomStatus mocks base method.
+func (m *MockRoomStorage) WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (ports.RoomStorageStatusWatcher, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WatchRoomStatus", ctx, room)
+	ret0, _ := ret[0].(ports.RoomStorageStatusWatcher)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// WatchRoomStatus indicates an expected call of WatchRoomStatus.
+func (mr *MockRoomStorageMockRecorder) WatchRoomStatus(ctx, room interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WatchRoomStatus", reflect.TypeOf((*MockRoomStorage)(nil).WatchRoomStatus), ctx, room)
+}
+
+// MockRoomStorageStatusWatcher is a mock of RoomStorageStatusWatcher interface.
+type MockRoomStorageStatusWatcher struct {
+	ctrl     *gomock.Controller
+	recorder *MockRoomStorageStatusWatcherMockRecorder
+}
+
+// MockRoomStorageStatusWatcherMockRecorder is the mock recorder for MockRoomStorageStatusWatcher.
+type MockRoomStorageStatusWatcherMockRecorder struct {
+	mock *MockRoomStorageStatusWatcher
+}
+
+// NewMockRoomStorageStatusWatcher creates a new mock instance.
+func NewMockRoomStorageStatusWatcher(ctrl *gomock.Controller) *MockRoomStorageStatusWatcher {
+	mock := &MockRoomStorageStatusWatcher{ctrl: ctrl}
+	mock.recorder = &MockRoomStorageStatusWatcherMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRoomStorageStatusWatcher) EXPECT() *MockRoomStorageStatusWatcherMockRecorder {
+	return m.recorder
+}
+
+// ResultChan mocks base method.
+func (m *MockRoomStorageStatusWatcher) ResultChan() chan game_room.StatusEvent {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResultChan")
+	ret0, _ := ret[0].(chan game_room.StatusEvent)
+	return ret0
+}
+
+// ResultChan indicates an expected call of ResultChan.
+func (mr *MockRoomStorageStatusWatcherMockRecorder) ResultChan() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResultChan", reflect.TypeOf((*MockRoomStorageStatusWatcher)(nil).ResultChan))
+}
+
+// Stop mocks base method.
+func (m *MockRoomStorageStatusWatcher) Stop() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Stop")
+}
+
+// Stop indicates an expected call of Stop.
+func (mr *MockRoomStorageStatusWatcherMockRecorder) Stop() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockRoomStorageStatusWatcher)(nil).Stop))
 }

@@ -1,21 +1,23 @@
 package redis
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
-
-	"github.com/topfreegames/maestro/internal/core/ports"
-
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-
 	"github.com/go-redis/redis"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 )
+
+const maxRoomStatusEvents = 100
 
 type redisStateStorage struct {
 	client *redis.Client
@@ -139,6 +141,17 @@ func (r *redisStateStorage) SetRoomStatus(ctx context.Context, scheduler, roomID
 	if err != nil {
 		return errors.NewErrUnexpected("error updating room %s on redis", roomID).WithError(err)
 	}
+
+	encodedEvent, err := encodeStatusEvent(&game_room.StatusEvent{RoomID: roomID, SchedulerName: scheduler, Status: status})
+	if err != nil {
+		return errors.NewErrEncoding("failed to encode status event").WithError(err)
+	}
+
+	err = r.client.WithContext(ctx).Publish(getRoomStatusUpdateChannel(scheduler, roomID), encodedEvent).Err()
+	if err != nil {
+		return errors.NewErrUnexpected("failed to publish room status update").WithError(err)
+	}
+
 	return nil
 }
 
@@ -180,6 +193,72 @@ func (r *redisStateStorage) GetRoomCountByStatus(ctx context.Context, scheduler 
 	return int(count), nil
 }
 
+func (r *redisStateStorage) WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (ports.RoomStorageStatusWatcher, error) {
+	sub := r.client.WithContext(ctx).Subscribe(getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
+
+	watcherCtx, cancelWatcherCtx := context.WithCancel(ctx)
+	watcher := &redisStatusWatcher{
+		resultChan: make(chan game_room.StatusEvent, maxRoomStatusEvents),
+		cancelFn:   cancelWatcherCtx,
+	}
+
+	go func() {
+		defer sub.Close()
+
+		for {
+			select {
+			case msg := <-sub.Channel():
+				event, _ := decodeStatusEvent([]byte(msg.Payload))
+				watcher.resultChan <- *event
+			case <-watcherCtx.Done():
+				close(watcher.resultChan)
+				return
+			}
+		}
+	}()
+
+	return watcher, nil
+}
+
+type redisStatusWatcher struct {
+	resultChan chan game_room.StatusEvent
+	cancelFn   context.CancelFunc
+	stopOnce   sync.Once
+}
+
+func (sw *redisStatusWatcher) ResultChan() chan game_room.StatusEvent {
+	return sw.resultChan
+}
+
+func (sw *redisStatusWatcher) Stop() {
+	sw.stopOnce.Do(func() {
+		sw.cancelFn()
+	})
+}
+
+func encodeStatusEvent(event *game_room.StatusEvent) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(event)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func decodeStatusEvent(encoded []byte) (*game_room.StatusEvent, error) {
+	dec := gob.NewDecoder(bytes.NewBuffer(encoded))
+
+	var result game_room.StatusEvent
+	err := dec.Decode(&result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
 func getRoomRedisKey(scheduler, roomID string) string {
 	return fmt.Sprintf("scheduler:%s:rooms:%s", scheduler, roomID)
 }
@@ -190,4 +269,8 @@ func getRoomStatusSetRedisKey(scheduler string) string {
 
 func getRoomPingRedisKey(scheduler string) string {
 	return fmt.Sprintf("scheduler:%s:ping", scheduler)
+}
+
+func getRoomStatusUpdateChannel(scheduler, roomID string) string {
+	return fmt.Sprintf("scheduler:%s:rooms:%s:updatechan", scheduler, roomID)
 }

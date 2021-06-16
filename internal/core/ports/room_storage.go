@@ -29,4 +29,16 @@ type RoomStorage interface {
 	GetRoomCount(ctx context.Context, scheduler string) (int, error)
 	// GetRoomCountByStatus gets the count of rooms with a specific status in a scheduler
 	GetRoomCountByStatus(ctx context.Context, scheduler string, status game_room.GameRoomStatus) (int, error)
+
+	// WatchRoomStatus watche for status changes on the storage.
+	WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (RoomStorageStatusWatcher, error)
+}
+
+// RoomStorageStatusWatcher  defines a process of watcher, it will have a chan
+// with the game rooms status changes.
+type RoomStorageStatusWatcher interface {
+	// ResultChan returns the channel where the changes will be forwarded.
+	ResultChan() chan game_room.StatusEvent
+	// Stop stops the watcher.
+	Stop()
 }
