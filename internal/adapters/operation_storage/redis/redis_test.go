@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"sync/atomic"
 	"testing"
+	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/orlangure/gnomock"
 	predis "github.com/orlangure/gnomock/preset/redis"
 	"github.com/stretchr/testify/require"
@@ -28,7 +29,7 @@ func getRedisConnection(t *testing.T) *redis.Client {
 	})
 
 	t.Cleanup(func() {
-		client.FlushDB()
+		client.FlushDB(context.Background())
 	})
 
 	return client
@@ -64,11 +65,11 @@ func TestCreateOperation(t *testing.T) {
 		err := storage.CreateOperation(context.Background(), op, contents)
 		require.NoError(t, err)
 
-		opID, err := client.LPop(storage.buildSchedulerPendingOperationsKey(op.SchedulerName)).Result()
+		opID, err := client.LPop(context.Background(), storage.buildSchedulerPendingOperationsKey(op.SchedulerName)).Result()
 		require.NoError(t, err)
 		require.Equal(t, op.ID, opID)
 
-		operationStored, err := client.HGetAll(storage.buildSchedulerOperationKey(op.SchedulerName, opID)).Result()
+		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, opID)).Result()
 		require.NoError(t, err)
 		require.Equal(t, op.ID, operationStored[idRedisKey])
 		require.Equal(t, op.SchedulerName, operationStored[schedulerNameRedisKey])
@@ -145,5 +146,77 @@ func TestGetOperation(t *testing.T) {
 		require.ErrorIs(t, errors.ErrUnexpected, err)
 		require.Nil(t, operationStored)
 		require.Nil(t, definitionContents)
+	})
+}
+
+func TestNextSchedulerOperationID(t *testing.T) {
+	t.Run("successfully receives the operation", func(t *testing.T) {
+		client := getRedisConnection(t)
+		storage := NewRedisOperationStorage(client)
+
+		op := &operation.Operation{
+			ID:             "some-op-id",
+			SchedulerName:  "test-scheduler",
+			Status:         operation.StatusPending,
+			DefinitionName: "test-definition",
+		}
+
+		contents := []byte("hello test")
+		err := storage.CreateOperation(context.Background(), op, contents)
+		require.NoError(t, err)
+
+		opID, err := storage.NextSchedulerOperationID(context.Background(), op.SchedulerName)
+		require.NoError(t, err)
+		require.Equal(t, op.ID, opID)
+	})
+
+	t.Run("failed with context canceled", func(t *testing.T) {
+		client := getRedisConnection(t)
+		storage := NewRedisOperationStorage(client)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		nextWait := make(chan error)
+
+		go func() {
+			_, err := storage.NextSchedulerOperationID(ctx, "some-random-scheduler")
+			nextWait <- err
+		}()
+
+		cancel()
+
+		require.Eventually(t, func() bool {
+			select {
+			case err := <-nextWait:
+				require.Error(t, err)
+				return true
+			default:
+			}
+
+			return false
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("failed redis connection", func(t *testing.T) {
+		client := getRedisConnection(t)
+		storage := NewRedisOperationStorage(client)
+
+		nextWait := make(chan error)
+		go func() {
+			_, err := storage.NextSchedulerOperationID(context.Background(), "some-random-scheduler")
+			nextWait <- err
+		}()
+
+		client.Close()
+
+		require.Eventually(t, func() bool {
+			select {
+			case err := <-nextWait:
+				require.Error(t, err)
+				return true
+			default:
+			}
+
+			return false
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 }

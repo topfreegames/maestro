@@ -6,12 +6,15 @@ require (
 	cloud.google.com/go v0.65.0
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/DataDog/datadog-go v0.0.0-20170427165718-0ddda6bee211
+	github.com/DataDog/sketches-go v0.0.0-20190923095040-43f19ad77ff7 // indirect
 	github.com/GuiaBolso/darwin v0.0.0-20170210191649-86919dfcf808
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
+	github.com/benbjohnson/clock v1.0.0 // indirect
 	github.com/bsm/redis-lock v6.0.0+incompatible
 	github.com/btcsuite/btcutil v0.0.0-20180706230648-ab6388e0c60a
 	github.com/certifi/gocertifi v0.0.0-20170417193930-a9c833d2837d
+	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/client9/misspell v0.3.4 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/evanphx/json-patch v4.9.0+incompatible
@@ -21,6 +24,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-pg/pg v6.13.2+incompatible
 	github.com/go-redis/redis v6.15.9+incompatible
+	github.com/go-redis/redis/v8 v8.10.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.5.0
@@ -53,8 +57,8 @@ require (
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/newrelic/go-agent v1.9.0
 	github.com/nxadm/tail v1.4.8 // indirect
-	github.com/onsi/ginkgo v1.11.0
-	github.com/onsi/gomega v1.7.0
+	github.com/onsi/ginkgo v1.15.0
+	github.com/onsi/gomega v1.10.5
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/orlangure/gnomock v0.14.1
 	github.com/pelletier/go-toml v1.7.0
