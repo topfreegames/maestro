@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -35,10 +35,10 @@ func NewRedisOperationStorage(client *redis.Client) *redisOperationStorage {
 // CreateOperation marshal and pushes the operation to the scheduler pending
 // operations list.
 func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operation.Operation, definitionContents []byte) error {
-	pipe := r.client.WithContext(ctx).Pipeline()
-	pipe.RPush(r.buildSchedulerPendingOperationsKey(op.SchedulerName), op.ID)
+	pipe := r.client.Pipeline()
+	pipe.RPush(ctx, r.buildSchedulerPendingOperationsKey(op.SchedulerName), op.ID)
 	// TODO(gabrielcorado): consider moving to go-redis v4 to avoid using HMSet.
-	pipe.HMSet(r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+	pipe.HMSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
 		idRedisKey:                 op.ID,
 		schedulerNameRedisKey:      op.SchedulerName,
 		statusRedisKey:             strconv.Itoa(int(op.Status)),
@@ -46,18 +46,18 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 		definitionContentsRedisKey: definitionContents,
 	})
 
-	_, err := pipe.Exec()
+	_, err := pipe.Exec(ctx)
 	if err != nil {
-		return errors.NewErrUnexpected("failed to create operation on redis: %s", err)
+		return errors.NewErrUnexpected("failed to create operation on redis").WithError(err)
 	}
 
 	return nil
 }
 
 func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, []byte, error) {
-	res, err := r.client.WithContext(ctx).HGetAll(fmt.Sprintf("operations:%s:%s", schedulerName, operationID)).Result()
+	res, err := r.client.HGetAll(ctx, fmt.Sprintf("operations:%s:%s", schedulerName, operationID)).Result()
 	if err != nil {
-		return nil, nil, errors.NewErrUnexpected("failed to fetch operation: %s", err)
+		return nil, nil, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
 	}
 
 	if len(res) == 0 {
@@ -66,17 +66,30 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 
 	statusInt, err := strconv.Atoi(res[statusRedisKey])
 	if err != nil {
-		return nil, nil, errors.NewErrEncoding("failed to parse operation status: %s", err)
+		return nil, nil, errors.NewErrEncoding("failed to parse operation status").WithError(err)
 	}
 
 	op := &operation.Operation{
-		ID: res[idRedisKey],
-		SchedulerName: res[schedulerNameRedisKey],
+		ID:             res[idRedisKey],
+		SchedulerName:  res[schedulerNameRedisKey],
 		DefinitionName: res[definitionNameRedisKey],
-		Status: operation.Status(statusInt),
+		Status:         operation.Status(statusInt),
 	}
 
 	return op, []byte(res[definitionContentsRedisKey]), nil
+}
+
+func (r *redisOperationStorage) NextSchedulerOperationID(ctx context.Context, schedulerName string) (string, error) {
+	opIDs, err := r.client.BLPop(ctx, 0, r.buildSchedulerPendingOperationsKey(schedulerName)).Result()
+	if err != nil {
+		return "", errors.NewErrUnexpected("failed to fetch next scheduler operation").WithError(err)
+	}
+
+	if len(opIDs) == 0 {
+		return "", errors.NewErrNotFound("scheduler \"%s\" has no operations", schedulerName)
+	}
+
+	return opIDs[1], nil
 }
 
 func (r *redisOperationStorage) buildSchedulerOperationKey(schedulerName, opID string) string {

@@ -62,3 +62,13 @@ func (o *OperationManager) GetOperation(ctx context.Context, schedulerName, oper
 
 	return op, definition, nil
 }
+
+// NextSchedulerOperation returns the next scheduler operation to be processed.
+func (o *OperationManager) NextSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, operation.Definition, error) {
+	operationID, err := o.storage.NextSchedulerOperationID(ctx, schedulerName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to retrieve the next operation: %w", err)
+	}
+
+	return o.GetOperation(ctx, schedulerName, operationID)
+}

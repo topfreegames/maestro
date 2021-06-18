@@ -175,3 +175,80 @@ func TestGetOperation(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestNextSchedulerOperation(t *testing.T) {
+	t.Run("fetch operation", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		defFunc := func() operation.Definition { return &testOperationDefinition{} }
+		registry := operations_registry.NewRegistry()
+		registry.Register(defFunc().Name(), defFunc)
+
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		opManager := NewWithRegistry(operationStorage, registry)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := "some-op-id"
+
+		operationStorage.EXPECT().NextSchedulerOperationID(ctx, schedulerName).Return(operationID, nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
+			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
+			[]byte{},
+			nil,
+		)
+
+		op, definition, err := opManager.NextSchedulerOperation(ctx, schedulerName)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+		require.Equal(t, operationID, op.ID)
+		require.Equal(t, schedulerName, op.SchedulerName)
+		require.IsType(t, defFunc(), definition)
+	})
+
+	t.Run("no next operation", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		defFunc := func() operation.Definition { return &testOperationDefinition{} }
+		registry := operations_registry.NewRegistry()
+		registry.Register(defFunc().Name(), defFunc)
+
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		opManager := NewWithRegistry(operationStorage, registry)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationStorage.EXPECT().NextSchedulerOperationID(ctx, schedulerName).Return("", porterrors.ErrUnexpected)
+
+		_, _, err := opManager.NextSchedulerOperation(ctx, schedulerName)
+		require.Error(t, err)
+	})
+
+	t.Run("operation not found", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		defFunc := func() operation.Definition { return &testOperationDefinition{} }
+		registry := operations_registry.NewRegistry()
+		registry.Register(defFunc().Name(), defFunc)
+
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		opManager := NewWithRegistry(operationStorage, registry)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := "some-op-id"
+
+		operationStorage.EXPECT().NextSchedulerOperationID(ctx, schedulerName).Return(operationID, nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
+			nil,
+			[]byte{},
+			porterrors.ErrNotFound,
+		)
+
+		_, _, err := opManager.NextSchedulerOperation(ctx, schedulerName)
+		require.Error(t, err)
+	})
+}
