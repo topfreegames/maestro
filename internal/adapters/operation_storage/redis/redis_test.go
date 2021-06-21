@@ -13,6 +13,7 @@ import (
 	"github.com/orlangure/gnomock"
 	predis "github.com/orlangure/gnomock/preset/redis"
 	"github.com/stretchr/testify/require"
+	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 )
@@ -52,7 +53,8 @@ func TestMain(m *testing.M) {
 func TestCreateOperation(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		client := getRedisConnection(t)
-		storage := NewRedisOperationStorage(client)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationStorage(client, clock)
 
 		op := &operation.Operation{
 			ID:             "some-op-id",
@@ -83,7 +85,8 @@ func TestCreateOperation(t *testing.T) {
 
 	t.Run("fails on redis", func(t *testing.T) {
 		client := getRedisConnection(t)
-		storage := NewRedisOperationStorage(client)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationStorage(client, clock)
 
 		op := &operation.Operation{
 			ID:             "some-op-id",
@@ -103,7 +106,8 @@ func TestCreateOperation(t *testing.T) {
 func TestGetOperation(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		client := getRedisConnection(t)
-		storage := NewRedisOperationStorage(client)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationStorage(client, clock)
 
 		op := &operation.Operation{
 			ID:             "some-op-id",
@@ -127,7 +131,8 @@ func TestGetOperation(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		client := getRedisConnection(t)
-		storage := NewRedisOperationStorage(client)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationStorage(client, clock)
 
 		operationStored, definitionContents, err := storage.GetOperation(context.Background(), "test-scheduler", "inexistent-id")
 		require.ErrorIs(t, errors.ErrNotFound, err)
@@ -137,7 +142,8 @@ func TestGetOperation(t *testing.T) {
 
 	t.Run("fails on redis", func(t *testing.T) {
 		client := getRedisConnection(t)
-		storage := NewRedisOperationStorage(client)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationStorage(client, clock)
 
 		// "drop" redis connection
 		client.Close()
@@ -152,7 +158,8 @@ func TestGetOperation(t *testing.T) {
 func TestNextSchedulerOperationID(t *testing.T) {
 	t.Run("successfully receives the operation", func(t *testing.T) {
 		client := getRedisConnection(t)
-		storage := NewRedisOperationStorage(client)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationStorage(client, clock)
 
 		op := &operation.Operation{
 			ID:             "some-op-id",
@@ -172,7 +179,8 @@ func TestNextSchedulerOperationID(t *testing.T) {
 
 	t.Run("failed with context canceled", func(t *testing.T) {
 		client := getRedisConnection(t)
-		storage := NewRedisOperationStorage(client)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationStorage(client, clock)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		nextWait := make(chan error)
@@ -198,7 +206,8 @@ func TestNextSchedulerOperationID(t *testing.T) {
 
 	t.Run("failed redis connection", func(t *testing.T) {
 		client := getRedisConnection(t)
-		storage := NewRedisOperationStorage(client)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationStorage(client, clock)
 
 		nextWait := make(chan error)
 		go func() {
@@ -218,5 +227,34 @@ func TestNextSchedulerOperationID(t *testing.T) {
 
 			return false
 		}, 5*time.Second, 100*time.Millisecond)
+	})
+}
+
+func TestSetActiveOperation(t *testing.T) {
+	t.Run("set operation as active", func (t *testing.T) {
+		client := getRedisConnection(t)
+		now := time.Now()
+		clock := clockmock.NewFakeClock(now)
+		storage := NewRedisOperationStorage(client, clock)
+
+		op := &operation.Operation{
+			ID:             "some-op-id",
+			SchedulerName:  "test-scheduler",
+			Status:         operation.StatusInProgress,
+		}
+
+		err := storage.SetOperationActive(context.Background(), op)
+		require.NoError(t, err)
+
+		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
+		require.NoError(t, err)
+
+		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
+		require.NoError(t, err)
+		require.Equal(t, op.Status, operation.Status(intStatus))
+
+		score, err := client.ZScore(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), op.ID).Result()
+		require.NoError(t, err)
+		require.Equal(t, float64(now.Unix()), score)
 	})
 }
