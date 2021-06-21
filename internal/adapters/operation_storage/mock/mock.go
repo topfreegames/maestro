@@ -65,6 +65,21 @@ func (mr *MockOperationStorageMockRecorder) GetOperation(ctx, schedulerName, ope
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOperation", reflect.TypeOf((*MockOperationStorage)(nil).GetOperation), ctx, schedulerName, operationID)
 }
 
+// ListSchedulerActiveOperations mocks base method.
+func (m *MockOperationStorage) ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSchedulerActiveOperations", ctx, schedulerName)
+	ret0, _ := ret[0].([]*operation.Operation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSchedulerActiveOperations indicates an expected call of ListSchedulerActiveOperations.
+func (mr *MockOperationStorageMockRecorder) ListSchedulerActiveOperations(ctx, schedulerName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSchedulerActiveOperations", reflect.TypeOf((*MockOperationStorage)(nil).ListSchedulerActiveOperations), ctx, schedulerName)
+}
+
 // NextSchedulerOperationID mocks base method.
 func (m *MockOperationStorage) NextSchedulerOperationID(ctx context.Context, schedulerName string) (string, error) {
 	m.ctrl.T.Helper()

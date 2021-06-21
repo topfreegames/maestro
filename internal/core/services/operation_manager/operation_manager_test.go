@@ -270,3 +270,26 @@ func TestStartOperation(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestListActiveOperations(t *testing.T) {
+	t.Run("lists", func (t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		opManager := NewWithRegistry(operationStorage, operations_registry.NewRegistry())
+
+		ctx := context.Background()
+		operationsResult := []*operation.Operation{
+			{ID: uuid.NewString()},
+			{ID: uuid.NewString()},
+			{ID: uuid.NewString()},
+		}
+
+		schedulerName := "test-scheduler"
+		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
+		operations, err := opManager.ListActiveOperations(ctx, schedulerName)
+		require.NoError(t, err)
+		require.ElementsMatch(t, operationsResult, operations)
+	})
+}
