@@ -79,3 +79,17 @@ func (mr *MockOperationStorageMockRecorder) NextSchedulerOperationID(ctx, schedu
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextSchedulerOperationID", reflect.TypeOf((*MockOperationStorage)(nil).NextSchedulerOperationID), ctx, schedulerName)
 }
+
+// SetOperationActive mocks base method.
+func (m *MockOperationStorage) SetOperationActive(ctx context.Context, operation *operation.Operation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetOperationActive", ctx, operation)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetOperationActive indicates an expected call of SetOperationActive.
+func (mr *MockOperationStorageMockRecorder) SetOperationActive(ctx, operation interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetOperationActive", reflect.TypeOf((*MockOperationStorage)(nil).SetOperationActive), ctx, operation)
+}

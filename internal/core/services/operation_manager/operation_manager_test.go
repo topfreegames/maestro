@@ -24,18 +24,19 @@ func (d *testOperationDefinition) Marshal() []byte            { return d.marshal
 func (d *testOperationDefinition) Unmarshal(raw []byte) error { return d.unmarshalResult }
 func (d *testOperationDefinition) Name() string               { return "testOperationDefinition" }
 
-type newOpMatcher struct {
+type opMatcher struct {
+	status operation.Status
 	def operation.Definition
 }
 
-func (m *newOpMatcher) Matches(x interface{}) bool {
+func (m *opMatcher) Matches(x interface{}) bool {
 	op, _ := x.(*operation.Operation)
 	_, err := uuid.Parse(op.ID)
-	return err == nil && op.Status == operation.StatusPending && m.def.Name() == op.DefinitionName
+	return err == nil && op.Status == m.status && m.def.Name() == op.DefinitionName
 }
 
-func (m *newOpMatcher) String() string {
-	return fmt.Sprintf("a new operation with definition \"%s\"", m.def.Name())
+func (m *opMatcher) String() string {
+	return fmt.Sprintf("a operation with definition \"%s\"", m.def.Name())
 }
 
 func TestCreateOperation(t *testing.T) {
@@ -62,7 +63,7 @@ func TestCreateOperation(t *testing.T) {
 
 			ctx := context.Background()
 			testDefinition, _ := test.definition.(*testOperationDefinition)
-			operationStorage.EXPECT().CreateOperation(ctx, &newOpMatcher{test.definition}, testDefinition.marshalResult).Return(test.storageErr)
+			operationStorage.EXPECT().CreateOperation(ctx, &opMatcher{operation.StatusPending, test.definition}, testDefinition.marshalResult).Return(test.storageErr)
 
 			op, err := opManager.CreateOperation(ctx, test.definition)
 			if test.storageErr != nil {
@@ -250,5 +251,22 @@ func TestNextSchedulerOperation(t *testing.T) {
 
 		_, _, err := opManager.NextSchedulerOperation(ctx, schedulerName)
 		require.Error(t, err)
+	})
+}
+
+func TestStartOperation(t *testing.T) {
+	t.Run("sets active", func (t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		opManager := NewWithRegistry(operationStorage, operations_registry.NewRegistry())
+
+		ctx := context.Background()
+		op := &operation.Operation{ID: uuid.NewString(), DefinitionName: (&testOperationDefinition{}).Name()}
+
+		operationStorage.EXPECT().SetOperationActive(ctx, &opMatcher{operation.StatusInProgress, &testOperationDefinition{}}).Return(nil)
+		err := opManager.StartOperation(ctx, op)
+		require.NoError(t, err)
 	})
 }
