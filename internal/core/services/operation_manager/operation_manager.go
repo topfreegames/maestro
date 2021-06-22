@@ -84,3 +84,12 @@ func (o *OperationManager) StartOperation(ctx context.Context, op *operation.Ope
 
 	return nil
 }
+
+func (o *OperationManager) ListActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
+	operations, err := o.storage.ListSchedulerActiveOperations(ctx, schedulerName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all active operations: %w", err)
+	}
+
+	return operations, nil
+}

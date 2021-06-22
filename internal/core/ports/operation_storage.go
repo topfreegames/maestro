@@ -15,4 +15,6 @@ type OperationStorage interface {
 	NextSchedulerOperationID(ctx context.Context, schedulerName string) (string, error)
 	// SetActiveOperaiton sets operation as active.
 	SetOperationActive(ctx context.Context, operation *operation.Operation) error
+	// ListSchedulerActiveOperations list scheduler active operations.
+	ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
 }
