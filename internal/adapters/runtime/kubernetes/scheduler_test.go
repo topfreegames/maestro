@@ -17,6 +17,8 @@ import (
 )
 
 func TestSchedulerCreation(t *testing.T) {
+	t.Parallel()
+
 	c, err := gnomock.Start(
 		k3s.Preset(k3s.WithVersion("v1.16.15")),
 	)
@@ -35,6 +37,7 @@ func TestSchedulerCreation(t *testing.T) {
 
 	kubernetesRuntime := New(client)
 	t.Run("create single scheduler", func(t *testing.T) {
+		t.Parallel()
 		scheduler := &entities.Scheduler{Name: "single-scheduler-test"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
@@ -44,6 +47,7 @@ func TestSchedulerCreation(t *testing.T) {
 	})
 
 	t.Run("fail to create scheduler with the same name", func(t *testing.T) {
+		t.Parallel()
 		scheduler := &entities.Scheduler{Name: "conflict-scheduler-test"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
@@ -55,6 +59,8 @@ func TestSchedulerCreation(t *testing.T) {
 }
 
 func TestSchedulerDeletion(t *testing.T) {
+	t.Parallel()
+
 	c, err := gnomock.Start(
 		k3s.Preset(k3s.WithVersion("v1.16.15")),
 	)
@@ -73,7 +79,8 @@ func TestSchedulerDeletion(t *testing.T) {
 
 	kubernetesRuntime := New(client)
 	t.Run("delete scheduler", func(t *testing.T) {
-		scheduler := &entities.Scheduler{Name: "scheduler-test"}
+		t.Parallel()
+		scheduler := &entities.Scheduler{Name: "delete-scheduler-test"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
@@ -86,7 +93,8 @@ func TestSchedulerDeletion(t *testing.T) {
 	})
 
 	t.Run("fail to delete inexistent scheduler", func(t *testing.T) {
-		scheduler := &entities.Scheduler{Name: "conflict-scheduler-test"}
+		t.Parallel()
+		scheduler := &entities.Scheduler{Name: "delete-inexistent-scheduler-test"}
 		err = kubernetesRuntime.DeleteScheduler(ctx, scheduler)
 		require.Error(t, err)
 		require.ErrorIs(t, err, errors.ErrNotFound)

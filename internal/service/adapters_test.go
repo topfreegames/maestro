@@ -28,11 +28,11 @@ func getRedisUrl(t *testing.T) string {
 
 func TestOperationStorageRedis(t *testing.T) {
 	t.Parallel()
-
 	clock, err := NewClockTime()
 	require.NoError(t, err)
 
 	t.Run("with valid redis", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -47,6 +47,7 @@ func TestOperationStorageRedis(t *testing.T) {
 
 
 	t.Run("with invalid redis", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -60,6 +61,7 @@ func TestOperationStorageRedis(t *testing.T) {
 	})
 
 	t.Run("with invalid configuration", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -74,6 +76,7 @@ func TestRoomStorageRedis(t *testing.T) {
 	t.Parallel()
 
 	t.Run("with valid redis", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -87,6 +90,7 @@ func TestRoomStorageRedis(t *testing.T) {
 	})
 
 	t.Run("with invalid redis", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -100,6 +104,7 @@ func TestRoomStorageRedis(t *testing.T) {
 	})
 
 	t.Run("with invalid configuration", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -114,6 +119,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 	t.Parallel()
 
 	t.Run("with valid redis", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -128,6 +134,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 	})
 
 	t.Run("with invalid redis", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -142,6 +149,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 	})
 
 	t.Run("with invalid configuration", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -156,6 +164,7 @@ func TestPortAllocatorRandom(t *testing.T) {
 	t.Parallel()
 
 	t.Run("with valid range", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -169,6 +178,7 @@ func TestPortAllocatorRandom(t *testing.T) {
 	})
 
 	t.Run("with invalid range", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -184,6 +194,7 @@ func TestSchedulerStoragePostgres(t *testing.T) {
 	t.Parallel()
 
 	t.Run("with valid configuration", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
@@ -194,6 +205,7 @@ func TestSchedulerStoragePostgres(t *testing.T) {
 	})
 
 	t.Run("with invalid configuration", func(t *testing.T) {
+		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
