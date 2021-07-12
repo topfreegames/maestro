@@ -34,7 +34,7 @@ const (
 	instanceStorageRedisUrlPath = "adapters.instanceStorage.redis.url"
 	instanceStorageRedisScanSizePath = "adapters.instanceStorage.redis.scanSize"
 	// Random port allocator
-	portAllocatorRandomRangePath = "adapters.portallocator.random.range"
+	portAllocatorRandomRangePath = "adapters.portAllocator.random.range"
 	// Postgres scheduler storage
 	schedulerStoragePostgresUrlPath = "adapters.schedulerStorage.postgres.url"
 )
