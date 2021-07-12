@@ -31,8 +31,8 @@ const (
 	// Redis room storage
 	roomStorageRedisUrlPath = "adapters.roomStorage.redis.url"
 	// Redis instance storage
-	instanceStorageRedisUrlPath = "adapters.intanceStorage.redis.url"
-	instanceStorageRedisScanSizePath = "adapters.intanceStorage.redis.scanSize"
+	instanceStorageRedisUrlPath = "adapters.instanceStorage.redis.url"
+	instanceStorageRedisScanSizePath = "adapters.instanceStorage.redis.scanSize"
 	// Random port allocator
 	portAllocatorRandomRangePath = "adapters.portallocator.random.range"
 	// Postgres scheduler storage
