@@ -5,18 +5,18 @@ import (
 	"fmt"
 
 	"github.com/go-pg/pg"
-	legacyredis "github.com/go-redis/redis"
+	legacyRedis "github.com/go-redis/redis"
 	"github.com/go-redis/redis/v8"
-	clocktime "github.com/topfreegames/maestro/internal/adapters/clock/time"
-	instancestorageredis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
-	operationstorageredis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
-	roomstorageredis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
-	kubernetesruntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
-	portallocatorrandom "github.com/topfreegames/maestro/internal/adapters/port_allocator/random"
-	schedulerstoragepg "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/pg"
+	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
+	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
+	operationStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
+	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/port_allocator/random"
+	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
+	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
+	schedulerStoragePg "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/pg"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -31,7 +31,7 @@ const (
 	// Redis room storage
 	roomStorageRedisUrlPath = "adapters.roomStorage.redis.url"
 	// Redis instance storage
-	instanceStorageRedisUrlPath = "adapters.instanceStorage.redis.url"
+	instanceStorageRedisUrlPath      = "adapters.instanceStorage.redis.url"
 	instanceStorageRedisScanSizePath = "adapters.instanceStorage.redis.scanSize"
 	// Random port allocator
 	portAllocatorRandomRangePath = "adapters.portAllocator.random.range"
@@ -49,7 +49,7 @@ func NewRuntimeKubernetes(ctx context.Context, c config.Config) (ports.Runtime, 
 		return nil, fmt.Errorf("failed to initialize Kubernetes runtime: %w", err)
 	}
 
-	return kubernetesruntime.New(clientset), nil
+	return kubernetesRuntime.New(clientset), nil
 }
 
 func NewOperationStorageRedis(ctx context.Context, clock ports.Clock, c config.Config) (ports.OperationStorage, error) {
@@ -58,7 +58,7 @@ func NewOperationStorageRedis(ctx context.Context, clock ports.Clock, c config.C
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	return operationstorageredis.NewRedisOperationStorage(client, clock), nil
+	return operationStorageRedis.NewRedisOperationStorage(client, clock), nil
 }
 
 func NewRoomStorageRedis(ctx context.Context, c config.Config) (ports.RoomStorage, error) {
@@ -67,7 +67,7 @@ func NewRoomStorageRedis(ctx context.Context, c config.Config) (ports.RoomStorag
 		return nil, fmt.Errorf("failed to initialize Redis room storage: %w", err)
 	}
 
-	return roomstorageredis.NewRedisStateStorage(client), nil
+	return roomStorageRedis.NewRedisStateStorage(client), nil
 }
 
 func NewGameRoomInstanceStorageRedis(ctx context.Context, c config.Config) (ports.GameRoomInstanceStorage, error) {
@@ -76,11 +76,11 @@ func NewGameRoomInstanceStorageRedis(ctx context.Context, c config.Config) (port
 		return nil, fmt.Errorf("failed to initialize Redis instance storage: %w", err)
 	}
 
-	return instancestorageredis.NewRedisInstanceStorage(client, c.GetInt(instanceStorageRedisScanSizePath)), nil
+	return instanceStorageRedis.NewRedisInstanceStorage(client, c.GetInt(instanceStorageRedisScanSizePath)), nil
 }
 
 func NewClockTime() (ports.Clock, error) {
-	return clocktime.NewClock(), nil
+	return clockTime.NewClock(), nil
 }
 
 func NewPortAllocatorRandom(c config.Config) (ports.PortAllocator, error) {
@@ -89,7 +89,7 @@ func NewPortAllocatorRandom(c config.Config) (ports.PortAllocator, error) {
 		return nil, fmt.Errorf("failed to initialize random port allocator: %w", err)
 	}
 
-	return portallocatorrandom.NewRandomPortAllocator(portRange), nil
+	return portAllocatorRandom.NewRandomPortAllocator(portRange), nil
 }
 
 func NewSchedulerStoragePg(ctx context.Context, c config.Config) (ports.SchedulerStorage, error) {
@@ -98,7 +98,7 @@ func NewSchedulerStoragePg(ctx context.Context, c config.Config) (ports.Schedule
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
 
-	return schedulerstoragepg.NewSchedulerStorage(opts), nil
+	return schedulerStoragePg.NewSchedulerStorage(opts), nil
 }
 
 func createRedisClient(ctx context.Context, url string) (*redis.Client, error) {
@@ -112,13 +112,13 @@ func createRedisClient(ctx context.Context, url string) (*redis.Client, error) {
 
 // NOTE: We need this because some of our adapters are still using the old
 // version.
-func createLegacyRedisClient(ctx context.Context, url string) (*legacyredis.Client, error) {
-	opts, err := legacyredis.ParseURL(url)
+func createLegacyRedisClient(ctx context.Context, url string) (*legacyRedis.Client, error) {
+	opts, err := legacyRedis.ParseURL(url)
 	if err != nil {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
 	}
 
-	return legacyredis.NewClient(opts), nil
+	return legacyRedis.NewClient(opts), nil
 }
 
 func connectToPostgres(ctx context.Context, url string) (*pg.Options, error) {
