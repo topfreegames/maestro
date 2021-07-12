@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/go-pg/pg"
@@ -39,9 +38,8 @@ const (
 	schedulerStoragePostgresUrlPath = "adapters.schedulerStorage.postgres.url"
 )
 
-func NewRuntimeKubernetes(ctx context.Context, c config.Config) (ports.Runtime, error) {
+func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 	clientset, err := createKubernetesClient(
-		ctx,
 		c.GetString(runtimeKubernetesMasterUrlPath),
 		c.GetString(runtimeKubernetesKubeconfigPath),
 	)
@@ -52,8 +50,8 @@ func NewRuntimeKubernetes(ctx context.Context, c config.Config) (ports.Runtime, 
 	return kubernetesRuntime.New(clientset), nil
 }
 
-func NewOperationStorageRedis(ctx context.Context, clock ports.Clock, c config.Config) (ports.OperationStorage, error) {
-	client, err := createRedisClient(ctx, c.GetString(operationStorageRedisUrlPath))
+func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.OperationStorage, error) {
+	client, err := createRedisClient(c.GetString(operationStorageRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
@@ -61,8 +59,8 @@ func NewOperationStorageRedis(ctx context.Context, clock ports.Clock, c config.C
 	return operationStorageRedis.NewRedisOperationStorage(client, clock), nil
 }
 
-func NewRoomStorageRedis(ctx context.Context, c config.Config) (ports.RoomStorage, error) {
-	client, err := createLegacyRedisClient(ctx, c.GetString(roomStorageRedisUrlPath))
+func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
+	client, err := createLegacyRedisClient(c.GetString(roomStorageRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis room storage: %w", err)
 	}
@@ -70,8 +68,8 @@ func NewRoomStorageRedis(ctx context.Context, c config.Config) (ports.RoomStorag
 	return roomStorageRedis.NewRedisStateStorage(client), nil
 }
 
-func NewGameRoomInstanceStorageRedis(ctx context.Context, c config.Config) (ports.GameRoomInstanceStorage, error) {
-	client, err := createLegacyRedisClient(ctx, c.GetString(instanceStorageRedisUrlPath))
+func NewGameRoomInstanceStorageRedis(c config.Config) (ports.GameRoomInstanceStorage, error) {
+	client, err := createLegacyRedisClient(c.GetString(instanceStorageRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis instance storage: %w", err)
 	}
@@ -79,8 +77,8 @@ func NewGameRoomInstanceStorageRedis(ctx context.Context, c config.Config) (port
 	return instanceStorageRedis.NewRedisInstanceStorage(client, c.GetInt(instanceStorageRedisScanSizePath)), nil
 }
 
-func NewClockTime() (ports.Clock, error) {
-	return clockTime.NewClock(), nil
+func NewClockTime() ports.Clock {
+	return clockTime.NewClock()
 }
 
 func NewPortAllocatorRandom(c config.Config) (ports.PortAllocator, error) {
@@ -92,8 +90,8 @@ func NewPortAllocatorRandom(c config.Config) (ports.PortAllocator, error) {
 	return portAllocatorRandom.NewRandomPortAllocator(portRange), nil
 }
 
-func NewSchedulerStoragePg(ctx context.Context, c config.Config) (ports.SchedulerStorage, error) {
-	opts, err := connectToPostgres(ctx, c.GetString(schedulerStoragePostgresUrlPath))
+func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
+	opts, err := connectToPostgres(c.GetString(schedulerStoragePostgresUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
@@ -101,7 +99,7 @@ func NewSchedulerStoragePg(ctx context.Context, c config.Config) (ports.Schedule
 	return schedulerStoragePg.NewSchedulerStorage(opts), nil
 }
 
-func createRedisClient(ctx context.Context, url string) (*redis.Client, error) {
+func createRedisClient(url string) (*redis.Client, error) {
 	opts, err := redis.ParseURL(url)
 	if err != nil {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
@@ -112,7 +110,7 @@ func createRedisClient(ctx context.Context, url string) (*redis.Client, error) {
 
 // NOTE: We need this because some of our adapters are still using the old
 // version.
-func createLegacyRedisClient(ctx context.Context, url string) (*legacyRedis.Client, error) {
+func createLegacyRedisClient(url string) (*legacyRedis.Client, error) {
 	opts, err := legacyRedis.ParseURL(url)
 	if err != nil {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
@@ -121,7 +119,7 @@ func createLegacyRedisClient(ctx context.Context, url string) (*legacyRedis.Clie
 	return legacyRedis.NewClient(opts), nil
 }
 
-func connectToPostgres(ctx context.Context, url string) (*pg.Options, error) {
+func connectToPostgres(url string) (*pg.Options, error) {
 	opts, err := pg.ParseURL(url)
 	if err != nil {
 		return nil, fmt.Errorf("invalid postgres URL: %w", err)
@@ -130,7 +128,7 @@ func connectToPostgres(ctx context.Context, url string) (*pg.Options, error) {
 	return opts, nil
 }
 
-func createKubernetesClient(ctx context.Context, masterUrl, kubeconfigPath string) (kubernetes.Interface, error) {
+func createKubernetesClient(masterUrl, kubeconfigPath string) (kubernetes.Interface, error) {
 	// NOTE: if neither masterUrl or kubeconfigPath are not passed, this will
 	// fallback to in cluster config.
 	kubeconfig, err := clientcmd.BuildConfigFromFlags(masterUrl, kubeconfigPath)

@@ -28,8 +28,7 @@ func getRedisUrl(t *testing.T) string {
 
 func TestOperationStorageRedis(t *testing.T) {
 	t.Parallel()
-	clock, err := NewClockTime()
-	require.NoError(t, err)
+	clock := NewClockTime()
 
 	t.Run("with valid redis", func(t *testing.T) {
 		t.Parallel()
@@ -38,13 +37,12 @@ func TestOperationStorageRedis(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisUrlPath).Return(getRedisUrl(t))
-		opStorage, err := NewOperationStorageRedis(context.Background(), clock, config)
+		opStorage, err := NewOperationStorageRedis(clock, config)
 		require.NoError(t, err)
 
 		_, _, err = opStorage.GetOperation(context.Background(), "", "")
 		require.ErrorIs(t, err, errors.ErrNotFound)
 	})
-
 
 	t.Run("with invalid redis", func(t *testing.T) {
 		t.Parallel()
@@ -53,7 +51,7 @@ func TestOperationStorageRedis(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisUrlPath).Return("redis://somewhere-in-the-world:6379")
-		opStorage, err := NewOperationStorageRedis(context.Background(), clock, config)
+		opStorage, err := NewOperationStorageRedis(clock, config)
 		require.NoError(t, err)
 
 		_, _, err = opStorage.GetOperation(context.Background(), "", "")
@@ -67,7 +65,7 @@ func TestOperationStorageRedis(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisUrlPath).Return("")
-		_, err := NewOperationStorageRedis(context.Background(), clock, config)
+		_, err := NewOperationStorageRedis(clock, config)
 		require.Error(t, err)
 	})
 }
@@ -82,7 +80,7 @@ func TestRoomStorageRedis(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(roomStorageRedisUrlPath).Return(getRedisUrl(t))
-		roomStorage, err := NewRoomStorageRedis(context.Background(), config)
+		roomStorage, err := NewRoomStorageRedis(config)
 		require.NoError(t, err)
 
 		_, err = roomStorage.GetRoom(context.Background(), "", "")
@@ -96,7 +94,7 @@ func TestRoomStorageRedis(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(roomStorageRedisUrlPath).Return("redis://somewhere-in-the-world:6379")
-		roomStorage, err := NewRoomStorageRedis(context.Background(), config)
+		roomStorage, err := NewRoomStorageRedis(config)
 		require.NoError(t, err)
 
 		_, err = roomStorage.GetRoom(context.Background(), "", "")
@@ -110,7 +108,7 @@ func TestRoomStorageRedis(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(roomStorageRedisUrlPath).Return("")
-		_, err := NewRoomStorageRedis(context.Background(), config)
+		_, err := NewRoomStorageRedis(config)
 		require.Error(t, err)
 	})
 }
@@ -126,7 +124,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 
 		config.EXPECT().GetString(instanceStorageRedisUrlPath).Return(getRedisUrl(t))
 		config.EXPECT().GetInt(instanceStorageRedisScanSizePath).Return(10)
-		instanceStorage, err := NewGameRoomInstanceStorageRedis(context.Background(), config)
+		instanceStorage, err := NewGameRoomInstanceStorageRedis(config)
 		require.NoError(t, err)
 
 		_, err = instanceStorage.GetInstance(context.Background(), "", "")
@@ -141,7 +139,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 
 		config.EXPECT().GetString(instanceStorageRedisUrlPath).Return("redis://somewhere-in-the-world:6379")
 		config.EXPECT().GetInt(instanceStorageRedisScanSizePath).Return(10)
-		instanceStorage, err := NewGameRoomInstanceStorageRedis(context.Background(), config)
+		instanceStorage, err := NewGameRoomInstanceStorageRedis(config)
 		require.NoError(t, err)
 
 		_, err = instanceStorage.GetInstance(context.Background(), "", "")
@@ -155,7 +153,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(instanceStorageRedisUrlPath).Return("")
-		_, err := NewGameRoomInstanceStorageRedis(context.Background(), config)
+		_, err := NewGameRoomInstanceStorageRedis(config)
 		require.Error(t, err)
 	})
 }
@@ -200,7 +198,7 @@ func TestSchedulerStoragePostgres(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(schedulerStoragePostgresUrlPath).Return("postgres://somewhere:5432/db")
-		_, err := NewSchedulerStoragePg(context.Background(), config)
+		_, err := NewSchedulerStoragePg(config)
 		require.NoError(t, err)
 	})
 
@@ -211,7 +209,7 @@ func TestSchedulerStoragePostgres(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(schedulerStoragePostgresUrlPath).Return("")
-		_, err := NewSchedulerStoragePg(context.Background(), config)
+		_, err := NewSchedulerStoragePg(config)
 		require.Error(t, err)
 	})
 }
