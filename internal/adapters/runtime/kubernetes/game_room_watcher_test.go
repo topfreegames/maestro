@@ -18,7 +18,6 @@ import (
 )
 
 func TestGameRoomsWatch(t *testing.T) {
-	t.Parallel()
 	c, err := gnomock.Start(
 		k3s.Preset(k3s.WithVersion("v1.16.15")),
 	)
