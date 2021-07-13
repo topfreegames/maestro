@@ -114,7 +114,7 @@ unit-partial-run:
 	@go test -count=1 -tags=unit ./internal/...
 
 integration-partial-run:
-	@go test -tags=integration -count=1 ./internal/...
+	@go test -tags=integration -count=1 -timeout 20m ./internal/...
 
 gather-unit-profiles:
 	@mkdir -p _build
@@ -206,3 +206,4 @@ mocks:
 	@mockgen -source=internal/core/ports/room_storage.go -destination=internal/adapters/room_storage/mock/mock.go -package=mock
 	@mockgen -source=internal/core/ports/instance_storage.go -destination=internal/adapters/instance_storage/mock/mock.go -package=mock
 	@mockgen -source=internal/core/ports/operation_storage.go -destination=internal/adapters/operation_storage/mock/mock.go -package=mock
+	@mockgen -source=internal/config/config.go -destination=internal/config/mock/mock.go -package=mock

@@ -73,7 +73,7 @@ func TestSchedulerDeletion(t *testing.T) {
 
 	kubernetesRuntime := New(client)
 	t.Run("delete scheduler", func(t *testing.T) {
-		scheduler := &entities.Scheduler{Name: "scheduler-test"}
+		scheduler := &entities.Scheduler{Name: "delete-scheduler-test"}
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
@@ -86,7 +86,7 @@ func TestSchedulerDeletion(t *testing.T) {
 	})
 
 	t.Run("fail to delete inexistent scheduler", func(t *testing.T) {
-		scheduler := &entities.Scheduler{Name: "conflict-scheduler-test"}
+		scheduler := &entities.Scheduler{Name: "delete-inexistent-scheduler-test"}
 		err = kubernetesRuntime.DeleteScheduler(ctx, scheduler)
 		require.Error(t, err)
 		require.ErrorIs(t, err, errors.ErrNotFound)
