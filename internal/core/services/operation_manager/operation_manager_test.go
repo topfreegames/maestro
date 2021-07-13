@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
+	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operations_registry"
@@ -26,7 +27,7 @@ func (d *testOperationDefinition) Name() string               { return "testOper
 
 type opMatcher struct {
 	status operation.Status
-	def operation.Definition
+	def operations.Definition
 }
 
 func (m *opMatcher) Matches(x interface{}) bool {
@@ -41,7 +42,7 @@ func (m *opMatcher) String() string {
 
 func TestCreateOperation(t *testing.T) {
 	cases := map[string]struct {
-		definition operation.Definition
+		definition operations.Definition
 		storageErr error
 	}{
 		"create without errors": {
@@ -83,7 +84,7 @@ func TestGetOperation(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		defFunc := func() operation.Definition { return &testOperationDefinition{} }
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		registry := operations_registry.NewRegistry()
 		registry.Register(defFunc().Name(), defFunc)
 
@@ -111,7 +112,7 @@ func TestGetOperation(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		defFunc := func() operation.Definition { return &testOperationDefinition{} }
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		registry := operations_registry.NewRegistry()
 
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -134,7 +135,7 @@ func TestGetOperation(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		defFunc := func() operation.Definition { return &testOperationDefinition{} }
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		registry := operations_registry.NewRegistry()
 
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -157,7 +158,7 @@ func TestGetOperation(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		defFunc := func() operation.Definition { return &testOperationDefinition{unmarshalResult: errors.New("invalid")} }
+		defFunc := func() operations.Definition { return &testOperationDefinition{unmarshalResult: errors.New("invalid")} }
 		registry := operations_registry.NewRegistry()
 
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -182,7 +183,7 @@ func TestNextSchedulerOperation(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		defFunc := func() operation.Definition { return &testOperationDefinition{} }
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		registry := operations_registry.NewRegistry()
 		registry.Register(defFunc().Name(), defFunc)
 
@@ -212,7 +213,7 @@ func TestNextSchedulerOperation(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		defFunc := func() operation.Definition { return &testOperationDefinition{} }
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		registry := operations_registry.NewRegistry()
 		registry.Register(defFunc().Name(), defFunc)
 
@@ -231,7 +232,7 @@ func TestNextSchedulerOperation(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		defFunc := func() operation.Definition { return &testOperationDefinition{} }
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		registry := operations_registry.NewRegistry()
 		registry.Register(defFunc().Name(), defFunc)
 
