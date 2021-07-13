@@ -74,7 +74,7 @@ func TestCreateOperation(t *testing.T) {
 			operationStorage.EXPECT().CreateOperation(ctx, &opMatcher{operation.StatusPending, test.definition}, testDefinition.marshalResult).Return(test.storageErr)
 
 			if test.storageErr == nil {
-				operationFlow.EXPECT().CreateOperation(ctx, schedulerName, gomock.Any()).Return(test.flowErr)
+				operationFlow.EXPECT().InsertOperationID(ctx, schedulerName, gomock.Any()).Return(test.flowErr)
 			}
 
 			op, err := opManager.CreateOperation(ctx, schedulerName, test.definition)

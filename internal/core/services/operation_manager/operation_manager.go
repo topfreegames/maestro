@@ -104,7 +104,5 @@ func (o *OperationManager) ListActiveOperations(ctx context.Context, schedulerNa
 }
 
 func (o *OperationManager) FinishOperation(ctx context.Context, op *operation.Operation) error {
-
-	
-
+	return nil
 }
