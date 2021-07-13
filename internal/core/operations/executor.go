@@ -16,5 +16,5 @@ type Executor interface {
 
 	// This function is called if Execute returns an error. This will be used
 	// for operations that need to do some cleanup or any process if it fails.
-	OnError(ctx context.Context, executeErr error) error
+	OnError(ctx context.Context, operation *operation.Operation, definition Definition, executeErr error) error
 }
