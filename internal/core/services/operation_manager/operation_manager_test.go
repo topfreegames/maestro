@@ -27,7 +27,7 @@ func (d *testOperationDefinition) Name() string               { return "testOper
 
 type opMatcher struct {
 	status operation.Status
-	def operation.Definition
+	def    operation.Definition
 }
 
 func (m *opMatcher) Matches(x interface{}) bool {
@@ -44,7 +44,7 @@ func TestCreateOperation(t *testing.T) {
 	cases := map[string]struct {
 		definition operation.Definition
 		storageErr error
-		flowErr error
+		flowErr    error
 	}{
 		"create without errors": {
 			definition: &testOperationDefinition{marshalResult: []byte("test")},
@@ -55,7 +55,7 @@ func TestCreateOperation(t *testing.T) {
 		},
 		"create with flow errors": {
 			definition: &testOperationDefinition{},
-			flowErr: porterrors.ErrUnexpected,
+			flowErr:    porterrors.ErrUnexpected,
 		},
 	}
 
@@ -281,7 +281,7 @@ func TestNextSchedulerOperation(t *testing.T) {
 }
 
 func TestStartOperation(t *testing.T) {
-	t.Run("sets active", func (t *testing.T) {
+	t.Run("starts operation with succeess", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -292,14 +292,33 @@ func TestStartOperation(t *testing.T) {
 		ctx := context.Background()
 		op := &operation.Operation{ID: uuid.NewString(), DefinitionName: (&testOperationDefinition{}).Name()}
 
-		operationStorage.EXPECT().SetOperationActive(ctx, &opMatcher{operation.StatusInProgress, &testOperationDefinition{}}).Return(nil)
+		operationStorage.EXPECT().UpdateOperationStatus(ctx, op.SchedulerName, op.ID, operation.StatusInProgress).Return(nil)
 		err := opManager.StartOperation(ctx, op)
 		require.NoError(t, err)
 	})
 }
 
+func TestFinishOperation(t *testing.T) {
+	t.Run("finishes operation with success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		opManager := NewWithRegistry(operationFlow, operationStorage, operations_registry.NewRegistry())
+
+		ctx := context.Background()
+		expectedStatus := operation.StatusError
+		op := &operation.Operation{ID: uuid.NewString(), DefinitionName: (&testOperationDefinition{}).Name(), Status: expectedStatus}
+
+		operationStorage.EXPECT().UpdateOperationStatus(ctx, op.SchedulerName, op.ID, expectedStatus).Return(nil)
+		err := opManager.FinishOperation(ctx, op)
+		require.NoError(t, err)
+	})
+}
+
 func TestListActiveOperations(t *testing.T) {
-	t.Run("lists", func (t *testing.T) {
+	t.Run("lists", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 

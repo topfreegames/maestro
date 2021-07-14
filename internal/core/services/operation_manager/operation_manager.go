@@ -84,13 +84,12 @@ func (o *OperationManager) NextSchedulerOperation(ctx context.Context, scheduler
 
 // StartOperation used when an operation will start executing.
 func (o *OperationManager) StartOperation(ctx context.Context, op *operation.Operation) error {
-	op.Status = operation.StatusInProgress
-
-	err := o.storage.SetOperationActive(ctx, op)
+	err := o.storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, operation.StatusInProgress)
 	if err != nil {
 		return fmt.Errorf("failed to start operation: %w", err)
 	}
 
+	op.Status = operation.StatusInProgress
 	return nil
 }
 
@@ -104,5 +103,10 @@ func (o *OperationManager) ListActiveOperations(ctx context.Context, schedulerNa
 }
 
 func (o *OperationManager) FinishOperation(ctx context.Context, op *operation.Operation) error {
+	err := o.storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, op.Status)
+	if err != nil {
+		return fmt.Errorf("failed to finish operation: %w", err)
+	}
+
 	return nil
 }
