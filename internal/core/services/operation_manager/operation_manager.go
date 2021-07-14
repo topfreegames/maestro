@@ -11,34 +11,43 @@ import (
 )
 
 type OperationManager struct {
+	flow            ports.OperationFlow
 	storage            ports.OperationStorage
 	operationsRegistry operations_registry.Registry
 }
 
-func NewWithRegistry(storage ports.OperationStorage, operationsRegistry operations_registry.Registry) *OperationManager {
+func NewWithRegistry(flow ports.OperationFlow, storage ports.OperationStorage, operationsRegistry operations_registry.Registry) *OperationManager {
 	return &OperationManager{
+		flow:               flow,
 		storage:            storage,
 		operationsRegistry: operationsRegistry,
 	}
 }
 
-func New(storage ports.OperationStorage) *OperationManager {
+func New(flow ports.OperationFlow, storage ports.OperationStorage) *OperationManager {
 	return &OperationManager{
+		flow:               flow,
 		storage:            storage,
 		operationsRegistry: operations_registry.DefaultRegistry,
 	}
 }
 
-func (o *OperationManager) CreateOperation(ctx context.Context, definition operation.Definition) (*operation.Operation, error) {
+func (o *OperationManager) CreateOperation(ctx context.Context, schedulerName string, definition operation.Definition) (*operation.Operation, error) {
 	op := &operation.Operation{
 		ID:             uuid.NewString(),
 		Status:         operation.StatusPending,
 		DefinitionName: definition.Name(),
+		SchedulerName: schedulerName,
 	}
 
 	err := o.storage.CreateOperation(ctx, op, definition.Marshal())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create operation: %w", err)
+	}
+
+	err = o.flow.InsertOperationID(ctx, op.SchedulerName, op.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert operation on flow: %w", err)
 	}
 
 	return op, nil
@@ -65,7 +74,7 @@ func (o *OperationManager) GetOperation(ctx context.Context, schedulerName, oper
 
 // NextSchedulerOperation returns the next scheduler operation to be processed.
 func (o *OperationManager) NextSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, operation.Definition, error) {
-	operationID, err := o.storage.NextSchedulerOperationID(ctx, schedulerName)
+	operationID, err := o.flow.NextOperationID(ctx, schedulerName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to retrieve the next operation: %w", err)
 	}
@@ -92,4 +101,8 @@ func (o *OperationManager) ListActiveOperations(ctx context.Context, schedulerNa
 	}
 
 	return operations, nil
+}
+
+func (o *OperationManager) FinishOperation(ctx context.Context, op *operation.Operation) error {
+	return nil
 }
