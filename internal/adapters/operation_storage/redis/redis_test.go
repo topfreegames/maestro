@@ -154,7 +154,7 @@ func TestGetOperation(t *testing.T) {
 	})
 }
 
-func TestSetActiveOperation(t *testing.T) {
+func TestUpdateOperationStatus(t *testing.T) {
 	t.Run("set operation as active", func(t *testing.T) {
 		client := getRedisConnection(t)
 		now := time.Now()
@@ -164,10 +164,13 @@ func TestSetActiveOperation(t *testing.T) {
 		op := &operation.Operation{
 			ID:            "some-op-id",
 			SchedulerName: "test-scheduler",
-			Status:        operation.StatusInProgress,
+			Status:        operation.StatusPending,
 		}
 
-		err := storage.SetOperationActive(context.Background(), op)
+		err := storage.CreateOperation(context.Background(), op, []byte{})
+		require.NoError(t, err)
+
+		err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusInProgress)
 		require.NoError(t, err)
 
 		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
@@ -175,11 +178,50 @@ func TestSetActiveOperation(t *testing.T) {
 
 		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
 		require.NoError(t, err)
-		require.Equal(t, op.Status, operation.Status(intStatus))
+		require.Equal(t, operation.StatusInProgress, operation.Status(intStatus))
 
 		score, err := client.ZScore(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), op.ID).Result()
 		require.NoError(t, err)
 		require.Equal(t, float64(now.Unix()), score)
+
+		err = client.ZScore(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), op.ID).Err()
+		require.ErrorIs(t, redis.Nil, err)
+	})
+
+	t.Run("update operation status to inactive", func(t *testing.T) {
+		client := getRedisConnection(t)
+		now := time.Now()
+		clock := clockmock.NewFakeClock(now)
+		storage := NewRedisOperationStorage(client, clock)
+
+		op := &operation.Operation{
+			ID:            "some-op-id",
+			SchedulerName: "test-scheduler",
+			Status:        operation.StatusPending,
+		}
+
+		err := storage.CreateOperation(context.Background(), op, []byte{})
+		require.NoError(t, err)
+
+		err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusInProgress)
+		require.NoError(t, err)
+
+		err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusError)
+		require.NoError(t, err)
+
+		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
+		require.NoError(t, err)
+
+		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
+		require.NoError(t, err)
+		require.Equal(t, operation.StatusError, operation.Status(intStatus))
+
+		score, err := client.ZScore(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), op.ID).Result()
+		require.NoError(t, err)
+		require.Equal(t, float64(now.Unix()), score)
+
+		err = client.ZScore(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), op.ID).Err()
+		require.ErrorIs(t, redis.Nil, err)
 	})
 }
 
@@ -207,7 +249,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 			require.NoError(t, err)
 
 			if op.Status == operation.StatusInProgress {
-				err := storage.SetOperationActive(context.Background(), op)
+				err := storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, op.Status)
 				require.NoError(t, err)
 			}
 		}
@@ -243,7 +285,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 			err := storage.CreateOperation(context.Background(), op, []byte{})
 			require.NoError(t, err)
 
-			err = storage.SetOperationActive(context.Background(), op)
+			err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, op.Status)
 			require.NoError(t, err)
 		}
 

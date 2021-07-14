@@ -10,8 +10,9 @@ type OperationStorage interface {
 	CreateOperation(ctx context.Context, operation *operation.Operation, definitionContent []byte) error
 	// GetOperation returns the operation and the definition contents.
 	GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, []byte, error)
-	// SetActiveOperaiton sets operation as active.
-	SetOperationActive(ctx context.Context, operation *operation.Operation) error
 	// ListSchedulerActiveOperations list scheduler active operations.
 	ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
+	// UpdateOperationStatus only updates the operation status for the given
+	// operation ID.
+	UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) error
 }
