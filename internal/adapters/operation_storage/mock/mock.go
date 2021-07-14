@@ -80,16 +80,16 @@ func (mr *MockOperationStorageMockRecorder) ListSchedulerActiveOperations(ctx, s
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSchedulerActiveOperations", reflect.TypeOf((*MockOperationStorage)(nil).ListSchedulerActiveOperations), ctx, schedulerName)
 }
 
-// SetOperationActive mocks base method.
-func (m *MockOperationStorage) SetOperationActive(ctx context.Context, operation *operation.Operation) error {
+// UpdateOperationStatus mocks base method.
+func (m *MockOperationStorage) UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetOperationActive", ctx, operation)
+	ret := m.ctrl.Call(m, "UpdateOperationStatus", ctx, schedulerName, operationID, status)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SetOperationActive indicates an expected call of SetOperationActive.
-func (mr *MockOperationStorageMockRecorder) SetOperationActive(ctx, operation interface{}) *gomock.Call {
+// UpdateOperationStatus indicates an expected call of UpdateOperationStatus.
+func (mr *MockOperationStorageMockRecorder) UpdateOperationStatus(ctx, schedulerName, operationID, status interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetOperationActive", reflect.TypeOf((*MockOperationStorage)(nil).SetOperationActive), ctx, operation)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOperationStatus", reflect.TypeOf((*MockOperationStorage)(nil).UpdateOperationStatus), ctx, schedulerName, operationID, status)
 }

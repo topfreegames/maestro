@@ -76,19 +76,26 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 	return op, []byte(res[definitionContentsRedisKey]), nil
 }
 
-func (r *redisOperationStorage) SetOperationActive(ctx context.Context, op *operation.Operation) error {
+func (r *redisOperationStorage) UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) error {
 	pipe := r.client.Pipeline()
-	pipe.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
-		statusRedisKey: strconv.Itoa(int(op.Status)),
+	pipe.ZRem(ctx, r.buildSchedulerActiveOperationsKey(schedulerName), operationID)
+	pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
+	pipe.HSet(ctx, r.buildSchedulerOperationKey(schedulerName, operationID), map[string]interface{}{
+		statusRedisKey: strconv.Itoa(int(status)),
 	})
-	pipe.ZAdd(ctx, r.buildSchedulerActiveOperationsKey(op.SchedulerName), &redis.Z{
-		Member: op.ID,
+
+	operationsList := r.buildSchedulerHistoryOperationsKey(schedulerName)
+	if status == operation.StatusInProgress {
+		operationsList = r.buildSchedulerActiveOperationsKey(schedulerName)
+	}
+
+	pipe.ZAdd(ctx, operationsList, &redis.Z{
+		Member: operationID,
 		Score:  float64(r.clock.Now().Unix()),
 	})
 
-	_, err := pipe.Exec(ctx)
-	if err != nil {
-		return errors.NewErrUnexpected("failed to set operation as active").WithError(err)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return errors.NewErrUnexpected("failed to update operations").WithError(err)
 	}
 
 	return nil
@@ -117,10 +124,10 @@ func (r *redisOperationStorage) buildSchedulerOperationKey(schedulerName, opID s
 	return fmt.Sprintf("operations:%s:%s", schedulerName, opID)
 }
 
-func (r *redisOperationStorage) buildSchedulerPendingOperationsKey(schedulerName string) string {
-	return fmt.Sprintf("operations:%s:lists:pending", schedulerName)
-}
-
 func (r *redisOperationStorage) buildSchedulerActiveOperationsKey(schedulerName string) string {
 	return fmt.Sprintf("operations:%s:lists:active", schedulerName)
+}
+
+func (r *redisOperationStorage) buildSchedulerHistoryOperationsKey(schedulerName string) string {
+	return fmt.Sprintf("operations:%s:lists:history", schedulerName)
 }
