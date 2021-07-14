@@ -1,3 +1,5 @@
+//+build integration
+
 package redis
 
 import (
@@ -68,11 +70,7 @@ func TestCreateOperation(t *testing.T) {
 		err := storage.CreateOperation(context.Background(), op, contents)
 		require.NoError(t, err)
 
-		opID, err := client.LPop(context.Background(), storage.buildSchedulerPendingOperationsKey(op.SchedulerName)).Result()
-		require.NoError(t, err)
-		require.Equal(t, op.ID, opID)
-
-		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, opID)).Result()
+		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
 		require.NoError(t, err)
 		require.Equal(t, op.ID, operationStored[idRedisKey])
 		require.Equal(t, op.SchedulerName, operationStored[schedulerNameRedisKey])
