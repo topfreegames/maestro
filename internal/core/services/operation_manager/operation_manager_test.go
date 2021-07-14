@@ -9,6 +9,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -44,6 +45,7 @@ func TestCreateOperation(t *testing.T) {
 	cases := map[string]struct {
 		definition operations.Definition
 		storageErr error
+		flowErr error
 	}{
 		"create without errors": {
 			definition: &testOperationDefinition{marshalResult: []byte("test")},
@@ -52,6 +54,10 @@ func TestCreateOperation(t *testing.T) {
 			definition: &testOperationDefinition{},
 			storageErr: porterrors.ErrUnexpected,
 		},
+		"create with flow errors": {
+			definition: &testOperationDefinition{},
+			flowErr: porterrors.ErrUnexpected,
+		},
 	}
 
 	for name, test := range cases {
@@ -59,16 +65,29 @@ func TestCreateOperation(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 
+			schedulerName := "scheduler_name"
+			operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 			operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-			opManager := New(operationStorage)
+			opManager := New(operationFlow, operationStorage)
 
 			ctx := context.Background()
 			testDefinition, _ := test.definition.(*testOperationDefinition)
 			operationStorage.EXPECT().CreateOperation(ctx, &opMatcher{operation.StatusPending, test.definition}, testDefinition.marshalResult).Return(test.storageErr)
 
-			op, err := opManager.CreateOperation(ctx, test.definition)
+			if test.storageErr == nil {
+				operationFlow.EXPECT().InsertOperationID(ctx, schedulerName, gomock.Any()).Return(test.flowErr)
+			}
+
+			op, err := opManager.CreateOperation(ctx, schedulerName, test.definition)
+
 			if test.storageErr != nil {
 				require.ErrorIs(t, err, test.storageErr)
+				require.Nil(t, op)
+				return
+			}
+
+			if test.flowErr != nil {
+				require.ErrorIs(t, err, test.flowErr)
 				require.Nil(t, op)
 				return
 			}
@@ -88,8 +107,9 @@ func TestGetOperation(t *testing.T) {
 		registry := operations_registry.NewRegistry()
 		registry.Register(defFunc().Name(), defFunc)
 
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationStorage, registry)
+		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -115,8 +135,9 @@ func TestGetOperation(t *testing.T) {
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		registry := operations_registry.NewRegistry()
 
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationStorage, registry)
+		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -138,8 +159,9 @@ func TestGetOperation(t *testing.T) {
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		registry := operations_registry.NewRegistry()
 
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationStorage, registry)
+		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -161,8 +183,9 @@ func TestGetOperation(t *testing.T) {
 		defFunc := func() operations.Definition { return &testOperationDefinition{unmarshalResult: errors.New("invalid")} }
 		registry := operations_registry.NewRegistry()
 
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationStorage, registry)
+		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -187,14 +210,15 @@ func TestNextSchedulerOperation(t *testing.T) {
 		registry := operations_registry.NewRegistry()
 		registry.Register(defFunc().Name(), defFunc)
 
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationStorage, registry)
+		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		operationID := "some-op-id"
 
-		operationStorage.EXPECT().NextSchedulerOperationID(ctx, schedulerName).Return(operationID, nil)
+		operationFlow.EXPECT().NextOperationID(ctx, schedulerName).Return(operationID, nil)
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
 			[]byte{},
@@ -217,12 +241,13 @@ func TestNextSchedulerOperation(t *testing.T) {
 		registry := operations_registry.NewRegistry()
 		registry.Register(defFunc().Name(), defFunc)
 
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationStorage, registry)
+		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
-		operationStorage.EXPECT().NextSchedulerOperationID(ctx, schedulerName).Return("", porterrors.ErrUnexpected)
+		operationFlow.EXPECT().NextOperationID(ctx, schedulerName).Return("", porterrors.ErrUnexpected)
 
 		_, _, err := opManager.NextSchedulerOperation(ctx, schedulerName)
 		require.Error(t, err)
@@ -236,14 +261,15 @@ func TestNextSchedulerOperation(t *testing.T) {
 		registry := operations_registry.NewRegistry()
 		registry.Register(defFunc().Name(), defFunc)
 
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationStorage, registry)
+		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		operationID := "some-op-id"
 
-		operationStorage.EXPECT().NextSchedulerOperationID(ctx, schedulerName).Return(operationID, nil)
+		operationFlow.EXPECT().NextOperationID(ctx, schedulerName).Return(operationID, nil)
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			nil,
 			[]byte{},
@@ -260,8 +286,9 @@ func TestStartOperation(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationStorage, operations_registry.NewRegistry())
+		opManager := NewWithRegistry(operationFlow, operationStorage, operations_registry.NewRegistry())
 
 		ctx := context.Background()
 		op := &operation.Operation{ID: uuid.NewString(), DefinitionName: (&testOperationDefinition{}).Name()}
@@ -277,8 +304,9 @@ func TestListActiveOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationStorage, operations_registry.NewRegistry())
+		opManager := NewWithRegistry(operationFlow, operationStorage, operations_registry.NewRegistry())
 
 		ctx := context.Background()
 		operationsResult := []*operation.Operation{

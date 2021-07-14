@@ -36,17 +36,14 @@ func NewRedisOperationStorage(client *redis.Client, clock ports.Clock) *redisOpe
 // CreateOperation marshal and pushes the operation to the scheduler pending
 // operations list.
 func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operation.Operation, definitionContents []byte) error {
-	pipe := r.client.Pipeline()
-	pipe.RPush(ctx, r.buildSchedulerPendingOperationsKey(op.SchedulerName), op.ID)
-	pipe.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+	err := r.client.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
 		idRedisKey:                 op.ID,
 		schedulerNameRedisKey:      op.SchedulerName,
 		statusRedisKey:             strconv.Itoa(int(op.Status)),
 		definitionNameRedisKey:     op.DefinitionName,
 		definitionContentsRedisKey: definitionContents,
-	})
+	}).Err()
 
-	_, err := pipe.Exec(ctx)
 	if err != nil {
 		return errors.NewErrUnexpected("failed to create operation on redis").WithError(err)
 	}
@@ -77,19 +74,6 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 	}
 
 	return op, []byte(res[definitionContentsRedisKey]), nil
-}
-
-func (r *redisOperationStorage) NextSchedulerOperationID(ctx context.Context, schedulerName string) (string, error) {
-	opIDs, err := r.client.BLPop(ctx, 0, r.buildSchedulerPendingOperationsKey(schedulerName)).Result()
-	if err != nil {
-		return "", errors.NewErrUnexpected("failed to fetch next scheduler operation").WithError(err)
-	}
-
-	if len(opIDs) == 0 {
-		return "", errors.NewErrNotFound("scheduler \"%s\" has no operations", schedulerName)
-	}
-
-	return opIDs[1], nil
 }
 
 func (r *redisOperationStorage) SetOperationActive(ctx context.Context, op *operation.Operation) error {

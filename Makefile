@@ -207,4 +207,5 @@ mocks:
 	@mockgen -source=internal/core/ports/instance_storage.go -destination=internal/adapters/instance_storage/mock/mock.go -package=mock
 	@mockgen -source=internal/core/ports/operation_storage.go -destination=internal/adapters/operation_storage/mock/mock.go -package=mock
 	@mockgen -source=internal/core/ports/scheduler_storage.go -destination=internal/adapters/scheduler_storage/mock/mock.go -package=mock
+	@mockgen -source=internal/core/ports/operation_flow.go -destination=internal/adapters/operation_flow/mock/mock.go -package=mock
 	@mockgen -source=internal/config/config.go -destination=internal/config/mock/mock.go -package=mock
