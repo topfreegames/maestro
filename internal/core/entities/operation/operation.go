@@ -5,7 +5,7 @@ type Status int
 const (
 	// Operation was created but no worker has started it yet.
 	
-	 Status = iota
+	StatusPending Status = iota
 	// Operation is being executed by a worker.
 	StatusInProgress
 	// Operation was canceled, usually by an external action or a timeout.

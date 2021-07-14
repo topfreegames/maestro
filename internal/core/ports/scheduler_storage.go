@@ -7,8 +7,8 @@ import (
 )
 
 type SchedulerStorage interface {
-	GetScheduler(ctx context.Context, id string) (*entities.Scheduler, error)
-	GetSchedulers(ctx context.Context, ids []string) ([]*entities.Scheduler, error)
+	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
+	GetSchedulers(ctx context.Context, names []string) ([]*entities.Scheduler, error)
 	GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error)
 	CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
