@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/entities"
 )
 
 type CreateSchedulerExecutor struct {
-	runtime	ports.Runtime
+	runtime ports.Runtime
 	storage ports.SchedulerStorage
 }
 
@@ -38,7 +38,7 @@ func (e CreateSchedulerExecutor) OnError(ctx context.Context, op operation.Opera
 		return fmt.Errorf("failed to find scheduler by id: %w", err)
 	}
 
-	scheduler.State = entities.StateTerminating
+	scheduler.State = entities.StateOnError
 
 	return e.storage.UpdateScheduler(ctx, scheduler)
 }

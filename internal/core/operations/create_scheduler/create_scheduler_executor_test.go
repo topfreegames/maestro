@@ -1,3 +1,5 @@
+//+build unit
+
 package create_scheduler
 
 import (
@@ -12,12 +14,11 @@ import (
 
 	runtimeMock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
-	
 )
 
 func TestExecute(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
-		
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -38,7 +39,7 @@ func TestExecute(t *testing.T) {
 	})
 
 	t.Run("fails with runtime request fails", func(t *testing.T) {
-		
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -61,7 +62,7 @@ func TestExecute(t *testing.T) {
 
 func TestOnError(t *testing.T) {
 	t.Run("changes scheduler status in case of execution error", func(t *testing.T) {
-		
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -76,13 +77,13 @@ func TestOnError(t *testing.T) {
 		}
 
 		scheduler := &entities.Scheduler{
-			Name: op.SchedulerName,
-			State: entities.StateInSync,
-			Game: "Zooba",
+			Name:            op.SchedulerName,
+			State:           entities.StateInSync,
+			Game:            "Zooba",
 			RollbackVersion: "1.0.0",
 			PortRange: &entities.PortRange{
 				Start: 1,
-				End: 1000,
+				End:   1000,
 			},
 		}
 
@@ -95,9 +96,9 @@ func TestOnError(t *testing.T) {
 		err := NewExecutor(runtime, storage).OnError(context.Background(), op, definition, errors.ErrUnexpected)
 		require.NoError(t, err)
 	})
-	
+
 	t.Run("fails when no scheduler found in storage", func(t *testing.T) {
-		
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
