@@ -37,7 +37,7 @@ func TestExecute(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("fails with kubernetes API request fails", func(t *testing.T) {
+	t.Run("fails with runtime request fails", func(t *testing.T) {
 		
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
