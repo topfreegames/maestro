@@ -1,4 +1,4 @@
-package operation
+package operations
 
 // Definition is the operation parameters. It must be able to encode/decode
 // itself.

@@ -32,7 +32,7 @@ func (r *redisOperationFlow) InsertOperationID(ctx context.Context, schedulerNam
 	return nil
 }
 
-// NextOperationID fetches the next scheduler operation ID from the 
+// NextOperationID fetches the next scheduler operation ID from the
 // pending_operations list.
 func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName string) (string, error) {
 	opIDs, err := r.client.BLPop(ctx, 0, r.buildSchedulerPendingOperationsKey(schedulerName)).Result()

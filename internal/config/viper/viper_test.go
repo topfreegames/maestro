@@ -3,10 +3,10 @@
 package viper
 
 import (
-	"os"
 	"fmt"
-	"testing"
 	"github.com/stretchr/testify/require"
+	"os"
+	"testing"
 )
 
 func TestNewViperConfig(t *testing.T) {

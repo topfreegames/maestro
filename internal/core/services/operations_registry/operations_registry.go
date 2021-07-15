@@ -3,12 +3,12 @@ package operations_registry
 import (
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations"
 )
 
 // OperationDefinitionConstructor defines a function that constructs a new
 // definition.
-type OperationDefinitionConstructor func() operation.Definition
+type OperationDefinitionConstructor func() operations.Definition
 
 // Registry contains all the operations definitions.
 type Registry map[string]OperationDefinitionConstructor
@@ -24,7 +24,7 @@ func (r Registry) Register(name string, constructor OperationDefinitionConstruct
 }
 
 // Get fetches an operation definition.
-func (r Registry) Get(name string) (operation.Definition, error) {
+func (r Registry) Get(name string) (operations.Definition, error) {
 	if constructor, ok := r[name]; ok {
 		return constructor(), nil
 	}
@@ -41,6 +41,6 @@ func Register(name string, constructor OperationDefinitionConstructor) {
 }
 
 // Get fetches a definition on the the default registry.
-func Get(name string) (operation.Definition, error) {
+func Get(name string) (operations.Definition, error) {
 	return DefaultRegistry.Get(name)
 }

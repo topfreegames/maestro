@@ -4,15 +4,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations"
 )
 
 func TestRegistry(t *testing.T) {
 	t.Run("register and get", func(t *testing.T) {
 		registry := NewRegistry()
 
-		var def operation.Definition
-		registry.Register("some", func() operation.Definition { return def })
+		var def operations.Definition
+		registry.Register("some", func() operations.Definition { return def })
 
 		defFromRegistry, err := registry.Get("some")
 		require.NoError(t, err)

@@ -6,12 +6,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/operations_registry"
 )
 
 type OperationManager struct {
-	flow            ports.OperationFlow
+	flow               ports.OperationFlow
 	storage            ports.OperationStorage
 	operationsRegistry operations_registry.Registry
 }
@@ -32,12 +33,12 @@ func New(flow ports.OperationFlow, storage ports.OperationStorage) *OperationMan
 	}
 }
 
-func (o *OperationManager) CreateOperation(ctx context.Context, schedulerName string, definition operation.Definition) (*operation.Operation, error) {
+func (o *OperationManager) CreateOperation(ctx context.Context, schedulerName string, definition operations.Definition) (*operation.Operation, error) {
 	op := &operation.Operation{
 		ID:             uuid.NewString(),
 		Status:         operation.StatusPending,
 		DefinitionName: definition.Name(),
-		SchedulerName: schedulerName,
+		SchedulerName:  schedulerName,
 	}
 
 	err := o.storage.CreateOperation(ctx, op, definition.Marshal())
@@ -53,7 +54,7 @@ func (o *OperationManager) CreateOperation(ctx context.Context, schedulerName st
 	return op, nil
 }
 
-func (o *OperationManager) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, operation.Definition, error) {
+func (o *OperationManager) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, operations.Definition, error) {
 	op, definitionContents, err := o.storage.GetOperation(ctx, schedulerName, operationID)
 	if err != nil {
 		return nil, nil, err
@@ -73,7 +74,7 @@ func (o *OperationManager) GetOperation(ctx context.Context, schedulerName, oper
 }
 
 // NextSchedulerOperation returns the next scheduler operation to be processed.
-func (o *OperationManager) NextSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, operation.Definition, error) {
+func (o *OperationManager) NextSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, operations.Definition, error) {
 	operationID, err := o.flow.NextOperationID(ctx, schedulerName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to retrieve the next operation: %w", err)

@@ -11,6 +11,9 @@ const (
 
 	//StateInSync represents a cluster state
 	StateInSync = "in-sync"
+
+	//StateTerminating represents a cluster state
+	StateOnError = "on-error"
 )
 
 type Scheduler struct {
