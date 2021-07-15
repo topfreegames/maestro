@@ -95,7 +95,6 @@ watchLoop:
 		}
 	}
 
-
 	if err != nil {
 		return fmt.Errorf("failed to wait until room has desired status: %w", err)
 	}

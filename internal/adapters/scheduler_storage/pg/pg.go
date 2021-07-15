@@ -14,6 +14,7 @@ import (
 )
 
 var _ ports.SchedulerStorage = (*schedulerStorage)(nil)
+
 type schedulerStorage struct {
 	db *pg.DB
 }

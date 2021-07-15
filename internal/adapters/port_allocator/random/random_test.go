@@ -29,8 +29,8 @@ func TestRandomPortAllocator(t *testing.T) {
 		},
 		"use default portRange": {
 			defaultPortRange: &entities.PortRange{Start: 2000, End: 2004},
-			quantity:  5,
-			expectedPorts: []int32{2000, 2001, 2002, 2003, 2004},
+			quantity:         5,
+			expectedPorts:    []int32{2000, 2001, 2002, 2003, 2004},
 		},
 	}
 

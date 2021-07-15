@@ -5,14 +5,14 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/operations_registry"
 )
 
 type OperationManager struct {
-	flow            ports.OperationFlow
+	flow               ports.OperationFlow
 	storage            ports.OperationStorage
 	operationsRegistry operations_registry.Registry
 }
@@ -38,7 +38,7 @@ func (o *OperationManager) CreateOperation(ctx context.Context, schedulerName st
 		ID:             uuid.NewString(),
 		Status:         operation.StatusPending,
 		DefinitionName: definition.Name(),
-		SchedulerName: schedulerName,
+		SchedulerName:  schedulerName,
 	}
 
 	err := o.storage.CreateOperation(ctx, op, definition.Marshal())

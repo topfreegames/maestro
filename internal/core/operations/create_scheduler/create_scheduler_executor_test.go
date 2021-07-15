@@ -24,7 +24,7 @@ func TestExecute(t *testing.T) {
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 
-		definition := &CreateSchedulerDefinition{}
+		definition := CreateSchedulerDefinition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "zooba_blue:1.0.0",
@@ -34,7 +34,7 @@ func TestExecute(t *testing.T) {
 
 		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(nil)
 
-		err := NewExecutor(runtime, storage).Execute(context.Background(), op, definition)
+		err := NewExecutor(runtime, storage).Execute(context.Background(), op, &definition)
 		require.NoError(t, err)
 	})
 
@@ -45,7 +45,7 @@ func TestExecute(t *testing.T) {
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 
-		definition := &CreateSchedulerDefinition{}
+		definition := CreateSchedulerDefinition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "zooba_blue:1.0.0",
@@ -55,7 +55,7 @@ func TestExecute(t *testing.T) {
 
 		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(errors.ErrUnexpected)
 
-		err := NewExecutor(runtime, storage).Execute(context.Background(), op, definition)
+		err := NewExecutor(runtime, storage).Execute(context.Background(), op, &definition)
 		require.ErrorIs(t, err, errors.ErrUnexpected)
 	})
 }
@@ -76,7 +76,7 @@ func TestOnError(t *testing.T) {
 			DefinitionName: "zooba_blue:1.0.0",
 		}
 
-		scheduler := &entities.Scheduler{
+		scheduler := entities.Scheduler{
 			Name:            op.SchedulerName,
 			State:           entities.StateInSync,
 			Game:            "Zooba",
@@ -88,10 +88,10 @@ func TestOnError(t *testing.T) {
 		}
 
 		updatedScheduler := scheduler
-		updatedScheduler.State = entities.StateTerminating
+		updatedScheduler.State = entities.StateOnError
 
-		storage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(scheduler, nil)
-		storage.EXPECT().UpdateScheduler(context.Background(), updatedScheduler).Return(nil)
+		storage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+		storage.EXPECT().UpdateScheduler(context.Background(), &updatedScheduler).Return(nil)
 
 		err := NewExecutor(runtime, storage).OnError(context.Background(), op, definition, errors.ErrUnexpected)
 		require.NoError(t, err)
@@ -104,7 +104,7 @@ func TestOnError(t *testing.T) {
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 
-		definition := &CreateSchedulerDefinition{}
+		definition := CreateSchedulerDefinition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "zooba_blue:1.0.0",
@@ -114,7 +114,7 @@ func TestOnError(t *testing.T) {
 
 		storage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(nil, errors.ErrNotFound)
 
-		err := NewExecutor(runtime, storage).OnError(context.Background(), op, definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, storage).OnError(context.Background(), op, &definition, errors.ErrUnexpected)
 		require.ErrorIs(t, err, errors.ErrNotFound)
 	})
 }

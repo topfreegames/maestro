@@ -74,7 +74,6 @@ func TestInsertOperationID(t *testing.T) {
 	})
 }
 
-
 func TestNextOperationID(t *testing.T) {
 	t.Run("successfully receives the operation ID", func(t *testing.T) {
 		client := getRedisConnection(t)

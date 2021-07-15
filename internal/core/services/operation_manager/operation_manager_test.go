@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
-	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operations_registry"
 )
@@ -28,7 +28,7 @@ func (d *testOperationDefinition) Name() string               { return "testOper
 
 type opMatcher struct {
 	status operation.Status
-	def operations.Definition
+	def    operations.Definition
 }
 
 func (m *opMatcher) Matches(x interface{}) bool {
