@@ -45,7 +45,7 @@ func (w *WorkersManager) Start(ctx context.Context) error {
 
 	err := w.SyncOperationWorkers(ctx)
 	if err != nil {
-		return err
+		zap.L().Error("initial sync operation workers failed", zap.Error(err))
 	}
 
 	go w.startSyncOperationWorkers(ctx)
@@ -65,7 +65,10 @@ func (w *WorkersManager) startSyncOperationWorkers(ctx context.Context) error {
 	for w.runSyncOperationWorkers == true {
 		select {
 		case <-ticker.C:
-			w.SyncOperationWorkers(ctx)
+			err := w.SyncOperationWorkers(ctx)
+			if err != nil {
+				zap.L().Error("scheduled sync operation workers failed", zap.Error(err))
+			}
 
 		case sig := <-sigchan:
 			zap.L().Warn("caught signal: terminating\n", zap.String("signal", sig.String()))

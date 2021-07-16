@@ -3,6 +3,7 @@ package workers_manager
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -86,5 +87,52 @@ func TestStart(t *testing.T) {
 		workersManager.SyncOperationWorkers(context.Background())
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
+	})
+
+	t.Run("with success when scheduler removed after bootstrap", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		configs := configMock.NewMockConfig(mockCtrl)
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage)
+
+		configs.EXPECT().GetInt(syncOperationWorkersIntervalPath).AnyTimes().Return(1)
+		configs.EXPECT().GetInt(workers.OperationWorkerIntervalPath).AnyTimes().Return(1)
+
+		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Times(3).Return([]*entities.Scheduler{
+			{
+				Name:            "zooba-us",
+				Game:            "zooba",
+				State:           entities.StateCreating,
+				RollbackVersion: "1.0.0",
+				PortRange: &entities.PortRange{
+					Start: 1,
+					End:   10000,
+				},
+			},
+		}, nil)
+
+		workersManager := NewWorkersManager(configs, schedulerStorage, *operationManager)
+		workersManager.Start(context.Background())
+
+		// Has to sleep 1 second in order to start the goroutine
+		time.Sleep(2 * time.Second)
+
+		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
+		operationWorker := workersManager.CurrentWorkers["zooba-us"]
+		require.Equal(t, true, operationWorker.IsRunning(context.Background()))
+		require.Greater(t, operationWorker.CountRuns(context.Background()), 0)
+
+		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{}, nil)
+
+		workersManager.SyncOperationWorkers(context.Background())
+
+		require.Empty(t, workersManager.CurrentWorkers)
+		require.Equal(t, false, operationWorker.IsRunning(context.Background()))
+
 	})
 }

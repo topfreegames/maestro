@@ -22,6 +22,7 @@ const (
 
 type OperationWorker struct {
 	run              bool
+	countRuns        int
 	syncPeriod       int
 	scheduler        *entities.Scheduler
 	operationManager operation_manager.OperationManager
@@ -33,6 +34,8 @@ func NewOperationWorker(
 	operationManager operation_manager.OperationManager,
 ) *OperationWorker {
 	return &OperationWorker{
+		run:              false,
+		countRuns:        0,
 		scheduler:        scheduler,
 		operationManager: operationManager,
 		syncPeriod:       configs.GetInt(OperationWorkerIntervalPath),
@@ -52,6 +55,7 @@ func (w *OperationWorker) Start(ctx context.Context) error {
 		select {
 		case <-ticker.C:
 			zap.L().Info("Running operation worker", zap.String("scheduler_name", w.scheduler.Name))
+			w.countRuns++
 
 		case sig := <-sigchan:
 			zap.L().Warn("caught signal: terminating\n", zap.String("signal", sig.String()))
@@ -67,4 +71,12 @@ func (w *OperationWorker) Stop(ctx context.Context) error {
 	w.run = false
 
 	return nil
+}
+
+func (w *OperationWorker) IsRunning(ctx context.Context) bool {
+	return w.run
+}
+
+func (w *OperationWorker) CountRuns(ctx context.Context) int {
+	return w.countRuns
 }
