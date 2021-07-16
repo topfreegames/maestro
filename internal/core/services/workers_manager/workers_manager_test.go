@@ -8,6 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
 
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
@@ -23,6 +24,10 @@ import (
 func TestStart(t *testing.T) {
 
 	t.Run("with success", func(t *testing.T) {
+
+		core, recorded := observer.New(zap.InfoLevel)
+		zl := zap.New(core)
+		zap.ReplaceGlobals(zl)
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
@@ -54,6 +59,13 @@ func TestStart(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
+
+		assertLogMessages(t, recorded, map[zapcore.Level][]string{
+			zap.InfoLevel: {"starting to sync operation workers",
+				"schedulers found, syncing operation workers",
+				"new operation worker running",
+				"all operation workers in sync"},
+		})
 	})
 
 	t.Run("with soft error when schedulerStorage fails to list all schedulers", func(t *testing.T) {
@@ -81,15 +93,16 @@ func TestStart(t *testing.T) {
 
 		require.Empty(t, workersManager.CurrentWorkers)
 
-		errorLogs := recorded.Filter(func(le observer.LoggedEntry) bool {
-			return le.Level == zap.ErrorLevel
-		}).Filter(func(le observer.LoggedEntry) bool {
-			return le.Message == "initial sync operation workers failed"
+		assertLogMessages(t, recorded, map[zapcore.Level][]string{
+			zap.ErrorLevel: {"initial sync operation workers failed"},
 		})
-		require.NotEmpty(t, errorLogs)
 	})
 
 	t.Run("with success when scheduler added after bootstrap", func(t *testing.T) {
+
+		core, recorded := observer.New(zap.InfoLevel)
+		zl := zap.New(core)
+		zap.ReplaceGlobals(zl)
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
@@ -124,9 +137,20 @@ func TestStart(t *testing.T) {
 		workersManager.SyncOperationWorkers(context.Background())
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
+
+		assertLogMessages(t, recorded, map[zapcore.Level][]string{
+			zap.InfoLevel: {"starting to sync operation workers",
+				"schedulers found, syncing operation workers",
+				"new operation worker running",
+				"all operation workers in sync"},
+		})
 	})
 
 	t.Run("with success when scheduler removed after bootstrap", func(t *testing.T) {
+
+		core, recorded := observer.New(zap.InfoLevel)
+		zl := zap.New(core)
+		zap.ReplaceGlobals(zl)
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
@@ -164,6 +188,17 @@ func TestStart(t *testing.T) {
 		require.Equal(t, true, operationWorker.IsRunning(context.Background()))
 		require.Greater(t, operationWorker.CountRuns(context.Background()), 0)
 
+		assertLogMessages(t, recorded, map[zapcore.Level][]string{
+			zap.InfoLevel: {"starting to sync operation workers",
+				"schedulers found, syncing operation workers",
+				"new operation worker running",
+				"all operation workers in sync"},
+		})
+
+		core, recorded = observer.New(zap.InfoLevel)
+		zl = zap.New(core)
+		zap.ReplaceGlobals(zl)
+
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{}, nil)
 
 		workersManager.SyncOperationWorkers(context.Background())
@@ -171,5 +206,23 @@ func TestStart(t *testing.T) {
 		require.Empty(t, workersManager.CurrentWorkers)
 		require.Equal(t, false, operationWorker.IsRunning(context.Background()))
 
+		assertLogMessages(t, recorded, map[zapcore.Level][]string{
+			zap.InfoLevel: {"starting to sync operation workers",
+				"schedulers found, syncing operation workers",
+				"all operation workers in sync"},
+		})
+
 	})
+}
+
+func assertLogMessages(t *testing.T, recorded *observer.ObservedLogs, messages map[zapcore.Level][]string) {
+	for level, values := range messages {
+
+		levelRecords := recorded.FilterLevelExact(level)
+		for _, message := range values {
+			require.NotEmpty(t, levelRecords.Filter(func(le observer.LoggedEntry) bool {
+				return le.Message == message
+			}))
+		}
+	}
 }

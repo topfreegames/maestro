@@ -82,7 +82,7 @@ func (w *WorkersManager) startSyncOperationWorkers(ctx context.Context) error {
 
 func (w *WorkersManager) SyncOperationWorkers(ctx context.Context) error {
 
-	zap.L().Info("syncing operation workers")
+	zap.L().Info("starting to sync operation workers")
 
 	schedulers, err := w.schedulerStorage.GetAllSchedulers(ctx)
 	if err != nil {
