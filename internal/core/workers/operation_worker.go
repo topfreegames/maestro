@@ -20,6 +20,7 @@ const (
 	OperationWorkerIntervalPath = "operation.worker.interval"
 )
 
+// Operation worker aims to process all pending scheduler operations
 type OperationWorker struct {
 	run              bool
 	countRuns        int
@@ -28,6 +29,7 @@ type OperationWorker struct {
 	operationManager operation_manager.OperationManager
 }
 
+// Default constructor of OperationWorker
 func NewOperationWorker(
 	scheduler *entities.Scheduler,
 	configs config.Config,
@@ -42,6 +44,7 @@ func NewOperationWorker(
 	}
 }
 
+// Start aims to execute periodically the next operation of a scheduler
 func (w *OperationWorker) Start(ctx context.Context) error {
 
 	w.run = true
@@ -59,24 +62,25 @@ func (w *OperationWorker) Start(ctx context.Context) error {
 
 		case sig := <-sigchan:
 			zap.L().Warn("caught signal: terminating\n", zap.String("signal", sig.String()))
-			w.run = false
+			w.Stop(ctx)
 		}
 	}
 
 	return nil
 }
 
-func (w *OperationWorker) Stop(ctx context.Context) error {
-
+// Stop aims to set the run attribute as false what stops the loop
+func (w *OperationWorker) Stop(ctx context.Context) {
 	w.run = false
-
-	return nil
+	return
 }
 
+// Returns the property `run` used to control the exeuction loop
 func (w *OperationWorker) IsRunning(ctx context.Context) bool {
 	return w.run
 }
 
+// Returns total count of executions
 func (w *OperationWorker) CountRuns(ctx context.Context) int {
 	return w.countRuns
 }

@@ -22,6 +22,7 @@ const (
 	syncOperationWorkersIntervalPath = "check.operation.workers.interval"
 )
 
+// Default struct of WorkersManager service
 type WorkersManager struct {
 	configs                      config.Config
 	schedulerStorage             ports.SchedulerStorage
@@ -31,6 +32,7 @@ type WorkersManager struct {
 	syncOperationWorkersInterval int
 }
 
+// Default constructor of WorkersManager
 func NewWorkersManager(configs config.Config, schedulerStorage ports.SchedulerStorage, operationManager operation_manager.OperationManager) *WorkersManager {
 	return &WorkersManager{
 		configs:                      configs,
@@ -41,6 +43,7 @@ func NewWorkersManager(configs config.Config, schedulerStorage ports.SchedulerSt
 	}
 }
 
+// Function to run a first sync and start a periodically sync worker
 func (w *WorkersManager) Start(ctx context.Context) error {
 
 	err := w.SyncOperationWorkers(ctx)
@@ -53,6 +56,8 @@ func (w *WorkersManager) Start(ctx context.Context) error {
 	return nil
 }
 
+// Function to start a infinite loop (ticker) that will call
+// (periodically) the SyncOperationWorkers func
 func (w *WorkersManager) startSyncOperationWorkers(ctx context.Context) error {
 
 	w.runSyncOperationWorkers = true
@@ -72,7 +77,7 @@ func (w *WorkersManager) startSyncOperationWorkers(ctx context.Context) error {
 
 		case sig := <-sigchan:
 			zap.L().Warn("caught signal: terminating\n", zap.String("signal", sig.String()))
-			w.runSyncOperationWorkers = false
+			w.stop(ctx)
 		}
 	}
 
@@ -80,6 +85,19 @@ func (w *WorkersManager) startSyncOperationWorkers(ctx context.Context) error {
 
 }
 
+// Stops all registered workers and stops sync operation workers loop
+func (w *WorkersManager) stop(ctx context.Context) {
+	for name, worker := range w.CurrentWorkers {
+		worker.Stop(ctx)
+		delete(w.CurrentWorkers, name)
+	}
+	w.runSyncOperationWorkers = false
+}
+
+// Function responsible to run a single sync on operation workers. It will:
+// - Get all schedulers
+// - Discover and start all desirable workers (not running);
+// - Discover and stop all dispensable workers (running);
 func (w *WorkersManager) SyncOperationWorkers(ctx context.Context) error {
 
 	zap.L().Info("starting to sync operation workers")
@@ -97,7 +115,7 @@ func (w *WorkersManager) SyncOperationWorkers(ctx context.Context) error {
 		zap.L().Info("new operation worker running", zap.Int("scheduler", len(name)))
 	}
 
-	for name, worker := range w.getUnecessaryOperationWorkers(ctx, schedulers) {
+	for name, worker := range w.getDispensableOperationWorkers(ctx, schedulers) {
 		worker.Stop(ctx)
 		delete(w.CurrentWorkers, name)
 		zap.L().Info("canceling operation worker", zap.Int("scheduler", len(name)))
@@ -108,6 +126,7 @@ func (w *WorkersManager) SyncOperationWorkers(ctx context.Context) error {
 	return nil
 }
 
+// Gets all desirable operation workers, the ones that are not running
 func (w *WorkersManager) getDesirableOperationWorkers(ctx context.Context, schedulers []*entities.Scheduler) map[string]workers.Worker {
 
 	desirableWorkers := map[string]workers.Worker{}
@@ -123,17 +142,18 @@ func (w *WorkersManager) getDesirableOperationWorkers(ctx context.Context, sched
 
 }
 
-func (w *WorkersManager) getUnecessaryOperationWorkers(ctx context.Context, schedulers []*entities.Scheduler) map[string]workers.Worker {
+// Gets all dispensable operation workers, the ones that are running but no more required
+func (w *WorkersManager) getDispensableOperationWorkers(ctx context.Context, schedulers []*entities.Scheduler) map[string]workers.Worker {
 
-	unecessaryWorkers := map[string]workers.Worker{}
+	dispensableWorkers := map[string]workers.Worker{}
 	for name, worker := range w.CurrentWorkers {
-		unecessaryWorkers[name] = worker
+		dispensableWorkers[name] = worker
 	}
 
 	for _, scheduler := range schedulers {
-		delete(unecessaryWorkers, scheduler.Name)
+		delete(dispensableWorkers, scheduler.Name)
 	}
 
-	return unecessaryWorkers
+	return dispensableWorkers
 
 }
