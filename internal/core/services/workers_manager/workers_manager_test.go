@@ -7,17 +7,21 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	configMock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 )
 
 func TestStart(t *testing.T) {
+
 	t.Run("with success", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -50,6 +54,39 @@ func TestStart(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
+	})
+
+	t.Run("with soft error when schedulerStorage fails to list all schedulers", func(t *testing.T) {
+
+		core, recorded := observer.New(zap.InfoLevel)
+		zl := zap.New(core)
+		zap.ReplaceGlobals(zl)
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		configs := configMock.NewMockConfig(mockCtrl)
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage)
+
+		configs.EXPECT().GetInt(syncOperationWorkersIntervalPath).Return(10)
+		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return(nil, errors.ErrUnexpected)
+
+		workersManager := NewWorkersManager(configs, schedulerStorage, *operationManager)
+
+		err := workersManager.Start(context.Background())
+		require.NoError(t, err)
+
+		require.Empty(t, workersManager.CurrentWorkers)
+
+		errorLogs := recorded.Filter(func(le observer.LoggedEntry) bool {
+			return le.Level == zap.ErrorLevel
+		}).Filter(func(le observer.LoggedEntry) bool {
+			return le.Message == "initial sync operation workers failed"
+		})
+		require.NotEmpty(t, errorLogs)
 	})
 
 	t.Run("with success when scheduler added after bootstrap", func(t *testing.T) {
