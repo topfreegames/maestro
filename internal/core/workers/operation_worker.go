@@ -17,7 +17,7 @@ import (
 const (
 	// Sync period: waiting time window respected by workers in
 	// order to control executions
-	SyncPeriodPath = "operation.worker.sync.period"
+	OperationWorkerIntervalPath = "operation.worker.interval"
 )
 
 type OperationWorker struct {
@@ -35,7 +35,7 @@ func NewOperationWorker(
 	return &OperationWorker{
 		scheduler:        scheduler,
 		operationManager: operationManager,
-		syncPeriod:       configs.GetInt(SyncPeriodPath),
+		syncPeriod:       configs.GetInt(OperationWorkerIntervalPath),
 	}
 }
 

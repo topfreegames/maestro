@@ -43,35 +43,17 @@ func NewWorkersManager(configs config.Config, schedulerStorage ports.SchedulerSt
 
 func (w *WorkersManager) Start(ctx context.Context) error {
 
-	w.startSchedulerOperationWorkers(ctx)
-	go w.syncOperationWorkers(ctx)
-
-	return nil
-}
-
-func (w *WorkersManager) startSchedulerOperationWorkers(ctx context.Context) error {
-
-	zap.L().Info("starting scheduler operation workers")
-
-	schedulers, err := w.schedulerStorage.GetAllSchedulers(ctx)
+	err := w.SyncOperationWorkers(ctx)
 	if err != nil {
 		return err
 	}
 
-	zap.L().Info("schedulers found, starting operation workers", zap.Int("count", len(schedulers)))
-
-	for _, scheduler := range schedulers {
-		worker := workers.NewOperationWorker(scheduler, w.configs, w.operationManager)
-		w.CurrentWorkers[scheduler.Name] = worker
-		go worker.Start(ctx)
-	}
-
-	zap.L().Info("operation workers running", zap.Int("count", len(schedulers)))
+	go w.startSyncOperationWorkers(ctx)
 
 	return nil
 }
 
-func (w *WorkersManager) syncOperationWorkers(ctx context.Context) error {
+func (w *WorkersManager) startSyncOperationWorkers(ctx context.Context) error {
 
 	w.runSyncOperationWorkers = true
 	sigchan := make(chan os.Signal)
@@ -83,22 +65,7 @@ func (w *WorkersManager) syncOperationWorkers(ctx context.Context) error {
 	for w.runSyncOperationWorkers == true {
 		select {
 		case <-ticker.C:
-			zap.L().Info("Checking operation workers")
-
-			schedulers, err := w.schedulerStorage.GetAllSchedulers(ctx)
-			if err != nil {
-				return err
-			}
-
-			for name, worker := range w.getDesirableOperationWorkers(ctx, schedulers) {
-				go worker.Start(ctx)
-				w.CurrentWorkers[name] = worker
-			}
-
-			for name, worker := range w.getUnecessaryOperationWorkers(ctx, schedulers) {
-				worker.Stop(ctx)
-				delete(w.CurrentWorkers, name)
-			}
+			w.SyncOperationWorkers(ctx)
 
 		case sig := <-sigchan:
 			zap.L().Warn("caught signal: terminating\n", zap.String("signal", sig.String()))
@@ -108,6 +75,34 @@ func (w *WorkersManager) syncOperationWorkers(ctx context.Context) error {
 
 	return nil
 
+}
+
+func (w *WorkersManager) SyncOperationWorkers(ctx context.Context) error {
+
+	zap.L().Info("syncing operation workers")
+
+	schedulers, err := w.schedulerStorage.GetAllSchedulers(ctx)
+	if err != nil {
+		return err
+	}
+
+	zap.L().Info("schedulers found, syncing operation workers", zap.Int("count", len(schedulers)))
+
+	for name, worker := range w.getDesirableOperationWorkers(ctx, schedulers) {
+		go worker.Start(ctx)
+		w.CurrentWorkers[name] = worker
+		zap.L().Info("new operation worker running", zap.Int("scheduler", len(name)))
+	}
+
+	for name, worker := range w.getUnecessaryOperationWorkers(ctx, schedulers) {
+		worker.Stop(ctx)
+		delete(w.CurrentWorkers, name)
+		zap.L().Info("canceling operation worker", zap.Int("scheduler", len(name)))
+	}
+
+	zap.L().Info("all operation workers in sync")
+
+	return nil
 }
 
 func (w *WorkersManager) getDesirableOperationWorkers(ctx context.Context, schedulers []*entities.Scheduler) map[string]workers.Worker {
@@ -127,7 +122,11 @@ func (w *WorkersManager) getDesirableOperationWorkers(ctx context.Context, sched
 
 func (w *WorkersManager) getUnecessaryOperationWorkers(ctx context.Context, schedulers []*entities.Scheduler) map[string]workers.Worker {
 
-	unecessaryWorkers := w.CurrentWorkers
+	unecessaryWorkers := map[string]workers.Worker{}
+	for name, worker := range w.CurrentWorkers {
+		unecessaryWorkers[name] = worker
+	}
+
 	for _, scheduler := range schedulers {
 		delete(unecessaryWorkers, scheduler.Name)
 	}
