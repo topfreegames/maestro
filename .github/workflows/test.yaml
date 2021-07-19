@@ -43,20 +43,9 @@ jobs:
         GOBINPATH: ~/go/bin/
       run: |
         make unit-partial-run
-  adapters-integration:
-    name: Adapters integration tests
+  partial-integration:
+    name: Partial package integration tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        port:
-        - clock
-        - instance_storage
-        - operation_flow
-        - operation_storage
-        - port_allocator
-        - room_storage
-        - runtime
-        - scheduler_storage
     steps:
     - name: Set up Go
       uses: actions/setup-go@v1
@@ -72,6 +61,5 @@ jobs:
     - name: Run tests
       env:
         GOBINPATH: ~/go/bin/
-        MAESTRO_PORT: ${{ matrix.port }}
       run: |
-        go test -count=1 -tags=integration ./internal/adapters/${MAESTRO_PORT}/...
+        make integration-partial-run
