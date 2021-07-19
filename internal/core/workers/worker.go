@@ -11,6 +11,4 @@ type Worker interface {
 	Stop(ctx context.Context)
 	// Returns if the worker is running
 	IsRunning(ctx context.Context) bool
-	// Returns count of runs of the worker
-	CountRuns(ctx context.Context) int
 }

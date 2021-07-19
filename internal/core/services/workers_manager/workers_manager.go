@@ -2,14 +2,12 @@ package workers_manager
 
 import (
 	"context"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"go.uber.org/zap"
@@ -28,7 +26,7 @@ type WorkersManager struct {
 	schedulerStorage             ports.SchedulerStorage
 	operationManager             operation_manager.OperationManager
 	CurrentWorkers               map[string]workers.Worker
-	runSyncOperationWorkers      bool
+	RunSyncOperationWorkers      bool
 	syncOperationWorkersInterval int
 }
 
@@ -48,7 +46,7 @@ func (w *WorkersManager) Start(ctx context.Context) error {
 
 	err := w.SyncOperationWorkers(ctx)
 	if err != nil {
-		zap.L().Error("initial sync operation workers failed", zap.Error(err))
+		return errors.NewErrUnexpected("initial sync operation workers failed").WithError(err)
 	}
 
 	go w.startSyncOperationWorkers(ctx)
@@ -58,31 +56,31 @@ func (w *WorkersManager) Start(ctx context.Context) error {
 
 // Function to start a infinite loop (ticker) that will call
 // (periodically) the SyncOperationWorkers func
-func (w *WorkersManager) startSyncOperationWorkers(ctx context.Context) error {
+func (w *WorkersManager) startSyncOperationWorkers(ctx context.Context) {
 
-	w.runSyncOperationWorkers = true
-	sigchan := make(chan os.Signal)
-	signal.Notify(sigchan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
+	w.RunSyncOperationWorkers = true
 	ticker := time.NewTicker(time.Duration(w.syncOperationWorkersInterval) * time.Second)
 	defer ticker.Stop()
 
-	for w.runSyncOperationWorkers == true {
+	for w.RunSyncOperationWorkers == true {
 		select {
 		case <-ticker.C:
 			err := w.SyncOperationWorkers(ctx)
 			if err != nil {
-				zap.L().Error("scheduled sync operation workers failed", zap.Error(err))
+				w.stop(ctx)
+				zap.L().Error("loop to sync operation workers failed", zap.Error(err))
 			}
 
-		case sig := <-sigchan:
-			zap.L().Warn("caught signal: terminating\n", zap.String("signal", sig.String()))
+		case <-ctx.Done():
 			w.stop(ctx)
+			err := ctx.Err()
+			if err != nil {
+				zap.L().Error("loop to sync operation workers received an error context event", zap.Error(err))
+			}
 		}
 	}
 
-	return nil
-
+	return
 }
 
 // Stops all registered workers and stops sync operation workers loop
@@ -91,7 +89,7 @@ func (w *WorkersManager) stop(ctx context.Context) {
 		worker.Stop(ctx)
 		delete(w.CurrentWorkers, name)
 	}
-	w.runSyncOperationWorkers = false
+	w.RunSyncOperationWorkers = false
 }
 
 // Function responsible to run a single sync on operation workers. It will:
@@ -107,8 +105,6 @@ func (w *WorkersManager) SyncOperationWorkers(ctx context.Context) error {
 		return err
 	}
 
-	zap.L().Info("schedulers found, syncing operation workers", zap.Int("count", len(schedulers)))
-
 	for name, worker := range w.getDesirableOperationWorkers(ctx, schedulers) {
 		go worker.Start(ctx)
 		w.CurrentWorkers[name] = worker
@@ -120,8 +116,6 @@ func (w *WorkersManager) SyncOperationWorkers(ctx context.Context) error {
 		delete(w.CurrentWorkers, name)
 		zap.L().Info("canceling operation worker", zap.Int("scheduler", len(name)))
 	}
-
-	zap.L().Info("all operation workers in sync")
 
 	return nil
 }

@@ -2,9 +2,6 @@ package workers
 
 import (
 	"context"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/config"
@@ -23,7 +20,6 @@ const (
 // Operation worker aims to process all pending scheduler operations
 type OperationWorker struct {
 	run              bool
-	countRuns        int
 	syncPeriod       int
 	scheduler        *entities.Scheduler
 	operationManager operation_manager.OperationManager
@@ -37,7 +33,6 @@ func NewOperationWorker(
 ) *OperationWorker {
 	return &OperationWorker{
 		run:              false,
-		countRuns:        0,
 		scheduler:        scheduler,
 		operationManager: operationManager,
 		syncPeriod:       configs.GetInt(OperationWorkerIntervalPath),
@@ -48,8 +43,6 @@ func NewOperationWorker(
 func (w *OperationWorker) Start(ctx context.Context) error {
 
 	w.run = true
-	sigchan := make(chan os.Signal)
-	signal.Notify(sigchan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	ticker := time.NewTicker(time.Duration(w.syncPeriod) * time.Second)
 	defer ticker.Stop()
@@ -58,11 +51,13 @@ func (w *OperationWorker) Start(ctx context.Context) error {
 		select {
 		case <-ticker.C:
 			zap.L().Info("Running operation worker", zap.String("scheduler_name", w.scheduler.Name))
-			w.countRuns++
 
-		case sig := <-sigchan:
-			zap.L().Warn("caught signal: terminating\n", zap.String("signal", sig.String()))
+		case <-ctx.Done():
 			w.Stop(ctx)
+			err := ctx.Err()
+			if err != nil {
+				zap.L().Error("loop to sync operation workers received an error context event", zap.Error(err))
+			}
 		}
 	}
 
@@ -78,9 +73,4 @@ func (w *OperationWorker) Stop(ctx context.Context) {
 // Returns the property `run` used to control the exeuction loop
 func (w *OperationWorker) IsRunning(ctx context.Context) bool {
 	return w.run
-}
-
-// Returns total count of executions
-func (w *OperationWorker) CountRuns(ctx context.Context) int {
-	return w.countRuns
 }
