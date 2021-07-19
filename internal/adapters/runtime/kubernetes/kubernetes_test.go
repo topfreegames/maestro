@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	kube "k8s.io/client-go/kubernetes"
 
