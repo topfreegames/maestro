@@ -11,14 +11,15 @@ import (
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
 
-	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
-	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
+	"github.com/topfreegames/maestro/internal/config"
 	configMock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
+	workerMock "github.com/topfreegames/maestro/internal/core/workers/mock"
 )
 
 func TestStart(t *testing.T) {
@@ -34,12 +35,15 @@ func TestStart(t *testing.T) {
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage)
+		operationManager := operation_manager.New(nil, nil)
+		worker := workerMock.NewMockWorker(mockCtrl)
 
-		configs.EXPECT().GetInt(syncOperationWorkersIntervalPath).Return(10)
-		configs.EXPECT().GetInt(workers.OperationWorkerIntervalPath).Return(10)
+		workerBuilder := func(scheduler *entities.Scheduler, configs config.Config, operation_manager operation_manager.OperationManager) workers.Worker {
+			return worker
+		}
+
+		worker.EXPECT().Start(context.Background()).Return(nil)
+		configs.EXPECT().GetInt(syncWorkersIntervalPath).Return(10)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
@@ -53,14 +57,14 @@ func TestStart(t *testing.T) {
 			},
 		}, nil)
 
-		workersManager := NewWorkersManager(configs, schedulerStorage, *operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, *operationManager)
 
 		err := workersManager.Start(context.Background())
 
 		time.Sleep(time.Second * 1)
 
 		require.NoError(t, err)
-		require.True(t, workersManager.RunSyncOperationWorkers)
+		require.True(t, workersManager.RunSyncWorkers)
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
@@ -76,14 +80,16 @@ func TestStart(t *testing.T) {
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage)
+		operationManager := operation_manager.New(nil, nil)
 
-		configs.EXPECT().GetInt(syncOperationWorkersIntervalPath).Return(10)
+		configs.EXPECT().GetInt(syncWorkersIntervalPath).Return(10)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return(nil, errors.ErrUnexpected)
+		worker := workerMock.NewMockWorker(mockCtrl)
+		workerBuilder := func(scheduler *entities.Scheduler, configs config.Config, operation_manager operation_manager.OperationManager) workers.Worker {
+			return worker
+		}
 
-		workersManager := NewWorkersManager(configs, schedulerStorage, *operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, *operationManager)
 
 		err := workersManager.Start(context.Background())
 
@@ -91,7 +97,7 @@ func TestStart(t *testing.T) {
 
 		require.ErrorIs(t, errors.ErrUnexpected, err)
 		require.Empty(t, workersManager.CurrentWorkers)
-		require.False(t, workersManager.RunSyncOperationWorkers)
+		require.False(t, workersManager.RunSyncWorkers)
 	})
 
 	t.Run("stops when context stops with no error", func(t *testing.T) {
@@ -103,12 +109,15 @@ func TestStart(t *testing.T) {
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage)
+		operationManager := operation_manager.New(nil, nil)
+		worker := workerMock.NewMockWorker(mockCtrl)
+		workerBuilder := func(scheduler *entities.Scheduler, configs config.Config, operation_manager operation_manager.OperationManager) workers.Worker {
+			return worker
+		}
 
-		configs.EXPECT().GetInt(syncOperationWorkersIntervalPath).AnyTimes().Return(10)
-		configs.EXPECT().GetInt(workers.OperationWorkerIntervalPath).AnyTimes().Return(10)
+		worker.EXPECT().Start(ctx).Return(nil)
+		worker.EXPECT().Stop(ctx).Do(func(cont context.Context) {})
+		configs.EXPECT().GetInt(syncWorkersIntervalPath).AnyTimes().Return(10)
 		schedulerStorage.EXPECT().GetAllSchedulers(ctx).AnyTimes().Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
@@ -121,25 +130,23 @@ func TestStart(t *testing.T) {
 				},
 			},
 		}, nil)
-		workersManager := NewWorkersManager(configs, schedulerStorage, *operationManager)
+
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, *operationManager)
 
 		err := workersManager.Start(ctx)
 
 		time.Sleep(time.Second * 1)
 
 		require.NoError(t, err)
-		require.True(t, workersManager.RunSyncOperationWorkers)
+		require.True(t, workersManager.RunSyncWorkers)
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
-		operationWorker := workersManager.CurrentWorkers["zooba-us"]
-		require.True(t, operationWorker.IsRunning(ctx))
 
 		cancel()
 
 		time.Sleep(time.Second * 1)
 
 		require.Empty(t, workersManager.CurrentWorkers)
-		require.False(t, workersManager.RunSyncOperationWorkers)
-		require.False(t, operationWorker.IsRunning(ctx))
+		require.False(t, workersManager.RunSyncWorkers)
 
 	})
 
@@ -154,15 +161,17 @@ func TestStart(t *testing.T) {
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage)
+		operationManager := operation_manager.New(nil, nil)
+		worker := workerMock.NewMockWorker(mockCtrl)
+		workerBuilder := func(scheduler *entities.Scheduler, configs config.Config, operation_manager operation_manager.OperationManager) workers.Worker {
+			return worker
+		}
 
-		configs.EXPECT().GetInt(syncOperationWorkersIntervalPath).Return(10)
-		configs.EXPECT().GetInt(workers.OperationWorkerIntervalPath).Return(10)
+		worker.EXPECT().Start(context.Background()).Return(nil)
+		configs.EXPECT().GetInt(syncWorkersIntervalPath).AnyTimes().Return(10)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{}, nil)
 
-		workersManager := NewWorkersManager(configs, schedulerStorage, *operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, *operationManager)
 		workersManager.Start(context.Background())
 		require.Empty(t, workersManager.CurrentWorkers)
 
@@ -179,7 +188,9 @@ func TestStart(t *testing.T) {
 			},
 		}, nil)
 
-		workersManager.SyncOperationWorkers(context.Background())
+		workersManager.SyncWorkers(context.Background())
+
+		time.Sleep(time.Second * 1)
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
 
@@ -200,13 +211,15 @@ func TestStart(t *testing.T) {
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage)
+		operationManager := operation_manager.New(nil, nil)
+		worker := workerMock.NewMockWorker(mockCtrl)
+		workerBuilder := func(scheduler *entities.Scheduler, configs config.Config, operation_manager operation_manager.OperationManager) workers.Worker {
+			return worker
+		}
 
-		configs.EXPECT().GetInt(syncOperationWorkersIntervalPath).AnyTimes().Return(1)
-		configs.EXPECT().GetInt(workers.OperationWorkerIntervalPath).AnyTimes().Return(1)
-
+		worker.EXPECT().Start(context.Background()).Return(nil)
+		worker.EXPECT().Stop(context.Background()).Do(func(cont context.Context) {})
+		configs.EXPECT().GetInt(syncWorkersIntervalPath).AnyTimes().Return(1)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Times(3).Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
@@ -220,15 +233,13 @@ func TestStart(t *testing.T) {
 			},
 		}, nil)
 
-		workersManager := NewWorkersManager(configs, schedulerStorage, *operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, *operationManager)
 		workersManager.Start(context.Background())
 
 		// Has to sleep 1 second in order to start the goroutine
 		time.Sleep(2 * time.Second)
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
-		operationWorker := workersManager.CurrentWorkers["zooba-us"]
-		require.Equal(t, true, operationWorker.IsRunning(context.Background()))
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
 			zap.InfoLevel: {"starting to sync operation workers",
@@ -241,13 +252,12 @@ func TestStart(t *testing.T) {
 
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{}, nil)
 
-		workersManager.SyncOperationWorkers(context.Background())
+		workersManager.SyncWorkers(context.Background())
 
 		require.Empty(t, workersManager.CurrentWorkers)
-		require.Equal(t, false, operationWorker.IsRunning(context.Background()))
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"starting to sync operation workers"},
+			zap.InfoLevel: {"canceling operation worker"},
 		})
 
 	})

@@ -14,33 +14,33 @@ import (
 const (
 	// Sync period: waiting time window respected by workers in
 	// order to control executions
-	OperationWorkerIntervalPath = "operation.worker.interval"
+	OperationExecutionWorkerIntervalPath = "operation.execution.worker.interval"
 )
 
 // Operation worker aims to process all pending scheduler operations
-type OperationWorker struct {
+type OperationExecutionWorker struct {
 	run              bool
 	syncPeriod       int
 	scheduler        *entities.Scheduler
 	operationManager operation_manager.OperationManager
 }
 
-// Default constructor of OperationWorker
-func NewOperationWorker(
+// Default constructor of OperationExecutionWorker
+func NewOperationExecutionWorker(
 	scheduler *entities.Scheduler,
 	configs config.Config,
 	operationManager operation_manager.OperationManager,
-) *OperationWorker {
-	return &OperationWorker{
+) *OperationExecutionWorker {
+	return &OperationExecutionWorker{
 		run:              false,
 		scheduler:        scheduler,
 		operationManager: operationManager,
-		syncPeriod:       configs.GetInt(OperationWorkerIntervalPath),
+		syncPeriod:       configs.GetInt(OperationExecutionWorkerIntervalPath),
 	}
 }
 
 // Start aims to execute periodically the next operation of a scheduler
-func (w *OperationWorker) Start(ctx context.Context) error {
+func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 	w.run = true
 
@@ -65,12 +65,12 @@ func (w *OperationWorker) Start(ctx context.Context) error {
 }
 
 // Stop aims to set the run attribute as false what stops the loop
-func (w *OperationWorker) Stop(ctx context.Context) {
+func (w *OperationExecutionWorker) Stop(ctx context.Context) {
 	w.run = false
 	return
 }
 
 // Returns the property `run` used to control the exeuction loop
-func (w *OperationWorker) IsRunning(ctx context.Context) bool {
+func (w *OperationExecutionWorker) IsRunning(ctx context.Context) bool {
 	return w.run
 }
