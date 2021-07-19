@@ -15,11 +15,13 @@ import (
 )
 
 func TestGameRoomCreation(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	client := getKubernetesClientset(t)
 	kubernetesRuntime := New(client)
 
 	t.Run("successfully create a room", func(t *testing.T) {
+		t.Parallel()
 		// first, create the scheduler
 		scheduler := &entities.Scheduler{Name: "game-room-test"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
@@ -46,6 +48,7 @@ func TestGameRoomCreation(t *testing.T) {
 	})
 
 	t.Run("fail with wrong game room spec", func(t *testing.T) {
+		t.Parallel()
 		// first, create the scheduler
 		scheduler := &entities.Scheduler{Name: "game-room-invalid-spec"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
@@ -65,11 +68,13 @@ func TestGameRoomCreation(t *testing.T) {
 }
 
 func TestGameRoomDeletion(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	client := getKubernetesClientset(t)
 	kubernetesRuntime := New(client)
 
 	t.Run("successfully delete a room", func(t *testing.T) {
+		t.Parallel()
 		// first, create the scheduler
 		scheduler := &entities.Scheduler{Name: "game-room-delete-test"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
@@ -105,6 +110,7 @@ func TestGameRoomDeletion(t *testing.T) {
 	})
 
 	t.Run("fail to delete inexistent game room", func(t *testing.T) {
+		t.Parallel()
 		// first, create the scheduler
 		scheduler := &entities.Scheduler{Name: "game-room-inexistent-delete"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
