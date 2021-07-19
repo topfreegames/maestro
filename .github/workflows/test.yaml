@@ -1,30 +1,8 @@
 name: Test
 on: push
 jobs:
-  ginkgo:
-    name: Ginkgo tests
-    runs-on: ubuntu-latest
-    steps:
-    - name: Set up Go
-      uses: actions/setup-go@v1
-      with:
-        go-version: '1.16.3'
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Restore cache
-      uses: actions/cache@v2
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-    - name: Run
-      continue-on-error: true
-      env:
-        GOBINPATH: ~/go/bin/
-      run: |
-        make setup-ci
-        make ginkgo-run
-  partial-unit:
-    name: Partial package unit tests
+  unit:
+    name: Unit tests
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go
@@ -39,12 +17,10 @@ jobs:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
     - name: Run tests
-      env:
-        GOBINPATH: ~/go/bin/
       run: |
-        make unit-partial-run
-  partial-integration:
-    name: Partial package integration tests
+        make run-unit-tests
+  integration:
+    name: Integration tests
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go
@@ -59,7 +35,5 @@ jobs:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
     - name: Run tests
-      env:
-        GOBINPATH: ~/go/bin/
       run: |
-        make integration-partial-run
+        make run-integration-tests
