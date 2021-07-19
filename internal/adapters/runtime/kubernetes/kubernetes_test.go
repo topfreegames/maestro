@@ -29,7 +29,7 @@ func getKubernetesClientset(t *testing.T) kube.Interface {
 func TestMain(m *testing.M) {
 	var err error
 	kubernetesContainer, err = gnomock.Start(
-		k3s.Preset(k3s.WithVersion("v1.19.9")),
+		k3s.Preset(k3s.WithVersion("v1.19.11")),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("error creating kubernetes docker instance: %s\n", err))
