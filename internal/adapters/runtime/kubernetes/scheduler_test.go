@@ -6,46 +6,30 @@ import (
 	"context"
 	"testing"
 
-	"github.com/orlangure/gnomock"
-	"github.com/orlangure/gnomock/preset/k3s"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kube "k8s.io/client-go/kubernetes"
 )
 
 func TestSchedulerCreation(t *testing.T) {
-	c, err := gnomock.Start(
-		k3s.Preset(k3s.WithVersion("v1.16.15")),
-	)
-	require.NoError(t, err)
-
-	defer func() {
-		require.NoError(t, gnomock.Stop(c))
-	}()
-
-	kubeconfig, err := k3s.Config(c)
-	require.NoError(t, err)
-
 	ctx := context.Background()
-	client, err := kube.NewForConfig(kubeconfig)
-	require.NoError(t, err)
-
+	client := getKubernetesClientset(t)
 	kubernetesRuntime := New(client)
+
 	t.Run("create single scheduler", func(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "single-scheduler-test"}
-		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		_, err := client.CoreV1().Namespaces().Get(ctx, scheduler.Name, metav1.GetOptions{})
+		_, err = client.CoreV1().Namespaces().Get(ctx, scheduler.Name, metav1.GetOptions{})
 		require.NoError(t, err)
 	})
 
 	t.Run("fail to create scheduler with the same name", func(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "conflict-scheduler-test"}
-		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
 		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
@@ -55,26 +39,13 @@ func TestSchedulerCreation(t *testing.T) {
 }
 
 func TestSchedulerDeletion(t *testing.T) {
-	c, err := gnomock.Start(
-		k3s.Preset(k3s.WithVersion("v1.16.15")),
-	)
-	require.NoError(t, err)
-
-	defer func() {
-		require.NoError(t, gnomock.Stop(c))
-	}()
-
-	kubeconfig, err := k3s.Config(c)
-	require.NoError(t, err)
-
 	ctx := context.Background()
-	client, err := kube.NewForConfig(kubeconfig)
-	require.NoError(t, err)
-
+	client := getKubernetesClientset(t)
 	kubernetesRuntime := New(client)
+
 	t.Run("delete scheduler", func(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "delete-scheduler-test"}
-		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
 		err = kubernetesRuntime.DeleteScheduler(ctx, scheduler)
@@ -87,7 +58,7 @@ func TestSchedulerDeletion(t *testing.T) {
 
 	t.Run("fail to delete inexistent scheduler", func(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "delete-inexistent-scheduler-test"}
-		err = kubernetesRuntime.DeleteScheduler(ctx, scheduler)
+		err := kubernetesRuntime.DeleteScheduler(ctx, scheduler)
 		require.Error(t, err)
 		require.ErrorIs(t, err, errors.ErrNotFound)
 	})
