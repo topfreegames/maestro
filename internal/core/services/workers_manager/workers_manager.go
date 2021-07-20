@@ -127,6 +127,12 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 		zap.L().Info("canceling operation worker", zap.Int("scheduler", len(name)))
 	}
 
+	for name, worker := range w.getDeadWorkers(ctx) {
+		worker.Start(ctx)
+		w.CurrentWorkers[name] = worker
+		zap.L().Info("restarting dead operation worker", zap.Int("scheduler", len(name)))
+	}
+
 	return nil
 }
 
@@ -159,5 +165,19 @@ func (w *WorkersManager) getDispensableWorkers(ctx context.Context, schedulers [
 	}
 
 	return dispensableWorkers
+
+}
+
+// Gets all dead operation workers, the ones that are in currentWorkers but not running
+func (w *WorkersManager) getDeadWorkers(ctx context.Context) map[string]workers.Worker {
+
+	deadWorkers := map[string]workers.Worker{}
+	for name, worker := range w.CurrentWorkers {
+		if worker.IsRunning(ctx) == false {
+			deadWorkers[name] = worker
+		}
+	}
+
+	return deadWorkers
 
 }
