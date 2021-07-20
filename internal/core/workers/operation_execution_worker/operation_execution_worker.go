@@ -21,8 +21,8 @@ type OperationExecutionWorker struct {
 	operationManager *operation_manager.OperationManager
 	// TODO(gabrielcorado): check if we this is the right place to have all
 	// executors.
-	executorsByName map[string]operations.Executor
-	workerContext context.Context
+	executorsByName     map[string]operations.Executor
+	workerContext       context.Context
 	cancelWorkerContext context.CancelFunc
 
 	logger *zap.Logger
