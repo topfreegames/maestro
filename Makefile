@@ -210,3 +210,5 @@ mocks:
 	@mockgen -source=internal/core/ports/operation_flow.go -destination=internal/adapters/operation_flow/mock/mock.go -package=mock
 	@mockgen -source=internal/core/workers/worker.go -destination=internal/core/workers/mock/mock.go -package=mock
 	@mockgen -source=internal/config/config.go -destination=internal/config/mock/mock.go -package=mock
+	@mockgen -source=internal/core/operations/definition.go -destination=internal/core/operations/mock/definition.go -package=mock
+	@mockgen -source=internal/core/operations/executor.go -destination=internal/core/operations/mock/executor.go -package=mock

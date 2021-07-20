@@ -1,15 +1,22 @@
 package create_scheduler
 
-import "github.com/topfreegames/maestro/internal/core/entities/operation"
+import (
+	"context"
+
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+)
+
+const operationName = "create_scheduler"
 
 type CreateSchedulerDefinition struct{}
 
-func (d *CreateSchedulerDefinition) ShouldExecute(currentOperations []operation.Operation) bool {
+// ShouldExecute we're going to always perform the scheduler creation.
+func (d *CreateSchedulerDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
 }
 
 func (d *CreateSchedulerDefinition) Name() string {
-	return "create_scheduler"
+	return operationName
 }
 
 func (d *CreateSchedulerDefinition) Marshal() []byte {
