@@ -57,6 +57,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				return nil
 			}
 
+			w.Stop(ctx)
 			return fmt.Errorf("failed to get next operation: %w", err)
 		}
 
@@ -83,6 +84,8 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 		err = w.operationManager.StartOperation(operationContext, op)
 		if err != nil {
+			w.Stop(ctx)
+
 			// NOTE: currently, we're not treating if the operation exists or
 			// not. In this case, when there is error it will be a unexpected
 			// error.
