@@ -25,14 +25,21 @@ type WorkersManager struct {
 	builder             workers.WorkerBuilder
 	configs             config.Config
 	schedulerStorage    ports.SchedulerStorage
-	operationManager    operation_manager.OperationManager
+	operationManager    *operation_manager.OperationManager
 	CurrentWorkers      map[string]workers.Worker
 	RunSyncWorkers      bool
 	syncWorkersInterval int
+	workerOptions       *workers.WorkerOptions
 }
 
 // Default constructor of WorkersManager
-func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, schedulerStorage ports.SchedulerStorage, operationManager operation_manager.OperationManager) *WorkersManager {
+func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, schedulerStorage ports.SchedulerStorage, operationManager *operation_manager.OperationManager) *WorkersManager {
+	// options passed to build the workers.
+	// NOTE: we might need to add more options as the workers need.
+	workerOptions := &workers.WorkerOptions{
+		OperationManager: operationManager,
+	}
+
 	return &WorkersManager{
 		builder:             builder,
 		configs:             configs,
@@ -40,6 +47,7 @@ func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, sch
 		operationManager:    operationManager,
 		CurrentWorkers:      map[string]workers.Worker{},
 		syncWorkersInterval: configs.GetInt(syncWorkersIntervalPath),
+		workerOptions:       workerOptions,
 	}
 }
 
@@ -127,7 +135,7 @@ func (w *WorkersManager) getDesirableWorkers(ctx context.Context, schedulers []*
 
 	desirableWorkers := map[string]workers.Worker{}
 	for _, scheduler := range schedulers {
-		desirableWorkers[scheduler.Name] = w.builder(scheduler, w.configs, w.operationManager)
+		desirableWorkers[scheduler.Name] = w.builder(scheduler, w.workerOptions)
 	}
 
 	for k := range w.CurrentWorkers {

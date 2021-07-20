@@ -16,6 +16,7 @@ import (
 	mockoperation "github.com/topfreegames/maestro/internal/core/operations/mock"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/operations_registry"
+	"github.com/topfreegames/maestro/internal/core/workers"
 )
 
 func TestSchedulerOperationsExecutionLoop(t *testing.T) {
@@ -44,7 +45,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(&WorkerOptions{operationManager, []operations.Executor{operationExecutor}}, expectedOperation.SchedulerName)
+		workerService := NewOperationExecutionWorker(expectedOperation.SchedulerName, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
@@ -89,7 +90,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(&WorkerOptions{operationManager, []operations.Executor{operationExecutor}}, expectedOperation.SchedulerName)
+		workerService := NewOperationExecutionWorker(expectedOperation.SchedulerName, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
@@ -134,7 +135,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(&WorkerOptions{operationManager, []operations.Executor{}}, expectedOperation.SchedulerName)
+		workerService := NewOperationExecutionWorker(expectedOperation.SchedulerName, &workers.WorkerOptions{operationManager, []operations.Executor{}})
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 
@@ -173,7 +174,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(&WorkerOptions{operationManager, []operations.Executor{operationExecutor}}, expectedOperation.SchedulerName)
+		workerService := NewOperationExecutionWorker(expectedOperation.SchedulerName, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(false)

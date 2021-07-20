@@ -28,12 +28,7 @@ type OperationExecutionWorker struct {
 	logger *zap.Logger
 }
 
-type WorkerOptions struct {
-	OperationManager *operation_manager.OperationManager
-	Executors        []operations.Executor
-}
-
-func NewOperationExecutionWorker(opts *WorkerOptions, schedulerName string) *OperationExecutionWorker {
+func NewOperationExecutionWorker(schedulerName string, opts *workers.WorkerOptions) *OperationExecutionWorker {
 	executors := make(map[string]operations.Executor)
 	for _, executor := range opts.Executors {
 		// TODO(gabrielcorado): are we going to receive the executor

@@ -12,7 +12,6 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
-	"github.com/topfreegames/maestro/internal/config"
 	configMock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -38,7 +37,7 @@ func TestStart(t *testing.T) {
 		operationManager := operation_manager.New(nil, nil)
 		worker := workerMock.NewMockWorker(mockCtrl)
 
-		workerBuilder := func(scheduler *entities.Scheduler, configs config.Config, operation_manager operation_manager.OperationManager) workers.Worker {
+		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return worker
 		}
 
@@ -57,7 +56,7 @@ func TestStart(t *testing.T) {
 			},
 		}, nil)
 
-		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, *operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
 
 		err := workersManager.Start(context.Background())
 
@@ -85,11 +84,11 @@ func TestStart(t *testing.T) {
 		configs.EXPECT().GetInt(syncWorkersIntervalPath).Return(10)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return(nil, errors.ErrUnexpected)
 		worker := workerMock.NewMockWorker(mockCtrl)
-		workerBuilder := func(scheduler *entities.Scheduler, configs config.Config, operation_manager operation_manager.OperationManager) workers.Worker {
+		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return worker
 		}
 
-		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, *operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
 
 		err := workersManager.Start(context.Background())
 
@@ -111,7 +110,7 @@ func TestStart(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
 		worker := workerMock.NewMockWorker(mockCtrl)
-		workerBuilder := func(scheduler *entities.Scheduler, configs config.Config, operation_manager operation_manager.OperationManager) workers.Worker {
+		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return worker
 		}
 
@@ -131,7 +130,7 @@ func TestStart(t *testing.T) {
 			},
 		}, nil)
 
-		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, *operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
 
 		err := workersManager.Start(ctx)
 
@@ -163,7 +162,7 @@ func TestStart(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
 		worker := workerMock.NewMockWorker(mockCtrl)
-		workerBuilder := func(scheduler *entities.Scheduler, configs config.Config, operation_manager operation_manager.OperationManager) workers.Worker {
+		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return worker
 		}
 
@@ -171,7 +170,7 @@ func TestStart(t *testing.T) {
 		configs.EXPECT().GetInt(syncWorkersIntervalPath).AnyTimes().Return(10)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{}, nil)
 
-		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, *operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
 		workersManager.Start(context.Background())
 		require.Empty(t, workersManager.CurrentWorkers)
 
@@ -213,7 +212,7 @@ func TestStart(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
 		worker := workerMock.NewMockWorker(mockCtrl)
-		workerBuilder := func(scheduler *entities.Scheduler, configs config.Config, operation_manager operation_manager.OperationManager) workers.Worker {
+		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return worker
 		}
 
@@ -233,7 +232,7 @@ func TestStart(t *testing.T) {
 			},
 		}, nil)
 
-		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, *operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
 		workersManager.Start(context.Background())
 
 		// Has to sleep 1 second in order to start the goroutine

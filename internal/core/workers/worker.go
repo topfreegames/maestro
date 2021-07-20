@@ -3,8 +3,8 @@ package workers
 import (
 	"context"
 
-	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 )
 
@@ -19,8 +19,13 @@ type Worker interface {
 	IsRunning(ctx context.Context) bool
 }
 
-type WorkerBuilder func(
-	scheduler *entities.Scheduler,
-	configs config.Config,
-	operation_manager operation_manager.OperationManager,
-) Worker
+// WorkerOptions define all possible options that a worker can require during
+// its construction. This struct is going to be used to inject the worker
+// dependencies like ports.
+type WorkerOptions struct {
+	OperationManager *operation_manager.OperationManager
+	Executors        []operations.Executor
+}
+
+// WorkerBuilder defines a function that nows how to construct a worker.
+type WorkerBuilder func(scheduler *entities.Scheduler, options *WorkerOptions) Worker
