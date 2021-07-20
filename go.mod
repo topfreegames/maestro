@@ -6,7 +6,6 @@ require (
 	github.com/GuiaBolso/darwin v0.0.0-20170210191649-86919dfcf808
 	github.com/cznic/ql v1.2.0 // indirect
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-chi/chi v4.0.2+incompatible // indirect
 	github.com/go-pg/pg v6.13.2+incompatible
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-redis/redis/v8 v8.10.0
@@ -23,8 +22,9 @@ require (
 	github.com/spf13/jwalterweatherman v0.0.0-20170109133355-fa7ca7e836cf // indirect
 	github.com/spf13/viper v1.1.0
 	github.com/stretchr/testify v1.7.0
+	go.uber.org/zap v1.18.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/tools v0.1.0 // indirect
+	golang.org/x/tools v0.1.0
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	k8s.io/api v0.21.0
 	k8s.io/apimachinery v0.21.0
