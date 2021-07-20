@@ -1,3 +1,7 @@
+SOURCES := $(shell \
+	find . -not \( \( -name .git -o -name .go -o -name vendor \) -prune \) \
+	-name '*.go')
+
 .PHONY: run-unit-tests
 run-unit-tests:
 	@go test -count=1 -tags=unit ./...
@@ -22,4 +26,4 @@ mocks:
 
 .PHONY: goimports
 goimports:
-	@go run golang.org/x/tools/cmd/goimports
+	@go run golang.org/x/tools/cmd/goimports -w $(SOURCES)
