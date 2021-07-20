@@ -9,35 +9,20 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
-	kube "k8s.io/client-go/kubernetes"
-
-	"github.com/orlangure/gnomock"
-	"github.com/orlangure/gnomock/preset/k3s"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 )
 
 func TestGameRoomsWatch(t *testing.T) {
-	c, err := gnomock.Start(
-		k3s.Preset(k3s.WithVersion("v1.16.15")),
-	)
-	require.NoError(t, err)
-
-	defer func() {
-		require.NoError(t, gnomock.Stop(c))
-	}()
-
-	kubeconfig, err := k3s.Config(c)
-	require.NoError(t, err)
-
+	t.Parallel()
 	ctx := context.Background()
-	client, err := kube.NewForConfig(kubeconfig)
-	require.NoError(t, err)
-
+	client := getKubernetesClientset(t)
 	kubernetesRuntime := New(client)
+
 	t.Run("watch pod addition", func(t *testing.T) {
+		t.Parallel()
 		scheduler := &entities.Scheduler{Name: "watch-room-addition"}
-		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
 		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
@@ -63,8 +48,9 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod becoming ready", func(t *testing.T) {
+		t.Parallel()
 		scheduler := &entities.Scheduler{Name: "watch-room-ready"}
-		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
 		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
@@ -99,8 +85,9 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod with error", func(t *testing.T) {
+		t.Parallel()
 		scheduler := &entities.Scheduler{Name: "watch-room-error"}
-		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
 		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
@@ -132,12 +119,13 @@ func TestGameRoomsWatch(t *testing.T) {
 			}
 
 			return false
-		}, 30*time.Second, time.Second)
+		}, time.Minute, time.Second)
 	})
 
 	t.Run("watch pod deletion", func(t *testing.T) {
+		t.Parallel()
 		scheduler := &entities.Scheduler{Name: "watch-room-delete"}
-		err = kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
 		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
@@ -170,6 +158,6 @@ func TestGameRoomsWatch(t *testing.T) {
 			}
 
 			return false
-		}, 30*time.Second, time.Second)
+		}, time.Minute, time.Second)
 	})
 }
