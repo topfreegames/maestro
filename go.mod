@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/GuiaBolso/darwin v0.0.0-20170210191649-86919dfcf808
 	github.com/cznic/ql v1.2.0 // indirect
+	github.com/docker/docker v20.10.6+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-pg/pg v6.13.2+incompatible
 	github.com/go-redis/redis v6.15.9+incompatible
@@ -18,6 +19,7 @@ require (
 	github.com/magiconair/properties v1.7.2 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/orlangure/gnomock v0.14.1
+	github.com/prometheus/client_golang v1.11.0
 	github.com/spf13/cast v1.0.0 // indirect
 	github.com/spf13/jwalterweatherman v0.0.0-20170109133355-fa7ca7e836cf // indirect
 	github.com/spf13/viper v1.1.0
