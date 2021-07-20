@@ -1,76 +1,141 @@
-package workers
+package operation_execution_worker
 
 import (
 	"context"
-	"time"
+	"errors"
+	"fmt"
 
-	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
+	"github.com/topfreegames/maestro/internal/core/workers"
 	"go.uber.org/zap"
 )
 
-// configurations paths for the worker
-const (
-	// Sync period: waiting time window respected by workers in
-	// order to control executions
-	OperationExecutionWorkerIntervalPath = "operation.execution.worker.interval"
-)
+var _ workers.Worker = (*OperationExecutionWorker)(nil)
 
-// Operation worker aims to process all pending scheduler operations
+// Worker is the service responsible for implemeting the worker
+// responsabilities.
 type OperationExecutionWorker struct {
-	run              bool
-	syncPeriod       int
-	scheduler        *entities.Scheduler
-	operationManager operation_manager.OperationManager
+	schedulerName    string
+	operationManager *operation_manager.OperationManager
+	// TODO(gabrielcorado): check if we this is the right place to have all
+	// executors.
+	executorsByName map[string]operations.Executor
+	workerContext context.Context
+	cancelWorkerContext context.CancelFunc
+
+	logger *zap.Logger
 }
 
-// Default constructor of OperationExecutionWorker
-func NewOperationExecutionWorker(
-	scheduler *entities.Scheduler,
-	configs config.Config,
-	operationManager operation_manager.OperationManager,
-) *OperationExecutionWorker {
+type WorkerOptions struct {
+	OperationManager *operation_manager.OperationManager
+	Executors        []operations.Executor
+}
+
+func NewOperationExecutionWorker(opts *WorkerOptions, schedulerName string) *OperationExecutionWorker {
+	executors := make(map[string]operations.Executor)
+	for _, executor := range opts.Executors {
+		// TODO(gabrielcorado): are we going to receive the executor
+		// initialized?
+		executors[executor.Name()] = executor
+	}
+
 	return &OperationExecutionWorker{
-		run:              false,
-		scheduler:        scheduler,
-		operationManager: operationManager,
-		syncPeriod:       configs.GetInt(OperationExecutionWorkerIntervalPath),
+		operationManager: opts.OperationManager,
+		executorsByName:  executors,
+		schedulerName:    schedulerName,
+		logger:           zap.L().With(zap.String("service", "worker"), zap.String("scheduler_name", schedulerName)),
 	}
 }
 
-// Start aims to execute periodically the next operation of a scheduler
+// Start is responsible for starting a loop that will
+// constantly look to execute operations, and this loop can be canceled using
+// the provided context. NOTE: It is a blocking function.
 func (w *OperationExecutionWorker) Start(ctx context.Context) error {
+	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
 
-	w.run = true
+	for {
+		op, def, err := w.operationManager.NextSchedulerOperation(w.workerContext, w.schedulerName)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
 
-	ticker := time.NewTicker(time.Duration(w.syncPeriod) * time.Second)
-	defer ticker.Stop()
+			return fmt.Errorf("failed to get next operation: %w", err)
+		}
 
-	for w.run == true {
-		select {
-		case <-ticker.C:
-			zap.L().Info("Running operation worker", zap.String("scheduler_name", w.scheduler.Name))
+		// TODO(gabrielcorado): when we introduce operation cancelation this is
+		// the one to be cancelled. Right now it is only a placeholder.
+		operationContext := context.Background()
 
-		case <-ctx.Done():
-			w.Stop(ctx)
-			err := ctx.Err()
-			if err != nil {
-				zap.L().Error("loop to sync operation workers received an error context event", zap.Error(err))
+		loopLogger := w.logger.With(
+			zap.String("operation_id", op.ID),
+			zap.String("operation_definition", def.Name()),
+		)
+
+		executor, hasExecutor := w.executorsByName[def.Name()]
+		if !hasExecutor {
+			loopLogger.Warn("operation definition has no executor")
+			w.evictOperation(operationContext, loopLogger, op)
+			continue
+		}
+
+		if !def.ShouldExecute(operationContext, []*operation.Operation{}) {
+			w.evictOperation(operationContext, loopLogger, op)
+			continue
+		}
+
+		err = w.operationManager.StartOperation(operationContext, op)
+		if err != nil {
+			// NOTE: currently, we're not treating if the operation exists or
+			// not. In this case, when there is error it will be a unexpected
+			// error.
+			return fmt.Errorf("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
+		}
+
+		executionErr := executor.Execute(operationContext, op, def)
+		op.Status = operation.StatusFinished
+		if executionErr != nil {
+			op.Status = operation.StatusError
+			if errors.Is(executionErr, context.Canceled) {
+				op.Status = operation.StatusCanceled
+			}
+
+			loopLogger.Debug("operation execution failed", zap.Error(executionErr))
+			onErrorErr := executor.OnError(operationContext, op, def, executionErr)
+			if onErrorErr != nil {
+				loopLogger.Error("operation OnError failed", zap.Error(onErrorErr))
 			}
 		}
+
+		// TODO(gabrielcorado): we need to propagate the error reason.
+		// TODO(gabrielcorado): consider handling the finish operation error.
+		_ = w.operationManager.FinishOperation(operationContext, op)
 	}
 
 	return nil
 }
 
-// Stop aims to set the run attribute as false what stops the loop
-func (w *OperationExecutionWorker) Stop(ctx context.Context) {
-	w.run = false
-	return
+func (w *OperationExecutionWorker) Stop(_ context.Context) {
+	if w.workerContext == nil {
+		return
+	}
+
+	w.cancelWorkerContext()
 }
 
-// Returns the property `run` used to control the exeuction loop
-func (w *OperationExecutionWorker) IsRunning(ctx context.Context) bool {
-	return w.run
+func (w *OperationExecutionWorker) IsRunning(_ context.Context) bool {
+	if w.workerContext == nil {
+		return false
+	}
+
+	return w.workerContext.Err() == nil
+}
+
+// TODO(gabrielcorado): consider handling the finish operation error.
+func (w *OperationExecutionWorker) evictOperation(ctx context.Context, logger *zap.Logger, op *operation.Operation) {
+	logger.Debug("operation evicted")
+	op.Status = operation.StatusEvicted
+	_ = w.operationManager.FinishOperation(ctx, op)
 }
