@@ -1,5 +1,3 @@
-//+build unit
-
 package workers_manager
 
 import (
@@ -17,10 +15,10 @@ import (
 	configMock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	workerMock "github.com/topfreegames/maestro/internal/core/workers/mock"
 
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
-	workerMock "github.com/topfreegames/maestro/internal/core/workers/mock"
 )
 
 func TestStart(t *testing.T) {
@@ -37,13 +35,11 @@ func TestStart(t *testing.T) {
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
-		worker := workerMock.NewMockWorker(mockCtrl)
 
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return worker
+			return &workerMock.MockWorker{Run: false}
 		}
 
-		worker.EXPECT().Start(context.Background()).Return(nil)
 		configs.EXPECT().GetInt(syncWorkersIntervalPath).Return(10)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{
 			{
@@ -85,9 +81,8 @@ func TestStart(t *testing.T) {
 
 		configs.EXPECT().GetInt(syncWorkersIntervalPath).Return(10)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return(nil, errors.ErrUnexpected)
-		worker := workerMock.NewMockWorker(mockCtrl)
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return worker
+			return &workerMock.MockWorker{Run: false}
 		}
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
@@ -111,13 +106,10 @@ func TestStart(t *testing.T) {
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
-		worker := workerMock.NewMockWorker(mockCtrl)
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return worker
+			return &workerMock.MockWorker{Run: false}
 		}
 
-		worker.EXPECT().Start(ctx).Return(nil)
-		worker.EXPECT().Stop(ctx).Do(func(cont context.Context) {})
 		configs.EXPECT().GetInt(syncWorkersIntervalPath).AnyTimes().Return(10)
 		schedulerStorage.EXPECT().GetAllSchedulers(ctx).AnyTimes().Return([]*entities.Scheduler{
 			{
@@ -163,12 +155,10 @@ func TestStart(t *testing.T) {
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
-		worker := workerMock.NewMockWorker(mockCtrl)
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return worker
+			return &workerMock.MockWorker{Run: false}
 		}
 
-		worker.EXPECT().Start(context.Background()).Return(nil)
 		configs.EXPECT().GetInt(syncWorkersIntervalPath).AnyTimes().Return(10)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{}, nil)
 
@@ -213,13 +203,10 @@ func TestStart(t *testing.T) {
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
-		worker := workerMock.NewMockWorker(mockCtrl)
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return worker
+			return &workerMock.MockWorker{Run: false}
 		}
 
-		worker.EXPECT().Start(context.Background()).Return(nil)
-		worker.EXPECT().Stop(context.Background()).Do(func(cont context.Context) {})
 		configs.EXPECT().GetInt(syncWorkersIntervalPath).AnyTimes().Return(1)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Times(3).Return([]*entities.Scheduler{
 			{
