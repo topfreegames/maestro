@@ -9,9 +9,9 @@ import (
 
 const (
 	LabelNoOperationExecutorFound = "no_operation_executor_found"
-	LabelShouldNotExecute = "should_not_execute"
-	LabelNextOperationFailed = "next_operation_failed"
-	LabelStartOperationFailed = "start_operation_failed"
+	LabelShouldNotExecute         = "should_not_execute"
+	LabelNextOperationFailed      = "next_operation_failed"
+	LabelStartOperationFailed     = "start_operation_failed"
 )
 
 var (
@@ -20,7 +20,6 @@ var (
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "operation_execution",
 		Help:      "An scheduler operation was executed",
-		Buckets:   monitoring.DefBucketsMs,
 		Labels: []string{
 			monitoring.LabelScheduler,
 			monitoring.LabelOperation,
@@ -34,7 +33,6 @@ var (
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "operation_on_error",
 		Help:      "An scheduler operation on error fallback was executed",
-		Buckets:   monitoring.DefBucketsMs,
 		Labels: []string{
 			monitoring.LabelScheduler,
 			monitoring.LabelOperation,
@@ -48,7 +46,6 @@ var (
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "operation_evicted",
 		Help:      "An scheduler operation was evicted",
-		Buckets:   monitoring.DefBucketsMs,
 		Labels: []string{
 			monitoring.LabelScheduler,
 			monitoring.LabelOperation,
@@ -62,7 +59,6 @@ var (
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "operation_execution_worker_failed",
 		Help:      "An scheduler operation execution worker failed and is no longer running",
-		Buckets:   monitoring.DefBucketsMs,
 		Labels: []string{
 			monitoring.LabelScheduler,
 			monitoring.LabelReason,
@@ -73,14 +69,14 @@ var (
 
 func ReportOperationExecutionLatency(start time.Time, schedulerName, operationName string, success bool) {
 	successLabelValue := fmt.Sprint(success)
-	monitoring.ReportLatencyMetric(
+	monitoring.ReportLatencyMetricInMillis(
 		operationExecutionLatencyMetric, start, schedulerName, operationName, successLabelValue,
 	)
 }
 
 func ReportOperationOnErrorLatency(start time.Time, schedulerName, operationName string, success bool) {
 	successLabelValue := fmt.Sprint(success)
-	monitoring.ReportLatencyMetric(
+	monitoring.ReportLatencyMetricInMillis(
 		operationOnErrorLatencyMetric, start, schedulerName, operationName, successLabelValue,
 	)
 }
