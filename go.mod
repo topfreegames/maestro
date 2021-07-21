@@ -20,6 +20,7 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/orlangure/gnomock v0.14.1
 	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/spf13/cast v1.0.0 // indirect
 	github.com/spf13/jwalterweatherman v0.0.0-20170109133355-fa7ca7e836cf // indirect
 	github.com/spf13/viper v1.1.0

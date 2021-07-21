@@ -1,25 +1,19 @@
-//+build integration
+//+build unit
 
 package monitoring
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCounterCreation(t *testing.T) {
 
 	t.Run("successfully fetch counter metric", func(t *testing.T) {
-
-		req, err := http.NewRequest("GET", "/metrics", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
 
 		counter := CreateCounterMetric(&MetricOpts{
 			Namespace: "maestro",
@@ -31,29 +25,38 @@ func TestCounterCreation(t *testing.T) {
 
 		counter.WithLabelValues("true").Inc()
 
-		rr := httptest.NewRecorder()
-		promhttp.Handler().ServeHTTP(rr, req)
+		metrics, _ := prometheus.DefaultGatherer.Gather()
+		metricFamily := filterMetric(metrics, "maestro_test_counter_test_counter")
+		trueMetric := metricFamily.GetMetric()[0]
+		require.Equal(t, float64(1), trueMetric.GetCounter().GetValue())
 
-		require.Equal(t, rr.Code, http.StatusOK)
-		require.Contains(t, rr.Body.String(), "maestro_test_counter_test_counter{success=\"true\"} 1")
+		trueLabel := trueMetric.GetLabel()[0]
+		require.Equal(t, "success", trueLabel.GetName())
+		require.Equal(t, "true", trueLabel.GetValue())
 
 		counter.WithLabelValues("false").Inc()
 		counter.WithLabelValues("true").Inc()
 
-		rr = httptest.NewRecorder()
-		promhttp.Handler().ServeHTTP(rr, req)
+		metrics, _ = prometheus.DefaultGatherer.Gather()
+		metricFamily = filterMetric(metrics, "maestro_test_counter_test_counter")
 
-		require.Equal(t, rr.Code, http.StatusOK)
-		require.Contains(t, rr.Body.String(), "maestro_test_counter_test_counter{success=\"true\"} 2")
-		require.Contains(t, rr.Body.String(), "maestro_test_counter_test_counter{success=\"false\"} 1")
+		trueMetric = metricFamily.GetMetric()[1]
+		require.Equal(t, float64(2), trueMetric.GetCounter().GetValue())
+
+		falseMetric := metricFamily.GetMetric()[0]
+		require.Equal(t, float64(1), falseMetric.GetCounter().GetValue())
+
+		falseLabel := falseMetric.GetLabel()[0]
+		require.Equal(t, "success", falseLabel.GetName())
+		require.Equal(t, "false", falseLabel.GetValue())
+
+		trueLabel = trueMetric.GetLabel()[0]
+		require.Equal(t, "success", trueLabel.GetName())
+		require.Equal(t, "true", trueLabel.GetValue())
+
 	})
 
 	t.Run("successfully fetch gauge metric", func(t *testing.T) {
-
-		req, err := http.NewRequest("GET", "/metrics", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
 
 		gauge := CreateGaugeMetric(&MetricOpts{
 			Namespace: "maestro",
@@ -65,29 +68,38 @@ func TestCounterCreation(t *testing.T) {
 
 		gauge.WithLabelValues("true").Inc()
 
-		rr := httptest.NewRecorder()
-		promhttp.Handler().ServeHTTP(rr, req)
+		metrics, _ := prometheus.DefaultGatherer.Gather()
+		metricFamily := filterMetric(metrics, "maestro_test_gauge_test_gauge")
+		trueMetric := metricFamily.GetMetric()[0]
+		require.Equal(t, float64(1), trueMetric.GetGauge().GetValue())
 
-		require.Equal(t, rr.Code, http.StatusOK)
-		require.Contains(t, rr.Body.String(), "maestro_test_gauge_test_gauge{success=\"true\"} 1")
+		trueLabel := trueMetric.GetLabel()[0]
+		require.Equal(t, "success", trueLabel.GetName())
+		require.Equal(t, "true", trueLabel.GetValue())
 
 		gauge.WithLabelValues("false").Inc()
 		gauge.WithLabelValues("true").Dec()
 
-		rr = httptest.NewRecorder()
-		promhttp.Handler().ServeHTTP(rr, req)
+		metrics, _ = prometheus.DefaultGatherer.Gather()
+		metricFamily = filterMetric(metrics, "maestro_test_gauge_test_gauge")
 
-		require.Equal(t, rr.Code, http.StatusOK)
-		require.Contains(t, rr.Body.String(), "maestro_test_gauge_test_gauge{success=\"true\"} 0")
-		require.Contains(t, rr.Body.String(), "maestro_test_gauge_test_gauge{success=\"false\"} 1")
+		trueMetric = metricFamily.GetMetric()[1]
+		require.Equal(t, float64(0), trueMetric.GetGauge().GetValue())
+
+		falseMetric := metricFamily.GetMetric()[0]
+		require.Equal(t, float64(1), falseMetric.GetGauge().GetValue())
+
+		falseLabel := falseMetric.GetLabel()[0]
+		require.Equal(t, "success", falseLabel.GetName())
+		require.Equal(t, "false", falseLabel.GetValue())
+
+		trueLabel = trueMetric.GetLabel()[0]
+		require.Equal(t, "success", trueLabel.GetName())
+		require.Equal(t, "true", trueLabel.GetValue())
+
 	})
 
 	t.Run("successfully fetch latency metric", func(t *testing.T) {
-
-		req, err := http.NewRequest("GET", "/metrics", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
 
 		latency := CreateLatencyMetric(&MetricOpts{
 			Namespace: "maestro",
@@ -97,35 +109,47 @@ func TestCounterCreation(t *testing.T) {
 			Labels:    []string{"success"},
 		})
 
-		ReportLatencyMetric(latency, time.Now().Add(time.Second*-1), "true")
+		ReportLatencyMetricInMillis(latency, time.Now().Add(time.Second*-1), "true")
 
-		rr := httptest.NewRecorder()
-		promhttp.Handler().ServeHTTP(rr, req)
+		metrics, _ := prometheus.DefaultGatherer.Gather()
+		metricFamily := filterMetric(metrics, "maestro_test_latency_test_latency")
+		trueMetric := metricFamily.GetMetric()[0]
+		require.Equal(t, uint64(1), trueMetric.GetHistogram().GetSampleCount())
+		require.Equal(t, float64(1000), trueMetric.GetHistogram().GetSampleSum())
 
-		require.Equal(t, rr.Code, http.StatusOK)
-		require.Contains(t, rr.Body.String(), "# HELP maestro_test_latency_test_latency Test Latency (latency)")
-		require.Contains(t, rr.Body.String(), "# TYPE maestro_test_latency_test_latency histogram")
-		require.Contains(t, rr.Body.String(), "maestro_test_latency_test_latency_bucket{success=\"true\",le=\"+Inf\"} 1")
-		require.Contains(t, rr.Body.String(), "maestro_test_latency_test_latency_sum{success=\"true\"} 1000")
-		require.Contains(t, rr.Body.String(), "maestro_test_latency_test_latency_count{success=\"true\"} 1")
+		trueLabel := trueMetric.GetLabel()[0]
+		require.Equal(t, "success", trueLabel.GetName())
+		require.Equal(t, "true", trueLabel.GetValue())
 
-		ReportLatencyMetric(latency, time.Now().Add(time.Second*-2), "false")
-		ReportLatencyMetric(latency, time.Now().Add(time.Second*-5), "true")
+		ReportLatencyMetricInMillis(latency, time.Now().Add(time.Second*-2), "false")
+		ReportLatencyMetricInMillis(latency, time.Now().Add(time.Second*-5), "true")
 
-		rr = httptest.NewRecorder()
-		promhttp.Handler().ServeHTTP(rr, req)
+		metrics, _ = prometheus.DefaultGatherer.Gather()
+		metricFamily = filterMetric(metrics, "maestro_test_latency_test_latency")
+		trueMetric = metricFamily.GetMetric()[1]
+		require.Equal(t, uint64(2), trueMetric.GetHistogram().GetSampleCount())
+		require.Equal(t, float64(6000), trueMetric.GetHistogram().GetSampleSum())
 
-		require.Equal(t, rr.Code, http.StatusOK)
+		trueLabel = trueMetric.GetLabel()[0]
+		require.Equal(t, "success", trueLabel.GetName())
+		require.Equal(t, "true", trueLabel.GetValue())
 
-		require.Contains(t, rr.Body.String(), "# HELP maestro_test_latency_test_latency Test Latency (latency)")
-		require.Contains(t, rr.Body.String(), "# TYPE maestro_test_latency_test_latency histogram")
-		require.Contains(t, rr.Body.String(), "maestro_test_latency_test_latency_bucket{success=\"false\",le=\"+Inf\"} 1")
-		require.Contains(t, rr.Body.String(), "maestro_test_latency_test_latency_sum{success=\"false\"} 2000")
-		require.Contains(t, rr.Body.String(), "maestro_test_latency_test_latency_count{success=\"false\"} 1")
+		falseMetric := metricFamily.GetMetric()[0]
+		require.Equal(t, uint64(1), falseMetric.GetHistogram().GetSampleCount())
+		require.Equal(t, float64(2000), falseMetric.GetHistogram().GetSampleSum())
 
-		require.Contains(t, rr.Body.String(), "maestro_test_latency_test_latency_bucket{success=\"true\",le=\"+Inf\"} 2")
-		require.Contains(t, rr.Body.String(), "maestro_test_latency_test_latency_sum{success=\"true\"} 6000")
-		require.Contains(t, rr.Body.String(), "maestro_test_latency_test_latency_count{success=\"true\"} 2")
+		falseLabel := falseMetric.GetLabel()[0]
+		require.Equal(t, "success", falseLabel.GetName())
+		require.Equal(t, "false", falseLabel.GetValue())
 	})
 
+}
+
+func filterMetric(metrics []*dto.MetricFamily, metricName string) *dto.MetricFamily {
+	for _, m := range metrics {
+		if m.GetName() == metricName {
+			return m
+		}
+	}
+	return nil
 }

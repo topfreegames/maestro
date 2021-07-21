@@ -1,52 +1,23 @@
 package monitoring
 
 import (
-	"context"
-	"fmt"
-	"net/http"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/topfreegames/maestro/internal/config"
-	"go.uber.org/zap"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+// DefBucketsMs is similar to prometheus.DefBuckets, but tailored for milliseconds instead of seconds.
+var (
+	DefBucketsMs = []float64{5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000}
+)
+
 type MetricOpts struct {
-	Namespace  string
-	Subsystem  string
-	Name       string
-	Help       string
-	Labels     []string
-	Buckets    []float64
-	Objectives map[float64]float64
-}
-
-// runMetricsServer start a metrics server in other goroutine, and returns a
-// shutdown function.
-func RunMetricsServer(ctx context.Context, configs config.Config) func() error {
-	if !configs.GetBool("metrics.enabled") {
-		return func() error { return nil }
-	}
-
-	mux := http.NewServeMux()
-	mux.Handle("/", promhttp.Handler())
-
-	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%s", configs.GetString("metrics.port")),
-		Handler: mux,
-	}
-
-	go func() {
-		zap.L().Info(fmt.Sprintf("started HTTP Metrics at :%s", configs.GetString("metrics.port")))
-		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
-			zap.L().With(zap.Error(err)).Fatal("failed to start HTTP metrics server")
-		}
-	}()
-
-	return func() error { return httpServer.Shutdown(ctx) }
+	Namespace string
+	Subsystem string
+	Name      string
+	Help      string
+	Labels    []string
 }
 
 func CreateCounterMetric(options *MetricOpts) *prometheus.CounterVec {
@@ -68,7 +39,7 @@ func CreateLatencyMetric(options *MetricOpts) *prometheus.HistogramVec {
 			Subsystem: options.Subsystem,
 			Name:      options.Name + "_latency",
 			Help:      options.Help + " (latency)",
-			Buckets:   options.Buckets,
+			Buckets:   DefBucketsMs,
 		},
 		options.Labels,
 	)
@@ -86,7 +57,7 @@ func CreateGaugeMetric(options *MetricOpts) *prometheus.GaugeVec {
 	)
 }
 
-func ReportLatencyMetric(metric *prometheus.HistogramVec, start time.Time, labels ...string) {
+func ReportLatencyMetricInMillis(metric *prometheus.HistogramVec, start time.Time, labels ...string) {
 	timeElapsed := time.Since(start)
 
 	metric.
