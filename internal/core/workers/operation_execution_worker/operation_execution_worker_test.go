@@ -9,12 +9,10 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/monitoring"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	mockoperation "github.com/topfreegames/maestro/internal/core/operations/mock"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -24,9 +22,6 @@ import (
 
 func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	t.Run("successfully runs a single operation", func(t *testing.T) {
-
-		clearMetrics()
-		initMetrics()
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
@@ -74,17 +69,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		workerService.Stop(context.Background())
 		require.False(t, workerService.IsRunning(context.Background()))
-
-		metrics, _ := prometheus.DefaultGatherer.Gather()
-		latency := monitoring.FilterMetric(metrics, "maestro_worker_operation_execution_latency").GetMetric()[0]
-		require.Equal(t, uint64(1), latency.GetHistogram().GetSampleCount())
-		require.GreaterOrEqual(t, latency.GetHistogram().GetSampleSum(), float64(1000))
 	})
 
 	t.Run("execute OnError when a Execute fails", func(t *testing.T) {
-
-		clearMetrics()
-		initMetrics()
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
@@ -133,17 +120,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		workerService.Stop(context.Background())
 		require.False(t, workerService.IsRunning(context.Background()))
-
-		metrics, _ := prometheus.DefaultGatherer.Gather()
-		latency := monitoring.FilterMetric(metrics, "maestro_worker_operation_on_error_latency").GetMetric()[0]
-		require.Equal(t, uint64(1), latency.GetHistogram().GetSampleCount())
-		require.GreaterOrEqual(t, latency.GetHistogram().GetSampleSum(), float64(1000))
 	})
 
 	t.Run("evict operation if there is no executor", func(t *testing.T) {
-
-		clearMetrics()
-		initMetrics()
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
@@ -179,28 +158,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		err := workerService.Start(context.Background())
 		require.NoError(t, err)
-
-		metrics, _ := prometheus.DefaultGatherer.Gather()
-		counter := monitoring.FilterMetric(metrics, "maestro_worker_operation_evicted_counter").GetMetric()[0]
-		require.Equal(t, float64(1), counter.GetCounter().GetValue())
-
-		operationLabel := counter.GetLabel()[0]
-		require.Equal(t, "operation", operationLabel.GetName())
-		require.Equal(t, "test_operation", operationLabel.GetValue())
-
-		reasonLabel := counter.GetLabel()[1]
-		require.Equal(t, "reason", reasonLabel.GetName())
-		require.Equal(t, "no_operation_executor_found", reasonLabel.GetValue())
-
-		schedulerLabel := counter.GetLabel()[2]
-		require.Equal(t, "scheduler", schedulerLabel.GetName())
-		require.Equal(t, "random-scheduler", schedulerLabel.GetValue())
 	})
 
 	t.Run("evict operation if ShouldExecute returns false", func(t *testing.T) {
-
-		clearMetrics()
-		initMetrics()
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
@@ -242,21 +202,5 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		workerService.Stop(context.Background())
 		require.False(t, workerService.IsRunning(context.Background()))
-
-		metrics, _ := prometheus.DefaultGatherer.Gather()
-		counter := monitoring.FilterMetric(metrics, "maestro_worker_operation_evicted_counter").GetMetric()[0]
-		require.Equal(t, float64(1), counter.GetCounter().GetValue())
-
-		operationLabel := counter.GetLabel()[0]
-		require.Equal(t, "operation", operationLabel.GetName())
-		require.Equal(t, "test_operation", operationLabel.GetValue())
-
-		reasonLabel := counter.GetLabel()[1]
-		require.Equal(t, "reason", reasonLabel.GetName())
-		require.Equal(t, "should_not_execute", reasonLabel.GetValue())
-
-		schedulerLabel := counter.GetLabel()[2]
-		require.Equal(t, "scheduler", schedulerLabel.GetName())
-		require.Equal(t, "random-scheduler", schedulerLabel.GetValue())
 	})
 }

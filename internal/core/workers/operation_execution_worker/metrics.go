@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
@@ -16,27 +15,6 @@ const (
 )
 
 var (
-	operationExecutionLatencyMetric           *prometheus.HistogramVec
-	operationOnErrorLatencyMetric             *prometheus.HistogramVec
-	operationEvictedCountMetric               *prometheus.CounterVec
-	operationExecutionWorkerFailedCountMetric *prometheus.CounterVec
-)
-
-func init() {
-	initMetrics()
-}
-
-// Clears all metrics from the package, required on unit tests
-func clearMetrics() {
-	prometheus.Unregister(operationExecutionLatencyMetric)
-	prometheus.Unregister(operationOnErrorLatencyMetric)
-	prometheus.Unregister(operationEvictedCountMetric)
-	prometheus.Unregister(operationExecutionWorkerFailedCountMetric)
-}
-
-// Initialize all metrics from the package
-func initMetrics() {
-
 	operationExecutionLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
@@ -83,7 +61,7 @@ func initMetrics() {
 			monitoring.LabelReason,
 		},
 	})
-}
+)
 
 func reportOperationExecutionLatency(start time.Time, schedulerName, operationName string, success bool) {
 	successLabelValue := fmt.Sprint(success)
