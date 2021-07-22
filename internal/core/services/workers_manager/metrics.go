@@ -1,11 +1,22 @@
 package workers_manager
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
 var (
-	currentWorkersGaugeMetricOpts = monitoring.MetricOpts{
+	currentWorkersGaugeMetric     *prometheus.GaugeVec
+	restartedWorkersCounterMetric *prometheus.CounterVec
+	workersSyncCounterMetric      *prometheus.CounterVec
+)
+
+func init() {
+	initMetrics()
+}
+
+func initMetrics() {
+	currentWorkersGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "current_workers",
@@ -13,10 +24,9 @@ var (
 		Labels: []string{
 			monitoring.LabelScheduler,
 		},
-	}
-	currentWorkersGaugeMetric = monitoring.CreateGaugeMetric(&currentWorkersGaugeMetricOpts)
+	})
 
-	restartedWorkersCounterMetricOpts = monitoring.MetricOpts{
+	restartedWorkersCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "restarted_workers",
@@ -24,31 +34,35 @@ var (
 		Labels: []string{
 			monitoring.LabelScheduler,
 		},
-	}
-	restartedWorkersCounterMetric = monitoring.CreateCounterMetric(&restartedWorkersCounterMetricOpts)
+	})
 
-	workersSyncCounterMetricOpts = monitoring.MetricOpts{
+	workersSyncCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "workers_sync",
 		Help:      "Times of the workers sync processes",
 		Labels:    []string{},
-	}
-	workersSyncCounterMetric = monitoring.CreateCounterMetric(&workersSyncCounterMetricOpts).WithLabelValues()
-)
+	})
+}
 
-func ReportWorkerStart(schedulerName string) {
+func clearMetrics() {
+	prometheus.Unregister(currentWorkersGaugeMetric)
+	prometheus.Unregister(restartedWorkersCounterMetric)
+	prometheus.Unregister(workersSyncCounterMetric)
+}
+
+func reportWorkerStart(schedulerName string) {
 	currentWorkersGaugeMetric.WithLabelValues(schedulerName).Inc()
 }
 
-func ReportWorkerStop(schedulerName string) {
+func reportWorkerStop(schedulerName string) {
 	currentWorkersGaugeMetric.WithLabelValues(schedulerName).Dec()
 }
 
-func ReportWorkerRestart(schedulerName string) {
+func reportWorkerRestart(schedulerName string) {
 	restartedWorkersCounterMetric.WithLabelValues(schedulerName).Inc()
 }
 
-func ReportWorkersSynced() {
-	workersSyncCounterMetric.Inc()
+func reportWorkersSynced() {
+	workersSyncCounterMetric.WithLabelValues().Inc()
 }
