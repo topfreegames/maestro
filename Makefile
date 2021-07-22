@@ -4,11 +4,11 @@ SOURCES := $(shell \
 
 .PHONY: run-unit-tests
 run-unit-tests:
-	@go test -count=1 -tags=unit ./...
+	@go test -count=1 -tags=unit -coverprofile=coverage.out -covermode=atomic ./...
 
 .PHONY: run-integration-tests
 run-integration-tests:
-	@go test -tags=integration -count=1 -timeout 20m ./...
+	@go test -tags=integration -count=1 -timeout 20m -coverprofile=coverage.out -covermode=atomic ./...
 
 .PHONY: mocks
 mocks:
