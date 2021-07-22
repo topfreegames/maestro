@@ -24,6 +24,10 @@ import (
 
 func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	t.Run("successfully runs a single operation", func(t *testing.T) {
+
+		clearMetrics()
+		initMetrics()
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -78,6 +82,10 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	})
 
 	t.Run("execute OnError when a Execute fails", func(t *testing.T) {
+
+		clearMetrics()
+		initMetrics()
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -133,6 +141,10 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	})
 
 	t.Run("evict operation if there is no executor", func(t *testing.T) {
+
+		clearMetrics()
+		initMetrics()
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -186,6 +198,10 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	})
 
 	t.Run("evict operation if ShouldExecute returns false", func(t *testing.T) {
+
+		clearMetrics()
+		initMetrics()
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -228,7 +244,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.False(t, workerService.IsRunning(context.Background()))
 
 		metrics, _ := prometheus.DefaultGatherer.Gather()
-		counter := monitoring.FilterMetric(metrics, "maestro_worker_operation_evicted_counter").GetMetric()[1]
+		counter := monitoring.FilterMetric(metrics, "maestro_worker_operation_evicted_counter").GetMetric()[0]
 		require.Equal(t, float64(1), counter.GetCounter().GetValue())
 
 		operationLabel := counter.GetLabel()[0]

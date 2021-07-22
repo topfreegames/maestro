@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
@@ -15,7 +16,28 @@ const (
 )
 
 var (
-	operationExecutionMetricOpts = monitoring.MetricOpts{
+	operationExecutionLatencyMetric           *prometheus.HistogramVec
+	operationOnErrorLatencyMetric             *prometheus.HistogramVec
+	operationEvictedCountMetric               *prometheus.CounterVec
+	operationExecutionWorkerFailedCountMetric *prometheus.CounterVec
+)
+
+func init() {
+	initMetrics()
+}
+
+// Clears all metrics from the package, required on unit tests
+func clearMetrics() {
+	prometheus.Unregister(operationExecutionLatencyMetric)
+	prometheus.Unregister(operationOnErrorLatencyMetric)
+	prometheus.Unregister(operationEvictedCountMetric)
+	prometheus.Unregister(operationExecutionWorkerFailedCountMetric)
+}
+
+// Initialize all metrics from the package
+func initMetrics() {
+
+	operationExecutionLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "operation_execution",
@@ -25,10 +47,9 @@ var (
 			monitoring.LabelOperation,
 			monitoring.LabelSuccess,
 		},
-	}
-	operationExecutionLatencyMetric = monitoring.CreateLatencyMetric(&operationExecutionMetricOpts)
+	})
 
-	operationOnErrorMetricOpts = monitoring.MetricOpts{
+	operationOnErrorLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "operation_on_error",
@@ -38,10 +59,9 @@ var (
 			monitoring.LabelOperation,
 			monitoring.LabelSuccess,
 		},
-	}
-	operationOnErrorLatencyMetric = monitoring.CreateLatencyMetric(&operationOnErrorMetricOpts)
+	})
 
-	operationEvictedCountMetricOpts = monitoring.MetricOpts{
+	operationEvictedCountMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "operation_evicted",
@@ -51,10 +71,9 @@ var (
 			monitoring.LabelOperation,
 			monitoring.LabelReason,
 		},
-	}
-	operationEvictedCountMetric = monitoring.CreateCounterMetric(&operationEvictedCountMetricOpts)
+	})
 
-	operationExecutionWorkerFailedCountMetricOpts = monitoring.MetricOpts{
+	operationExecutionWorkerFailedCountMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
 		Name:      "operation_execution_worker_failed",
@@ -63,28 +82,27 @@ var (
 			monitoring.LabelScheduler,
 			monitoring.LabelReason,
 		},
-	}
-	operationExecutionWorkerFailedCountMetric = monitoring.CreateCounterMetric(&operationExecutionWorkerFailedCountMetricOpts)
-)
+	})
+}
 
-func ReportOperationExecutionLatency(start time.Time, schedulerName, operationName string, success bool) {
+func reportOperationExecutionLatency(start time.Time, schedulerName, operationName string, success bool) {
 	successLabelValue := fmt.Sprint(success)
 	monitoring.ReportLatencyMetricInMillis(
 		operationExecutionLatencyMetric, start, schedulerName, operationName, successLabelValue,
 	)
 }
 
-func ReportOperationOnErrorLatency(start time.Time, schedulerName, operationName string, success bool) {
+func reportOperationOnErrorLatency(start time.Time, schedulerName, operationName string, success bool) {
 	successLabelValue := fmt.Sprint(success)
 	monitoring.ReportLatencyMetricInMillis(
 		operationOnErrorLatencyMetric, start, schedulerName, operationName, successLabelValue,
 	)
 }
 
-func ReportOperationEvicted(schedulerName, operationName, reason string) {
+func reportOperationEvicted(schedulerName, operationName, reason string) {
 	operationEvictedCountMetric.WithLabelValues(schedulerName, operationName, reason).Inc()
 }
 
-func ReportOperationExecutionWorkerFailed(schedulerName, reason string) {
+func reportOperationExecutionWorkerFailed(schedulerName, reason string) {
 	operationExecutionWorkerFailedCountMetric.WithLabelValues(schedulerName, reason).Inc()
 }

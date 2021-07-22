@@ -59,7 +59,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			}
 
 			w.Stop(ctx)
-			ReportOperationExecutionWorkerFailed(w.schedulerName, LabelNextOperationFailed)
+			reportOperationExecutionWorkerFailed(w.schedulerName, LabelNextOperationFailed)
 			return fmt.Errorf("failed to get next operation: %w", err)
 		}
 
@@ -76,13 +76,13 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		if !hasExecutor {
 			loopLogger.Warn("operation definition has no executor")
 			w.evictOperation(operationContext, loopLogger, op)
-			ReportOperationEvicted(w.schedulerName, op.DefinitionName, LabelNoOperationExecutorFound)
+			reportOperationEvicted(w.schedulerName, op.DefinitionName, LabelNoOperationExecutorFound)
 			continue
 		}
 
 		if !def.ShouldExecute(operationContext, []*operation.Operation{}) {
 			w.evictOperation(operationContext, loopLogger, op)
-			ReportOperationEvicted(w.schedulerName, op.DefinitionName, LabelShouldNotExecute)
+			reportOperationEvicted(w.schedulerName, op.DefinitionName, LabelShouldNotExecute)
 			continue
 		}
 
@@ -93,12 +93,13 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			// NOTE: currently, we're not treating if the operation exists or
 			// not. In this case, when there is error it will be a unexpected
 			// error.
-			ReportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
+			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
 			return fmt.Errorf("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 		}
 
 		executeStartTime := time.Now()
 		executionErr := executor.Execute(operationContext, op, def)
+		reportOperationExecutionLatency(executeStartTime, w.schedulerName, op.DefinitionName, executionErr != nil)
 
 		op.Status = operation.StatusFinished
 		if executionErr != nil {
@@ -111,12 +112,12 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 			onErrorStartTime := time.Now()
 			onErrorErr := executor.OnError(operationContext, op, def, executionErr)
+			reportOperationOnErrorLatency(onErrorStartTime, w.schedulerName, op.DefinitionName, onErrorErr != nil)
+
 			if onErrorErr != nil {
 				loopLogger.Error("operation OnError failed", zap.Error(onErrorErr))
 			}
-			ReportOperationOnErrorLatency(onErrorStartTime, w.schedulerName, op.DefinitionName, onErrorErr != nil)
 		}
-		ReportOperationExecutionLatency(executeStartTime, w.schedulerName, op.DefinitionName, executionErr != nil)
 
 		// TODO(gabrielcorado): we need to propagate the error reason.
 		// TODO(gabrielcorado): consider handling the finish operation error.
