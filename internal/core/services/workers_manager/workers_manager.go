@@ -119,20 +119,21 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 		go worker.Start(ctx)
 		w.CurrentWorkers[name] = worker
 		zap.L().Info("new operation worker running", zap.Int("scheduler", len(name)))
-		ReportWorkerStarted()
+		ReportWorkerStart(name)
 	}
 
 	for name, worker := range w.getDispensableWorkers(ctx, schedulers) {
 		worker.Stop(ctx)
 		delete(w.CurrentWorkers, name)
 		zap.L().Info("canceling operation worker", zap.Int("scheduler", len(name)))
-		ReportWorkerStopped()
+		ReportWorkerStop(name)
 	}
 
 	for name, worker := range w.getDeadWorkers(ctx) {
 		worker.Start(ctx)
 		w.CurrentWorkers[name] = worker
 		zap.L().Info("restarting dead operation worker", zap.Int("scheduler", len(name)))
+		ReportWorkerRestart(name)
 	}
 
 	ReportWorkersSynced()
