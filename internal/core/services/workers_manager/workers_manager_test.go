@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
@@ -23,16 +24,26 @@ import (
 	"github.com/topfreegames/maestro/internal/core/workers"
 )
 
+var (
+	recorded *observer.ObservedLogs
+	mockCtrl *gomock.Controller
+)
+
+func BeforeTest(t *testing.T) {
+	core, observer := observer.New(zap.InfoLevel)
+	zl := zap.New(core)
+	zap.ReplaceGlobals(zl)
+	recorded = observer
+
+	mockCtrl = gomock.NewController(t)
+	defer mockCtrl.Finish()
+}
+
 func TestStart(t *testing.T) {
 
 	t.Run("with success", func(t *testing.T) {
 
-		core, recorded := observer.New(zap.InfoLevel)
-		zl := zap.New(core)
-		zap.ReplaceGlobals(zl)
-
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		BeforeTest(t)
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -74,8 +85,7 @@ func TestStart(t *testing.T) {
 
 	t.Run("fails when schedulerStorage fails to list all schedulers", func(t *testing.T) {
 
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		BeforeTest(t)
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -100,8 +110,7 @@ func TestStart(t *testing.T) {
 
 	t.Run("stops when context stops with no error", func(t *testing.T) {
 
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		BeforeTest(t)
 
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -142,17 +151,11 @@ func TestStart(t *testing.T) {
 
 		require.Empty(t, workersManager.CurrentWorkers)
 		require.False(t, workersManager.RunSyncWorkers)
-
 	})
 
 	t.Run("with success when scheduler added after initial sync", func(t *testing.T) {
 
-		core, recorded := observer.New(zap.InfoLevel)
-		zl := zap.New(core)
-		zap.ReplaceGlobals(zl)
-
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		BeforeTest(t)
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -195,12 +198,7 @@ func TestStart(t *testing.T) {
 
 	t.Run("with success when scheduler removed after bootstrap", func(t *testing.T) {
 
-		core, recorded := observer.New(zap.InfoLevel)
-		zl := zap.New(core)
-		zap.ReplaceGlobals(zl)
-
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		BeforeTest(t)
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -236,8 +234,8 @@ func TestStart(t *testing.T) {
 				"new operation worker running"},
 		})
 
-		core, recorded = observer.New(zap.InfoLevel)
-		zl = zap.New(core)
+		core, recorded := observer.New(zap.InfoLevel)
+		zl := zap.New(core)
 		zap.ReplaceGlobals(zl)
 
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{}, nil)
