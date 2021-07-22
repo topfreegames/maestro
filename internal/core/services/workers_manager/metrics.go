@@ -1,21 +1,10 @@
 package workers_manager
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
 var (
-	currentWorkersGaugeMetric     *prometheus.GaugeVec
-	restartedWorkersCounterMetric *prometheus.CounterVec
-	workersSyncCounterMetric      *prometheus.CounterVec
-)
-
-func init() {
-	initMetrics()
-}
-
-func initMetrics() {
 	currentWorkersGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
@@ -43,13 +32,7 @@ func initMetrics() {
 		Help:      "Times of the workers sync processes",
 		Labels:    []string{},
 	})
-}
-
-func clearMetrics() {
-	prometheus.Unregister(currentWorkersGaugeMetric)
-	prometheus.Unregister(restartedWorkersCounterMetric)
-	prometheus.Unregister(workersSyncCounterMetric)
-}
+)
 
 func reportWorkerStart(schedulerName string) {
 	currentWorkersGaugeMetric.WithLabelValues(schedulerName).Inc()

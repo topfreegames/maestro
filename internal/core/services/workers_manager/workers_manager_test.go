@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"go.uber.org/zap"
@@ -18,7 +17,6 @@ import (
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	configMock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/monitoring"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	workerMock "github.com/topfreegames/maestro/internal/core/workers/mock"
 
@@ -32,8 +30,6 @@ var (
 )
 
 func BeforeTest(t *testing.T) {
-	clearMetrics()
-	initMetrics()
 	core, observer := observer.New(zap.InfoLevel)
 	zl := zap.New(core)
 	zap.ReplaceGlobals(zl)
@@ -85,12 +81,6 @@ func TestStart(t *testing.T) {
 			zap.InfoLevel: {"starting to sync operation workers",
 				"new operation worker running"},
 		})
-
-		metrics, _ := prometheus.DefaultGatherer.Gather()
-		currentWorkersGauge := monitoring.FilterMetric(metrics, "maestro_worker_current_workers_gauge").GetMetric()[0]
-		require.Equal(t, float64(1), currentWorkersGauge.GetGauge().GetValue())
-		workerSyncCounter := monitoring.FilterMetric(metrics, "maestro_worker_workers_sync_counter").GetMetric()[0]
-		require.Equal(t, float64(1), workerSyncCounter.GetCounter().GetValue())
 	})
 
 	t.Run("fails when schedulerStorage fails to list all schedulers", func(t *testing.T) {
@@ -116,10 +106,6 @@ func TestStart(t *testing.T) {
 		require.ErrorIs(t, errors.ErrUnexpected, err)
 		require.Empty(t, workersManager.CurrentWorkers)
 		require.False(t, workersManager.RunSyncWorkers)
-
-		metrics, _ := prometheus.DefaultGatherer.Gather()
-		require.Nil(t, monitoring.FilterMetric(metrics, "maestro_worker_current_workers_gauge").GetMetric())
-		require.Empty(t, monitoring.FilterMetric(metrics, "maestro_worker_workers_sync_counter").GetMetric())
 	})
 
 	t.Run("stops when context stops with no error", func(t *testing.T) {
@@ -159,23 +145,12 @@ func TestStart(t *testing.T) {
 		require.True(t, workersManager.RunSyncWorkers)
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
 
-		metrics, _ := prometheus.DefaultGatherer.Gather()
-		currentWorkersGauge := monitoring.FilterMetric(metrics, "maestro_worker_current_workers_gauge").GetMetric()[0]
-		require.Equal(t, float64(1), currentWorkersGauge.GetGauge().GetValue())
-
 		cancel()
 
 		time.Sleep(time.Second * 1)
 
 		require.Empty(t, workersManager.CurrentWorkers)
 		require.False(t, workersManager.RunSyncWorkers)
-
-		metrics, _ = prometheus.DefaultGatherer.Gather()
-		currentWorkersGauge = monitoring.FilterMetric(metrics, "maestro_worker_current_workers_gauge").GetMetric()[0]
-		require.Equal(t, float64(0), currentWorkersGauge.GetGauge().GetValue())
-		workerSyncCounter := monitoring.FilterMetric(metrics, "maestro_worker_workers_sync_counter").GetMetric()[0]
-		require.Equal(t, float64(1), workerSyncCounter.GetCounter().GetValue())
-
 	})
 
 	t.Run("with success when scheduler added after initial sync", func(t *testing.T) {
@@ -195,9 +170,6 @@ func TestStart(t *testing.T) {
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
 		workersManager.Start(context.Background())
 		require.Empty(t, workersManager.CurrentWorkers)
-
-		metrics, _ := prometheus.DefaultGatherer.Gather()
-		require.Nil(t, monitoring.FilterMetric(metrics, "maestro_worker_current_workers_gauge").GetMetric())
 
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{
 			{
@@ -222,10 +194,6 @@ func TestStart(t *testing.T) {
 			zap.InfoLevel: {"starting to sync operation workers",
 				"new operation worker running"},
 		})
-
-		metrics, _ = prometheus.DefaultGatherer.Gather()
-		currentWorkersGauge := monitoring.FilterMetric(metrics, "maestro_worker_current_workers_gauge").GetMetric()[0]
-		require.Equal(t, float64(1), currentWorkersGauge.GetGauge().GetValue())
 	})
 
 	t.Run("with success when scheduler removed after bootstrap", func(t *testing.T) {
@@ -261,10 +229,6 @@ func TestStart(t *testing.T) {
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
 
-		metrics, _ := prometheus.DefaultGatherer.Gather()
-		currentWorkersGauge := monitoring.FilterMetric(metrics, "maestro_worker_current_workers_gauge").GetMetric()[0]
-		require.Equal(t, float64(1), currentWorkersGauge.GetGauge().GetValue())
-
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
 			zap.InfoLevel: {"starting to sync operation workers",
 				"new operation worker running"},
@@ -279,10 +243,6 @@ func TestStart(t *testing.T) {
 		workersManager.SyncWorkers(context.Background())
 
 		require.Empty(t, workersManager.CurrentWorkers)
-
-		metrics, _ = prometheus.DefaultGatherer.Gather()
-		currentWorkersGauge = monitoring.FilterMetric(metrics, "maestro_worker_current_workers_gauge").GetMetric()[0]
-		require.Equal(t, float64(0), currentWorkersGauge.GetGauge().GetValue())
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
 			zap.InfoLevel: {"canceling operation worker"},
