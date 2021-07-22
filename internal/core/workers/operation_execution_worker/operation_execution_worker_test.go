@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,7 @@ import (
 
 func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	t.Run("successfully runs a single operation", func(t *testing.T) {
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -49,7 +51,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
-		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(nil)
+		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).
+			Do(func(ctx, operation, definition interface{}) {
+				time.Sleep(time.Second * 1)
+			}).
+			Return(nil)
 
 		operationFlow.EXPECT().NextOperationID(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation.ID, nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID).Return(expectedOperation, []byte{}, nil)
@@ -66,6 +72,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	})
 
 	t.Run("execute OnError when a Execute fails", func(t *testing.T) {
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -96,7 +103,10 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		executionErr := fmt.Errorf("failed to execute operation")
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
-		operationExecutor.EXPECT().OnError(gomock.Any(), expectedOperation, operationDefinition, executionErr).Return(nil)
+		operationExecutor.EXPECT().OnError(gomock.Any(), expectedOperation, operationDefinition, executionErr).
+			Do(func(ctx, operation, definition, executeErr interface{}) {
+				time.Sleep(time.Second * 1)
+			}).Return(nil)
 
 		operationFlow.EXPECT().NextOperationID(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation.ID, nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID).Return(expectedOperation, []byte{}, nil)
@@ -113,6 +123,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	})
 
 	t.Run("evict operation if there is no executor", func(t *testing.T) {
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -150,6 +161,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	})
 
 	t.Run("evict operation if ShouldExecute returns false", func(t *testing.T) {
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 

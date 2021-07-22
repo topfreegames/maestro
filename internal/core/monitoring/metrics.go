@@ -5,6 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	dto "github.com/prometheus/client_model/go"
 )
 
 // DefBucketsMs is similar to prometheus.DefBuckets, but tailored for milliseconds instead of seconds.
@@ -63,4 +64,13 @@ func ReportLatencyMetricInMillis(metric *prometheus.HistogramVec, start time.Tim
 	metric.
 		WithLabelValues(labels...).
 		Observe(float64(timeElapsed.Nanoseconds() / int64(time.Millisecond)))
+}
+
+func FilterMetric(metrics []*dto.MetricFamily, metricName string) *dto.MetricFamily {
+	for _, m := range metrics {
+		if m.GetName() == metricName {
+			return m
+		}
+	}
+	return nil
 }
