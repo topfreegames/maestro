@@ -8,6 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
+	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation_flow/redis"
 	operationStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
 	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/port_allocator/random"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
@@ -36,6 +37,8 @@ const (
 	portAllocatorRandomRangePath = "adapters.portAllocator.random.range"
 	// Postgres scheduler storage
 	schedulerStoragePostgresUrlPath = "adapters.schedulerStorage.postgres.url"
+	// Redis operation flow
+	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
 )
 
 func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
@@ -106,6 +109,15 @@ func createRedisClient(url string) (*redis.Client, error) {
 	}
 
 	return redis.NewClient(opts), nil
+}
+
+func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {
+	client, err := createRedisClient(c.GetString(operationFlowRedisUrlPath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
+	}
+
+	return operationFlowRedis.NewRedisOperationFlow(client), nil
 }
 
 // NOTE: We need this because some of our adapters are still using the old

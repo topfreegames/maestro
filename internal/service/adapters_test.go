@@ -213,3 +213,46 @@ func TestSchedulerStoragePostgres(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestOperationFlowRedis(t *testing.T) {
+	t.Parallel()
+
+	t.Run("with valid redis", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		config := configmock.NewMockConfig(mockCtrl)
+
+		config.EXPECT().GetString(operationFlowRedisUrlPath).Return(getRedisUrl(t))
+		operationFlow, err := NewOperationFlowRedis(config)
+		require.NoError(t, err)
+
+		err = operationFlow.InsertOperationID(context.Background(), "", "")
+		require.NoError(t, err)
+	})
+
+	t.Run("with invalid redis", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		config := configmock.NewMockConfig(mockCtrl)
+
+		config.EXPECT().GetString(operationFlowRedisUrlPath).Return("redis://somewhere-in-the-world:6379")
+		operationFlow, err := NewOperationFlowRedis(config)
+		require.NoError(t, err)
+
+		err = operationFlow.InsertOperationID(context.Background(), "", "")
+		require.ErrorIs(t, err, errors.ErrUnexpected)
+	})
+
+	t.Run("with invalid configuration", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		config := configmock.NewMockConfig(mockCtrl)
+
+		config.EXPECT().GetString(operationFlowRedisUrlPath).Return("")
+		_, err := NewOperationFlowRedis(config)
+		require.Error(t, err)
+	})
+}
