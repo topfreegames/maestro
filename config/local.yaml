@@ -1,0 +1,13 @@
+metrics:
+  enabled: true
+  port: 8080
+adapters:
+  schedulerStorage:
+    postgres:
+      url: "postgres://pass:user@localhost:6543/maestro"
+  operationFlow:
+    redis:
+      url: "redis://localhost:6379/0"
+  operationStorage:
+    redis:
+      url: "redis://localhost:6379/0"

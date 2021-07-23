@@ -26,3 +26,11 @@ mocks:
 .PHONY: goimports
 goimports:
 	@go run golang.org/x/tools/cmd/goimports -w $(SOURCES)
+
+.PHONY: wire
+wire:
+	@go run github.com/google/wire/cmd/wire ./...
+
+.PHONY: run-worker
+run-worker:
+	@go run cmd/worker/wire_gen.go cmd/worker/worker.go
