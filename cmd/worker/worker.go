@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	logConfig  = flag.String("log-config", "development", "")
-	configPath = flag.String("config-path", "config/local.yaml", "")
+	logConfig  = flag.String("log-config", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	configPath = flag.String("config-path", "config/local.yaml", "path of the configuration YAML file")
 )
 
 func main() {
@@ -43,17 +43,27 @@ func main() {
 	shutdownMetricsServerFn := service.RunMetricsServer(ctx, config)
 
 	// TODO(gabrielcorado): support multiple workers.
-	workersManager, err := initializeWorker(config, operation_execution_worker.NewOperationExecutionWorker)
+	operationExecutionWorkerManager, err := initializeWorker(config, operation_execution_worker.NewOperationExecutionWorker)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("fail to initialize workers manager")
+		zap.L().With(zap.Error(err)).Fatal("failed to initialize operation execution worker manager")
 	}
 
-	zap.L().Info("initialized workers manager, starting...")
-	go workersManager.Start(ctx)
+	go func() {
+		zap.L().Info("operation execution worker manager initialized, starting...")
+		err := operationExecutionWorkerManager.Start(ctx)
+		if err != nil {
+			zap.L().With(zap.Error(err)).Info("operation execution worker manager stopped with error")
+			// enforce the cancelation
+			cancelFn()
+		}
+	}()
 
 	<-ctx.Done()
-	// TODO(gabrielcorado): call the workers manager stop.
-	shutdownMetricsServerFn()
+
+	err = shutdownMetricsServerFn()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal("failed to shutdown metrics server")
+	}
 }
 
 // NOTE: we can consider moving this configuration to a shared package.
