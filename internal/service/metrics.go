@@ -32,5 +32,11 @@ func RunMetricsServer(ctx context.Context, configs config.Config) func() error {
 		}
 	}()
 
-	return func() error { return httpServer.Shutdown(ctx) }
+	return func() error {
+		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("metrics.gracefulShutdownTimeout"))
+		defer cancelShutdownFn()
+
+		zap.L().Info("stopping HTTP metrics server")
+		return httpServer.Shutdown(shutdownCtx)
+	}
 }

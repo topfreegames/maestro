@@ -1,6 +1,7 @@
 metrics:
   enabled: true
   port: 8080
+  gracefulShutdownTimeout: 10s
 adapters:
   schedulerStorage:
     postgres:
