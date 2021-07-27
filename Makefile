@@ -39,3 +39,6 @@ wire:
 run-worker:
 	@go run cmd/worker/wire_gen.go cmd/worker/worker.go
 
+.PHONY: run-management-api
+run-management-api:
+	@go run cmd/management_api/wire_gen.go cmd/management_api/management_api.go

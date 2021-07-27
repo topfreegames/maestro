@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"github.com/topfreegames/maestro/internal/config/viper"
-	"github.com/topfreegames/maestro/internal/core/workers/operation_execution_worker"
 	"github.com/topfreegames/maestro/internal/service"
 	"go.uber.org/zap"
 )
@@ -21,10 +20,7 @@ var (
 
 func main() {
 	flag.Parse()
-	err := configureLogging(*logConfig)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unabled to load logging configuration")
-	}
+	configureLogging(*logConfig)
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 
@@ -45,27 +41,22 @@ func main() {
 
 	shutdownInternalServerFn := service.RunInternalServer(ctx, config)
 
-	// TODO(gabrielcorado): support multiple workers.
-	operationExecutionWorkerManager, err := initializeWorker(config, operation_execution_worker.NewOperationExecutionWorker)
+	handlers, err := initializeHandlers(config)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("failed to initialize operation execution worker manager")
+		zap.L().With(zap.Error(err)).Fatal("failed to initialize management handlers")
 	}
-
-	go func() {
-		zap.L().Info("operation execution worker manager initialized, starting...")
-		err := operationExecutionWorkerManager.Start(ctx)
-		if err != nil {
-			zap.L().With(zap.Error(err)).Info("operation execution worker manager stopped with error")
-			// enforce the cancelation
-			cancelFn()
-		}
-	}()
+	shutdownManagementServerFn := service.RunManagementServer(ctx, config, handlers)
 
 	<-ctx.Done()
 
 	err = shutdownInternalServerFn()
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("failed to shutdown internal server")
+		zap.L().With(zap.Error(err)).Fatal("failed to shutdown metrics server")
+	}
+
+	err = shutdownManagementServerFn()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal("failed to shutdown management server")
 	}
 }
 
