@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 // Config is used to fetch configurations using paths. The interface provides a
 // a way to fetch configurations in specific types. Paths are set in strings and
 // can have separated "scopes" using ".". An example of path would be:
@@ -13,4 +15,6 @@ type Config interface {
 	GetFloat64(string) float64
 	// GetBool returns the configuration path as a boolean. Default: false
 	GetBool(string) bool
+	// GetDuration returns a time.Duration of the config. Deafult: 0
+	GetDuration(string) time.Duration
 }

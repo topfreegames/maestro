@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -29,7 +30,7 @@ type OperationExecutionWorker struct {
 	logger *zap.Logger
 }
 
-func NewOperationExecutionWorker(schedulerName string, opts *workers.WorkerOptions) *OperationExecutionWorker {
+func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
 	executors := make(map[string]operations.Executor)
 	for _, executor := range opts.Executors {
 		// TODO(gabrielcorado): are we going to receive the executor
@@ -40,8 +41,8 @@ func NewOperationExecutionWorker(schedulerName string, opts *workers.WorkerOptio
 	return &OperationExecutionWorker{
 		operationManager: opts.OperationManager,
 		executorsByName:  executors,
-		schedulerName:    schedulerName,
-		logger:           zap.L().With(zap.String("service", "worker"), zap.String("scheduler_name", schedulerName)),
+		schedulerName:    scheduler.Name,
+		logger:           zap.L().With(zap.String("service", "worker"), zap.String("scheduler_name", scheduler.Name)),
 	}
 }
 

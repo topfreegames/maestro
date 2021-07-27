@@ -12,6 +12,7 @@ require (
 	github.com/go-redis/redis/v8 v8.10.0
 	github.com/golang/mock v1.5.0
 	github.com/google/uuid v1.2.0
+	github.com/google/wire v0.5.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v0.0.0-20170217164738-630949a3c5fa // indirect
 	github.com/jinzhu/inflection v0.0.0-20170102125226-1c35d901db3d // indirect

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	mockoperation "github.com/topfreegames/maestro/internal/core/operations/mock"
@@ -40,14 +41,15 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		registry.Register(operationName, defFunc)
 
 		operationManager := operation_manager.NewWithRegistry(operationFlow, operationStorage, registry)
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
-			SchedulerName:  "random-scheduler",
+			SchedulerName:  scheduler.Name,
 			Status:         operation.StatusPending,
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(expectedOperation.SchedulerName, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
+		workerService := NewOperationExecutionWorker(scheduler, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
@@ -90,14 +92,15 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		registry.Register(operationName, defFunc)
 
 		operationManager := operation_manager.NewWithRegistry(operationFlow, operationStorage, registry)
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
-			SchedulerName:  "random-scheduler",
+			SchedulerName:  scheduler.Name,
 			Status:         operation.StatusPending,
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(expectedOperation.SchedulerName, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
+		workerService := NewOperationExecutionWorker(scheduler, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
@@ -139,14 +142,15 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		registry.Register(operationName, defFunc)
 
 		operationManager := operation_manager.NewWithRegistry(operationFlow, operationStorage, registry)
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
-			SchedulerName:  "random-scheduler",
+			SchedulerName:  scheduler.Name,
 			Status:         operation.StatusPending,
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(expectedOperation.SchedulerName, &workers.WorkerOptions{operationManager, []operations.Executor{}})
+		workerService := NewOperationExecutionWorker(scheduler, &workers.WorkerOptions{operationManager, []operations.Executor{}})
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 
@@ -179,14 +183,15 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		registry.Register(operationName, defFunc)
 
 		operationManager := operation_manager.NewWithRegistry(operationFlow, operationStorage, registry)
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
-			SchedulerName:  "random-scheduler",
+			SchedulerName:  scheduler.Name,
 			Status:         operation.StatusPending,
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(expectedOperation.SchedulerName, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
+		workerService := NewOperationExecutionWorker(scheduler, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(false)

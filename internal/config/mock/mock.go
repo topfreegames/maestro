@@ -6,6 +6,7 @@ package mock
 
 import (
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -45,6 +46,20 @@ func (m *MockConfig) GetBool(arg0 string) bool {
 func (mr *MockConfigMockRecorder) GetBool(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBool", reflect.TypeOf((*MockConfig)(nil).GetBool), arg0)
+}
+
+// GetDuration mocks base method.
+func (m *MockConfig) GetDuration(arg0 string) time.Duration {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDuration", arg0)
+	ret0, _ := ret[0].(time.Duration)
+	return ret0
+}
+
+// GetDuration indicates an expected call of GetDuration.
+func (mr *MockConfigMockRecorder) GetDuration(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDuration", reflect.TypeOf((*MockConfig)(nil).GetDuration), arg0)
 }
 
 // GetFloat64 mocks base method.
