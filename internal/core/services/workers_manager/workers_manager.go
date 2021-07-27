@@ -2,12 +2,13 @@ package workers_manager
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"go.uber.org/zap"
@@ -17,19 +18,22 @@ import (
 const (
 	// Sync period: waiting time window respected by workers in
 	// order to control executions
-	syncWorkersIntervalPath = "check.workers.interval"
+	syncWorkersIntervalPath = "workers.syncInterval"
+	// Workers stop timeout: duration that the workes have to stop their
+	// execution until the context is canceled.
+	workersStopTimeoutDurationPath = "workers.stopTimeoutDuration"
 )
 
 // Default struct of WorkersManager service
 type WorkersManager struct {
-	builder             workers.WorkerBuilder
-	configs             config.Config
-	schedulerStorage    ports.SchedulerStorage
-	operationManager    *operation_manager.OperationManager
-	CurrentWorkers      map[string]workers.Worker
-	RunSyncWorkers      bool
-	syncWorkersInterval int
-	workerOptions       *workers.WorkerOptions
+	builder                    workers.WorkerBuilder
+	configs                    config.Config
+	schedulerStorage           ports.SchedulerStorage
+	operationManager           *operation_manager.OperationManager
+	CurrentWorkers             map[string]workers.Worker
+	syncWorkersInterval        time.Duration
+	workerOptions              *workers.WorkerOptions
+	workersStopTimeoutDuration time.Duration
 }
 
 // Default constructor of WorkersManager
@@ -41,66 +45,60 @@ func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, sch
 	}
 
 	return &WorkersManager{
-		builder:             builder,
-		configs:             configs,
-		schedulerStorage:    schedulerStorage,
-		operationManager:    operationManager,
-		CurrentWorkers:      map[string]workers.Worker{},
-		syncWorkersInterval: configs.GetInt(syncWorkersIntervalPath),
-		workerOptions:       workerOptions,
+		builder:                    builder,
+		configs:                    configs,
+		schedulerStorage:           schedulerStorage,
+		operationManager:           operationManager,
+		CurrentWorkers:             map[string]workers.Worker{},
+		syncWorkersInterval:        configs.GetDuration(syncWorkersIntervalPath),
+		workerOptions:              workerOptions,
+		workersStopTimeoutDuration: configs.GetDuration(workersStopTimeoutDurationPath),
 	}
 }
 
-// Function to run a first sync and start a periodically sync worker
+// Function to run a first sync and start a periodically sync worker. This
+// function blocks and returns an error if it happens during the
+// execution. It is cancellable through the provided context.
 func (w *WorkersManager) Start(ctx context.Context) error {
-
 	err := w.SyncWorkers(ctx)
 	if err != nil {
-		return errors.NewErrUnexpected("initial sync operation workers failed").WithError(err)
+		return fmt.Errorf("initial sync operation workers failed: %w", err)
 	}
 
-	go w.startSyncWorkers(ctx)
+	ticker := time.NewTicker(w.syncWorkersInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := w.SyncWorkers(ctx); err != nil {
+				w.stop()
+				return fmt.Errorf("loop to sync operation workers failed: %w", err)
+			}
+		case <-ctx.Done():
+			w.stop()
+			if errors.Is(ctx.Err(), context.Canceled) {
+				return nil
+			}
+
+			return fmt.Errorf("loop to sync operation workers received an error context event: %w", err)
+		}
+	}
 
 	return nil
 }
 
-// Function to start a infinite loop (ticker) that will call
-// (periodically) the SyncWorkers func
-func (w *WorkersManager) startSyncWorkers(ctx context.Context) {
+// Stops all registered workers.
+func (w *WorkersManager) stop() {
+	// create a context with timeout to stop the workers.
+	ctx, cancelFn := context.WithTimeout(context.Background(), w.workersStopTimeoutDuration)
+	defer cancelFn()
 
-	w.RunSyncWorkers = true
-	ticker := time.NewTicker(time.Duration(w.syncWorkersInterval) * time.Second)
-	defer ticker.Stop()
-
-	for w.RunSyncWorkers == true {
-		select {
-		case <-ticker.C:
-			err := w.SyncWorkers(ctx)
-			if err != nil {
-				w.stop(ctx)
-				zap.L().Error("loop to sync operation workers failed", zap.Error(err))
-			}
-
-		case <-ctx.Done():
-			w.stop(ctx)
-			err := ctx.Err()
-			if err != nil {
-				zap.L().Error("loop to sync operation workers received an error context event", zap.Error(err))
-			}
-		}
-	}
-
-	return
-}
-
-// Stops all registered workers and stops sync operation workers loop
-func (w *WorkersManager) stop(ctx context.Context) {
 	for name, worker := range w.CurrentWorkers {
 		worker.Stop(ctx)
 		delete(w.CurrentWorkers, name)
 		reportWorkerStop(name)
 	}
-	w.RunSyncWorkers = false
 }
 
 // Function responsible to run a single sync on operation workers. It will:
@@ -108,7 +106,6 @@ func (w *WorkersManager) stop(ctx context.Context) {
 // - Discover and start all desirable workers (not running);
 // - Discover and stop all dispensable workers (running);
 func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
-
 	zap.L().Info("starting to sync operation workers")
 
 	schedulers, err := w.schedulerStorage.GetAllSchedulers(ctx)
