@@ -5,25 +5,42 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
+	"github.com/slok/go-http-metrics/middleware"
+	"github.com/slok/go-http-metrics/middleware/std"
 	"github.com/topfreegames/maestro/internal/config"
+	"github.com/topfreegames/maestro/internal/core/monitoring"
+	"github.com/topfreegames/maestro/internal/handlers"
+	"github.com/topfreegames/maestro/protogen/api"
 	"go.uber.org/zap"
 )
 
+func ProvideManagementMux(pingHandler *handlers.PingHandler) *runtime.ServeMux {
+	mux := runtime.NewServeMux()
+	api.RegisterPingHandlerServer(nil, mux, pingHandler)
+
+	return mux
+}
+
 // RunManagementServer starts HTTP server in other goroutine, and returns a
 // shutdown function. It serves management API endpoints/handlers.
-func RunManagementServer(ctx context.Context, configs config.Config, handlers map[string]http.Handler) func() error {
+func RunManagementServer(ctx context.Context, configs config.Config, mux *runtime.ServeMux) func() error {
 	if !configs.GetBool("management_api.enabled") {
 		return func() error { return nil }
 	}
 
-	mux := http.NewServeMux()
-	for path, handler := range handlers {
-		mux.Handle(path, handler)
-	}
+	// Prometheus go-http-metrics middleware
+	mdlw := middleware.New(middleware.Config{
+		Recorder: metrics.NewRecorder(metrics.Config{
+			DurationBuckets: monitoring.DefBucketsMs,
+		}),
+	})
+	muxWithMetrics := std.Handler("", mdlw, mux)
 
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%s", configs.GetString("management_api.port")),
-		Handler: mux,
+		Handler: muxWithMetrics,
 	}
 
 	go func() {

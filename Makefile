@@ -42,3 +42,20 @@ run-worker:
 .PHONY: run-management-api
 run-management-api:
 	@go run cmd/management_api/wire_gen.go cmd/management_api/management_api.go
+
+.PHONY: generate
+generate: prototool/install
+	rm -rf ./protogen
+	PATH="$$PWD/bin:$$PATH" prototool generate
+
+.PHONY: prototool/install
+prototool/install: export GO111MODULE := on
+prototool/install: export GOBIN := $(PWD)/bin
+prototool/install:
+	@go get github.com/uber/prototool/cmd/prototool
+	@go get github.com/golang/protobuf/protoc-gen-go
+	@go get github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
+
+.PHONY: lint
+lint: prototool/install
+	PATH="$$PWD/bin:$$PATH" prototool lint

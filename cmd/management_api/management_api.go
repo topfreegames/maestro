@@ -41,11 +41,11 @@ func main() {
 
 	shutdownInternalServerFn := service.RunInternalServer(ctx, config)
 
-	handlers, err := initializeHandlers(config)
+	mux, err := initializeManagementMux(ctx)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("failed to initialize management handlers")
+		zap.L().With(zap.Error(err)).Fatal("failed to initialize management mux")
 	}
-	shutdownManagementServerFn := service.RunManagementServer(ctx, config, handlers)
+	shutdownManagementServerFn := service.RunManagementServer(ctx, config, mux)
 
 	<-ctx.Done()
 

@@ -1,0 +1,72 @@
+# prototool configuration.
+# See
+# https://github.com/uber/prototool/blob/dev/etc/config/example/prototool.yaml
+# for reference.
+
+excludes:
+    - prototool.yaml
+    - .gitlab-ci.yml
+    - third_party/
+    - v1/stores/
+    - cmd/
+    - config/
+    - docs/
+    - internal/
+    - manifests/
+    - tools/
+
+protoc:
+  version: 3.11.3
+  includes:
+    - ./                  # root of arc imports
+    - third_party/googleapis/ # grpc-gateway protos
+
+lint:
+  group: uber2
+  java_package_prefix: 'com.topfreegames.maestro.protogen'
+  ignores:
+    - id: FILE_OPTIONS_EQUAL_JAVA_PACKAGE_PREFIX
+      files:
+        - proto/storage
+        - proto/system
+    - id: PACKAGE_MAJOR_BETA_VERSIONED
+      files:
+        - proto/storage
+        - proto/system
+    - id: WKT_TIMESTAMP_SUFFIX
+      files:
+        - api/v1/subscriptions.proto
+    - id: ENUM_ZERO_VALUES_INVALID_EXCEPT_MESSAGE
+      files:
+        - api/v1/subscriptions.proto
+  rules:
+    remove:
+      - ENUM_FIELD_PREFIXES_EXCEPT_MESSAGE
+      - FILE_OPTIONS_EQUAL_GO_PACKAGE_V2_SUFFIX
+      - FILE_OPTIONS_REQUIRE_PHP_NAMESPACE
+      - FILE_OPTIONS_REQUIRE_CSHARP_NAMESPACE
+      - FILE_OPTIONS_REQUIRE_JAVA_MULTIPLE_FILES
+      - FILE_OPTIONS_REQUIRE_JAVA_OUTER_CLASSNAME
+      - FILE_OPTIONS_REQUIRE_JAVA_PACKAGE
+      - FILE_OPTIONS_REQUIRE_OBJC_CLASS_PREFIX
+      - NAMES_NO_DATA
+      - REQUEST_RESPONSE_NAMES_MATCH_RPC
+      - REQUEST_RESPONSE_TYPES_IN_SAME_FILE
+      - REQUEST_RESPONSE_TYPES_ONLY_IN_FILE
+      - REQUEST_RESPONSE_TYPES_UNIQUE
+      - SERVICE_NAMES_API_SUFFIX
+      - SERVICE_NAMES_MATCH_FILE_NAME
+      - WKT_DURATION_SUFFIX
+
+generate:
+  go_options:
+    import_path: git.topfreegames.com/maestro/protogen
+  plugins:
+    - name: go
+      flags: paths=source_relative,plugins=grpc
+      output: protogen/
+    - name: grpc-gateway
+      type: go
+      flags: paths=source_relative,allow_repeated_fields_in_body=true
+      output: protogen/
+

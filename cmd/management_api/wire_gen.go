@@ -6,22 +6,17 @@
 package main
 
 import (
-	"net/http"
+	"context"
 
-	"github.com/topfreegames/maestro/internal/config"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/topfreegames/maestro/internal/handlers"
+	"github.com/topfreegames/maestro/internal/service"
 )
 
 // Injectors from wire.go:
 
-func initializeHandlers(c config.Config) (map[string]http.Handler, error) {
-	v := ProvideHandlers()
-	return v, nil
-}
-
-// wire.go:
-
-type Handlers = map[string]http.Handler
-
-func ProvideHandlers() Handlers {
-	return Handlers{}
+func initializeManagementMux(ctx context.Context) (*runtime.ServeMux, error) {
+	pingHandler := handlers.ProvidePingHandler()
+	serveMux := service.ProvideManagementMux(pingHandler)
+	return serveMux, nil
 }

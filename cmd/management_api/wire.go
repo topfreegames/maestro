@@ -3,13 +3,19 @@
 package main
 
 import (
+	"context"
+
 	"github.com/google/wire"
-	"github.com/topfreegames/maestro/internal/config"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/topfreegames/maestro/internal/handlers"
 	"github.com/topfreegames/maestro/internal/service"
 )
 
-func initializeHandlers(c config.Config) (service.Handlers, error) {
-	wire.Build(service.ProvideHandlers)
+func initializeManagementMux(ctx context.Context) (*runtime.ServeMux, error) {
+	wire.Build(
+		handlers.ProvidePingHandler,
+		service.ProvideManagementMux,
+	)
 
-	return service.Handlers{}, nil
+	return &runtime.ServeMux{}, nil
 }

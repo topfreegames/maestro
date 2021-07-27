@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package api.v1;
+
+option java_package = "com.topfreegames.maestro.protogen.api";
+option go_package = "git.topfreegames.com/topfreegames/maestro/protogen/api";
+
+import "google/api/annotations.proto";
+
+// Service get ping.
+service Ping {
+  // To check the service is up.
+  rpc GetPing(GetPingMessage) returns (GetPingMessage) {
+      option (google.api.http) = {
+            get: "/ping"
+      };
+  }
+}
+
+// The ping message.
+message GetPingMessage {
+  string message = 1;
+}
