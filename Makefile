@@ -2,6 +2,10 @@ SOURCES := $(shell \
 	find . -not \( \( -name .git -o -name .go -o -name vendor \) -prune \) \
 	-name '*.go')
 
+.PHONY: staticcheck
+staticcheck:
+	@go run honnef.co/go/tools/cmd/staticcheck ./...
+
 .PHONY: run-unit-tests
 run-unit-tests:
 	@go test -count=1 -tags=unit -coverprofile=coverage.out -covermode=atomic ./...
@@ -34,3 +38,4 @@ wire:
 .PHONY: run-worker
 run-worker:
 	@go run cmd/worker/wire_gen.go cmd/worker/worker.go
+

@@ -1,8 +1,8 @@
-name: Format
+name: Static check
 on: push
 jobs:
-  goimports:
-    name: Perform goimports diff
+  staticcheck:
+    name: Runs staticcheck
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go
@@ -16,12 +16,7 @@ jobs:
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-    - name: Run goimports and diff
-      run: |
-        make goimports
-        if ! git diff --quiet; then \
-          printf 'Found changes. Please run goimports target and commit the changes\n' ; \
-          exit 1; \
-        fi
+    - name: Run staticcheck with reviewdog
+      run: make staticcheck
 
 
