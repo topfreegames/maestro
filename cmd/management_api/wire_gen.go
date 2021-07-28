@@ -10,22 +10,32 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/topfreegames/maestro/internal/api/handlers"
+	"github.com/topfreegames/maestro/internal/config"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
+	"github.com/topfreegames/maestro/internal/service"
 	v1 "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
 // Injectors from wire.go:
 
-func initializeManagementMux(ctx context.Context) (*runtime.ServeMux, error) {
+func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.ServeMux, error) {
 	pingHandler := handlers.ProvidePingHandler()
-	serveMux := provideManagementMux(ctx, pingHandler)
+	schedulerStorage, err := service.NewSchedulerStoragePg(conf)
+	if err != nil {
+		return nil, err
+	}
+	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage)
+	schedulerHandler := handlers.ProvideSchedulerHandler(schedulerManager)
+	serveMux := provideManagementMux(ctx, pingHandler, schedulerHandler)
 	return serveMux, nil
 }
 
 // wire.go:
 
-func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler) *runtime.ServeMux {
+func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler, schedulerHandler *handlers.SchedulerHandler) *runtime.ServeMux {
 	mux := runtime.NewServeMux()
 	v1.RegisterPingHandlerServer(ctx, mux, pingHandler)
+	v1.RegisterSchedulersHandlerServer(ctx, mux, schedulerHandler)
 
 	return mux
 }
