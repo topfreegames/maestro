@@ -114,10 +114,8 @@ func convertContainerPort(port game_room.ContainerPort) (v1.ContainerPort, error
 	switch protocol := strings.ToLower(port.Protocol); protocol {
 	case "tcp":
 		kubePortProtocol = v1.ProtocolTCP
-		break
 	case "udp":
 		kubePortProtocol = v1.ProtocolUDP
-		break
 	default:
 		return v1.ContainerPort{}, fmt.Errorf("invalid port protocol \"%s\"", protocol)
 	}

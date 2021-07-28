@@ -84,8 +84,6 @@ func (w *WorkersManager) Start(ctx context.Context) error {
 			return fmt.Errorf("loop to sync operation workers received an error context event: %w", err)
 		}
 	}
-
-	return nil
 }
 
 // Stops all registered workers.
@@ -175,7 +173,7 @@ func (w *WorkersManager) getDeadWorkers(ctx context.Context) map[string]workers.
 
 	deadWorkers := map[string]workers.Worker{}
 	for name, worker := range w.CurrentWorkers {
-		if worker.IsRunning(ctx) == false {
+		if !worker.IsRunning(ctx) {
 			deadWorkers[name] = worker
 		}
 	}

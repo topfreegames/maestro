@@ -16,7 +16,5 @@ jobs:
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-    - name: Run staticcheck with reviewdog
+    - name: Run staticcheck
       run: make staticcheck
-
-

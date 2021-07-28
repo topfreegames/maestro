@@ -5,6 +5,7 @@ SOURCES := $(shell \
 .PHONY: staticcheck
 staticcheck:
 	@go run honnef.co/go/tools/cmd/staticcheck ./...
+	@go vet ./...
 
 .PHONY: run-unit-tests
 run-unit-tests:

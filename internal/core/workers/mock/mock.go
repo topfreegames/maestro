@@ -13,7 +13,6 @@ func (d *MockWorker) Start(_ context.Context) error {
 
 func (d *MockWorker) Stop(_ context.Context) {
 	d.Run = false
-	return
 }
 
 func (d *MockWorker) IsRunning(_ context.Context) bool {
