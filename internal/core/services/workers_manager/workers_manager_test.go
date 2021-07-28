@@ -40,9 +40,7 @@ func BeforeTest(t *testing.T) {
 }
 
 func TestStart(t *testing.T) {
-
 	t.Run("with success", func(t *testing.T) {
-
 		BeforeTest(t)
 
 		configs := configMock.NewMockConfig(mockCtrl)
@@ -53,8 +51,10 @@ func TestStart(t *testing.T) {
 			return &workerMock.MockWorker{Run: false}
 		}
 
-		configs.EXPECT().GetInt(syncWorkersIntervalPath).Return(10)
-		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{
+		ctx, cancelFn := context.WithCancel(context.Background())
+		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
+		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
+		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
 				Game:            "zooba",
@@ -69,29 +69,49 @@ func TestStart(t *testing.T) {
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
 
-		err := workersManager.Start(context.Background())
+		done := make(chan struct{})
+		go func() {
+			err := workersManager.Start(ctx)
+			require.NoError(t, err)
+			done <- struct{}{}
+		}()
 
-		time.Sleep(time.Second * 1)
+		require.Eventually(t, func() bool {
+			if len(workersManager.CurrentWorkers) > 0 {
+				require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
+				return true
+			}
 
-		require.NoError(t, err)
-		require.True(t, workersManager.RunSyncWorkers)
-		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
+			return false
+		}, 5*time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
 			zap.InfoLevel: {"starting to sync operation workers",
 				"new operation worker running"},
 		})
+
+		// guarantees we finish the process.
+		cancelFn()
+		require.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+			}
+
+			return false
+		}, time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("fails when schedulerStorage fails to list all schedulers", func(t *testing.T) {
-
 		BeforeTest(t)
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
 
-		configs.EXPECT().GetInt(syncWorkersIntervalPath).Return(10)
+		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
+		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return(nil, errors.ErrUnexpected)
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return &workerMock.MockWorker{Run: false}
@@ -99,20 +119,28 @@ func TestStart(t *testing.T) {
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
 
-		err := workersManager.Start(context.Background())
+		done := make(chan struct{})
+		go func() {
+			err := workersManager.Start(context.Background())
+			require.Error(t, err)
+			done <- struct{}{}
+		}()
 
-		time.Sleep(time.Second * 1)
+		require.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+			}
 
-		require.ErrorIs(t, errors.ErrUnexpected, err)
+			return false
+		}, time.Second, 100*time.Millisecond)
+
 		require.Empty(t, workersManager.CurrentWorkers)
-		require.False(t, workersManager.RunSyncWorkers)
 	})
 
 	t.Run("stops when context stops with no error", func(t *testing.T) {
-
 		BeforeTest(t)
-
-		ctx, cancel := context.WithCancel(context.Background())
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -121,7 +149,9 @@ func TestStart(t *testing.T) {
 			return &workerMock.MockWorker{Run: false}
 		}
 
-		configs.EXPECT().GetInt(syncWorkersIntervalPath).AnyTimes().Return(10)
+		ctx, cancelFn := context.WithCancel(context.Background())
+		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
+		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
 		schedulerStorage.EXPECT().GetAllSchedulers(ctx).AnyTimes().Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
@@ -137,24 +167,29 @@ func TestStart(t *testing.T) {
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
 
-		err := workersManager.Start(ctx)
+		done := make(chan struct{})
+		go func() {
+			err := workersManager.Start(ctx)
+			require.NoError(t, err)
+			done <- struct{}{}
+		}()
 
-		time.Sleep(time.Second * 1)
+		// guarantees we finish the process.
+		cancelFn()
+		require.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+			}
 
-		require.NoError(t, err)
-		require.True(t, workersManager.RunSyncWorkers)
-		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
-
-		cancel()
-
-		time.Sleep(time.Second * 1)
+			return false
+		}, time.Second, 100*time.Millisecond)
 
 		require.Empty(t, workersManager.CurrentWorkers)
-		require.False(t, workersManager.RunSyncWorkers)
 	})
 
 	t.Run("with success when scheduler added after initial sync", func(t *testing.T) {
-
 		BeforeTest(t)
 
 		configs := configMock.NewMockConfig(mockCtrl)
@@ -164,14 +199,39 @@ func TestStart(t *testing.T) {
 			return &workerMock.MockWorker{Run: false}
 		}
 
-		configs.EXPECT().GetInt(syncWorkersIntervalPath).AnyTimes().Return(10)
-		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{}, nil)
+		ctx, cancelFn := context.WithCancel(context.Background())
+		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
+		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
-		workersManager.Start(context.Background())
 		require.Empty(t, workersManager.CurrentWorkers)
 
-		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{
+		// first call channel handler
+		firstCycle := make(chan struct{})
+		schedulerStorage.EXPECT().GetAllSchedulers(ctx).DoAndReturn(func(_ context.Context) ([]*entities.Scheduler, error) {
+			firstCycle <- struct{}{}
+			return []*entities.Scheduler{}, nil
+		})
+
+		done := make(chan struct{})
+		go func() {
+			err := workersManager.Start(ctx)
+			require.NoError(t, err)
+			done <- struct{}{}
+		}()
+
+		// waits until the first sync happens.
+		require.Eventually(t, func() bool {
+			select {
+			case <-firstCycle:
+				return true
+			default:
+			}
+
+			return false
+		}, time.Second, 100*time.Millisecond)
+
+		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
 				Game:            "zooba",
@@ -184,20 +244,35 @@ func TestStart(t *testing.T) {
 			},
 		}, nil)
 
-		workersManager.SyncWorkers(context.Background())
+		require.Eventually(t, func() bool {
+			if len(workersManager.CurrentWorkers) > 0 {
+				require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
+				cancelFn()
+				return true
+			}
 
-		time.Sleep(time.Second * 1)
-
-		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
+			return false
+		}, 5*time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
 			zap.InfoLevel: {"starting to sync operation workers",
 				"new operation worker running"},
 		})
+
+		// guarantees we finish the process.
+		cancelFn()
+		require.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+			}
+
+			return false
+		}, time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("with success when scheduler removed after bootstrap", func(t *testing.T) {
-
 		BeforeTest(t)
 
 		configs := configMock.NewMockConfig(mockCtrl)
@@ -207,8 +282,10 @@ func TestStart(t *testing.T) {
 			return &workerMock.MockWorker{Run: false}
 		}
 
-		configs.EXPECT().GetInt(syncWorkersIntervalPath).AnyTimes().Return(1)
-		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Times(3).Return([]*entities.Scheduler{
+		ctx, cancelFn := context.WithCancel(context.Background())
+		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
+		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
+		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Times(3).Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
 				Game:            "zooba",
@@ -222,13 +299,24 @@ func TestStart(t *testing.T) {
 		}, nil)
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
-		workersManager.Start(context.Background())
 
-		// Has to sleep 1 second in order to start the goroutine
-		time.Sleep(2 * time.Second)
+		done := make(chan struct{})
+		go func() {
+			err := workersManager.Start(ctx)
+			require.NoError(t, err)
+			done <- struct{}{}
+		}()
+
+		// wait until the workers are started.
+		require.Eventually(t, func() bool {
+			if len(workersManager.CurrentWorkers) > 0 {
+				return true
+			}
+
+			return false
+		}, time.Second, 100*time.Millisecond)
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
-
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
 			zap.InfoLevel: {"starting to sync operation workers",
 				"new operation worker running"},
@@ -238,16 +326,33 @@ func TestStart(t *testing.T) {
 		zl := zap.New(core)
 		zap.ReplaceGlobals(zl)
 
-		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return([]*entities.Scheduler{}, nil)
+		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Return([]*entities.Scheduler{}, nil)
 
-		workersManager.SyncWorkers(context.Background())
+		// wait until the workers are stopped.
+		require.Eventually(t, func() bool {
+			if len(workersManager.CurrentWorkers) == 0 {
+				return true
+			}
+
+			return false
+		}, 5*time.Second, 100*time.Millisecond)
 
 		require.Empty(t, workersManager.CurrentWorkers)
-
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
 			zap.InfoLevel: {"canceling operation worker"},
 		})
 
+		// guarantees we finish the process.
+		cancelFn()
+		require.Eventually(t, func() bool {
+			select {
+			case <-done:
+				return true
+			default:
+			}
+
+			return false
+		}, time.Second, 100*time.Millisecond)
 	})
 }
 
