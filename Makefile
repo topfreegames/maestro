@@ -2,10 +2,9 @@ SOURCES := $(shell \
 	find . -not \( \( -name .git -o -name .go -o -name vendor \) -prune \) \
 	-name '*.go')
 
-.PHONY: staticcheck
-staticcheck:
-	@go run honnef.co/go/tools/cmd/staticcheck ./...
-	@go vet ./...
+.PHONY: lint
+lint:
+	@go run github.com/golangci/golangci-lint/cmd/golangci-lint run -E goimports ./...
 
 .PHONY: run-unit-tests
 run-unit-tests:

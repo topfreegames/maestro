@@ -352,8 +352,8 @@ func TestConvertGameSpec(t *testing.T) {
 			gameSpec: game_room.Spec{
 				Version: "version",
 				Containers: []game_room.Container{
-					game_room.Container{},
-					game_room.Container{},
+					{},
+					{},
 				},
 			},
 			expectedPod: v1.Pod{
@@ -367,8 +367,8 @@ func TestConvertGameSpec(t *testing.T) {
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
-						v1.Container{},
-						v1.Container{},
+						{},
+						{},
 					},
 				},
 			},
@@ -390,7 +390,7 @@ func TestConvertGameSpec(t *testing.T) {
 				},
 				Spec: v1.PodSpec{
 					Tolerations: []v1.Toleration{
-						v1.Toleration{},
+						{},
 					},
 				},
 			},
