@@ -12,13 +12,13 @@ import (
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
 	"github.com/topfreegames/maestro/internal/handlers"
-	"github.com/topfreegames/maestro/protogen/api"
+	api "github.com/topfreegames/maestro/protogen/api/v1"
 	"go.uber.org/zap"
 )
 
-func ProvideManagementMux(pingHandler *handlers.PingHandler) *runtime.ServeMux {
+func ProvideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler) *runtime.ServeMux {
 	mux := runtime.NewServeMux()
-	api.RegisterPingHandlerServer(nil, mux, pingHandler)
+	api.RegisterPingHandlerServer(ctx, mux, pingHandler)
 
 	return mux
 }

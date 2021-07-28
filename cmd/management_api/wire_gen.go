@@ -17,6 +17,6 @@ import (
 
 func initializeManagementMux(ctx context.Context) (*runtime.ServeMux, error) {
 	pingHandler := handlers.ProvidePingHandler()
-	serveMux := service.ProvideManagementMux(pingHandler)
+	serveMux := service.ProvideManagementMux(ctx, pingHandler)
 	return serveMux, nil
 }

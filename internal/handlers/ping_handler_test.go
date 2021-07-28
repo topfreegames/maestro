@@ -12,7 +12,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/stretchr/testify/require"
 	configmock "github.com/topfreegames/maestro/internal/config/mock"
-	"github.com/topfreegames/maestro/protogen/api"
+	api "github.com/topfreegames/maestro/protogen/api/v1"
 )
 
 func TestPingHandler(t *testing.T) {

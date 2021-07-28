@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 
-	"github.com/topfreegames/maestro/protogen/api"
+	api "github.com/topfreegames/maestro/protogen/api/v1"
 )
 
 type PingHandler struct{}
