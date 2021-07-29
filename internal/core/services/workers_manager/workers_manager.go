@@ -84,8 +84,6 @@ func (w *WorkersManager) Start(ctx context.Context) error {
 			return fmt.Errorf("loop to sync operation workers received an error context event: %w", err)
 		}
 	}
-
-	return nil
 }
 
 // Stops all registered workers.
@@ -114,7 +112,7 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 	}
 
 	for name, worker := range w.getDesirableWorkers(ctx, schedulers) {
-		go worker.Start(ctx)
+		startWorker(ctx, name, worker)
 		w.CurrentWorkers[name] = worker
 		zap.L().Info("new operation worker running", zap.Int("scheduler", len(name)))
 		reportWorkerStart(name)
@@ -128,7 +126,7 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 	}
 
 	for name, worker := range w.getDeadWorkers(ctx) {
-		worker.Start(ctx)
+		startWorker(ctx, name, worker)
 		w.CurrentWorkers[name] = worker
 		zap.L().Info("restarting dead operation worker", zap.Int("scheduler", len(name)))
 		reportWorkerRestart(name)
@@ -136,6 +134,15 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 
 	reportWorkersSynced()
 	return nil
+}
+
+func startWorker(ctx context.Context, name string, wkr workers.Worker) {
+	go func() {
+		err := wkr.Start(ctx)
+		if err != nil {
+			zap.L().With(zap.Error(err)).Error("operation worker failed to start", zap.Int("scheduler", len(name)))
+		}
+	}()
 }
 
 // Gets all desirable operation workers, the ones that are not running
@@ -175,7 +182,7 @@ func (w *WorkersManager) getDeadWorkers(ctx context.Context) map[string]workers.
 
 	deadWorkers := map[string]workers.Worker{}
 	for name, worker := range w.CurrentWorkers {
-		if worker.IsRunning(ctx) == false {
+		if !worker.IsRunning(ctx) {
 			deadWorkers[name] = worker
 		}
 	}

@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-const portRangeDelimiter = "-"
-
 // PortRange represents the which ports will be available for allocation.
 type PortRange struct {
 	Start int32

@@ -114,10 +114,8 @@ func convertContainerPort(port game_room.ContainerPort) (v1.ContainerPort, error
 	switch protocol := strings.ToLower(port.Protocol); protocol {
 	case "tcp":
 		kubePortProtocol = v1.ProtocolTCP
-		break
 	case "udp":
 		kubePortProtocol = v1.ProtocolUDP
-		break
 	default:
 		return v1.ContainerPort{}, fmt.Errorf("invalid port protocol \"%s\"", protocol)
 	}
@@ -180,7 +178,7 @@ func convertSpecAffinity(spec game_room.Spec) *v1.Affinity {
 		NodeAffinity: &v1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
 				NodeSelectorTerms: []v1.NodeSelectorTerm{
-					v1.NodeSelectorTerm{
+					{
 						MatchExpressions: []v1.NodeSelectorRequirement{
 							{
 								Key:      spec.Affinity,
