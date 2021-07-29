@@ -33,7 +33,7 @@ goimports:
 
 .PHONY: wire
 wire:
-	@go run github.com/google/wire/cmd/wire ./api/... ./cmd/... ./config/... ./internal/... ./manifests/... ./tools/...
+	@go run github.com/google/wire/cmd/wire ./...
 
 .PHONY: run-worker
 run-worker:

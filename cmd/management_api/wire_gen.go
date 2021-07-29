@@ -7,9 +7,10 @@ package main
 
 import (
 	"context"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/topfreegames/maestro/internal/api/handlers"
-	"github.com/topfreegames/maestro/pkg/api/v1"
+	v1 "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
 // Injectors from wire.go:

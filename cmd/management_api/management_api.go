@@ -29,7 +29,10 @@ var (
 
 func main() {
 	flag.Parse()
-	service.ConfigureLogging(*logConfig)
+	err := service.ConfigureLogging(*logConfig)
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal("unabled to load logging configuration")
+	}
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 

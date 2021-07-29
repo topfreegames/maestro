@@ -6,7 +6,7 @@ import (
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
-type PingHandler struct{
+type PingHandler struct {
 	api.UnimplementedPingServer
 }
 
