@@ -7,16 +7,24 @@ package main
 
 import (
 	"context"
-
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/topfreegames/maestro/internal/handlers"
-	"github.com/topfreegames/maestro/internal/service"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/topfreegames/maestro/internal/api/handlers"
+	"github.com/topfreegames/maestro/pkg/api/v1"
 )
 
 // Injectors from wire.go:
 
 func initializeManagementMux(ctx context.Context) (*runtime.ServeMux, error) {
 	pingHandler := handlers.ProvidePingHandler()
-	serveMux := service.ProvideManagementMux(ctx, pingHandler)
+	serveMux := provideManagementMux(ctx, pingHandler)
 	return serveMux, nil
+}
+
+// wire.go:
+
+func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler) *runtime.ServeMux {
+	mux := runtime.NewServeMux()
+	v1.RegisterPingHandlerServer(ctx, mux, pingHandler)
+
+	return mux
 }

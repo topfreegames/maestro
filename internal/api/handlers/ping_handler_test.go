@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
 	configmock "github.com/topfreegames/maestro/internal/config/mock"
-	api "github.com/topfreegames/maestro/protogen/api/v1"
+	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
 func TestPingHandler(t *testing.T) {

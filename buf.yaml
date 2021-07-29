@@ -1,0 +1,8 @@
+
+version: v1beta1
+name: git.topfreegames.com/topfreegames/maestro
+build:
+  roots:
+    - ./api/proto
+    - ./third_party/googleapis
+    - ./third_party/grpc-gateway

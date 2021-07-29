@@ -15,10 +15,6 @@ import (
 // - health check
 // - metrics
 func RunInternalServer(ctx context.Context, configs config.Config) func() error {
-	if !configs.GetBool("internal_api.enabled") {
-		return func() error { return nil }
-	}
-
 	mux := http.NewServeMux()
 	if configs.GetBool("internal_api.healthcheck.enabled") {
 		zap.L().Info("adding healthcheck handler to internal API")

@@ -33,7 +33,7 @@ goimports:
 
 .PHONY: wire
 wire:
-	@go run github.com/google/wire/cmd/wire ./...
+	@go run github.com/google/wire/cmd/wire ./api/... ./cmd/... ./config/... ./internal/... ./manifests/... ./tools/...
 
 .PHONY: run-worker
 run-worker:
@@ -44,18 +44,14 @@ run-management-api:
 	@go run cmd/management_api/wire_gen.go cmd/management_api/management_api.go
 
 .PHONY: generate
-generate: prototool/install
-	rm -rf ./protogen
-	PATH="$$PWD/bin:$$PATH" prototool generate
+generate: buf/install
+	@go generate ./gen
 
-.PHONY: prototool/install
-prototool/install: export GO111MODULE := on
-prototool/install: export GOBIN := $(PWD)/bin
-prototool/install:
-	@go get github.com/uber/prototool/cmd/prototool
-	@go get github.com/golang/protobuf/protoc-gen-go
-	@go get github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
-
-.PHONY: lint
-lint: prototool/install
-	PATH="$$PWD/bin:$$PATH" prototool lint
+.PHONY: buf/install
+buf/install:
+	@go install \
+	    google.golang.org/protobuf/cmd/protoc-gen-go \
+	    google.golang.org/grpc/cmd/protoc-gen-go-grpc \
+	    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
+	    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
+	    github.com/bufbuild/buf/cmd/buf

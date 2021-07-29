@@ -3,13 +3,23 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/topfreegames/maestro/internal/config/viper"
+
 	"github.com/topfreegames/maestro/internal/service"
 	"go.uber.org/zap"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
+	"github.com/slok/go-http-metrics/middleware"
+	"github.com/slok/go-http-metrics/middleware/std"
+	"github.com/topfreegames/maestro/internal/config"
+	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
 var (
@@ -44,7 +54,7 @@ func main() {
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("failed to initialize management mux")
 	}
-	shutdownManagementServerFn := service.RunManagementServer(ctx, config, mux)
+	shutdownManagementServerFn := runManagementServer(ctx, config, mux)
 
 	<-ctx.Done()
 
@@ -56,5 +66,37 @@ func main() {
 	err = shutdownManagementServerFn()
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("failed to shutdown management server")
+	}
+}
+
+// runManagementServer starts HTTP server in other goroutine, and returns a
+// shutdown function. It serves management API endpoints/handlers.
+func runManagementServer(ctx context.Context, configs config.Config, mux *runtime.ServeMux) func() error {
+	// Prometheus go-http-metrics middleware
+	mdlw := middleware.New(middleware.Config{
+		Recorder: metrics.NewRecorder(metrics.Config{
+			DurationBuckets: monitoring.DefBucketsMs,
+		}),
+	})
+	muxWithMetrics := std.Handler("", mdlw, mux)
+
+	httpServer := &http.Server{
+		Addr:    fmt.Sprintf(":%s", configs.GetString("management_api.port")),
+		Handler: muxWithMetrics,
+	}
+
+	go func() {
+		zap.L().Info(fmt.Sprintf("started HTTP management server at :%s", configs.GetString("management_api.port")))
+		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+			zap.L().With(zap.Error(err)).Fatal("failed to start HTTP management server")
+		}
+	}()
+
+	return func() error {
+		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("management_api.gracefulShutdownTimeout"))
+		defer cancelShutdownFn()
+
+		zap.L().Info("stopping HTTP management server")
+		return httpServer.Shutdown(shutdownCtx)
 	}
 }

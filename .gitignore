@@ -2,6 +2,7 @@
 *.o
 *.a
 *.so
+*.out
 
 # Folders
 _obj
@@ -9,7 +10,6 @@ _test
 bin
 vendor
 _build
-pkg
 
 # Architecture specific extensions/prefixes
 *.[568vq]
