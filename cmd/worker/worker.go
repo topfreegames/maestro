@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,7 +20,7 @@ var (
 
 func main() {
 	flag.Parse()
-	err := configureLogging(*logConfig)
+	err := service.ConfigureLogging(*logConfig)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unabled to load logging configuration")
 	}
@@ -43,7 +42,7 @@ func main() {
 		cancelFn()
 	}()
 
-	shutdownMetricsServerFn := service.RunMetricsServer(ctx, config)
+	shutdownInternalServerFn := service.RunInternalServer(ctx, config)
 
 	// TODO(gabrielcorado): support multiple workers.
 	operationExecutionWorkerManager, err := initializeWorker(config, operation_execution_worker.NewOperationExecutionWorker)
@@ -63,29 +62,8 @@ func main() {
 
 	<-ctx.Done()
 
-	err = shutdownMetricsServerFn()
+	err = shutdownInternalServerFn()
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("failed to shutdown metrics server")
+		zap.L().With(zap.Error(err)).Fatal("failed to shutdown internal server")
 	}
-}
-
-// NOTE: we can consider moving this configuration to a shared package.
-func configureLogging(configPreset string) error {
-	var cfg zap.Config
-	switch configPreset {
-	case "development":
-		cfg = zap.NewDevelopmentConfig()
-	case "production":
-		cfg = zap.NewProductionConfig()
-	default:
-		return fmt.Errorf("unexpected log_config: %v", configPreset)
-	}
-
-	logger, err := cfg.Build()
-	if err != nil {
-		return err
-	}
-
-	zap.ReplaceGlobals(logger)
-	return nil
 }
