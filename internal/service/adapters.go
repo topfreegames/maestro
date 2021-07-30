@@ -93,8 +93,12 @@ func NewPortAllocatorRandom(c config.Config) (ports.PortAllocator, error) {
 	return portAllocatorRandom.NewRandomPortAllocator(portRange), nil
 }
 
+func GetSchedulerStoragePostgresUrl(c config.Config) string {
+	return c.GetString(schedulerStoragePostgresUrlPath)
+}
+
 func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
-	opts, err := connectToPostgres(c.GetString(schedulerStoragePostgresUrlPath))
+	opts, err := connectToPostgres(GetSchedulerStoragePostgresUrl(c))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
