@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package api.v1;
+
+option java_package = "com.topfreegames.maestro.pkg.api.v1";
+option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
+
+import "google/api/annotations.proto";
+
+// Service to query and manipulate schedulers.
+service Schedulers {
+  
+  // Lists all schedulers.
+  rpc ListSchedulers(EmptyRequest) returns (ListSchedulersReply) {
+      option (google.api.http) = {
+            get: "/schedulers"
+      };
+  }
+}
+
+message EmptyRequest {}
+
+// The list schedulers reply message.
+message ListSchedulersReply {
+  repeated Scheduler schedulers = 1;
+}
+
+// The scheduler DTO.
+message Scheduler {
+  string name = 1;
+  string game = 2;
+  string state = 3;
+  PortRange port_range = 4;
+}
+
+// The scheduler port range DTO.
+message PortRange {
+  int32 start = 1;
+	int32 end = 2;
+}

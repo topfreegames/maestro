@@ -27,6 +27,7 @@ _testmain.go
 *.test
 *.prof
 *.coverprofile
+*.out
 
 # Vim temporary files
 *.swp

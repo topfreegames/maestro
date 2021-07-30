@@ -7,6 +7,9 @@
   "tags": [
     {
       "name": "Ping"
+    },
+    {
+      "name": "Schedulers"
     }
   ],
   "consumes": [
@@ -44,6 +47,29 @@
         ],
         "tags": [
           "Ping"
+        ]
+      }
+    },
+    "/schedulers": {
+      "get": {
+        "summary": "Lists all schedulers.",
+        "operationId": "Schedulers_ListSchedulers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListSchedulersReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Schedulers"
         ]
       }
     }
@@ -87,6 +113,50 @@
         }
       },
       "description": "The ping message."
+    },
+    "v1ListSchedulersReply": {
+      "type": "object",
+      "properties": {
+        "schedulers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Scheduler"
+          }
+        }
+      },
+      "description": "The list schedulers reply message."
+    },
+    "v1PortRange": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "end": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "description": "The scheduler port range DTO."
+    },
+    "v1Scheduler": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "game": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange"
+        }
+      },
+      "description": "The scheduler DTO."
     }
   }
 }

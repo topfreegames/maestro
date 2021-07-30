@@ -53,7 +53,7 @@ func main() {
 
 	shutdownInternalServerFn := service.RunInternalServer(ctx, config)
 
-	mux, err := initializeManagementMux(ctx)
+	mux, err := initializeManagementMux(ctx, config)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("failed to initialize management mux")
 	}
