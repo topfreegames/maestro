@@ -1,6 +1,6 @@
 
 version: v1beta1
-name: git.topfreegames.com/topfreegames/maestro
+name: github.com/topfreegames/maestro
 build:
   roots:
     - ./api/proto

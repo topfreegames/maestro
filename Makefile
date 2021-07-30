@@ -44,14 +44,5 @@ run-management-api:
 	@go run cmd/management_api/wire_gen.go cmd/management_api/management_api.go
 
 .PHONY: generate
-generate: buf/install
+generate:
 	@go generate ./gen
-
-.PHONY: buf/install
-buf/install:
-	@go install \
-	    google.golang.org/protobuf/cmd/protoc-gen-go \
-	    google.golang.org/grpc/cmd/protoc-gen-go-grpc \
-	    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
-	    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
-	    github.com/bufbuild/buf/cmd/buf

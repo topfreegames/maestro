@@ -3,7 +3,7 @@ syntax = "proto3";
 package api.v1;
 
 option java_package = "com.topfreegames.maestro.protogen.api.v1";
-option go_package = "git.topfreegames.com/topfreegames/maestro/protogen/api/v1";
+option go_package = "github.com/topfreegames/maestro/protogen/api/v1";
 
 import "google/api/annotations.proto";
 
