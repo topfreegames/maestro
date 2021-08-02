@@ -5,14 +5,15 @@ package pg
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"sort"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/adapters/scheduler_storage/pg/migrations"
+	golangMigrate "github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -38,8 +39,8 @@ func getPostgresDB(t *testing.T) *pg.DB {
 
 	opts := &pg.Options{
 		Addr:     postgresContainer.DefaultAddress(),
-		User:     "postgres",
-		Password: "password",
+		User:     "maestro",
+		Password: "maestro",
 		Database: dbname,
 	}
 
@@ -53,31 +54,21 @@ func getPostgresDB(t *testing.T) *pg.DB {
 	return db
 }
 
-func migrate(db *pg.DB) error {
-	fileInfos, err := ioutil.ReadDir("./migrations")
+func migrate(opts *pg.Options) error {
+	dbUrl := getDBUrl(opts)
+	m, err := golangMigrate.New("file://./migrations", dbUrl)
 	if err != nil {
 		return err
 	}
-	migrationFiles := make([]string, 0)
-	for _, info := range fileInfos {
-		if !info.IsDir() {
-			migrationFiles = append(migrationFiles, fmt.Sprintf("./migrations/%s", info.Name()))
-		}
-	}
 
-	sort.StringSlice(migrationFiles).Sort()
-
-	for _, migrationFile := range migrationFiles {
-		query, err := ioutil.ReadFile(migrationFile)
-		if err != nil {
-			return err
-		}
-		if _, err := db.Exec(string(query)); err != nil {
-			return err
-		}
-	}
+	m.Up()
+	m.Close()
 
 	return nil
+}
+
+func getDBUrl(opts *pg.Options) string {
+	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", opts.User, opts.Password, opts.Addr, opts.Database)
 }
 
 type SchedulerVersion struct {
@@ -129,22 +120,27 @@ func requireCorrectScheduler(t *testing.T, expectedScheduler *entities.Scheduler
 func TestMain(m *testing.M) {
 	var err error
 
-	postgresContainer, err = gnomock.Start(ppg.Preset(ppg.WithDatabase("base")))
+	postgresContainer, err = gnomock.Start(
+		ppg.Preset(
+			ppg.WithDatabase("base"),
+			ppg.WithUser("maestro", "maestro"),
+		))
 
 	if err != nil {
 		panic(fmt.Sprintf("error creating postgres docker instance: %s\n", err))
 	}
+
 	opts := &pg.Options{
 		Addr:     postgresContainer.DefaultAddress(),
 		User:     "postgres",
 		Password: "password",
 		Database: "base",
 	}
-
-	postgresDB = pg.Connect(opts)
-	if _, err := migrations.Migrate(opts); err != nil {
+	if err := migrate(opts); err != nil {
 		panic(fmt.Sprintf("error preparing postgres database: %s\n", err))
 	}
+
+	postgresDB = pg.Connect(opts)
 
 	code := m.Run()
 	_ = gnomock.Stop(postgresContainer)

@@ -11,7 +11,7 @@ management_api:
 adapters:
   schedulerStorage:
     postgres:
-      url: "postgres://pass:user@localhost:6543/maestro"
+      url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
   operationFlow:
     redis:
       url: "redis://localhost:6379/0"
@@ -21,3 +21,5 @@ adapters:
 workers:
   syncInterval: 10s
   stopTimeoutDuration: 1m
+migration:
+  path: "file://internal/adapters/scheduler_storage/pg/migrations"

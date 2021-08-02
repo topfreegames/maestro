@@ -46,3 +46,6 @@ _testmain.go
 # Python
 __pycache__
 env
+
+# K3S files
+kubeconfig.yaml

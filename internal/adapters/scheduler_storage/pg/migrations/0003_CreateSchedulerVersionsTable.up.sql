@@ -7,7 +7,7 @@
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE scheduler_versions (
+CREATE TABLE IF NOT EXISTS scheduler_versions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name varchar(255) NOT NULL REFERENCES schedulers(name) ON DELETE CASCADE,
     version INTEGER NOT NULL,
@@ -15,5 +15,5 @@ CREATE TABLE scheduler_versions (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX schedulers_version_unique ON scheduler_versions (name, version);
-CREATE INDEX scheduler_name ON schedulers (name);
+CREATE UNIQUE INDEX IF NOT EXISTS schedulers_version_unique ON scheduler_versions (name, version);
+CREATE INDEX IF NOT EXISTS scheduler_name ON schedulers (name);
