@@ -5,4 +5,4 @@
 -- http://www.opensource.org/licenses/mit-license
 -- Copyright © 2018 Top Free Games <backend@tfgco.com>
 
-ALTER TABLE scheduler_versions ADD rollback_version varchar(255);
+ALTER TABLE scheduler_versions ADD COLUMN IF NOT EXISTS rollback_version varchar(255);
