@@ -5,7 +5,7 @@ version: '3'
 services:
 
   k3s_server:
-    image: "rancher/k3s:v1.21.3-k3s1"
+    image: "rancher/k3s:v1.19.11-k3s1"
     command: server
     tmpfs:
     - /run
@@ -31,7 +31,7 @@ services:
     - 443:443    # Ingress controller port 443
 
   k3s_agent:
-    image: "rancher/k3s:v1.21.3-k3s1"
+    image: "rancher/k3s:v1.19.11-k3s1"
     tmpfs:
     - /run
     - /var/run
@@ -46,20 +46,22 @@ services:
     - K3S_URL=https://server:6443
     - K3S_TOKEN=maestro
 
-
   postgres:
     image: postgres:9.5
     ports:
     - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql
     environment:
     - POSTGRES_DB=maestro
     - POSTGRES_USER=maestro
     - POSTGRES_PASSWORD=maestro
+
   redis:
     image: redis:3.2-alpine
     ports:
     - "6379:6379"
-      
 
 volumes:
   k3s-server: {}
+  postgres: {}

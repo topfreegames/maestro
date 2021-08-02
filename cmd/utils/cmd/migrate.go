@@ -32,9 +32,14 @@ var migrateCmd = &cobra.Command{
 			zap.L().With(zap.Error(err)).Fatal("failed to create migration")
 		}
 
-		err = m.Steps(2)
-		if err != nil {
-			zap.L().With(zap.Error(err)).Fatal("failed to migrate databse")
+		// Perform the migration up
+		err = m.Up()
+		if err == migrate.ErrNoChange {
+			zap.L().Info("No performed changes, database schema already up to date")
+		} else if err != nil {
+			zap.L().With(zap.Error(err)).Fatal("Database migration failed")
+		} else {
+			zap.L().Info("Database migration completed")
 		}
 	},
 }

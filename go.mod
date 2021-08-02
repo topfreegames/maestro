@@ -4,7 +4,6 @@ go 1.16
 
 require (
 	git.apache.org/thrift.git v0.0.0-20180924222215-a9235805469b // indirect
-	github.com/GuiaBolso/darwin v0.0.0-20170210191649-86919dfcf808
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/bufbuild/buf v0.47.0 // indirect
 	github.com/cznic/ql v1.2.0 // indirect
@@ -39,7 +38,7 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/slok/go-http-metrics v0.9.0
-	github.com/spf13/cobra v1.2.1 // indirect
+	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
 	github.com/uber/prototool v1.10.0 // indirect
