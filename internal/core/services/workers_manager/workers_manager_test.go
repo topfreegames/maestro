@@ -4,6 +4,7 @@ package workers_manager
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -146,7 +147,10 @@ func TestStart(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workerMock.MockWorker{Run: false}
+			return &workerMock.MockWorker{
+				Run:           false,
+				SleepDuration: time.Second,
+			}
 		}
 
 		ctx, cancelFn := context.WithCancel(context.Background())
@@ -175,6 +179,7 @@ func TestStart(t *testing.T) {
 		}()
 
 		// guarantees we finish the process.
+		// wait for 2 seconds because the worker sleeps for 1 second
 		cancelFn()
 		require.Eventually(t, func() bool {
 			select {
@@ -184,9 +189,13 @@ func TestStart(t *testing.T) {
 			}
 
 			return false
-		}, time.Second, 100*time.Millisecond)
+		}, time.Second*2, 100*time.Millisecond)
 
 		require.Empty(t, workersManager.CurrentWorkers)
+
+		// Checks if the workersWaitGroup is empty (means all workers are done)
+		var emptyWg sync.WaitGroup
+		require.Equal(t, emptyWg, workersManager.workersWaitGroup)
 	})
 
 	t.Run("with success when scheduler added after initial sync", func(t *testing.T) {

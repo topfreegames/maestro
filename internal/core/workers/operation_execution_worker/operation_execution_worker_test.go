@@ -70,7 +70,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.NoError(t, err)
 
 		workerService.Stop(context.Background())
-		require.False(t, workerService.IsRunning(context.Background()))
+		require.False(t, workerService.IsRunning())
 	})
 
 	t.Run("execute OnError when a Execute fails", func(t *testing.T) {
@@ -122,7 +122,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.NoError(t, err)
 
 		workerService.Stop(context.Background())
-		require.False(t, workerService.IsRunning(context.Background()))
+		require.False(t, workerService.IsRunning())
 	})
 
 	t.Run("evict operation if there is no executor", func(t *testing.T) {
@@ -206,6 +206,6 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.NoError(t, err)
 
 		workerService.Stop(context.Background())
-		require.False(t, workerService.IsRunning(context.Background()))
+		require.False(t, workerService.IsRunning())
 	})
 }

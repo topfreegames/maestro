@@ -135,12 +135,8 @@ func (w *OperationExecutionWorker) Stop(_ context.Context) {
 	w.cancelWorkerContext()
 }
 
-func (w *OperationExecutionWorker) IsRunning(_ context.Context) bool {
-	if w.workerContext == nil {
-		return false
-	}
-
-	return w.workerContext.Err() == nil
+func (w *OperationExecutionWorker) IsRunning() bool {
+	return w.workerContext != nil && w.workerContext.Err() == nil
 }
 
 // TODO(gabrielcorado): consider handling the finish operation error.

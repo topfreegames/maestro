@@ -16,7 +16,7 @@ type Worker interface {
 	// Stops the worker
 	Stop(ctx context.Context)
 	// Returns if the worker is running
-	IsRunning(ctx context.Context) bool
+	IsRunning() bool
 }
 
 // WorkerOptions define all possible options that a worker can require during
