@@ -47,9 +47,9 @@ func TestStart(t *testing.T) {
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
-
+		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workerMock.MockWorker{Run: false}
+			return &workerMock.MockWorker{Run: false, StopCh: workerStopCh}
 		}
 
 		ctx, cancelFn := context.WithCancel(context.Background())
@@ -84,12 +84,14 @@ func TestStart(t *testing.T) {
 			}
 
 			return false
-		}, 5*time.Second, 100*time.Millisecond)
+		}, time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
 			zap.InfoLevel: {"starting to sync operation workers",
 				"new operation worker running"},
 		})
+
+		workerStopCh <- struct{}{}
 
 		// guarantees we finish the process.
 		cancelFn()
@@ -101,7 +103,7 @@ func TestStart(t *testing.T) {
 			}
 
 			return false
-		}, time.Second, 100*time.Millisecond)
+		}, time.Second*2, 100*time.Millisecond)
 	})
 
 	t.Run("fails when schedulerStorage fails to list all schedulers", func(t *testing.T) {
@@ -146,10 +148,11 @@ func TestStart(t *testing.T) {
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
+		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return &workerMock.MockWorker{
-				Run:           false,
-				SleepDuration: time.Second,
+				Run:    false,
+				StopCh: workerStopCh,
 			}
 		}
 
@@ -178,8 +181,16 @@ func TestStart(t *testing.T) {
 			done <- struct{}{}
 		}()
 
+		// guarantees the
+		require.Eventually(t, func() bool {
+			if len(workersManager.CurrentWorkers) > 0 {
+				workerStopCh <- struct{}{}
+				return true
+			}
+			return false
+		}, time.Second, 100*time.Millisecond)
+
 		// guarantees we finish the process.
-		// wait for 2 seconds because the worker sleeps for 1 second
 		cancelFn()
 		require.Eventually(t, func() bool {
 			select {
@@ -189,7 +200,7 @@ func TestStart(t *testing.T) {
 			}
 
 			return false
-		}, time.Second*2, 100*time.Millisecond)
+		}, time.Second, 100*time.Millisecond)
 
 		require.Empty(t, workersManager.CurrentWorkers)
 
@@ -204,8 +215,9 @@ func TestStart(t *testing.T) {
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
+		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workerMock.MockWorker{Run: false}
+			return &workerMock.MockWorker{Run: false, StopCh: workerStopCh}
 		}
 
 		ctx, cancelFn := context.WithCancel(context.Background())
@@ -256,6 +268,7 @@ func TestStart(t *testing.T) {
 		require.Eventually(t, func() bool {
 			if len(workersManager.CurrentWorkers) > 0 {
 				require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
+				workerStopCh <- struct{}{}
 				cancelFn()
 				return true
 			}
@@ -287,8 +300,9 @@ func TestStart(t *testing.T) {
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := operation_manager.New(nil, nil)
+		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workerMock.MockWorker{Run: false}
+			return &workerMock.MockWorker{Run: false, StopCh: workerStopCh}
 		}
 
 		ctx, cancelFn := context.WithCancel(context.Background())
@@ -319,6 +333,7 @@ func TestStart(t *testing.T) {
 		// wait until the workers are started.
 		require.Eventually(t, func() bool {
 			if len(workersManager.CurrentWorkers) > 0 {
+				workerStopCh <- struct{}{}
 				return true
 			}
 

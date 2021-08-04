@@ -2,21 +2,21 @@ package mock
 
 import (
 	"context"
-	"time"
 )
 
 type MockWorker struct {
-	Run           bool
-	SleepDuration time.Duration
+	Run    bool
+	StopCh chan struct{}
 }
 
 func (d *MockWorker) Start(_ context.Context) error {
 	d.Run = true
-	time.Sleep(d.SleepDuration)
+	<-d.StopCh
 	return nil
 }
 
 func (d *MockWorker) Stop(_ context.Context) {
+	d.StopCh <- struct{}{}
 	d.Run = false
 }
 
