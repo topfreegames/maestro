@@ -11,6 +11,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
+	"github.com/topfreegames/maestro/internal/core/operations/providers"
+	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/service"
 	v1 "github.com/topfreegames/maestro/pkg/api/v1"
@@ -24,7 +26,18 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 	if err != nil {
 		return nil, err
 	}
-	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage)
+	operationFlow, err := service.NewOperationFlowRedis(conf)
+	if err != nil {
+		return nil, err
+	}
+	clock := service.NewClockTime()
+	operationStorage, err := service.NewOperationStorageRedis(clock, conf)
+	if err != nil {
+		return nil, err
+	}
+	v := providers.ProvideDefinitionConstructors()
+	operationManager := operation_manager.New(operationFlow, operationStorage, v)
+	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 	schedulerHandler := handlers.ProvideSchedulerHandler(schedulerManager)
 	serveMux := provideManagementMux(ctx, pingHandler, schedulerHandler)
 	return serveMux, nil

@@ -18,121 +18,12 @@ service Schedulers {
   }
 
   // Create a scheduler.
-  rpc CreateSchedulers(CreateSchedulerRequest) returns (Scheduler) {
+  rpc CreateScheduler(CreateSchedulerRequest) returns (Scheduler) {
       option (google.api.http) = {
-            post: "/schedulers"
+            post: "/schedulers",
+            body: "*"
       };
   }
-}
-
-// Scheduler is the struct that defines a maestro scheduler
-message CreateSchedulerRequest {
-  string name = 1;
-  string game = 2;
-  int64 shutdown_timeout = 3;
-  AutoScaling auto_scaling = 4;
-  string node_affinity = 5;
-  string node_toleration = 6;
-  int64 occupied_timeout = 7;
-  map<string, map<string, Forwarder> forwarders = 8;
-  repeated string authorized_users = 9;
-  repeated Container containers = 10;
-  PortRange port_range = 11;
-}
-
-// AutoScaling has the configuration for the GRU's auto scaling
-message AutoScaling {
-  int32 min = 1;
-  int32 max = 2;
-  bool enable_panic_scale = 3;
-  ScalingPolicy up = 4;
-  ScalingPolicy down = 5;
-}
-
-// ScalingPolicy has the configuration for a scaling policy
-message ScalingPolicy {
-	int cooldown = 1;
-	int delta = 2;
-	ScalingPolicyTrigger trigger = 3;
-	repeated ScalingPolicyMetricsTrigger metrics_trigger = 4;
-}
-
-// ScalingPolicyTrigger has the configuration for a scaling policy trigger
-// During 'Time' seconds with n measures, 'Usage'% of the machines needs
-// to be occupied on 'Threshold'% of these n points.
-// This will trigger a scale up or scale down.
-message ScalingPolicyTrigger {
-	int time = 1;
-	int usage = 2;
-	int threshold = 3;
-	int limit = 4;
-}
-
-// ScalingPolicyMetricsTrigger has the configuration for a scaling policy trigger
-// that uses generic metrics like room usage, cluster cpu or mem.
-// This will trigger a scale up or scale down.
-message ScalingPolicyMetricsTrigger {
-	string type = 1;
-	int delta = 2;
-	int time = 3;
-	int usage = 4;
-	int threshold = 5;
-	int limit = 6;
-}
-
-// Forwarder has the configuration for the event forwarders
-message Forwarder {
-  bool enabled = 1;
-  bool forward_response = 2;
-  map<string, Any> metadata = 3;
-}
-
-// Container represents a container inside a pod
-message Container {
-  string name = 1;
-  string image = 2;
-  string image_pull_policy = 3;
-  repeated Port ports = 4;
-  Resources limits = 5;
-  Resources requests = 6;
-  repeated EnvVar env = 7;
-  repeated string command = 8;
-}
-
-// Resources the CPU and memory resources limits
-message Resources {
-  string cpu = 1;
-  string memory = 2;
-}
-
-// EnvVar has name and value of an environment variable
-message EnvVar {
-	string name = 1;
-	string value = 2;
-	ValueFrom value_from = 3;
-}
-
-// ValueFrom has environment variables from secrets
-message ValueFrom {
-	SecretKeyRef secret_key_ref = 1;
-	FieldRef field_ref = 2;
-}
-
-// SecretKeyRef has environment variables from secrets
-message SecretKeyRef {
-	string name = 1;
-	string key = 2;
-}
-
-// FieldRef has environment variables from fields
-message FieldRef {
-	string field_path = 1;
-}
-
-// The scheduler port range DTO.
-message PortRange {
-  int32 start = 1;
-	int32 end = 2;
 }
 
 message EmptyRequest {}
@@ -147,5 +38,19 @@ message Scheduler {
   string name = 1;
   string game = 2;
   string state = 3;
-  PortRange port_range = 4;
+  string version = 4;
+  PortRange port_range = 5;
+}
+
+// Scheduler is the struct that defines a maestro scheduler
+message CreateSchedulerRequest {
+  string name = 1;
+  string game = 2;
+  string version = 3;
+}
+
+// The scheduler port range DTO.
+message PortRange {
+  int32 start = 1;
+	int32 end = 2;
 }
