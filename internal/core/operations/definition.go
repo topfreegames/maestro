@@ -6,6 +6,13 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 )
 
+type DefinitionConstructor func() Definition
+type DefintionConstructors map[string]DefinitionConstructor
+
+func NewDefinitionConstructors() DefintionConstructors {
+	return DefintionConstructors{}
+}
+
 // Definition is the operation parameters. It must be able to encode/decode
 // itself.
 type Definition interface {

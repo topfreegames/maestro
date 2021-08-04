@@ -10,7 +10,6 @@ import (
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"go.uber.org/zap"
 )
@@ -30,7 +29,6 @@ type WorkersManager struct {
 	builder                    workers.WorkerBuilder
 	configs                    config.Config
 	schedulerStorage           ports.SchedulerStorage
-	operationManager           *operation_manager.OperationManager
 	CurrentWorkers             map[string]workers.Worker
 	syncWorkersInterval        time.Duration
 	workerOptions              *workers.WorkerOptions
@@ -39,18 +37,12 @@ type WorkersManager struct {
 }
 
 // Default constructor of WorkersManager
-func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, schedulerStorage ports.SchedulerStorage, operationManager *operation_manager.OperationManager) *WorkersManager {
-	// options passed to build the workers.
-	// NOTE: we might need to add more options as the workers need.
-	workerOptions := &workers.WorkerOptions{
-		OperationManager: operationManager,
-	}
+func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, schedulerStorage ports.SchedulerStorage, workerOptions *workers.WorkerOptions) *WorkersManager {
 
 	return &WorkersManager{
 		builder:                    builder,
 		configs:                    configs,
 		schedulerStorage:           schedulerStorage,
-		operationManager:           operationManager,
 		CurrentWorkers:             map[string]workers.Worker{},
 		syncWorkersInterval:        configs.GetDuration(syncWorkersIntervalPath),
 		workerOptions:              workerOptions,

@@ -8,28 +8,19 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/services/operations_registry"
 )
 
 type OperationManager struct {
-	flow               ports.OperationFlow
-	storage            ports.OperationStorage
-	operationsRegistry operations_registry.Registry
+	flow                            ports.OperationFlow
+	storage                         ports.OperationStorage
+	operationDefinitionConstructors map[string]operations.DefinitionConstructor
 }
 
-func NewWithRegistry(flow ports.OperationFlow, storage ports.OperationStorage, operationsRegistry operations_registry.Registry) *OperationManager {
+func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor) *OperationManager {
 	return &OperationManager{
-		flow:               flow,
-		storage:            storage,
-		operationsRegistry: operationsRegistry,
-	}
-}
-
-func New(flow ports.OperationFlow, storage ports.OperationStorage) *OperationManager {
-	return &OperationManager{
-		flow:               flow,
-		storage:            storage,
-		operationsRegistry: operations_registry.DefaultRegistry,
+		flow:                            flow,
+		storage:                         storage,
+		operationDefinitionConstructors: operationDefinitionConstructors,
 	}
 }
 
@@ -60,11 +51,12 @@ func (o *OperationManager) GetOperation(ctx context.Context, schedulerName, oper
 		return nil, nil, err
 	}
 
-	definition, err := o.operationsRegistry.Get(op.DefinitionName)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get definition: %s", err)
+	definitionConstructor := o.operationDefinitionConstructors[op.DefinitionName]
+	if definitionConstructor == nil {
+		return nil, nil, fmt.Errorf("no definition constructor implemented for %s: %s", op.DefinitionName, err)
 	}
 
+	definition := definitionConstructor()
 	err = definition.Unmarshal(definitionContents)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal definition: %s", err)

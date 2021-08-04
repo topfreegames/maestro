@@ -18,6 +18,7 @@ import (
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
@@ -133,7 +134,7 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		scheduler := &entities.Scheduler{

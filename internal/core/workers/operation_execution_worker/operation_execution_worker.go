@@ -31,16 +31,9 @@ type OperationExecutionWorker struct {
 }
 
 func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
-	executors := make(map[string]operations.Executor)
-	for _, executor := range opts.Executors {
-		// TODO(gabrielcorado): are we going to receive the executor
-		// initialized?
-		executors[executor.Name()] = executor
-	}
-
 	return &OperationExecutionWorker{
 		operationManager: opts.OperationManager,
-		executorsByName:  executors,
+		executorsByName:  opts.OperationExecutors,
 		schedulerName:    scheduler.Name,
 		logger:           zap.L().With(zap.String("service", "worker"), zap.String("scheduler_name", scheduler.Name)),
 	}

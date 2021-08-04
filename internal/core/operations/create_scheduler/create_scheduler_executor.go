@@ -22,7 +22,7 @@ func NewExecutor(runtime ports.Runtime, storage ports.SchedulerStorage) *CreateS
 	}
 }
 
-func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op operation.Operation, definition operations.Definition) error {
+func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName})
 	if err != nil {
 		return fmt.Errorf("failed to create scheduler in runtime: %w", err)
@@ -31,7 +31,7 @@ func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op operation.Oper
 	return nil
 }
 
-func (e *CreateSchedulerExecutor) OnError(ctx context.Context, op operation.Operation, definition operations.Definition, executeErr error) error {
+func (e *CreateSchedulerExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	scheduler, err := e.storage.GetScheduler(ctx, op.SchedulerName)
 	if err != nil {
 		return fmt.Errorf("failed to find scheduler by id: %w", err)

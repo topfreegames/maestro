@@ -15,7 +15,7 @@ import (
 
 var (
 	logConfig  = flag.String("log-config", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	configPath = flag.String("config-path", "config/local.yaml", "path of the configuration YAML file")
+	configPath = flag.String("config-path", "config/worker.local.yaml", "path of the configuration YAML file")
 )
 
 func main() {

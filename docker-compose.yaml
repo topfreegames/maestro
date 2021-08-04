@@ -58,7 +58,7 @@ services:
     - POSTGRES_PASSWORD=maestro
 
   redis:
-    image: redis:3.2-alpine
+    image: redis:5.0.10-alpine
     ports:
     - "6379:6379"
 
