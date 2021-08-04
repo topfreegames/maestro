@@ -12,9 +12,12 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
+	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
+	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	configmock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
@@ -27,7 +30,10 @@ func TestSchedulerHandler(t *testing.T) {
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
 		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
@@ -72,7 +78,10 @@ func TestSchedulerHandler(t *testing.T) {
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
 		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
@@ -105,8 +114,12 @@ func TestSchedulerHandler(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		config := configmock.NewMockConfig(mockCtrl)
+
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
 		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()

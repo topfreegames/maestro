@@ -9,7 +9,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/operations/providers"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/service"
@@ -21,7 +20,6 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 		service.NewClockTime,
 		service.NewOperationFlowRedis,
 		service.NewOperationStorageRedis,
-		providers.ProvideDefinitionConstructors,
 		operation_manager.New,
 		service.NewSchedulerStoragePg,
 		scheduler_manager.NewSchedulerManager,
