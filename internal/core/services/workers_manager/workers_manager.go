@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/config"
@@ -34,6 +35,7 @@ type WorkersManager struct {
 	syncWorkersInterval        time.Duration
 	workerOptions              *workers.WorkerOptions
 	workersStopTimeoutDuration time.Duration
+	workersWaitGroup           sync.WaitGroup
 }
 
 // Default constructor of WorkersManager
@@ -97,6 +99,8 @@ func (w *WorkersManager) stop() {
 		delete(w.CurrentWorkers, name)
 		reportWorkerStop(name)
 	}
+
+	w.workersWaitGroup.Wait()
 }
 
 // Function responsible to run a single sync on operation workers. It will:
@@ -112,7 +116,7 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 	}
 
 	for name, worker := range w.getDesirableWorkers(ctx, schedulers) {
-		startWorker(ctx, name, worker)
+		startWorker(ctx, name, worker, &w.workersWaitGroup)
 		w.CurrentWorkers[name] = worker
 		zap.L().Info("new operation worker running", zap.Int("scheduler", len(name)))
 		reportWorkerStart(name)
@@ -125,8 +129,8 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 		reportWorkerStop(name)
 	}
 
-	for name, worker := range w.getDeadWorkers(ctx) {
-		startWorker(ctx, name, worker)
+	for name, worker := range w.getDeadWorkers() {
+		startWorker(ctx, name, worker, &w.workersWaitGroup)
 		w.CurrentWorkers[name] = worker
 		zap.L().Info("restarting dead operation worker", zap.Int("scheduler", len(name)))
 		reportWorkerRestart(name)
@@ -136,12 +140,14 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 	return nil
 }
 
-func startWorker(ctx context.Context, name string, wkr workers.Worker) {
+func startWorker(ctx context.Context, name string, wkr workers.Worker, wg *sync.WaitGroup) {
+	wg.Add(1)
 	go func() {
 		err := wkr.Start(ctx)
 		if err != nil {
 			zap.L().With(zap.Error(err)).Error("operation worker failed to start", zap.Int("scheduler", len(name)))
 		}
+		wg.Done()
 	}()
 }
 
@@ -178,11 +184,11 @@ func (w *WorkersManager) getDispensableWorkers(ctx context.Context, schedulers [
 }
 
 // Gets all dead operation workers, the ones that are in currentWorkers but not running
-func (w *WorkersManager) getDeadWorkers(ctx context.Context) map[string]workers.Worker {
+func (w *WorkersManager) getDeadWorkers() map[string]workers.Worker {
 
 	deadWorkers := map[string]workers.Worker{}
 	for name, worker := range w.CurrentWorkers {
-		if !worker.IsRunning(ctx) {
+		if !worker.IsRunning() {
 			deadWorkers[name] = worker
 		}
 	}
