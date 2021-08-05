@@ -212,7 +212,8 @@
             "$ref": "#/definitions/v1Operation"
           }
         }
-      }
+      },
+      "title": "The list operation route response/reply\nThere's a list for each operation major status"
     },
     "v1ListSchedulersReply": {
       "type": "object",
@@ -229,7 +230,7 @@
     "v1Operation": {
       "type": "object",
       "properties": {
-        "iD": {
+        "id": {
           "type": "string"
         },
         "status": {
@@ -241,7 +242,8 @@
         "schedulerName": {
           "type": "string"
         }
-      }
+      },
+      "title": "The operation object representation"
     },
     "v1PortRange": {
       "type": "object",

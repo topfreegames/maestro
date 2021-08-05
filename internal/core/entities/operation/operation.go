@@ -1,5 +1,7 @@
 package operation
 
+import "fmt"
+
 type Status int
 
 const (
@@ -22,4 +24,23 @@ type Operation struct {
 	Status         Status
 	DefinitionName string
 	SchedulerName  string
+}
+
+func (s Status) String() (string, error) {
+	switch s {
+	case StatusPending:
+		return "pending", nil
+	case StatusInProgress:
+		return "in_progress", nil
+	case StatusFinished:
+		return "finished", nil
+	case StatusEvicted:
+		return "evicted", nil
+	case StatusError:
+		return "error", nil
+	case StatusCanceled:
+		return "canceled", nil
+	}
+
+	return "", fmt.Errorf("status could not be mapped to string: %d", s)
 }

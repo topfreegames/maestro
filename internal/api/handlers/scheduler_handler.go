@@ -60,29 +60,29 @@ func (h *SchedulerHandler) ListOperations(ctx context.Context, request *api.List
 
 	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, request.GetScheduler())
 	if err != nil {
-		return nil, fmt.Errorf("failed to list all pending operations: %w", err)
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	pendingOperationResponse, err := h.fromOperationsToResponses(pendingOperationEntities)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	activeOperationEntities, err := h.operationManager.ListSchedulerActiveOperations(ctx, request.GetScheduler())
 	if err != nil {
-		return nil, fmt.Errorf("failed to list all active operations: %w", err)
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	activeOperationResponses, err := h.fromOperationsToResponses(activeOperationEntities)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	finishedOperationEntities, err := h.operationManager.ListSchedulerFinishedOperations(ctx, request.GetScheduler())
 	if err != nil {
-		return nil, fmt.Errorf("failed to list all finished operations: %w", err)
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	finishedOperationResponse, err := h.fromOperationsToResponses(finishedOperationEntities)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	return &api.ListOperationsReply{
@@ -142,34 +142,15 @@ func (h *SchedulerHandler) fromOperationsToResponses(entities []*operation.Opera
 }
 
 func (h *SchedulerHandler) fromOperationToResponse(entity *operation.Operation) (*api.Operation, error) {
-	status, err := fromOperationStatusToString(entity.Status)
+	status, err := entity.Status.String()
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert operation entity to response: %w", err)
 	}
 
 	return &api.Operation{
-		ID:             entity.ID,
+		Id:             entity.ID,
 		Status:         status,
 		DefinitionName: entity.DefinitionName,
 		SchedulerName:  entity.SchedulerName,
 	}, nil
-}
-
-func fromOperationStatusToString(status operation.Status) (string, error) {
-	switch status {
-	case operation.StatusPending:
-		return "pending", nil
-	case operation.StatusInProgress:
-		return "in_progress", nil
-	case operation.StatusFinished:
-		return "finished", nil
-	case operation.StatusEvicted:
-		return "evicted", nil
-	case operation.StatusError:
-		return "error", nil
-	case operation.StatusCanceled:
-		return "canceled", nil
-	}
-
-	return "", fmt.Errorf("status could not be mapped to string: %d", status)
 }
