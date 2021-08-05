@@ -2,9 +2,15 @@ package handlers
 
 import (
 	"context"
+	"errors"
 
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type SchedulerHandler struct {
@@ -22,7 +28,7 @@ func (h *SchedulerHandler) ListSchedulers(ctx context.Context, message *api.Empt
 
 	entities, err := h.schedulerManager.GetAllSchedulers(ctx)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	schedulers := make([]*api.Scheduler, len(entities))
@@ -43,4 +49,39 @@ func (h *SchedulerHandler) ListSchedulers(ctx context.Context, message *api.Empt
 		Schedulers: schedulers,
 	}, nil
 
+}
+
+func (h *SchedulerHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.Scheduler, error) {
+
+	scheduler := h.fromRequestToEntity(request)
+
+	scheduler, err := h.schedulerManager.CreateScheduler(ctx, scheduler)
+	if errors.Is(err, portsErrors.ErrAlreadyExists) {
+		return nil, status.Error(codes.AlreadyExists, err.Error())
+	}
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return h.fromEntityToResponse(scheduler), nil
+}
+
+func (h *SchedulerHandler) fromRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {
+	return &entities.Scheduler{
+		Name:  request.Name,
+		Game:  request.Game,
+		State: entities.StateCreating,
+		Spec: game_room.Spec{
+			Version: request.Version,
+		},
+	}
+}
+
+func (h *SchedulerHandler) fromEntityToResponse(entity *entities.Scheduler) *api.Scheduler {
+	return &api.Scheduler{
+		Name:    entity.Name,
+		Game:    entity.Game,
+		State:   entity.State,
+		Version: entity.Spec.Version,
+	}
 }

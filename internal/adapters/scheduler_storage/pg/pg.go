@@ -108,7 +108,7 @@ func (s schedulerStorage) CreateScheduler(ctx context.Context, scheduler *entiti
 	_, err := client.Exec(queryInsertScheduler, dbScheduler)
 	if err != nil {
 		if strings.Contains(err.Error(), "schedulers_name_unique") {
-			return errors.NewErrAlreadyExists("error creating scheduler %s", dbScheduler.Name)
+			return errors.NewErrAlreadyExists("error creating scheduler %s: name already exists", dbScheduler.Name)
 		}
 		return errors.NewErrUnexpected("error creating scheduler %s", dbScheduler.Name).WithError(err)
 	}

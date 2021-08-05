@@ -71,6 +71,37 @@
         "tags": [
           "Schedulers"
         ]
+      },
+      "post": {
+        "summary": "Create a scheduler.",
+        "operationId": "Schedulers_CreateScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Scheduler"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateSchedulerRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Schedulers"
+        ]
       }
     }
   },
@@ -104,6 +135,21 @@
           }
         }
       }
+    },
+    "v1CreateSchedulerRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "game": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "title": "Scheduler is the struct that defines a maestro scheduler"
     },
     "v1GetPingMessage": {
       "type": "object",
@@ -150,6 +196,9 @@
           "type": "string"
         },
         "state": {
+          "type": "string"
+        },
+        "version": {
           "type": "string"
         },
         "portRange": {

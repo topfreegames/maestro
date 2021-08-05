@@ -16,6 +16,14 @@ service Schedulers {
             get: "/schedulers"
       };
   }
+
+  // Create a scheduler.
+  rpc CreateScheduler(CreateSchedulerRequest) returns (Scheduler) {
+      option (google.api.http) = {
+            post: "/schedulers",
+            body: "*"
+      };
+  }
 }
 
 message EmptyRequest {}
@@ -30,7 +38,15 @@ message Scheduler {
   string name = 1;
   string game = 2;
   string state = 3;
-  PortRange port_range = 4;
+  string version = 4;
+  PortRange port_range = 5;
+}
+
+// Scheduler is the struct that defines a maestro scheduler
+message CreateSchedulerRequest {
+  string name = 1;
+  string game = 2;
+  string version = 3;
 }
 
 // The scheduler port range DTO.
