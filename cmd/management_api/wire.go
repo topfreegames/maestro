@@ -18,13 +18,20 @@ import (
 
 func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.ServeMux, error) {
 	wire.Build(
+		// ports + adapters
 		service.NewClockTime,
 		service.NewOperationFlowRedis,
 		service.NewOperationStorageRedis,
-		providers.ProvideDefinitionConstructors,
-		operation_manager.New,
 		service.NewSchedulerStoragePg,
+
+		// scheduler operations
+		providers.ProvideDefinitionConstructors,
+
+		// services
+		operation_manager.New,
 		scheduler_manager.NewSchedulerManager,
+
+		// api handlers
 		handlers.ProvideSchedulerHandler,
 		handlers.ProvidePingHandler,
 		provideManagementMux,
