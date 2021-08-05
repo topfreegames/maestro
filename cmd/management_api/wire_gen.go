@@ -38,7 +38,7 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 	v := providers.ProvideDefinitionConstructors()
 	operationManager := operation_manager.New(operationFlow, operationStorage, v)
 	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
-	schedulerHandler := handlers.ProvideSchedulerHandler(schedulerManager)
+	schedulerHandler := handlers.ProvideSchedulerHandler(schedulerManager, operationManager)
 	serveMux := provideManagementMux(ctx, pingHandler, schedulerHandler)
 	return serveMux, nil
 }

@@ -23,6 +23,7 @@ func NewExecutor(runtime ports.Runtime, storage ports.SchedulerStorage) *CreateS
 }
 
 func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+
 	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName})
 	if err != nil {
 		return fmt.Errorf("failed to create scheduler in runtime: %w", err)

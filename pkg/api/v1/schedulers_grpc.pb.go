@@ -23,6 +23,8 @@ type SchedulersClient interface {
 	ListSchedulers(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*ListSchedulersReply, error)
 	// Create a scheduler.
 	CreateScheduler(ctx context.Context, in *CreateSchedulerRequest, opts ...grpc.CallOption) (*Scheduler, error)
+	// List operations based on a scheduler.
+	ListOperations(ctx context.Context, in *ListOperationsRequest, opts ...grpc.CallOption) (*ListOperationsReply, error)
 }
 
 type schedulersClient struct {
@@ -51,6 +53,15 @@ func (c *schedulersClient) CreateScheduler(ctx context.Context, in *CreateSchedu
 	return out, nil
 }
 
+func (c *schedulersClient) ListOperations(ctx context.Context, in *ListOperationsRequest, opts ...grpc.CallOption) (*ListOperationsReply, error) {
+	out := new(ListOperationsReply)
+	err := c.cc.Invoke(ctx, "/api.v1.Schedulers/ListOperations", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SchedulersServer is the server API for Schedulers service.
 // All implementations must embed UnimplementedSchedulersServer
 // for forward compatibility
@@ -59,6 +70,8 @@ type SchedulersServer interface {
 	ListSchedulers(context.Context, *EmptyRequest) (*ListSchedulersReply, error)
 	// Create a scheduler.
 	CreateScheduler(context.Context, *CreateSchedulerRequest) (*Scheduler, error)
+	// List operations based on a scheduler.
+	ListOperations(context.Context, *ListOperationsRequest) (*ListOperationsReply, error)
 	mustEmbedUnimplementedSchedulersServer()
 }
 
@@ -71,6 +84,9 @@ func (UnimplementedSchedulersServer) ListSchedulers(context.Context, *EmptyReque
 }
 func (UnimplementedSchedulersServer) CreateScheduler(context.Context, *CreateSchedulerRequest) (*Scheduler, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateScheduler not implemented")
+}
+func (UnimplementedSchedulersServer) ListOperations(context.Context, *ListOperationsRequest) (*ListOperationsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListOperations not implemented")
 }
 func (UnimplementedSchedulersServer) mustEmbedUnimplementedSchedulersServer() {}
 
@@ -121,6 +137,24 @@ func _Schedulers_CreateScheduler_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Schedulers_ListOperations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOperationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SchedulersServer).ListOperations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.Schedulers/ListOperations",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SchedulersServer).ListOperations(ctx, req.(*ListOperationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Schedulers_ServiceDesc is the grpc.ServiceDesc for Schedulers service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -135,6 +169,10 @@ var Schedulers_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateScheduler",
 			Handler:    _Schedulers_CreateScheduler_Handler,
+		},
+		{
+			MethodName: "ListOperations",
+			Handler:    _Schedulers_ListOperations_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

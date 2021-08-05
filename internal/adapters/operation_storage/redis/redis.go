@@ -120,6 +120,25 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 	return operations, nil
 }
 
+func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
+	operationsIDs, err := r.client.ZRange(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), 0, -1).Result()
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed to list finished operations for \"%s\"", schedulerName).WithError(err)
+	}
+
+	operations := make([]*operation.Operation, len(operationsIDs))
+	for i, operationID := range operationsIDs {
+		op, _, err := r.GetOperation(ctx, schedulerName, operationID)
+		if err != nil {
+			return nil, err
+		}
+
+		operations[i] = op
+	}
+
+	return operations, nil
+}
+
 func (r *redisOperationStorage) buildSchedulerOperationKey(schedulerName, opID string) string {
 	return fmt.Sprintf("operations:%s:%s", schedulerName, opID)
 }

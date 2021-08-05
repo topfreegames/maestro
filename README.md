@@ -36,7 +36,7 @@ make run/worker
 
 If you've create a scheduler following the last steps of `management-api` test, starting the worker will execute the `create_scheduler` operation, you can check if the operation is executed by executing the following command: 
 ```
-export KUBECONFIG=<maestro repository directory path>/kubeconfig.yaml
+export KUBECONFIG=$(pwd)/kubeconfig.yaml
 kubectl get namespaces | grep zooba
 ```
 

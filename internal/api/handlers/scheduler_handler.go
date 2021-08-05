@@ -3,10 +3,13 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 	"google.golang.org/grpc/codes"
@@ -15,12 +18,14 @@ import (
 
 type SchedulerHandler struct {
 	schedulerManager *scheduler_manager.SchedulerManager
+	operationManager *operation_manager.OperationManager
 	api.UnimplementedSchedulersServer
 }
 
-func ProvideSchedulerHandler(schedulerManager *scheduler_manager.SchedulerManager) *SchedulerHandler {
+func ProvideSchedulerHandler(schedulerManager *scheduler_manager.SchedulerManager, operationManager *operation_manager.OperationManager) *SchedulerHandler {
 	return &SchedulerHandler{
 		schedulerManager: schedulerManager,
+		operationManager: operationManager,
 	}
 }
 
@@ -47,6 +52,43 @@ func (h *SchedulerHandler) ListSchedulers(ctx context.Context, message *api.Empt
 
 	return &api.ListSchedulersReply{
 		Schedulers: schedulers,
+	}, nil
+
+}
+
+func (h *SchedulerHandler) ListOperations(ctx context.Context, request *api.ListOperationsRequest) (*api.ListOperationsReply, error) {
+
+	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, request.GetScheduler())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all pending operations: %w", err)
+	}
+	pendingOperationResponse, err := h.fromOperationsToResponses(pendingOperationEntities)
+	if err != nil {
+		return nil, err
+	}
+
+	activeOperationEntities, err := h.operationManager.ListSchedulerActiveOperations(ctx, request.GetScheduler())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all active operations: %w", err)
+	}
+	activeOperationResponses, err := h.fromOperationsToResponses(activeOperationEntities)
+	if err != nil {
+		return nil, err
+	}
+
+	finishedOperationEntities, err := h.operationManager.ListSchedulerFinishedOperations(ctx, request.GetScheduler())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all finished operations: %w", err)
+	}
+	finishedOperationResponse, err := h.fromOperationsToResponses(finishedOperationEntities)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.ListOperationsReply{
+		PendingOperations:  pendingOperationResponse,
+		ActiveOperations:   activeOperationResponses,
+		FinishedOperations: finishedOperationResponse,
 	}, nil
 
 }
@@ -84,4 +126,50 @@ func (h *SchedulerHandler) fromEntityToResponse(entity *entities.Scheduler) *api
 		State:   entity.State,
 		Version: entity.Spec.Version,
 	}
+}
+
+func (h *SchedulerHandler) fromOperationsToResponses(entities []*operation.Operation) ([]*api.Operation, error) {
+	responses := make([]*api.Operation, len(entities))
+	for i, entity := range entities {
+		response, err := h.fromOperationToResponse(entity)
+		if err != nil {
+			return nil, err
+		}
+		responses[i] = response
+	}
+
+	return responses, nil
+}
+
+func (h *SchedulerHandler) fromOperationToResponse(entity *operation.Operation) (*api.Operation, error) {
+	status, err := fromOperationStatusToString(entity.Status)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert operation entity to response: %w", err)
+	}
+
+	return &api.Operation{
+		ID:             entity.ID,
+		Status:         status,
+		DefinitionName: entity.DefinitionName,
+		SchedulerName:  entity.SchedulerName,
+	}, nil
+}
+
+func fromOperationStatusToString(status operation.Status) (string, error) {
+	switch status {
+	case operation.StatusPending:
+		return "pending", nil
+	case operation.StatusInProgress:
+		return "in_progress", nil
+	case operation.StatusFinished:
+		return "finished", nil
+	case operation.StatusEvicted:
+		return "evicted", nil
+	case operation.StatusError:
+		return "error", nil
+	case operation.StatusCanceled:
+		return "canceled", nil
+	}
+
+	return "", fmt.Errorf("status could not be mapped to string: %d", status)
 }
