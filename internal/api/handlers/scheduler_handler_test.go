@@ -228,15 +228,10 @@ func TestListOperations(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
-		config := configmock.NewMockConfig(mockCtrl)
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
-
-		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
-		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
-		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), "zooba").Return([]string{}, nil)
 		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), "zooba").Return([]*operation.Operation{}, nil)
@@ -270,7 +265,7 @@ func TestListOperations(t *testing.T) {
 			[]interface{}([]interface{}{
 				map[string]interface{}{
 					"definitionName": "create_scheduler",
-					"iD":             "operation-1",
+					"id":             "operation-1",
 					"schedulerName":  "zooba",
 					"status":         "in_progress",
 				},
@@ -280,15 +275,10 @@ func TestListOperations(t *testing.T) {
 	t.Run("fails when operation is listed but does not exists", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
-		config := configmock.NewMockConfig(mockCtrl)
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
-
-		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
-		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
-		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		operationID := "operation-1"
 		schedulerName := "zooba"
@@ -314,7 +304,7 @@ func TestListOperations(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t,
-			"failed to list all pending operations: operation operation-1 not found in scheduler zooba",
+			"operation operation-1 not found in scheduler zooba",
 			body["message"])
 	})
 }
