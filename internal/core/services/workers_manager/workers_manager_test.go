@@ -19,10 +19,8 @@ import (
 	configMock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
-	workerMock "github.com/topfreegames/maestro/internal/core/workers/mock"
-
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
+	workerMock "github.com/topfreegames/maestro/internal/core/workers/mock"
 )
 
 var (
@@ -46,7 +44,6 @@ func TestStart(t *testing.T) {
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationManager := operation_manager.New(nil, nil)
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return &workerMock.MockWorker{Run: false, StopCh: workerStopCh}
@@ -68,7 +65,7 @@ func TestStart(t *testing.T) {
 			},
 		}, nil)
 
-		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, nil)
 
 		done := make(chan struct{})
 		go func() {
@@ -111,7 +108,6 @@ func TestStart(t *testing.T) {
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationManager := operation_manager.New(nil, nil)
 
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
 		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
@@ -120,7 +116,7 @@ func TestStart(t *testing.T) {
 			return &workerMock.MockWorker{Run: false}
 		}
 
-		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, nil)
 
 		done := make(chan struct{})
 		go func() {
@@ -147,7 +143,7 @@ func TestStart(t *testing.T) {
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationManager := operation_manager.New(nil, nil)
+
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return &workerMock.MockWorker{
@@ -172,7 +168,7 @@ func TestStart(t *testing.T) {
 			},
 		}, nil)
 
-		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, nil)
 
 		done := make(chan struct{})
 		go func() {
@@ -214,7 +210,7 @@ func TestStart(t *testing.T) {
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationManager := operation_manager.New(nil, nil)
+
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return &workerMock.MockWorker{Run: false, StopCh: workerStopCh}
@@ -224,7 +220,7 @@ func TestStart(t *testing.T) {
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
 		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
 
-		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, nil)
 		require.Empty(t, workersManager.CurrentWorkers)
 
 		// first call channel handler
@@ -299,7 +295,7 @@ func TestStart(t *testing.T) {
 
 		configs := configMock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationManager := operation_manager.New(nil, nil)
+
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return &workerMock.MockWorker{Run: false, StopCh: workerStopCh}
@@ -321,7 +317,7 @@ func TestStart(t *testing.T) {
 			},
 		}, nil)
 
-		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, operationManager)
+		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, nil)
 
 		done := make(chan struct{})
 		go func() {

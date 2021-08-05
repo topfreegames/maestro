@@ -16,7 +16,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
-	"github.com/topfreegames/maestro/internal/core/services/operations_registry"
 )
 
 type testOperationDefinition struct {
@@ -73,7 +72,8 @@ func TestCreateOperation(t *testing.T) {
 			schedulerName := "scheduler_name"
 			operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 			operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-			opManager := New(operationFlow, operationStorage)
+			definitionConstructors := operations.NewDefinitionConstructors()
+			opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 			ctx := context.Background()
 			testDefinition, _ := test.definition.(*testOperationDefinition)
@@ -109,12 +109,12 @@ func TestGetOperation(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
-		registry := operations_registry.NewRegistry()
-		registry.Register(defFunc().Name(), defFunc)
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[defFunc().Name()] = defFunc
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -138,11 +138,11 @@ func TestGetOperation(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
-		registry := operations_registry.NewRegistry()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -162,11 +162,11 @@ func TestGetOperation(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
-		registry := operations_registry.NewRegistry()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -186,11 +186,11 @@ func TestGetOperation(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{unmarshalResult: errors.New("invalid")} }
-		registry := operations_registry.NewRegistry()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -212,12 +212,12 @@ func TestNextSchedulerOperation(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
-		registry := operations_registry.NewRegistry()
-		registry.Register(defFunc().Name(), defFunc)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[defFunc().Name()] = defFunc
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -243,12 +243,12 @@ func TestNextSchedulerOperation(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
-		registry := operations_registry.NewRegistry()
-		registry.Register(defFunc().Name(), defFunc)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[defFunc().Name()] = defFunc
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -263,12 +263,12 @@ func TestNextSchedulerOperation(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
-		registry := operations_registry.NewRegistry()
-		registry.Register(defFunc().Name(), defFunc)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[defFunc().Name()] = defFunc
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationFlow, operationStorage, registry)
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -293,7 +293,8 @@ func TestStartOperation(t *testing.T) {
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationFlow, operationStorage, operations_registry.NewRegistry())
+		definitionConstructors := operations.NewDefinitionConstructors()
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
 		op := &operation.Operation{ID: uuid.NewString(), DefinitionName: (&testOperationDefinition{}).Name()}
@@ -311,7 +312,8 @@ func TestFinishOperation(t *testing.T) {
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationFlow, operationStorage, operations_registry.NewRegistry())
+		definitionConstructors := operations.NewDefinitionConstructors()
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
 		expectedStatus := operation.StatusError
@@ -330,7 +332,8 @@ func TestListActiveOperations(t *testing.T) {
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := NewWithRegistry(operationFlow, operationStorage, operations_registry.NewRegistry())
+		definitionConstructors := operations.NewDefinitionConstructors()
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
 		operationsResult := []*operation.Operation{

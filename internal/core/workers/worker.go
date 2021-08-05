@@ -23,8 +23,15 @@ type Worker interface {
 // its construction. This struct is going to be used to inject the worker
 // dependencies like ports.
 type WorkerOptions struct {
-	OperationManager *operation_manager.OperationManager
-	Executors        []operations.Executor
+	OperationManager   *operation_manager.OperationManager
+	OperationExecutors map[string]operations.Executor
+}
+
+func ProvideWorkerOptions(operationManager *operation_manager.OperationManager, operationExecutors map[string]operations.Executor) *WorkerOptions {
+	return &WorkerOptions{
+		OperationManager:   operationManager,
+		OperationExecutors: operationExecutors,
+	}
 }
 
 // WorkerBuilder defines a function that nows how to construct a worker.

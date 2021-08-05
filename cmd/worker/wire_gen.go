@@ -7,6 +7,7 @@ package main
 
 import (
 	"github.com/topfreegames/maestro/internal/config"
+	"github.com/topfreegames/maestro/internal/core/operations/providers"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
@@ -29,7 +30,14 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	if err != nil {
 		return nil, err
 	}
-	operationManager := operation_manager.New(operationFlow, operationStorage)
-	workersManager := workers_manager.NewWorkersManager(builder, c, schedulerStorage, operationManager)
+	v := providers.ProvideDefinitionConstructors()
+	operationManager := operation_manager.New(operationFlow, operationStorage, v)
+	runtime, err := service.NewRuntimeKubernetes(c)
+	if err != nil {
+		return nil, err
+	}
+	v2 := providers.ProvideExecutors(runtime, schedulerStorage)
+	workerOptions := workers.ProvideWorkerOptions(operationManager, v2)
+	workersManager := workers_manager.NewWorkersManager(builder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
 }

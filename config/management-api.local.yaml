@@ -1,0 +1,20 @@
+internal_api:
+  port: 8081
+  gracefulShutdownTimeout: 10s
+  metrics:
+    enabled: true
+  healthcheck:
+    enabled: true
+management_api:
+  port: 8080
+  gracefulShutdownTimeout: 10s
+adapters:
+  schedulerStorage:
+    postgres:
+      url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
+  operationFlow:
+    redis:
+      url: "redis://localhost:6379/0"
+  operationStorage:
+    redis:
+      url: "redis://localhost:6379/0"

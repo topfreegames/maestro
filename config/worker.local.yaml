@@ -1,13 +1,10 @@
 internal_api:
-  port: 8081
+  port: 8082
   gracefulShutdownTimeout: 10s
   metrics:
     enabled: true
   healthcheck:
     enabled: true
-management_api:
-  port: 8080
-  gracefulShutdownTimeout: 10s
 adapters:
   schedulerStorage:
     postgres:
@@ -18,8 +15,10 @@ adapters:
   operationStorage:
     redis:
       url: "redis://localhost:6379/0"
+  runtime:
+    kubernetes:
+      masterUrl: "https://127.0.0.1:6443"
+      kubeconfig: "./kubeconfig.yaml"
 workers:
   syncInterval: 10s
   stopTimeoutDuration: 1m
-migration:
-  path: "file://internal/adapters/scheduler_storage/pg/migrations"

@@ -17,7 +17,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 	mockoperation "github.com/topfreegames/maestro/internal/core/operations/mock"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
-	"github.com/topfreegames/maestro/internal/core/services/operations_registry"
 	"github.com/topfreegames/maestro/internal/core/workers"
 )
 
@@ -37,10 +36,10 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
 
 		defFunc := func() operations.Definition { return operationDefinition }
-		registry := operations_registry.NewRegistry()
-		registry.Register(operationName, defFunc)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
 
-		operationManager := operation_manager.NewWithRegistry(operationFlow, operationStorage, registry)
+		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors)
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
@@ -49,7 +48,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(scheduler, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors))
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
@@ -88,10 +89,10 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
 
 		defFunc := func() operations.Definition { return operationDefinition }
-		registry := operations_registry.NewRegistry()
-		registry.Register(operationName, defFunc)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
 
-		operationManager := operation_manager.NewWithRegistry(operationFlow, operationStorage, registry)
+		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors)
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
@@ -100,7 +101,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(scheduler, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors))
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
@@ -138,10 +141,10 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
 
 		defFunc := func() operations.Definition { return operationDefinition }
-		registry := operations_registry.NewRegistry()
-		registry.Register(operationName, defFunc)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
 
-		operationManager := operation_manager.NewWithRegistry(operationFlow, operationStorage, registry)
+		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors)
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
@@ -150,7 +153,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(scheduler, &workers.WorkerOptions{operationManager, []operations.Executor{}})
+		executors := map[string]operations.Executor{}
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors))
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 
@@ -179,10 +183,10 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
 
 		defFunc := func() operations.Definition { return operationDefinition }
-		registry := operations_registry.NewRegistry()
-		registry.Register(operationName, defFunc)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
 
-		operationManager := operation_manager.NewWithRegistry(operationFlow, operationStorage, registry)
+		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors)
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
@@ -191,7 +195,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			DefinitionName: operationName,
 		}
 
-		workerService := NewOperationExecutionWorker(scheduler, &workers.WorkerOptions{operationManager, []operations.Executor{operationExecutor}})
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors))
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(false)

@@ -43,7 +43,7 @@ mocks:
 ################################################################################
 
 .PHONY: build/worker
-build:
+build/worker:
 	@rm -f ./bin/worker
 	@go build -o ./bin/worker ./cmd/worker
 

@@ -34,7 +34,7 @@ func TestExecute(t *testing.T) {
 
 		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(nil)
 
-		err := NewExecutor(runtime, storage).Execute(context.Background(), op, &definition)
+		err := NewExecutor(runtime, storage).Execute(context.Background(), &op, &definition)
 		require.NoError(t, err)
 	})
 
@@ -55,7 +55,7 @@ func TestExecute(t *testing.T) {
 
 		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(errors.ErrUnexpected)
 
-		err := NewExecutor(runtime, storage).Execute(context.Background(), op, &definition)
+		err := NewExecutor(runtime, storage).Execute(context.Background(), &op, &definition)
 		require.ErrorIs(t, err, errors.ErrUnexpected)
 	})
 }
@@ -93,7 +93,7 @@ func TestOnError(t *testing.T) {
 		storage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
 		storage.EXPECT().UpdateScheduler(context.Background(), &updatedScheduler).Return(nil)
 
-		err := NewExecutor(runtime, storage).OnError(context.Background(), op, definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, storage).OnError(context.Background(), &op, definition, errors.ErrUnexpected)
 		require.NoError(t, err)
 	})
 
@@ -114,7 +114,7 @@ func TestOnError(t *testing.T) {
 
 		storage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(nil, errors.ErrNotFound)
 
-		err := NewExecutor(runtime, storage).OnError(context.Background(), op, &definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, storage).OnError(context.Background(), &op, &definition, errors.ErrUnexpected)
 		require.ErrorIs(t, err, errors.ErrNotFound)
 	})
 }
