@@ -344,7 +344,7 @@ func TestListActiveOperations(t *testing.T) {
 
 		schedulerName := "test-scheduler"
 		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
-		operations, err := opManager.ListActiveOperations(ctx, schedulerName)
+		operations, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
 		require.NoError(t, err)
 		require.ElementsMatch(t, operationsResult, operations)
 	})

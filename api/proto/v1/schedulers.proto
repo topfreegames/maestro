@@ -24,6 +24,13 @@ service Schedulers {
             body: "*"
       };
   }
+
+  // List operations based on a scheduler.
+  rpc ListOperations(ListOperationsRequest) returns (ListOperationsReply) {
+      option (google.api.http) = {
+            get: "/schedulers/{scheduler=*}/operations",
+      };
+  }
 }
 
 message EmptyRequest {}
@@ -53,4 +60,21 @@ message CreateSchedulerRequest {
 message PortRange {
   int32 start = 1;
 	int32 end = 2;
+}
+
+message ListOperationsRequest {
+  string scheduler = 1;
+}
+
+message ListOperationsReply {
+  repeated Operation pending_operations = 1;
+  repeated Operation active_operations = 2;
+  repeated Operation finished_operations = 3;
+}
+
+message Operation {
+  string iD = 1;
+	string status = 2;
+	string definition_name = 3;
+	string scheduler_name = 4;
 }
