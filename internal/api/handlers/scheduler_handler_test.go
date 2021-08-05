@@ -16,7 +16,6 @@ import (
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
-	configmock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -31,16 +30,9 @@ func TestGetAllSchedulers(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
-		config := configmock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage)
-		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
-		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
-		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
-		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
 		schedulerStorage.EXPECT().GetAllSchedulers(gomock.Any()).Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
@@ -79,16 +71,9 @@ func TestGetAllSchedulers(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
-		config := configmock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage)
-		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
-		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
-		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
-		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
 		schedulerStorage.EXPECT().GetAllSchedulers(gomock.Any()).Return([]*entities.Scheduler{}, nil)
 
 		mux := runtime.NewServeMux()
@@ -116,20 +101,9 @@ func TestGetAllSchedulers(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
-		config := configmock.NewMockConfig(mockCtrl)
-
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage)
-		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
-
-		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
-		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
-		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager))
+		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil))
 
 		req, err := http.NewRequest("PUT", "/schedulers", nil)
 		if err != nil {
@@ -156,16 +130,11 @@ func TestCreateScheduler(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
-		config := configmock.NewMockConfig(mockCtrl)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationManager := operation_manager.New(operationFlow, operationStorage)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
-
-		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
-		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
-		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		scheduler := &entities.Scheduler{
 			Name:  "scheduler",
@@ -217,13 +186,9 @@ func TestCreateScheduler(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
-		config := configmock.NewMockConfig(mockCtrl)
+
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
-
-		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
-		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
-		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Any()).Return(errors.NewErrAlreadyExists("error creating scheduler %s: name already exists", "scheduler"))
 
@@ -245,12 +210,12 @@ func TestCreateScheduler(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 500, rr.Code)
+		require.Equal(t, 409, rr.Code)
 		bodyString := rr.Body.String()
 		var body map[string]interface{}
 		err = json.Unmarshal([]byte(bodyString), &body)
 
 		require.NoError(t, err)
-		require.Equal(t, "failed create scheduler: failed to create scheduler: error creating scheduler scheduler: name already exists", body["message"])
+		require.Equal(t, "error creating scheduler scheduler: name already exists", body["message"])
 	})
 }

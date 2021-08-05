@@ -28,7 +28,7 @@ func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entit
 
 	err := s.schedulerStorage.CreateScheduler(ctx, scheduler)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create scheduler: %w", err)
+		return nil, err
 	}
 
 	operation, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &create_scheduler.CreateSchedulerDefinition{})
