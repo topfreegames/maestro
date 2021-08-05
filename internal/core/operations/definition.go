@@ -7,10 +7,10 @@ import (
 )
 
 type DefinitionConstructor func() Definition
-type DefintionConstructors map[string]DefinitionConstructor
+type DefinitionConstructors map[string]DefinitionConstructor
 
-func NewDefinitionConstructors() DefintionConstructors {
-	return DefintionConstructors{}
+func NewDefinitionConstructors() DefinitionConstructors {
+	return DefinitionConstructors{}
 }
 
 // Definition is the operation parameters. It must be able to encode/decode
