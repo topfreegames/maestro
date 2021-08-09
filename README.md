@@ -6,8 +6,7 @@ Maestro: Kubernetes Game Room Scheduler
 ## Building and running locally
 
 1. Run `make get` to get all required modules
-2. Run `make generate` to generate code from protos
-2. Run `make wire` to generate code from wire dependency injector
+2. Run `make generate` to generate mocks, protos and wire (dependency injection)
 3. Run `make deps/start` to startup service dependencies
 4. Run `make migrate` to migrate database with the most updated schema
 
@@ -34,7 +33,7 @@ To start the worker flavor locally, run:
 make run/worker
 ```
 
-If you've create a scheduler following the last steps of `management-api` test, starting the worker will execute the `create_scheduler` operation, you can check if the operation is executed by executing the following command: 
+If you've create a scheduler following the last steps of `management-api` test, starting the worker will execute the `create_scheduler` operation, you can check if the operation is executed by executing the following command:
 ```
 export KUBECONFIG=$(pwd)/kubeconfig.yaml
 kubectl get namespaces | grep zooba
