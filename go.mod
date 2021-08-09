@@ -19,6 +19,7 @@ require (
 	github.com/golang/mock v1.5.0
 	github.com/golang/protobuf v1.5.2
 	github.com/golangci/golangci-lint v1.41.1 // indirect
+	github.com/google/addlicense v0.0.0-20210729153508-ef04bb38a16b // indirect
 	github.com/google/uuid v1.2.0
 	github.com/google/wire v0.5.0 // indirect
 	github.com/googleapis/gax-go v2.0.0+incompatible // indirect

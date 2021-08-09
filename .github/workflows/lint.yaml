@@ -17,3 +17,6 @@ jobs:
         with:
           version: latest
           args: -E goimports --timeout 5m0s
+      - name: License check
+        run: |
+          make license-check
