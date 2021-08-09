@@ -13,30 +13,30 @@ import (
 	operations "github.com/topfreegames/maestro/internal/core/operations"
 )
 
-// MockExecutor is a mock of Executor interface
+// MockExecutor is a mock of Executor interface.
 type MockExecutor struct {
 	ctrl     *gomock.Controller
 	recorder *MockExecutorMockRecorder
 }
 
-// MockExecutorMockRecorder is the mock recorder for MockExecutor
+// MockExecutorMockRecorder is the mock recorder for MockExecutor.
 type MockExecutorMockRecorder struct {
 	mock *MockExecutor
 }
 
-// NewMockExecutor creates a new mock instance
+// NewMockExecutor creates a new mock instance.
 func NewMockExecutor(ctrl *gomock.Controller) *MockExecutor {
 	mock := &MockExecutor{ctrl: ctrl}
 	mock.recorder = &MockExecutorMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockExecutor) EXPECT() *MockExecutorMockRecorder {
 	return m.recorder
 }
 
-// Execute mocks base method
+// Execute mocks base method.
 func (m *MockExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", ctx, op, definition)
@@ -50,21 +50,7 @@ func (mr *MockExecutorMockRecorder) Execute(ctx, op, definition interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockExecutor)(nil).Execute), ctx, op, definition)
 }
 
-// OnError mocks base method
-func (m *MockExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "OnError", ctx, op, definition, executeErr)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// OnError indicates an expected call of OnError
-func (mr *MockExecutorMockRecorder) OnError(ctx, op, definition, executeErr interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnError", reflect.TypeOf((*MockExecutor)(nil).OnError), ctx, op, definition, executeErr)
-}
-
-// Name mocks base method
+// Name mocks base method.
 func (m *MockExecutor) Name() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Name")
@@ -72,8 +58,22 @@ func (m *MockExecutor) Name() string {
 	return ret0
 }
 
-// Name indicates an expected call of Name
+// Name indicates an expected call of Name.
 func (mr *MockExecutorMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockExecutor)(nil).Name))
+}
+
+// OnError mocks base method.
+func (m *MockExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OnError", ctx, op, definition, executeErr)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// OnError indicates an expected call of OnError.
+func (mr *MockExecutorMockRecorder) OnError(ctx, op, definition, executeErr interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnError", reflect.TypeOf((*MockExecutor)(nil).OnError), ctx, op, definition, executeErr)
 }

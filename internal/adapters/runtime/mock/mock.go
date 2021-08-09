@@ -14,58 +14,30 @@ import (
 	ports "github.com/topfreegames/maestro/internal/core/ports"
 )
 
-// MockRuntime is a mock of Runtime interface
+// MockRuntime is a mock of Runtime interface.
 type MockRuntime struct {
 	ctrl     *gomock.Controller
 	recorder *MockRuntimeMockRecorder
 }
 
-// MockRuntimeMockRecorder is the mock recorder for MockRuntime
+// MockRuntimeMockRecorder is the mock recorder for MockRuntime.
 type MockRuntimeMockRecorder struct {
 	mock *MockRuntime
 }
 
-// NewMockRuntime creates a new mock instance
+// NewMockRuntime creates a new mock instance.
 func NewMockRuntime(ctrl *gomock.Controller) *MockRuntime {
 	mock := &MockRuntime{ctrl: ctrl}
 	mock.recorder = &MockRuntimeMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRuntime) EXPECT() *MockRuntimeMockRecorder {
 	return m.recorder
 }
 
-// CreateScheduler mocks base method
-func (m *MockRuntime) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateScheduler", ctx, scheduler)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// CreateScheduler indicates an expected call of CreateScheduler
-func (mr *MockRuntimeMockRecorder) CreateScheduler(ctx, scheduler interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateScheduler", reflect.TypeOf((*MockRuntime)(nil).CreateScheduler), ctx, scheduler)
-}
-
-// DeleteScheduler mocks base method
-func (m *MockRuntime) DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteScheduler", ctx, scheduler)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteScheduler indicates an expected call of DeleteScheduler
-func (mr *MockRuntimeMockRecorder) DeleteScheduler(ctx, scheduler interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScheduler", reflect.TypeOf((*MockRuntime)(nil).DeleteScheduler), ctx, scheduler)
-}
-
-// CreateGameRoomInstance mocks base method
+// CreateGameRoomInstance mocks base method.
 func (m *MockRuntime) CreateGameRoomInstance(ctx context.Context, schedulerId string, spec game_room.Spec) (*game_room.Instance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateGameRoomInstance", ctx, schedulerId, spec)
@@ -74,13 +46,27 @@ func (m *MockRuntime) CreateGameRoomInstance(ctx context.Context, schedulerId st
 	return ret0, ret1
 }
 
-// CreateGameRoomInstance indicates an expected call of CreateGameRoomInstance
+// CreateGameRoomInstance indicates an expected call of CreateGameRoomInstance.
 func (mr *MockRuntimeMockRecorder) CreateGameRoomInstance(ctx, schedulerId, spec interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGameRoomInstance", reflect.TypeOf((*MockRuntime)(nil).CreateGameRoomInstance), ctx, schedulerId, spec)
 }
 
-// DeleteGameRoomInstance mocks base method
+// CreateScheduler mocks base method.
+func (m *MockRuntime) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateScheduler", ctx, scheduler)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateScheduler indicates an expected call of CreateScheduler.
+func (mr *MockRuntimeMockRecorder) CreateScheduler(ctx, scheduler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateScheduler", reflect.TypeOf((*MockRuntime)(nil).CreateScheduler), ctx, scheduler)
+}
+
+// DeleteGameRoomInstance mocks base method.
 func (m *MockRuntime) DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteGameRoomInstance", ctx, gameRoomInstance)
@@ -88,13 +74,27 @@ func (m *MockRuntime) DeleteGameRoomInstance(ctx context.Context, gameRoomInstan
 	return ret0
 }
 
-// DeleteGameRoomInstance indicates an expected call of DeleteGameRoomInstance
+// DeleteGameRoomInstance indicates an expected call of DeleteGameRoomInstance.
 func (mr *MockRuntimeMockRecorder) DeleteGameRoomInstance(ctx, gameRoomInstance interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteGameRoomInstance", reflect.TypeOf((*MockRuntime)(nil).DeleteGameRoomInstance), ctx, gameRoomInstance)
 }
 
-// WatchGameRoomInstances mocks base method
+// DeleteScheduler mocks base method.
+func (m *MockRuntime) DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteScheduler", ctx, scheduler)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteScheduler indicates an expected call of DeleteScheduler.
+func (mr *MockRuntimeMockRecorder) DeleteScheduler(ctx, scheduler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScheduler", reflect.TypeOf((*MockRuntime)(nil).DeleteScheduler), ctx, scheduler)
+}
+
+// WatchGameRoomInstances mocks base method.
 func (m *MockRuntime) WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WatchGameRoomInstances", ctx, scheduler)
@@ -103,36 +103,36 @@ func (m *MockRuntime) WatchGameRoomInstances(ctx context.Context, scheduler *ent
 	return ret0, ret1
 }
 
-// WatchGameRoomInstances indicates an expected call of WatchGameRoomInstances
+// WatchGameRoomInstances indicates an expected call of WatchGameRoomInstances.
 func (mr *MockRuntimeMockRecorder) WatchGameRoomInstances(ctx, scheduler interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WatchGameRoomInstances", reflect.TypeOf((*MockRuntime)(nil).WatchGameRoomInstances), ctx, scheduler)
 }
 
-// MockRuntimeWatcher is a mock of RuntimeWatcher interface
+// MockRuntimeWatcher is a mock of RuntimeWatcher interface.
 type MockRuntimeWatcher struct {
 	ctrl     *gomock.Controller
 	recorder *MockRuntimeWatcherMockRecorder
 }
 
-// MockRuntimeWatcherMockRecorder is the mock recorder for MockRuntimeWatcher
+// MockRuntimeWatcherMockRecorder is the mock recorder for MockRuntimeWatcher.
 type MockRuntimeWatcherMockRecorder struct {
 	mock *MockRuntimeWatcher
 }
 
-// NewMockRuntimeWatcher creates a new mock instance
+// NewMockRuntimeWatcher creates a new mock instance.
 func NewMockRuntimeWatcher(ctrl *gomock.Controller) *MockRuntimeWatcher {
 	mock := &MockRuntimeWatcher{ctrl: ctrl}
 	mock.recorder = &MockRuntimeWatcherMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRuntimeWatcher) EXPECT() *MockRuntimeWatcherMockRecorder {
 	return m.recorder
 }
 
-// ResultChan mocks base method
+// ResultChan mocks base method.
 func (m *MockRuntimeWatcher) ResultChan() chan game_room.InstanceEvent {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ResultChan")
@@ -140,19 +140,19 @@ func (m *MockRuntimeWatcher) ResultChan() chan game_room.InstanceEvent {
 	return ret0
 }
 
-// ResultChan indicates an expected call of ResultChan
+// ResultChan indicates an expected call of ResultChan.
 func (mr *MockRuntimeWatcherMockRecorder) ResultChan() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResultChan", reflect.TypeOf((*MockRuntimeWatcher)(nil).ResultChan))
 }
 
-// Stop mocks base method
+// Stop mocks base method.
 func (m *MockRuntimeWatcher) Stop() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Stop")
 }
 
-// Stop indicates an expected call of Stop
+// Stop indicates an expected call of Stop.
 func (mr *MockRuntimeWatcherMockRecorder) Stop() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockRuntimeWatcher)(nil).Stop))

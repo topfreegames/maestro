@@ -11,30 +11,30 @@ import (
 	entities "github.com/topfreegames/maestro/internal/core/entities"
 )
 
-// MockPortAllocator is a mock of PortAllocator interface
+// MockPortAllocator is a mock of PortAllocator interface.
 type MockPortAllocator struct {
 	ctrl     *gomock.Controller
 	recorder *MockPortAllocatorMockRecorder
 }
 
-// MockPortAllocatorMockRecorder is the mock recorder for MockPortAllocator
+// MockPortAllocatorMockRecorder is the mock recorder for MockPortAllocator.
 type MockPortAllocatorMockRecorder struct {
 	mock *MockPortAllocator
 }
 
-// NewMockPortAllocator creates a new mock instance
+// NewMockPortAllocator creates a new mock instance.
 func NewMockPortAllocator(ctrl *gomock.Controller) *MockPortAllocator {
 	mock := &MockPortAllocator{ctrl: ctrl}
 	mock.recorder = &MockPortAllocatorMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockPortAllocator) EXPECT() *MockPortAllocatorMockRecorder {
 	return m.recorder
 }
 
-// Allocate mocks base method
+// Allocate mocks base method.
 func (m *MockPortAllocator) Allocate(portRange *entities.PortRange, quantity int) ([]int32, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Allocate", portRange, quantity)
@@ -43,7 +43,7 @@ func (m *MockPortAllocator) Allocate(portRange *entities.PortRange, quantity int
 	return ret0, ret1
 }
 
-// Allocate indicates an expected call of Allocate
+// Allocate indicates an expected call of Allocate.
 func (mr *MockPortAllocatorMockRecorder) Allocate(portRange, quantity interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Allocate", reflect.TypeOf((*MockPortAllocator)(nil).Allocate), portRange, quantity)
