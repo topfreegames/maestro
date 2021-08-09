@@ -23,4 +23,4 @@
 package gen
 
 //go:generate go run github.com/bufbuild/buf/cmd/buf generate --template ../buf.gen.yaml --output ../ --path ../api/proto/v1 ../
-//go:generate go run github.com/google/addlicense -v -skip yaml -f ../LICENSE ../
+//go:generate go run github.com/google/addlicense -v -skip yaml -skip proto -f ../LICENSE ../

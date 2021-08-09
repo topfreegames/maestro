@@ -32,7 +32,7 @@ run/integration-tests:
 
 .PHONY: license-check
 license-check:
-	@go run github.com/google/addlicense -skip yaml -check .
+	@go run github.com/google/addlicense -skip yaml -skip proto -check .
 
 ################################################################################
 ## Build and run
