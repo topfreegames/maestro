@@ -39,13 +39,10 @@ func (h *SchedulerHandler) ListSchedulers(ctx context.Context, message *api.Empt
 	schedulers := make([]*api.Scheduler, len(entities))
 	for i, entity := range entities {
 		scheduler := api.Scheduler{
-			Name:  entity.Name,
-			Game:  entity.Game,
-			State: entity.State,
-			PortRange: &api.PortRange{
-				Start: entity.PortRange.Start,
-				End:   entity.PortRange.End,
-			},
+			Name:      entity.Name,
+			Game:      entity.Game,
+			State:     entity.State,
+			PortRange: getPortRange(entity.PortRange),
 		}
 		schedulers[i] = &scheduler
 	}
@@ -153,4 +150,15 @@ func (h *SchedulerHandler) fromOperationToResponse(entity *operation.Operation) 
 		DefinitionName: entity.DefinitionName,
 		SchedulerName:  entity.SchedulerName,
 	}, nil
+}
+
+func getPortRange(portRange *entities.PortRange) *api.PortRange {
+	if portRange != nil {
+		return &api.PortRange{
+			Start: portRange.Start,
+			End:   portRange.End,
+		}
+	}
+
+	return nil
 }
