@@ -14,13 +14,18 @@ import (
 
 func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_manager.WorkersManager, error) {
 	wire.Build(
+		// ports + adapters
 		service.NewRuntimeKubernetes,
 		service.NewSchedulerStoragePg,
 		service.NewOperationFlowRedis,
 		service.NewClockTime,
 		service.NewOperationStorageRedis,
+
+		// scheduler operations
 		providers.ProvideDefinitionConstructors,
 		providers.ProvideExecutors,
+
+		// services
 		operation_manager.New,
 		workers.ProvideWorkerOptions,
 		workers_manager.NewWorkersManager,

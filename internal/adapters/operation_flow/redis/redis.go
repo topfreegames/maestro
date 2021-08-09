@@ -50,6 +50,15 @@ func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName 
 	return opIDs[1], nil
 }
 
+func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) ([]string, error) {
+	operationsIDs, err := r.client.LRange(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), 0, -1).Result()
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed to list pending operations for \"%s\"", schedulerName).WithError(err)
+	}
+
+	return operationsIDs, nil
+}
+
 func (r *redisOperationFlow) buildSchedulerPendingOperationsKey(schedulerName string) string {
 	return fmt.Sprintf("pending_operations:%s", schedulerName)
 }

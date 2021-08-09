@@ -86,13 +86,32 @@ func (o *OperationManager) StartOperation(ctx context.Context, op *operation.Ope
 	return nil
 }
 
-func (o *OperationManager) ListActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
-	operations, err := o.storage.ListSchedulerActiveOperations(ctx, schedulerName)
+func (o *OperationManager) ListSchedulerPendingOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
+
+	pendingOperationIDs, err := o.flow.ListSchedulerPendingOperationIDs(ctx, schedulerName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list all active operations: %w", err)
+		return nil, fmt.Errorf("failed to list all pending operations: %w", err)
+	}
+	pendingOperations := make([]*operation.Operation, len(pendingOperationIDs))
+	for i, operationID := range pendingOperationIDs {
+		op, _, err := o.storage.GetOperation(ctx, schedulerName, operationID)
+		if err != nil {
+			return nil, err
+		}
+		pendingOperations[i] = op
 	}
 
-	return operations, nil
+	return pendingOperations, nil
+}
+
+func (o *OperationManager) ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
+
+	return o.storage.ListSchedulerActiveOperations(ctx, schedulerName)
+}
+
+func (o *OperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
+
+	return o.storage.ListSchedulerFinishedOperations(ctx, schedulerName)
 }
 
 func (o *OperationManager) FinishOperation(ctx context.Context, op *operation.Operation) error {

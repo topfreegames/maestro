@@ -103,6 +103,37 @@
           "Schedulers"
         ]
       }
+    },
+    "/schedulers/{scheduler}/operations": {
+      "get": {
+        "summary": "List operations based on a scheduler.",
+        "operationId": "Schedulers_ListOperations",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListOperationsReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scheduler",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Schedulers"
+        ]
+      }
     }
   },
   "definitions": {
@@ -160,6 +191,30 @@
       },
       "description": "The ping message."
     },
+    "v1ListOperationsReply": {
+      "type": "object",
+      "properties": {
+        "pendingOperations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Operation"
+          }
+        },
+        "activeOperations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Operation"
+          }
+        },
+        "finishedOperations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Operation"
+          }
+        }
+      },
+      "title": "The list operation route response/reply\nThere's a list for each operation major status"
+    },
     "v1ListSchedulersReply": {
       "type": "object",
       "properties": {
@@ -171,6 +226,24 @@
         }
       },
       "description": "The list schedulers reply message."
+    },
+    "v1Operation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "definitionName": {
+          "type": "string"
+        },
+        "schedulerName": {
+          "type": "string"
+        }
+      },
+      "title": "The operation object representation"
     },
     "v1PortRange": {
       "type": "object",

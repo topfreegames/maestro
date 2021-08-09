@@ -18,6 +18,7 @@ import (
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -48,7 +49,7 @@ func TestGetAllSchedulers(t *testing.T) {
 		}, nil)
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager))
+		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
 
 		req, err := http.NewRequest("GET", "/schedulers", nil)
 		if err != nil {
@@ -78,7 +79,7 @@ func TestGetAllSchedulers(t *testing.T) {
 		schedulerStorage.EXPECT().GetAllSchedulers(gomock.Any()).Return([]*entities.Scheduler{}, nil)
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager))
+		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
 
 		req, err := http.NewRequest("GET", "/schedulers", nil)
 		if err != nil {
@@ -104,7 +105,7 @@ func TestGetAllSchedulers(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil))
+		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, nil))
 
 		req, err := http.NewRequest("PUT", "/schedulers", nil)
 		if err != nil {
@@ -152,7 +153,7 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler").Return(scheduler, nil)
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager))
+		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, operationManager))
 
 		reqBody := &api.CreateSchedulerRequest{
 			Name:    "scheduler",
@@ -194,7 +195,7 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Any()).Return(errors.NewErrAlreadyExists("error creating scheduler %s: name already exists", "scheduler"))
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager))
+		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
 
 		reqBody := &api.CreateSchedulerRequest{
 			Name:    "scheduler",
@@ -218,5 +219,92 @@ func TestCreateScheduler(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, "error creating scheduler scheduler: name already exists", body["message"])
+	})
+}
+
+func TestListOperations(t *testing.T) {
+
+	t.Run("with success", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+
+		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), "zooba").Return([]string{}, nil)
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), "zooba").Return([]*operation.Operation{}, nil)
+		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), "zooba").Return([]*operation.Operation{
+			{
+				ID:             "operation-1",
+				Status:         operation.StatusInProgress,
+				DefinitionName: "create_scheduler",
+				SchedulerName:  "zooba",
+			},
+		}, nil)
+
+		mux := runtime.NewServeMux()
+		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, operationManager))
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+
+		require.NoError(t, err)
+		require.Equal(t,
+			[]interface{}([]interface{}{
+				map[string]interface{}{
+					"definitionName": "create_scheduler",
+					"id":             "operation-1",
+					"schedulerName":  "zooba",
+					"status":         "in_progress",
+				},
+			}), body["activeOperations"])
+	})
+
+	t.Run("fails when operation is listed but does not exists", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+
+		operationID := "operation-1"
+		schedulerName := "zooba"
+
+		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{operationID}, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(nil, nil, errors.NewErrNotFound("operation %s not found in scheduler %s", operationID, schedulerName))
+
+		mux := runtime.NewServeMux()
+		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, operationManager))
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 500, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+
+		require.NoError(t, err)
+		require.Equal(t,
+			"operation operation-1 not found in scheduler zooba",
+			body["message"])
 	})
 }

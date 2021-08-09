@@ -11,86 +11,30 @@ import (
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockConfig is a mock of Config interface.
+// MockConfig is a mock of Config interface
 type MockConfig struct {
 	ctrl     *gomock.Controller
 	recorder *MockConfigMockRecorder
 }
 
-// MockConfigMockRecorder is the mock recorder for MockConfig.
+// MockConfigMockRecorder is the mock recorder for MockConfig
 type MockConfigMockRecorder struct {
 	mock *MockConfig
 }
 
-// NewMockConfig creates a new mock instance.
+// NewMockConfig creates a new mock instance
 func NewMockConfig(ctrl *gomock.Controller) *MockConfig {
 	mock := &MockConfig{ctrl: ctrl}
 	mock.recorder = &MockConfigMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockConfig) EXPECT() *MockConfigMockRecorder {
 	return m.recorder
 }
 
-// GetBool mocks base method.
-func (m *MockConfig) GetBool(arg0 string) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBool", arg0)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// GetBool indicates an expected call of GetBool.
-func (mr *MockConfigMockRecorder) GetBool(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBool", reflect.TypeOf((*MockConfig)(nil).GetBool), arg0)
-}
-
-// GetDuration mocks base method.
-func (m *MockConfig) GetDuration(arg0 string) time.Duration {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDuration", arg0)
-	ret0, _ := ret[0].(time.Duration)
-	return ret0
-}
-
-// GetDuration indicates an expected call of GetDuration.
-func (mr *MockConfigMockRecorder) GetDuration(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDuration", reflect.TypeOf((*MockConfig)(nil).GetDuration), arg0)
-}
-
-// GetFloat64 mocks base method.
-func (m *MockConfig) GetFloat64(arg0 string) float64 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFloat64", arg0)
-	ret0, _ := ret[0].(float64)
-	return ret0
-}
-
-// GetFloat64 indicates an expected call of GetFloat64.
-func (mr *MockConfigMockRecorder) GetFloat64(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFloat64", reflect.TypeOf((*MockConfig)(nil).GetFloat64), arg0)
-}
-
-// GetInt mocks base method.
-func (m *MockConfig) GetInt(arg0 string) int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetInt", arg0)
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// GetInt indicates an expected call of GetInt.
-func (mr *MockConfigMockRecorder) GetInt(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInt", reflect.TypeOf((*MockConfig)(nil).GetInt), arg0)
-}
-
-// GetString mocks base method.
+// GetString mocks base method
 func (m *MockConfig) GetString(arg0 string) string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetString", arg0)
@@ -98,8 +42,64 @@ func (m *MockConfig) GetString(arg0 string) string {
 	return ret0
 }
 
-// GetString indicates an expected call of GetString.
+// GetString indicates an expected call of GetString
 func (mr *MockConfigMockRecorder) GetString(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetString", reflect.TypeOf((*MockConfig)(nil).GetString), arg0)
+}
+
+// GetInt mocks base method
+func (m *MockConfig) GetInt(arg0 string) int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetInt", arg0)
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetInt indicates an expected call of GetInt
+func (mr *MockConfigMockRecorder) GetInt(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInt", reflect.TypeOf((*MockConfig)(nil).GetInt), arg0)
+}
+
+// GetFloat64 mocks base method
+func (m *MockConfig) GetFloat64(arg0 string) float64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFloat64", arg0)
+	ret0, _ := ret[0].(float64)
+	return ret0
+}
+
+// GetFloat64 indicates an expected call of GetFloat64
+func (mr *MockConfigMockRecorder) GetFloat64(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFloat64", reflect.TypeOf((*MockConfig)(nil).GetFloat64), arg0)
+}
+
+// GetBool mocks base method
+func (m *MockConfig) GetBool(arg0 string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBool", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// GetBool indicates an expected call of GetBool
+func (mr *MockConfigMockRecorder) GetBool(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBool", reflect.TypeOf((*MockConfig)(nil).GetBool), arg0)
+}
+
+// GetDuration mocks base method
+func (m *MockConfig) GetDuration(arg0 string) time.Duration {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDuration", arg0)
+	ret0, _ := ret[0].(time.Duration)
+	return ret0
+}
+
+// GetDuration indicates an expected call of GetDuration
+func (mr *MockConfigMockRecorder) GetDuration(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDuration", reflect.TypeOf((*MockConfig)(nil).GetDuration), arg0)
 }
