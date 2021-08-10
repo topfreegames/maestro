@@ -108,13 +108,13 @@ internal/
 ## Tools we use
 Here is a list of tools that we use on the project:
 
-* Buf: To compile the Protobuffers/gRPC to Golang;
-* Wire: Used to define dependency injection;
-* golangci-lint: Lint solution;
-* golang-migrate: To perform relational database migrations;
-* goimports: Perform code format;
-* Go mock: To generate mocks based on interfaces;
-* addlicense: Check and add license header to files;
+* [Buf](https://github.com/bufbuild/buf): To compile the Protobuffers/gRPC to Golang;
+* [Wire](https://github.com/google/wire): Used to define dependency injection;
+* [golangci-lint](https://github.com/golangci/golangci-lint): Lint solution;
+* [golang-migrate](https://github.com/golang-migrate/migrate): To perform relational database migrations;
+* [goimports](https://pkg.go.dev/golang.org/x/tools/cmd/goimports): Perform code format;
+* [Go mock](https://github.com/golang/mock): To generate mocks based on interfaces;
+* [addlicense](https://github.com/google/addlicense): Check and add license header to files;
 
 ## Code generation
 All code generation is specified on a separated package `gen` located on the
@@ -127,7 +127,7 @@ we use mocks.
 
 ### Integration
 Most of the integration tests are placed on the adapters. We use a library
-called gnomock to spin the test dependencies inside the test (not depending on
+called [gnomock](https://github.com/orlangure/gnomock) to spin the test dependencies inside the test (not depending on
 a docker-compose or some other solution).
 
 ### e2e
