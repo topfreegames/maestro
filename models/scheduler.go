@@ -535,6 +535,7 @@ func ListSchedulerLocksKeys(prefix, schedulerName string) []string {
 		GetSchedulerConfigLockKey(prefix, schedulerName),
 		GetSchedulerDownScalingLockKey(prefix, schedulerName),
 		GetSchedulerTerminationLockKey(prefix, schedulerName),
+		GetSchedulerRemoveDeadRoomsKey(prefix, schedulerName),
 	}
 }
 
@@ -559,6 +560,11 @@ func GetSchedulerDownScalingLockKey(prefix, schedulerName string) string {
 // GetSchedulerTerminationLockKey returns the key of the downscaling lock
 func GetSchedulerTerminationLockKey(prefix, schedulerName string) string {
 	return fmt.Sprintf("%s-%s-termination", prefix, schedulerName)
+}
+
+// GetSchedulerRemoveDeadRoomsKey returns the key of the downscaling lock
+func GetSchedulerRemoveDeadRoomsKey(prefix, schedulerName string) string {
+	return fmt.Sprintf("%s-%s-remove-dead-rooms", prefix, schedulerName)
 }
 
 // ListSchedulerReleases returns the list of releases of a scheduler

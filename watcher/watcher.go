@@ -288,20 +288,27 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 }
 
 func (w *Watcher) watchRooms() error {
-	l := w.Logger.WithFields(logrus.Fields{
-		"operation": "watcher.watchRooms.EnsureCorrectRooms",
-	})
-	_, _ = w.WithDownscalingLock(l, w.EnsureCorrectRooms)
+	_, _ = w.WithDownscalingLock(
+		w.Logger.WithFields(logrus.Fields{
+			"operation": "watcher.watchRooms.EnsureCorrectRooms",
+		}),
+		w.EnsureCorrectRooms,
+	)
 
-	l = w.Logger.WithFields(logrus.Fields{
-		"operation": "watcher.watchRooms.RemoveDeadRooms",
-	})
-	_, _ = w.WithDownscalingLock(l, w.RemoveDeadRooms)
+	go w.WithRemoveDeadRoomsLock(
+		w.Logger.WithFields(logrus.Fields{
+			"operation": "watcher.watchRooms.RemoveDeadRooms",
+		}),
+		w.RemoveDeadRooms,
+	)
 
-	l = w.Logger.WithFields(logrus.Fields{
-		"operation": "watcher.watchRooms.AutoScale",
-	})
-	_, _ = w.WithTerminationLock(l, w.AutoScale)
+	_, _ = w.WithTerminationLock(
+		w.Logger.WithFields(logrus.Fields{
+			"operation": "watcher.watchRooms.AutoScale",
+		}),
+		w.AutoScale,
+	)
+
 	_ = w.AddUtilizationMetricsToRedis()
 	return nil
 }
@@ -495,6 +502,12 @@ func (w *Watcher) WithDownscalingLock(l *logrus.Entry, f func() error) (lockErr,
 func (w *Watcher) WithTerminationLock(l *logrus.Entry, f func() error) (lockErr, err error) {
 	terminationLockKey := models.GetSchedulerTerminationLockKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
 	return w.WithLock(l, terminationLockKey, f)
+}
+
+// WithRemoveDeadRoomsLock is a sugar for WithLock for remove dead rooms
+func (w *Watcher) WithRemoveDeadRoomsLock(l *logrus.Entry, f func() error) (lockErr, err error) {
+	removeDeadRoomsLockKey := models.GetSchedulerRemoveDeadRoomsKey(w.Config.GetString("watcher.lockKey"), w.SchedulerName)
+	return w.WithLock(l, removeDeadRoomsLockKey, f)
 }
 
 // List names of rooms with no ping
