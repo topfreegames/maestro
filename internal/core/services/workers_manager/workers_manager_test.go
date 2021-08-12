@@ -106,8 +106,7 @@ func TestStart(t *testing.T) {
 		}, time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"starting to sync operation workers",
-				"new operation worker running"},
+			zap.InfoLevel: {"new operation worker running"},
 		})
 
 		workerStopCh <- struct{}{}
@@ -295,8 +294,7 @@ func TestStart(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"starting to sync operation workers",
-				"new operation worker running"},
+			zap.InfoLevel: {"new operation worker running"},
 		})
 
 		// guarantees we finish the process.
@@ -360,8 +358,7 @@ func TestStart(t *testing.T) {
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"starting to sync operation workers",
-				"new operation worker running"},
+			zap.InfoLevel: {"new operation worker running"},
 		})
 
 		core, recorded := observer.New(zap.InfoLevel)

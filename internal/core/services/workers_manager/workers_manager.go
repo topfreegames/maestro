@@ -122,7 +122,6 @@ func (w *WorkersManager) stop() {
 // - Discover and start all desirable workers (not running);
 // - Discover and stop all dispensable workers (running);
 func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
-	zap.L().Info("starting to sync operation workers")
 
 	schedulers, err := w.schedulerStorage.GetAllSchedulers(ctx)
 	if err != nil {
@@ -132,21 +131,22 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 	for name, worker := range w.getDesirableWorkers(ctx, schedulers) {
 		startWorker(ctx, name, worker, &w.workersWaitGroup)
 		w.CurrentWorkers[name] = worker
-		zap.L().Info("new operation worker running", zap.Int("scheduler", len(name)))
+		zap.L().Info("new operation worker running", zap.String("scheduler", name))
 		reportWorkerStart(name)
 	}
 
 	for name, worker := range w.getDispensableWorkers(ctx, schedulers) {
 		worker.Stop(ctx)
 		delete(w.CurrentWorkers, name)
-		zap.L().Info("canceling operation worker", zap.Int("scheduler", len(name)))
+		zap.L().Info("canceling operation worker", zap.String("scheduler", name))
 		reportWorkerStop(name)
 	}
 
+	time.Sleep(time.Second * 5)
 	for name, worker := range w.getDeadWorkers() {
 		startWorker(ctx, name, worker, &w.workersWaitGroup)
 		w.CurrentWorkers[name] = worker
-		zap.L().Info("restarting dead operation worker", zap.Int("scheduler", len(name)))
+		zap.L().Info("restarting dead operation worker", zap.String("scheduler", name))
 		reportWorkerRestart(name)
 	}
 
@@ -159,7 +159,10 @@ func startWorker(ctx context.Context, name string, wkr workers.Worker, wg *sync.
 	go func() {
 		err := wkr.Start(ctx)
 		if err != nil {
-			zap.L().With(zap.Error(err)).Error("operation worker failed to start", zap.Int("scheduler", len(name)))
+			zap.L().
+				With(zap.Error(err)).
+				With(zap.String("scheduler", name)).
+				Error("operation worker failed to start")
 		}
 		wg.Done()
 	}()
