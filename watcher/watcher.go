@@ -288,18 +288,18 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 }
 
 func (w *Watcher) watchRooms() error {
-	_, _ = w.WithDownscalingLock(
-		w.Logger.WithFields(logrus.Fields{
-			"operation": "watcher.watchRooms.EnsureCorrectRooms",
-		}),
-		w.EnsureCorrectRooms,
-	)
-
 	go w.WithRemoveDeadRoomsLock(
 		w.Logger.WithFields(logrus.Fields{
 			"operation": "watcher.watchRooms.RemoveDeadRooms",
 		}),
 		w.RemoveDeadRooms,
+	)
+
+	_, _ = w.WithDownscalingLock(
+		w.Logger.WithFields(logrus.Fields{
+			"operation": "watcher.watchRooms.EnsureCorrectRooms",
+		}),
+		w.EnsureCorrectRooms,
 	)
 
 	_, _ = w.WithTerminationLock(
