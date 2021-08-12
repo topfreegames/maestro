@@ -37,16 +37,6 @@ var (
 		},
 	})
 
-	restartedWorkersCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
-		Namespace: monitoring.Namespace,
-		Subsystem: monitoring.SubsystemWorker,
-		Name:      "restarted_workers",
-		Help:      "Number of restarted workers",
-		Labels: []string{
-			monitoring.LabelScheduler,
-		},
-	})
-
 	workersSyncCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
@@ -62,10 +52,6 @@ func reportWorkerStart(schedulerName string) {
 
 func reportWorkerStop(schedulerName string) {
 	currentWorkersGaugeMetric.WithLabelValues(schedulerName).Dec()
-}
-
-func reportWorkerRestart(schedulerName string) {
-	restartedWorkersCounterMetric.WithLabelValues(schedulerName).Inc()
 }
 
 func reportWorkersSynced() {

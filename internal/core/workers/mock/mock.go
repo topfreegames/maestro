@@ -33,6 +33,7 @@ type MockWorker struct {
 
 func (d *MockWorker) Start(_ context.Context) error {
 	d.Run = true
+
 	<-d.StopCh
 	return nil
 }

@@ -128,34 +128,27 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 		return err
 	}
 
-	for name, worker := range w.getDesirableWorkers(ctx, schedulers) {
-		startWorker(ctx, name, worker, &w.workersWaitGroup)
-		w.CurrentWorkers[name] = worker
+	desirableWorkers := w.getDesirableWorkers(ctx, schedulers)
+	for name, worker := range desirableWorkers {
+		w.startWorker(ctx, name, worker)
 		zap.L().Info("new operation worker running", zap.String("scheduler", name))
 		reportWorkerStart(name)
 	}
 
-	for name, worker := range w.getDispensableWorkers(ctx, schedulers) {
+	dispensableWorkers := w.getDispensableWorkers(ctx, schedulers)
+	for name, worker := range dispensableWorkers {
 		worker.Stop(ctx)
-		delete(w.CurrentWorkers, name)
 		zap.L().Info("canceling operation worker", zap.String("scheduler", name))
 		reportWorkerStop(name)
-	}
-
-	time.Sleep(time.Second * 5)
-	for name, worker := range w.getDeadWorkers() {
-		startWorker(ctx, name, worker, &w.workersWaitGroup)
-		w.CurrentWorkers[name] = worker
-		zap.L().Info("restarting dead operation worker", zap.String("scheduler", name))
-		reportWorkerRestart(name)
 	}
 
 	reportWorkersSynced()
 	return nil
 }
 
-func startWorker(ctx context.Context, name string, wkr workers.Worker, wg *sync.WaitGroup) {
-	wg.Add(1)
+func (w *WorkersManager) startWorker(ctx context.Context, name string, wkr workers.Worker) {
+	w.workersWaitGroup.Add(1)
+	w.CurrentWorkers[name] = wkr
 	go func() {
 		err := wkr.Start(ctx)
 		if err != nil {
@@ -164,7 +157,8 @@ func startWorker(ctx context.Context, name string, wkr workers.Worker, wg *sync.
 				With(zap.String("scheduler", name)).
 				Error("operation worker failed to start")
 		}
-		wg.Done()
+		delete(w.CurrentWorkers, name)
+		w.workersWaitGroup.Done()
 	}()
 }
 
@@ -197,19 +191,5 @@ func (w *WorkersManager) getDispensableWorkers(ctx context.Context, schedulers [
 	}
 
 	return dispensableWorkers
-
-}
-
-// Gets all dead operation workers, the ones that are in currentWorkers but not running
-func (w *WorkersManager) getDeadWorkers() map[string]workers.Worker {
-
-	deadWorkers := map[string]workers.Worker{}
-	for name, worker := range w.CurrentWorkers {
-		if !worker.IsRunning() {
-			deadWorkers[name] = worker
-		}
-	}
-
-	return deadWorkers
 
 }
