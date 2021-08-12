@@ -94,5 +94,6 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		},
 		PortRange:       info.PortRange,
 		RollbackVersion: s.RollbackVersion,
+		CreatedAt:       s.CreatedAt.Time,
 	}, nil
 }

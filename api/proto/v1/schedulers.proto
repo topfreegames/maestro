@@ -6,6 +6,8 @@ option java_package = "com.topfreegames.maestro.pkg.api.v1";
 option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
 
 import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
 
 // Service to query and manipulate schedulers.
 service Schedulers {
@@ -48,6 +50,7 @@ message Scheduler {
   string state = 3;
   string version = 4;
   PortRange port_range = 5;
+  google.protobuf.Timestamp created_at = 6;
 }
 
 // Scheduler is the struct that defines a maestro scheduler
