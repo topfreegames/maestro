@@ -390,14 +390,18 @@ func ScaleUp(
 		"scaleUpLimit": scaleUpLimit,
 	})
 
-	configYAML, _ := models.NewConfigYAML(scheduler.YAML)
-
-	existPendingPods, err := pendingOrFailedPods(config, redisClient, scheduler.Name, mr)
+	configYAML, err := models.NewConfigYAML(scheduler.YAML)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load scheduler configuration: %w", err)
 	}
-	if existPendingPods {
-		return errors.New("there are pending or failed pods")
+
+	hasNotReadyPods, err := checkNotReadyPods(config, redisClient, scheduler.Name, configYAML.PreventRoomsCreationWithError, mr)
+	if err != nil {
+		return fmt.Errorf("failed to list pending or failed pods: %w", err)
+	}
+
+	if hasNotReadyPods {
+		return errors.New("scheduler has pods not ready (pending or with error)")
 	}
 
 	amount, err = SetScalingAmount(
@@ -452,7 +456,7 @@ func ScaleUp(
 		willTimeoutAt.Sub(time.Now()),
 		clientset,
 		redisClient,
-		configYAML.Name,
+		configYAML,
 		pods,
 		l,
 		mr,

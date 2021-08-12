@@ -291,7 +291,7 @@ func createNewRemoveOldPod(
 
 	// wait for new pod to be created
 	canceled, err = waitCreatingPods(
-		ctx, logger, clientset, redisClient, configYAML.Name,
+		ctx, logger, clientset, redisClient, configYAML,
 		[]v1.Pod{*newPod}, mr)
 	if canceled || err != nil {
 		logger.Errorf("error waiting for pod to be created")
@@ -492,13 +492,13 @@ func waitCreatingPods(
 	l logrus.FieldLogger,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
-	namespace string,
+	config *models.ConfigYAML,
 	createdPods []v1.Pod,
 	mr *models.MixedMetricsReporter,
 ) (canceled bool, err error) {
 	logger := l.WithFields(logrus.Fields{
 		"source":    "controller.waitCreatingPods",
-		"scheduler": namespace,
+		"scheduler": config.Name,
 	})
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -526,7 +526,7 @@ func waitCreatingPods(
 			return true, nil
 		case <-ticker.C:
 			for i, pod := range createdPods {
-				createdPod, err := models.GetPodFromRedis(redisClient, mr, pod.GetName(), namespace)
+				createdPod, err := models.GetPodFromRedis(redisClient, mr, pod.GetName(), config.Name)
 				if err != nil {
 					logger.
 						WithError(err).
@@ -550,7 +550,7 @@ func waitCreatingPods(
 					pod.ResourceVersion = ""
 					err = mr.WithSegment(models.SegmentPod, func() error {
 						var err error
-						_, err = clientset.CoreV1().Pods(namespace).Create(&pod)
+						_, err = clientset.CoreV1().Pods(config.Name).Create(&pod)
 						time.Sleep(backoff)
 						return err
 					})
@@ -579,9 +579,10 @@ func waitCreatingPods(
 				}
 
 				if createdPod.Status.Phase != v1.PodRunning {
-					if err := models.ValidatePodWaitingState(createdPod); err != nil {
-						l.WithError(err).Error("pod has error, aborting the pods creation")
-						return false, err
+					podErr := models.ValidatePodWaitingState(createdPod)
+					if config.PreventRoomsCreationWithError && podErr != nil {
+						l.WithError(podErr).Error("pod has error, aborting the pods creation")
+						return false, podErr
 					}
 
 					isPending, reason, message := models.PodPending(createdPod)
@@ -604,7 +605,7 @@ func waitCreatingPods(
 					}
 				}
 
-				if !models.IsPodReady(createdPod) || !models.IsRoomReadyOrOccupied(logger, redisClient, namespace, createdPod.Name) {
+				if !models.IsPodReady(createdPod) || !models.IsRoomReadyOrOccupied(logger, redisClient, config.Name, createdPod.Name) {
 					logger.WithField("pod", createdPod.Name).Debug("pod not ready yet, waiting...")
 					err = models.ValidatePodWaitingState(createdPod)
 
@@ -716,7 +717,7 @@ func waitForPods(
 	timeout time.Duration,
 	clientset kubernetes.Interface,
 	redisClient redisinterfaces.RedisClient,
-	namespace string,
+	config *models.ConfigYAML,
 	pods []*v1.Pod,
 	l logrus.FieldLogger,
 	mr *models.MixedMetricsReporter,
@@ -743,7 +744,7 @@ func waitForPods(
 			for i := range pods {
 				if pods[i] != nil {
 					var pod *models.Pod
-					pod, err := models.GetPodFromRedis(redisClient, mr, pods[i].GetName(), namespace)
+					pod, err := models.GetPodFromRedis(redisClient, mr, pods[i].GetName(), config.Name)
 					if err != nil || pod == nil {
 						// apply exponential backoff
 						retryNo[i]++
@@ -755,7 +756,7 @@ func waitForPods(
 
 						pods[i].ResourceVersion = ""
 						err = mr.WithSegment(models.SegmentPod, func() error {
-							_, err = clientset.CoreV1().Pods(namespace).Create(pods[i])
+							_, err = clientset.CoreV1().Pods(config.Name).Create(pods[i])
 							time.Sleep(backoff)
 							return err
 						})
@@ -770,9 +771,10 @@ func waitForPods(
 						retryNo[i] = 0
 
 						if pod.Status.Phase != v1.PodRunning {
-							if err := models.ValidatePodWaitingState(pod); err != nil {
-								l.WithError(err).Error("pod has error, aborting the pods creation")
-								return err
+							podErr := models.ValidatePodWaitingState(pod)
+							if config.PreventRoomsCreationWithError && podErr != nil {
+								l.WithError(podErr).Error("pod has error, aborting the pods creation")
+								return podErr
 							}
 
 							isPending, reason, message := models.PodPending(pod)
@@ -811,10 +813,11 @@ func waitForPods(
 	return nil
 }
 
-func pendingOrFailedPods(
+func checkNotReadyPods(
 	config *viper.Viper,
 	redisClient redisinterfaces.RedisClient,
 	namespace string,
+	checkPodsWithError bool,
 	mr *models.MixedMetricsReporter,
 ) (bool, error) {
 	var pods map[string]*models.Pod
@@ -832,7 +835,8 @@ func pendingOrFailedPods(
 			return true, nil
 		}
 
-		if err := models.ValidatePodWaitingState(pod); err != nil {
+		podErr := models.ValidatePodWaitingState(pod)
+		if checkPodsWithError && podErr != nil {
 			return true, nil
 		}
 	}
