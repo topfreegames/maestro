@@ -136,7 +136,8 @@ func requireCorrectScheduler(t *testing.T, expectedScheduler *entities.Scheduler
 	require.NoError(t, err)
 
 	actualScheduler.RollbackVersion = dbVersion.RollbackVersion
-	require.Equal(t, expectedScheduler, actualScheduler)
+
+	assertSchedulers(t, []*entities.Scheduler{expectedScheduler}, []*entities.Scheduler{actualScheduler})
 }
 
 func TestMain(m *testing.M) {
@@ -195,7 +196,7 @@ func TestSchedulerStorage_GetScheduler(t *testing.T) {
 
 		actualScheduler, err := storage.GetScheduler(context.Background(), "scheduler")
 		require.NoError(t, err)
-		require.Equal(t, expectedScheduler, actualScheduler)
+		assertSchedulers(t, []*entities.Scheduler{expectedScheduler}, []*entities.Scheduler{actualScheduler})
 	})
 
 	t.Run("scheduler does not exists", func(t *testing.T) {
@@ -461,15 +462,16 @@ func TestSchedulerStorage_GetSchedulers(t *testing.T) {
 
 	actualSchedulers, err := storage.GetSchedulers(context.Background(), []string{"scheduler-1", "scheduler-2"})
 	require.NoError(t, err)
-	require.Equal(t, []*entities.Scheduler{scheduler1, scheduler2}, actualSchedulers)
+
+	assertSchedulers(t, []*entities.Scheduler{scheduler1, scheduler2}, actualSchedulers)
 
 	actualSchedulers, err = storage.GetSchedulers(context.Background(), []string{"scheduler-1", "scheduler-3"})
 	require.NoError(t, err)
-	require.Equal(t, []*entities.Scheduler{scheduler1}, actualSchedulers)
+	assertSchedulers(t, []*entities.Scheduler{scheduler1}, actualSchedulers)
 
 	actualSchedulers, err = storage.GetSchedulers(context.Background(), []string{"scheduler-3", "scheduler-4"})
 	require.NoError(t, err)
-	require.Equal(t, []*entities.Scheduler{}, actualSchedulers)
+	assertSchedulers(t, []*entities.Scheduler{}, actualSchedulers)
 }
 
 func TestSchedulerStorage_GetAllSchedulers(t *testing.T) {
@@ -514,6 +516,20 @@ func TestSchedulerStorage_GetAllSchedulers(t *testing.T) {
 	require.NoError(t, storage.CreateScheduler(context.Background(), scheduler2))
 
 	actualSchedulers, err := storage.GetAllSchedulers(context.Background())
+
 	require.NoError(t, err)
-	require.Equal(t, []*entities.Scheduler{scheduler1, scheduler2}, actualSchedulers)
+	assertSchedulers(t, []*entities.Scheduler{scheduler1, scheduler2}, actualSchedulers)
+}
+
+func assertSchedulers(t *testing.T, expectedSchedulers []*entities.Scheduler, actualSchedulers []*entities.Scheduler) {
+
+	for i, expectedScheduler := range expectedSchedulers {
+		require.Equal(t, expectedScheduler.Name, actualSchedulers[i].Name)
+		require.Equal(t, expectedScheduler.Game, actualSchedulers[i].Game)
+		require.Equal(t, expectedScheduler.State, actualSchedulers[i].State)
+		require.Equal(t, expectedScheduler.RollbackVersion, actualSchedulers[i].RollbackVersion)
+		require.Equal(t, expectedScheduler.Spec, actualSchedulers[i].Spec)
+		require.Equal(t, expectedScheduler.PortRange, actualSchedulers[i].PortRange)
+	}
+
 }
