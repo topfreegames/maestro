@@ -51,7 +51,8 @@ func TestPingHandler(t *testing.T) {
 		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		mux := runtime.NewServeMux()
-		api.RegisterPingHandlerServer(context.Background(), mux, ProvidePingHandler())
+		err := api.RegisterPingHandlerServer(context.Background(), mux, ProvidePingHandler())
+		require.NoError(t, err)
 
 		req, err := http.NewRequest("GET", "/ping", nil)
 		if err != nil {
@@ -82,7 +83,8 @@ func TestPingHandler(t *testing.T) {
 		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		mux := runtime.NewServeMux()
-		api.RegisterPingHandlerServer(context.Background(), mux, ProvidePingHandler())
+		err := api.RegisterPingHandlerServer(context.Background(), mux, ProvidePingHandler())
+		require.NoError(t, err)
 
 		req, err := http.NewRequest("POST", "/ping", nil)
 		if err != nil {
@@ -113,7 +115,8 @@ func TestPingHandler(t *testing.T) {
 		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		mux := runtime.NewServeMux()
-		api.RegisterPingHandlerServer(context.Background(), mux, ProvidePingHandler())
+		err := api.RegisterPingHandlerServer(context.Background(), mux, ProvidePingHandler())
+		require.NoError(t, err)
 
 		req, err := http.NewRequest("GET", "/pong", nil)
 		if err != nil {

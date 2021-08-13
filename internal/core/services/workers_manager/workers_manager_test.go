@@ -26,7 +26,6 @@ package workers_manager
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -198,10 +197,7 @@ func TestStart(t *testing.T) {
 
 		// guarantees the
 		require.Eventually(t, func() bool {
-			if len(workersManager.CurrentWorkers) > 0 {
-				return true
-			}
-			return false
+			return len(workersManager.CurrentWorkers) > 0
 		}, time.Second, 100*time.Millisecond)
 
 		// guarantees we finish the process.
@@ -219,8 +215,10 @@ func TestStart(t *testing.T) {
 		require.Empty(t, workersManager.CurrentWorkers)
 
 		// Checks if the workersWaitGroup is empty (means all workers are done)
-		var emptyWg sync.WaitGroup
-		require.Equal(t, emptyWg, workersManager.workersWaitGroup)
+		require.Eventually(t, func() bool {
+			workersManager.workersWaitGroup.Wait()
+			return true
+		}, 10*time.Millisecond, time.Millisecond)
 	})
 
 	t.Run("with success when scheduler added after initial sync", func(t *testing.T) {
@@ -343,11 +341,7 @@ func TestStart(t *testing.T) {
 
 		// wait until the workers are started.
 		require.Eventually(t, func() bool {
-			if len(workersManager.CurrentWorkers) > 0 {
-				return true
-			}
-
-			return false
+			return len(workersManager.CurrentWorkers) > 0
 		}, time.Second, 100*time.Millisecond)
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
@@ -356,11 +350,7 @@ func TestStart(t *testing.T) {
 
 		// wait until the workers are stopped.
 		require.Eventually(t, func() bool {
-			if len(workersManager.CurrentWorkers) == 0 {
-				return true
-			}
-
-			return false
+			return len(workersManager.CurrentWorkers) == 0
 		}, 5*time.Second, 100*time.Millisecond)
 
 		require.Empty(t, workersManager.CurrentWorkers)

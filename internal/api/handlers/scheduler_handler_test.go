@@ -73,7 +73,8 @@ func TestGetAllSchedulers(t *testing.T) {
 		}, nil)
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
+		err := api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
+		require.NoError(t, err)
 
 		req, err := http.NewRequest("GET", "/schedulers", nil)
 		if err != nil {
@@ -88,7 +89,8 @@ func TestGetAllSchedulers(t *testing.T) {
 
 		bodyString := rr.Body.String()
 		var reply api.ListSchedulersReply
-		json.Unmarshal([]byte(bodyString), &reply)
+		err = json.Unmarshal([]byte(bodyString), &reply)
+		require.NoError(t, err)
 
 		require.NotEmpty(t, reply.Schedulers)
 	})
@@ -103,7 +105,8 @@ func TestGetAllSchedulers(t *testing.T) {
 		schedulerStorage.EXPECT().GetAllSchedulers(gomock.Any()).Return([]*entities.Scheduler{}, nil)
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
+		err := api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
+		require.NoError(t, err)
 
 		req, err := http.NewRequest("GET", "/schedulers", nil)
 		if err != nil {
@@ -118,7 +121,8 @@ func TestGetAllSchedulers(t *testing.T) {
 
 		bodyString := rr.Body.String()
 		var reply api.ListSchedulersReply
-		json.Unmarshal([]byte(bodyString), &reply)
+		err = json.Unmarshal([]byte(bodyString), &reply)
+		require.NoError(t, err)
 
 		require.Empty(t, reply.Schedulers)
 	})
@@ -129,7 +133,8 @@ func TestGetAllSchedulers(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, nil))
+		err := api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, nil))
+		require.NoError(t, err)
 
 		req, err := http.NewRequest("PUT", "/schedulers", nil)
 		if err != nil {
@@ -177,7 +182,8 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler").Return(scheduler, nil)
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, operationManager))
+		err := api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, operationManager))
+		require.NoError(t, err)
 
 		reqBody := &api.CreateSchedulerRequest{
 			Name:    "scheduler",
@@ -185,6 +191,8 @@ func TestCreateScheduler(t *testing.T) {
 			Version: "v1",
 		}
 		reqBodyString, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
 		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(reqBodyString))
 		if err != nil {
 			t.Fatal(err)
@@ -218,7 +226,8 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Any()).Return(errors.NewErrAlreadyExists("error creating scheduler %s: name already exists", "scheduler"))
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
+		err := api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
+		require.NoError(t, err)
 
 		reqBody := &api.CreateSchedulerRequest{
 			Name:    "scheduler",
@@ -227,6 +236,8 @@ func TestCreateScheduler(t *testing.T) {
 		}
 
 		reqBodyString, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
 		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(reqBodyString))
 		if err != nil {
 			t.Fatal(err)
@@ -268,7 +279,8 @@ func TestListOperations(t *testing.T) {
 		}, nil)
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, operationManager))
+		err := api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, operationManager))
+		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
 		if err != nil {
@@ -310,7 +322,8 @@ func TestListOperations(t *testing.T) {
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(nil, nil, errors.NewErrNotFound("operation %s not found in scheduler %s", operationID, schedulerName))
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, operationManager))
+		err := api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, operationManager))
+		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
 		if err != nil {

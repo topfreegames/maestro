@@ -42,7 +42,7 @@ func getRedisUrl(t *testing.T) string {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		gnomock.Stop(redisContainer)
+		_ = gnomock.Stop(redisContainer)
 	})
 
 	return fmt.Sprintf("redis://%s", redisContainer.DefaultAddress())

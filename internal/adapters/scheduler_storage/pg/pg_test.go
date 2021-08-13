@@ -83,7 +83,11 @@ func migrate(opts *pg.Options) error {
 		return err
 	}
 
-	m.Up()
+	err = m.Up()
+	if err != nil {
+		return err
+	}
+
 	m.Close()
 
 	return nil
