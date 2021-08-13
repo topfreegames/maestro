@@ -1,7 +1,7 @@
 name: Lint
 on: pull_request
 jobs:
-  golangci:
+  linters:
     name: Run linters
     runs-on: ubuntu-latest
     steps:
@@ -12,11 +12,12 @@ jobs:
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-      - name: Run linters
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: latest
-          args: -E goimports --timeout 5m0s
+      - name: Golang lint
+        run: |
+          make lint/go
+      - name: Protobuf lint
+        run: |
+          make lint/protobuf
       - name: License check
         run: |
           make license-check

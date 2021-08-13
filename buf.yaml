@@ -1,4 +1,3 @@
-
 version: v1beta1
 name: github.com/topfreegames/maestro
 build:
@@ -6,3 +5,11 @@ build:
     - ./api/proto
     - ./third_party/googleapis
     - ./third_party/grpc-gateway
+lint:
+  use:
+    - DEFAULT
+    - COMMENTS
+  ignore:
+    # Ignore third_party/ packages
+    - google
+    - protoc-gen-openapiv2
