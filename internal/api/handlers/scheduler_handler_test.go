@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -63,6 +64,7 @@ func TestGetAllSchedulers(t *testing.T) {
 				Game:            "zooba",
 				State:           entities.StateInSync,
 				RollbackVersion: "1.0.0",
+				CreatedAt:       time.Now(),
 				PortRange: &entities.PortRange{
 					Start: 1,
 					End:   2,
@@ -197,13 +199,12 @@ func TestCreateScheduler(t *testing.T) {
 		err = json.Unmarshal([]byte(bodyString), &body)
 
 		require.NoError(t, err)
-		require.Equal(t, map[string]interface{}{
-			"game":      "game",
-			"name":      "scheduler",
-			"portRange": interface{}(nil),
-			"state":     "creating",
-			"version":   "v1",
-		}, body)
+		require.Equal(t, "game", body["game"])
+		require.Equal(t, "scheduler", body["name"])
+		require.Equal(t, interface{}(nil), body["portRange"])
+		require.Equal(t, "creating", body["state"])
+		require.Equal(t, "v1", body["version"])
+		require.NotNil(t, body["createdAt"])
 	})
 
 	t.Run("fails when scheduler already exists", func(t *testing.T) {

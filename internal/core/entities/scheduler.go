@@ -22,7 +22,11 @@
 
 package entities
 
-import "github.com/topfreegames/maestro/internal/core/entities/game_room"
+import (
+	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+)
 
 const (
 	//StateCreating represents a cluster state
@@ -45,4 +49,5 @@ type Scheduler struct {
 	RollbackVersion string
 	Spec            game_room.Spec
 	PortRange       *PortRange
+	CreatedAt       time.Time
 }

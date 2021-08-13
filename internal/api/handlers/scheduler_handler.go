@@ -36,6 +36,7 @@ import (
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type SchedulerHandler struct {
@@ -60,13 +61,7 @@ func (h *SchedulerHandler) ListSchedulers(ctx context.Context, message *api.Empt
 
 	schedulers := make([]*api.Scheduler, len(entities))
 	for i, entity := range entities {
-		scheduler := api.Scheduler{
-			Name:      entity.Name,
-			Game:      entity.Game,
-			State:     entity.State,
-			PortRange: getPortRange(entity.PortRange),
-		}
-		schedulers[i] = &scheduler
+		schedulers[i] = h.fromEntityToResponse(entity)
 	}
 
 	return &api.ListSchedulersReply{
@@ -140,10 +135,12 @@ func (h *SchedulerHandler) fromRequestToEntity(request *api.CreateSchedulerReque
 
 func (h *SchedulerHandler) fromEntityToResponse(entity *entities.Scheduler) *api.Scheduler {
 	return &api.Scheduler{
-		Name:    entity.Name,
-		Game:    entity.Game,
-		State:   entity.State,
-		Version: entity.Spec.Version,
+		Name:      entity.Name,
+		Game:      entity.Game,
+		State:     entity.State,
+		Version:   entity.Spec.Version,
+		PortRange: getPortRange(entity.PortRange),
+		CreatedAt: timestamppb.New(entity.CreatedAt),
 	}
 }
 

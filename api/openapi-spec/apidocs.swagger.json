@@ -276,6 +276,10 @@
         },
         "portRange": {
           "$ref": "#/definitions/v1PortRange"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "description": "The scheduler DTO."
