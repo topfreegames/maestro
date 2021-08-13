@@ -106,11 +106,8 @@ func TestStart(t *testing.T) {
 		}, time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"starting to sync operation workers",
-				"new operation worker running"},
+			zap.InfoLevel: {"new operation worker running"},
 		})
-
-		workerStopCh <- struct{}{}
 
 		// guarantees we finish the process.
 		cancelFn()
@@ -122,7 +119,7 @@ func TestStart(t *testing.T) {
 			}
 
 			return false
-		}, time.Second*2, 100*time.Millisecond)
+		}, time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("fails when schedulerStorage fails to list all schedulers", func(t *testing.T) {
@@ -202,7 +199,6 @@ func TestStart(t *testing.T) {
 		// guarantees the
 		require.Eventually(t, func() bool {
 			if len(workersManager.CurrentWorkers) > 0 {
-				workerStopCh <- struct{}{}
 				return true
 			}
 			return false
@@ -286,8 +282,6 @@ func TestStart(t *testing.T) {
 		require.Eventually(t, func() bool {
 			if len(workersManager.CurrentWorkers) > 0 {
 				require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
-				workerStopCh <- struct{}{}
-				cancelFn()
 				return true
 			}
 
@@ -295,8 +289,7 @@ func TestStart(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"starting to sync operation workers",
-				"new operation worker running"},
+			zap.InfoLevel: {"new operation worker running"},
 		})
 
 		// guarantees we finish the process.
@@ -351,7 +344,6 @@ func TestStart(t *testing.T) {
 		// wait until the workers are started.
 		require.Eventually(t, func() bool {
 			if len(workersManager.CurrentWorkers) > 0 {
-				workerStopCh <- struct{}{}
 				return true
 			}
 
@@ -359,14 +351,6 @@ func TestStart(t *testing.T) {
 		}, time.Second, 100*time.Millisecond)
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
-		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"starting to sync operation workers",
-				"new operation worker running"},
-		})
-
-		core, recorded := observer.New(zap.InfoLevel)
-		zl := zap.New(core)
-		zap.ReplaceGlobals(zl)
 
 		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Return([]*entities.Scheduler{}, nil)
 
@@ -380,9 +364,6 @@ func TestStart(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 
 		require.Empty(t, workersManager.CurrentWorkers)
-		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"canceling operation worker"},
-		})
 
 		// guarantees we finish the process.
 		cancelFn()

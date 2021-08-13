@@ -102,6 +102,8 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			continue
 		}
 
+		loopLogger.Info("Starting to process operation")
+
 		err = w.operationManager.StartOperation(operationContext, op)
 		if err != nil {
 			w.Stop(ctx)
@@ -124,7 +126,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				op.Status = operation.StatusCanceled
 			}
 
-			loopLogger.Debug("operation execution failed", zap.Error(executionErr))
+			loopLogger.Error("operation execution failed", zap.Error(executionErr))
 
 			onErrorStartTime := time.Now()
 			onErrorErr := executor.OnError(operationContext, op, def, executionErr)
@@ -134,6 +136,8 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				loopLogger.Error("operation OnError failed", zap.Error(onErrorErr))
 			}
 		}
+
+		loopLogger.Info("Finishing operation")
 
 		// TODO(gabrielcorado): we need to propagate the error reason.
 		// TODO(gabrielcorado): consider handling the finish operation error.
