@@ -64,8 +64,8 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 
 func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler, schedulerHandler *handlers.SchedulerHandler) *runtime.ServeMux {
 	mux := runtime.NewServeMux()
-	_ = api.RegisterPingHandlerServer(ctx, mux, pingHandler)
-	_ = api.RegisterSchedulersHandlerServer(ctx, mux, schedulerHandler)
+	_ = api.RegisterPingServiceHandlerServer(ctx, mux, pingHandler)
+	_ = api.RegisterManagementServiceHandlerServer(ctx, mux, schedulerHandler)
 
 	return mux
 }
