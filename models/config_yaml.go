@@ -9,9 +9,14 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// DefaultForwarderForwardResponse is the default value set to `Forwarder`
-// `ForwardResponse` property.
-const DefaultForwarderForwardResponse = true
+const (
+	// DefaultForwarderForwardResponse is the default value set to `Forwarder`
+	// `ForwardResponse` property.
+	DefaultForwarderForwardResponse = true
+	// DefaultPreventRoomsCreationWithError is the default value for the
+	// `PreventRoomsCreationWithError` property.
+	DefaultPreventRoomsCreationWithError = true
+)
 
 // ConfigYAMLv1 is the ConfigYAML before refactor to n containers per pod
 type ConfigYAMLv1 struct {
@@ -49,6 +54,9 @@ type ConfigYAMLv2 struct {
 	AuthorizedUsers []string                         `yaml:"authorizedUsers"`
 	Containers      []*Container                     `yaml:"containers"`
 	PortRange       *PortRange                       `yaml:"portRange"`
+	// Optional: PreventRoomsCreationWithError prevents Maestro to create new rooms if
+	// there are rooms in error state on the scheduler. Default: "true".
+	PreventRoomsCreationWithError bool `yaml:"preventRoomsCreationWithError" json:"preventRoomsCreationWithError"`
 }
 
 // ConfigYAML is the struct for the config yaml
@@ -64,6 +72,9 @@ type ConfigYAML struct {
 	Forwarders      map[string]map[string]*Forwarder `yaml:"forwarders" json:"forwarders"`
 	AuthorizedUsers []string                         `yaml:"authorizedUsers" json:"authorizedUsers"`
 	PortRange       *PortRange                       `yaml:"portRange"`
+	// Optional: PreventRoomsCreationWithError prevents Maestro to create new rooms if
+	// there are rooms in error state on the scheduler. Default: "true".
+	PreventRoomsCreationWithError bool `yaml:"preventRoomsCreationWithError" json:"preventRoomsCreationWithError"`
 
 	// Container level, to keep compatibility
 	Image           string     `yaml:"image" json:"image"`
@@ -114,17 +125,18 @@ func (c *ConfigYAML) ToYAML() []byte {
 		}
 	} else if c.Version() == "v2" {
 		config = &ConfigYAMLv2{
-			Name:            c.Name,
-			Game:            c.Game,
-			ShutdownTimeout: c.ShutdownTimeout,
-			AutoScaling:     c.AutoScaling,
-			NodeAffinity:    c.NodeAffinity,
-			NodeToleration:  c.NodeToleration,
-			OccupiedTimeout: c.OccupiedTimeout,
-			Forwarders:      c.Forwarders,
-			AuthorizedUsers: c.AuthorizedUsers,
-			Containers:      c.Containers,
-			PortRange:       c.PortRange,
+			Name:                          c.Name,
+			Game:                          c.Game,
+			ShutdownTimeout:               c.ShutdownTimeout,
+			AutoScaling:                   c.AutoScaling,
+			NodeAffinity:                  c.NodeAffinity,
+			NodeToleration:                c.NodeToleration,
+			OccupiedTimeout:               c.OccupiedTimeout,
+			Forwarders:                    c.Forwarders,
+			AuthorizedUsers:               c.AuthorizedUsers,
+			Containers:                    c.Containers,
+			PortRange:                     c.PortRange,
+			PreventRoomsCreationWithError: c.PreventRoomsCreationWithError,
 		}
 	}
 
@@ -301,6 +313,25 @@ func (c *ConfigYAML) HasPorts() bool {
 		}
 	}
 	return false
+}
+
+// UnmarshalYAML implements a custom way to unmarshal the `ConfigYAML` type. This
+// is done in order to set default values to the type.
+// TODO: make a pattern to set default values for the scheduler config, instead
+//       of having this or the `EnsureDefaultValues`.
+func (c *ConfigYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// We define a "temporary" type in order to avoid creating a recursion on
+	// `ConfigYAML` unmarshal.
+	type rawConfig ConfigYAML
+	raw := rawConfig{PreventRoomsCreationWithError: DefaultPreventRoomsCreationWithError}
+	err := unmarshal(&raw)
+	if err != nil {
+		return err
+	}
+
+	*c = ConfigYAML(raw)
+
+	return nil
 }
 
 // UnmarshalYAML implements a custom way to unmarshal the `Forward` type. This

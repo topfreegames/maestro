@@ -1442,6 +1442,7 @@ containers:
   env: []
   cmd: []
 portRange: null
+preventRoomsCreationWithError: true
 `))
 			})
 

@@ -1399,6 +1399,39 @@ func MockScaleUp(
 	mockPipeline.EXPECT().Exec().Times(times)
 }
 
+func MockScaleUpWithCurrentPods(
+	mockPipeline *redismocks.MockPipeliner,
+	mockRedisClient *redismocks.MockRedisClient,
+	schedulerName string,
+	times int,
+	pods []*models.Pod,
+) {
+	podsList := []string{}
+	for _, pod := range pods {
+		jsonBytes, _ := pod.MarshalToRedis()
+		podsList = append(podsList, pod.Name, string(jsonBytes))
+	}
+
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+	mockPipeline.EXPECT().
+		HScan(models.GetPodMapRedisKey(schedulerName), uint64(0), "*", gomock.Any()).
+		Return(goredis.NewScanCmdResult(podsList, 0, nil))
+	mockPipeline.EXPECT().Exec()
+
+	MockAnyRunningPod(mockRedisClient, schedulerName, 2*times)
+	mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).Times(times)
+	mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(
+		func(schedulerName string, statusInfo map[string]interface{}) {
+			defer ginkgo.GinkgoRecover()
+			gomega.Expect(statusInfo["status"]).To(gomega.Equal("creating"))
+			gomega.Expect(statusInfo["lastPing"]).To(gomega.BeNumerically("~", time.Now().Unix(), 1))
+		},
+	).Times(times)
+	mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(schedulerName), gomock.Any()).Times(times)
+	mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(schedulerName, "creating"), gomock.Any()).Times(times)
+	mockPipeline.EXPECT().Exec().Times(times)
+}
+
 // CopyAutoScaling copies an autoscaling struct to a new one
 func CopyAutoScaling(original, clone *models.AutoScaling) {
 	clone.Up = &models.ScalingPolicy{}

@@ -156,7 +156,7 @@ autoscaling:
 			var response map[string]interface{}
 			json.Unmarshal(recorder.Body.Bytes(), &response)
 			Expect(response).To(HaveKeyWithValue("code", "MAE-002"))
-			Expect(response).To(HaveKeyWithValue("description", "yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `invalid...` into models.ConfigYAML"))
+			Expect(response).To(HaveKeyWithValue("description", "yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `invalid...` into models.rawConfig"))
 			Expect(response).To(HaveKeyWithValue("error", "parse yaml error"))
 			Expect(response).To(HaveKeyWithValue("success", false))
 		})
