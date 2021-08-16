@@ -42,7 +42,7 @@ import (
 type SchedulerHandler struct {
 	schedulerManager *scheduler_manager.SchedulerManager
 	operationManager *operation_manager.OperationManager
-	api.UnimplementedSchedulersServer
+	api.UnimplementedManagementServiceServer
 }
 
 func ProvideSchedulerHandler(schedulerManager *scheduler_manager.SchedulerManager, operationManager *operation_manager.OperationManager) *SchedulerHandler {
@@ -52,8 +52,7 @@ func ProvideSchedulerHandler(schedulerManager *scheduler_manager.SchedulerManage
 	}
 }
 
-func (h *SchedulerHandler) ListSchedulers(ctx context.Context, message *api.EmptyRequest) (*api.ListSchedulersReply, error) {
-
+func (h *SchedulerHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
 	entities, err := h.schedulerManager.GetAllSchedulers(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -64,15 +63,13 @@ func (h *SchedulerHandler) ListSchedulers(ctx context.Context, message *api.Empt
 		schedulers[i] = h.fromEntityToResponse(entity)
 	}
 
-	return &api.ListSchedulersReply{
+	return &api.ListSchedulersResponse{
 		Schedulers: schedulers,
 	}, nil
-
 }
 
-func (h *SchedulerHandler) ListOperations(ctx context.Context, request *api.ListOperationsRequest) (*api.ListOperationsReply, error) {
-
-	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, request.GetScheduler())
+func (h *SchedulerHandler) ListOperations(ctx context.Context, request *api.ListOperationsRequest) (*api.ListOperationsResponse, error) {
+	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, request.GetSchedulerName())
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
@@ -81,7 +78,7 @@ func (h *SchedulerHandler) ListOperations(ctx context.Context, request *api.List
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	activeOperationEntities, err := h.operationManager.ListSchedulerActiveOperations(ctx, request.GetScheduler())
+	activeOperationEntities, err := h.operationManager.ListSchedulerActiveOperations(ctx, request.GetSchedulerName())
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
@@ -90,7 +87,7 @@ func (h *SchedulerHandler) ListOperations(ctx context.Context, request *api.List
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	finishedOperationEntities, err := h.operationManager.ListSchedulerFinishedOperations(ctx, request.GetScheduler())
+	finishedOperationEntities, err := h.operationManager.ListSchedulerFinishedOperations(ctx, request.GetSchedulerName())
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
@@ -99,16 +96,14 @@ func (h *SchedulerHandler) ListOperations(ctx context.Context, request *api.List
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	return &api.ListOperationsReply{
+	return &api.ListOperationsResponse{
 		PendingOperations:  pendingOperationResponse,
 		ActiveOperations:   activeOperationResponses,
 		FinishedOperations: finishedOperationResponse,
 	}, nil
-
 }
 
-func (h *SchedulerHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.Scheduler, error) {
-
+func (h *SchedulerHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
 	scheduler := h.fromRequestToEntity(request)
 
 	scheduler, err := h.schedulerManager.CreateScheduler(ctx, scheduler)
@@ -119,7 +114,9 @@ func (h *SchedulerHandler) CreateScheduler(ctx context.Context, request *api.Cre
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	return h.fromEntityToResponse(scheduler), nil
+	return &api.CreateSchedulerResponse{
+		Scheduler: h.fromEntityToResponse(scheduler),
+	}, nil
 }
 
 func (h *SchedulerHandler) fromRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {

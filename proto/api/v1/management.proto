@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package api.v1;
+
+option java_package = "com.topfreegames.maestro.pkg.api.v1";
+option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
+
+import "google/api/annotations.proto";
+import "api/v1/messages.proto";
+
+// Service that manages the configuration and perform actions into schedulers.
+service ManagementService {
+  // Lists all schedulers.
+  rpc ListSchedulers(ListSchedulersRequest) returns (ListSchedulersResponse) {
+    option (google.api.http) = {
+      get: "/schedulers"
+    };
+  }
+
+  // Create a scheduler.
+  rpc CreateScheduler(CreateSchedulerRequest) returns (CreateSchedulerResponse) {
+    option (google.api.http) = {
+      post: "/schedulers",
+      body: "*"
+    };
+  }
+
+  // List operations based on a scheduler.
+  rpc ListOperations(ListOperationsRequest) returns (ListOperationsResponse) {
+    option (google.api.http) = {
+      get: "/schedulers/{scheduler_name=*}/operations",
+    };
+  }
+}
+
+// List scheduler request options.
+message ListSchedulersRequest {}
+
+// The list schedulers reponse message.
+message ListSchedulersResponse {
+  // List of schedulers fetched.
+  repeated Scheduler schedulers = 1;
+}
+
+// Response for the create scheduler.
+message CreateSchedulerResponse {
+  // Scheduler that was created.
+  Scheduler scheduler = 1;
+}
+
+// Scheduler is the struct that defines a maestro scheduler
+message CreateSchedulerRequest {
+  // Unique identifier for the scheduler.
+  string name = 1;
+  // Game the new scheduler will be part of.
+  string game = 2;
+  // ?.
+  string version = 3;
+}
+
+// The list operation route request.
+message ListOperationsRequest {
+  // Scheduler name that the operations are part of.
+  // NOTE: On http protocol, this operates as a path param.
+  string scheduler_name = 1;
+}
+
+// The list operation route response/reply
+// There's a list for each operation major status
+message ListOperationsResponse {
+  // List of the scheduler pending operations.
+  repeated Operation pending_operations = 1;
+  // List of the scheduler active operations.
+  repeated Operation active_operations = 2;
+  // List of the scheduler finished (with error or not) operations.
+  repeated Operation finished_operations = 3;
+}

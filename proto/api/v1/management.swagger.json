@@ -1,15 +1,12 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "v1/ping.proto",
+    "title": "api/v1/management.proto",
     "version": "version not set"
   },
   "tags": [
     {
-      "name": "Ping"
-    },
-    {
-      "name": "Schedulers"
+      "name": "ManagementService"
     }
   ],
   "consumes": [
@@ -19,46 +16,15 @@
     "application/json"
   ],
   "paths": {
-    "/ping": {
-      "get": {
-        "summary": "To check the service is up.",
-        "operationId": "Ping_GetPing",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1GetPingMessage"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "message",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "Ping"
-        ]
-      }
-    },
     "/schedulers": {
       "get": {
         "summary": "Lists all schedulers.",
-        "operationId": "Schedulers_ListSchedulers",
+        "operationId": "ManagementService_ListSchedulers",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1ListSchedulersReply"
+              "$ref": "#/definitions/v1ListSchedulersResponse"
             }
           },
           "default": {
@@ -69,17 +35,17 @@
           }
         },
         "tags": [
-          "Schedulers"
+          "ManagementService"
         ]
       },
       "post": {
         "summary": "Create a scheduler.",
-        "operationId": "Schedulers_CreateScheduler",
+        "operationId": "ManagementService_CreateScheduler",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1Scheduler"
+              "$ref": "#/definitions/v1CreateSchedulerResponse"
             }
           },
           "default": {
@@ -100,19 +66,19 @@
           }
         ],
         "tags": [
-          "Schedulers"
+          "ManagementService"
         ]
       }
     },
-    "/schedulers/{scheduler}/operations": {
+    "/schedulers/{schedulerName}/operations": {
       "get": {
         "summary": "List operations based on a scheduler.",
-        "operationId": "Schedulers_ListOperations",
+        "operationId": "ManagementService_ListOperations",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1ListOperationsReply"
+              "$ref": "#/definitions/v1ListOperationsResponse"
             }
           },
           "default": {
@@ -124,14 +90,15 @@
         },
         "parameters": [
           {
-            "name": "scheduler",
+            "name": "schedulerName",
+            "description": "Scheduler name that the operations are part of.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
             "type": "string"
           }
         ],
         "tags": [
-          "Schedulers"
+          "ManagementService"
         ]
       }
     }
@@ -171,76 +138,88 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Unique identifier for the scheduler."
         },
         "game": {
-          "type": "string"
+          "type": "string",
+          "description": "Game the new scheduler will be part of."
         },
         "version": {
-          "type": "string"
+          "type": "string",
+          "description": "?."
         }
       },
       "title": "Scheduler is the struct that defines a maestro scheduler"
     },
-    "v1GetPingMessage": {
+    "v1CreateSchedulerResponse": {
       "type": "object",
       "properties": {
-        "message": {
-          "type": "string"
+        "scheduler": {
+          "$ref": "#/definitions/v1Scheduler",
+          "description": "Scheduler that was created."
         }
       },
-      "description": "The ping message."
+      "description": "Response for the create scheduler."
     },
-    "v1ListOperationsReply": {
+    "v1ListOperationsResponse": {
       "type": "object",
       "properties": {
         "pendingOperations": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1Operation"
-          }
+          },
+          "description": "List of the scheduler pending operations."
         },
         "activeOperations": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1Operation"
-          }
+          },
+          "description": "List of the scheduler active operations."
         },
         "finishedOperations": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1Operation"
-          }
+          },
+          "description": "List of the scheduler finished (with error or not) operations."
         }
       },
       "title": "The list operation route response/reply\nThere's a list for each operation major status"
     },
-    "v1ListSchedulersReply": {
+    "v1ListSchedulersResponse": {
       "type": "object",
       "properties": {
         "schedulers": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1Scheduler"
-          }
+          },
+          "description": "List of schedulers fetched."
         }
       },
-      "description": "The list schedulers reply message."
+      "description": "The list schedulers reponse message."
     },
     "v1Operation": {
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "Unique identifier for the operation."
         },
         "status": {
-          "type": "string"
+          "type": "string",
+          "description": "Current status of the operation.\nTODO(gabrielcorado): change to enum."
         },
         "definitionName": {
-          "type": "string"
+          "type": "string",
+          "description": "Name of the operation being executed."
         },
         "schedulerName": {
-          "type": "string"
+          "type": "string",
+          "description": "Scheduler indentifier that the operation is from."
         }
       },
       "title": "The operation object representation"
@@ -250,39 +229,47 @@
       "properties": {
         "start": {
           "type": "integer",
-          "format": "int32"
+          "format": "int32",
+          "description": "Range start, it is inclusive."
         },
         "end": {
           "type": "integer",
-          "format": "int32"
+          "format": "int32",
+          "description": "Range end, it is exclusive."
         }
       },
-      "description": "The scheduler port range DTO."
+      "description": "Port range is the range definition that the rooms will use. If a scheduler\ndefines its range as 0-1000 (start-end), it is guarantee that all rooms be\nwithin this range."
     },
     "v1Scheduler": {
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Name is an unique identifier for the scheduler."
         },
         "game": {
-          "type": "string"
+          "type": "string",
+          "description": "Game is the \"scope\" where the scheduler will be placed. It is required, and\ngames name are unique."
         },
         "state": {
-          "type": "string"
+          "type": "string",
+          "description": "Current state of the scheduler.\nTODO(gabrielcorado): move this to an ENUM."
         },
         "version": {
-          "type": "string"
+          "type": "string",
+          "description": "Scheduler current version."
         },
         "portRange": {
-          "$ref": "#/definitions/v1PortRange"
+          "$ref": "#/definitions/v1PortRange",
+          "description": "Port range for the scheduler rooms."
         },
         "createdAt": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "Time the scheduler was created."
         }
       },
-      "description": "The scheduler DTO."
+      "description": "Scheduler definition."
     }
   }
 }
