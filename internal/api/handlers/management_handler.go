@@ -39,20 +39,20 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type SchedulerHandler struct {
+type ManagementHandler struct {
 	schedulerManager *scheduler_manager.SchedulerManager
 	operationManager *operation_manager.OperationManager
 	api.UnimplementedManagementServiceServer
 }
 
-func ProvideSchedulerHandler(schedulerManager *scheduler_manager.SchedulerManager, operationManager *operation_manager.OperationManager) *SchedulerHandler {
-	return &SchedulerHandler{
+func ProvideManagementHandler(schedulerManager *scheduler_manager.SchedulerManager, operationManager *operation_manager.OperationManager) *ManagementHandler {
+	return &ManagementHandler{
 		schedulerManager: schedulerManager,
 		operationManager: operationManager,
 	}
 }
 
-func (h *SchedulerHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
+func (h *ManagementHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
 	entities, err := h.schedulerManager.GetAllSchedulers(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -68,7 +68,7 @@ func (h *SchedulerHandler) ListSchedulers(ctx context.Context, message *api.List
 	}, nil
 }
 
-func (h *SchedulerHandler) ListOperations(ctx context.Context, request *api.ListOperationsRequest) (*api.ListOperationsResponse, error) {
+func (h *ManagementHandler) ListOperations(ctx context.Context, request *api.ListOperationsRequest) (*api.ListOperationsResponse, error) {
 	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, request.GetSchedulerName())
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -103,7 +103,7 @@ func (h *SchedulerHandler) ListOperations(ctx context.Context, request *api.List
 	}, nil
 }
 
-func (h *SchedulerHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
+func (h *ManagementHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
 	scheduler := h.fromRequestToEntity(request)
 
 	scheduler, err := h.schedulerManager.CreateScheduler(ctx, scheduler)
@@ -119,7 +119,7 @@ func (h *SchedulerHandler) CreateScheduler(ctx context.Context, request *api.Cre
 	}, nil
 }
 
-func (h *SchedulerHandler) fromRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {
+func (h *ManagementHandler) fromRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {
 	return &entities.Scheduler{
 		Name:  request.Name,
 		Game:  request.Game,
@@ -130,7 +130,7 @@ func (h *SchedulerHandler) fromRequestToEntity(request *api.CreateSchedulerReque
 	}
 }
 
-func (h *SchedulerHandler) fromEntityToResponse(entity *entities.Scheduler) *api.Scheduler {
+func (h *ManagementHandler) fromEntityToResponse(entity *entities.Scheduler) *api.Scheduler {
 	return &api.Scheduler{
 		Name:      entity.Name,
 		Game:      entity.Game,
@@ -141,7 +141,7 @@ func (h *SchedulerHandler) fromEntityToResponse(entity *entities.Scheduler) *api
 	}
 }
 
-func (h *SchedulerHandler) fromOperationsToResponses(entities []*operation.Operation) ([]*api.Operation, error) {
+func (h *ManagementHandler) fromOperationsToResponses(entities []*operation.Operation) ([]*api.Operation, error) {
 	responses := make([]*api.Operation, len(entities))
 	for i, entity := range entities {
 		response, err := h.fromOperationToResponse(entity)
@@ -154,7 +154,7 @@ func (h *SchedulerHandler) fromOperationsToResponses(entities []*operation.Opera
 	return responses, nil
 }
 
-func (h *SchedulerHandler) fromOperationToResponse(entity *operation.Operation) (*api.Operation, error) {
+func (h *ManagementHandler) fromOperationToResponse(entity *operation.Operation) (*api.Operation, error) {
 	status, err := entity.Status.String()
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert operation entity to response: %w", err)
