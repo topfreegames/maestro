@@ -1657,7 +1657,7 @@ cmd:
 
 			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("scheduler has pods not ready (pending or with error)"))
+			Expect(err.Error()).To(Equal("scheduler has not ready pods (pending or with error)"))
 		})
 
 		It("should return error and not scale up if there are failed pods and preventRoomsCreationWithError = true", func() {
@@ -1699,7 +1699,7 @@ cmd:
 
 			err = controller.ScaleUp(logger, roomManager, mr, mockDb, mockRedisClient, clientset, scheduler, amount, timeoutSec, true, config, true)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("scheduler has pods not ready (pending or with error)"))
+			Expect(err.Error()).To(Equal("scheduler has not ready pods (pending or with error)"))
 		})
 
 		It("should scale up if there are failed pods and scheduler has preventRoomsCreationWithError = false", func() {

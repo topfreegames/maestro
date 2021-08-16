@@ -395,13 +395,13 @@ func ScaleUp(
 		return fmt.Errorf("failed to load scheduler configuration: %w", err)
 	}
 
-	hasNotReadyPods, err := checkNotReadyPods(config, redisClient, scheduler.Name, configYAML.PreventRoomsCreationWithError, mr)
+	notReadyPods, err := hasNotReadyPods(config, redisClient, scheduler.Name, configYAML.PreventRoomsCreationWithError, mr)
 	if err != nil {
 		return fmt.Errorf("failed to list pending or failed pods: %w", err)
 	}
 
-	if hasNotReadyPods {
-		return errors.New("scheduler has pods not ready (pending or with error)")
+	if notReadyPods {
+		return errors.New("scheduler has not ready pods (pending or with error)")
 	}
 
 	amount, err = SetScalingAmount(

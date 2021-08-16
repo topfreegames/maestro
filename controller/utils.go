@@ -813,7 +813,7 @@ func waitForPods(
 	return nil
 }
 
-func checkNotReadyPods(
+func hasNotReadyPods(
 	config *viper.Viper,
 	redisClient redisinterfaces.RedisClient,
 	namespace string,
