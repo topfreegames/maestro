@@ -207,12 +207,17 @@ func TestCreateScheduler(t *testing.T) {
 		err = json.Unmarshal([]byte(bodyString), &body)
 
 		require.NoError(t, err)
-		require.Equal(t, "game", body["scheduler"]["game"])
-		require.Equal(t, "scheduler", body["scheduler"]["name"])
-		require.Equal(t, interface{}(nil), body["scheduler"]["portRange"])
-		require.Equal(t, "creating", body["scheduler"]["state"])
-		require.Equal(t, "v1", body["scheduler"]["version"])
-		require.NotNil(t, body["scheduler"]["createdAt"])
+
+		schedulerContent, ok := body["scheduler"].(map[string]interface{})
+		require.NotNil(t, schedulerContent)
+		require.True(t, ok)
+
+		require.Equal(t, "game", schedulerContent["game"])
+		require.Equal(t, "scheduler", schedulerContent["name"])
+		require.Equal(t, interface{}(nil), schedulerContent["portRange"])
+		require.Equal(t, "creating", schedulerContent["state"])
+		require.Equal(t, "v1", schedulerContent["version"])
+		require.NotNil(t, schedulerContent["createdAt"])
 	})
 
 	t.Run("fails when scheduler already exists", func(t *testing.T) {
