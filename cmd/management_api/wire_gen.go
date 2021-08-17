@@ -37,17 +37,19 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 	v := providers.ProvideDefinitionConstructors()
 	operationManager := operation_manager.New(operationFlow, operationStorage, v)
 	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
-	managementHandler := handlers.ProvideManagementHandler(schedulerManager, operationManager)
-	serveMux := provideManagementMux(ctx, pingHandler, managementHandler)
+	schedulersHandler := handlers.ProvideSchedulersHandler(schedulerManager)
+	operationsHandler := handlers.ProvideOperationsHandler(operationManager)
+	serveMux := provideManagementMux(ctx, pingHandler, schedulersHandler, operationsHandler)
 	return serveMux, nil
 }
 
 // wire.go:
 
-func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler, schedulerHandler *handlers.ManagementHandler) *runtime.ServeMux {
+func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler, schedulersHandler *handlers.SchedulersHandler, operationsHandler *handlers.OperationsHandler) *runtime.ServeMux {
 	mux := runtime.NewServeMux()
 	_ = v1.RegisterPingServiceHandlerServer(ctx, mux, pingHandler)
-	_ = v1.RegisterManagementServiceHandlerServer(ctx, mux, schedulerHandler)
+	_ = v1.RegisterSchedulersServiceHandlerServer(ctx, mux, schedulersHandler)
+	_ = v1.RegisterOperationsServiceHandlerServer(ctx, mux, operationsHandler)
 
 	return mux
 }

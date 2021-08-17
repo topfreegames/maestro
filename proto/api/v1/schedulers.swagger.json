@@ -1,12 +1,12 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "api/v1/management.proto",
+    "title": "api/v1/schedulers.proto",
     "version": "version not set"
   },
   "tags": [
     {
-      "name": "ManagementService"
+      "name": "SchedulersService"
     }
   ],
   "consumes": [
@@ -19,7 +19,7 @@
     "/schedulers": {
       "get": {
         "summary": "Lists all schedulers.",
-        "operationId": "ManagementService_ListSchedulers",
+        "operationId": "SchedulersService_ListSchedulers",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -35,12 +35,12 @@
           }
         },
         "tags": [
-          "ManagementService"
+          "SchedulersService"
         ]
       },
       "post": {
         "summary": "Create a scheduler.",
-        "operationId": "ManagementService_CreateScheduler",
+        "operationId": "SchedulersService_CreateScheduler",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -66,39 +66,7 @@
           }
         ],
         "tags": [
-          "ManagementService"
-        ]
-      }
-    },
-    "/schedulers/{schedulerName}/operations": {
-      "get": {
-        "summary": "List operations based on a scheduler.",
-        "operationId": "ManagementService_ListOperations",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1ListOperationsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "schedulerName",
-            "description": "Scheduler name that the operations are part of.\nNOTE: On http protocol, this operates as a path param.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ManagementService"
+          "SchedulersService"
         ]
       }
     }
@@ -162,33 +130,6 @@
       },
       "description": "Response for the create scheduler."
     },
-    "v1ListOperationsResponse": {
-      "type": "object",
-      "properties": {
-        "pendingOperations": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1Operation"
-          },
-          "description": "List of the scheduler pending operations."
-        },
-        "activeOperations": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1Operation"
-          },
-          "description": "List of the scheduler active operations."
-        },
-        "finishedOperations": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1Operation"
-          },
-          "description": "List of the scheduler finished (with error or not) operations."
-        }
-      },
-      "title": "The list operation route response/reply\nThere's a list for each operation major status"
-    },
     "v1ListSchedulersResponse": {
       "type": "object",
       "properties": {
@@ -201,28 +142,6 @@
         }
       },
       "description": "The list schedulers reponse message."
-    },
-    "v1Operation": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the operation."
-        },
-        "status": {
-          "type": "string",
-          "description": "Current status of the operation.\nTODO(gabrielcorado): change to enum."
-        },
-        "definitionName": {
-          "type": "string",
-          "description": "Name of the operation being executed."
-        },
-        "schedulerName": {
-          "type": "string",
-          "description": "Scheduler indentifier that the operation is from."
-        }
-      },
-      "title": "The operation object representation"
     },
     "v1PortRange": {
       "type": "object",

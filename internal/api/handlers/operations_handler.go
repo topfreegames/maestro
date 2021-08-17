@@ -24,55 +24,32 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type ManagementHandler struct {
-	schedulerManager *scheduler_manager.SchedulerManager
+type OperationsHandler struct {
 	operationManager *operation_manager.OperationManager
-	api.UnimplementedManagementServiceServer
+	api.UnimplementedOperationsServiceServer
 }
 
-func ProvideManagementHandler(schedulerManager *scheduler_manager.SchedulerManager, operationManager *operation_manager.OperationManager) *ManagementHandler {
-	return &ManagementHandler{
-		schedulerManager: schedulerManager,
+func ProvideOperationsHandler(operationManager *operation_manager.OperationManager) *OperationsHandler {
+	return &OperationsHandler{
 		operationManager: operationManager,
 	}
 }
 
-func (h *ManagementHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
-	entities, err := h.schedulerManager.GetAllSchedulers(ctx)
-	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-
-	schedulers := make([]*api.Scheduler, len(entities))
-	for i, entity := range entities {
-		schedulers[i] = h.fromEntityToResponse(entity)
-	}
-
-	return &api.ListSchedulersResponse{
-		Schedulers: schedulers,
-	}, nil
-}
-
-func (h *ManagementHandler) ListOperations(ctx context.Context, request *api.ListOperationsRequest) (*api.ListOperationsResponse, error) {
+func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.ListOperationsRequest) (*api.ListOperationsResponse, error) {
 	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, request.GetSchedulerName())
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+
 	pendingOperationResponse, err := h.fromOperationsToResponses(pendingOperationEntities)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -82,6 +59,7 @@ func (h *ManagementHandler) ListOperations(ctx context.Context, request *api.Lis
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+
 	activeOperationResponses, err := h.fromOperationsToResponses(activeOperationEntities)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -91,6 +69,7 @@ func (h *ManagementHandler) ListOperations(ctx context.Context, request *api.Lis
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+
 	finishedOperationResponse, err := h.fromOperationsToResponses(finishedOperationEntities)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -103,45 +82,7 @@ func (h *ManagementHandler) ListOperations(ctx context.Context, request *api.Lis
 	}, nil
 }
 
-func (h *ManagementHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
-	scheduler := h.fromRequestToEntity(request)
-
-	scheduler, err := h.schedulerManager.CreateScheduler(ctx, scheduler)
-	if errors.Is(err, portsErrors.ErrAlreadyExists) {
-		return nil, status.Error(codes.AlreadyExists, err.Error())
-	}
-	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-
-	return &api.CreateSchedulerResponse{
-		Scheduler: h.fromEntityToResponse(scheduler),
-	}, nil
-}
-
-func (h *ManagementHandler) fromRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {
-	return &entities.Scheduler{
-		Name:  request.Name,
-		Game:  request.Game,
-		State: entities.StateCreating,
-		Spec: game_room.Spec{
-			Version: request.Version,
-		},
-	}
-}
-
-func (h *ManagementHandler) fromEntityToResponse(entity *entities.Scheduler) *api.Scheduler {
-	return &api.Scheduler{
-		Name:      entity.Name,
-		Game:      entity.Game,
-		State:     entity.State,
-		Version:   entity.Spec.Version,
-		PortRange: getPortRange(entity.PortRange),
-		CreatedAt: timestamppb.New(entity.CreatedAt),
-	}
-}
-
-func (h *ManagementHandler) fromOperationsToResponses(entities []*operation.Operation) ([]*api.Operation, error) {
+func (h *OperationsHandler) fromOperationsToResponses(entities []*operation.Operation) ([]*api.Operation, error) {
 	responses := make([]*api.Operation, len(entities))
 	for i, entity := range entities {
 		response, err := h.fromOperationToResponse(entity)
@@ -154,7 +95,7 @@ func (h *ManagementHandler) fromOperationsToResponses(entities []*operation.Oper
 	return responses, nil
 }
 
-func (h *ManagementHandler) fromOperationToResponse(entity *operation.Operation) (*api.Operation, error) {
+func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation) (*api.Operation, error) {
 	status, err := entity.Status.String()
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert operation entity to response: %w", err)
@@ -166,15 +107,4 @@ func (h *ManagementHandler) fromOperationToResponse(entity *operation.Operation)
 		DefinitionName: entity.DefinitionName,
 		SchedulerName:  entity.SchedulerName,
 	}, nil
-}
-
-func getPortRange(portRange *entities.PortRange) *api.PortRange {
-	if portRange != nil {
-		return &api.PortRange{
-			Start: portRange.Start,
-			End:   portRange.End,
-		}
-	}
-
-	return nil
 }

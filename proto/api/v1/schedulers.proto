@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package api.v1;
+
+option java_package = "com.topfreegames.maestro.pkg.api.v1";
+option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
+
+import "google/api/annotations.proto";
+import "api/v1/messages.proto";
+
+// Service that manages the configuration and perform actions into schedulers.
+service SchedulersService {
+  // Lists all schedulers.
+  rpc ListSchedulers(ListSchedulersRequest) returns (ListSchedulersResponse) {
+    option (google.api.http) = {
+      get: "/schedulers"
+    };
+  }
+
+  // Create a scheduler.
+  rpc CreateScheduler(CreateSchedulerRequest) returns (CreateSchedulerResponse) {
+    option (google.api.http) = {
+      post: "/schedulers",
+      body: "*"
+    };
+  }
+}
+
+// List scheduler request options.
+message ListSchedulersRequest {}
+
+// The list schedulers reponse message.
+message ListSchedulersResponse {
+  // List of schedulers fetched.
+  repeated Scheduler schedulers = 1;
+}
+
+// Response for the create scheduler.
+message CreateSchedulerResponse {
+  // Scheduler that was created.
+  Scheduler scheduler = 1;
+}
+
+// Scheduler is the struct that defines a maestro scheduler
+message CreateSchedulerRequest {
+  // Unique identifier for the scheduler.
+  string name = 1;
+  // Game the new scheduler will be part of.
+  string game = 2;
+  // ?.
+  string version = 3;
+}
