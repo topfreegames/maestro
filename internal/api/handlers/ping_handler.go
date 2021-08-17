@@ -29,17 +29,15 @@ import (
 )
 
 type PingHandler struct {
-	api.UnimplementedPingServer
+	api.UnimplementedPingServiceServer
 }
 
 func ProvidePingHandler() *PingHandler {
 	return &PingHandler{}
 }
 
-func (PingHandler) GetPing(ctx context.Context, message *api.GetPingMessage) (*api.GetPingMessage, error) {
-
-	return &api.GetPingMessage{
+func (*PingHandler) GetPing(ctx context.Context, message *api.GetPingRequest) (*api.GetPingResponse, error) {
+	return &api.GetPingResponse{
 		Message: "pong",
 	}, nil
-
 }

@@ -123,11 +123,7 @@ func TestGameRoomDeletion(t *testing.T) {
 		require.Eventually(t, func() bool {
 			pods, err := client.CoreV1().Pods(scheduler.Name).List(ctx, metav1.ListOptions{})
 			require.NoError(t, err)
-			if len(pods.Items) == 0 {
-				return true
-			}
-
-			return false
+			return len(pods.Items) == 0
 		}, 30*time.Second, time.Second)
 	})
 

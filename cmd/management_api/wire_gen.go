@@ -7,7 +7,6 @@ package main
 
 import (
 	"context"
-
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
@@ -15,7 +14,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/service"
-	v1 "github.com/topfreegames/maestro/pkg/api/v1"
+	"github.com/topfreegames/maestro/pkg/api/v1"
 )
 
 // Injectors from wire.go:
@@ -38,17 +37,19 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 	v := providers.ProvideDefinitionConstructors()
 	operationManager := operation_manager.New(operationFlow, operationStorage, v)
 	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
-	schedulerHandler := handlers.ProvideSchedulerHandler(schedulerManager, operationManager)
-	serveMux := provideManagementMux(ctx, pingHandler, schedulerHandler)
+	schedulersHandler := handlers.ProvideSchedulersHandler(schedulerManager)
+	operationsHandler := handlers.ProvideOperationsHandler(operationManager)
+	serveMux := provideManagementMux(ctx, pingHandler, schedulersHandler, operationsHandler)
 	return serveMux, nil
 }
 
 // wire.go:
 
-func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler, schedulerHandler *handlers.SchedulerHandler) *runtime.ServeMux {
+func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler, schedulersHandler *handlers.SchedulersHandler, operationsHandler *handlers.OperationsHandler) *runtime.ServeMux {
 	mux := runtime.NewServeMux()
-	v1.RegisterPingHandlerServer(ctx, mux, pingHandler)
-	v1.RegisterSchedulersHandlerServer(ctx, mux, schedulerHandler)
+	_ = v1.RegisterPingServiceHandlerServer(ctx, mux, pingHandler)
+	_ = v1.RegisterSchedulersServiceHandlerServer(ctx, mux, schedulersHandler)
+	_ = v1.RegisterOperationsServiceHandlerServer(ctx, mux, operationsHandler)
 
 	return mux
 }

@@ -1,5 +1,5 @@
 SOURCES := $(shell \
-	find . -not \( \( -name .git -o -name .go -o -name vendor \) -prune \) \
+	find . -not \( \( -name .git -o -name .go -o -name vendor -o -name '*.pb.go' -o -name '*.pb.gw.go' -o -name '*_gen.go' -o -name '*mock*' \) -prune \) \
 	-name '*.go')
 
 .PHONY: deps
@@ -16,8 +16,15 @@ goimports:
 	@go run golang.org/x/tools/cmd/goimports -w $(SOURCES)
 
 .PHONY: lint
-lint:
-	@go run github.com/golangci/golangci-lint/cmd/golangci-lint run -E goimports ./...
+lint: lint/go lint/protobuf
+
+.PHONY: lint/go
+lint/go:
+	@go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+
+.PHONY: lint/protobuf
+lint/protobuf:
+	@go run github.com/bufbuild/buf/cmd/buf lint --config buf.yaml
 
 .PHONY: run/unit-tests
 run/unit-tests:

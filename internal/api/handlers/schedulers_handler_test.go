@@ -41,7 +41,6 @@ import (
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -73,7 +72,8 @@ func TestGetAllSchedulers(t *testing.T) {
 		}, nil)
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
 
 		req, err := http.NewRequest("GET", "/schedulers", nil)
 		if err != nil {
@@ -87,10 +87,11 @@ func TestGetAllSchedulers(t *testing.T) {
 		require.Equal(t, 200, rr.Code)
 
 		bodyString := rr.Body.String()
-		var reply api.ListSchedulersReply
-		json.Unmarshal([]byte(bodyString), &reply)
+		var response api.ListSchedulersResponse
+		err = json.Unmarshal([]byte(bodyString), &response)
+		require.NoError(t, err)
 
-		require.NotEmpty(t, reply.Schedulers)
+		require.NotEmpty(t, response.Schedulers)
 	})
 
 	t.Run("with valid request and no scheduler found", func(t *testing.T) {
@@ -103,7 +104,8 @@ func TestGetAllSchedulers(t *testing.T) {
 		schedulerStorage.EXPECT().GetAllSchedulers(gomock.Any()).Return([]*entities.Scheduler{}, nil)
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
 
 		req, err := http.NewRequest("GET", "/schedulers", nil)
 		if err != nil {
@@ -117,10 +119,11 @@ func TestGetAllSchedulers(t *testing.T) {
 		require.Equal(t, 200, rr.Code)
 
 		bodyString := rr.Body.String()
-		var reply api.ListSchedulersReply
-		json.Unmarshal([]byte(bodyString), &reply)
+		var response api.ListSchedulersResponse
+		err = json.Unmarshal([]byte(bodyString), &response)
+		require.NoError(t, err)
 
-		require.Empty(t, reply.Schedulers)
+		require.Empty(t, response.Schedulers)
 	})
 
 	t.Run("with invalid request method", func(t *testing.T) {
@@ -129,7 +132,8 @@ func TestGetAllSchedulers(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, nil))
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(nil))
+		require.NoError(t, err)
 
 		req, err := http.NewRequest("PUT", "/schedulers", nil)
 		if err != nil {
@@ -177,7 +181,8 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler").Return(scheduler, nil)
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, operationManager))
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
 
 		reqBody := &api.CreateSchedulerRequest{
 			Name:    "scheduler",
@@ -185,6 +190,8 @@ func TestCreateScheduler(t *testing.T) {
 			Version: "v1",
 		}
 		reqBodyString, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
 		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(reqBodyString))
 		if err != nil {
 			t.Fatal(err)
@@ -199,12 +206,17 @@ func TestCreateScheduler(t *testing.T) {
 		err = json.Unmarshal([]byte(bodyString), &body)
 
 		require.NoError(t, err)
-		require.Equal(t, "game", body["game"])
-		require.Equal(t, "scheduler", body["name"])
-		require.Equal(t, interface{}(nil), body["portRange"])
-		require.Equal(t, "creating", body["state"])
-		require.Equal(t, "v1", body["version"])
-		require.NotNil(t, body["createdAt"])
+
+		schedulerContent, ok := body["scheduler"].(map[string]interface{})
+		require.NotNil(t, schedulerContent)
+		require.True(t, ok)
+
+		require.Equal(t, "game", schedulerContent["game"])
+		require.Equal(t, "scheduler", schedulerContent["name"])
+		require.Equal(t, interface{}(nil), schedulerContent["portRange"])
+		require.Equal(t, "creating", schedulerContent["state"])
+		require.Equal(t, "v1", schedulerContent["version"])
+		require.NotNil(t, schedulerContent["createdAt"])
 	})
 
 	t.Run("fails when scheduler already exists", func(t *testing.T) {
@@ -218,7 +230,8 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Any()).Return(errors.NewErrAlreadyExists("error creating scheduler %s: name already exists", "scheduler"))
 
 		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(schedulerManager, nil))
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
 
 		reqBody := &api.CreateSchedulerRequest{
 			Name:    "scheduler",
@@ -227,6 +240,8 @@ func TestCreateScheduler(t *testing.T) {
 		}
 
 		reqBodyString, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
 		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(reqBodyString))
 		if err != nil {
 			t.Fatal(err)
@@ -242,92 +257,5 @@ func TestCreateScheduler(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, "error creating scheduler scheduler: name already exists", body["message"])
-	})
-}
-
-func TestListOperations(t *testing.T) {
-
-	t.Run("with success", func(t *testing.T) {
-
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
-
-		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), "zooba").Return([]string{}, nil)
-		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), "zooba").Return([]*operation.Operation{}, nil)
-		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), "zooba").Return([]*operation.Operation{
-			{
-				ID:             "operation-1",
-				Status:         operation.StatusInProgress,
-				DefinitionName: "create_scheduler",
-				SchedulerName:  "zooba",
-			},
-		}, nil)
-
-		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, operationManager))
-
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		rr := httptest.NewRecorder()
-		mux.ServeHTTP(rr, req)
-
-		require.Equal(t, 200, rr.Code)
-		bodyString := rr.Body.String()
-		var body map[string]interface{}
-		err = json.Unmarshal([]byte(bodyString), &body)
-
-		require.NoError(t, err)
-		require.Equal(t,
-			[]interface{}([]interface{}{
-				map[string]interface{}{
-					"definitionName": "create_scheduler",
-					"id":             "operation-1",
-					"schedulerName":  "zooba",
-					"status":         "in_progress",
-				},
-			}), body["activeOperations"])
-	})
-
-	t.Run("fails when operation is listed but does not exists", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
-
-		operationID := "operation-1"
-		schedulerName := "zooba"
-
-		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{operationID}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(nil, nil, errors.NewErrNotFound("operation %s not found in scheduler %s", operationID, schedulerName))
-
-		mux := runtime.NewServeMux()
-		api.RegisterSchedulersHandlerServer(context.Background(), mux, ProvideSchedulerHandler(nil, operationManager))
-
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		rr := httptest.NewRecorder()
-		mux.ServeHTTP(rr, req)
-
-		require.Equal(t, 500, rr.Code)
-		bodyString := rr.Body.String()
-		var body map[string]interface{}
-		err = json.Unmarshal([]byte(bodyString), &body)
-
-		require.NoError(t, err)
-		require.Equal(t,
-			"operation operation-1 not found in scheduler zooba",
-			body["message"])
 	})
 }

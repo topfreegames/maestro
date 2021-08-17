@@ -1,0 +1,194 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "api/v1/schedulers.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "SchedulersService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/schedulers": {
+      "get": {
+        "summary": "Lists all schedulers.",
+        "operationId": "SchedulersService_ListSchedulers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListSchedulersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SchedulersService"
+        ]
+      },
+      "post": {
+        "summary": "Create a scheduler.",
+        "operationId": "SchedulersService_CreateScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateSchedulerRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1CreateSchedulerRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique identifier for the scheduler."
+        },
+        "game": {
+          "type": "string",
+          "description": "Game the new scheduler will be part of."
+        },
+        "version": {
+          "type": "string",
+          "description": "?."
+        }
+      },
+      "title": "Scheduler is the struct that defines a maestro scheduler"
+    },
+    "v1CreateSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "scheduler": {
+          "$ref": "#/definitions/v1Scheduler",
+          "description": "Scheduler that was created."
+        }
+      },
+      "description": "Response for the create scheduler."
+    },
+    "v1ListSchedulersResponse": {
+      "type": "object",
+      "properties": {
+        "schedulers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Scheduler"
+          },
+          "description": "List of schedulers fetched."
+        }
+      },
+      "description": "The list schedulers reponse message."
+    },
+    "v1PortRange": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Range start, it is inclusive."
+        },
+        "end": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Range end, it is exclusive."
+        }
+      },
+      "description": "Port range is the range definition that the rooms will use. If a scheduler\ndefines its range as 0-1000 (start-end), it is guarantee that all rooms be\nwithin this range."
+    },
+    "v1Scheduler": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name is an unique identifier for the scheduler."
+        },
+        "game": {
+          "type": "string",
+          "description": "Game is the \"scope\" where the scheduler will be placed. It is required, and\ngames name are unique."
+        },
+        "state": {
+          "type": "string",
+          "description": "Current state of the scheduler.\nTODO(gabrielcorado): move this to an ENUM."
+        },
+        "version": {
+          "type": "string",
+          "description": "Scheduler current version."
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "Port range for the scheduler rooms."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the scheduler was created."
+        }
+      },
+      "description": "Scheduler definition."
+    }
+  }
+}

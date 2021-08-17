@@ -43,7 +43,7 @@ import (
 
 func TestRoomManager_SetRoomStatus_SuccessTransitions(t *testing.T) {
 	for fromStatus, transitions := range validStatusTransitions {
-		for transition, _ := range transitions {
+		for transition := range transitions {
 			t.Run(fmt.Sprintf("transition from %s to %s", fromStatus.String(), transition.String()), func(t *testing.T) {
 				mockCtrl := gomock.NewController(t)
 				defer mockCtrl.Finish()

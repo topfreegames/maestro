@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package api.v1;
+
+option java_package = "com.topfreegames.maestro.pkg.api.v1";
+option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// Port range is the range definition that the rooms will use. If a scheduler
+// defines its range as 0-1000 (start-end), it is guarantee that all rooms be
+// within this range.
+message PortRange {
+  // Range start, it is inclusive.
+  int32 start = 1;
+  // Range end, it is exclusive.
+	int32 end = 2;
+}
+
+// Scheduler definition.
+message Scheduler {
+  // Name is an unique identifier for the scheduler.
+  string name = 1;
+  // Game is the "scope" where the scheduler will be placed. It is required, and
+  // games name are unique.
+  string game = 2;
+  // Current state of the scheduler.
+  // TODO(gabrielcorado): move this to an ENUM.
+  string state = 3;
+  // Scheduler current version.
+  string version = 4;
+  // Port range for the scheduler rooms.
+  PortRange port_range = 5;
+  // Time the scheduler was created.
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// The operation object representation
+message Operation {
+  // Unique identifier for the operation.
+  string id = 1;
+  // Current status of the operation.
+  // TODO(gabrielcorado): change to enum.
+  string status = 2;
+  // Name of the operation being executed.
+  string definition_name = 3;
+  // Scheduler indentifier that the operation is from.
+  string scheduler_name = 4;
+}
