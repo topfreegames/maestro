@@ -49,4 +49,43 @@ message CreateSchedulerRequest {
   string game = 2;
   // ?.
   string version = 3;
+  // The game room termination grace period
+  int64 termination_grace_period = 4;
+  // The container object array defines all the game room container configurations
+	repeated Container containers = 5;
+  // The port range object describes what is the port range used to allocate game rooms
+  PortRange port_range = 6;
+  // Runtime game room toleration configuration
+  string toleration = 7;
+  // Runtime game room affinity configuration
+  string affinity = 8;
 }
+
+message Container {
+  string name = 1;
+  string image = 2;
+  string image_pull_policy = 3;
+  repeated string command = 4;
+  repeated ContainerEnvironment environment = 5;
+  ContainerResources requests = 6;
+  ContainerResources limits = 7;
+  repeated ContainerPort ports = 8;
+}
+
+message ContainerEnvironment {
+  string name = 1;
+  string value = 2;
+}
+
+message ContainerResources {
+  string memory = 1;
+  string cpu = 2;
+}
+
+message ContainerPort {
+  string name = 1;
+  string protocol = 2;
+  int32 port = 3;
+  int32 host_port = 4;
+}
+
