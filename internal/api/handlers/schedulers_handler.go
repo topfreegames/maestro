@@ -90,11 +90,11 @@ func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.C
 			End:   request.GetPortRange().GetEnd(),
 		},
 		Spec: game_room.Spec{
-			Version: request.GetVersion(),
+			Version:                request.GetVersion(),
 			TerminationGracePeriod: time.Duration(request.GetTerminationGracePeriod()),
-			Affinity: request.GetAffinity(),
-			Toleration: request.GetToleration(),
-			Containers: h.fromApiContainers(request.GetContainers()),
+			Affinity:               request.GetAffinity(),
+			Toleration:             request.GetToleration(),
+			Containers:             h.fromApiContainers(request.GetContainers()),
 		},
 	}
 }
@@ -114,18 +114,18 @@ func (h *SchedulersHandler) fromApiContainers(apiContainers []*api.Container) []
 	var containers []game_room.Container
 	for _, apiContainer := range apiContainers {
 		container := game_room.Container{
-			Name: apiContainer.GetName(),
-			Image: apiContainer.GetImage(),
+			Name:            apiContainer.GetName(),
+			Image:           apiContainer.GetImage(),
 			ImagePullPolicy: apiContainer.GetImagePullPolicy(),
-			Command: apiContainer.GetCommand(),
-			Ports: h.fromApiContainerPorts(apiContainer.GetPorts()),
-			Environment: h.fromApiContainerEnvironments(apiContainer.GetEnvironment()),
+			Command:         apiContainer.GetCommand(),
+			Ports:           h.fromApiContainerPorts(apiContainer.GetPorts()),
+			Environment:     h.fromApiContainerEnvironments(apiContainer.GetEnvironment()),
 			Requests: game_room.ContainerResources{
-				CPU: apiContainer.GetRequests().GetCpu(),
+				CPU:    apiContainer.GetRequests().GetCpu(),
 				Memory: apiContainer.GetRequests().GetMemory(),
 			},
 			Limits: game_room.ContainerResources{
-				CPU: apiContainer.GetLimits().GetCpu(),
+				CPU:    apiContainer.GetLimits().GetCpu(),
 				Memory: apiContainer.GetLimits().GetMemory(),
 			},
 		}
@@ -139,8 +139,8 @@ func (h *SchedulersHandler) fromApiContainerPorts(apiPorts []*api.ContainerPort)
 	var ports []game_room.ContainerPort
 	for _, apiPort := range apiPorts {
 		port := game_room.ContainerPort{
-			Name: apiPort.GetName(),
-			Port: int(apiPort.GetPort()),
+			Name:     apiPort.GetName(),
+			Port:     int(apiPort.GetPort()),
 			Protocol: apiPort.GetProtocol(),
 			HostPort: int(apiPort.GetHostPort()),
 		}
@@ -154,7 +154,7 @@ func (h *SchedulersHandler) fromApiContainerEnvironments(apiEnvironments []*api.
 	var environments []game_room.ContainerEnvironment
 	for _, apiEnvironment := range apiEnvironments {
 		environment := game_room.ContainerEnvironment{
-			Name: apiEnvironment.GetName(),
+			Name:  apiEnvironment.GetName(),
 			Value: apiEnvironment.GetValue(),
 		}
 		environments = append(environments, environment)
@@ -162,7 +162,6 @@ func (h *SchedulersHandler) fromApiContainerEnvironments(apiEnvironments []*api.
 
 	return environments
 }
-
 
 func getPortRange(portRange *entities.PortRange) *api.PortRange {
 	if portRange != nil {

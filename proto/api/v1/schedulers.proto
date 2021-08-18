@@ -64,12 +64,19 @@ message CreateSchedulerRequest {
 message Container {
   string name = 1;
   string image = 2;
-  string image_pull_policy = 3;
+  ImagePullPolicy image_pull_policy = 3;
   repeated string command = 4;
   repeated ContainerEnvironment environment = 5;
   ContainerResources requests = 6;
   ContainerResources limits = 7;
   repeated ContainerPort ports = 8;
+
+  enum ImagePullPolicy {
+    Never = 0;
+    Always = 1;
+    IfNotPresent = 2;
+  }
+
 }
 
 message ContainerEnvironment {
