@@ -31,6 +31,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"go.uber.org/zap"
+	"gopkg.in/validator.v2"
 )
 
 type SchedulerManager struct {
@@ -48,7 +49,12 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManag
 func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) (*entities.Scheduler, error) {
 	scheduler.State = entities.StateCreating
 
-	err := s.schedulerStorage.CreateScheduler(ctx, scheduler)
+	err := validator.Validate(scheduler)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.schedulerStorage.CreateScheduler(ctx, scheduler)
 	if err != nil {
 		return nil, err
 	}

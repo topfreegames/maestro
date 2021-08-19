@@ -25,9 +25,9 @@ package game_room
 import "time"
 
 type Spec struct {
-	Version                string
-	TerminationGracePeriod time.Duration
-	Containers             []Container
+	Version                string `validate:"min=1"`
+	TerminationGracePeriod time.Duration `validate:"min=1"`
+	Containers             []Container `validate:"min=1"`
 
 	// NOTE: consider moving it to a kubernetes-specific option?
 	Toleration string

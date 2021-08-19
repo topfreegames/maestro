@@ -72,15 +72,6 @@
     }
   },
   "definitions": {
-    "ContainerImagePullPolicy": {
-      "type": "string",
-      "enum": [
-        "Never",
-        "Always",
-        "IfNotPresent"
-      ],
-      "default": "Never"
-    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -121,7 +112,7 @@
           "type": "string"
         },
         "imagePullPolicy": {
-          "$ref": "#/definitions/ContainerImagePullPolicy"
+          "type": "string"
         },
         "command": {
           "type": "array",
