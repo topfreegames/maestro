@@ -23,9 +23,9 @@
 package game_room
 
 type Container struct {
-	Name            string `validate:"min=1"`
-	Image           string `validate:"min=1"`
-	ImagePullPolicy string `validate:"regexp=^(Always|Never|IfNotPresent){1}$"`
+	Name            string   `validate:"min=1"`
+	Image           string   `validate:"min=1"`
+	ImagePullPolicy string   `validate:"regexp=^(Always|Never|IfNotPresent){1}$"`
 	Command         []string `validate:"min=1"`
 	Environment     []ContainerEnvironment
 	Requests        ContainerResources
@@ -46,6 +46,6 @@ type ContainerResources struct {
 type ContainerPort struct {
 	Name     string
 	Protocol string `validate:"min=1"`
-	Port     int `validate:"min=1"`
-	HostPort int `validate:"min=1"`
+	Port     int    `validate:"min=1"`
+	HostPort int    `validate:"min=1"`
 }

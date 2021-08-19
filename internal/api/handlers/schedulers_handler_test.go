@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//+build integration
+// +build integration
 
 package handlers
 
@@ -243,6 +243,47 @@ func TestCreateScheduler(t *testing.T) {
 		require.Equal(t, "creating", schedulerContent["state"])
 		require.Equal(t, "v1.0.0", schedulerContent["version"])
 		require.NotNil(t, schedulerContent["createdAt"])
+	})
+
+	t.Run("with failure", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerManager := scheduler_manager.NewSchedulerManager(nil, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		request, err := ioutil.ReadFile(dirPath + "/fixtures/bad-scheduler-config.json")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 400, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+		require.NoError(t, err)
+
+		schedulerMessage, ok := body["message"]
+		require.True(t, ok)
+		require.NotNil(t, schedulerMessage)
+		require.Contains(t, schedulerMessage, "Name: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Environment[0].Name: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].ImagePullPolicy: regular expression mismatch")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Requests.Memory: less than min")
+		require.Contains(t, schedulerMessage, "Spec.TerminationGracePeriod: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Command: less than min")
+		require.Contains(t, schedulerMessage, "Game: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Requests.CPU: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Name: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Version: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Image: less than min")
 	})
 
 	t.Run("fails when scheduler already exists", func(t *testing.T) {

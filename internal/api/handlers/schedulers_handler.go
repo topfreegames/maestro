@@ -27,6 +27,8 @@ import (
 	"errors"
 	"time"
 
+	"gopkg.in/validator.v2"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -72,7 +74,12 @@ func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.Cr
 		return nil, status.Error(codes.AlreadyExists, err.Error())
 	}
 	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		switch err.(type) {
+		case validator.ErrorMap:
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		default:
+			return nil, status.Error(codes.Unknown, err.Error())
+		}
 	}
 
 	return &api.CreateSchedulerResponse{
