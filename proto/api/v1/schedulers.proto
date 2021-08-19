@@ -41,7 +41,7 @@ message CreateSchedulerResponse {
   Scheduler scheduler = 1;
 }
 
-// Scheduler is the struct that defines a maestro scheduler
+// Scheduler is the struct that defines a maestro scheduler.
 message CreateSchedulerRequest {
   // Unique identifier for the scheduler.
   string name = 1;
@@ -49,4 +49,62 @@ message CreateSchedulerRequest {
   string game = 2;
   // ?.
   string version = 3;
+  // The game room termination grace period.
+  int64 termination_grace_period = 4;
+  // The container object array defines all the game room container configurations.
+  repeated Container containers = 5;
+  // The port range object describes what is the port range used to allocate game rooms.
+  PortRange port_range = 6;
+  // Runtime game room toleration configuration.
+  string toleration = 7;
+  // Runtime game room affinity configuration.
+  string affinity = 8;
+}
+
+// Container is the struct that defines a game room container configuration.
+message Container {
+  // Name of the container.
+  string name = 1;
+  // Image address .
+  string image = 2;
+  // Image pull policy: Always, Never and IfNotExists.
+  string image_pull_policy = 3;
+  // Container command to be called when container is instantiated.
+  repeated string command = 4;
+  // Container environment variables.
+  repeated ContainerEnvironment environment = 5;
+  // Container resources request (cpu/memory).
+  ContainerResources requests = 6;
+  // Container resources limits (cpu/memory).
+  ContainerResources limits = 7;
+  // Container exposed ports definitions.
+  repeated ContainerPort ports = 8;
+}
+
+// Container environment variables.
+message ContainerEnvironment {
+  // Container environment variable name.
+  string name = 1;
+  // Container environment variable value.
+  string value = 2;
+}
+
+// Container resources (cpu/memory) (request and limits).
+message ContainerResources {
+  // Container memory amount.
+  string memory = 1;
+  // Container cpu amount.
+  string cpu = 2;
+}
+
+// Container exposed port definition.
+message ContainerPort {
+  // Name of the exposed port.
+  string name = 1;
+  // Protocol used to expose the port (TCP, UDP, SCTP).
+  string protocol = 2;
+  // Port number used.
+  int32 port = 3;
+  // Optional container host port.
+  int32 host_port = 4;
 }

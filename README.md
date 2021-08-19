@@ -5,7 +5,7 @@ Maestro: Kubernetes Game Room Scheduler
 
 ## Building and running locally
 
-1. Run `make get` to get all required modules
+1. Run `make deps` to get all required modules
 2. Run `make generate` to generate mocks, protos and wire (dependency injection)
 3. Run `make deps/start` to startup service dependencies
 4. Run `make migrate` to migrate database with the most updated schema

@@ -43,8 +43,8 @@ const (
 )
 
 type Scheduler struct {
-	Name            string
-	Game            string
+	Name            string `validate:"min=1"`
+	Game            string `validate:"min=1"`
 	State           string
 	RollbackVersion string
 	Spec            game_room.Spec

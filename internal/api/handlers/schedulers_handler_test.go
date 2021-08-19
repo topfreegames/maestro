@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//+build integration
+// +build integration
 
 package handlers
 
@@ -28,8 +28,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -155,6 +157,7 @@ func TestGetAllSchedulers(t *testing.T) {
 }
 
 func TestCreateScheduler(t *testing.T) {
+	dirPath, _ := os.Getwd()
 
 	t.Run("with success", func(t *testing.T) {
 
@@ -167,35 +170,59 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		scheduler := &entities.Scheduler{
-			Name:  "scheduler",
-			Game:  "game",
+			Name:  "scheduler-name-1",
+			Game:  "game-name",
 			State: entities.StateCreating,
 			Spec: game_room.Spec{
-				Version: "v1",
+				Version:                "v1.0.0",
+				TerminationGracePeriod: 100 * time.Nanosecond,
+				Containers: []game_room.Container{
+					{
+						Name:            "game-room-container-name",
+						Image:           "game-room-container-image",
+						ImagePullPolicy: "IfNotPresent",
+						Command:         []string{"./run"},
+						Environment: []game_room.ContainerEnvironment{{
+							Name:  "env-var-name",
+							Value: "env-var-value",
+						}},
+						Requests: game_room.ContainerResources{
+							Memory: "100mi",
+							CPU:    "100m",
+						},
+						Limits: game_room.ContainerResources{
+							Memory: "200mi",
+							CPU:    "200m",
+						},
+						Ports: []game_room.ContainerPort{{
+							Name:     "container-port-name",
+							Protocol: "https",
+							Port:     12345,
+							HostPort: 54321,
+						}},
+					},
+				},
+			},
+			PortRange: &entities.PortRange{
+				Start: 1,
+				End:   1000,
 			},
 		}
 
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Eq(scheduler)).Return(nil)
 		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-		operationFlow.EXPECT().InsertOperationID(gomock.Any(), "scheduler", gomock.Any()).Return(nil)
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler").Return(scheduler, nil)
+		operationFlow.EXPECT().InsertOperationID(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(scheduler, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		reqBody := &api.CreateSchedulerRequest{
-			Name:    "scheduler",
-			Game:    "game",
-			Version: "v1",
-		}
-		reqBodyString, err := json.Marshal(reqBody)
+		request, err := ioutil.ReadFile(dirPath + "/fixtures/scheduler-config.json")
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(reqBodyString))
-		if err != nil {
-			t.Fatal(err)
-		}
+		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
+		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
@@ -204,19 +231,59 @@ func TestCreateScheduler(t *testing.T) {
 		bodyString := rr.Body.String()
 		var body map[string]interface{}
 		err = json.Unmarshal([]byte(bodyString), &body)
-
 		require.NoError(t, err)
 
 		schedulerContent, ok := body["scheduler"].(map[string]interface{})
 		require.NotNil(t, schedulerContent)
 		require.True(t, ok)
 
-		require.Equal(t, "game", schedulerContent["game"])
-		require.Equal(t, "scheduler", schedulerContent["name"])
-		require.Equal(t, interface{}(nil), schedulerContent["portRange"])
+		require.Equal(t, "game-name", schedulerContent["game"])
+		require.Equal(t, "scheduler-name-1", schedulerContent["name"])
+		require.NotNil(t, schedulerContent["portRange"])
 		require.Equal(t, "creating", schedulerContent["state"])
-		require.Equal(t, "v1", schedulerContent["version"])
+		require.Equal(t, "v1.0.0", schedulerContent["version"])
 		require.NotNil(t, schedulerContent["createdAt"])
+	})
+
+	t.Run("with failure", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerManager := scheduler_manager.NewSchedulerManager(nil, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		request, err := ioutil.ReadFile(dirPath + "/fixtures/bad-scheduler-config.json")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 400, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+		require.NoError(t, err)
+
+		schedulerMessage, ok := body["message"]
+		require.True(t, ok)
+		require.NotNil(t, schedulerMessage)
+		require.Contains(t, schedulerMessage, "Name: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Environment[0].Name: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].ImagePullPolicy: regular expression mismatch")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Requests.Memory: less than min")
+		require.Contains(t, schedulerMessage, "Spec.TerminationGracePeriod: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Command: less than min")
+		require.Contains(t, schedulerMessage, "Game: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Requests.CPU: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Name: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Version: less than min")
+		require.Contains(t, schedulerMessage, "Spec.Containers[0].Image: less than min")
 	})
 
 	t.Run("fails when scheduler already exists", func(t *testing.T) {
@@ -233,16 +300,10 @@ func TestCreateScheduler(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		reqBody := &api.CreateSchedulerRequest{
-			Name:    "scheduler",
-			Game:    "game",
-			Version: "v1",
-		}
-
-		reqBodyString, err := json.Marshal(reqBody)
+		request, err := ioutil.ReadFile(dirPath + "/fixtures/scheduler-config.json")
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(reqBodyString))
+		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
 		if err != nil {
 			t.Fatal(err)
 		}

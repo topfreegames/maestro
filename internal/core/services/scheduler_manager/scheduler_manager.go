@@ -31,6 +31,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"go.uber.org/zap"
+	"gopkg.in/validator.v2"
 )
 
 type SchedulerManager struct {
@@ -48,7 +49,12 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManag
 func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) (*entities.Scheduler, error) {
 	scheduler.State = entities.StateCreating
 
-	err := s.schedulerStorage.CreateScheduler(ctx, scheduler)
+	err := s.validateScheduler(scheduler)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.schedulerStorage.CreateScheduler(ctx, scheduler)
 	if err != nil {
 		return nil, err
 	}
@@ -65,4 +71,10 @@ func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entit
 
 func (s *SchedulerManager) GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error) {
 	return s.schedulerStorage.GetAllSchedulers(ctx)
+}
+
+// WARN: This function should be called only on private scope of SchedulerManager.
+// WARN: Other packages should NEVER call this function.
+func (s *SchedulerManager) validateScheduler(scheduler *entities.Scheduler) error {
+	return validator.Validate(scheduler)
 }

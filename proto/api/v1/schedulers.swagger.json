@@ -102,6 +102,85 @@
         }
       }
     },
+    "v1Container": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "imagePullPolicy": {
+          "type": "string"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "environment": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ContainerEnvironment"
+          }
+        },
+        "requests": {
+          "$ref": "#/definitions/v1ContainerResources"
+        },
+        "limits": {
+          "$ref": "#/definitions/v1ContainerResources"
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ContainerPort"
+          }
+        }
+      }
+    },
+    "v1ContainerEnvironment": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1ContainerPort": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "hostPort": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ContainerResources": {
+      "type": "object",
+      "properties": {
+        "memory": {
+          "type": "string"
+        },
+        "cpu": {
+          "type": "string"
+        }
+      }
+    },
     "v1CreateSchedulerRequest": {
       "type": "object",
       "properties": {
@@ -116,6 +195,30 @@
         "version": {
           "type": "string",
           "description": "?."
+        },
+        "terminationGracePeriod": {
+          "type": "string",
+          "format": "int64",
+          "title": "The game room termination grace period"
+        },
+        "containers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Container"
+          },
+          "title": "The container object array defines all the game room container configurations"
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "title": "The port range object describes what is the port range used to allocate game rooms"
+        },
+        "toleration": {
+          "type": "string",
+          "title": "Runtime game room toleration configuration"
+        },
+        "affinity": {
+          "type": "string",
+          "title": "Runtime game room affinity configuration"
         }
       },
       "title": "Scheduler is the struct that defines a maestro scheduler"
