@@ -60,6 +60,15 @@ build/management-api:
 run/management-api: build/management-api
 	./bin/management-api
 
+.PHONY: build/rooms-api
+build/rooms-api:
+	@rm -f ./bin/rooms-api
+	@go build -o ./bin/rooms-api ./cmd/rooms_api
+
+.PHONY: run/rooms-api
+run/rooms-api: build/rooms-api
+	./bin/rooms-api
+
 ################################################################################
 ## Code generation
 ################################################################################
