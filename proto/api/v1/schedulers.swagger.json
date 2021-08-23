@@ -106,80 +106,100 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Name of the container."
         },
         "image": {
-          "type": "string"
+          "type": "string",
+          "description": "Image address ."
         },
         "imagePullPolicy": {
-          "type": "string"
+          "type": "string",
+          "description": "Image pull policy: Always, Never and IfNotExists."
         },
         "command": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Container command to be called when container is instantiated."
         },
         "environment": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1ContainerEnvironment"
-          }
+          },
+          "description": "Container environment variables."
         },
         "requests": {
-          "$ref": "#/definitions/v1ContainerResources"
+          "$ref": "#/definitions/v1ContainerResources",
+          "description": "Container resources request (cpu/memory)."
         },
         "limits": {
-          "$ref": "#/definitions/v1ContainerResources"
+          "$ref": "#/definitions/v1ContainerResources",
+          "description": "Container resources limits (cpu/memory)."
         },
         "ports": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1ContainerPort"
-          }
+          },
+          "description": "Container exposed ports definitions."
         }
-      }
+      },
+      "description": "Container is the struct that defines a game room container configuration."
     },
     "v1ContainerEnvironment": {
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Container environment variable name."
         },
         "value": {
-          "type": "string"
+          "type": "string",
+          "description": "Container environment variable value."
         }
-      }
+      },
+      "description": "Container environment variables."
     },
     "v1ContainerPort": {
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Name of the exposed port."
         },
         "protocol": {
-          "type": "string"
+          "type": "string",
+          "description": "Protocol used to expose the port (TCP, UDP, SCTP)."
         },
         "port": {
           "type": "integer",
-          "format": "int32"
+          "format": "int32",
+          "description": "Port number used."
         },
         "hostPort": {
           "type": "integer",
-          "format": "int32"
+          "format": "int32",
+          "description": "Optional container host port."
         }
-      }
+      },
+      "description": "Container exposed port definition."
     },
     "v1ContainerResources": {
       "type": "object",
       "properties": {
         "memory": {
-          "type": "string"
+          "type": "string",
+          "description": "Container memory amount."
         },
         "cpu": {
-          "type": "string"
+          "type": "string",
+          "description": "Container cpu amount."
         }
-      }
+      },
+      "description": "Container resources (cpu/memory) (request and limits)."
     },
     "v1CreateSchedulerRequest": {
       "type": "object",
@@ -199,29 +219,29 @@
         "terminationGracePeriod": {
           "type": "string",
           "format": "int64",
-          "title": "The game room termination grace period"
+          "description": "The game room termination grace period."
         },
         "containers": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1Container"
           },
-          "title": "The container object array defines all the game room container configurations"
+          "description": "The container object array defines all the game room container configurations."
         },
         "portRange": {
           "$ref": "#/definitions/v1PortRange",
-          "title": "The port range object describes what is the port range used to allocate game rooms"
+          "description": "The port range object describes what is the port range used to allocate game rooms."
         },
         "toleration": {
           "type": "string",
-          "title": "Runtime game room toleration configuration"
+          "description": "Runtime game room toleration configuration."
         },
         "affinity": {
           "type": "string",
-          "title": "Runtime game room affinity configuration"
+          "description": "Runtime game room affinity configuration."
         }
       },
-      "title": "Scheduler is the struct that defines a maestro scheduler"
+      "description": "Scheduler is the struct that defines a maestro scheduler."
     },
     "v1CreateSchedulerResponse": {
       "type": "object",

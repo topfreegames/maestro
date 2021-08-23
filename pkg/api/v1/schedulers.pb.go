@@ -158,7 +158,7 @@ func (x *CreateSchedulerResponse) GetScheduler() *Scheduler {
 	return nil
 }
 
-// Scheduler is the struct that defines a maestro scheduler
+// Scheduler is the struct that defines a maestro scheduler.
 type CreateSchedulerRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -170,15 +170,15 @@ type CreateSchedulerRequest struct {
 	Game string `protobuf:"bytes,2,opt,name=game,proto3" json:"game,omitempty"`
 	// ?.
 	Version string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
-	// The game room termination grace period
+	// The game room termination grace period.
 	TerminationGracePeriod int64 `protobuf:"varint,4,opt,name=termination_grace_period,json=terminationGracePeriod,proto3" json:"termination_grace_period,omitempty"`
-	// The container object array defines all the game room container configurations
+	// The container object array defines all the game room container configurations.
 	Containers []*Container `protobuf:"bytes,5,rep,name=containers,proto3" json:"containers,omitempty"`
-	// The port range object describes what is the port range used to allocate game rooms
+	// The port range object describes what is the port range used to allocate game rooms.
 	PortRange *PortRange `protobuf:"bytes,6,opt,name=port_range,json=portRange,proto3" json:"port_range,omitempty"`
-	// Runtime game room toleration configuration
+	// Runtime game room toleration configuration.
 	Toleration string `protobuf:"bytes,7,opt,name=toleration,proto3" json:"toleration,omitempty"`
-	// Runtime game room affinity configuration
+	// Runtime game room affinity configuration.
 	Affinity string `protobuf:"bytes,8,opt,name=affinity,proto3" json:"affinity,omitempty"`
 }
 
@@ -270,19 +270,28 @@ func (x *CreateSchedulerRequest) GetAffinity() string {
 	return ""
 }
 
+// Container is the struct that defines a game room container configuration.
 type Container struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name            string                  `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Image           string                  `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
-	ImagePullPolicy string                  `protobuf:"bytes,3,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	Command         []string                `protobuf:"bytes,4,rep,name=command,proto3" json:"command,omitempty"`
-	Environment     []*ContainerEnvironment `protobuf:"bytes,5,rep,name=environment,proto3" json:"environment,omitempty"`
-	Requests        *ContainerResources     `protobuf:"bytes,6,opt,name=requests,proto3" json:"requests,omitempty"`
-	Limits          *ContainerResources     `protobuf:"bytes,7,opt,name=limits,proto3" json:"limits,omitempty"`
-	Ports           []*ContainerPort        `protobuf:"bytes,8,rep,name=ports,proto3" json:"ports,omitempty"`
+	// Name of the container.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Image address .
+	Image string `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
+	// Image pull policy: Always, Never and IfNotExists.
+	ImagePullPolicy string `protobuf:"bytes,3,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
+	// Container command to be called when container is instantiated.
+	Command []string `protobuf:"bytes,4,rep,name=command,proto3" json:"command,omitempty"`
+	// Container environment variables.
+	Environment []*ContainerEnvironment `protobuf:"bytes,5,rep,name=environment,proto3" json:"environment,omitempty"`
+	// Container resources request (cpu/memory).
+	Requests *ContainerResources `protobuf:"bytes,6,opt,name=requests,proto3" json:"requests,omitempty"`
+	// Container resources limits (cpu/memory).
+	Limits *ContainerResources `protobuf:"bytes,7,opt,name=limits,proto3" json:"limits,omitempty"`
+	// Container exposed ports definitions.
+	Ports []*ContainerPort `protobuf:"bytes,8,rep,name=ports,proto3" json:"ports,omitempty"`
 }
 
 func (x *Container) Reset() {
@@ -373,12 +382,15 @@ func (x *Container) GetPorts() []*ContainerPort {
 	return nil
 }
 
+// Container environment variables.
 type ContainerEnvironment struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name  string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Container environment variable name.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Container environment variable value.
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 }
 
@@ -428,13 +440,16 @@ func (x *ContainerEnvironment) GetValue() string {
 	return ""
 }
 
+// Container resources (cpu/memory) (request and limits).
 type ContainerResources struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Container memory amount.
 	Memory string `protobuf:"bytes,1,opt,name=memory,proto3" json:"memory,omitempty"`
-	Cpu    string `protobuf:"bytes,2,opt,name=cpu,proto3" json:"cpu,omitempty"`
+	// Container cpu amount.
+	Cpu string `protobuf:"bytes,2,opt,name=cpu,proto3" json:"cpu,omitempty"`
 }
 
 func (x *ContainerResources) Reset() {
@@ -483,15 +498,20 @@ func (x *ContainerResources) GetCpu() string {
 	return ""
 }
 
+// Container exposed port definition.
 type ContainerPort struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name     string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Name of the exposed port.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Protocol used to expose the port (TCP, UDP, SCTP).
 	Protocol string `protobuf:"bytes,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	Port     int32  `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
-	HostPort int32  `protobuf:"varint,4,opt,name=host_port,json=hostPort,proto3" json:"host_port,omitempty"`
+	// Port number used.
+	Port int32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	// Optional container host port.
+	HostPort int32 `protobuf:"varint,4,opt,name=host_port,json=hostPort,proto3" json:"host_port,omitempty"`
 }
 
 func (x *ContainerPort) Reset() {
