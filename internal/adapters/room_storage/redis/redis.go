@@ -66,7 +66,7 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 		if err == redis.Nil {
 			return nil, errors.NewErrNotFound("room %s not found in scheduler %s", roomID, scheduler)
 		}
-		return nil, errors.NewErrUnexpected("error storing room %s on redis", roomID).WithError(err)
+		return nil, errors.NewErrUnexpected("error when getting room %s on redis", roomID).WithError(err)
 	}
 
 	room.Status = game_room.GameRoomStatus(statusCmd.Val())

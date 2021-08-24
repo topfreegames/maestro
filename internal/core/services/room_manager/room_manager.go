@@ -107,3 +107,15 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 
 	return nil
 }
+
+func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
+	currentGameRoom, err := m.roomStorage.GetRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
+	if err != nil {
+		return fmt.Errorf("unable to fetch game room from storage: %w", err)
+	}
+	err = m.setRoomStatus(ctx, currentGameRoom, gameRoom)
+	if err != nil {
+		return fmt.Errorf("failed when updating game room with incoming ping data: %w", err)
+	}
+	return nil
+}
