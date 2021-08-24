@@ -40,9 +40,6 @@ type RoomStorage interface {
 	UpdateRoom(ctx context.Context, room *game_room.GameRoom) error
 	// DeleteRoom deletes a room and returns an error if the room does not exist
 	DeleteRoom(ctx context.Context, scheduler string, roomID string) error
-	// SetRoomStatus sets only the status of a specific room
-	SetRoomStatus(ctx context.Context, scheduler string, roomID string, status game_room.GameRoomStatus) error
-
 	// GetAllRoomIDs gets all room ids in a scheduler
 	GetAllRoomIDs(ctx context.Context, scheduler string) ([]string, error)
 	// GetRoomIDsByLastPing gets all room ids in a scheduler where ping is less than threshold

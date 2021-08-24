@@ -162,28 +162,6 @@ func (r *redisStateStorage) DeleteRoom(ctx context.Context, scheduler, roomID st
 	return nil
 }
 
-func (r *redisStateStorage) SetRoomStatus(ctx context.Context, scheduler, roomID string, status game_room.GameRoomStatus) error {
-	err := r.client.WithContext(ctx).ZAddXXCh(getRoomStatusSetRedisKey(scheduler), redis.Z{
-		Member: roomID,
-		Score:  float64(status),
-	}).Err()
-	if err != nil {
-		return errors.NewErrUnexpected("error updating room %s on redis", roomID).WithError(err)
-	}
-
-	encodedEvent, err := encodeStatusEvent(&game_room.StatusEvent{RoomID: roomID, SchedulerName: scheduler, Status: status})
-	if err != nil {
-		return errors.NewErrEncoding("failed to encode status event").WithError(err)
-	}
-
-	err = r.client.WithContext(ctx).Publish(getRoomStatusUpdateChannel(scheduler, roomID), encodedEvent).Err()
-	if err != nil {
-		return errors.NewErrUnexpected("failed to publish room status update").WithError(err)
-	}
-
-	return nil
-}
-
 func (r *redisStateStorage) GetAllRoomIDs(ctx context.Context, scheduler string) ([]string, error) {
 	rooms, err := r.client.WithContext(ctx).ZRange(getRoomStatusSetRedisKey(scheduler), 0, -1).Result()
 	if err != nil {

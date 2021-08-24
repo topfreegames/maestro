@@ -316,42 +316,6 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 	})
 }
 
-func TestRedisStateStorage_SetRoomStatus(t *testing.T) {
-	ctx := context.Background()
-	client := getRedisConnection()
-	storage := NewRedisStateStorage(client)
-
-	room := &game_room.GameRoom{
-		ID:          "room-1",
-		SchedulerID: "game",
-		Status:      game_room.GameStatusReady,
-		LastPingAt:  lastPing,
-	}
-
-	sub := client.Subscribe(getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
-	defer sub.Close()
-
-	require.NoError(t, storage.CreateRoom(ctx, room))
-	require.NoError(t, storage.SetRoomStatus(ctx, room.SchedulerID, room.ID, game_room.GameStatusOccupied))
-	room.Status = game_room.GameStatusOccupied
-	assertRedisState(t, client, room)
-
-	require.Eventually(t, func() bool {
-		select {
-		case msg := <-sub.Channel():
-			event, err := decodeStatusEvent([]byte(msg.Payload))
-			require.NoError(t, err)
-			require.Equal(t, room.ID, event.RoomID)
-			require.Equal(t, room.Status, event.Status)
-
-			return true
-		default:
-		}
-
-		return false
-	}, time.Second, 100*time.Millisecond)
-}
-
 func TestRedisStateStorage_GetAllRoomIDs(t *testing.T) {
 	ctx := context.Background()
 	client := getRedisConnection()
@@ -562,13 +526,19 @@ func TestRedisStateStorage_WatchRoomStatus(t *testing.T) {
 		Status:      game_room.GameStatusReady,
 		LastPingAt:  lastPing,
 	}
+	updatedRoom := &game_room.GameRoom{
+		ID:          "room-1",
+		SchedulerID: "game",
+		Status:      game_room.GameStatusOccupied,
+		LastPingAt:  lastPing,
+	}
 
 	watcher, err := storage.WatchRoomStatus(ctx, room)
 	defer watcher.Stop()
 	require.NoError(t, err)
 
 	require.NoError(t, storage.CreateRoom(ctx, room))
-	require.NoError(t, storage.SetRoomStatus(ctx, room.SchedulerID, room.ID, game_room.GameStatusOccupied))
+	require.NoError(t, storage.UpdateRoom(ctx, updatedRoom))
 
 	require.Eventually(t, func() bool {
 		select {
