@@ -87,6 +87,21 @@ func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.Cr
 	}, nil
 }
 
+func (h *SchedulersHandler) AddRooms(ctx context.Context, request *api.AddRoomsRequest) (*api.AddRoomsResponse, error) {
+
+	operation, err := h.schedulerManager.AddRooms(ctx, request.GetSchedulerName(), request.GetAmount())
+	if errors.Is(err, portsErrors.ErrNotFound) {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.AddRoomsResponse{
+		OperationId: operation.ID,
+	}, nil
+}
+
 func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {
 	return &entities.Scheduler{
 		Name:  request.GetName(),
