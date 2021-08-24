@@ -41,7 +41,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func TestRoomManager_SetRoomStatus_SuccessTransitions(t *testing.T) {
+func TestRoomManager_ValidateRoomStatusTransition_SuccessTransitions(t *testing.T) {
 	for fromStatus, transitions := range validStatusTransitions {
 		for transition := range transitions {
 			t.Run(fmt.Sprintf("transition from %s to %s", fromStatus.String(), transition.String()), func(t *testing.T) {
@@ -56,18 +56,14 @@ func TestRoomManager_SetRoomStatus_SuccessTransitions(t *testing.T) {
 					ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 					runtimemock.NewMockRuntime(mockCtrl),
 				)
-
-				gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: fromStatus}
-				newGameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: transition}
-				roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
-				err := roomManager.setRoomStatus(context.Background(), gameRoom, newGameRoom)
+				err := roomManager.validateRoomStatusTransition(fromStatus, transition)
 				require.NoError(t, err)
 			})
 		}
 	}
 }
 
-func TestRoomManager_SetRoomStatus_InvalidTransition(t *testing.T) {
+func TestRoomManager_ValidateRoomStatusTransition_InvalidTransition(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -79,30 +75,7 @@ func TestRoomManager_SetRoomStatus_InvalidTransition(t *testing.T) {
 		runtimemock.NewMockRuntime(mockCtrl),
 	)
 
-	currentGameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusTerminating}
-	newGameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusReady}
-
-	err := roomManager.setRoomStatus(context.Background(), currentGameRoom, newGameRoom)
-	require.Error(t, err)
-}
-
-func TestRoomManager_SetRoomStatus_StorageFailure(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
-	roomManager := NewRoomManager(
-		clockmock.NewFakeClock(time.Now()),
-		pamock.NewMockPortAllocator(mockCtrl),
-		roomStorage,
-		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
-		runtimemock.NewMockRuntime(mockCtrl),
-	)
-
-	gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusPending}
-	newGameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusReady}
-	roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(fmt.Errorf("something bad happened"))
-	err := roomManager.setRoomStatus(context.Background(), gameRoom, newGameRoom)
+	err := roomManager.validateRoomStatusTransition(game_room.GameStatusTerminating, game_room.GameStatusReady)
 	require.Error(t, err)
 }
 
