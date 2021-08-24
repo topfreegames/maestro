@@ -84,6 +84,33 @@ func assertRedisState(t *testing.T, client *redis.Client, room *game_room.GameRo
 	require.Equal(t, float64(room.LastPingAt.Unix()), pingCmd.Val())
 }
 
+func assertUpdateStatusEventPublished(t *testing.T, sub *redis.PubSub, room *game_room.GameRoom) {
+	require.Eventually(t, func() bool {
+		select {
+		case msg := <-sub.Channel():
+			event, err := decodeStatusEvent([]byte(msg.Payload))
+			require.NoError(t, err)
+			require.Equal(t, room.ID, event.RoomID)
+			require.Equal(t, room.Status, event.Status)
+			require.Equal(t, room.SchedulerID, event.SchedulerName)
+			return true
+		default:
+			return false
+		}
+	}, time.Second, 100*time.Millisecond)
+}
+
+func assertUpdateStatusEventNotPublished(t *testing.T, sub *redis.PubSub) {
+	require.Eventually(t, func() bool {
+		select {
+		case <-sub.Channel():
+			return false
+		default:
+			return true
+		}
+	}, time.Second, 100*time.Millisecond)
+}
+
 func assertRedisStateNonExistent(t *testing.T, client *redis.Client, room *game_room.GameRoom) {
 	metadataCmd := client.Get(getRoomRedisKey(room.SchedulerID, room.ID))
 	require.Error(t, metadataCmd.Err())
@@ -172,12 +199,15 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		}
+		sub := client.Subscribe(getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
+		defer sub.Close()
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
 
 		room.Status = game_room.GameStatusOccupied
 		require.NoError(t, storage.UpdateRoom(ctx, room))
 		assertRedisState(t, client, room)
+		assertUpdateStatusEventPublished(t, sub, room)
 	})
 
 	t.Run("game room with metadata", func(t *testing.T) {
@@ -190,12 +220,15 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 				"region": "us",
 			},
 		}
+		sub := client.Subscribe(getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
+		defer sub.Close()
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
 
 		room.Status = game_room.GameStatusOccupied
 		require.NoError(t, storage.UpdateRoom(ctx, room))
 		assertRedisState(t, client, room)
+		assertUpdateStatusEventPublished(t, sub, room)
 	})
 
 	t.Run("error when updating non existent room", func(t *testing.T) {
@@ -208,8 +241,11 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 				"region": "us",
 			},
 		}
+		sub := client.Subscribe(getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
+		defer sub.Close()
 
 		requireErrorKind(t, errors.ErrNotFound, storage.UpdateRoom(ctx, room))
+		assertUpdateStatusEventNotPublished(t, sub)
 	})
 }
 

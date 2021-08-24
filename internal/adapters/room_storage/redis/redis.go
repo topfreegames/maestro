@@ -125,6 +125,13 @@ func (r *redisStateStorage) UpdateRoom(ctx context.Context, room *game_room.Game
 		Score:  float64(room.LastPingAt.Unix()),
 	})
 
+	encodedEvent, err := encodeStatusEvent(&game_room.StatusEvent{RoomID: room.ID, SchedulerName: room.SchedulerID, Status: room.Status})
+	if err != nil {
+		return errors.NewErrEncoding("failed to encode status event").WithError(err)
+	}
+
+	p.Publish(getRoomStatusUpdateChannel(room.SchedulerID, room.ID), encodedEvent)
+
 	_, err = p.Exec()
 	if err != nil {
 		return errors.NewErrUnexpected("error updating room %s on redis", room.ID).WithError(err)
