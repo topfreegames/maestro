@@ -58,8 +58,9 @@ func TestRoomManager_SetRoomStatus_SuccessTransitions(t *testing.T) {
 				)
 
 				gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: fromStatus}
-				roomStorage.EXPECT().SetRoomStatus(context.Background(), gameRoom.SchedulerID, gameRoom.ID, transition).Return(nil)
-				err := roomManager.SetRoomStatus(context.Background(), gameRoom, transition)
+				newGameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: transition}
+				roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
+				err := roomManager.SetRoomStatus(context.Background(), gameRoom, newGameRoom)
 				require.NoError(t, err)
 			})
 		}
@@ -78,9 +79,10 @@ func TestRoomManager_SetRoomStatus_InvalidTransition(t *testing.T) {
 		runtimemock.NewMockRuntime(mockCtrl),
 	)
 
-	transition := game_room.GameStatusReady
-	gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusTerminating}
-	err := roomManager.SetRoomStatus(context.Background(), gameRoom, transition)
+	currentGameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusTerminating}
+	newGameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusReady}
+
+	err := roomManager.SetRoomStatus(context.Background(), currentGameRoom, newGameRoom)
 	require.Error(t, err)
 }
 
@@ -97,10 +99,10 @@ func TestRoomManager_SetRoomStatus_StorageFailure(t *testing.T) {
 		runtimemock.NewMockRuntime(mockCtrl),
 	)
 
-	transition := game_room.GameStatusReady
 	gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusPending}
-	roomStorage.EXPECT().SetRoomStatus(context.Background(), gameRoom.SchedulerID, gameRoom.ID, transition).Return(fmt.Errorf("something bad happened"))
-	err := roomManager.SetRoomStatus(context.Background(), gameRoom, transition)
+	newGameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusReady}
+	roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(fmt.Errorf("something bad happened"))
+	err := roomManager.SetRoomStatus(context.Background(), gameRoom, newGameRoom)
 	require.Error(t, err)
 }
 

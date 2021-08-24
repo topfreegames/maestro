@@ -140,9 +140,10 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 
 	nextStatus := game_room.GameStatusTerminating
 	gameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady}
+	newGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: nextStatus}
 	instance := &game_room.Instance{ID: "test-instance"}
 	instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(instance, nil)
-	roomStorage.EXPECT().SetRoomStatus(context.Background(), gameRoom.SchedulerID, gameRoom.ID, nextStatus).Return(nil)
+	roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
 	runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(nil)
 
 	err := roomManager.DeleteRoom(context.Background(), gameRoom)

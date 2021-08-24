@@ -98,7 +98,9 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 		return fmt.Errorf("failed to delete instance on the runtime: %w", err)
 	}
 
-	err = m.SetRoomStatus(ctx, gameRoom, game_room.GameStatusTerminating)
+	terminatingGameRoom := *gameRoom
+	terminatingGameRoom.Status = game_room.GameStatusTerminating
+	err = m.SetRoomStatus(ctx, gameRoom, &terminatingGameRoom)
 	if err != nil {
 		return fmt.Errorf("failed to update game room status to terminating: %w", err)
 	}

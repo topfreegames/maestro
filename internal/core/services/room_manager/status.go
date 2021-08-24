@@ -64,18 +64,18 @@ var validStatusTransitions = map[game_room.GameRoomStatus]map[game_room.GameRoom
 }
 
 // SetRoomStatus changes the game room status in the storage. It takes into
-// count the current status.
-func (m *RoomManager) SetRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status game_room.GameRoomStatus) error {
-	transitions, ok := validStatusTransitions[gameRoom.Status]
+// account the current status.
+func (m *RoomManager) SetRoomStatus(ctx context.Context, currentGameRoom *game_room.GameRoom, newGameRoom *game_room.GameRoom) error {
+	transitions, ok := validStatusTransitions[currentGameRoom.Status]
 	if !ok {
-		return fmt.Errorf("game rooms has an invalid status %s", gameRoom.Status.String())
+		return fmt.Errorf("game rooms has an invalid status %s", currentGameRoom.Status.String())
 	}
 
-	if _, valid := transitions[status]; !valid {
-		return fmt.Errorf("cannot change game room status from %s to %s", gameRoom.Status.String(), status.String())
+	if _, valid := transitions[newGameRoom.Status]; !valid {
+		return fmt.Errorf("cannot change game room status from %s to %s", currentGameRoom.Status.String(), newGameRoom.Status.String())
 	}
 
-	err := m.roomStorage.SetRoomStatus(ctx, gameRoom.SchedulerID, gameRoom.ID, status)
+	err := m.roomStorage.UpdateRoom(ctx, newGameRoom)
 	if err != nil {
 		return fmt.Errorf("failed to update game room status on storage: %w", err)
 	}
