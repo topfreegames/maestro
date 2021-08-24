@@ -27,6 +27,8 @@ import (
 	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -71,6 +73,23 @@ func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entit
 
 func (s *SchedulerManager) GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error) {
 	return s.schedulerStorage.GetAllSchedulers(ctx)
+}
+
+func (s *SchedulerManager) AddRooms(ctx context.Context, schedulerName string, amount int32) (*operation.Operation, error) {
+
+	_, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
+	if err != nil {
+		return nil, fmt.Errorf("no scheduler found to add rooms on it: %w", err)
+	}
+
+	op, err := s.operationManager.CreateOperation(ctx, schedulerName, &add_rooms.AddRoomsDefinition{
+		Amount: amount,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("not able to schedule the 'add rooms' operation: %w", err)
+	}
+
+	return op, nil
 }
 
 // WARN: This function should be called only on private scope of SchedulerManager.

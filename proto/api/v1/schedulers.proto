@@ -24,6 +24,14 @@ service SchedulersService {
       body: "*"
     };
   }
+
+  // Given a amount, add rooms to a scheduler.
+  rpc AddRooms(AddRoomsRequest) returns (AddRoomsResponse) {
+    option (google.api.http) = {
+      post: "/schedulers/{scheduler_name=*}/add-rooms",
+      body: "*"
+    };
+  }
 }
 
 // List scheduler request options.
@@ -107,4 +115,18 @@ message ContainerPort {
   int32 port = 3;
   // Optional container host port.
   int32 host_port = 4;
+}
+
+// Add rooms operation request payload + path parameters.
+message AddRoomsRequest {
+  // Scheduler name where the rooms will be added.
+  string scheduler_name = 1;
+  // Amount of rooms to be added.
+  int32 amount = 2;
+}
+
+// Add rooms operation response payload, empty.
+message AddRoomsResponse {
+  // Add rooms operation ID, further this id will be used to consult its state.
+  string operation_id = 1;
 }
