@@ -154,7 +154,8 @@
       "type": "object",
       "properties": {
         "operationId": {
-          "type": "string"
+          "type": "string",
+          "description": "Add rooms operation ID, further this id will be used to consult its state."
         }
       },
       "description": "Add rooms operation response payload, empty."

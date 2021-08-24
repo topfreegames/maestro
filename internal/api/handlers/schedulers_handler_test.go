@@ -374,7 +374,7 @@ func TestAddRooms(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 404, rr.Code)
-		require.Contains(t, rr.Body.String(), "No scheduler found to add rooms on it: err")
+		require.Contains(t, rr.Body.String(), "no scheduler found to add rooms on it: err")
 	})
 
 	t.Run("fails when operation enqueue fails", func(t *testing.T) {
@@ -399,6 +399,6 @@ func TestAddRooms(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 500, rr.Code)
-		require.Contains(t, rr.Body.String(), "Not able to schedule the 'add rooms' operation: failed to create operation: storage offline")
+		require.Contains(t, rr.Body.String(), "not able to schedule the 'add rooms' operation: failed to create operation: storage offline")
 	})
 }

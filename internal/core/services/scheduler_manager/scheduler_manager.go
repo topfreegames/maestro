@@ -79,14 +79,14 @@ func (s *SchedulerManager) AddRooms(ctx context.Context, schedulerName string, a
 
 	_, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
 	if err != nil {
-		return nil, fmt.Errorf("No scheduler found to add rooms on it: %w", err)
+		return nil, fmt.Errorf("no scheduler found to add rooms on it: %w", err)
 	}
 
 	op, err := s.operationManager.CreateOperation(ctx, schedulerName, &add_rooms.AddRoomsDefinition{
 		Amount: amount,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Not able to schedule the 'add rooms' operation: %w", err)
+		return nil, fmt.Errorf("not able to schedule the 'add rooms' operation: %w", err)
 	}
 
 	return op, nil

@@ -638,6 +638,7 @@ type AddRoomsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Add rooms operation ID, further this id will be used to consult its state.
 	OperationId string `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
 }
 
