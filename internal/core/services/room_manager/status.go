@@ -63,9 +63,9 @@ var validStatusTransitions = map[game_room.GameRoomStatus]map[game_room.GameRoom
 	game_room.GameStatusTerminating: {},
 }
 
-// SetRoomStatus changes the game room status in the storage. It takes into
+// setRoomStatus changes the game room status in the storage. It takes into
 // account the current status.
-func (m *RoomManager) SetRoomStatus(ctx context.Context, currentGameRoom *game_room.GameRoom, newGameRoom *game_room.GameRoom) error {
+func (m *RoomManager) setRoomStatus(ctx context.Context, currentGameRoom *game_room.GameRoom, newGameRoom *game_room.GameRoom) error {
 	transitions, ok := validStatusTransitions[currentGameRoom.Status]
 	if !ok {
 		return fmt.Errorf("game rooms has an invalid status %s", currentGameRoom.Status.String())

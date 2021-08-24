@@ -100,7 +100,7 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 
 	terminatingGameRoom := *gameRoom
 	terminatingGameRoom.Status = game_room.GameStatusTerminating
-	err = m.SetRoomStatus(ctx, gameRoom, &terminatingGameRoom)
+	err = m.setRoomStatus(ctx, gameRoom, &terminatingGameRoom)
 	if err != nil {
 		return fmt.Errorf("failed to update game room status to terminating: %w", err)
 	}
