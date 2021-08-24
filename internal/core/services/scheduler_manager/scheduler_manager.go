@@ -76,7 +76,7 @@ func (s *SchedulerManager) GetAllSchedulers(ctx context.Context) ([]*entities.Sc
 }
 
 func (s *SchedulerManager) AddRooms(ctx context.Context, schedulerName string, amount int32) (*operation.Operation, error) {
-	
+
 	_, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
 	if err != nil {
 		return nil, fmt.Errorf("No scheduler found to add rooms on it: %w", err)

@@ -321,7 +321,6 @@ func TestCreateScheduler(t *testing.T) {
 	})
 }
 
-
 func TestAddRooms(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 

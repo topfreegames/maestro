@@ -127,5 +127,6 @@ message AddRoomsRequest {
 
 // Add rooms operation response payload, empty.
 message AddRoomsResponse {
+  // Add rooms operation ID, further this id will be used to consult its state.
   string operation_id = 1;
 }
