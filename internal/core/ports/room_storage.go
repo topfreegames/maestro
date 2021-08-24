@@ -36,7 +36,8 @@ type RoomStorage interface {
 	GetRoom(ctx context.Context, scheduler string, roomID string) (*game_room.GameRoom, error)
 	// CreateRoom creates a room and returns an error if the room already exists
 	CreateRoom(ctx context.Context, room *game_room.GameRoom) error
-	// UpdateRoom updates a room metadata, status and lastPingAt then publish an status update event. It returns an error if the room does not exist
+	// UpdateRoom updates a room metadata, status and lastPingAt then publish an status update event
+	// It returns an error if the room does not exist
 	UpdateRoom(ctx context.Context, room *game_room.GameRoom) error
 	// DeleteRoom deletes a room and returns an error if the room does not exist
 	DeleteRoom(ctx context.Context, scheduler string, roomID string) error
