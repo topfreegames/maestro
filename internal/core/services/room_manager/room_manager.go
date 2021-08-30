@@ -115,7 +115,7 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	currentGameRoom, err := m.roomStorage.GetRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
-		return fmt.Errorf("unable to fetch game room from storage: %w", err)
+		return err
 	}
 
 	err = m.validateRoomStatusTransition(currentGameRoom.Status, gameRoom.Status)
