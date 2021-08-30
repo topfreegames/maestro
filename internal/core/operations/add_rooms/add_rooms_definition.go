@@ -31,7 +31,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const operationName = "add_rooms"
+const OperationName = "add_rooms"
 
 type AddRoomsDefinition struct {
 	Amount int32 `json:"amount"`
@@ -42,7 +42,7 @@ func (d *AddRoomsDefinition) ShouldExecute(_ context.Context, _ []*operation.Ope
 }
 
 func (d *AddRoomsDefinition) Name() string {
-	return operationName
+	return OperationName
 }
 
 func (d *AddRoomsDefinition) Marshal() []byte {

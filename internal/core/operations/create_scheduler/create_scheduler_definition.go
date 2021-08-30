@@ -28,7 +28,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 )
 
-const operationName = "create_scheduler"
+const OperationName = "create_scheduler"
 
 type CreateSchedulerDefinition struct{}
 
@@ -38,7 +38,7 @@ func (d *CreateSchedulerDefinition) ShouldExecute(_ context.Context, _ []*operat
 }
 
 func (d *CreateSchedulerDefinition) Name() string {
-	return operationName
+	return OperationName
 }
 
 func (d *CreateSchedulerDefinition) Marshal() []byte {
