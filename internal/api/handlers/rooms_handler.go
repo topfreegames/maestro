@@ -61,14 +61,11 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	return &api.UpdateRoomWithPingResponse{
-		Success: true,
-	}, nil
+	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 
 func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*game_room.GameRoom, error) {
 	status, err := fromStringToGameRoomStatus(request.GetStatus())
-	metadata := request.Metadata.AsMap()
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +74,7 @@ func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomW
 		ID:          request.GetRoomName(),
 		SchedulerID: request.GetSchedulerName(),
 		Status:      status,
-		Metadata:    metadata,
+		Metadata:    request.Metadata.AsMap(),
 		LastPingAt:  time.Unix(request.GetTimestamp(), 0),
 	}, nil
 }

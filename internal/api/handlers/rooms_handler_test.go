@@ -70,25 +70,23 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 	err = json.Unmarshal(invalidStateRequests, &invalidStateRawRequests)
 	require.NoError(t, err)
 
-	t.Run("with valid request and existent game room it should return 200 OK with success = true", func(t *testing.T) {
+	t.Run("with valid request and existent game room it should return status code 200 with success = true", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		clockMock := mock5.NewFakeClock(time.Now())
+		portAllocatorMock := mock2.NewMockPortAllocator(mockCtrl)
+		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
+		instanceStorageMock := mock3.NewMockGameRoomInstanceStorage(mockCtrl)
+		runtimeMock := mock4.NewMockRuntime(mockCtrl)
+
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
+		require.NoError(t, err)
 
 		for _, validRawRequest := range validRawRequests {
-
-			mockCtrl := gomock.NewController(t)
-			defer mockCtrl.Finish()
-
-			clockMock := mock5.NewFakeClock(time.Now())
-			portAllocatorMock := mock2.NewMockPortAllocator(mockCtrl)
-			roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-			instanceStorageMock := mock3.NewMockGameRoomInstanceStorage(mockCtrl)
-			runtimeMock := mock4.NewMockRuntime(mockCtrl)
-
-			roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock)
-
-			mux := runtime.NewServeMux()
-			err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
-			require.NoError(t, err)
-
 			roomStorageMock.EXPECT().GetRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil)
 			roomStorageMock.EXPECT().UpdateRoom(gomock.Any(), gomock.Any()).Return(nil)
 			request, err := validRawRequest.MarshalJSON()
@@ -104,10 +102,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 			bodyString := rr.Body.String()
 			require.Equal(t, "{\"success\":true}", bodyString)
 		}
-
 	})
 
-	t.Run("with valid request and nonexistent game room then it should with status code 404", func(t *testing.T) {
+	t.Run("with valid request and nonexistent game room then it should return with status code 404", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
@@ -200,9 +197,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 			mux.ServeHTTP(rr, req)
 
 			require.Equal(t, 500, rr.Code)
-
 		}
-
 	})
 
 	t.Run("with invalid request then it should return with status code 400", func(t *testing.T) {
@@ -233,5 +228,4 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 
 		require.Equal(t, 400, rr.Code)
 	})
-
 }
