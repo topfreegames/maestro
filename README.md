@@ -43,4 +43,7 @@ kubectl get namespaces | grep zooba
 
 1. Run `make run/unit-tests` to run all unit tests
 2. Run `make run/integration-tests` to run all integration tests
-3. Run `make lint` to run all registered linters
+3. Run `make run/e2e-tests` to run all E2E tests. NOTE: currently it is not
+   possible to run it with the development environment set, so before running it
+   perform a `make deps/stop` and stop all the components running.
+4. Run `make lint` to run all registered linters
