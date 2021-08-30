@@ -46,5 +46,5 @@ func (e *AddRoomsExecutor) OnError(ctx context.Context, op *operation.Operation,
 }
 
 func (e *AddRoomsExecutor) Name() string {
-	return operationName
+	return OperationName
 }

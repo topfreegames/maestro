@@ -24,17 +24,19 @@ package providers
 
 import (
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"github.com/topfreegames/maestro/internal/core/ports"
 )
 
-var createSchedulerOperationName = "create_scheduler"
-
 func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor {
 
 	definitionConstructors := map[string]operations.DefinitionConstructor{}
-	definitionConstructors[createSchedulerOperationName] = func() operations.Definition {
+	definitionConstructors[create_scheduler.OperationName] = func() operations.Definition {
 		return &create_scheduler.CreateSchedulerDefinition{}
+	}
+	definitionConstructors[add_rooms.OperationName] = func() operations.Definition {
+		return &add_rooms.AddRoomsDefinition{}
 	}
 
 	return definitionConstructors
@@ -44,7 +46,8 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 func ProvideExecutors(runtime ports.Runtime, schedulerStorage ports.SchedulerStorage) map[string]operations.Executor {
 
 	executors := map[string]operations.Executor{}
-	executors[createSchedulerOperationName] = create_scheduler.NewExecutor(runtime, schedulerStorage)
+	executors[create_scheduler.OperationName] = create_scheduler.NewExecutor(runtime, schedulerStorage)
+	executors[add_rooms.OperationName] = add_rooms.NewExecutor()
 
 	return executors
 

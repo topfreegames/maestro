@@ -66,5 +66,5 @@ func (e *CreateSchedulerExecutor) OnError(ctx context.Context, op *operation.Ope
 }
 
 func (e *CreateSchedulerExecutor) Name() string {
-	return operationName
+	return OperationName
 }
