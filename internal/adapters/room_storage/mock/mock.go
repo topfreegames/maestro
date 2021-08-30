@@ -140,20 +140,6 @@ func (mr *MockRoomStorageMockRecorder) GetRoomIDsByLastPing(ctx, scheduler, thre
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomIDsByLastPing", reflect.TypeOf((*MockRoomStorage)(nil).GetRoomIDsByLastPing), ctx, scheduler, threshold)
 }
 
-// SetRoomStatus mocks base method.
-func (m *MockRoomStorage) SetRoomStatus(ctx context.Context, scheduler, roomID string, status game_room.GameRoomStatus) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetRoomStatus", ctx, scheduler, roomID, status)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SetRoomStatus indicates an expected call of SetRoomStatus.
-func (mr *MockRoomStorageMockRecorder) SetRoomStatus(ctx, scheduler, roomID, status interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRoomStatus", reflect.TypeOf((*MockRoomStorage)(nil).SetRoomStatus), ctx, scheduler, roomID, status)
-}
-
 // UpdateRoom mocks base method.
 func (m *MockRoomStorage) UpdateRoom(ctx context.Context, room *game_room.GameRoom) error {
 	m.ctrl.T.Helper()

@@ -29,6 +29,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
+
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -138,13 +140,81 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 		runtime,
 	)
 
-	nextStatus := game_room.GameStatusTerminating
-	gameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady}
-	instance := &game_room.Instance{ID: "test-instance"}
-	instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(instance, nil)
-	roomStorage.EXPECT().SetRoomStatus(context.Background(), gameRoom.SchedulerID, gameRoom.ID, nextStatus).Return(nil)
-	runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(nil)
+	t.Run("when the game room status transition is valid then it deletes the game room and update its status", func(t *testing.T) {
+		nextStatus := game_room.GameStatusTerminating
+		gameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady}
+		newGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: nextStatus}
+		instance := &game_room.Instance{ID: "test-instance"}
+		instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(instance, nil)
+		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
+		runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(nil)
 
-	err := roomManager.DeleteRoom(context.Background(), gameRoom)
-	require.NoError(t, err)
+		err := roomManager.DeleteRoom(context.Background(), gameRoom)
+		require.NoError(t, err)
+	})
+
+	t.Run("when the game room status transition is invalid then it deletes the game room and returns with proper error", func(t *testing.T) {
+		gameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusTerminating}
+		instance := &game_room.Instance{ID: "test-instance"}
+		instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(instance, nil)
+		runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(nil)
+
+		err := roomManager.DeleteRoom(context.Background(), gameRoom)
+		require.Error(t, err)
+	})
+}
+
+func TestRoomManager_UpdateRoom(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
+	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	clock := clockmock.NewFakeClock(time.Now())
+	roomManager := NewRoomManager(
+		clock,
+		pamock.NewMockPortAllocator(mockCtrl),
+		roomStorage,
+		instanceStorage,
+		runtime,
+	)
+	currentGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady}
+	newGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusOccupied, LastPingAt: clock.Now()}
+
+	t.Run("when the current game room exists then it execute without returning error", func(t *testing.T) {
+		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentGameRoom, nil)
+		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
+
+		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
+
+		require.NoError(t, err)
+	})
+
+	t.Run("when the current game room does not exist then it returns proper error", func(t *testing.T) {
+		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(nil, errors.ErrUnexpected)
+
+		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
+
+		require.Error(t, err)
+	})
+
+	t.Run("when there is some error while updating the room then it returns proper error", func(t *testing.T) {
+		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentGameRoom, nil)
+		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(errors.ErrUnexpected)
+
+		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
+
+		require.Error(t, err)
+	})
+
+	t.Run("when the game room state transition is invalid then it returns proper error", func(t *testing.T) {
+		newGameRoomInvalidState := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusPending}
+		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(currentGameRoom, nil)
+
+		err := roomManager.UpdateRoom(context.Background(), newGameRoomInvalidState)
+
+		require.Error(t, err)
+	})
+
 }

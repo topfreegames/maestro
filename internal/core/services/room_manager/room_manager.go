@@ -98,9 +98,36 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 		return fmt.Errorf("failed to delete instance on the runtime: %w", err)
 	}
 
-	err = m.SetRoomStatus(ctx, gameRoom, game_room.GameStatusTerminating)
+	err = m.validateRoomStatusTransition(gameRoom.Status, game_room.GameStatusTerminating)
 	if err != nil {
-		return fmt.Errorf("failed to update game room status to terminating: %w", err)
+		return fmt.Errorf("failed when validating game room status transition: %w", err)
+	}
+	gameRoom.Status = game_room.GameStatusTerminating
+
+	err = m.roomStorage.UpdateRoom(ctx, gameRoom)
+	if err != nil {
+		return fmt.Errorf("failed when updating game room in storage: %w", err)
+	}
+
+	return nil
+}
+
+func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
+	currentGameRoom, err := m.roomStorage.GetRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
+	if err != nil {
+		return fmt.Errorf("unable to fetch game room from storage: %w", err)
+	}
+
+	err = m.validateRoomStatusTransition(currentGameRoom.Status, gameRoom.Status)
+	if err != nil {
+		return fmt.Errorf("failed when validating game room status transition: %w", err)
+	}
+
+	gameRoom.LastPingAt = m.clock.Now()
+
+	err = m.roomStorage.UpdateRoom(ctx, gameRoom)
+	if err != nil {
+		return fmt.Errorf("failed when updating game room in storage with incoming ping data: %w", err)
 	}
 
 	return nil

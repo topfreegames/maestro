@@ -66,7 +66,7 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 		if err == redis.Nil {
 			return nil, errors.NewErrNotFound("room %s not found in scheduler %s", roomID, scheduler)
 		}
-		return nil, errors.NewErrUnexpected("error storing room %s on redis", roomID).WithError(err)
+		return nil, errors.NewErrUnexpected("error when getting room %s on redis", roomID).WithError(err)
 	}
 
 	room.Status = game_room.GameRoomStatus(statusCmd.Val())
@@ -125,6 +125,13 @@ func (r *redisStateStorage) UpdateRoom(ctx context.Context, room *game_room.Game
 		Score:  float64(room.LastPingAt.Unix()),
 	})
 
+	encodedEvent, err := encodeStatusEvent(&game_room.StatusEvent{RoomID: room.ID, SchedulerName: room.SchedulerID, Status: room.Status})
+	if err != nil {
+		return errors.NewErrEncoding("failed to encode status event").WithError(err)
+	}
+
+	p.Publish(getRoomStatusUpdateChannel(room.SchedulerID, room.ID), encodedEvent)
+
 	_, err = p.Exec()
 	if err != nil {
 		return errors.NewErrUnexpected("error updating room %s on redis", room.ID).WithError(err)
@@ -152,28 +159,6 @@ func (r *redisStateStorage) DeleteRoom(ctx context.Context, scheduler, roomID st
 			return errors.NewErrNotFound("room %s not found in scheduler %s", roomID, scheduler)
 		}
 	}
-	return nil
-}
-
-func (r *redisStateStorage) SetRoomStatus(ctx context.Context, scheduler, roomID string, status game_room.GameRoomStatus) error {
-	err := r.client.WithContext(ctx).ZAddXXCh(getRoomStatusSetRedisKey(scheduler), redis.Z{
-		Member: roomID,
-		Score:  float64(status),
-	}).Err()
-	if err != nil {
-		return errors.NewErrUnexpected("error updating room %s on redis", roomID).WithError(err)
-	}
-
-	encodedEvent, err := encodeStatusEvent(&game_room.StatusEvent{RoomID: roomID, SchedulerName: scheduler, Status: status})
-	if err != nil {
-		return errors.NewErrEncoding("failed to encode status event").WithError(err)
-	}
-
-	err = r.client.WithContext(ctx).Publish(getRoomStatusUpdateChannel(scheduler, roomID), encodedEvent).Err()
-	if err != nil {
-		return errors.NewErrUnexpected("failed to publish room status update").WithError(err)
-	}
-
 	return nil
 }
 
