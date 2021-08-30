@@ -29,8 +29,6 @@ import (
 
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
-	pb "github.com/golang/protobuf/ptypes/struct"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -70,7 +68,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 
 func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*game_room.GameRoom, error) {
 	status, err := fromStringToGameRoomStatus(request.GetStatus())
-	metadata := decodeToMapOfInterface(request.Metadata)
+	metadata := request.Metadata.AsMap()
 	if err != nil {
 		return nil, err
 	}
@@ -82,40 +80,6 @@ func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomW
 		Metadata:    metadata,
 		LastPingAt:  time.Unix(request.GetTimestamp(), 0),
 	}, nil
-}
-
-func decodeToMapOfInterface(requestMetadata *pb.Struct) map[string]interface{} {
-	if requestMetadata == nil {
-		return nil
-	}
-	m := map[string]interface{}{}
-	for k, v := range requestMetadata.Fields {
-		m[k], _ = decodeValue(v)
-	}
-	return m
-}
-
-func decodeValue(value *pb.Value) (interface{}, error) {
-	switch k := value.Kind.(type) {
-	case *pb.Value_NullValue:
-		return nil, nil
-	case *pb.Value_NumberValue:
-		return k.NumberValue, nil
-	case *pb.Value_StringValue:
-		return k.StringValue, nil
-	case *pb.Value_BoolValue:
-		return k.BoolValue, nil
-	case *pb.Value_StructValue:
-		return decodeToMapOfInterface(k.StructValue), nil
-	case *pb.Value_ListValue:
-		s := make([]interface{}, len(k.ListValue.Values))
-		for i, e := range k.ListValue.Values {
-			s[i], _ = decodeValue(e)
-		}
-		return s, nil
-	default:
-		return nil, portsErrors.NewErrInvalidArgument("proto struct: invalid kind %s", value)
-	}
 }
 
 func fromStringToGameRoomStatus(value string) (game_room.GameRoomStatus, error) {
