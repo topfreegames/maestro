@@ -140,16 +140,28 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 		runtime,
 	)
 
-	nextStatus := game_room.GameStatusTerminating
-	gameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady}
-	newGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: nextStatus}
-	instance := &game_room.Instance{ID: "test-instance"}
-	instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(instance, nil)
-	roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
-	runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(nil)
+	t.Run("when the game room status transition is valid then it deletes the game room and update its status", func(t *testing.T) {
+		nextStatus := game_room.GameStatusTerminating
+		gameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady}
+		newGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: nextStatus}
+		instance := &game_room.Instance{ID: "test-instance"}
+		instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(instance, nil)
+		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
+		runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(nil)
 
-	err := roomManager.DeleteRoom(context.Background(), gameRoom)
-	require.NoError(t, err)
+		err := roomManager.DeleteRoom(context.Background(), gameRoom)
+		require.NoError(t, err)
+	})
+
+	t.Run("when the game room status transition is invalid then it deletes the game room and returns with proper error", func(t *testing.T) {
+		gameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusTerminating}
+		instance := &game_room.Instance{ID: "test-instance"}
+		instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(instance, nil)
+		runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(nil)
+
+		err := roomManager.DeleteRoom(context.Background(), gameRoom)
+		require.Error(t, err)
+	})
 }
 
 func TestRoomManager_UpdateRoom(t *testing.T) {
