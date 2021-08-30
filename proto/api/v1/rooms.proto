@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package api.v1;
+
+option java_package = "com.topfreegames.maestro.pkg.api.v1";
+option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+
+// Rooms Service.
+service RoomsService {
+
+  // Updates a game room with ping data.
+  rpc UpdateRoomWithPing(UpdateRoomWithPingRequest) returns (UpdateRoomWithPingResponse) {
+    option (google.api.http) = {
+      post: "/scheduler/{scheduler_name=*}/rooms/{room_name=*}/ping",
+      body: "*"
+    };
+  }
+}
+
+// The ping request.
+message UpdateRoomWithPingRequest {
+  // Target scheduler name.
+  // NOTE: On http protocol, this operates as a path param.
+  string scheduler_name = 1;
+  // Target room name.
+  // NOTE: On http protocol, this operates as a path param.
+  string room_name = 2;
+  // Target room metadata.
+  google.protobuf.Struct metadata = 3;
+  // Indicates the room status.
+  string status = 4;
+  // Timestamp of the ping event.
+  int64 timestamp = 5;
+}
+
+// The ping response.
+message UpdateRoomWithPingResponse {
+  // Indicates if the ping update succeded or not.
+  bool success = 1;
+}
