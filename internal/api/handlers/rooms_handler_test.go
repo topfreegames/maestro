@@ -60,7 +60,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		LastPingAt:  time.Time{},
 	}
 
-	validRequests, _ := ioutil.ReadFile(dirPath + "/fixtures/ping-data.json")
+	validRequests, _ := ioutil.ReadFile(dirPath + "/fixtures/valid-ping-data-list.json")
 	var validRawRequests []*json.RawMessage
 	err := json.Unmarshal(validRequests, &validRawRequests)
 	require.NoError(t, err)
