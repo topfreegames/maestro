@@ -195,4 +195,13 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("when the game room state transition is invalid then it returns proper error", func(t *testing.T) {
+		newGameRoomInvalidState := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusPending}
+		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(currentGameRoom, nil)
+
+		err := roomManager.UpdateRoom(context.Background(), newGameRoomInvalidState)
+
+		require.Error(t, err)
+	})
+
 }

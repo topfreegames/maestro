@@ -98,15 +98,13 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 		return fmt.Errorf("failed to delete instance on the runtime: %w", err)
 	}
 
-	newGameRoom := *gameRoom
-	newGameRoom.Status = game_room.GameStatusTerminating
-
-	err = m.validateRoomStatusTransition(gameRoom.Status, newGameRoom.Status)
+	err = m.validateRoomStatusTransition(gameRoom.Status, game_room.GameStatusTerminating)
 	if err != nil {
 		return fmt.Errorf("failed when validating game room status transition: %w", err)
 	}
+	gameRoom.Status = game_room.GameStatusTerminating
 
-	err = m.roomStorage.UpdateRoom(ctx, &newGameRoom)
+	err = m.roomStorage.UpdateRoom(ctx, gameRoom)
 	if err != nil {
 		return fmt.Errorf("failed when updating game room in storage: %w", err)
 	}
