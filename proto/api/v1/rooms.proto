@@ -38,6 +38,6 @@ message UpdateRoomWithPingRequest {
 
 // The ping response.
 message UpdateRoomWithPingResponse {
-  // Indicates if the ping update succeded or not.
+  // Indicates if the ping update succeeded or not.
   bool success = 1;
 }

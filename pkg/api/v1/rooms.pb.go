@@ -115,6 +115,7 @@ type UpdateRoomWithPingResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Indicates if the ping update succeeded or not.
 	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 }
 
