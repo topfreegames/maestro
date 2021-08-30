@@ -123,6 +123,8 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 		return fmt.Errorf("failed when validating game room status transition: %w", err)
 	}
 
+	gameRoom.LastPingAt = m.clock.Now()
+
 	err = m.roomStorage.UpdateRoom(ctx, gameRoom)
 	if err != nil {
 		return fmt.Errorf("failed when updating game room in storage with incoming ping data: %w", err)

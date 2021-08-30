@@ -171,15 +171,16 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	clock := clockmock.NewFakeClock(time.Now())
 	roomManager := NewRoomManager(
-		clockmock.NewFakeClock(time.Now()),
+		clock,
 		pamock.NewMockPortAllocator(mockCtrl),
 		roomStorage,
 		instanceStorage,
 		runtime,
 	)
 	currentGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady}
-	newGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusOccupied}
+	newGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusOccupied, LastPingAt: clock.Now()}
 
 	t.Run("when the current game room exists then it execute without returning error", func(t *testing.T) {
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentGameRoom, nil)
