@@ -25,8 +25,6 @@ package game_room
 import (
 	"fmt"
 	"time"
-
-	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 )
 
 type GameRoomStatus int
@@ -80,8 +78,8 @@ func FromStringToGameRoomStatus(value string) (GameRoomStatus, error) {
 	case "error":
 		return GameStatusError, nil
 	default:
-		return GameStatusPending, portsErrors.NewErrInvalidArgument("invalid value for GameRoomStatus: %s", value)
 	}
+	return GameStatusPending, fmt.Errorf("cannot convert string %s to a valid GameRoomStatus representation", value)
 }
 
 type GameRoom struct {
