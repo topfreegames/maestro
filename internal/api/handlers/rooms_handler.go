@@ -65,7 +65,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 }
 
 func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*game_room.GameRoom, error) {
-	status, err := fromStringToGameRoomStatus(request.GetStatus())
+	status, err := game_room.FromStringToGameRoomStatus(request.GetStatus())
 	if err != nil {
 		return nil, err
 	}
@@ -77,23 +77,4 @@ func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomW
 		Metadata:    request.Metadata.AsMap(),
 		LastPingAt:  time.Unix(request.GetTimestamp(), 0),
 	}, nil
-}
-
-func fromStringToGameRoomStatus(value string) (game_room.GameRoomStatus, error) {
-	switch value {
-	case "pending":
-		return game_room.GameStatusPending, nil
-	case "unready":
-		return game_room.GameStatusUnready, nil
-	case "ready":
-		return game_room.GameStatusReady, nil
-	case "occupied":
-		return game_room.GameStatusOccupied, nil
-	case "terminating":
-		return game_room.GameStatusTerminating, nil
-	case "error":
-		return game_room.GameStatusError, nil
-	default:
-		return game_room.GameStatusPending, portsErrors.NewErrInvalidArgument("invalid value for GameRoomStatus: %s", value)
-	}
 }

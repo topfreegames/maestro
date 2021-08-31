@@ -36,15 +36,15 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
-	mock5 "github.com/topfreegames/maestro/internal/adapters/clock/mock"
+	clock_mock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 
 	"github.com/golang/mock/gomock"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
-	mock3 "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
-	mock2 "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
+	instance_storage_mock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
+	port_allocator_mock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	"github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
-	mock4 "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
+	runtime_mock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
@@ -74,11 +74,11 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
-		clockMock := mock5.NewFakeClock(time.Now())
-		portAllocatorMock := mock2.NewMockPortAllocator(mockCtrl)
+		clockMock := clock_mock.NewFakeClock(time.Now())
+		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		instanceStorageMock := mock3.NewMockGameRoomInstanceStorage(mockCtrl)
-		runtimeMock := mock4.NewMockRuntime(mockCtrl)
+		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
+		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock)
 
@@ -109,11 +109,11 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		clockMock := mock5.NewFakeClock(time.Now())
-		portAllocatorMock := mock2.NewMockPortAllocator(mockCtrl)
+		clockMock := clock_mock.NewFakeClock(time.Now())
+		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		instanceStorageMock := mock3.NewMockGameRoomInstanceStorage(mockCtrl)
-		runtimeMock := mock4.NewMockRuntime(mockCtrl)
+		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
+		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock)
 
@@ -140,11 +140,11 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		clockMock := mock5.NewFakeClock(time.Now())
-		portAllocatorMock := mock2.NewMockPortAllocator(mockCtrl)
+		clockMock := clock_mock.NewFakeClock(time.Now())
+		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		instanceStorageMock := mock3.NewMockGameRoomInstanceStorage(mockCtrl)
-		runtimeMock := mock4.NewMockRuntime(mockCtrl)
+		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
+		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock)
 
@@ -168,22 +168,22 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 	})
 
 	t.Run("with valid request when the new game room state transition is invalid then it should return with status code 500", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		clockMock := clock_mock.NewFakeClock(time.Now())
+		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
+		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
+		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
+		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
+
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
+		require.NoError(t, err)
 
 		for _, invalidStateRawRequest := range invalidStateRawRequests {
-			mockCtrl := gomock.NewController(t)
-			defer mockCtrl.Finish()
-
-			clockMock := mock5.NewFakeClock(time.Now())
-			portAllocatorMock := mock2.NewMockPortAllocator(mockCtrl)
-			roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-			instanceStorageMock := mock3.NewMockGameRoomInstanceStorage(mockCtrl)
-			runtimeMock := mock4.NewMockRuntime(mockCtrl)
-
-			roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock)
-
-			mux := runtime.NewServeMux()
-			err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
-			require.NoError(t, err)
 
 			roomStorageMock.EXPECT().GetRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil)
 
@@ -205,11 +205,11 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		clockMock := mock5.NewFakeClock(time.Now())
-		portAllocatorMock := mock2.NewMockPortAllocator(mockCtrl)
+		clockMock := clock_mock.NewFakeClock(time.Now())
+		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		instanceStorageMock := mock3.NewMockGameRoomInstanceStorage(mockCtrl)
-		runtimeMock := mock4.NewMockRuntime(mockCtrl)
+		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
+		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock)
 

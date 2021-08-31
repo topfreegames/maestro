@@ -25,6 +25,8 @@ package game_room
 import (
 	"fmt"
 	"time"
+
+	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 )
 
 type GameRoomStatus int
@@ -60,6 +62,25 @@ func (status GameRoomStatus) String() string {
 		return "error"
 	default:
 		panic(fmt.Sprintf("invalid value for GameRoomStatus: %d", int(status)))
+	}
+}
+
+func FromStringToGameRoomStatus(value string) (GameRoomStatus, error) {
+	switch value {
+	case "pending":
+		return GameStatusPending, nil
+	case "unready":
+		return GameStatusUnready, nil
+	case "ready":
+		return GameStatusReady, nil
+	case "occupied":
+		return GameStatusOccupied, nil
+	case "terminating":
+		return GameStatusTerminating, nil
+	case "error":
+		return GameStatusError, nil
+	default:
+		return GameStatusPending, portsErrors.NewErrInvalidArgument("invalid value for GameRoomStatus: %s", value)
 	}
 }
 
