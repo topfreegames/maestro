@@ -63,6 +63,25 @@ func (status GameRoomStatus) String() string {
 	}
 }
 
+func FromStringToGameRoomStatus(value string) (GameRoomStatus, error) {
+	switch value {
+	case "pending":
+		return GameStatusPending, nil
+	case "unready":
+		return GameStatusUnready, nil
+	case "ready":
+		return GameStatusReady, nil
+	case "occupied":
+		return GameStatusOccupied, nil
+	case "terminating":
+		return GameStatusTerminating, nil
+	case "error":
+		return GameStatusError, nil
+	default:
+	}
+	return GameStatusPending, fmt.Errorf("cannot convert string %s to a valid GameRoomStatus representation", value)
+}
+
 type GameRoom struct {
 	ID          string
 	SchedulerID string

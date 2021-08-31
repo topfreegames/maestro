@@ -9,12 +9,16 @@ rooms_api:
   port: 8090
   gracefulShutdownTimeout: 10s
 adapters:
-  schedulerStorage:
-    postgres:
-      url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
-  operationFlow:
+  portAllocator:
+    random:
+      range: 60001-60010
+  roomStorage:
     redis:
       url: "redis://localhost:6379/0"
-  operationStorage:
+  instanceStorage:
     redis:
       url: "redis://localhost:6379/0"
+  runtime:
+    kubernetes:
+      masterUrl: "https://127.0.0.1:6443"
+      kubeconfig: "./kubeconfig.yaml"
