@@ -131,7 +131,22 @@ called [gnomock](https://github.com/orlangure/gnomock) to spin the test dependen
 a docker-compose or some other solution).
 
 ### e2e
-TODO
+End-to-end (e2e) tests are located in the `e2e/` directory, and it is presented
+as an isolated golang module (meaning that commands performed on the root won't
+affect it).
+
+The structure is defined:
+```
+framework/    # Necessary code to set up and run the tests.
+suites/       # Package where the tests will be placed.
+  management/ # tests related to management.
+```
+
+The framework package will provide some wrappers to simplify the tests;
+check out the `e2e/framework/wrappers.go` file for more information.
+
+Note: All tests package must define a TestMain which will set up Maestro
+dependencies and components. See example at `e2e/suites/management/management_test.go`.
 
 ## Logging
 TODO

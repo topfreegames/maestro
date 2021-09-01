@@ -49,3 +49,4 @@ env
 
 # K3S files
 kubeconfig.yaml
+e2e/framework/maestro/kubeconfig.yaml
