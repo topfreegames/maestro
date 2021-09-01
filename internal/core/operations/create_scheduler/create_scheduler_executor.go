@@ -26,6 +26,8 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
@@ -44,7 +46,7 @@ func NewExecutor(runtime ports.Runtime, storage ports.SchedulerStorage) *CreateS
 	}
 }
 
-func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition, logger *zap.Logger) error {
 
 	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName})
 	if err != nil {
@@ -54,7 +56,7 @@ func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 	return nil
 }
 
-func (e *CreateSchedulerExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (e *CreateSchedulerExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error, logger *zap.Logger) error {
 	scheduler, err := e.storage.GetScheduler(ctx, op.SchedulerName)
 	if err != nil {
 		return fmt.Errorf("failed to find scheduler by id: %w", err)

@@ -11,6 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	operation "github.com/topfreegames/maestro/internal/core/entities/operation"
 	operations "github.com/topfreegames/maestro/internal/core/operations"
+	zap "go.uber.org/zap"
 )
 
 // MockExecutor is a mock of Executor interface.
@@ -37,17 +38,17 @@ func (m *MockExecutor) EXPECT() *MockExecutorMockRecorder {
 }
 
 // Execute mocks base method.
-func (m *MockExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (m *MockExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition, logger *zap.Logger) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Execute", ctx, op, definition)
+	ret := m.ctrl.Call(m, "Execute", ctx, op, definition, logger)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Execute indicates an expected call of Execute.
-func (mr *MockExecutorMockRecorder) Execute(ctx, op, definition interface{}) *gomock.Call {
+func (mr *MockExecutorMockRecorder) Execute(ctx, op, definition, logger interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockExecutor)(nil).Execute), ctx, op, definition)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockExecutor)(nil).Execute), ctx, op, definition, logger)
 }
 
 // Name mocks base method.
@@ -65,15 +66,15 @@ func (mr *MockExecutorMockRecorder) Name() *gomock.Call {
 }
 
 // OnError mocks base method.
-func (m *MockExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (m *MockExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error, logger *zap.Logger) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "OnError", ctx, op, definition, executeErr)
+	ret := m.ctrl.Call(m, "OnError", ctx, op, definition, executeErr, logger)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // OnError indicates an expected call of OnError.
-func (mr *MockExecutorMockRecorder) OnError(ctx, op, definition, executeErr interface{}) *gomock.Call {
+func (mr *MockExecutorMockRecorder) OnError(ctx, op, definition, executeErr, logger interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnError", reflect.TypeOf((*MockExecutor)(nil).OnError), ctx, op, definition, executeErr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnError", reflect.TypeOf((*MockExecutor)(nil).OnError), ctx, op, definition, executeErr, logger)
 }

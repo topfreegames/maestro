@@ -38,8 +38,8 @@ import (
 
 var _ workers.Worker = (*OperationExecutionWorker)(nil)
 
-// Worker is the service responsible for implemeting the worker
-// responsabilities.
+// OperationExecutionWorker is the service responsible for implementing the worker
+// responsibilities.
 type OperationExecutionWorker struct {
 	schedulerName    string
 	operationManager *operation_manager.OperationManager
@@ -116,7 +116,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		}
 
 		executeStartTime := time.Now()
-		executionErr := executor.Execute(operationContext, op, def)
+		executionErr := executor.Execute(operationContext, op, def, loopLogger)
 		reportOperationExecutionLatency(executeStartTime, w.schedulerName, op.DefinitionName, executionErr != nil)
 
 		op.Status = operation.StatusFinished
@@ -129,7 +129,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			loopLogger.Error("operation execution failed", zap.Error(executionErr))
 
 			onErrorStartTime := time.Now()
-			onErrorErr := executor.OnError(operationContext, op, def, executionErr)
+			onErrorErr := executor.OnError(operationContext, op, def, executionErr, loopLogger)
 			reportOperationOnErrorLatency(onErrorStartTime, w.schedulerName, op.DefinitionName, onErrorErr != nil)
 
 			if onErrorErr != nil {

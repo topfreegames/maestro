@@ -40,9 +40,12 @@ import (
 	mockoperation "github.com/topfreegames/maestro/internal/core/operations/mock"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
+	"go.uber.org/zap"
 )
 
 func TestSchedulerOperationsExecutionLoop(t *testing.T) {
+	logger := zap.L().With(zap.String("service", "worker"))
+
 	t.Run("successfully runs a single operation", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -76,8 +79,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
-		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).
-			Do(func(ctx, operation, definition interface{}) {
+		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition, logger).
+			Do(func(ctx, operation, definition, logger interface{}) {
 				time.Sleep(time.Second * 1)
 			}).
 			Return(nil)
@@ -130,9 +133,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		executionErr := fmt.Errorf("failed to execute operation")
-		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
-		operationExecutor.EXPECT().OnError(gomock.Any(), expectedOperation, operationDefinition, executionErr).
-			Do(func(ctx, operation, definition, executeErr interface{}) {
+		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition, logger).Return(executionErr)
+		operationExecutor.EXPECT().OnError(gomock.Any(), expectedOperation, operationDefinition, executionErr, logger).
+			Do(func(ctx, operation, definition, executeErr, logger interface{}) {
 				time.Sleep(time.Second * 1)
 			}).Return(nil)
 
