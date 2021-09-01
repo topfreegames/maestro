@@ -39,7 +39,7 @@ license-check:
 	@go run github.com/google/addlicense -skip yaml -skip yml -skip proto -check .
 
 .PHONY: run/e2e-tests
-run/e2e-tests:
+run/e2e-tests: deps/stop
 	cd e2e; go mod download; go test -count=1 ./suites/...
 
 ################################################################################
