@@ -37,6 +37,7 @@ import (
 	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	rsmock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
+	configmock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"golang.org/x/sync/errgroup"
 )
@@ -55,6 +56,7 @@ func TestRoomManager_ValidateRoomStatusTransition_SuccessTransitions(t *testing.
 					roomStorage,
 					ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 					runtimemock.NewMockRuntime(mockCtrl),
+					configmock.NewMockConfig(mockCtrl),
 				)
 				err := roomManager.validateRoomStatusTransition(fromStatus, transition)
 				require.NoError(t, err)
@@ -73,6 +75,7 @@ func TestRoomManager_ValidateRoomStatusTransition_InvalidTransition(t *testing.T
 		rsmock.NewMockRoomStorage(mockCtrl),
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
+		configmock.NewMockConfig(mockCtrl),
 	)
 
 	err := roomManager.validateRoomStatusTransition(game_room.GameStatusTerminating, game_room.GameStatusReady)
@@ -91,6 +94,7 @@ func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
 		roomStorage,
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
+		configmock.NewMockConfig(mockCtrl),
 	)
 
 	transition := game_room.GameStatusReady
@@ -132,6 +136,7 @@ func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 		roomStorage,
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
+		configmock.NewMockConfig(mockCtrl),
 	)
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond))
