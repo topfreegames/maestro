@@ -22,46 +22,21 @@
 
 package add_rooms
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
+import "github.com/topfreegames/maestro/internal/core/monitoring"
 
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"go.uber.org/zap"
+var (
+	addRoomsOperationExecutionFailedCountMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "add_rooms_operation_execution_failed",
+		Help:      "A single add rooms execution has failed",
+		Labels: []string{
+			monitoring.LabelScheduler,
+			monitoring.LabelOperation,
+		},
+	})
 )
 
-const OperationName = "add_rooms"
-
-type AddRoomsDefinition struct {
-	Amount int32 `json:"amount"`
-}
-
-func (d *AddRoomsDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
-	if d.Amount <= 10 {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (d *AddRoomsDefinition) Name() string {
-	return OperationName
-}
-
-func (d *AddRoomsDefinition) Marshal() []byte {
-	bytes, err := json.Marshal(d)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Error("error marshalling add-rooms operation definition")
-		return nil
-	}
-	return bytes
-}
-
-func (d *AddRoomsDefinition) Unmarshal(raw []byte) error {
-	err := json.Unmarshal(raw, d)
-	if err != nil {
-		return fmt.Errorf("error marshalling add-rooms operation definition: %w", err)
-	}
-	return nil
+func reportAddRoomOperationExecutionFailed(schedulerName, operationName string) {
+	addRoomsOperationExecutionFailedCountMetric.WithLabelValues(schedulerName, operationName).Inc()
 }

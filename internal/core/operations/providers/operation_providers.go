@@ -27,6 +27,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 )
 
 func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor {
@@ -43,11 +44,15 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 
 }
 
-func ProvideExecutors(runtime ports.Runtime, schedulerStorage ports.SchedulerStorage) map[string]operations.Executor {
+func ProvideExecutors(
+	runtime ports.Runtime,
+	schedulerStorage ports.SchedulerStorage,
+	roomManager *room_manager.RoomManager,
+) map[string]operations.Executor {
 
 	executors := map[string]operations.Executor{}
 	executors[create_scheduler.OperationName] = create_scheduler.NewExecutor(runtime, schedulerStorage)
-	executors[add_rooms.OperationName] = add_rooms.NewExecutor()
+	executors[add_rooms.OperationName] = add_rooms.NewExecutor(roomManager, schedulerStorage)
 
 	return executors
 

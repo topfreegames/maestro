@@ -9,6 +9,7 @@ import (
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"github.com/topfreegames/maestro/internal/service"
@@ -36,7 +37,20 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	if err != nil {
 		return nil, err
 	}
-	v2 := providers.ProvideExecutors(runtime, schedulerStorage)
+	portAllocator, err := service.NewPortAllocatorRandom(c)
+	if err != nil {
+		return nil, err
+	}
+	roomStorage, err := service.NewRoomStorageRedis(c)
+	if err != nil {
+		return nil, err
+	}
+	gameRoomInstanceStorage, err := service.NewGameRoomInstanceStorageRedis(c)
+	if err != nil {
+		return nil, err
+	}
+	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, c)
+	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager)
 	workerOptions := workers.ProvideWorkerOptions(operationManager, v2)
 	workersManager := workers_manager.NewWorkersManager(builder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
