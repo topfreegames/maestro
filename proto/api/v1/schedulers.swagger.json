@@ -117,6 +117,54 @@
           "SchedulersService"
         ]
       }
+    },
+    "/schedulers/{schedulerName}/remove-rooms": {
+      "post": {
+        "summary": "Given a amount, remove rooms of a scheduler.",
+        "operationId": "SchedulersService_RemoveRooms",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RemoveRoomsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name from which the rooms will be removed.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "amount": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Amount of rooms to be removed."
+                }
+              },
+              "description": "Remove rooms operation request payload + path parameters."
+            }
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -339,6 +387,16 @@
         }
       },
       "description": "Port range is the range definition that the rooms will use. If a scheduler\ndefines its range as 0-1000 (start-end), it is guarantee that all rooms be\nwithin this range."
+    },
+    "v1RemoveRoomsResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Remove rooms operation ID, further this id can be used to consult its state."
+        }
+      },
+      "description": "Remove rooms operation response payload."
     },
     "v1Scheduler": {
       "type": "object",
