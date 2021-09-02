@@ -116,7 +116,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		}
 
 		executeStartTime := time.Now()
-		executionErr := executor.Execute(operationContext, op, def, loopLogger)
+		executionErr := executor.Execute(operationContext, op, def)
 		reportOperationExecutionLatency(executeStartTime, w.schedulerName, op.DefinitionName, executionErr != nil)
 
 		op.Status = operation.StatusFinished
@@ -129,7 +129,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			loopLogger.Error("operation execution failed", zap.Error(executionErr))
 
 			onErrorStartTime := time.Now()
-			onErrorErr := executor.OnError(operationContext, op, def, executionErr, loopLogger)
+			onErrorErr := executor.OnError(operationContext, op, def, executionErr)
 			reportOperationOnErrorLatency(onErrorStartTime, w.schedulerName, op.DefinitionName, onErrorErr != nil)
 
 			if onErrorErr != nil {

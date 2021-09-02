@@ -41,34 +41,41 @@ import (
 type AddRoomsExecutor struct {
 	roomManager *room_manager.RoomManager
 	storage     ports.SchedulerStorage
+	logger      *zap.Logger
 }
 
 func NewExecutor(roomManager *room_manager.RoomManager, storage ports.SchedulerStorage) *AddRoomsExecutor {
 	return &AddRoomsExecutor{
 		roomManager: roomManager,
 		storage:     storage,
+		logger:      zap.L().With(zap.String("service", "worker")),
 	}
 }
 
-func (ae *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition, logger *zap.Logger) error {
+func (ae *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+	executionLogger := ae.logger.With(
+		zap.String("scheduler_name", op.SchedulerName),
+		zap.String("operation_definition", definition.Name()),
+		zap.String("operation_id", op.ID),
+	)
 	amount := definition.(*AddRoomsDefinition).Amount
 	scheduler, err := ae.storage.GetScheduler(ctx, op.SchedulerName)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Could not find scheduler with name %s, can not create rooms", op.SchedulerName), zap.Error(err))
+		executionLogger.Error(fmt.Sprintf("Could not find scheduler with name %s, can not create rooms", op.SchedulerName), zap.Error(err))
 		return err
 	}
 	var waitGroup sync.WaitGroup
 
 	for i := int32(0); i < amount; i++ {
 		waitGroup.Add(1)
-		go ae.createRoom(ctx, i, scheduler, logger, &waitGroup)
+		go ae.createRoom(ctx, i, scheduler, executionLogger, &waitGroup)
 	}
 	// TODO: we can not block here, we should be listening ctx.Done() somehow
 	waitGroup.Wait()
 	return nil
 }
 
-func (ae *AddRoomsExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error, logger *zap.Logger) error {
+func (ae *AddRoomsExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	return nil
 }
 

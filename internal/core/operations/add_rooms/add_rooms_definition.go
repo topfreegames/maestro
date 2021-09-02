@@ -38,11 +38,7 @@ type AddRoomsDefinition struct {
 }
 
 func (d *AddRoomsDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
-	if d.Amount <= 10 {
-		return true
-	} else {
-		return false
-	}
+	return d.Amount <= 10
 }
 
 func (d *AddRoomsDefinition) Name() string {

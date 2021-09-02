@@ -40,7 +40,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-	"go.uber.org/zap"
 
 	"context"
 	"github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
@@ -58,7 +57,6 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 	schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 	config := config_mock.NewMockConfig(mockCtrl)
-	logger := zap.L().With(zap.String("service", "worker"))
 	roomStorageStatusWatcher := rs_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	definition := AddRoomsDefinition{Amount: 10}
@@ -105,7 +103,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		DefinitionName: "zooba_blue:1.0.0",
 	}
 
-	t.Run("when all room creation succeeds then it returns nil without error", func(t *testing.T) {
+	t.Run("when all room creations succeed then it returns nil without error", func(t *testing.T) {
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, config)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), operation.SchedulerName).Return(&scheduler, nil)
@@ -132,12 +130,12 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 
 		roomStorageStatusWatcher.EXPECT().Stop().Times(10)
 
-		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &operation, &definition, logger)
+		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &operation, &definition)
 
 		require.NoError(t, err)
 	})
 
-	t.Run("when some room creation fails and others succeeds then it returns nil without error", func(t *testing.T) {
+	t.Run("when some room creation fail and others succeed then it returns nil without error", func(t *testing.T) {
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, config)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), operation.SchedulerName).Return(&scheduler, nil)
@@ -170,7 +168,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 
 		roomStorageStatusWatcher.EXPECT().Stop().Times(5)
 
-		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &operation, &definition, logger)
+		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &operation, &definition)
 
 		require.NoError(t, err)
 	})
@@ -180,7 +178,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), operation.SchedulerName).Return(nil, errors.NewErrNotFound("scheduler not found"))
 
-		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &operation, &definition, logger)
+		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &operation, &definition)
 		require.Error(t, err)
 	})
 }

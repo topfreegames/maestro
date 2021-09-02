@@ -22,6 +22,3 @@ adapters:
     kubernetes:
       masterUrl: "https://127.0.0.1:6443"
       kubeconfig: "./kubeconfig.yaml"
-services:
-  roomManager:
-    roomInitializationTimeoutMilis: 10000
