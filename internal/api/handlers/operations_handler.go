@@ -31,6 +31,7 @@ import (
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type OperationsHandler struct {
@@ -106,5 +107,6 @@ func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation)
 		Status:         status,
 		DefinitionName: entity.DefinitionName,
 		SchedulerName:  entity.SchedulerName,
+		CreatedAt:      timestamppb.New(entity.CreatedAt),
 	}, nil
 }

@@ -25,6 +25,7 @@ package operation_manager
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -52,6 +53,7 @@ func (o *OperationManager) CreateOperation(ctx context.Context, schedulerName st
 		Status:         operation.StatusPending,
 		DefinitionName: definition.Name(),
 		SchedulerName:  schedulerName,
+		CreatedAt:      time.Now(),
 	}
 
 	err := o.storage.CreateOperation(ctx, op, definition.Marshal())

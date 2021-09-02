@@ -46,4 +46,6 @@ message Operation {
   string definition_name = 3;
   // Scheduler indentifier that the operation is from.
   string scheduler_name = 4;
+  // Time the operation was created.
+  google.protobuf.Timestamp created_at = 5;
 }

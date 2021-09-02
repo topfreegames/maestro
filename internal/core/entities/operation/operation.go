@@ -22,7 +22,10 @@
 
 package operation
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type Status int
 
@@ -46,6 +49,7 @@ type Operation struct {
 	Status         Status
 	DefinitionName string
 	SchedulerName  string
+	CreatedAt      time.Time
 }
 
 func (s Status) String() (string, error) {
