@@ -103,7 +103,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		gameRoomReady := gameRoom
 		gameRoomReady.Status = game_room.GameStatusReady
 
-		configMock.EXPECT().GetDuration("services.roomManager.roomInitializationTimeoutMilis").Return(time.Millisecond * 1000)
+		configMock.EXPECT().GetInt("services.roomManager.roomInitializationTimeoutMillis").Return(1000)
 
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 		roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoomReady, nil)
@@ -126,7 +126,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 		roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoom, nil)
 
-		configMock.EXPECT().GetDuration("services.roomManager.roomInitializationTimeoutMilis").Return(time.Millisecond * 1000)
+		configMock.EXPECT().GetInt("services.roomManager.roomInitializationTimeoutMillis").Return(1000)
 		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil)
 
 		roomStorageStatusWatcher.EXPECT().Stop()

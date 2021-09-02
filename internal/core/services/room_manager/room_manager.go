@@ -25,6 +25,7 @@ package room_manager
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -87,7 +88,7 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 
 	// TODO: let each scheduler parametrize its timeout and use this config as fallback if the scheduler timeout value
 	// is absent.
-	duration := m.configs.GetDuration("services.roomManager.roomInitializationTimeoutMilis")
+	duration := time.Duration(m.configs.GetInt("services.roomManager.roomInitializationTimeoutMillis")) * time.Millisecond
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
 
 	err = m.WaitRoomStatus(timeoutContext, room, game_room.GameStatusReady)

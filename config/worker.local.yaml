@@ -33,4 +33,4 @@ workers:
   stopTimeoutDuration: 1m
 services:
   roomManager:
-    roomInitializationTimeoutMilis: 60000
+    roomInitializationTimeoutMillis: 120000

@@ -120,8 +120,8 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		gameRoomReady := gameRoom
 		gameRoomReady.Status = game_room.GameStatusReady
 
-		config.EXPECT().GetDuration("services.roomManager.roomInitializationTimeoutMilis").
-			Return(time.Millisecond * 1000).
+		config.EXPECT().GetInt("services.roomManager.roomInitializationTimeoutMillis").
+			Return(1000).
 			Times(10)
 
 		roomStorageMock.EXPECT().CreateRoom(context.Background(), &gameRoom).Times(10)
@@ -158,8 +158,8 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		gameRoomReady := gameRoom
 		gameRoomReady.Status = game_room.GameStatusReady
 
-		config.EXPECT().GetDuration("services.roomManager.roomInitializationTimeoutMilis").
-			Return(time.Millisecond * 1000).
+		config.EXPECT().GetInt("services.roomManager.roomInitializationTimeoutMillis").
+			Return(1000).
 			Times(5)
 
 		roomStorageMock.EXPECT().CreateRoom(context.Background(), &gameRoom).Times(5)
