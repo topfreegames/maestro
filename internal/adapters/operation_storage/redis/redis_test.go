@@ -80,12 +80,15 @@ func TestCreateOperation(t *testing.T) {
 		client := getRedisConnection(t)
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationStorage(client, clock)
+		createdAtString := "2020-01-01T00:00:00.001Z"
+		createdAt, _ := time.Parse(time.RFC3339Nano, createdAtString)
 
 		op := &operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "test-scheduler",
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
+			CreatedAt:      createdAt,
 		}
 
 		contents := []byte("hello test")
@@ -97,6 +100,7 @@ func TestCreateOperation(t *testing.T) {
 		require.Equal(t, op.ID, operationStored[idRedisKey])
 		require.Equal(t, op.SchedulerName, operationStored[schedulerNameRedisKey])
 		require.Equal(t, op.DefinitionName, operationStored[definitionNameRedisKey])
+		require.Equal(t, createdAtString, operationStored[createdAtRedisKey])
 		require.Equal(t, string(contents), operationStored[definitionContentsRedisKey])
 
 		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
@@ -114,6 +118,7 @@ func TestCreateOperation(t *testing.T) {
 			SchedulerName:  "test-scheduler",
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
+			CreatedAt:      time.Now(),
 		}
 
 		// "drop" redis connection
@@ -130,11 +135,14 @@ func TestGetOperation(t *testing.T) {
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationStorage(client, clock)
 
+		createdAtString := "2020-01-01T00:00:00.001Z"
+		createdAt, _ := time.Parse(time.RFC3339Nano, createdAtString)
 		op := &operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "test-scheduler",
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
+			CreatedAt:      createdAt,
 		}
 
 		contents := []byte("hello test")
@@ -148,6 +156,7 @@ func TestGetOperation(t *testing.T) {
 		require.Equal(t, op.SchedulerName, operationStored.SchedulerName)
 		require.Equal(t, op.Status, operationStored.Status)
 		require.Equal(t, op.DefinitionName, operationStored.DefinitionName)
+		require.Equal(t, createdAt, operationStored.CreatedAt)
 	})
 
 	t.Run("not found", func(t *testing.T) {
@@ -157,6 +166,33 @@ func TestGetOperation(t *testing.T) {
 
 		operationStored, definitionContents, err := storage.GetOperation(context.Background(), "test-scheduler", "inexistent-id")
 		require.ErrorIs(t, errors.ErrNotFound, err)
+		require.Nil(t, operationStored)
+		require.Nil(t, definitionContents)
+	})
+
+	t.Run("fail to parse created at field", func(t *testing.T) {
+		client := getRedisConnection(t)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationStorage(client, clock)
+
+		op := &operation.Operation{
+			ID:             "some-op-id",
+			SchedulerName:  "test-scheduler",
+			Status:         operation.StatusPending,
+			DefinitionName: "test-definition",
+			CreatedAt:      time.Now(),
+		}
+
+		contents := []byte("hello test")
+		err := storage.CreateOperation(context.Background(), op, contents)
+		require.NoError(t, err)
+
+		client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+			createdAtRedisKey: "INVALID DATE",
+		})
+
+		operationStored, definitionContents, err := storage.GetOperation(context.Background(), "test-scheduler", "some-op-id")
+		require.Contains(t, err.Error(), "failed to parse operation createdAt field")
 		require.Nil(t, operationStored)
 		require.Nil(t, definitionContents)
 	})
