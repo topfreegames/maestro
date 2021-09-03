@@ -26,6 +26,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
+	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
 	"github.com/topfreegames/maestro/internal/core/ports"
 )
 
@@ -37,6 +38,9 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 	}
 	definitionConstructors[add_rooms.OperationName] = func() operations.Definition {
 		return &add_rooms.AddRoomsDefinition{}
+	}
+	definitionConstructors[remove_rooms.OperationName] = func() operations.Definition {
+		return &remove_rooms.RemoveRoomsDefinition{}
 	}
 
 	return definitionConstructors
