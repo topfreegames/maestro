@@ -20,45 +20,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// +build wireinject
+package room_manager
 
-package main
+import "time"
 
-import (
-	"context"
-
-	"github.com/google/wire"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/topfreegames/maestro/internal/api/handlers"
-	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-	"github.com/topfreegames/maestro/internal/service"
-	api "github.com/topfreegames/maestro/pkg/api/v1"
-)
-
-func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.ServeMux, error) {
-	wire.Build(
-		// ports + adapters
-		service.NewClockTime,
-		service.NewPortAllocatorRandom,
-		service.NewRoomStorageRedis,
-		service.NewGameRoomInstanceStorageRedis,
-		service.NewRuntimeKubernetes,
-		service.NewRoomManagerConfig,
-
-		// services
-		room_manager.NewRoomManager,
-
-		// api handlers
-		handlers.ProvideRoomsHandler,
-		provideRoomsMux,
-	)
-
-	return &runtime.ServeMux{}, nil
-}
-
-func provideRoomsMux(ctx context.Context, roomsHandler *handlers.RoomsHandler) *runtime.ServeMux {
-	mux := runtime.NewServeMux()
-	_ = api.RegisterRoomsServiceHandlerServer(ctx, mux, roomsHandler)
-	return mux
+type RoomManagerConfig struct {
+	RoomInitializationTimeoutMillis time.Duration
 }

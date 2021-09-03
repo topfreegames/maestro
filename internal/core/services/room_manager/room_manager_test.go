@@ -42,7 +42,6 @@ import (
 	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	rsmock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
-	config_mock "github.com/topfreegames/maestro/internal/config/mock"
 )
 
 func TestRoomManager_CreateRoom(t *testing.T) {
@@ -55,8 +54,8 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
-	configMock := config_mock.NewMockConfig(mockCtrl)
-	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, configMock)
+	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, config)
 	roomStorageStatusWatcher := rsmock.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	container1 := game_room.Container{
@@ -103,8 +102,6 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		gameRoomReady := gameRoom
 		gameRoomReady.Status = game_room.GameStatusReady
 
-		configMock.EXPECT().GetInt("services.roomManager.roomInitializationTimeoutMillis").Return(1000)
-
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 		roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoomReady, nil)
 		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil)
@@ -125,8 +122,6 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 		roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoom, nil)
-
-		configMock.EXPECT().GetInt("services.roomManager.roomInitializationTimeoutMillis").Return(1000)
 		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil)
 
 		roomStorageStatusWatcher.EXPECT().Stop()
@@ -182,7 +177,7 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	configMock := config_mock.NewMockConfig(mockCtrl)
+	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
 
 	roomManager := NewRoomManager(
 		clockmock.NewFakeClock(time.Now()),
@@ -190,7 +185,7 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 		roomStorage,
 		instanceStorage,
 		runtime,
-		configMock,
+		config,
 	)
 
 	t.Run("when the game room status transition is valid then it deletes the game room and update its status", func(t *testing.T) {
@@ -225,14 +220,14 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
-	configMock := config_mock.NewMockConfig(mockCtrl)
+	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
 	roomManager := NewRoomManager(
 		clock,
 		pamock.NewMockPortAllocator(mockCtrl),
 		roomStorage,
 		instanceStorage,
 		runtime,
-		configMock,
+		config,
 	)
 	currentGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady}
 	newGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusOccupied, LastPingAt: clock.Now()}

@@ -33,8 +33,6 @@ import (
 	"testing"
 	"time"
 
-	config_mock "github.com/topfreegames/maestro/internal/config/mock"
-
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
@@ -81,9 +79,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
 		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
-		configMock := config_mock.NewMockConfig(mockCtrl)
+		config := room_manager.RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
 
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, configMock)
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, config)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
@@ -117,9 +115,8 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
 		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
-		configMock := config_mock.NewMockConfig(mockCtrl)
-
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, configMock)
+		config := room_manager.RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, config)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
@@ -149,9 +146,8 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
 		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
-		configMock := config_mock.NewMockConfig(mockCtrl)
-
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, configMock)
+		config := room_manager.RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, config)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
@@ -181,9 +177,8 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
 		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
-		configMock := config_mock.NewMockConfig(mockCtrl)
-
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, configMock)
+		config := room_manager.RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, config)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
@@ -216,9 +211,8 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
 		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
-		configMock := config_mock.NewMockConfig(mockCtrl)
-
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, configMock)
+		config := room_manager.RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, config)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))

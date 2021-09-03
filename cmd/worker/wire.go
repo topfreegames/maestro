@@ -46,13 +46,14 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		service.NewPortAllocatorRandom,
 		service.NewRoomStorageRedis,
 		service.NewGameRoomInstanceStorageRedis,
-		room_manager.NewRoomManager,
+		service.NewRoomManagerConfig,
 
 		// scheduler operations
 		providers.ProvideDefinitionConstructors,
 		providers.ProvideExecutors,
 
 		// services
+		room_manager.NewRoomManager,
 		operation_manager.New,
 		workers.ProvideWorkerOptions,
 		workers_manager.NewWorkersManager,

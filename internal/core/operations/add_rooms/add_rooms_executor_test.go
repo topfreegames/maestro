@@ -34,7 +34,6 @@ import (
 	rs_mock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtime_mock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
-	config_mock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -56,7 +55,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 	schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-	config := config_mock.NewMockConfig(mockCtrl)
+	config := room_manager.RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
 	roomStorageStatusWatcher := rs_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	definition := AddRoomsDefinition{Amount: 10}
@@ -120,10 +119,6 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		gameRoomReady := gameRoom
 		gameRoomReady.Status = game_room.GameStatusReady
 
-		config.EXPECT().GetInt("services.roomManager.roomInitializationTimeoutMillis").
-			Return(1000).
-			Times(10)
-
 		roomStorageMock.EXPECT().CreateRoom(context.Background(), &gameRoom).Times(10)
 		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoomReady, nil).Times(10)
 		roomStorageMock.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil).Times(10)
@@ -157,10 +152,6 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 
 		gameRoomReady := gameRoom
 		gameRoomReady.Status = game_room.GameStatusReady
-
-		config.EXPECT().GetInt("services.roomManager.roomInitializationTimeoutMillis").
-			Return(1000).
-			Times(5)
 
 		roomStorageMock.EXPECT().CreateRoom(context.Background(), &gameRoom).Times(5)
 		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoomReady, nil).Times(5)

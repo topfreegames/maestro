@@ -25,9 +25,7 @@ package room_manager
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -39,17 +37,17 @@ type RoomManager struct {
 	roomStorage     ports.RoomStorage
 	instanceStorage ports.GameRoomInstanceStorage
 	runtime         ports.Runtime
-	configs         config.Config
+	config          RoomManagerConfig
 }
 
-func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, configs config.Config) *RoomManager {
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, config RoomManagerConfig) *RoomManager {
 	return &RoomManager{
 		clock:           clock,
 		portAllocator:   portAllocator,
 		roomStorage:     roomStorage,
 		instanceStorage: instanceStorage,
 		runtime:         runtime,
-		configs:         configs,
+		config:          config,
 	}
 }
 
@@ -88,7 +86,7 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 
 	// TODO: let each scheduler parametrize its timeout and use this config as fallback if the scheduler timeout value
 	// is absent.
-	duration := time.Duration(m.configs.GetInt("services.roomManager.roomInitializationTimeoutMillis")) * time.Millisecond
+	duration := m.config.RoomInitializationTimeoutMillis
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
 
 	err = m.WaitRoomStatus(timeoutContext, room, game_room.GameStatusReady)
