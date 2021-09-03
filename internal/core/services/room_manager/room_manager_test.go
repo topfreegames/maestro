@@ -26,10 +26,11 @@ package room_manager
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -242,7 +243,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	})
 
 	t.Run("when the current game room does not exist then it returns proper error", func(t *testing.T) {
-		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(nil, errors.ErrUnexpected)
+		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(nil, porterrors.ErrUnexpected)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 
@@ -251,7 +252,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 
 	t.Run("when there is some error while updating the room then it returns proper error", func(t *testing.T) {
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentGameRoom, nil)
-		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(errors.ErrUnexpected)
+		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(porterrors.ErrUnexpected)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 
@@ -267,4 +268,71 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		require.Error(t, err)
 	})
 
+}
+
+func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
+	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	clock := clockmock.NewFakeClock(time.Now())
+	roomManager := NewRoomManager(
+		clock,
+		pamock.NewMockPortAllocator(mockCtrl),
+		roomStorage,
+		instanceStorage,
+		runtime,
+	)
+
+	t.Run("when there enough rooms it should return the specified number", func(t *testing.T) {
+		schedulerName := "test-scheduler"
+		availableRooms := []*game_room.GameRoom{
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "third-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "forth-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+		}
+
+		roomStorage.EXPECT().GetAllRoomIDs(context.Background(), schedulerName).Return(
+			[]string{
+				availableRooms[0].ID,
+				availableRooms[1].ID,
+				availableRooms[2].ID,
+				availableRooms[3].ID,
+			},
+			nil,
+		)
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
+
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(context.Background(), schedulerName, 2)
+		require.NoError(t, err)
+		require.Len(t, rooms, 2)
+	})
+
+	t.Run("when there error while fetch a room it returns error", func(t *testing.T) {
+		schedulerName := "test-scheduler"
+		availableRooms := []*game_room.GameRoom{
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+		}
+
+		roomStorage.EXPECT().GetAllRoomIDs(context.Background(), schedulerName).Return(
+			[]string{
+				availableRooms[0].ID,
+				availableRooms[1].ID,
+			},
+			nil,
+		)
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+
+		getRoomErr := errors.New("failed to get")
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[1].ID).Return(nil, getRoomErr)
+
+		_, err := roomManager.ListRoomsWithDeletionPriority(context.Background(), schedulerName, 2)
+		require.Error(t, err)
+		require.ErrorIs(t, err, getRoomErr)
+	})
 }

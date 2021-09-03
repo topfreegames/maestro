@@ -146,3 +146,33 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 
 	return nil
 }
+
+// ListRoomsWithDeletionPriority returns a specified number of rooms, following
+// the priority of it being deleted (which will be introduced later). This
+// function can return less rooms than the `amount` since it might not have
+// enough rooms on the scheduler.
+func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName string, amount int) ([]*game_room.GameRoom, error) {
+	// TODO(gabrielcorado): implement the priority. for now, we're list all
+	// rooms and taking the necessary "amount".
+	schedulerRoomsIDs, err := m.roomStorage.GetAllRoomIDs(ctx, schedulerName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduler rooms: %w", err)
+	}
+
+	var result []*game_room.GameRoom
+	for _, roomID := range schedulerRoomsIDs {
+		room, err := m.roomStorage.GetRoom(ctx, schedulerName, roomID)
+		if err != nil {
+			// TODO(gabrielcorado): should we fail the entire process because of
+			// a room missing?
+			return nil, fmt.Errorf("failed to fetch room information %s: %w", roomID, err)
+		}
+
+		result = append(result, room)
+		if len(result) == amount {
+			break
+		}
+	}
+
+	return result, nil
+}

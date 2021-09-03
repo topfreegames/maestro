@@ -22,44 +22,21 @@
 
 package remove_rooms
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
+import "github.com/topfreegames/maestro/internal/core/monitoring"
 
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"go.uber.org/zap"
+var (
+	deletionFailedTotal = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "remove_rooms_operation_deletion_failed_total",
+		Help:      "Count of number of deletions failed on a remove rooms operation",
+		Labels: []string{
+			monitoring.LabelScheduler,
+			monitoring.LabelOperation,
+		},
+	})
 )
 
-const OperationName = "remove_rooms"
-
-type RemoveRoomsDefinition struct {
-	Amount int `json:"amount"`
-}
-
-func (d *RemoveRoomsDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
-	return true
-}
-
-func (d *RemoveRoomsDefinition) Name() string {
-	return OperationName
-}
-
-func (d *RemoveRoomsDefinition) Marshal() []byte {
-	bytes, err := json.Marshal(d)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Error("error marshalling remove rooms operation definition")
-		return nil
-	}
-
-	return bytes
-}
-
-func (d *RemoveRoomsDefinition) Unmarshal(raw []byte) error {
-	err := json.Unmarshal(raw, d)
-	if err != nil {
-		return fmt.Errorf("error marshalling remove rooms operation definition: %w", err)
-	}
-
-	return nil
+func reportDeletionFailedTotal(schedulerName, operationID string) {
+	deletionFailedTotal.WithLabelValues(schedulerName, operationID).Inc()
 }
