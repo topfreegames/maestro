@@ -26,6 +26,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
@@ -87,6 +89,23 @@ func (s *SchedulerManager) AddRooms(ctx context.Context, schedulerName string, a
 	})
 	if err != nil {
 		return nil, fmt.Errorf("not able to schedule the 'add rooms' operation: %w", err)
+	}
+
+	return op, nil
+}
+
+func (s *SchedulerManager) RemoveRooms(ctx context.Context, schedulerName string, amount int32) (*operation.Operation, error) {
+
+	_, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
+	if err != nil {
+		return nil, fmt.Errorf("no scheduler found for removing rooms: %w", err)
+	}
+
+	op, err := s.operationManager.CreateOperation(ctx, schedulerName, &remove_rooms.RemoveRoomsDefinition{
+		Amount: amount,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("not able to schedule the 'remove rooms' operation: %w", err)
 	}
 
 	return op, nil
