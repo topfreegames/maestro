@@ -125,6 +125,11 @@
         "schedulerName": {
           "type": "string",
           "description": "Scheduler indentifier that the operation is from."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the operation was created."
         }
       },
       "title": "The operation object representation"

@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -51,6 +52,8 @@ func TestListOperations(t *testing.T) {
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		createdAtString := "2020-01-01T00:00:00.001Z"
+		createdAt, _ := time.Parse(time.RFC3339Nano, createdAtString)
 
 		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), "zooba").Return([]string{}, nil)
 		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), "zooba").Return([]*operation.Operation{}, nil)
@@ -60,6 +63,7 @@ func TestListOperations(t *testing.T) {
 				Status:         operation.StatusInProgress,
 				DefinitionName: "create_scheduler",
 				SchedulerName:  "zooba",
+				CreatedAt:      createdAt,
 			},
 		}, nil)
 
@@ -88,6 +92,7 @@ func TestListOperations(t *testing.T) {
 					"id":             "operation-1",
 					"schedulerName":  "zooba",
 					"status":         "in_progress",
+					"createdAt":      createdAtString,
 				},
 			}), body["activeOperations"])
 	})

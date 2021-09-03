@@ -26,6 +26,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -39,6 +40,7 @@ const (
 	schedulerNameRedisKey      = "schedulerName"
 	statusRedisKey             = "status"
 	definitionNameRedisKey     = "definitionName"
+	createdAtRedisKey          = "createdAt"
 	definitionContentsRedisKey = "definitionContents"
 )
 
@@ -63,6 +65,7 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 		schedulerNameRedisKey:      op.SchedulerName,
 		statusRedisKey:             strconv.Itoa(int(op.Status)),
 		definitionNameRedisKey:     op.DefinitionName,
+		createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
 		definitionContentsRedisKey: definitionContents,
 	}).Err()
 
@@ -88,10 +91,16 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 		return nil, nil, errors.NewErrEncoding("failed to parse operation status").WithError(err)
 	}
 
+	createdAt, err := time.Parse(time.RFC3339Nano, res[createdAtRedisKey])
+	if err != nil {
+		return nil, nil, errors.NewErrEncoding("failed to parse operation createdAt field").WithError(err)
+	}
+
 	op := &operation.Operation{
 		ID:             res[idRedisKey],
 		SchedulerName:  res[schedulerNameRedisKey],
 		DefinitionName: res[definitionNameRedisKey],
+		CreatedAt:      createdAt,
 		Status:         operation.Status(statusInt),
 	}
 
