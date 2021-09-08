@@ -104,7 +104,7 @@ func (h *SchedulersHandler) AddRooms(ctx context.Context, request *api.AddRoomsR
 
 func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.RemoveRoomsRequest) (*api.RemoveRoomsResponse, error) {
 
-	operation, err := h.schedulerManager.RemoveRooms(ctx, request.GetSchedulerName(), request.GetAmount())
+	operation, err := h.schedulerManager.RemoveRooms(ctx, request.GetSchedulerName(), int(request.GetAmount()))
 	if errors.Is(err, portsErrors.ErrNotFound) {
 		return nil, status.Error(codes.NotFound, err.Error())
 	}

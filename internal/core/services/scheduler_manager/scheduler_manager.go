@@ -94,7 +94,7 @@ func (s *SchedulerManager) AddRooms(ctx context.Context, schedulerName string, a
 	return op, nil
 }
 
-func (s *SchedulerManager) RemoveRooms(ctx context.Context, schedulerName string, amount int32) (*operation.Operation, error) {
+func (s *SchedulerManager) RemoveRooms(ctx context.Context, schedulerName string, amount int) (*operation.Operation, error) {
 
 	_, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
 	if err != nil {
