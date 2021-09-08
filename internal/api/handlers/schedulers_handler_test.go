@@ -402,3 +402,85 @@ func TestAddRooms(t *testing.T) {
 		require.Contains(t, rr.Body.String(), "not able to schedule the 'add rooms' operation: failed to create operation: storage offline")
 	})
 }
+
+func TestRemoveRooms(t *testing.T) {
+	t.Run("with success", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
+
+		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+		operationFlow.EXPECT().InsertOperationID(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1/remove-rooms", bytes.NewReader([]byte("{\"amount\": 10}")))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, body["operationId"])
+	})
+
+	t.Run("fails when scheduler does not exists", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, errors.NewErrNotFound("err"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1/remove-rooms", bytes.NewReader([]byte("{\"amount\": 10}")))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 404, rr.Code)
+		require.Contains(t, rr.Body.String(), "no scheduler found for removing rooms: err")
+	})
+
+	t.Run("fails when operation enqueue fails", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors())
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
+		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1/remove-rooms", bytes.NewReader([]byte("{\"amount\": 10}")))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 500, rr.Code)
+		require.Contains(t, rr.Body.String(), "not able to schedule the 'remove rooms' operation: failed to create operation: storage offline")
+	})
+}

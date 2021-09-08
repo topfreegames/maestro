@@ -24,6 +24,8 @@ type SchedulersServiceClient interface {
 	CreateScheduler(ctx context.Context, in *CreateSchedulerRequest, opts ...grpc.CallOption) (*CreateSchedulerResponse, error)
 	// Given a amount, add rooms to a scheduler.
 	AddRooms(ctx context.Context, in *AddRoomsRequest, opts ...grpc.CallOption) (*AddRoomsResponse, error)
+	// Given a amount, remove rooms of a scheduler.
+	RemoveRooms(ctx context.Context, in *RemoveRoomsRequest, opts ...grpc.CallOption) (*RemoveRoomsResponse, error)
 }
 
 type schedulersServiceClient struct {
@@ -61,6 +63,15 @@ func (c *schedulersServiceClient) AddRooms(ctx context.Context, in *AddRoomsRequ
 	return out, nil
 }
 
+func (c *schedulersServiceClient) RemoveRooms(ctx context.Context, in *RemoveRoomsRequest, opts ...grpc.CallOption) (*RemoveRoomsResponse, error) {
+	out := new(RemoveRoomsResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/RemoveRooms", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SchedulersServiceServer is the server API for SchedulersService service.
 // All implementations must embed UnimplementedSchedulersServiceServer
 // for forward compatibility
@@ -71,6 +82,8 @@ type SchedulersServiceServer interface {
 	CreateScheduler(context.Context, *CreateSchedulerRequest) (*CreateSchedulerResponse, error)
 	// Given a amount, add rooms to a scheduler.
 	AddRooms(context.Context, *AddRoomsRequest) (*AddRoomsResponse, error)
+	// Given a amount, remove rooms of a scheduler.
+	RemoveRooms(context.Context, *RemoveRoomsRequest) (*RemoveRoomsResponse, error)
 	mustEmbedUnimplementedSchedulersServiceServer()
 }
 
@@ -86,6 +99,9 @@ func (UnimplementedSchedulersServiceServer) CreateScheduler(context.Context, *Cr
 }
 func (UnimplementedSchedulersServiceServer) AddRooms(context.Context, *AddRoomsRequest) (*AddRoomsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRooms not implemented")
+}
+func (UnimplementedSchedulersServiceServer) RemoveRooms(context.Context, *RemoveRoomsRequest) (*RemoveRoomsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveRooms not implemented")
 }
 func (UnimplementedSchedulersServiceServer) mustEmbedUnimplementedSchedulersServiceServer() {}
 
@@ -154,6 +170,24 @@ func _SchedulersService_AddRooms_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SchedulersService_RemoveRooms_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveRoomsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SchedulersServiceServer).RemoveRooms(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.SchedulersService/RemoveRooms",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SchedulersServiceServer).RemoveRooms(ctx, req.(*RemoveRoomsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SchedulersService_ServiceDesc is the grpc.ServiceDesc for SchedulersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -172,6 +206,10 @@ var SchedulersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddRooms",
 			Handler:    _SchedulersService_AddRooms_Handler,
+		},
+		{
+			MethodName: "RemoveRooms",
+			Handler:    _SchedulersService_RemoveRooms_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

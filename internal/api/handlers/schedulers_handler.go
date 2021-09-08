@@ -102,6 +102,21 @@ func (h *SchedulersHandler) AddRooms(ctx context.Context, request *api.AddRoomsR
 	}, nil
 }
 
+func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.RemoveRoomsRequest) (*api.RemoveRoomsResponse, error) {
+
+	operation, err := h.schedulerManager.RemoveRooms(ctx, request.GetSchedulerName(), int(request.GetAmount()))
+	if errors.Is(err, portsErrors.ErrNotFound) {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.RemoveRoomsResponse{
+		OperationId: operation.ID,
+	}, nil
+}
+
 func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {
 	return &entities.Scheduler{
 		Name:  request.GetName(),

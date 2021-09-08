@@ -95,3 +95,62 @@ func TestAddRooms(t *testing.T) {
 		require.Contains(t, err.Error(), "not able to schedule the 'add rooms' operation: failed to create operation: storage offline")
 	})
 }
+
+func TestRemoveRooms(t *testing.T) {
+	schedulerName := "scheduler-name-1"
+
+	t.Run("with success", func(t *testing.T) {
+
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+		//operationDefinition := remove_rooms.RemoveRoomsDefinition{Amount: 10}
+
+		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(nil)
+		operationFlow.EXPECT().InsertOperationID(ctx, schedulerName, gomock.Any()).Return(nil)
+		schedulerStorage.EXPECT().GetScheduler(ctx, schedulerName).Return(nil, nil)
+
+		op, err := schedulerManager.RemoveRooms(ctx, schedulerName, 10)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+		require.NotNil(t, op.ID)
+	})
+
+	t.Run("fails when scheduler does not exists", func(t *testing.T) {
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetScheduler(ctx, schedulerName).Return(nil, errors.NewErrNotFound("err"))
+
+		op, err := schedulerManager.RemoveRooms(ctx, schedulerName, 10)
+		require.Nil(t, op)
+		require.ErrorIs(t, err, errors.ErrNotFound)
+		require.Contains(t, err.Error(), "no scheduler found for removing rooms: err")
+	})
+
+	t.Run("fails when operation enqueue fails", func(t *testing.T) {
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors())
+		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerStorage.EXPECT().GetScheduler(ctx, schedulerName).Return(nil, nil)
+		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
+
+		op, err := schedulerManager.RemoveRooms(ctx, schedulerName, 10)
+		require.Nil(t, op)
+		require.ErrorIs(t, err, errors.ErrUnexpected)
+		require.Contains(t, err.Error(), "not able to schedule the 'remove rooms' operation: failed to create operation: storage offline")
+	})
+}
