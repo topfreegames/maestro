@@ -26,6 +26,7 @@ package remove_rooms
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -117,5 +118,16 @@ func TestExecute(t *testing.T) {
 
 		err := executor.Execute(ctx, operation, definition)
 		require.NoError(t, err)
+	})
+
+	t.Run("when list rooms has error returns with error", func(t *testing.T) {
+		definition := &RemoveRoomsDefinition{Amount: 2}
+		operation := &operation.Operation{ID: "random-uuid", SchedulerName: "test-scheduler"}
+
+		ctx := context.Background()
+		roomStorageMock.EXPECT().GetAllRoomIDs(ctx, operation.SchedulerName).Return(nil, errors.New("failed to list rooms"))
+
+		err := executor.Execute(ctx, operation, definition)
+		require.Error(t, err)
 	})
 }
