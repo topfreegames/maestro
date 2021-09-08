@@ -24,24 +24,51 @@ package remove_rooms
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
+	"go.uber.org/zap"
 )
 
-type RemoveRoomsExecutor struct{}
-
-func NewExecutor() *RemoveRoomsExecutor {
-	return &RemoveRoomsExecutor{}
+type RemoveRoomsExecutor struct {
+	roomManager *room_manager.RoomManager
 }
 
-func (e *RemoveRoomsExecutor) Execute(_ context.Context, _ *operation.Operation, _ operations.Definition) error {
-	// TODO(gabrielcorado): implement it
+func NewExecutor(roomManager *room_manager.RoomManager) *RemoveRoomsExecutor {
+	return &RemoveRoomsExecutor{roomManager}
+}
+
+func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+	removeDefiniton := definition.(*RemoveRoomsDefinition)
+	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, op.SchedulerName, removeDefiniton.Amount)
+	if err != nil {
+		return fmt.Errorf("failed to list rooms to delete: %w", err)
+	}
+
+	logger := zap.L().With(
+		zap.String("scheduler_name", op.SchedulerName),
+		zap.String("operation_definition", definition.Name()),
+		zap.String("operation_id", op.ID),
+	)
+
+	logger.Debug("start deleting rooms", zap.Int("amonut", len(rooms)))
+
+	for _, room := range rooms {
+		err = e.roomManager.DeleteRoom(ctx, room)
+		if err != nil {
+			reportDeletionFailedTotal(op.SchedulerName, op.ID)
+			logger.Warn("failed to remove rooms", zap.Error(err))
+		}
+	}
+
+	logger.Debug("finished deleting rooms")
 	return nil
 }
 
+// OnError will do nothing.
 func (e *RemoveRoomsExecutor) OnError(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
-	// TODO(gabrielcorado): implement it
 	return nil
 }
 

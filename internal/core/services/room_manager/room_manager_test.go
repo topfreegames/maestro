@@ -26,10 +26,11 @@ package room_manager
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -137,7 +138,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
 			Containers: []game_room.Container{container1, container2},
-		}).Return(nil, errors.NewErrUnexpected("error create game room instance"))
+		}).Return(nil, porterrors.NewErrUnexpected("error create game room instance"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
 		require.Error(t, err)
@@ -151,7 +152,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 			Containers: []game_room.Container{container1, container2},
 		}).Return(&gameRoomInstance, nil)
 
-		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(errors.NewErrUnexpected("error storing room on redis"))
+		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(porterrors.NewErrUnexpected("error storing room on redis"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
 		require.Error(t, err)
@@ -160,7 +161,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	})
 
 	t.Run("when game room creation fails while allocating ports then it returns nil with proper error", func(t *testing.T) {
-		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, errors.NewErrInvalidArgument("not enough ports to allocate"))
+		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
 		require.Error(t, err)
@@ -242,7 +243,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	})
 
 	t.Run("when the current game room does not exist then it returns proper error", func(t *testing.T) {
-		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(nil, errors.ErrUnexpected)
+		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(nil, porterrors.ErrUnexpected)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 
@@ -251,7 +252,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 
 	t.Run("when there is some error while updating the room then it returns proper error", func(t *testing.T) {
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentGameRoom, nil)
-		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(errors.ErrUnexpected)
+		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(porterrors.ErrUnexpected)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 
@@ -267,4 +268,72 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		require.Error(t, err)
 	})
 
+}
+
+func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
+	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	clock := clockmock.NewFakeClock(time.Now())
+	roomManager := NewRoomManager(
+		clock,
+		pamock.NewMockPortAllocator(mockCtrl),
+		roomStorage,
+		instanceStorage,
+		runtime,
+		RoomManagerConfig{},
+	)
+
+	t.Run("when there are enough rooms it should return the specified number", func(t *testing.T) {
+		schedulerName := "test-scheduler"
+		availableRooms := []*game_room.GameRoom{
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "third-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "forth-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+		}
+
+		roomStorage.EXPECT().GetAllRoomIDs(context.Background(), schedulerName).Return(
+			[]string{
+				availableRooms[0].ID,
+				availableRooms[1].ID,
+				availableRooms[2].ID,
+				availableRooms[3].ID,
+			},
+			nil,
+		)
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
+
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(context.Background(), schedulerName, 2)
+		require.NoError(t, err)
+		require.Len(t, rooms, 2)
+	})
+
+	t.Run("when error happens while fetch a room it returns error", func(t *testing.T) {
+		schedulerName := "test-scheduler"
+		availableRooms := []*game_room.GameRoom{
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+		}
+
+		roomStorage.EXPECT().GetAllRoomIDs(context.Background(), schedulerName).Return(
+			[]string{
+				availableRooms[0].ID,
+				availableRooms[1].ID,
+			},
+			nil,
+		)
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+
+		getRoomErr := errors.New("failed to get")
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[1].ID).Return(nil, getRoomErr)
+
+		_, err := roomManager.ListRoomsWithDeletionPriority(context.Background(), schedulerName, 2)
+		require.Error(t, err)
+		require.ErrorIs(t, err, getRoomErr)
+	})
 }
