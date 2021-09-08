@@ -29,6 +29,7 @@ import (
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"github.com/topfreegames/maestro/internal/service"
@@ -42,12 +43,17 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		service.NewOperationFlowRedis,
 		service.NewClockTime,
 		service.NewOperationStorageRedis,
+		service.NewPortAllocatorRandom,
+		service.NewRoomStorageRedis,
+		service.NewGameRoomInstanceStorageRedis,
+		service.NewRoomManagerConfig,
 
 		// scheduler operations
 		providers.ProvideDefinitionConstructors,
 		providers.ProvideExecutors,
 
 		// services
+		room_manager.NewRoomManager,
 		operation_manager.New,
 		workers.ProvideWorkerOptions,
 		workers_manager.NewWorkersManager,

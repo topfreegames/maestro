@@ -38,8 +38,8 @@ import (
 
 var _ workers.Worker = (*OperationExecutionWorker)(nil)
 
-// Worker is the service responsible for implemeting the worker
-// responsabilities.
+// OperationExecutionWorker is the service responsible for implementing the worker
+// responsibilities.
 type OperationExecutionWorker struct {
 	schedulerName    string
 	operationManager *operation_manager.OperationManager

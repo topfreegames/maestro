@@ -37,15 +37,17 @@ type RoomManager struct {
 	roomStorage     ports.RoomStorage
 	instanceStorage ports.GameRoomInstanceStorage
 	runtime         ports.Runtime
+	config          RoomManagerConfig
 }
 
-func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime) *RoomManager {
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, config RoomManagerConfig) *RoomManager {
 	return &RoomManager{
 		clock:           clock,
 		portAllocator:   portAllocator,
 		roomStorage:     roomStorage,
 		instanceStorage: instanceStorage,
 		runtime:         runtime,
+		config:          config,
 	}
 }
 
@@ -78,6 +80,18 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 	}
 
 	err = m.roomStorage.CreateRoom(ctx, room)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// TODO: let each scheduler parametrize its timeout and use this config as fallback if the scheduler timeout value
+	// is absent.
+	duration := m.config.RoomInitializationTimeoutMillis
+	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
+
+	err = m.WaitRoomStatus(timeoutContext, room, game_room.GameStatusReady)
+	defer cancelFunc()
+
 	if err != nil {
 		return nil, nil, err
 	}

@@ -39,6 +39,7 @@ import (
 )
 
 func TestExecute(t *testing.T) {
+
 	t.Run("with success", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -83,6 +84,7 @@ func TestExecute(t *testing.T) {
 }
 
 func TestOnError(t *testing.T) {
+
 	t.Run("changes scheduler status in case of execution error", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)

@@ -20,45 +20,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// +build wireinject
-
-package main
+package service
 
 import (
-	"context"
+	"time"
 
-	"github.com/google/wire"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-	"github.com/topfreegames/maestro/internal/service"
-	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
-func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.ServeMux, error) {
-	wire.Build(
-		// ports + adapters
-		service.NewClockTime,
-		service.NewPortAllocatorRandom,
-		service.NewRoomStorageRedis,
-		service.NewGameRoomInstanceStorageRedis,
-		service.NewRuntimeKubernetes,
-		service.NewRoomManagerConfig,
+func NewRoomManagerConfig(c config.Config) (room_manager.RoomManagerConfig, error) {
+	initializationTimeout := time.Duration(c.GetInt("services.roomManager.roomInitializationTimeoutMillis")) * time.Millisecond
+	roomManagerConfig := room_manager.RoomManagerConfig{RoomInitializationTimeoutMillis: initializationTimeout}
 
-		// services
-		room_manager.NewRoomManager,
-
-		// api handlers
-		handlers.ProvideRoomsHandler,
-		provideRoomsMux,
-	)
-
-	return &runtime.ServeMux{}, nil
-}
-
-func provideRoomsMux(ctx context.Context, roomsHandler *handlers.RoomsHandler) *runtime.ServeMux {
-	mux := runtime.NewServeMux()
-	_ = api.RegisterRoomsServiceHandlerServer(ctx, mux, roomsHandler)
-	return mux
+	return roomManagerConfig, nil
 }

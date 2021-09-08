@@ -24,27 +24,71 @@ package add_rooms
 
 import (
 	"context"
+	"fmt"
+	"sync"
+
+	"github.com/topfreegames/maestro/internal/core/entities"
+
+	"go.uber.org/zap"
+
+	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 )
 
-type AddRoomsExecutor struct{}
-
-func NewExecutor() *AddRoomsExecutor {
-	return &AddRoomsExecutor{}
+type AddRoomsExecutor struct {
+	roomManager *room_manager.RoomManager
+	storage     ports.SchedulerStorage
+	logger      *zap.Logger
 }
 
-// TODO: not implemented
-func (e *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func NewExecutor(roomManager *room_manager.RoomManager, storage ports.SchedulerStorage) *AddRoomsExecutor {
+	return &AddRoomsExecutor{
+		roomManager: roomManager,
+		storage:     storage,
+		logger:      zap.L().With(zap.String("service", "worker")),
+	}
+}
+
+func (ae *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+	executionLogger := ae.logger.With(
+		zap.String("scheduler_name", op.SchedulerName),
+		zap.String("operation_definition", definition.Name()),
+		zap.String("operation_id", op.ID),
+	)
+	amount := definition.(*AddRoomsDefinition).Amount
+	scheduler, err := ae.storage.GetScheduler(ctx, op.SchedulerName)
+	if err != nil {
+		executionLogger.Error(fmt.Sprintf("Could not find scheduler with name %s, can not create rooms", op.SchedulerName), zap.Error(err))
+		return err
+	}
+	var waitGroup sync.WaitGroup
+
+	for i := int32(0); i < amount; i++ {
+		waitGroup.Add(1)
+		go ae.createRoom(ctx, i, scheduler, executionLogger, &waitGroup)
+	}
+	// TODO: we can not block here, we should be listening ctx.Done() somehow
+	waitGroup.Wait()
 	return nil
 }
 
-// TODO: not implemented
-func (e *AddRoomsExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ae *AddRoomsExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	return nil
 }
 
-func (e *AddRoomsExecutor) Name() string {
+func (ae *AddRoomsExecutor) Name() string {
 	return OperationName
+}
+
+func (ae *AddRoomsExecutor) createRoom(ctx context.Context, index int32, scheduler *entities.Scheduler, logger *zap.Logger, waitGroup *sync.WaitGroup) {
+	defer waitGroup.Done()
+
+	_, _, err := ae.roomManager.CreateRoom(ctx, *scheduler)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Error while creating room number %d", index), zap.Error(err))
+		reportAddRoomOperationExecutionFailed(scheduler.Name, ae.Name())
+	}
 }
