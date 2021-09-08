@@ -54,7 +54,7 @@ func TestExecute(t *testing.T) {
 	instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 
-	roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock)
+	roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, room_manager.RoomManagerConfig{})
 	executor := NewExecutor(roomsManager)
 
 	t.Run("when there are no rooms to be deleted it returns without error", func(t *testing.T) {

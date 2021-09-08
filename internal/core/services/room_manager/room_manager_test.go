@@ -138,7 +138,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
 			Containers: []game_room.Container{container1, container2},
-		}).Return(nil, errors.NewErrUnexpected("error create game room instance"))
+		}).Return(nil, porterrors.NewErrUnexpected("error create game room instance"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
 		require.Error(t, err)
@@ -152,7 +152,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 			Containers: []game_room.Container{container1, container2},
 		}).Return(&gameRoomInstance, nil)
 
-		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(errors.NewErrUnexpected("error storing room on redis"))
+		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(porterrors.NewErrUnexpected("error storing room on redis"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
 		require.Error(t, err)
@@ -161,7 +161,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	})
 
 	t.Run("when game room creation fails while allocating ports then it returns nil with proper error", func(t *testing.T) {
-		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, errors.NewErrInvalidArgument("not enough ports to allocate"))
+		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
 		require.Error(t, err)
@@ -284,6 +284,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		roomStorage,
 		instanceStorage,
 		runtime,
+		RoomManagerConfig{},
 	)
 
 	t.Run("when there are enough rooms it should return the specified number", func(t *testing.T) {
