@@ -152,7 +152,7 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 // function can return less rooms than the `amount` since it might not have
 // enough rooms on the scheduler.
 func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName string, amount int) ([]*game_room.GameRoom, error) {
-	// TODO(gabrielcorado): implement the priority. for now, we're list all
+	// TODO(gabrielcorado): implement the priority. for now, we're listing all
 	// rooms and taking the necessary "amount".
 	schedulerRoomsIDs, err := m.roomStorage.GetAllRoomIDs(ctx, schedulerName)
 	if err != nil {

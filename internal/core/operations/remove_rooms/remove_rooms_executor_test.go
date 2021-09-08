@@ -90,7 +90,7 @@ func TestExecute(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("when any room failed to delete it returns without", func(t *testing.T) {
+	t.Run("when any room failed to delete it returns without error", func(t *testing.T) {
 		schedulerName := "test-scheduler"
 		definition := &RemoveRoomsDefinition{Amount: 2}
 		operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}

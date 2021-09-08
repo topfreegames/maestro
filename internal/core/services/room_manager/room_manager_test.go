@@ -286,7 +286,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		runtime,
 	)
 
-	t.Run("when there enough rooms it should return the specified number", func(t *testing.T) {
+	t.Run("when there are enough rooms it should return the specified number", func(t *testing.T) {
 		schedulerName := "test-scheduler"
 		availableRooms := []*game_room.GameRoom{
 			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
@@ -312,7 +312,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		require.Len(t, rooms, 2)
 	})
 
-	t.Run("when there error while fetch a room it returns error", func(t *testing.T) {
+	t.Run("when error happens while fetch a room it returns error", func(t *testing.T) {
 		schedulerName := "test-scheduler"
 		availableRooms := []*game_room.GameRoom{
 			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
