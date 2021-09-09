@@ -6,6 +6,8 @@ services:
     image: postgres:9.5
     ports:
       - "8585:5432"
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
   redis:
     image: redis:3.2-alpine
     ports:
