@@ -12,6 +12,6 @@ import (
 )
 
 type SchedulerEventStorage interface {
-	PersistSchedulerEvent(event models.SchedulerEvent) error
+	PersistSchedulerEvent(event *models.SchedulerEvent) error
 	LoadSchedulerEvents(schedulerName string, page int) ([]*models.SchedulerEvent, error)
 }

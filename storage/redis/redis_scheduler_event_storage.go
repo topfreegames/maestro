@@ -10,11 +10,16 @@ package redis
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/go-redis/redis"
 	"github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/storage"
 )
+
+var schedulerEventsPageSize = 30
+var minScoreDuration = -14 * 24 * time.Hour
 
 type RedisSchedulerEventStorage struct {
 	redisClient interfaces.RedisClient
@@ -26,35 +31,40 @@ func NewRedisSchedulerEventStorage(redisClient interfaces.RedisClient) *RedisSch
 	}
 }
 
-func (this *RedisSchedulerEventStorage) PersistSchedulerEvent(event *models.SchedulerEvent) error {
+var _ storage.SchedulerEventStorage = (*RedisSchedulerEventStorage)(nil)
+
+func (es *RedisSchedulerEventStorage) PersistSchedulerEvent(event *models.SchedulerEvent) error {
 
 	member, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("scheduler event failed to parse to json: %w", err)
 	}
 
-	redisPipeline := this.redisClient.TxPipeline()
-
+	redisPipeline := es.redisClient.TxPipeline()
+	score := float64(event.CreatedAt.UnixNano())
 	redisPipeline.ZAdd(getSchedulerEventKey(event.SchedulerName), redis.Z{
-		Score:  float64(event.CreatedAt.UnixNano()),
+		Score:  score,
 		Member: string(member),
 	})
 
+	minScore := event.CreatedAt.Add(minScoreDuration).UnixNano()
+	redisPipeline.ZRemRangeByScore(getSchedulerEventKey(event.SchedulerName), "-inf", fmt.Sprintf("(%d", minScore))
+
 	_, err = redisPipeline.Exec()
 	if err != nil {
-		return err
+		return fmt.Errorf("scheduler event failed to persist on redis: %w", err)
 	}
 
 	return nil
 }
 
 // Load loads scheduler events from the redis using the scheduler name and a page
-func (this *RedisSchedulerEventStorage) LoadSchedulerEvents(schedulerName string, page int) ([]*models.SchedulerEvent, error) {
-	eventsString, err := this.redisClient.ZRangeByScore(getSchedulerEventKey(schedulerName), redis.ZRangeBy{
+func (es *RedisSchedulerEventStorage) LoadSchedulerEvents(schedulerName string, page int) ([]*models.SchedulerEvent, error) {
+	eventsString, err := es.redisClient.ZRangeByScore(getSchedulerEventKey(schedulerName), redis.ZRangeBy{
 		Min:    "-inf",
 		Max:    "+inf",
-		Count:  30,
-		Offset: int64((page-1)*30 + 1),
+		Count:  int64(schedulerEventsPageSize),
+		Offset: int64((page-1)*schedulerEventsPageSize + 1),
 	}).Result()
 
 	if err != nil {

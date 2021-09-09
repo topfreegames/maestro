@@ -44,6 +44,7 @@ var _ = Describe("Scheduler events", func() {
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().ZAdd(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any()).AnyTimes()
+			mockPipeline.EXPECT().ZRemRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), "-inf", gomock.Any()).AnyTimes()
 			mockPipeline.EXPECT().Exec().AnyTimes()
 
 			event := NewSchedulerEvent("UPDATE_STARTED", schedulerName, metadata)
@@ -58,6 +59,7 @@ var _ = Describe("Scheduler events", func() {
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 			mockPipeline.EXPECT().ZAdd(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any()).AnyTimes()
+			mockPipeline.EXPECT().ZRemRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any(), gomock.Any()).AnyTimes()
 			mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis failed"))
 
 			event := NewSchedulerEvent("UPDATE_STARTED", schedulerName, metadata)

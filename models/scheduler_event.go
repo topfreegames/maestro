@@ -12,7 +12,7 @@ import (
 )
 
 
-// Scheduler is the struct that defines a maestro scheduler
+// SchedulerEvent is the struct that defines a maestro scheduler event
 type SchedulerEvent struct {
 	Name          string                 `json:"name"`
 	SchedulerName string                 `json:"schedulerName"`
