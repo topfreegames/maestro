@@ -4052,6 +4052,8 @@ var _ = Describe("Watcher", func() {
 					scheduler.Game = schedulerName
 				}).Times(4)
 
+			mockSchedulerEventStorage.EXPECT().PersistSchedulerEvent(gomock.Any()).AnyTimes()
+
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 		})
 
@@ -4128,6 +4130,8 @@ var _ = Describe("Watcher", func() {
 					scheduler.YAML = yaml1
 				}).Times(4)
 
+			mockSchedulerEventStorage.EXPECT().PersistSchedulerEvent(gomock.Any()).AnyTimes()
+
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("error listing rooms with no ping since"))
 		})
@@ -4163,6 +4167,8 @@ var _ = Describe("Watcher", func() {
 				Expect(max).To(BeNumerically("~", ts, 1*time.Second))
 			}).Return(redis.NewStringSliceResult(nil, errors.New("redis error")))
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
+
+			mockSchedulerEventStorage.EXPECT().PersistSchedulerEvent(gomock.Any()).AnyTimes()
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("error listing rooms with no occupied timeout"))

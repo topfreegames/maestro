@@ -26,6 +26,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	storagemock "github.com/topfreegames/maestro/storage/mock"
 	mtesting "github.com/topfreegames/maestro/testing"
+	storagemock "github.com/topfreegames/maestro/storage/mock"
 )
 
 var (

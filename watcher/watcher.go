@@ -730,6 +730,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 	}
 
 	if len(roomsNoPingSince) > 0 || len(roomsOnOccupiedTimeout) > 0 {
+
 		if len(pods) <= 0 {
 			pods, err = w.listPods()
 			if err != nil {
@@ -738,6 +739,19 @@ func (w *Watcher) RemoveDeadRooms() error {
 			}
 		}
 		podsToDelete := w.filterPodsByName(logger, pods, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
+
+		startedEvent := models.NewSchedulerEvent(
+			"REMOVE_DEAD_ROOMS_STARTED", 
+			w.SchedulerName, 
+			map[string]interface{}{
+				"amount": len(podsToDelete),
+			},
+		)
+		err := w.SchedulerEventStorage.PersistSchedulerEvent(startedEvent)
+		if err != nil {
+			logger.WithError(err).Error("failed to persist the removed dead rooms started event")
+			return err
+		}
 
 		// load scheduler from database
 		scheduler := models.NewScheduler(w.SchedulerName, "", "")
@@ -779,7 +793,7 @@ func (w *Watcher) RemoveDeadRooms() error {
 			logger.WithError(err).Error("replacing pods returned error on RemoveDeadRooms")
 		}
 
-		if timeoutErr == false && err == nil {
+		if !timeoutErr && err == nil {
 			l := logger.WithFields(logrus.Fields{
 				"rooms": fmt.Sprintf("%v", roomsNoPingSince),
 			})
@@ -792,6 +806,19 @@ func (w *Watcher) RemoveDeadRooms() error {
 		}
 	}
 	logger.Info("finish check of dead rooms")
+	
+	finishedEvent := models.NewSchedulerEvent(
+		"REMOVE_DEAD_ROOMS_FINISHED", 
+		w.SchedulerName, 
+		map[string]interface{}{
+			"success": err == nil,
+		})
+	err = w.SchedulerEventStorage.PersistSchedulerEvent(finishedEvent)
+	if err != nil {
+		logger.WithError(err).Error("failed to persist the removed dead rooms finished event")
+		return err
+	}
+
 	return nil
 }
 

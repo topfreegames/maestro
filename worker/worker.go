@@ -28,12 +28,14 @@ import (
 	"github.com/topfreegames/maestro/storage"
 	storageredis "github.com/topfreegames/maestro/storage/redis"
 	"github.com/topfreegames/maestro/watcher"
+	storageredis "github.com/topfreegames/maestro/storage/redis"
 	"k8s.io/client-go/kubernetes"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+
 )
 
 type gracefulShutdown struct {
