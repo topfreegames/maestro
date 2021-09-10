@@ -33,7 +33,7 @@ func (_m *MockSchedulerEventStorage) EXPECT() *MockSchedulerEventStorageMockReco
 }
 
 // PersistSchedulerEvent mocks base method
-func (_m *MockSchedulerEventStorage) PersistSchedulerEvent(event models.SchedulerEvent) error {
+func (_m *MockSchedulerEventStorage) PersistSchedulerEvent(event *models.SchedulerEvent) error {
 	ret := _m.ctrl.Call(_m, "PersistSchedulerEvent", event)
 	ret0, _ := ret[0].(error)
 	return ret0
