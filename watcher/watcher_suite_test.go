@@ -26,6 +26,7 @@ import (
 	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
+	storagemock "github.com/topfreegames/maestro/storage/mock"
 	mtesting "github.com/topfreegames/maestro/testing"
 )
 
@@ -45,6 +46,7 @@ var (
 	mockEventForwarder    *eventforwardermock.MockEventForwarder
 	mr                    *models.MixedMetricsReporter
 	redisClient           *redis.Client
+	eventsStorage         *storagemock.MockSchedulerEventStorage
 	allStatus             = []string{
 		models.StatusCreating,
 		models.StatusReady,
@@ -86,6 +88,7 @@ var _ = BeforeEach(func() {
 	redisClient, err = redis.NewClient("extensions.redis", config, mockRedisClient, mockRedisTraceWrapper)
 	Expect(err).NotTo(HaveOccurred())
 	roomManager = &models.GameRoom{}
+	eventsStorage = storagemock.NewMockSchedulerEventStorage(mockCtrl)
 })
 
 var _ = AfterEach(func() {

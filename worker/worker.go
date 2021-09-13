@@ -9,13 +9,14 @@ package worker
 
 import (
 	"fmt"
-	goredis "github.com/go-redis/redis"
 	"os"
 	"os/signal"
 	"runtime"
 	"sync"
 	"syscall"
 	"time"
+
+	goredis "github.com/go-redis/redis"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -24,6 +25,8 @@ import (
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/metadata"
 	"github.com/topfreegames/maestro/models"
+	"github.com/topfreegames/maestro/storage"
+	storageredis "github.com/topfreegames/maestro/storage/redis"
 	"github.com/topfreegames/maestro/watcher"
 	"k8s.io/client-go/kubernetes"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
@@ -57,6 +60,7 @@ type Worker struct {
 	Forwarders              []*eventforwarder.Info
 	getLocksTimeout         int
 	lockTimeoutMs           int
+	SchedulerEventStorage   storage.SchedulerEventStorage
 }
 
 // NewWorker is the worker constructor
@@ -127,6 +131,7 @@ func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 		return err
 	}
 
+
 	return nil
 }
 
@@ -194,6 +199,7 @@ func (w *Worker) configureRedisClient(redisClientOrNil redisinterfaces.RedisClie
 		redisClientOrNil = goredis.NewClient(options)
 	}
 
+	w.SchedulerEventStorage = storageredis.NewRedisSchedulerEventStorage(redisClientOrNil)
 	redisClient, err := redis.NewClient("extensions.redis", w.Config, redisClientOrNil)
 	if err != nil {
 		return err
@@ -323,6 +329,7 @@ func (w *Worker) EnsureRunningWatchers(schedulerNames []string) {
 				gameName,
 				occupiedTimeout,
 				w.Forwarders,
+				w.SchedulerEventStorage,
 			)
 			w.Watchers[schedulerName].Run = true // Avoids race condition
 			w.startWatcher(w.Watchers[schedulerName])
