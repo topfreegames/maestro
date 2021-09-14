@@ -17,6 +17,10 @@ const (
 	FinishedAutoScaleEventName = "AUTO_SCALE_FINISHED"
 	FailedAutoScaleEventName   = "AUTO_SCALE_FAILED"
 
+	// Remove dead rooms.
+	StartRemoveDeadRoomsEventName    = "REMOVE_DEAD_ROOMS_START"
+	FinishedRemoveDeadRoomsEventName = "REMOVE_DEAD_ROOMS_FINISHED"
+
 	// Metadata attributes name.
 
 	// ErrorMetadaName metadata containing an error.
@@ -26,6 +30,8 @@ const (
 	TypeMetadataName   = "type"
 	// AmountMetadataName amount of rooms that are going to be manipulated.
 	AmountMetadataName = "amount"
+	// SucessMetadataName indicates if the remove dead rooms finished successfully.
+	SuccessMetadataName = "success"
 )
 
 // SchedulerEvent is the struct that defines a maestro scheduler event
