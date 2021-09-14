@@ -609,7 +609,7 @@ func waitCreatingPods(
 					logger.WithField("pod", createdPod.Name).Debug("pod not ready yet, waiting...")
 					err = models.ValidatePodWaitingState(createdPod)
 
-					if err != nil {
+					if config.PreventRoomsCreationWithError && err != nil {
 						logger.WithField("pod", pod.GetName()).WithError(err).Error("invalid pod waiting state")
 						return false, err
 					}
