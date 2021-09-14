@@ -24,6 +24,7 @@ import (
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
 	"github.com/topfreegames/maestro/models"
+	storagemock "github.com/topfreegames/maestro/storage/mock"
 	mtesting "github.com/topfreegames/maestro/testing"
 )
 
@@ -39,6 +40,7 @@ var (
 	mockRedisClient  *redismocks.MockRedisClient
 	mr               *models.MixedMetricsReporter
 	redisClient      *redis.Client
+	eventsStorage    *storagemock.MockSchedulerEventStorage
 )
 
 func TestWorker(t *testing.T) {
@@ -64,6 +66,7 @@ var _ = BeforeEach(func() {
 	mockRedisClient.EXPECT().Ping()
 	redisClient, err = redis.NewClient("extensions.redis", config, mockRedisClient)
 	Expect(err).NotTo(HaveOccurred())
+	eventsStorage = storagemock.NewMockSchedulerEventStorage(mockCtrl)
 })
 
 var _ = AfterEach(func() {

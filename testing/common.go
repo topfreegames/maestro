@@ -2,15 +2,17 @@ package testing
 
 import (
 	"fmt"
-	"github.com/onsi/ginkgo"
 	"strconv"
 	"time"
+
+	"github.com/onsi/ginkgo"
 
 	goredis "github.com/go-redis/redis"
 	"github.com/spf13/viper"
 	clockmocks "github.com/topfreegames/extensions/clock/mocks"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	storagemock "github.com/topfreegames/maestro/storage/mock"
 	yaml "gopkg.in/yaml.v2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1397,6 +1399,33 @@ func MockScaleUp(
 	mockPipeline.EXPECT().ZAdd(models.GetRoomPingRedisKey(schedulerName), gomock.Any()).Times(times)
 	mockPipeline.EXPECT().SAdd(models.GetRoomStatusSetRedisKey(schedulerName, "creating"), gomock.Any()).Times(times)
 	mockPipeline.EXPECT().Exec().Times(times)
+}
+
+func MockScaleSchedulerEvents(eventsStorage *storagemock.MockSchedulerEventStorage, scaleType string, amount int, err error) {
+	eventsStorage.EXPECT().PersistSchedulerEvent(
+		&SchedulerEventMatcher{
+			ExpectedName: models.StartAutoScaleEventName,
+			ExpectedMetadata: map[string]interface{}{
+				models.TypeMetadataName:   scaleType,
+				models.AmountMetadataName: amount,
+			},
+		},
+	).Return(nil)
+
+	if err != nil {
+		eventsStorage.EXPECT().PersistSchedulerEvent(
+			&SchedulerEventMatcher{
+				ExpectedName: models.FailedAutoScaleEventName,
+				ExpectedMetadata: map[string]interface{}{
+					models.ErrorMetadataName: err,
+				},
+			},
+		).Return(nil)
+
+		return
+	}
+
+	eventsStorage.EXPECT().PersistSchedulerEvent(&SchedulerEventMatcher{ExpectedName: models.FinishedAutoScaleEventName}).Return(nil)
 }
 
 func MockScaleUpWithCurrentPods(

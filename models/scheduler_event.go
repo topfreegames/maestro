@@ -11,6 +11,22 @@ import (
 	"time"
 )
 
+const (
+	// AutoScale events.
+	StartAutoScaleEventName    = "AUTO_SCALE_START"
+	FinishedAutoScaleEventName = "AUTO_SCALE_FINISHED"
+	FailedAutoScaleEventName   = "AUTO_SCALE_FAILED"
+
+	// Metadata attributes name.
+
+	// ErrorMetadaName metadata containing an error.
+	ErrorMetadataName  = "error"
+	// TypeMetadataName type of the operation. For example, AutoScale has "up"
+	// and "down" types.
+	TypeMetadataName   = "type"
+	// AmountMetadataName amount of rooms that are going to be manipulated.
+	AmountMetadataName = "amount"
+)
 
 // SchedulerEvent is the struct that defines a maestro scheduler event
 type SchedulerEvent struct {
@@ -21,7 +37,7 @@ type SchedulerEvent struct {
 }
 
 // NewSchedulerEvent is the scheduler event constructor
-func NewSchedulerEvent(eventName, schedulerName string , metadata map[string]interface{}) *SchedulerEvent {
+func NewSchedulerEvent(eventName, schedulerName string, metadata map[string]interface{}) *SchedulerEvent {
 	return &SchedulerEvent{
 		Name:          eventName,
 		SchedulerName: schedulerName,

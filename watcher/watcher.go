@@ -35,6 +35,7 @@ import (
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
+	"github.com/topfreegames/maestro/storage"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,6 +96,7 @@ type Watcher struct {
 	Informer                  cache.SharedIndexInformer
 	Lister                    listersv1.PodNamespaceLister
 	Queue                     workqueue.RateLimitingInterface
+	SchedulerEventStorage     storage.SchedulerEventStorage
 }
 
 type scaling struct {
@@ -127,6 +129,7 @@ func NewWatcher(
 	schedulerName, gameName string,
 	occupiedTimeout int64,
 	eventForwarders []*eventforwarder.Info,
+	eventsStorage storage.SchedulerEventStorage,
 ) *Watcher {
 	logger.Infof("%s", "Starting NewWatcher")
 	w := &Watcher{
@@ -141,6 +144,7 @@ func NewWatcher(
 		GameName:                gameName,
 		OccupiedTimeout:         occupiedTimeout,
 		EventForwarders:         eventForwarders,
+		SchedulerEventStorage:   eventsStorage,
 	}
 
 	w.loadConfigurationDefaults()
@@ -867,7 +871,16 @@ func (w *Watcher) AutoScale() error {
 		return err
 	}
 
+	didScale := false
+	scaleStartEvent := models.NewSchedulerEvent(models.StartAutoScaleEventName, w.SchedulerName, map[string]interface{}{})
 	if scaling.Delta > 0 {
+		scaleStartEvent.Metadata[models.AmountMetadataName] = scaling.Delta
+		scaleStartEvent.Metadata[models.TypeMetadataName] = "up"
+		err := w.SchedulerEventStorage.PersistSchedulerEvent(scaleStartEvent)
+		if err != nil {
+			logger.WithError(err).Warn("failed to persist start scale event")
+		}
+
 		l.Info("scheduler is subdimensioned, scaling up")
 		timeoutSec := w.Config.GetInt("scaleUpTimeoutSeconds")
 
@@ -888,10 +901,18 @@ func (w *Watcher) AutoScale() error {
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
 		scaling.ChangedState = true
+		didScale = true
 		if err == nil {
 			scheduler.LastScaleOpAt = nowTimestamp
 		}
 	} else if scaling.Delta < 0 {
+		scaleStartEvent.Metadata[models.AmountMetadataName] = scaling.Delta * -1
+		scaleStartEvent.Metadata[models.TypeMetadataName] = "down"
+		err := w.SchedulerEventStorage.PersistSchedulerEvent(scaleStartEvent)
+		if err != nil {
+			logger.WithError(err).Warn("failed to persist start scale event")
+		}
+
 		l.Info("scheduler is overdimensioned, should scale down")
 		timeoutSec := w.Config.GetInt("scaleDownTimeoutSeconds")
 
@@ -911,6 +932,7 @@ func (w *Watcher) AutoScale() error {
 		}
 		lockErr, err := w.WithDownscalingLock(l, scaleDown)
 		if lockErr != nil {
+			w.SchedulerEventStorage.PersistSchedulerEvent(models.NewSchedulerEvent(models.FailedAutoScaleEventName, w.SchedulerName, map[string]interface{}{models.ErrorMetadataName: lockErr}))
 			l.WithError(err).Info("not able to acquire downScalingLock. Not scaling down")
 			return nil
 		}
@@ -918,6 +940,7 @@ func (w *Watcher) AutoScale() error {
 		scheduler.State = models.StateInSync
 		scheduler.StateLastChangedAt = nowTimestamp
 		scaling.ChangedState = true
+		didScale = true
 		if err == nil {
 			scheduler.LastScaleOpAt = nowTimestamp
 		}
@@ -926,7 +949,12 @@ func (w *Watcher) AutoScale() error {
 	}
 
 	if err != nil {
+		w.SchedulerEventStorage.PersistSchedulerEvent(models.NewSchedulerEvent(models.FailedAutoScaleEventName, w.SchedulerName, map[string]interface{}{models.ErrorMetadataName: err}))
 		logger.WithError(err).Error("error scaling scheduler")
+	}
+
+	if didScale {
+		w.SchedulerEventStorage.PersistSchedulerEvent(models.NewSchedulerEvent(models.FinishedAutoScaleEventName, w.SchedulerName, map[string]interface{}{}))
 	}
 
 	if scaling.ChangedState {
@@ -935,6 +963,7 @@ func (w *Watcher) AutoScale() error {
 			logger.WithError(err).Error("failed to update scheduler info")
 		}
 	}
+
 	return nil
 }
 
