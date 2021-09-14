@@ -31,11 +31,24 @@ func TestModels(t *testing.T) {
 	RunSpecs(t, "Storage Suite")
 }
 
+var (
+	schedulerName   string
+	mockCtrl        *gomock.Controller
+	mockRedisClient *redismocks.MockRedisClient
+	mockPipeline    *redismocks.MockPipeliner
+)
+
 var _ = Describe("Scheduler events", func() {
-	schedulerName := uuid.NewV4().String()
-	mockCtrl := gomock.NewController(GinkgoT())
-	mockRedisClient := redismocks.NewMockRedisClient(mockCtrl)
-	mockPipeline := redismocks.NewMockPipeliner(mockCtrl)
+	BeforeEach(func() {
+		schedulerName = uuid.NewV4().String()
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
+		mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
+	})
 
 	Describe("PersistSchedulerEvent", func() {
 		It("should return no error when event is persisted successfully", func() {
@@ -76,11 +89,11 @@ var _ = Describe("Scheduler events", func() {
 			page := 30
 
 			createdAt := time.Now()
-			expectedEvent := models.SchedulerEvent {
-				Name: "UPDATE_STARTED",
+			expectedEvent := models.SchedulerEvent{
+				Name:          "UPDATE_STARTED",
 				SchedulerName: schedulerName,
-				CreatedAt: createdAt,
-				Metadata: metadata,
+				CreatedAt:     createdAt,
+				Metadata:      metadata,
 			}
 			expectedEventString, _ := json.Marshal(expectedEvent)
 
@@ -89,7 +102,7 @@ var _ = Describe("Scheduler events", func() {
 				Max:    "+inf",
 				Count:  30,
 				Offset: int64((page-1)*30 + 1),
-			}).Return(redis.NewStringSliceResult([]string{ string(expectedEventString) }, nil))
+			}).Return(redis.NewStringSliceResult([]string{string(expectedEventString)}, nil))
 
 			events, err := NewRedisSchedulerEventStorage(mockRedisClient).LoadSchedulerEvents(schedulerName, page)
 			Expect(err).To(BeNil())
@@ -102,4 +115,3 @@ var _ = Describe("Scheduler events", func() {
 		})
 	})
 })
-
