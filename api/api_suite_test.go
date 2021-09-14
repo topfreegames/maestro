@@ -29,34 +29,36 @@ import (
 	loginMocks "github.com/topfreegames/maestro/login/mocks"
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
+	storageMock "github.com/topfreegames/maestro/storage/mock"
 	"k8s.io/client-go/kubernetes/fake"
 	metricsFake "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
 
 var (
-	app                   *api.App
-	clientset             *fake.Clientset
-	metricsClientset      *metricsFake.Clientset
-	config                *viper.Viper
-	hook                  *test.Hook
-	logger                *logrus.Logger
-	mockCtrl              *gomock.Controller
-	mockDb                *pgmocks.MockDB
-	mockCtxWrapper        *pgmocks.MockCtxWrapper
-	mockPipeline          *redismocks.MockPipeliner
-	mockRedisClient       *redismocks.MockRedisClient
-	mockRedisTraceWrapper *redismocks.MockTraceWrapper
-	mockClientset         *fake.Clientset
-	mockPortChooser       *mocks.MockPortChooser
-	mockEventForwarder1   *eventforwardermock.MockEventForwarder
-	mockEventForwarder2   *eventforwardermock.MockEventForwarder
-	mockEventForwarder3   *eventforwardermock.MockEventForwarder
-	mockEventForwarder4   *eventforwardermock.MockEventForwarder
-	mockEventForwarder5   *eventforwardermock.MockEventForwarder
-	mockLogin             *loginMocks.MockLogin
-	mockClock             *clockmocks.MockClock
-	mmr                   *models.MixedMetricsReporter
-	allStatus             = []string{
+	app                       *api.App
+	clientset                 *fake.Clientset
+	metricsClientset          *metricsFake.Clientset
+	config                    *viper.Viper
+	hook                      *test.Hook
+	logger                    *logrus.Logger
+	mockCtrl                  *gomock.Controller
+	mockDb                    *pgmocks.MockDB
+	mockCtxWrapper            *pgmocks.MockCtxWrapper
+	mockPipeline              *redismocks.MockPipeliner
+	mockRedisClient           *redismocks.MockRedisClient
+	mockRedisTraceWrapper     *redismocks.MockTraceWrapper
+	mockClientset             *fake.Clientset
+	mockPortChooser           *mocks.MockPortChooser
+	mockEventForwarder1       *eventforwardermock.MockEventForwarder
+	mockEventForwarder2       *eventforwardermock.MockEventForwarder
+	mockEventForwarder3       *eventforwardermock.MockEventForwarder
+	mockEventForwarder4       *eventforwardermock.MockEventForwarder
+	mockEventForwarder5       *eventforwardermock.MockEventForwarder
+	mockLogin                 *loginMocks.MockLogin
+	mockClock                 *clockmocks.MockClock
+	mockSchedulerEventStorage *storageMock.MockSchedulerEventStorage
+	mmr                       *models.MixedMetricsReporter
+	allStatus                 = []string{
 		models.StatusCreating,
 		models.StatusReady,
 		models.StatusOccupied,
@@ -108,10 +110,14 @@ var _ = BeforeEach(func() {
 
 	mockRedisClient.EXPECT().Ping().Return(redis.NewStatusResult("PONG", nil)).AnyTimes()
 	app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+
 	Expect(err).NotTo(HaveOccurred())
 
 	mockLogin = loginMocks.NewMockLogin(mockCtrl)
 	app.Login = mockLogin
+	
+	mockSchedulerEventStorage = storageMock.NewMockSchedulerEventStorage(mockCtrl)
+	app.SchedulerEventStorage = mockSchedulerEventStorage
 })
 
 var _ = AfterEach(func() {

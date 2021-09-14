@@ -11,8 +11,6 @@ import (
 	"context"
 	e "errors"
 	"fmt"
-	goredis "github.com/go-redis/redis"
-	"github.com/topfreegames/maestro/api/auth"
 	"io"
 	"net"
 	"net/http"
@@ -21,6 +19,10 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	goredis "github.com/go-redis/redis"
+	"github.com/topfreegames/maestro/api/auth"
+	"github.com/topfreegames/maestro/storage"
 
 	raven "github.com/getsentry/raven-go"
 	newrelic "github.com/newrelic/go-agent"
@@ -73,6 +75,7 @@ type App struct {
 	EmailDomains            []string
 	Forwarders              []*eventforwarder.Info
 	SchedulerCache          *models.SchedulerCache
+	SchedulerEventStorage   storage.SchedulerEventStorage
 	William                 *william.WilliamAuth
 	gracefulShutdown        *gracefulShutdown
 }
@@ -201,6 +204,17 @@ func (a *App) getRouter() *mux.Router {
 		NewDogStatsdMiddleware(a),
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("schedulerStatus")
+
+	r.HandleFunc("/scheduler/{schedulerName}/events", Chain(
+		NewSchedulerEventHandler(a),
+		NewAccessMiddleware(a),
+		NewAuthMiddleware(a, auth.SchedulerPathResolver("GetScheduler", "schedulerName")),
+		NewMetricsReporterMiddleware(a),
+		NewSentryMiddleware(),
+		NewNewRelicMiddleware(a),
+		NewDogStatsdMiddleware(a),
+		NewParamMiddleware(func() interface{} { return &models.SchedulerEventsParams{} }),
+	).ServeHTTP).Methods("GET").Name("schedulerEvents")
 
 	r.HandleFunc("/scheduler/{schedulerName}/config", Chain(
 		NewGetSchedulerConfigHandler(a),

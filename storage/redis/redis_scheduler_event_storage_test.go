@@ -43,9 +43,9 @@ var _ = Describe("Scheduler events", func() {
 			metadata["reason"] = "rollback"
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().ZAdd(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any()).AnyTimes()
-			mockPipeline.EXPECT().ZRemRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), "-inf", gomock.Any()).AnyTimes()
-			mockPipeline.EXPECT().Exec().AnyTimes()
+			mockPipeline.EXPECT().ZAdd(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any()).Times(1)
+			mockPipeline.EXPECT().ZRemRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), "-inf", gomock.Any()).Times(1)
+			mockPipeline.EXPECT().Exec().Times(1)
 
 			event := NewSchedulerEvent("UPDATE_STARTED", schedulerName, metadata)
 
@@ -58,8 +58,8 @@ var _ = Describe("Scheduler events", func() {
 			metadata["reason"] = "rollback"
 
 			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
-			mockPipeline.EXPECT().ZAdd(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any()).AnyTimes()
-			mockPipeline.EXPECT().ZRemRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any(), gomock.Any()).AnyTimes()
+			mockPipeline.EXPECT().ZAdd(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any()).Times(1)
+			mockPipeline.EXPECT().ZRemRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any(), gomock.Any()).Times(1)
 			mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis failed"))
 
 			event := NewSchedulerEvent("UPDATE_STARTED", schedulerName, metadata)
