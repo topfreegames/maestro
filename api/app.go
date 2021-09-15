@@ -33,6 +33,7 @@ import (
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	"github.com/topfreegames/extensions/router"
 	logininterfaces "github.com/topfreegames/maestro/login/interfaces"
+	storageredis "github.com/topfreegames/maestro/storage/redis"
 
 	"github.com/gorilla/mux"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -455,6 +456,7 @@ func (a *App) configureApp(
 	a.configureWilliam()
 	a.configureServer()
 	a.configureEnvironment()
+	a.configureEventStorage()
 	return nil
 }
 
@@ -503,6 +505,10 @@ func (a *App) configureCache() {
 	expirationTime := a.Config.GetDuration("schedulerCache.defaultExpiration")
 	cleanupInterval := a.Config.GetDuration("schedulerCache.cleanupInterval")
 	a.SchedulerCache = models.NewSchedulerCache(expirationTime, cleanupInterval, a.Logger)
+}
+
+func (a *App) configureEventStorage() {
+	a.SchedulerEventStorage = storageredis.NewRedisSchedulerEventStorage(a.RedisClient.Client)
 }
 
 func (a *App) configureForwarders() {
