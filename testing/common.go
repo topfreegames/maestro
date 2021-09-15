@@ -1428,6 +1428,28 @@ func MockScaleSchedulerEvents(eventsStorage *storagemock.MockSchedulerEventStora
 	eventsStorage.EXPECT().PersistSchedulerEvent(&SchedulerEventMatcher{ExpectedName: models.FinishedAutoScaleEventName}).Return(nil)
 }
 
+func MockRemoveDeadRoomsStartEvent(eventsStorage *storagemock.MockSchedulerEventStorage, amount int) {
+
+	eventsStorage.EXPECT().PersistSchedulerEvent(
+		&SchedulerEventMatcher{
+			ExpectedName: models.StartRemoveDeadRoomsEventName,
+			ExpectedMetadata: map[string]interface{}{
+				models.AmountMetadataName: amount,
+			},
+		},
+	).Return(nil)
+}
+
+func MockRemoveDeadRoomsFinishEvent(eventsStorage *storagemock.MockSchedulerEventStorage, err error) {
+
+	eventsStorage.EXPECT().PersistSchedulerEvent(&SchedulerEventMatcher{
+		ExpectedName: models.FinishedRemoveDeadRoomsEventName,
+		ExpectedMetadata: map[string]interface{}{
+			models.SuccessMetadataName: err == nil,
+		},
+	}).Return(nil)
+}
+
 func MockScaleUpWithCurrentPods(
 	mockPipeline *redismocks.MockPipeliner,
 	mockRedisClient *redismocks.MockRedisClient,

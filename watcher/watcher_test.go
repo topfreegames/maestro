@@ -4052,6 +4052,9 @@ var _ = Describe("Watcher", func() {
 					scheduler.Game = schedulerName
 				}).Times(4)
 
+			testing.MockRemoveDeadRoomsStartEvent(eventsStorage, 3)
+			testing.MockRemoveDeadRoomsFinishEvent(eventsStorage, nil)
+
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 		})
 
@@ -4127,6 +4130,9 @@ var _ = Describe("Watcher", func() {
 				Do(func(scheduler *models.Scheduler, query string, modifier string) {
 					scheduler.YAML = yaml1
 				}).Times(4)
+
+			testing.MockRemoveDeadRoomsStartEvent(eventsStorage, 0)
+			testing.MockRemoveDeadRoomsFinishEvent(eventsStorage, nil)
 
 			Expect(func() { w.RemoveDeadRooms() }).ShouldNot(Panic())
 			Expect(hook.Entries).To(testing.ContainLogMessage("error listing rooms with no ping since"))
