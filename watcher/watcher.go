@@ -1288,6 +1288,20 @@ func (w *Watcher) rollbackSchedulerVersion(
 	)
 	if dbRollbackErr != nil {
 		logger.WithError(dbRollbackErr).Error("error during scheduler database roll back on EnsureCorrectRooms")
+		return
+	}
+
+	persistEventErr := w.SchedulerEventStorage.PersistSchedulerEvent(
+		models.NewSchedulerEvent(
+			models.TriggerRollbackEventName,
+			w.SchedulerName,
+			map[string]interface{}{
+				models.SchedulerVersionMetadataName: oldScheduler.Version,
+			},
+		),
+	)
+	if persistEventErr != nil {
+		logger.WithError(persistEventErr).Warn("failed to persist rollback triggered event")
 	}
 }
 
@@ -1393,8 +1407,23 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	timeoutDur := time.Duration(timeoutSec) * time.Second
 	willTimeoutAt := time.Now().Add(timeoutDur)
 
+	persistEventErr := w.SchedulerEventStorage.PersistSchedulerEvent(
+		models.NewSchedulerEvent(
+			models.StartWorkerUpdateEventName,
+			w.SchedulerName,
+			map[string]interface{}{
+				models.SchedulerVersionMetadataName:     scheduler.Version,
+				models.InvalidVersionAmountMetadataName: len(incorrectPodNames),
+				models.UnregisteredAmountMetadataName:   len(unregisteredPodNames),
+			},
+		),
+	)
+	if persistEventErr != nil {
+		logger.WithError(persistEventErr).Warn("failed to persist worker update started event")
+	}
+
 	logger.Infof("replacing pods with %d seconds of timeout", timeoutSec)
-	timeoutErr, _, err := controller.SegmentAndReplacePods(
+	timeoutErr, cancelErr, err := controller.SegmentAndReplacePods(
 		logger,
 		w.RoomManager,
 		w.MetricsReporter,
@@ -1412,6 +1441,19 @@ func (w *Watcher) EnsureCorrectRooms() error {
 	)
 
 	if err != nil {
+		persistEventErr = w.SchedulerEventStorage.PersistSchedulerEvent(
+			models.NewSchedulerEvent(
+				models.FailedWorkerUpdateEventName,
+				w.SchedulerName,
+				map[string]interface{}{
+					models.ErrorMetadataName: err,
+				},
+			),
+		)
+		if persistEventErr != nil {
+			logger.WithError(persistEventErr).Warn("failed to persist worker update failed event")
+		}
+
 		// if operationManager != nil there is a scheduler update in place
 		if operationManager != nil {
 			logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms during update scheduler config")
@@ -1420,13 +1462,54 @@ func (w *Watcher) EnsureCorrectRooms() error {
 			logger.WithError(err).Error("replacing pods returned error on EnsureCorrectRooms. Rolling back")
 			w.rollbackSchedulerVersion(ctx, logger, scheduler, &configYAML)
 		}
+
+		return nil
 	}
 
 	if timeoutErr != nil {
+		persistEventErr = w.SchedulerEventStorage.PersistSchedulerEvent(
+			models.NewSchedulerEvent(
+				models.FailedWorkerUpdateEventName,
+				w.SchedulerName,
+				map[string]interface{}{
+					models.ErrorMetadataName: "timeout replacing pods",
+				},
+			),
+		)
+		if persistEventErr != nil {
+			logger.WithError(persistEventErr).Warn("failed to persist worker update failed event")
+		}
+
 		logger.WithError(err).Error("timeout replacing pods on EnsureCorrectRooms")
 		if operationManager != nil {
 			operationManager.SetDescription(models.OpManagerTimedout)
 		}
+
+		return nil
+	}
+
+	if cancelErr != nil {
+		persistEventErr = w.SchedulerEventStorage.PersistSchedulerEvent(
+			models.NewSchedulerEvent(
+				models.FailedWorkerUpdateEventName,
+				w.SchedulerName,
+				map[string]interface{}{
+					models.ErrorMetadataName: cancelErr,
+				},
+			),
+		)
+		if persistEventErr != nil {
+			logger.WithError(persistEventErr).Warn("failed to persist worker update failed event")
+		}
+
+		return nil
+	}
+
+	persistEventErr = w.SchedulerEventStorage.PersistSchedulerEvent(
+		models.NewSchedulerEvent(models.FinishedWorkerUpdateEventName, w.SchedulerName, map[string]interface{}{}),
+	)
+	if persistEventErr != nil {
+		logger.WithError(persistEventErr).Warn("failed to persist worker update finished event")
 	}
 
 	return nil
