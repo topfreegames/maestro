@@ -4501,6 +4501,18 @@ var _ = Describe("Watcher", func() {
 			mockPipeline.EXPECT().Del(room.GetRoomRedisKey()).AnyTimes()
 			mockPipeline.EXPECT().Exec().Return(nil, errDB).After(exec2)
 
+			eventsStorage.EXPECT().PersistSchedulerEvent(
+				&testing.SchedulerEventMatcher{
+					ExpectedName: models.StartWorkerUpdateEventName,
+					ExpectedMetadata: map[string]interface{}{
+						models.SchedulerVersionMetadataName:     "v1.0",
+						models.InvalidVersionAmountMetadataName: 0,
+						models.UnregisteredAmountMetadataName:   1,
+					},
+				},
+			).Return(nil)
+			eventsStorage.EXPECT().PersistSchedulerEvent(&testing.SchedulerEventMatcher{ExpectedName: models.FinishedWorkerUpdateEventName}).Return(nil)
+
 			err := w.EnsureCorrectRooms()
 
 			Expect(err).ToNot(HaveOccurred())
@@ -4582,6 +4594,18 @@ var _ = Describe("Watcher", func() {
 			testing.MockRemoveAnyRoomsFromRedisAnyTimes(mockRedisClient, mockPipeline, &configYaml, nil, 1)
 			testing.MockPodNotFound(mockRedisClient, w.SchedulerName, "room-2").After(runningPod)
 
+			eventsStorage.EXPECT().PersistSchedulerEvent(
+				&testing.SchedulerEventMatcher{
+					ExpectedName: models.StartWorkerUpdateEventName,
+					ExpectedMetadata: map[string]interface{}{
+						models.SchedulerVersionMetadataName:     "v1.0",
+						models.InvalidVersionAmountMetadataName: 0,
+						models.UnregisteredAmountMetadataName:   1,
+					},
+				},
+			).Return(nil)
+			eventsStorage.EXPECT().PersistSchedulerEvent(&testing.SchedulerEventMatcher{ExpectedName: models.FinishedWorkerUpdateEventName}).Return(nil)
+
 			err := w.EnsureCorrectRooms()
 
 			Expect(err).ToNot(HaveOccurred())
@@ -4619,6 +4643,18 @@ var _ = Describe("Watcher", func() {
 				models.NewPortRange(5000, 6000).String(), 5000, 6000)
 
 			testing.MockPodNotFound(mockRedisClient, w.SchedulerName, gomock.Any()).AnyTimes()
+
+			eventsStorage.EXPECT().PersistSchedulerEvent(
+				&testing.SchedulerEventMatcher{
+					ExpectedName: models.StartWorkerUpdateEventName,
+					ExpectedMetadata: map[string]interface{}{
+						models.SchedulerVersionMetadataName:     "v1.0",
+						models.InvalidVersionAmountMetadataName: 2,
+						models.UnregisteredAmountMetadataName:   2,
+					},
+				},
+			).Return(nil)
+			eventsStorage.EXPECT().PersistSchedulerEvent(&testing.SchedulerEventMatcher{ExpectedName: models.FailedWorkerUpdateEventName}).Return(nil)
 
 			err := w.EnsureCorrectRooms()
 			Expect(err).ToNot(HaveOccurred())

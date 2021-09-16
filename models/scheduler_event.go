@@ -21,6 +21,14 @@ const (
 	StartRemoveDeadRoomsEventName    = "REMOVE_DEAD_ROOMS_START"
 	FinishedRemoveDeadRoomsEventName = "REMOVE_DEAD_ROOMS_FINISHED"
 
+	// Worker update events.
+	StartWorkerUpdateEventName   = "WORKER_UPDATE_STARTED"
+	FailedWorkerUpdateEventName   = "WORKER_UPDATE_FAILED"
+	FinishedWorkerUpdateEventName   = "WORKER_UPDATE_FINISHED"
+
+	// Rollback events.
+	TriggerRollbackEventName   = "ROLLBACK_TRIGGERED"
+
 	// Metadata attributes name.
 
 	// ErrorMetadaName metadata containing an error.
@@ -32,6 +40,13 @@ const (
 	AmountMetadataName = "amount"
 	// SucessMetadataName indicates if the remove dead rooms finished successfully.
 	SuccessMetadataName = "success"
+	// SchedulerVersionMetadataName current scheduler version.
+	SchedulerVersionMetadataName = "scheduler_version"
+	// InvalidVersionAmountMetadataName amount of rooms with invalid version.
+	InvalidVersionAmountMetadataName = "invalid_version_amount"
+	// UnregisteredAmountMetadataName amount of rooms that are not present on
+	// Maestro's state.
+	UnregisteredAmountMetadataName = "unregistered_amount"
 )
 
 // SchedulerEvent is the struct that defines a maestro scheduler event
