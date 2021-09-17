@@ -8,7 +8,7 @@ services:
       args:
         CONFIG_FILE_PATH: "config/worker_container.local.yaml"
     ports:
-      - "8082:8082"
+      - "9096:8082"
     depends_on:
       postgres:
         condition: service_healthy
@@ -20,7 +20,7 @@ services:
       args:
         CONFIG_FILE_PATH: "config/rooms-api_container.local.yaml"
     ports:
-      - "8090:8090"
+      - "9097:8090"
 
   management-api:
     build:
@@ -28,9 +28,9 @@ services:
       dockerfile: ./docker/management-api/Dockerfile
       args:
         CONFIG_FILE_PATH: "config/management-api_container.local.yaml"
-    #    command: ["./utils", "migrate"]
     ports:
-      - "8080:8080"
+      - "9095:8081"
+      - "9094:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,7 +56,7 @@ services:
     # This is just so that we get the kubeconfig file out
     - .:/output
     ports:
-    - 6443:6443  # Kubernetes API Server
+    - "6443:6443"  # Kubernetes API Server
 
   k3s_agent:
     image: "rancher/k3s:v1.19.11-k3s1"
