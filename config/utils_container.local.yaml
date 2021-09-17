@@ -1,0 +1,6 @@
+adapters:
+  schedulerStorage:
+    postgres:
+      url: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
+migration:
+  path: "file://internal/adapters/scheduler_storage/pg/migrations"

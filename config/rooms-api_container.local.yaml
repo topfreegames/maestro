@@ -1,0 +1,24 @@
+internal_api:
+  port: 8091
+  gracefulShutdownTimeout: 10s
+  metrics:
+    enabled: true
+  healthcheck:
+    enabled: true
+rooms_api:
+  port: 8090
+  gracefulShutdownTimeout: 10s
+adapters:
+  portAllocator:
+    random:
+      range: 60001-60010
+  roomStorage:
+    redis:
+      url: "redis://redis:6379/0"
+  instanceStorage:
+    redis:
+      url: "redis://redis:6379/0"
+  runtime:
+    kubernetes:
+      masterUrl: "https://k3s_server:6443"
+      kubeconfig: "./kubeconfig.yaml"

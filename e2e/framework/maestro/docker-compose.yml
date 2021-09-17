@@ -1,5 +1,40 @@
-version: '3'
+version: '3.8'
 services:
+
+  worker:
+    build:
+      context: ../../..
+      dockerfile: ./docker/worker/Dockerfile
+      args:
+        CONFIG_FILE_PATH: "config/worker_container.local.yaml"
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  rooms-api:
+    build:
+      context: ../../..
+      dockerfile: ./docker/rooms-api/Dockerfile
+      args:
+        CONFIG_FILE_PATH: "config/rooms-api_container.local.yaml"
+    ports:
+      - "8090:8090"
+
+  management-api:
+    build:
+      context: ../../..
+      dockerfile: ./docker/management-api/Dockerfile
+      args:
+        CONFIG_FILE_PATH: "config/management-api_container.local.yaml"
+    #    command: ["./utils", "migrate"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   k3s_server:
     image: "rancher/k3s:v1.19.11-k3s1"
     command: server
@@ -47,6 +82,11 @@ services:
     - POSTGRES_DB=maestro
     - POSTGRES_USER=maestro
     - POSTGRES_PASSWORD=maestro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   redis:
     image: redis:5.0.10-alpine
