@@ -11,10 +11,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/topfreegames/maestro/api/auth"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/topfreegames/maestro/api/auth"
 
 	"github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	maestroErrors "github.com/topfreegames/maestro/errors"
@@ -282,6 +283,7 @@ func updateSchedulerConfigCommon(
 		nil,
 		app.Config,
 		operationManager,
+		app.SchedulerEventStorage,
 	)
 	logger.WithField("time", time.Now()).Info("finished update")
 
@@ -644,7 +646,7 @@ func (g *SchedulerImageHandler) update(
 
 	db := g.App.DBClient.WithContext(r.Context())
 	err = controller.UpdateSchedulerImage(r.Context(), logger, g.App.RoomManager, mr, db, g.App.RedisClient, g.App.KubernetesClient,
-		schedulerName, imageParams, maxSurge, &clock.Clock{}, g.App.Config, operationManager)
+		schedulerName, imageParams, maxSurge, &clock.Clock{}, g.App.Config, operationManager, g.App.SchedulerEventStorage)
 	if err != nil {
 		status = http.StatusInternalServerError
 		if strings.Contains(err.Error(), "not found") {
@@ -749,7 +751,7 @@ func (g *SchedulerUpdateMinHandler) update(
 	logger.Info("starting controllers update min")
 	db := g.App.DBClient.WithContext(r.Context())
 	err = controller.UpdateSchedulerMin(r.Context(), logger, g.App.RoomManager, mr, db, g.App.RedisClient, schedulerName,
-		schedulerMin, &clock.Clock{}, g.App.Config, operationManager)
+		schedulerMin, &clock.Clock{}, g.App.Config, operationManager, g.App.SchedulerEventStorage)
 	if err != nil {
 		status = http.StatusInternalServerError
 		if strings.Contains(err.Error(), "not found") {

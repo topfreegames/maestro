@@ -1684,7 +1684,6 @@ cmd:
 					}
 				}
 
-
 				jsonBytes, err := pod.MarshalToRedis()
 				Expect(err).NotTo(HaveOccurred())
 				pods = append(pods, pod.Name, string(jsonBytes))
@@ -3620,6 +3619,8 @@ cmd:
 
 			calls.Finish()
 
+			mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, scheduler1.Version, "")
+
 			err = controller.UpdateSchedulerConfig(
 				context.Background(),
 				logger,
@@ -3634,6 +3635,7 @@ cmd:
 				nil,
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -3783,9 +3785,11 @@ portRange:
 
 				calls.Finish()
 
+				mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, scheduler1.Version, "")
+
 				err = controller.UpdateSchedulerConfig(context.Background(), logger,
 					roomManager, mr, mockDb, redisClient, clientset, &configYaml2,
-					maxSurge, &clock.Clock{}, nil, config, opManager)
+					maxSurge, &clock.Clock{}, nil, config, opManager, eventsStorage)
 				Expect(err).NotTo(HaveOccurred())
 
 				ns, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
@@ -3979,9 +3983,11 @@ cmd:
 
 				calls.Finish()
 
+				mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, scheduler1.Version, "")
+
 				err = controller.UpdateSchedulerConfig(context.Background(), logger,
 					roomManager, mr, mockDb, redisClient,
-					clientset, &configYaml2, maxSurge, &clock.Clock{}, nil, config, opManager)
+					clientset, &configYaml2, maxSurge, &clock.Clock{}, nil, config, opManager, eventsStorage)
 				Expect(err).NotTo(HaveOccurred())
 
 				pods, err = clientset.CoreV1().Pods(configYaml2.Name).List(metav1.ListOptions{})
@@ -4181,9 +4187,11 @@ portRange:
 
 				calls.Finish()
 
+				mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, scheduler1.Version, "")
+
 				err = controller.UpdateSchedulerConfig(context.Background(), logger,
 					roomManager, mr, mockDb, redisClient,
-					clientset, &configYaml2, maxSurge, &clock.Clock{}, nil, config, opManager)
+					clientset, &configYaml2, maxSurge, &clock.Clock{}, nil, config, opManager, eventsStorage)
 				Expect(err).NotTo(HaveOccurred())
 
 				pods, err = clientset.CoreV1().Pods(configYaml2.Name).List(metav1.ListOptions{})
@@ -4244,6 +4252,7 @@ portRange:
 				nil,
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("scheduler another-name not found, create it first"))
@@ -4324,6 +4333,8 @@ cmd:
 
 			calls.Finish()
 
+			mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, scheduler1.Version, "")
+
 			err = controller.UpdateSchedulerConfig(
 				context.Background(),
 				logger,
@@ -4338,6 +4349,7 @@ cmd:
 				nil,
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -4393,6 +4405,7 @@ cmd:
 				nil,
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error on select"))
@@ -4419,6 +4432,7 @@ cmd:
 				nil,
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timeout while wating for redis lock"))
@@ -4456,6 +4470,7 @@ cmd:
 				nil,
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("timeout while wating for redis lock"))
@@ -4487,6 +4502,7 @@ cmd:
 				nil,
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("error getting lock"))
@@ -4533,6 +4549,8 @@ cmd:
 
 			calls.Finish()
 
+			mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, "v2.0", "v1.0")
+
 			err = controller.UpdateSchedulerConfig(
 				context.Background(),
 				logger,
@@ -4547,6 +4565,7 @@ cmd:
 				nil,
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("operation timedout"))
@@ -4593,6 +4612,8 @@ cmd:
 
 			calls.Finish()
 
+			mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, "v2.0", "v1.0")
+
 			err = controller.UpdateSchedulerConfig(
 				context.Background(),
 				logger,
@@ -4607,6 +4628,7 @@ cmd:
 				nil,
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("operation timedout"))
@@ -4684,6 +4706,8 @@ cmd:
 
 			calls.Finish()
 
+			mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, scheduler1.Version, "")
+
 			err = controller.UpdateSchedulerConfig(
 				context.Background(),
 				logger,
@@ -4698,6 +4722,7 @@ cmd:
 				nil,
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -4759,6 +4784,7 @@ cmd:
 					nil,
 					config,
 					opManager,
+					eventsStorage,
 				)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -4877,6 +4903,8 @@ containers:
 
 				calls.Finish()
 
+				mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, "v2.0", "v1.0")
+
 				err = controller.UpdateSchedulerConfig(
 					context.Background(),
 					logger,
@@ -4891,6 +4919,7 @@ containers:
 					nil,
 					config,
 					opManager,
+					eventsStorage,
 				)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("operation canceled"))
@@ -5134,6 +5163,8 @@ containers:
 
 			calls.Finish()
 
+			mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, scheduler1.Version, "")
+
 			err = controller.UpdateSchedulerImage(
 				context.Background(),
 				logger,
@@ -5148,6 +5179,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -5198,6 +5230,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("scheduler new-name not found, create it first"))
@@ -5244,6 +5277,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in db"))
@@ -5270,6 +5304,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("yaml: did not find expected ',' or '}'"))
@@ -5297,6 +5332,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -5399,6 +5435,8 @@ containers:
 
 			calls.Finish()
 
+			mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, scheduler1.Version, "")
+
 			imageParams.Container = "container1"
 			err = controller.UpdateSchedulerImage(
 				context.Background(),
@@ -5414,6 +5452,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -5472,6 +5511,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -5530,6 +5570,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("no container with name invalid-container"))
@@ -5589,6 +5630,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("need to specify container name"))
@@ -5663,6 +5705,8 @@ containers:
 
 			mt.MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
+			mt.MockUpdateSchedulerEvents(eventsStorage, scheduler1.Name, scheduler1.Version, "")
+
 			err := controller.UpdateSchedulerMin(
 				context.Background(),
 				logger,
@@ -5675,6 +5719,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -5721,6 +5766,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -5745,6 +5791,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("invalid parameter: autoscaling max must be greater than min"))
@@ -5768,6 +5815,7 @@ containers:
 				&clock.Clock{},
 				config,
 				opManager,
+				eventsStorage,
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("some error in db"))

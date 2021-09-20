@@ -95,6 +95,7 @@ func NewApp(
 	redisTraceWrapperOrNil redisinterfaces.TraceWrapper,
 	kubernetesClientOrNil kubernetes.Interface,
 	metricsClientsetOrNil metricsClient.Interface,
+	schedulerEventStorageOrNil storage.SchedulerEventStorage,
 ) (*App, error) {
 	a := &App{
 		Config:         config,
@@ -117,6 +118,7 @@ func NewApp(
 		redisClientOrNil, redisTraceWrapperOrNil,
 		kubernetesClientOrNil,
 		metricsClientsetOrNil,
+		schedulerEventStorageOrNil,
 	)
 	if err != nil {
 		return nil, err
@@ -433,6 +435,7 @@ func (a *App) configureApp(
 	redisTraceWrapperOrNil redisinterfaces.TraceWrapper,
 	kubernetesClientOrNil kubernetes.Interface,
 	metricsClientsetOrNil metricsClient.Interface,
+	schedulerEventStorageOrNil storage.SchedulerEventStorage,
 ) error {
 	a.loadConfigurationDefaults()
 	a.configureLogger()
@@ -456,7 +459,7 @@ func (a *App) configureApp(
 	a.configureWilliam()
 	a.configureServer()
 	a.configureEnvironment()
-	a.configureEventStorage()
+	a.configureEventStorage(schedulerEventStorageOrNil)
 	return nil
 }
 
@@ -507,7 +510,12 @@ func (a *App) configureCache() {
 	a.SchedulerCache = models.NewSchedulerCache(expirationTime, cleanupInterval, a.Logger)
 }
 
-func (a *App) configureEventStorage() {
+func (a *App) configureEventStorage(schedulerEventStorageOrNil storage.SchedulerEventStorage) {
+	if schedulerEventStorageOrNil != nil {
+		a.SchedulerEventStorage = schedulerEventStorageOrNil
+		return
+	}
+
 	a.SchedulerEventStorage = storageredis.NewRedisSchedulerEventStorage(a.RedisClient.Client)
 }
 

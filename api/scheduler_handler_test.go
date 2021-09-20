@@ -759,6 +759,8 @@ autoscaling:
 
 					calls.Finish()
 
+					MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
+
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -810,6 +812,8 @@ autoscaling:
 						yamlString1,
 					)
 					Expect(err).NotTo(HaveOccurred())
+
+					MockUpdateSchedulerEvents(mockSchedulerEventStorage, "scheduler-name", "v1.1", "")
 
 					app.Router.ServeHTTP(recorder, request)
 					Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -1108,6 +1112,8 @@ autoscaling:
 						MockReturnRedisLock(mockRedisClient, configLockKey, nil))
 
 					calls.Finish()
+
+					MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
 
 					recorder = httptest.NewRecorder()
 					app.Router.ServeHTTP(recorder, request)
@@ -1525,7 +1531,7 @@ game: game-name
 				err = yaml.Unmarshal([]byte(yamlString), &configYaml1)
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
-				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+				app, err = api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset, mockSchedulerEventStorage)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 			})
@@ -2163,6 +2169,8 @@ game: game-name
 
 				calls.Finish()
 
+				MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
+
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -2256,6 +2264,8 @@ game: game-name
 					MockReturnRedisLock(mockRedisClient, configLockKey, nil))
 
 				calls.Finish()
+
+				MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2545,7 +2555,7 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				config.Set("basicauth.tryOauthIfUnset", true)
 
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset, mockSchedulerEventStorage)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 				newImageName := "new-image"
@@ -2626,6 +2636,8 @@ game: game-name
 
 				calls.Finish()
 
+				MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
+
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -2662,7 +2674,7 @@ game: game-name
 				Expect(err).NotTo(HaveOccurred())
 				scheduler1 = models.NewScheduler(configYaml1.Name, configYaml1.Game, jsonString)
 
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset, mockSchedulerEventStorage)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 
@@ -2747,6 +2759,8 @@ game: game-name
 					MockReturnRedisLock(mockRedisClient, configLockKey, nil))
 
 				calls.Finish()
+
+				MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -2865,6 +2879,8 @@ game: game-name
 					MockReturnRedisLock(mockRedisClient, configLockKey, nil))
 
 				calls.Finish()
+
+				MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -3030,6 +3046,8 @@ game: game-name
 
 				calls.Finish()
 
+				MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
+
 				recorder = httptest.NewRecorder()
 
 				app.Router.ServeHTTP(recorder, request)
@@ -3172,6 +3190,8 @@ game: game-name
 
 				calls.Finish()
 
+				MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
+
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -3241,7 +3261,7 @@ game: game-name
 
 				config, err := GetDefaultConfig()
 				config.Set("basicauth.tryOauthIfUnset", true)
-				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+				app, err := api.NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset, mockSchedulerEventStorage)
 				Expect(err).NotTo(HaveOccurred())
 				app.Login = mockLogin
 
@@ -3288,6 +3308,8 @@ game: game-name
 				MockUpdateVersionsTable(mockDb, nil)
 
 				calls.Finish()
+
+				MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
 
 				recorder = httptest.NewRecorder()
 				app.Router.ServeHTTP(recorder, request)
@@ -3366,6 +3388,8 @@ game: game-name
 				MockUpdateVersionsTable(mockDb, nil)
 
 				calls.Finish()
+
+				MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, scheduler1.Version, "")
 
 				recorder = httptest.NewRecorder()
 

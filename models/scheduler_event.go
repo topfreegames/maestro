@@ -22,20 +22,25 @@ const (
 	FinishedRemoveDeadRoomsEventName = "REMOVE_DEAD_ROOMS_FINISHED"
 
 	// Worker update events.
-	StartWorkerUpdateEventName   = "WORKER_UPDATE_STARTED"
+	StartWorkerUpdateEventName    = "WORKER_UPDATE_STARTED"
 	FailedWorkerUpdateEventName   = "WORKER_UPDATE_FAILED"
-	FinishedWorkerUpdateEventName   = "WORKER_UPDATE_FINISHED"
+	FinishedWorkerUpdateEventName = "WORKER_UPDATE_FINISHED"
+
+	// Worker update events.
+	StartUpdateEventName    = "UPDATE_STARTED"
+	FailedUpdateEventName   = "UPDATE_FAILED"
+	FinishedUpdateEventName = "UPDATE_FINISHED"
 
 	// Rollback events.
-	TriggerRollbackEventName   = "ROLLBACK_TRIGGERED"
+	TriggerRollbackEventName = "ROLLBACK_TRIGGERED"
 
 	// Metadata attributes name.
 
 	// ErrorMetadaName metadata containing an error.
-	ErrorMetadataName  = "error"
+	ErrorMetadataName = "error"
 	// TypeMetadataName type of the operation. For example, AutoScale has "up"
 	// and "down" types.
-	TypeMetadataName   = "type"
+	TypeMetadataName = "type"
 	// AmountMetadataName amount of rooms that are going to be manipulated.
 	AmountMetadataName = "amount"
 	// SucessMetadataName indicates if the remove dead rooms finished successfully.
