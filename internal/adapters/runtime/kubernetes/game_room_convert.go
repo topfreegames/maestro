@@ -24,8 +24,9 @@ package kubernetes
 
 import (
 	"fmt"
-	uuid "github.com/satori/go.uuid"
 	"strings"
+
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	v1 "k8s.io/api/core/v1"
