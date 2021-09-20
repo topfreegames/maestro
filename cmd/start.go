@@ -54,7 +54,7 @@ var startCmd = &cobra.Command{
 
 		cmdL.Info("starting maestro")
 
-		app, err := api.NewApp(bind, port, config, log, incluster, kubeconfig, nil, nil, nil, nil, nil, nil)
+		app, err := api.NewApp(bind, port, config, log, incluster, kubeconfig, nil, nil, nil, nil, nil, nil, nil)
 		if err != nil {
 			cmdL.Fatal(err)
 		}

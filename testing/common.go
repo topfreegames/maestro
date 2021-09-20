@@ -1842,3 +1842,33 @@ func MockRemoveInvalidRoomsKey(
 	mockPipeline.EXPECT().
 		Del(models.GetInvalidRoomsKey(schedulerName))
 }
+
+func MockUpdateSchedulerEvents(eventsStorage *storagemock.MockSchedulerEventStorage, schedulerName, version, rollbackVersion string) {
+	eventsStorage.EXPECT().PersistSchedulerEvent(
+		&SchedulerEventMatcher{
+			ExpectedName: models.StartUpdateEventName,
+			ExpectedMetadata: map[string]interface{}{
+				models.SchedulerVersionMetadataName: version,
+			},
+		},
+	).Return(nil)
+
+	if rollbackVersion != "" {
+		eventsStorage.EXPECT().PersistSchedulerEvent(
+			&SchedulerEventMatcher{ExpectedName: models.FailedUpdateEventName},
+		).Return(nil)
+
+		eventsStorage.EXPECT().PersistSchedulerEvent(
+			&SchedulerEventMatcher{
+				ExpectedName: models.TriggerRollbackEventName,
+				ExpectedMetadata: map[string]interface{}{
+					models.SchedulerVersionMetadataName: rollbackVersion,
+				},
+			},
+		).Return(nil)
+
+		return
+	}
+
+	eventsStorage.EXPECT().PersistSchedulerEvent(&SchedulerEventMatcher{ExpectedName: models.FinishedUpdateEventName}).Return(nil)
+}

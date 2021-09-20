@@ -17,6 +17,7 @@ import (
 	clockmocks "github.com/topfreegames/extensions/clock/mocks"
 	pgmocks "github.com/topfreegames/extensions/pg/mocks"
 	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	storagemock "github.com/topfreegames/maestro/storage/mock"
 	mtesting "github.com/topfreegames/maestro/testing"
 
 	"github.com/golang/mock/gomock"
@@ -44,6 +45,7 @@ var (
 	redisClient           *redis.Client
 	mr                    *models.MixedMetricsReporter
 	schedulerCache        *models.SchedulerCache
+	eventsStorage         *storagemock.MockSchedulerEventStorage
 	err                   error
 	allStatus             = []string{
 		models.StatusCreating,
@@ -95,6 +97,7 @@ var _ = BeforeEach(func() {
 	mockClock = clockmocks.NewMockClock(mockCtrl)
 
 	schedulerCache = models.NewSchedulerCache(1*time.Minute, 10*time.Minute, logger)
+	eventsStorage = storagemock.NewMockSchedulerEventStorage(mockCtrl)
 })
 
 var _ = AfterEach(func() {

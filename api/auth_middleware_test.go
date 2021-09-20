@@ -41,7 +41,7 @@ var _ = Describe("AuthMiddleware", func() {
 		config.Set("william.checkTimeout", "1s")
 
 		var err error
-		app, err = NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+		app, err = NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset, mockSchedulerEventStorage)
 		Expect(err).NotTo(HaveOccurred())
 
 		authMiddleware = NewAuthMiddleware(app, auth.ActionResolver("SomePermission"))

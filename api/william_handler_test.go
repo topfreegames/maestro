@@ -31,7 +31,7 @@ var _ = Describe("WilliamHandler", func() {
 		config.Set("william.enabled", true)
 
 		var err error
-		app, err = NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset)
+		app, err = NewApp("0.0.0.0", 9998, config, logger, false, "", mockDb, mockCtxWrapper, mockRedisClient, mockRedisTraceWrapper, clientset, metricsClientset, mockSchedulerEventStorage)
 		Expect(err).NotTo(HaveOccurred())
 
 		request, _ = http.NewRequest("GET", "/am", nil)

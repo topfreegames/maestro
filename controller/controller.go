@@ -24,6 +24,7 @@ import (
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
+	"github.com/topfreegames/maestro/storage"
 	yaml "gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -629,6 +630,7 @@ func UpdateSchedulerConfig(
 	schedulerOrNil *models.Scheduler,
 	config *viper.Viper,
 	operationManager *models.OperationManager,
+	eventsStorage storage.SchedulerEventStorage,
 ) error {
 	configYAML.EnsureDefaultValues()
 	schedulerName := configYAML.Name
@@ -715,6 +717,18 @@ func UpdateSchedulerConfig(
 		return err
 	}
 
+	persistEventErr := eventsStorage.PersistSchedulerEvent(
+		models.NewSchedulerEvent(
+			models.StartUpdateEventName, schedulerName,
+			map[string]interface{}{
+				models.SchedulerVersionMetadataName: scheduler.Version,
+			},
+		),
+	)
+	if persistEventErr != nil {
+		l.WithError(persistEventErr).Warn("failed to persist update started event")
+	}
+
 	if shouldRecreatePods {
 		var status map[string]string
 
@@ -760,6 +774,32 @@ func UpdateSchedulerConfig(
 		models.RemoveInvalidRoomsKey(redisClient.Client, mr, schedulerName)
 
 		if err != nil {
+			persistEventErr = eventsStorage.PersistSchedulerEvent(
+				models.NewSchedulerEvent(
+					models.FailedUpdateEventName,
+					schedulerName,
+					map[string]interface{}{
+						models.ErrorMetadataName: err,
+					},
+				),
+			)
+			if persistEventErr != nil {
+				l.WithError(persistEventErr).Warn("failed to persist update failed event")
+			}
+
+			persistEventErr := eventsStorage.PersistSchedulerEvent(
+				models.NewSchedulerEvent(
+					models.TriggerRollbackEventName,
+					schedulerName,
+					map[string]interface{}{
+						models.SchedulerVersionMetadataName: oldVersion,
+					},
+				),
+			)
+			if persistEventErr != nil {
+				l.WithError(persistEventErr).Warn("failed to persist rollback triggered event")
+			}
+
 			l.WithError(err).Error("error during UpdateSchedulerConfig. Rolling back database")
 			dbRollbackErr := DBRollback(
 				ctx,
@@ -787,6 +827,13 @@ func UpdateSchedulerConfig(
 	updateErr := scheduler.UpdateVersionStatus(db)
 	if updateErr != nil {
 		l.WithError(updateErr).Errorf("error updating scheduler_version status to %s", scheduler.RollingUpdateStatus)
+	}
+
+	persistEventErr = eventsStorage.PersistSchedulerEvent(
+		models.NewSchedulerEvent(models.FinishedUpdateEventName, schedulerName, map[string]interface{}{}),
+	)
+	if persistEventErr != nil {
+		logger.WithError(persistEventErr).Warn("failed to persist worker update finished event")
 	}
 
 	return nil
@@ -915,6 +962,7 @@ func UpdateSchedulerImage(
 	clock clockinterfaces.Clock,
 	config *viper.Viper,
 	operationManager *models.OperationManager,
+	eventsStorage storage.SchedulerEventStorage,
 ) error {
 	scheduler, configYaml, err := schedulerAndConfigFromName(mr, db, schedulerName)
 	if err != nil {
@@ -944,6 +992,7 @@ func UpdateSchedulerImage(
 		scheduler,
 		config,
 		operationManager,
+		eventsStorage,
 	)
 }
 
@@ -960,6 +1009,7 @@ func UpdateSchedulerMin(
 	clock clockinterfaces.Clock,
 	config *viper.Viper,
 	operationManager *models.OperationManager,
+	eventsStorage storage.SchedulerEventStorage,
 ) error {
 	scheduler, configYaml, err := schedulerAndConfigFromName(mr, db, schedulerName)
 	if err != nil {
@@ -983,6 +1033,7 @@ func UpdateSchedulerMin(
 		scheduler,
 		config,
 		operationManager,
+		eventsStorage,
 	)
 }
 

@@ -112,6 +112,8 @@ autoscaling:
 
 			calls.Finish()
 
+			MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, "v1.1", "")
+
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 			Expect(recorder.Body.String()).To(Equal(`{"success": true}`))
@@ -239,6 +241,8 @@ autoscaling:
 			MockReturnRedisLock(mockRedisClient, configLockKey, nil)
 
 			MockUpdateVersionsTable(mockDb, nil)
+
+			MockUpdateSchedulerEvents(mockSchedulerEventStorage, scheduler1.Name, "v1.1", "")
 
 			app.Router.ServeHTTP(recorder, request)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
