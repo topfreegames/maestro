@@ -302,12 +302,24 @@ func TestConvertContainer(t *testing.T) {
 		withError         bool
 	}{
 		"with empty container": {
-			container:         game_room.Container{},
-			expectedContainer: v1.Container{},
+			container: game_room.Container{},
+			expectedContainer: v1.Container{
+				Env: []v1.EnvVar{
+					{Name: "MAESTRO_SCHEDULER_NAME", Value: "scheduler-name"},
+					{Name: "MAESTRO_ROOM_ID", Value: "scheduler-name-1234"},
+				},
+			},
 		},
 		"with simple container": {
-			container:         game_room.Container{Name: "simple", Image: "image"},
-			expectedContainer: v1.Container{Name: "simple", Image: "image"},
+			container: game_room.Container{Name: "simple", Image: "image"},
+			expectedContainer: v1.Container{
+				Name:  "simple",
+				Image: "image",
+				Env: []v1.EnvVar{
+					{Name: "MAESTRO_SCHEDULER_NAME", Value: "scheduler-name"},
+					{Name: "MAESTRO_ROOM_ID", Value: "scheduler-name-1234"},
+				},
+			},
 		},
 		"with options container": {
 			container: game_room.Container{
@@ -321,15 +333,19 @@ func TestConvertContainer(t *testing.T) {
 				Name:    "complete",
 				Image:   "image",
 				Command: []string{"some", "command"},
-				Env:     []v1.EnvVar{{Name: "env", Value: "value"}},
-				Ports:   []v1.ContainerPort{{ContainerPort: 2222, Protocol: "tcp"}},
+				Env: []v1.EnvVar{
+					{Name: "env", Value: "value"},
+					{Name: "MAESTRO_SCHEDULER_NAME", Value: "scheduler-name"},
+					{Name: "MAESTRO_ROOM_ID", Value: "scheduler-name-1234"},
+				},
+				Ports: []v1.ContainerPort{{ContainerPort: 2222, Protocol: "tcp"}},
 			},
 		},
 	}
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			res, err := convertContainer(test.container)
+			res, err := convertContainer(test.container, "scheduler-name", "scheduler-name-1234")
 			if test.withError {
 				require.Error(t, err)
 				return
@@ -341,7 +357,7 @@ func TestConvertContainer(t *testing.T) {
 			require.Equal(t, test.expectedContainer.Image, res.Image)
 			require.ElementsMatch(t, test.expectedContainer.Command, res.Command)
 			require.Equal(t, len(test.expectedContainer.Ports), len(res.Ports))
-			require.Equal(t, len(test.expectedContainer.Env), len(res.Env))
+			require.Equal(t, test.expectedContainer.Env, res.Env)
 		})
 	}
 }
