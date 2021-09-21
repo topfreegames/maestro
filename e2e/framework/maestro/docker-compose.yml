@@ -6,28 +6,45 @@ services:
       context: ../../..
       dockerfile: ./docker/worker/Dockerfile
       args:
-        CONFIG_FILE_PATH: "config/worker_container.local.yaml"
+        MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
+        MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
+        MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
     ports:
       - "9096:8082"
-    depends_on:
-      postgres:
-        condition: service_healthy
+    volumes:
+      - ../../../kubeconfig:/kubeconfig
 
   rooms-api:
     build:
       context: ../../..
       dockerfile: ./docker/rooms-api/Dockerfile
       args:
-        CONFIG_FILE_PATH: "config/rooms-api_container.local.yaml"
+        MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
+        MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
     ports:
       - "9097:8090"
+      - "9098:8091"
+
+    volumes:
+      - ../../../kubeconfig:/kubeconfig
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   management-api:
     build:
       context: ../../..
       dockerfile: ./docker/management-api/Dockerfile
       args:
-        CONFIG_FILE_PATH: "config/management-api_container.local.yaml"
+        MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
+        MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL: "redis://redis:6379/0"
     ports:
       - "9095:8081"
       - "9094:8080"
@@ -37,7 +54,7 @@ services:
 
   k3s_server:
     image: "rancher/k3s:v1.19.11-k3s1"
-    command: server
+    command: server --bind-address k3s_server
     tmpfs:
     - /run
     - /var/run
@@ -54,7 +71,8 @@ services:
     - K3S_KUBECONFIG_MODE=666
     volumes:
     # This is just so that we get the kubeconfig file out
-    - .:/output
+      - ../../../kubeconfig:/output
+
     ports:
     - "6443:6443"  # Kubernetes API Server
 
@@ -93,3 +111,5 @@ services:
     ports:
     - "6379:6379"
 
+volumes:
+  kubeconfig: {}

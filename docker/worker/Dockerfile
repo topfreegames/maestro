@@ -25,35 +25,43 @@ MAINTAINER TFG Co <backend@tfgco.com>
 
 RUN mkdir -p /app
 
-RUN apt update && apt install --no-install-recommends -y postgresql git make libc-dev gcc
+RUN apt update && apt install --no-install-recommends -y git make
 RUN go install github.com/jteeuwen/go-bindata/...
 COPY . /go/src/github.com/topfreegames/maestro
 
 RUN cd /go/src/github.com/topfreegames/maestro && \
   make build/worker && \
-  make build/utils && \
   mv bin/worker /app/worker && \
-  mv bin/utils /app/utils && \
-  mv config /app/config && \
-  mv kubeconfig.yaml /app/kubeconfig.yaml && \
-  mv Makefile /app/Makefile
+  mv config /app/config
+
 
 FROM debian:buster-slim
 
 RUN apt update && apt install -y ca-certificates openssl
 
-ARG CONFIG_FILE_PATH
-ENV CONFIG_FILE_PATH_ENV=$CONFIG_FILE_PATH
+
+ARG MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL
+ENV MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=$MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL
+ARG MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL
+ENV MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL=$MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL
+ARG MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL
+ENV MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL=$MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL
+ARG MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL
+ENV MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=$MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL
+ARG MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL
+ENV MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL=$MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL
+ARG MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG
+ENV MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=$MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG
+ARG MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL
+ENV MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL=$MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL
+
 
 WORKDIR /app
 
 COPY --from=build-env /app/worker /app/worker
-COPY --from=build-env /app/utils /app/utils
-COPY --from=build-env /app/Makefile /app/Makefile
 COPY --from=build-env /app/config /app/config
-COPY --from=build-env /app/kubeconfig.yaml /app/kubeconfig.yaml
 
 EXPOSE 8082
 
-CMD ["sh", "-c", "/app/worker --config-path=${CONFIG_FILE_PATH_ENV}"]
+CMD ["sh", "-c", "/app/worker"]
 
