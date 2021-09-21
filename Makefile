@@ -73,11 +73,6 @@ build/rooms-api:
 run/rooms-api: build/rooms-api
 	./bin/rooms-api
 
-.PHONY: build/utils
-build/utils:
-	@rm -f ./bin/utils
-	@go build -o ./bin/utils ./cmd/utils
-
 ################################################################################
 ## Code generation
 ################################################################################

@@ -83,7 +83,6 @@ func TestAddRooms(t *testing.T) {
 			err := apiClient.Do("POST", "/schedulers", createRequest, createResponse)
 			require.NoError(t, err)
 
-			// list operations
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestrov1.ListOperationsRequest{}
 				listOperationsResponse := &maestrov1.ListOperationsResponse{}
@@ -99,7 +98,6 @@ func TestAddRooms(t *testing.T) {
 				return true
 			}, 30*time.Second, time.Second)
 
-			// Check on kubernetes that the scheduler namespace was created.
 			_, err = kubeclient.CoreV1().Namespaces().Get(context.Background(), schedulerName, metav1.GetOptions{})
 			require.NoError(t, err)
 
@@ -120,7 +118,6 @@ func TestAddRooms(t *testing.T) {
 			addRoomsResponse := &maestrov1.AddRoomsResponse{}
 			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 
-			// list operations
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestrov1.ListOperationsRequest{}
 				listOperationsResponse := &maestrov1.ListOperationsResponse{}
@@ -135,7 +132,6 @@ func TestAddRooms(t *testing.T) {
 				return true
 			}, 240*time.Second, time.Second)
 
-			// Check on kubernetes that the scheduler namespace was created.
 			pods, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, pods.Items)
@@ -190,7 +186,6 @@ func TestAddRooms(t *testing.T) {
 			err := apiClient.Do("POST", "/schedulers", createRequest, createResponse)
 			require.NoError(t, err)
 
-			// list operations
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestrov1.ListOperationsRequest{}
 				listOperationsResponse := &maestrov1.ListOperationsResponse{}
@@ -227,7 +222,6 @@ func TestAddRooms(t *testing.T) {
 			addRoomsResponse := &maestrov1.AddRoomsResponse{}
 			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 
-			// list operations
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestrov1.ListOperationsRequest{}
 				listOperationsResponse := &maestrov1.ListOperationsResponse{}
@@ -242,7 +236,6 @@ func TestAddRooms(t *testing.T) {
 				return true
 			}, 240*time.Second, time.Second)
 
-			// Check on kubernetes that the scheduler namespace was created.
 			pods, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, pods.Items)
