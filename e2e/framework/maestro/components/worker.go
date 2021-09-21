@@ -30,12 +30,10 @@ import (
 
 	tc "github.com/testcontainers/testcontainers-go"
 
-	"github.com/topfreegames/maestro/e2e/framework/maestro/exec"
 	"github.com/topfreegames/maestro/e2e/framework/maestro/helpers"
 )
 
 type WorkerServer struct {
-	cmd     *exec.Cmd
 	compose tc.DockerCompose
 }
 

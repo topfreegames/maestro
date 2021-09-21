@@ -23,13 +23,11 @@
 package components
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
-	"os/exec"
-	"syscall"
 	"time"
 
+	"github.com/topfreegames/maestro/e2e/framework/maestro/exec"
 	"github.com/topfreegames/maestro/e2e/framework/maestro/helpers"
 
 	"strings"
@@ -74,19 +72,23 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 		return nil, fmt.Errorf("unable to reach rooms API: %s", err)
 	}
 
-	output := new(bytes.Buffer)
-	execCmd := exec.Command("docker", "inspect", "-f", "'{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}'", "test-something_rooms-api_1")
+	cmd, err := exec.ExecRun(
+		maestroPath,
+		"docker",
+		"inspect", "-f", "'{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}'", "test-something_rooms-api_1",
+	)
 
-	execCmd.Stdout = output
-	execCmd.Stderr = output
-	execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	err = execCmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("unable to run docker inspect command: %s", err)
+	}
+
+	output, err := cmd.ReadOutput()
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get rooms api container internal address: %s", err)
 	}
 
-	internalAddress := strings.Trim(strings.TrimSuffix(output.String(), "\n"), "'")
+	internalAddress := strings.Trim(strings.TrimSuffix(string(output), "\n"), "'")
 
 	return &RoomsApiServer{compose: compose, Address: address, ContainerInternalAddress: internalAddress}, nil
 }
