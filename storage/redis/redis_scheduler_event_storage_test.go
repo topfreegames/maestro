@@ -74,7 +74,7 @@ var _ = Describe("Scheduler events", func() {
 			Expect(events).To(HaveLen(1))
 		})
 
-		It("should not crop events older than limit", func() {
+		It("should crop events older than limit", func() {
 			metadata := make(map[string]interface{})
 			metadata["reason"] = "rollback"
 
