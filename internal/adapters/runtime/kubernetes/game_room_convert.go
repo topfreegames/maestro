@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"strings"
 
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -63,8 +65,8 @@ var invalidPodWaitingStates = []string{
 func convertGameRoomSpec(schedulerID string, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-", schedulerID),
-			Namespace:    schedulerID,
+			Name:      generateName(schedulerID),
+			Namespace: schedulerID,
 			Labels: map[string]string{
 				maestroLabelKey:   maestroLabelValue,
 				schedulerLabelKey: schedulerID,
@@ -78,9 +80,8 @@ func convertGameRoomSpec(schedulerID string, gameRoomSpec game_room.Spec) (*v1.P
 			Affinity:                      convertSpecAffinity(gameRoomSpec),
 		},
 	}
-
 	for _, container := range gameRoomSpec.Containers {
-		podContainer, err := convertContainer(container)
+		podContainer, err := convertContainer(container, schedulerID, pod.Name)
 		if err != nil {
 			return nil, fmt.Errorf("error with container \"%s\": %w", container.Name, err)
 		}
@@ -91,7 +92,7 @@ func convertGameRoomSpec(schedulerID string, gameRoomSpec game_room.Spec) (*v1.P
 	return pod, nil
 }
 
-func convertContainer(container game_room.Container) (v1.Container, error) {
+func convertContainer(container game_room.Container, schedulerID, roomID string) (v1.Container, error) {
 	podContainer := v1.Container{
 		Name:    container.Name,
 		Image:   container.Image,
@@ -112,6 +113,17 @@ func convertContainer(container game_room.Container) (v1.Container, error) {
 	for _, env := range container.Environment {
 		podContainer.Env = append(podContainer.Env, convertContainerEnvironment(env))
 	}
+	defaultEnvVars := []v1.EnvVar{
+		{
+			Name:  "MAESTRO_SCHEDULER_NAME",
+			Value: schedulerID,
+		},
+		{
+			Name:  "MAESTRO_ROOM_ID",
+			Value: roomID,
+		},
+	}
+	podContainer.Env = append(podContainer.Env, defaultEnvVars...)
 
 	requestsResources, err := convertContainerResources(container.Requests)
 	if err != nil {
@@ -275,4 +287,16 @@ func convertPod(pod *v1.Pod) *game_room.Instance {
 		Version:     pod.ObjectMeta.Labels[versionLabelKey],
 		Status:      convertPodStatus(pod),
 	}
+}
+
+func generateName(base string) string {
+	const (
+		maxNameLength          = 63
+		randomLength           = 5
+		MaxGeneratedNameLength = maxNameLength - randomLength
+	)
+	if len(base) > MaxGeneratedNameLength {
+		base = base[:MaxGeneratedNameLength]
+	}
+	return fmt.Sprintf("%s-%s", base, utilrand.String(randomLength))
 }
