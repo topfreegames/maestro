@@ -28,6 +28,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-redis/redis"
+
+	"github.com/topfreegames/maestro/e2e/framework/maestro"
+
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
 	maestrov1 "github.com/topfreegames/maestro/pkg/api/v1"
@@ -36,7 +40,7 @@ import (
 )
 
 func TestCreateScheduler(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface) {
+	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		schedulerName := framework.GenerateSchedulerName()
 		createRequest := &maestrov1.CreateSchedulerRequest{
 			Name:                   schedulerName,
