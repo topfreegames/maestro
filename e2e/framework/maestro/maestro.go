@@ -33,6 +33,7 @@ type MaestroInstance struct {
 	Deps                *dependencies
 	WorkerServer        *components.WorkerServer
 	ManagementApiServer *components.ManagementApiServer
+	RoomsApiServer      *components.RoomsApiServer
 }
 
 func ProvideMaestro() (*MaestroInstance, error) {
@@ -48,7 +49,7 @@ func ProvideMaestro() (*MaestroInstance, error) {
 		return nil, fmt.Errorf("failed to start dependencies: %s", err)
 	}
 
-	workerInstance, err := components.ProvideWorker(path, dependencies.KubeconfigPath)
+	workerInstance, err := components.ProvideWorker(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start worker: %s", err)
 	}
@@ -58,11 +59,17 @@ func ProvideMaestro() (*MaestroInstance, error) {
 		return nil, fmt.Errorf("failed to start worker: %s", err)
 	}
 
+	roomsApiInstance, err := components.ProvideRoomsApi(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start rooms api: %s", err)
+	}
+
 	return &MaestroInstance{
 		"",
 		dependencies,
 		workerInstance,
 		managementApiInstance,
+		roomsApiInstance,
 	}, nil
 }
 

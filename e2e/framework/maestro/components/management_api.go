@@ -24,10 +24,11 @@ package components
 
 import (
 	"fmt"
-	tc "github.com/testcontainers/testcontainers-go"
 	"net/http"
 	"strings"
 	"time"
+
+	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro/helpers"
 )
