@@ -39,6 +39,12 @@ export KUBECONFIG=$(pwd)/kubeconfig.yaml
 kubectl get namespaces | grep zooba
 ```
 
+### Runtime watcher flavor
+To start the runtime watcher flavor locally, run:
+```
+make run/runtime-watcher
+```
+
 ## Running tests
 
 1. Run `make run/unit-tests` to run all unit tests

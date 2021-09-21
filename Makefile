@@ -73,6 +73,15 @@ build/rooms-api:
 run/rooms-api: build/rooms-api
 	./bin/rooms-api
 
+.PHONY: build/runtime-watcher
+build/runtime-watcher:
+	@rm -f ./bin/runtime-watcher
+	@go build -o ./bin/runtime-watcher ./cmd/runtime_watcher
+
+.PHONY: run/runtime-watcher
+run/runtime-watcher: build/runtime-watcher
+	./bin/runtime-watcher
+
 ################################################################################
 ## Code generation
 ################################################################################
