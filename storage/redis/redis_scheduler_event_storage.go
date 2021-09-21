@@ -41,13 +41,13 @@ func (es *RedisSchedulerEventStorage) PersistSchedulerEvent(event *models.Schedu
 	}
 
 	redisPipeline := es.redisClient.TxPipeline()
-	score := float64(event.CreatedAt.UnixNano())
+	score := float64(event.CreatedAt.UnixNano()	/ int64(time.Millisecond))
 	redisPipeline.ZAdd(getSchedulerEventKey(event.SchedulerName), redis.Z{
 		Score:  score,
 		Member: string(member),
 	})
 
-	minScore := event.CreatedAt.Add(minScoreDuration).UnixNano()
+	minScore := time.Now().Add(minScoreDuration).UnixNano() / int64(time.Millisecond)
 	redisPipeline.ZRemRangeByScore(getSchedulerEventKey(event.SchedulerName), "-inf", fmt.Sprintf("(%d", minScore))
 
 	_, err = redisPipeline.Exec()
@@ -60,11 +60,16 @@ func (es *RedisSchedulerEventStorage) PersistSchedulerEvent(event *models.Schedu
 
 // Load loads scheduler events from the redis using the scheduler name and a page
 func (es *RedisSchedulerEventStorage) LoadSchedulerEvents(schedulerName string, page int) ([]*models.SchedulerEvent, error) {
-	eventsString, err := es.redisClient.ZRangeByScore(getSchedulerEventKey(schedulerName), redis.ZRangeBy{
+	offset := int64((page-1)*schedulerEventsPageSize + 1)
+	if offset == 1 {
+		offset = 0
+	}
+
+	eventsString, err := es.redisClient.ZRevRangeByScore(getSchedulerEventKey(schedulerName), redis.ZRangeBy{
 		Min:    "-inf",
 		Max:    "+inf",
 		Count:  int64(schedulerEventsPageSize),
-		Offset: int64((page-1)*schedulerEventsPageSize + 1),
+		Offset: offset,
 	}).Result()
 
 	if err != nil {
