@@ -1,5 +1,5 @@
 // maestro
-// +build integration
+// +build unit
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:
@@ -9,54 +9,45 @@
 package redis
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/go-redis/redis"
+	"github.com/golang/mock/gomock"
 	uuid "github.com/satori/go.uuid"
+	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	"github.com/topfreegames/maestro/models"
 	. "github.com/topfreegames/maestro/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/topfreegames/extensions/redis"
-
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
-
-	"github.com/topfreegames/maestro/extensions"
-	mtesting "github.com/topfreegames/maestro/testing"
 )
+
+func TestModels(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Storage Suite")
+}
 
 var (
 	schedulerName   string
-	redisClient *redis.Client
-	logger      *logrus.Logger
-	hook        *test.Hook
-	eventStorage *RedisSchedulerEventStorage
+	mockCtrl        *gomock.Controller
+	mockRedisClient *redismocks.MockRedisClient
+	mockPipeline    *redismocks.MockPipeliner
 )
-
-func TestIntStorage(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Models Integration Suite")
-}
-
-var _ = BeforeSuite(func() {
-	config, err := mtesting.GetDefaultConfig()
-	Expect(err).NotTo(HaveOccurred())
-
-	logger, hook = test.NewNullLogger()
-	logger.Level = logrus.DebugLevel
-
-	redisClient, err = extensions.GetRedisClient(logger, config)
-	Expect(err).NotTo(HaveOccurred())
-
-	eventStorage = NewRedisSchedulerEventStorage(redisClient.Client)
-})
 
 var _ = Describe("Scheduler events", func() {
 	BeforeEach(func() {
 		schedulerName = uuid.NewV4().String()
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockRedisClient = redismocks.NewMockRedisClient(mockCtrl)
+		mockPipeline = redismocks.NewMockPipeliner(mockCtrl)
+	})
+
+	AfterEach(func() {
+		mockCtrl.Finish()
 	})
 
 	Describe("PersistSchedulerEvent", func() {
@@ -64,56 +55,63 @@ var _ = Describe("Scheduler events", func() {
 			metadata := make(map[string]interface{})
 			metadata["reason"] = "rollback"
 
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().ZAdd(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any()).Times(1)
+			mockPipeline.EXPECT().ZRemRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), "-inf", gomock.Any()).Times(1)
+			mockPipeline.EXPECT().Exec().Times(1)
+
 			event := NewSchedulerEvent("UPDATE_STARTED", schedulerName, metadata)
 
-			err := eventStorage.PersistSchedulerEvent(event)
+			err := NewRedisSchedulerEventStorage(mockRedisClient).PersistSchedulerEvent(event)
 			Expect(err).To(BeNil())
-
-			events, err := eventStorage.LoadSchedulerEvents(schedulerName, 1)
-			Expect(err).To(BeNil())
-			Expect(events).To(HaveLen(1))
 		})
 
-		It("should crop events older than limit", func() {
+		It("should return error when redis pipe execution throws error", func() {
 			metadata := make(map[string]interface{})
 			metadata["reason"] = "rollback"
 
-			oldEvent := NewSchedulerEvent("OLD_UPDATE_STARTED", schedulerName, metadata)
-			oldEvent.CreatedAt = oldEvent.CreatedAt.Add(minScoreDuration).Add(-1000)
-			err := eventStorage.PersistSchedulerEvent(oldEvent)
-			Expect(err).To(BeNil())
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().ZAdd(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any()).Times(1)
+			mockPipeline.EXPECT().ZRemRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any(), gomock.Any()).Times(1)
+			mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis failed"))
 
-			newEvent := NewSchedulerEvent("NEW_UPDATE_STARTED", schedulerName, metadata)
-			err = eventStorage.PersistSchedulerEvent(newEvent)
-			Expect(err).To(BeNil())
+			event := NewSchedulerEvent("UPDATE_STARTED", schedulerName, metadata)
 
-			events, err := eventStorage.LoadSchedulerEvents(schedulerName, 1)
-			Expect(err).To(BeNil())
-			Expect(events).To(HaveLen(1))
-			Expect(events[0].Name).To(BeEquivalentTo(newEvent.Name))
+			err := NewRedisSchedulerEventStorage(mockRedisClient).PersistSchedulerEvent(event)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
 	Describe("LoadSchedulerEvents", func() {
 		It("should return list of events and no error when events are retrieved with success", func() {
-			now := time.Now()
-			for i := 1; i <= 100; i++ {
-				event := NewSchedulerEvent(
-					fmt.Sprintf("UPDATE_STARTED_%d", i), 
-					schedulerName, 
-					make(map[string]interface{}),
-					)
+			metadata := make(map[string]interface{})
+			metadata["reason"] = "rollback"
+			page := 30
 
-				event.CreatedAt = now.Add(time.Hour * time.Duration(i))
-				eventStorage.PersistSchedulerEvent(event)
-
+			createdAt := time.Now()
+			expectedEvent := models.SchedulerEvent{
+				Name:          "UPDATE_STARTED",
+				SchedulerName: schedulerName,
+				CreatedAt:     createdAt,
+				Metadata:      metadata,
 			}
+			expectedEventString, _ := json.Marshal(expectedEvent)
 
-			events, err := eventStorage.LoadSchedulerEvents(schedulerName, 1)
+			mockRedisClient.EXPECT().ZRevRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), redis.ZRangeBy{
+				Min:    "-inf",
+				Max:    "+inf",
+				Count:  30,
+				Offset: int64((page-1)*30 + 1),
+			}).Return(redis.NewStringSliceResult([]string{string(expectedEventString)}, nil))
+
+			events, err := NewRedisSchedulerEventStorage(mockRedisClient).LoadSchedulerEvents(schedulerName, page)
 			Expect(err).To(BeNil())
-			Expect(events).To(HaveLen(30))
-			Expect(events[0].Name).To(Equal("UPDATE_STARTED_100"))
-			Expect(events[29].Name).To(Equal("UPDATE_STARTED_71"))
+			Expect(events).To(HaveLen(1))
+			event := events[0]
+			Expect(event.Name).To(Equal(expectedEvent.Name))
+			Expect(event.SchedulerName).To(Equal(expectedEvent.SchedulerName))
+			Expect(event.CreatedAt.UnixNano()).To(Equal(expectedEvent.CreatedAt.UnixNano()))
+			Expect(event.Metadata).To(Equal(expectedEvent.Metadata))
 		})
 	})
 })

@@ -125,7 +125,7 @@ integration-run:
     MAESTRO_EXTENSIONS_REDIS_URL=redis://${MY_IP}:6333    \
     $(GOBINPATH)/ginkgo -tags integration -cover -r                    \
       -randomizeAllSpecs -randomizeSuites                 \
-      -skipMeasurements worker api models controller;
+      -skipMeasurements worker api models controller storage;
 
 int-ci: integration-board clear-coverage-profiles deps-test-ci integration-run gather-integration-profiles
 
