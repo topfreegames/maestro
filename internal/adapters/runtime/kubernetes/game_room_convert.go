@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"strings"
 
-	uuid "github.com/satori/go.uuid"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	v1 "k8s.io/api/core/v1"
@@ -63,11 +63,9 @@ var invalidPodWaitingStates = []string{
 }
 
 func convertGameRoomSpec(schedulerID string, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
-	randID := strings.SplitN(uuid.NewV4().String(), "-", 2)[0]
-	podName := fmt.Sprintf("%s-%s", schedulerID, randID)
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
+			Name:      generateName(schedulerID),
 			Namespace: schedulerID,
 			Labels: map[string]string{
 				maestroLabelKey:   maestroLabelValue,
@@ -82,9 +80,8 @@ func convertGameRoomSpec(schedulerID string, gameRoomSpec game_room.Spec) (*v1.P
 			Affinity:                      convertSpecAffinity(gameRoomSpec),
 		},
 	}
-
 	for _, container := range gameRoomSpec.Containers {
-		podContainer, err := convertContainer(container, schedulerID, podName)
+		podContainer, err := convertContainer(container, schedulerID, pod.Name)
 		if err != nil {
 			return nil, fmt.Errorf("error with container \"%s\": %w", container.Name, err)
 		}
@@ -290,4 +287,16 @@ func convertPod(pod *v1.Pod) *game_room.Instance {
 		Version:     pod.ObjectMeta.Labels[versionLabelKey],
 		Status:      convertPodStatus(pod),
 	}
+}
+
+func generateName(base string) string {
+	const (
+		maxNameLength          = 63
+		randomLength           = 5
+		MaxGeneratedNameLength = maxNameLength - randomLength
+	)
+	if len(base) > MaxGeneratedNameLength {
+		base = base[:MaxGeneratedNameLength]
+	}
+	return fmt.Sprintf("%s-%s", base, utilrand.String(randomLength))
 }

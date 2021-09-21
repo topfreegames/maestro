@@ -20,7 +20,6 @@ require (
 	github.com/orlangure/gnomock v0.14.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
-	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/slok/go-http-metrics v0.9.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
