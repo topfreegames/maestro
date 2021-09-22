@@ -147,6 +147,17 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 	return nil
 }
 
+// UpdateRoomInstance updates the instance information.
+func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error {
+	err := m.instanceStorage.UpsertInstance(ctx, gameRoomInstance)
+	if err != nil {
+		return fmt.Errorf("failed when updating the game room instance on storage: %w", err)
+	}
+
+	return nil
+}
+
+
 // ListRoomsWithDeletionPriority returns a specified number of rooms, following
 // the priority of it being deleted (which will be introduced later). This
 // function can return less rooms than the `amount` since it might not have
