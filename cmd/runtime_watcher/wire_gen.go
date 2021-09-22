@@ -57,7 +57,7 @@ func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager,
 	}
 	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, roomManagerConfig)
 	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager)
-	workerOptions := workers.ProvideWorkerOptions(operationManager, v2)
+	workerOptions := workers.ProvideWorkerOptions(operationManager, v2, roomManager, runtime)
 	workersManager := workers_manager.NewWorkersManager(workerBuilder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
 }

@@ -27,7 +27,9 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 )
 
 // This interface aims to map all required functions of a worker
@@ -47,9 +49,16 @@ type Worker interface {
 type WorkerOptions struct {
 	OperationManager   *operation_manager.OperationManager
 	OperationExecutors map[string]operations.Executor
+	RoomManager        *room_manager.RoomManager
+	Runtime            ports.Runtime
 }
 
-func ProvideWorkerOptions(operationManager *operation_manager.OperationManager, operationExecutors map[string]operations.Executor) *WorkerOptions {
+func ProvideWorkerOptions(
+	operationManager *operation_manager.OperationManager,
+	operationExecutors map[string]operations.Executor,
+	roomManager *room_manager.RoomManager,
+	runtime ports.Runtime,
+) *WorkerOptions {
 	return &WorkerOptions{
 		OperationManager:   operationManager,
 		OperationExecutors: operationExecutors,
