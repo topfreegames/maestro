@@ -157,7 +157,6 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 	return nil
 }
 
-
 // ListRoomsWithDeletionPriority returns a specified number of rooms, following
 // the priority of it being deleted (which will be introduced later). This
 // function can return less rooms than the `amount` since it might not have
