@@ -97,7 +97,7 @@ var _ = Describe("Scheduler events", func() {
 			}
 			expectedEventString, _ := json.Marshal(expectedEvent)
 
-			mockRedisClient.EXPECT().ZRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), redis.ZRangeBy{
+			mockRedisClient.EXPECT().ZRevRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), redis.ZRangeBy{
 				Min:    "-inf",
 				Max:    "+inf",
 				Count:  30,
