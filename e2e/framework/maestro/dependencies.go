@@ -34,6 +34,7 @@ import (
 
 type dependencies struct {
 	KubeconfigPath string
+	RedisAddress   string
 	KubeAddress    string
 	compose        tc.DockerCompose
 }
@@ -45,14 +46,14 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 	identifier := strings.ToLower("test-something")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d"}).Invoke()
+	composeErr := compose.WithCommand([]string{"up", "-d", "postgres", "redis", "k3s_agent", "k3s_server"}).Invoke()
 
 	if composeErr.Error != nil {
 		return nil, fmt.Errorf("failed to start dependencies: %s", composeErr.Error)
 	}
 
 	migrateErr := helpers.TimedRetry(func() error {
-		_, err := exec.ExecGoRun(
+		_, err := exec.ExecGoCmd(
 			maestroPath,
 			[]string{},
 			"cmd/utils/utils.go", "migrate",
@@ -67,8 +68,9 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 	}
 
 	return &dependencies{
-		KubeconfigPath: fmt.Sprintf("%s/e2e/framework/maestro/kubeconfig.yaml", maestroPath),
+		KubeconfigPath: fmt.Sprintf("%s/kubeconfig/kubeconfig.yaml", maestroPath),
 		KubeAddress:    "https://127.0.0.1:6443",
+		RedisAddress:   "redis://127.0.0.1:6379/0",
 		compose:        compose,
 	}, nil
 }

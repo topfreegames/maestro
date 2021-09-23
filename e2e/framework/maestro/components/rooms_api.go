@@ -25,33 +25,38 @@ package components
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
-	tc "github.com/testcontainers/testcontainers-go"
-
+	"github.com/topfreegames/maestro/e2e/framework/maestro/exec"
 	"github.com/topfreegames/maestro/e2e/framework/maestro/helpers"
+
+	"strings"
+
+	tc "github.com/testcontainers/testcontainers-go"
 )
 
-type WorkerServer struct {
-	compose tc.DockerCompose
+type RoomsApiServer struct {
+	Address                  string
+	ContainerInternalAddress string
+	compose                  tc.DockerCompose
 }
 
-func ProvideWorker(maestroPath string) (*WorkerServer, error) {
+func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
+	address := "http://localhost:9097"
 	client := &http.Client{}
 
 	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
 	identifier := strings.ToLower("test-something")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "worker"}).Invoke()
+	composeErr := compose.WithCommand([]string{"up", "-d", "rooms-api"}).Invoke()
 
 	if composeErr.Error != nil {
-		return nil, fmt.Errorf("failed to start worker API: %s", composeErr.Error)
+		return nil, fmt.Errorf("failed to start rooms API: %s", composeErr.Error)
 	}
 
 	err := helpers.TimedRetry(func() error {
-		res, err := client.Get("http://localhost:9096/healthz")
+		res, err := client.Get("http://localhost:9098/healthz")
 		if err != nil {
 			return err
 		}
@@ -64,12 +69,30 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 	}, time.Second, 60*time.Second)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to reach worker API: %s", err)
+		return nil, fmt.Errorf("unable to reach rooms API: %s", err)
 	}
 
-	return &WorkerServer{compose: compose}, nil
+	cmd, err := exec.ExecSysCmd(
+		maestroPath,
+		"docker",
+		"inspect", "-f", "'{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}'", "test-something_rooms-api_1",
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to run docker inspect command: %s", err)
+	}
+
+	output, err := cmd.ReadOutput()
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to get rooms api container internal address: %s", err)
+	}
+
+	internalAddress := strings.Trim(strings.TrimSuffix(string(output), "\n"), "'")
+
+	return &RoomsApiServer{compose: compose, Address: address, ContainerInternalAddress: internalAddress}, nil
 }
 
-func (ws *WorkerServer) Teardown() {
-	ws.compose.Down()
+func (ms *RoomsApiServer) Teardown() {
+	ms.compose.Down()
 }

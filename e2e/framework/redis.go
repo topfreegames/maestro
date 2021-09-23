@@ -23,26 +23,13 @@
 package framework
 
 import (
-	"testing"
-
 	"github.com/go-redis/redis"
-
-	"github.com/topfreegames/maestro/e2e/framework/maestro"
-
-	"k8s.io/client-go/kubernetes"
 )
 
-func WithClients(t *testing.T, testCase func(apiClient *APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance)) {
-	client := NewAPIClient(defaultMaestro.ManagementApiServer.Address)
-
-	kubeClient, err := getKubeClient()
+func getRedisConnection(address string) (*redis.Client, error) {
+	opts, err := redis.ParseURL(address)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
-	redisClient, err := getRedisConnection(defaultMaestro.Deps.RedisAddress)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testCase(client, kubeClient, redisClient, defaultMaestro)
+	return redis.NewClient(opts), nil
 }

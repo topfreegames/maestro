@@ -49,7 +49,7 @@ func (c *Cmd) ReadOutput() ([]byte, error) {
 	return workerOutput, nil
 }
 
-func ExecGoRun(dir string, env []string, externalArgs ...string) (*Cmd, error) {
+func ExecGoCmd(dir string, env []string, externalArgs ...string) (*Cmd, error) {
 	args := []string{"run"}
 	for _, arg := range externalArgs {
 		args = append(args, arg)
@@ -80,6 +80,28 @@ func ExecGoRun(dir string, env []string, externalArgs ...string) (*Cmd, error) {
 	if err != nil {
 		c.Kill()
 		return nil, fmt.Errorf("failed to start command: %s", err)
+	}
+
+	return c, nil
+}
+
+func ExecSysCmd(dir string, command string, args ...string) (*Cmd, error) {
+	execCmd := exec.Command(command, args...)
+
+	c := &Cmd{
+		execCmd: execCmd,
+		output:  new(bytes.Buffer),
+	}
+
+	c.execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	c.execCmd.Stdout = c.output
+	c.execCmd.Stderr = c.output
+	c.execCmd.Dir = dir
+
+	err := c.execCmd.Run()
+	if err != nil {
+		c.Kill()
+		return nil, fmt.Errorf("failed to run command: %s", err)
 	}
 
 	return c, nil

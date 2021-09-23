@@ -1,8 +1,60 @@
-version: '3'
+version: '3.8'
 services:
+
+  worker:
+    build:
+      context: ../../..
+      dockerfile: ./docker/worker/Dockerfile
+      args:
+        MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
+        MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
+        MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
+    ports:
+      - "9096:8082"
+    volumes:
+      - ../../../kubeconfig:/kubeconfig
+
+  rooms-api:
+    build:
+      context: ../../..
+      dockerfile: ./docker/rooms-api/Dockerfile
+      args:
+        MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
+        MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
+    ports:
+      - "9097:8090"
+      - "9098:8091"
+
+    volumes:
+      - ../../../kubeconfig:/kubeconfig
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  management-api:
+    build:
+      context: ../../..
+      dockerfile: ./docker/management-api/Dockerfile
+      args:
+        MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
+        MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL: "redis://redis:6379/0"
+    ports:
+      - "9095:8081"
+      - "9094:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   k3s_server:
     image: "rancher/k3s:v1.19.11-k3s1"
-    command: server
+    command: server --bind-address k3s_server
     tmpfs:
     - /run
     - /var/run
@@ -18,11 +70,11 @@ services:
     - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
     - K3S_KUBECONFIG_MODE=666
     volumes:
-    - k3s-server:/var/lib/rancher/k3s
     # This is just so that we get the kubeconfig file out
-    - .:/output
+      - ../../../kubeconfig:/output
+
     ports:
-    - 6443:6443  # Kubernetes API Server
+    - "6443:6443"  # Kubernetes API Server
 
   k3s_agent:
     image: "rancher/k3s:v1.19.11-k3s1"
@@ -44,12 +96,15 @@ services:
     image: postgres:9.6.9
     ports:
     - "5432:5432"
-    volumes:
-      - postgres:/var/lib/postgresql
     environment:
     - POSTGRES_DB=maestro
     - POSTGRES_USER=maestro
     - POSTGRES_PASSWORD=maestro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   redis:
     image: redis:5.0.10-alpine
@@ -57,5 +112,4 @@ services:
     - "6379:6379"
 
 volumes:
-  k3s-server: {}
-  postgres: {}
+  kubeconfig: {}
