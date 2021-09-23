@@ -26,6 +26,7 @@ package redis
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -33,9 +34,11 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 	"github.com/orlangure/gnomock"
 	predis "github.com/orlangure/gnomock/preset/redis"
 	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 )
 
@@ -157,6 +160,80 @@ func TestNextOperationID(t *testing.T) {
 			case err := <-nextWait:
 				require.Error(t, err)
 				return true
+			default:
+			}
+
+			return false
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+}
+
+func TestWatchOperationCancelationRequests(t *testing.T) {
+	schedulerName := uuid.New().String()
+	operationID := uuid.New().String()
+
+	t.Run("successfully receives the scheduler name and operation ID to cancel", func(t *testing.T) {
+		client := getRedisConnection(t)
+		flow := NewRedisOperationFlow(client)
+		ctx, ctxCancelFn := context.WithCancel(context.Background())
+
+		cancelChan := flow.WatchOperationCancelationRequests(ctx)
+
+		requestAsString, _ := json.Marshal(ports.OperationCancelationRequest{
+			SchedulerName: schedulerName,
+			OperationID:   operationID,
+		})
+
+		err := client.Publish(ctx, watchOperationCancelationRequestKey, string(requestAsString)).Err()
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			select {
+			case request := <-cancelChan:
+				require.Equal(t, request.SchedulerName, schedulerName)
+				require.Equal(t, request.OperationID, operationID)
+				return true
+			default:
+			}
+
+			return false
+		}, 5*time.Second, 100*time.Millisecond)
+
+		ctxCancelFn()
+	})
+
+	t.Run("when parent context is canceled, stops to watch requests", func(t *testing.T) {
+		client := getRedisConnection(t)
+		flow := NewRedisOperationFlow(client)
+		ctx, ctxCancelFn := context.WithCancel(context.Background())
+
+		cancelChan := flow.WatchOperationCancelationRequests(ctx)
+		ctxCancelFn()
+
+		require.Eventually(t, func() bool {
+			select {
+			case _, ok := <-cancelChan:
+				return !ok
+			default:
+			}
+
+			return false
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("when redis connection fails, stops to watch requests", func(t *testing.T) {
+		client := getRedisConnection(t)
+		flow := NewRedisOperationFlow(client)
+		ctx := context.Background()
+
+		cancelChan := flow.WatchOperationCancelationRequests(ctx)
+
+		client.Close()
+
+		require.Eventually(t, func() bool {
+			select {
+			case _, ok := <-cancelChan:
+				return !ok
 			default:
 			}
 

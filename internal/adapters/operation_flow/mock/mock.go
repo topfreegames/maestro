@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	ports "github.com/topfreegames/maestro/internal/core/ports"
 )
 
 // MockOperationFlow is a mock of OperationFlow interface.
@@ -76,4 +77,18 @@ func (m *MockOperationFlow) NextOperationID(ctx context.Context, schedulerName s
 func (mr *MockOperationFlowMockRecorder) NextOperationID(ctx, schedulerName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextOperationID", reflect.TypeOf((*MockOperationFlow)(nil).NextOperationID), ctx, schedulerName)
+}
+
+// WatchOperationCancelationRequests mocks base method.
+func (m *MockOperationFlow) WatchOperationCancelationRequests(ctx context.Context) chan ports.OperationCancelationRequest {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WatchOperationCancelationRequests", ctx)
+	ret0, _ := ret[0].(chan ports.OperationCancelationRequest)
+	return ret0
+}
+
+// WatchOperationCancelationRequests indicates an expected call of WatchOperationCancelationRequests.
+func (mr *MockOperationFlowMockRecorder) WatchOperationCancelationRequests(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WatchOperationCancelationRequests", reflect.TypeOf((*MockOperationFlow)(nil).WatchOperationCancelationRequests), ctx)
 }

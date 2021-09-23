@@ -29,6 +29,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -37,6 +38,7 @@ import (
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 )
 
@@ -309,7 +311,7 @@ func TestNextSchedulerOperation(t *testing.T) {
 }
 
 func TestStartOperation(t *testing.T) {
-	t.Run("starts operation with succeess", func(t *testing.T) {
+	t.Run("starts operation with success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -322,7 +324,7 @@ func TestStartOperation(t *testing.T) {
 		op := &operation.Operation{ID: uuid.NewString(), DefinitionName: (&testOperationDefinition{}).Name()}
 
 		operationStorage.EXPECT().UpdateOperationStatus(ctx, op.SchedulerName, op.ID, operation.StatusInProgress).Return(nil)
-		err := opManager.StartOperation(ctx, op)
+		err := opManager.StartOperation(ctx, op, func() {})
 		require.NoError(t, err)
 	})
 }
@@ -369,5 +371,63 @@ func TestListActiveOperations(t *testing.T) {
 		operations, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
 		require.NoError(t, err)
 		require.ElementsMatch(t, operationsResult, operations)
+	})
+}
+
+func TestWatchOperationCancelationRequests(t *testing.T) {
+	schedulerName := uuid.New().String()
+	operationID := uuid.New().String()
+
+	t.Run("cancels a operation successfully", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		opManager := New(operationFlow, nil, nil)
+
+		cancelableContext, cancelFunction := context.WithCancel(context.Background())
+		opManager.operationCancelFunctions[schedulerName] = map[string]context.CancelFunc{
+			operationID: cancelFunction,
+		}
+
+		requestChannel := make(chan ports.OperationCancelationRequest, 1000)
+		operationFlow.EXPECT().WatchOperationCancelationRequests(gomock.Any()).Return(requestChannel)
+
+		opManager.WatchOperationCancelationRequests(context.Background())
+
+		requestChannel <- ports.OperationCancelationRequest{
+			SchedulerName: schedulerName,
+			OperationID:   operationID,
+		}
+
+		require.Eventually(t, func() bool {
+			if cancelableContext.Err() != nil {
+				require.ErrorIs(t, cancelableContext.Err(), context.Canceled)
+				return true
+			}
+
+			return false
+		}, time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("fails fast to cancel when no cancel function found", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		opManager := New(operationFlow, nil, nil)
+
+		requestChannel := make(chan ports.OperationCancelationRequest, 1000)
+		operationFlow.EXPECT().WatchOperationCancelationRequests(gomock.Any()).Return(requestChannel)
+
+		opManager.WatchOperationCancelationRequests(context.Background())
+		require.Empty(t, opManager.operationCancelFunctions)
+
+		requestChannel <- ports.OperationCancelationRequest{
+			SchedulerName: schedulerName,
+			OperationID:   operationID,
+		}
+
+		require.Empty(t, opManager.operationCancelFunctions[schedulerName])
 	})
 }
