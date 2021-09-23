@@ -340,11 +340,20 @@ func TestFinishOperation(t *testing.T) {
 		opManager := New(operationFlow, operationStorage, definitionConstructors)
 
 		ctx := context.Background()
-		expectedStatus := operation.StatusError
-		op := &operation.Operation{ID: uuid.NewString(), DefinitionName: (&testOperationDefinition{}).Name(), Status: expectedStatus}
+		op := &operation.Operation{
+			SchedulerName:  uuid.NewString(),
+			ID:             uuid.NewString(),
+			DefinitionName: (&testOperationDefinition{}).Name(),
+		}
 
+		operationStorage.EXPECT().UpdateOperationStatus(ctx, op.SchedulerName, op.ID, operation.StatusInProgress).Return(nil)
+		err := opManager.StartOperation(ctx, op, func() {})
+		require.NoError(t, err)
+
+		expectedStatus := operation.StatusError
+		op.Status = expectedStatus
 		operationStorage.EXPECT().UpdateOperationStatus(ctx, op.SchedulerName, op.ID, expectedStatus).Return(nil)
-		err := opManager.FinishOperation(ctx, op)
+		err = opManager.FinishOperation(ctx, op)
 		require.NoError(t, err)
 	})
 }

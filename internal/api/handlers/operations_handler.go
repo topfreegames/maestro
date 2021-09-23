@@ -83,6 +83,15 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}, nil
 }
 
+func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.CancelOperationRequest) (*api.CancelOperationResponse, error) {
+	err := h.operationManager.EnqueueOperationCancelationRequest(ctx, request.SchedulerName, request.OperationId)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.CancelOperationResponse{}, nil
+}
+
 func (h *OperationsHandler) fromOperationsToResponses(entities []*operation.Operation) ([]*api.Operation, error) {
 	responses := make([]*api.Operation, len(entities))
 	for i, entity := range entities {

@@ -35,6 +35,20 @@ func (m *MockOperationFlow) EXPECT() *MockOperationFlowMockRecorder {
 	return m.recorder
 }
 
+// EnqueueOperationCancelationRequest mocks base method.
+func (m *MockOperationFlow) EnqueueOperationCancelationRequest(ctx context.Context, request ports.OperationCancelationRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnqueueOperationCancelationRequest", ctx, request)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnqueueOperationCancelationRequest indicates an expected call of EnqueueOperationCancelationRequest.
+func (mr *MockOperationFlowMockRecorder) EnqueueOperationCancelationRequest(ctx, request interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueOperationCancelationRequest", reflect.TypeOf((*MockOperationFlow)(nil).EnqueueOperationCancelationRequest), ctx, request)
+}
+
 // InsertOperationID mocks base method.
 func (m *MockOperationFlow) InsertOperationID(ctx context.Context, schedulerName, operationID string) error {
 	m.ctrl.T.Helper()

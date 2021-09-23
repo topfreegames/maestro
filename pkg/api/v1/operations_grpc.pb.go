@@ -20,6 +20,8 @@ const _ = grpc.SupportPackageIsVersion7
 type OperationsServiceClient interface {
 	// List operations based on a scheduler.
 	ListOperations(ctx context.Context, in *ListOperationsRequest, opts ...grpc.CallOption) (*ListOperationsResponse, error)
+	// Cancel operation based on scheduler name and operation ID
+	CancelOperation(ctx context.Context, in *CancelOperationRequest, opts ...grpc.CallOption) (*CancelOperationResponse, error)
 }
 
 type operationsServiceClient struct {
@@ -39,12 +41,23 @@ func (c *operationsServiceClient) ListOperations(ctx context.Context, in *ListOp
 	return out, nil
 }
 
+func (c *operationsServiceClient) CancelOperation(ctx context.Context, in *CancelOperationRequest, opts ...grpc.CallOption) (*CancelOperationResponse, error) {
+	out := new(CancelOperationResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.OperationsService/CancelOperation", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OperationsServiceServer is the server API for OperationsService service.
 // All implementations must embed UnimplementedOperationsServiceServer
 // for forward compatibility
 type OperationsServiceServer interface {
 	// List operations based on a scheduler.
 	ListOperations(context.Context, *ListOperationsRequest) (*ListOperationsResponse, error)
+	// Cancel operation based on scheduler name and operation ID
+	CancelOperation(context.Context, *CancelOperationRequest) (*CancelOperationResponse, error)
 	mustEmbedUnimplementedOperationsServiceServer()
 }
 
@@ -54,6 +67,9 @@ type UnimplementedOperationsServiceServer struct {
 
 func (UnimplementedOperationsServiceServer) ListOperations(context.Context, *ListOperationsRequest) (*ListOperationsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListOperations not implemented")
+}
+func (UnimplementedOperationsServiceServer) CancelOperation(context.Context, *CancelOperationRequest) (*CancelOperationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CancelOperation not implemented")
 }
 func (UnimplementedOperationsServiceServer) mustEmbedUnimplementedOperationsServiceServer() {}
 
@@ -86,6 +102,24 @@ func _OperationsService_ListOperations_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _OperationsService_CancelOperation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelOperationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperationsServiceServer).CancelOperation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.OperationsService/CancelOperation",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperationsServiceServer).CancelOperation(ctx, req.(*CancelOperationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // OperationsService_ServiceDesc is the grpc.ServiceDesc for OperationsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -96,6 +130,10 @@ var OperationsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListOperations",
 			Handler:    _OperationsService_ListOperations_Handler,
+		},
+		{
+			MethodName: "CancelOperation",
+			Handler:    _OperationsService_CancelOperation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

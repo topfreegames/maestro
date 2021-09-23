@@ -47,6 +47,45 @@
           "OperationsService"
         ]
       }
+    },
+    "/schedulers/{schedulerName}/operations/{operationId}/cancel": {
+      "post": {
+        "summary": "Cancel operation based on scheduler name and operation ID",
+        "operationId": "OperationsService_CancelOperation",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CancelOperationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name where the operation relies on.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "operationId",
+            "description": "Operation identifier to be canceled.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "OperationsService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -79,6 +118,10 @@
           }
         }
       }
+    },
+    "v1CancelOperationResponse": {
+      "type": "object",
+      "description": "Empty response of the cancel operation request."
     },
     "v1ListOperationsResponse": {
       "type": "object",

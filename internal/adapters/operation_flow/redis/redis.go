@@ -84,6 +84,21 @@ func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Contex
 	return operationsIDs, nil
 }
 
+func (r *redisOperationFlow) EnqueueOperationCancelationRequest(ctx context.Context, request ports.OperationCancelationRequest) error {
+
+	requestAsString, err := json.Marshal(request)
+	if err != nil {
+		return fmt.Errorf("failed to marshal operation cancelation request to string: %w", err)
+	}
+
+	err = r.client.Publish(ctx, watchOperationCancelationRequestKey, requestAsString).Err()
+	if err != nil {
+		return fmt.Errorf("failed to publish operation cancelation request: %w", err)
+	}
+
+	return nil
+}
+
 func (r *redisOperationFlow) WatchOperationCancelationRequests(ctx context.Context) chan ports.OperationCancelationRequest {
 	sub := r.client.Subscribe(ctx, watchOperationCancelationRequestKey)
 

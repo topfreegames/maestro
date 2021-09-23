@@ -16,6 +16,12 @@ service OperationsService {
       get: "/schedulers/{scheduler_name=*}/operations",
     };
   }
+  // Cancel operation based on scheduler name and operation ID
+  rpc CancelOperation(CancelOperationRequest) returns (CancelOperationResponse) {
+    option (google.api.http) = {
+      post: "/schedulers/{scheduler_name=*}/operations/{operation_id=*}/cancel",
+    };
+  }
 }
 
 // The list operation route request.
@@ -35,3 +41,14 @@ message ListOperationsResponse {
   // List of the scheduler finished (with error or not) operations.
   repeated Operation finished_operations = 3;
 }
+
+// The cancel operation request.
+message CancelOperationRequest {
+  // Scheduler name where the operation relies on.
+  string scheduler_name = 1;
+  // Operation identifier to be canceled.
+  string operation_id = 2;
+}
+
+// Empty response of the cancel operation request.
+message CancelOperationResponse {}

@@ -168,6 +168,24 @@ func TestNextOperationID(t *testing.T) {
 	})
 }
 
+func TestEnqueueOperationCancelationRequest(t *testing.T) {
+	schedulerName := uuid.New().String()
+	operationID := uuid.New().String()
+
+	t.Run("successfully publishes the request to cancel", func(t *testing.T) {
+		client := getRedisConnection(t)
+		flow := NewRedisOperationFlow(client)
+		ctx := context.Background()
+
+		err := flow.EnqueueOperationCancelationRequest(ctx, ports.OperationCancelationRequest{
+			SchedulerName: schedulerName,
+			OperationID:   operationID,
+		})
+
+		require.NoError(t, err)
+	})
+}
+
 func TestWatchOperationCancelationRequests(t *testing.T) {
 	schedulerName := uuid.New().String()
 	operationID := uuid.New().String()
