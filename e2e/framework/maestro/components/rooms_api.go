@@ -72,7 +72,7 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 		return nil, fmt.Errorf("unable to reach rooms API: %s", err)
 	}
 
-	cmd, err := exec.ExecRun(
+	cmd, err := exec.ExecSysCmd(
 		maestroPath,
 		"docker",
 		"inspect", "-f", "'{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}'", "test-something_rooms-api_1",

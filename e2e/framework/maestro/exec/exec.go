@@ -49,7 +49,7 @@ func (c *Cmd) ReadOutput() ([]byte, error) {
 	return workerOutput, nil
 }
 
-func ExecGoRun(dir string, env []string, externalArgs ...string) (*Cmd, error) {
+func ExecGoCmd(dir string, env []string, externalArgs ...string) (*Cmd, error) {
 	args := []string{"run"}
 	for _, arg := range externalArgs {
 		args = append(args, arg)
@@ -85,7 +85,7 @@ func ExecGoRun(dir string, env []string, externalArgs ...string) (*Cmd, error) {
 	return c, nil
 }
 
-func ExecRun(dir string, command string, args ...string) (*Cmd, error) {
+func ExecSysCmd(dir string, command string, args ...string) (*Cmd, error) {
 	execCmd := exec.Command(command, args...)
 
 	c := &Cmd{

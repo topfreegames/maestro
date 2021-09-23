@@ -37,7 +37,7 @@ import (
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
 	"github.com/topfreegames/maestro/e2e/framework"
-	maestrov1 "github.com/topfreegames/maestro/pkg/api/v1"
+	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -49,26 +49,26 @@ func TestAddRooms(t *testing.T) {
 
 		t.Run("when created rooms does not reply its state back then it finishes the operation successfully", func(t *testing.T) {
 			schedulerName := framework.GenerateSchedulerName()
-			createRequest := &maestrov1.CreateSchedulerRequest{
+			createRequest := &maestroApiV1.CreateSchedulerRequest{
 				Name:                   schedulerName,
 				Game:                   "test",
 				Version:                "v1.1",
 				TerminationGracePeriod: 15,
-				Containers: []*maestrov1.Container{
+				Containers: []*maestroApiV1.Container{
 					{
 						Name:            "example",
 						Image:           "alpine",
 						Command:         []string{"sh", "-c", "tail -f /dev/null"},
 						ImagePullPolicy: "Always",
-						Requests: &maestrov1.ContainerResources{
+						Requests: &maestroApiV1.ContainerResources{
 							Memory: "20Mi",
 							Cpu:    "10m",
 						},
-						Limits: &maestrov1.ContainerResources{
+						Limits: &maestroApiV1.ContainerResources{
 							Memory: "20Mi",
 							Cpu:    "10m",
 						},
-						Ports: []*maestrov1.ContainerPort{
+						Ports: []*maestroApiV1.ContainerPort{
 							{
 								Name:     "default",
 								Protocol: "tcp",
@@ -79,13 +79,13 @@ func TestAddRooms(t *testing.T) {
 				},
 			}
 
-			createResponse := &maestrov1.CreateSchedulerResponse{}
+			createResponse := &maestroApiV1.CreateSchedulerResponse{}
 			err := apiClient.Do("POST", "/schedulers", createRequest, createResponse)
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestrov1.ListOperationsRequest{}
-				listOperationsResponse := &maestrov1.ListOperationsResponse{}
+				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
+				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
 				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
@@ -111,16 +111,16 @@ func TestAddRooms(t *testing.T) {
 				return len(svcAccs.Items) > 0
 			}, 5*time.Second, time.Second)
 
-			addRoomsRequest := &maestrov1.AddRoomsRequest{
+			addRoomsRequest := &maestroApiV1.AddRoomsRequest{
 				SchedulerName: schedulerName,
 				Amount:        1,
 			}
-			addRoomsResponse := &maestrov1.AddRoomsResponse{}
+			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
 			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 
 			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestrov1.ListOperationsRequest{}
-				listOperationsResponse := &maestrov1.ListOperationsResponse{}
+				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
+				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
 				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
@@ -144,12 +144,12 @@ func TestAddRooms(t *testing.T) {
 		t.Run("when created rooms replies its state back then it finishes the operation successfully", func(t *testing.T) {
 
 			schedulerName := framework.GenerateSchedulerName()
-			createRequest := &maestrov1.CreateSchedulerRequest{
+			createRequest := &maestroApiV1.CreateSchedulerRequest{
 				Name:                   schedulerName,
 				Game:                   "test",
 				Version:                "v1.1",
 				TerminationGracePeriod: 15,
-				Containers: []*maestrov1.Container{
+				Containers: []*maestroApiV1.Container{
 					{
 						Name:  "example",
 						Image: "alpine",
@@ -157,21 +157,21 @@ func TestAddRooms(t *testing.T) {
 							"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 							"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'"},
 						ImagePullPolicy: "Always",
-						Environment: []*maestrov1.ContainerEnvironment{
+						Environment: []*maestroApiV1.ContainerEnvironment{
 							{
 								Name:  "ROOMS_API_ADDRESS",
 								Value: maestro.RoomsApiServer.ContainerInternalAddress,
 							},
 						},
-						Requests: &maestrov1.ContainerResources{
+						Requests: &maestroApiV1.ContainerResources{
 							Memory: "20Mi",
 							Cpu:    "10m",
 						},
-						Limits: &maestrov1.ContainerResources{
+						Limits: &maestroApiV1.ContainerResources{
 							Memory: "20Mi",
 							Cpu:    "10m",
 						},
-						Ports: []*maestrov1.ContainerPort{
+						Ports: []*maestroApiV1.ContainerPort{
 							{
 								Name:     "default",
 								Protocol: "tcp",
@@ -182,13 +182,13 @@ func TestAddRooms(t *testing.T) {
 				},
 			}
 
-			createResponse := &maestrov1.CreateSchedulerResponse{}
+			createResponse := &maestroApiV1.CreateSchedulerResponse{}
 			err := apiClient.Do("POST", "/schedulers", createRequest, createResponse)
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestrov1.ListOperationsRequest{}
-				listOperationsResponse := &maestrov1.ListOperationsResponse{}
+				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
+				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
 				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
@@ -215,16 +215,16 @@ func TestAddRooms(t *testing.T) {
 				return len(svcAccs.Items) > 0
 			}, 5*time.Second, time.Second)
 
-			addRoomsRequest := &maestrov1.AddRoomsRequest{
+			addRoomsRequest := &maestroApiV1.AddRoomsRequest{
 				SchedulerName: schedulerName,
 				Amount:        1,
 			}
-			addRoomsResponse := &maestrov1.AddRoomsResponse{}
+			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
 			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 
 			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestrov1.ListOperationsRequest{}
-				listOperationsResponse := &maestrov1.ListOperationsResponse{}
+				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
+				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
 				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
@@ -243,6 +243,16 @@ func TestAddRooms(t *testing.T) {
 			room, err := roomsStorage.GetRoom(context.Background(), schedulerName, pods.Items[0].ObjectMeta.Name)
 			require.NoError(t, err)
 			require.Equal(t, room.Status, game_room.GameStatusReady)
+		})
+
+		t.Run("when trying to add rooms to a nonexistent scheduler then the operation fails", func(t *testing.T) {
+			schedulerName := "NonExistent"
+
+			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
+			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
+			err := apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+			require.Error(t, err, "failed with status 404, response body: {\"code\":5, \"message\":\"no "+
+				"scheduler found to add rooms on it: scheduler NonExistent not found\", \"details\":[]}")
 		})
 	})
 
