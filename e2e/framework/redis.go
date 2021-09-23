@@ -24,6 +24,7 @@ package framework
 
 import (
 	"github.com/go-redis/redis"
+	redisV8 "github.com/go-redis/redis/v8"
 )
 
 func getRedisConnection(address string) (*redis.Client, error) {
@@ -32,4 +33,12 @@ func getRedisConnection(address string) (*redis.Client, error) {
 		return nil, err
 	}
 	return redis.NewClient(opts), nil
+}
+
+func getRedisConnectionV8(address string) (*redisV8.Client, error) {
+	opts, err := redisV8.ParseURL(address)
+	if err != nil {
+		return nil, err
+	}
+	return redisV8.NewClient(opts), nil
 }
