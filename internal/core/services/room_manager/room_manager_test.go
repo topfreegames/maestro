@@ -371,3 +371,61 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestRoomManager_CleanRoomState(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
+	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	clock := clockmock.NewFakeClock(time.Now())
+	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+	roomManager := NewRoomManager(
+		clock,
+		pamock.NewMockPortAllocator(mockCtrl),
+		roomStorage,
+		instanceStorage,
+		runtime,
+		config,
+	)
+	schedulerName := "scheduler-name"
+	roomId := "some-unique-room-id"
+
+	t.Run("when room and instance deletions do not return error", func(t *testing.T) {
+		roomStorage.EXPECT().DeleteRoom(context.Background(), schedulerName, roomId).Return(nil)
+		instanceStorage.EXPECT().DeleteInstance(context.Background(), schedulerName, roomId).Return(nil)
+
+		err := roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
+		require.NoError(t, err)
+	})
+
+	t.Run("when room is not found but instance is, returns no error", func(t *testing.T) {
+		roomStorage.EXPECT().DeleteRoom(context.Background(), schedulerName, roomId).Return(porterrors.ErrNotFound)
+		instanceStorage.EXPECT().DeleteInstance(context.Background(), schedulerName, roomId).Return(nil)
+
+		err := roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
+		require.NoError(t, err)
+	})
+
+	t.Run("when room is present but instance isn't, returns no error", func(t *testing.T) {
+		roomStorage.EXPECT().DeleteRoom(context.Background(), schedulerName, roomId).Return(nil)
+		instanceStorage.EXPECT().DeleteInstance(context.Background(), schedulerName, roomId).Return(porterrors.ErrNotFound)
+
+		err := roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
+		require.NoError(t, err)
+	})
+
+	t.Run("when deletions returns unexpected error, returns error", func(t *testing.T) {
+		roomStorage.EXPECT().DeleteRoom(context.Background(), schedulerName, roomId).Return(porterrors.ErrUnexpected)
+
+		err := roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
+		require.Error(t, err)
+
+		roomStorage.EXPECT().DeleteRoom(context.Background(), schedulerName, roomId).Return(nil)
+		instanceStorage.EXPECT().DeleteInstance(context.Background(), schedulerName, roomId).Return(porterrors.ErrUnexpected)
+
+		err = roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
+		require.Error(t, err)
+	})
+}
