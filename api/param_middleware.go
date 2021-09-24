@@ -45,6 +45,14 @@ func schedulerParamsFromContext(ctx context.Context) *models.SchedulerParams {
 	return param.(*models.SchedulerParams)
 }
 
+func schedulerRoomsParamsFromContext(ctx context.Context) *models.SchedulerRoomsParams {
+	param := ctx.Value(paramKey)
+	if param == nil {
+		return nil
+	}
+	return param.(*models.SchedulerRoomsParams)
+}
+
 func schedulerLockParamsFromContext(ctx context.Context) *models.SchedulerLockParams {
 	param := ctx.Value(paramKey)
 	if param == nil {
