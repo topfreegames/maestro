@@ -39,7 +39,7 @@ license-check:
 	@go run github.com/google/addlicense -skip yaml -skip yml -skip proto -check .
 
 .PHONY: run/e2e-tests
-run/e2e-tests: deps/stop
+run/e2e-tests: deps/stop build/worker build/management-api build/rooms-api build/runtime-watcher
 	cd e2e; go mod download; go test -count=1 ./suites/...
 
 ################################################################################
@@ -48,8 +48,9 @@ run/e2e-tests: deps/stop
 
 .PHONY: build/worker
 build/worker:
-	@rm -f ./bin/worker
+	@rm -f ./bin/worker-*
 	@go build -o ./bin/worker ./cmd/worker
+	@env GOOS=linux GOARCH=amd64 go build -o ./bin/worker-linux-x86_64 ./cmd/worker
 
 .PHONY: run/worker
 run/worker: build/worker
@@ -57,8 +58,9 @@ run/worker: build/worker
 
 .PHONY: build/management-api
 build/management-api:
-	@rm -f ./bin/management-api
+	@rm -f ./bin/management-api-*
 	@go build -o ./bin/management-api ./cmd/management_api
+	@env GOOS=linux GOARCH=amd64 go build -o ./bin/management-api-linux-x86_64 ./cmd/management_api
 
 .PHONY: run/management-api
 run/management-api: build/management-api
@@ -66,8 +68,9 @@ run/management-api: build/management-api
 
 .PHONY: build/rooms-api
 build/rooms-api:
-	@rm -f ./bin/rooms-api
+	@rm -f ./bin/rooms-api-*
 	@go build -o ./bin/rooms-api ./cmd/rooms_api
+	@env GOOS=linux GOARCH=amd64 go build -o ./bin/rooms-api-linux-x86_64 ./cmd/rooms_api
 
 .PHONY: run/rooms-api
 run/rooms-api: build/rooms-api
@@ -75,8 +78,9 @@ run/rooms-api: build/rooms-api
 
 .PHONY: build/runtime-watcher
 build/runtime-watcher:
-	@rm -f ./bin/runtime-watcher
+	@rm -f ./bin/runtime-watcher-*
 	@go build -o ./bin/runtime-watcher ./cmd/runtime_watcher
+	@env GOOS=linux GOARCH=amd64 go build -o ./bin/runtime-watcher-linux-x86_64 ./cmd/runtime_watcher
 
 .PHONY: run/runtime-watcher
 run/runtime-watcher: build/runtime-watcher

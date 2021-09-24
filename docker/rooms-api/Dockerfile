@@ -19,25 +19,11 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-FROM golang:1.16.3-buster AS build-env
+FROM alpine:3
 
 MAINTAINER TFG Co <backend@tfgco.com>
 
-RUN mkdir -p /app
-
-RUN apt update && apt install --no-install-recommends -y git make
-RUN go install github.com/jteeuwen/go-bindata/...
-COPY . /go/src/github.com/topfreegames/maestro
-
-RUN cd /go/src/github.com/topfreegames/maestro && \
-  make build/rooms-api && \
-  mv bin/rooms-api /app/rooms-api && \
-  mv config /app/config
-
-
-FROM debian:buster-slim
-
-RUN apt update && apt install -y ca-certificates openssl
+RUN apk add ca-certificates openssl
 
 ARG MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL
 ENV MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=$MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL
@@ -50,8 +36,8 @@ ENV MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL=$MAESTRO_ADAPTERS_RUNTIME_KUBE
 
 WORKDIR /app
 
-COPY --from=build-env /app/rooms-api /app/rooms-api
-COPY --from=build-env /app/config /app/config
+COPY ./bin/rooms-api-linux-x86_64 /app/rooms-api
+COPY ./config /app/config
 
 EXPOSE 8090
 
