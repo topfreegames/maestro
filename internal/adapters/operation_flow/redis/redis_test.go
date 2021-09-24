@@ -177,12 +177,25 @@ func TestEnqueueOperationCancelationRequest(t *testing.T) {
 		flow := NewRedisOperationFlow(client)
 		ctx := context.Background()
 
+		cancelChan := flow.WatchOperationCancelationRequests(ctx)
 		err := flow.EnqueueOperationCancelationRequest(ctx, ports.OperationCancelationRequest{
 			SchedulerName: schedulerName,
 			OperationID:   operationID,
 		})
 
 		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			select {
+			case request := <-cancelChan:
+				require.Equal(t, request.SchedulerName, schedulerName)
+				require.Equal(t, request.OperationID, operationID)
+				return true
+			default:
+			}
+
+			return false
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 }
 

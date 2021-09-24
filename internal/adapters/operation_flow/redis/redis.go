@@ -91,7 +91,7 @@ func (r *redisOperationFlow) EnqueueOperationCancelationRequest(ctx context.Cont
 		return fmt.Errorf("failed to marshal operation cancelation request to string: %w", err)
 	}
 
-	err = r.client.Publish(ctx, watchOperationCancelationRequestKey, requestAsString).Err()
+	err = r.client.Publish(ctx, watchOperationCancelationRequestKey, string(requestAsString)).Err()
 	if err != nil {
 		return fmt.Errorf("failed to publish operation cancelation request: %w", err)
 	}
