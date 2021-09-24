@@ -72,7 +72,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors))
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
@@ -125,7 +125,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors))
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
@@ -176,7 +176,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		}
 
 		executors := map[string]operations.Executor{}
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors))
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 
@@ -219,7 +219,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors))
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
 
 		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(false)

@@ -337,3 +337,37 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		require.ErrorIs(t, err, getRoomErr)
 	})
 }
+
+func TestRoomManager_UpdateRoomInstance(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
+	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	clock := clockmock.NewFakeClock(time.Now())
+	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+	roomManager := NewRoomManager(
+		clock,
+		pamock.NewMockPortAllocator(mockCtrl),
+		roomStorage,
+		instanceStorage,
+		runtime,
+		config,
+	)
+	newGameRoomInstance := &game_room.Instance{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+
+	t.Run("updates rooms with success", func(t *testing.T) {
+		instanceStorage.EXPECT().UpsertInstance(context.Background(), newGameRoomInstance).Return(nil)
+
+		err := roomManager.UpdateRoomInstance(context.Background(), newGameRoomInstance)
+		require.NoError(t, err)
+	})
+
+	t.Run("when storage fails to update returns errors", func(t *testing.T) {
+		instanceStorage.EXPECT().UpsertInstance(context.Background(), newGameRoomInstance).Return(porterrors.ErrUnexpected)
+
+		err := roomManager.UpdateRoomInstance(context.Background(), newGameRoomInstance)
+		require.Error(t, err)
+	})
+}
