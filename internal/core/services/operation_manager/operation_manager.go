@@ -153,34 +153,36 @@ func (o *OperationManager) FinishOperation(ctx context.Context, op *operation.Op
 		return fmt.Errorf("failed to finish operation: %w", err)
 	}
 
+	err = o.RemoveOperationCancelFunction(op.SchedulerName, op.ID)
+	if err != nil {
+		return fmt.Errorf("failed to remove operation cancel function: %w", err)
+	}
+
 	return nil
 }
 
-func (om *OperationManager) WatchOperationCancelationRequests(ctx context.Context) {
+func (om *OperationManager) WatchOperationCancelationRequests(ctx context.Context) error {
 	requestChannel := om.flow.WatchOperationCancelationRequests(ctx)
+	defer close(requestChannel)
 
-	go func() {
-		defer close(requestChannel)
-
-		for {
-			select {
-			case request, ok := <-requestChannel:
-				if !ok {
-					return
-				}
-
-				cancelFn, err := om.GetOperationCancelFunction(request.SchedulerName, request.OperationID)
-				if err != nil {
-					zap.L().With(zap.Error(err)).Sugar().Errorf("failed to fetch cancel function from operation: scheduler %s and ID %s", request.SchedulerName, request.OperationID)
-					continue
-				}
-
-				cancelFn()
-			case <-ctx.Done():
-				return
+	for {
+		select {
+		case request, ok := <-requestChannel:
+			if !ok {
+				return errors.NewErrUnexpected("operation cancelation request channel closed")
 			}
+
+			cancelFn, err := om.GetOperationCancelFunction(request.SchedulerName, request.OperationID)
+			if err != nil {
+				zap.L().With(zap.Error(err)).Sugar().Errorf("failed to fetch cancel function from operation: scheduler %s and ID %s", request.SchedulerName, request.OperationID)
+				continue
+			}
+
+			cancelFn()
+		case <-ctx.Done():
+			return ctx.Err()
 		}
-	}()
+	}
 }
 
 func (om *OperationManager) RemoveOperationCancelFunction(schedulerName, operationID string) error {

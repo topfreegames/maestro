@@ -393,7 +393,10 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 		requestChannel := make(chan ports.OperationCancelationRequest, 1000)
 		operationFlow.EXPECT().WatchOperationCancelationRequests(gomock.Any()).Return(requestChannel)
 
-		opManager.WatchOperationCancelationRequests(context.Background())
+		ctx, ctxCancelFunction := context.WithCancel(context.Background())
+		go func() {
+			opManager.WatchOperationCancelationRequests(ctx)
+		}()
 
 		requestChannel <- ports.OperationCancelationRequest{
 			SchedulerName: schedulerName,
@@ -408,26 +411,7 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 
 			return false
 		}, time.Second, 100*time.Millisecond)
-	})
 
-	t.Run("fails fast to cancel when no cancel function found", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		opManager := New(operationFlow, nil, nil)
-
-		requestChannel := make(chan ports.OperationCancelationRequest, 1000)
-		operationFlow.EXPECT().WatchOperationCancelationRequests(gomock.Any()).Return(requestChannel)
-
-		opManager.WatchOperationCancelationRequests(context.Background())
-		require.Empty(t, opManager.operationCancelFunctions)
-
-		requestChannel <- ports.OperationCancelationRequest{
-			SchedulerName: schedulerName,
-			OperationID:   operationID,
-		}
-
-		require.Empty(t, opManager.operationCancelFunctions[schedulerName])
+		ctxCancelFunction()
 	})
 }

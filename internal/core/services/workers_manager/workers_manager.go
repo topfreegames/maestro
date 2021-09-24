@@ -53,7 +53,7 @@ type WorkersManager struct {
 	schedulerStorage           ports.SchedulerStorage
 	CurrentWorkers             map[string]workers.Worker
 	syncWorkersInterval        time.Duration
-	workerOptions              *workers.WorkerOptions
+	WorkerOptions              *workers.WorkerOptions
 	workersStopTimeoutDuration time.Duration
 	workersWaitGroup           sync.WaitGroup
 }
@@ -67,7 +67,7 @@ func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, sch
 		schedulerStorage:           schedulerStorage,
 		CurrentWorkers:             map[string]workers.Worker{},
 		syncWorkersInterval:        configs.GetDuration(syncWorkersIntervalPath),
-		workerOptions:              workerOptions,
+		WorkerOptions:              workerOptions,
 		workersStopTimeoutDuration: configs.GetDuration(workersStopTimeoutDurationPath),
 	}
 }
@@ -167,7 +167,7 @@ func (w *WorkersManager) getDesirableWorkers(ctx context.Context, schedulers []*
 
 	desirableWorkers := map[string]workers.Worker{}
 	for _, scheduler := range schedulers {
-		desirableWorkers[scheduler.Name] = w.builder(scheduler, w.workerOptions)
+		desirableWorkers[scheduler.Name] = w.builder(scheduler, w.WorkerOptions)
 	}
 
 	for k := range w.CurrentWorkers {

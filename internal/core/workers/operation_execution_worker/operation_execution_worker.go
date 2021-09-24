@@ -98,7 +98,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			continue
 		}
 
-		loopLogger.Info("Starting to process operation")
+		loopLogger.Info("Starting operation")
 
 		// TODO(gabrielcorado): when we introduce operation cancelation this is
 		// the one to be cancelled. Right now it is only a placeholder.
@@ -141,9 +141,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 		// TODO(gabrielcorado): we need to propagate the error reason.
 		// TODO(gabrielcorado): consider handling the finish operation error.
-		_ = w.operationManager.FinishOperation(operationContext, op)
+		err = w.operationManager.FinishOperation(ctx, op)
+		if err != nil {
+			loopLogger.Error("failed to finish operation", zap.Error(err))
+		}
 	}
-
 }
 
 func (w *OperationExecutionWorker) Stop(_ context.Context) {

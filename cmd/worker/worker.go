@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"os"
 	"os/signal"
@@ -71,6 +72,16 @@ func main() {
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("failed to initialize operation execution worker manager")
 	}
+
+	go func() {
+		zap.L().Info("starting operation cancelation request watcher")
+		err := operationExecutionWorkerManager.WorkerOptions.OperationManager.WatchOperationCancelationRequests(ctx)
+		if err != nil && !errors.Is(err, context.Canceled)  {
+			zap.L().With(zap.Error(err)).Info("operation cancelation watcher stopped with error")
+			// enforce the cancelation
+			cancelFn()
+		}
+	}()
 
 	go func() {
 		zap.L().Info("operation execution worker manager initialized, starting...")
