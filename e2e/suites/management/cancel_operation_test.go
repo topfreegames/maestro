@@ -97,6 +97,7 @@ func TestCancelOperation(t *testing.T) {
 			cancelOperationRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: schedulerName, OperationId: op.ID}
 			cancelOperationResponse := &maestroApiV1.CancelOperationResponse{}
 			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, op.ID), cancelOperationRequest, cancelOperationResponse)
+			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
@@ -104,11 +105,11 @@ func TestCancelOperation(t *testing.T) {
 				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
-				if len(listOperationsResponse.FinishedOperations) < 3 {
+				if len(listOperationsResponse.FinishedOperations) < 2 {
 					return false
 				}
 
-				require.Equal(t, "test_operation", listOperationsResponse.FinishedOperations[2].DefinitionName)
+				require.Equal(t, "test_operation", listOperationsResponse.FinishedOperations[1].DefinitionName)
 				return true
 			}, 240*time.Second, time.Second)
 		})
