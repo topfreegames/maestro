@@ -219,18 +219,6 @@ func (o *OperationManager) EnqueueOperationCancelationRequest(ctx context.Contex
 	return nil
 }
 
-func (o *OperationManager) EnqueueOperationCancelationRequest(ctx context.Context, schedulerName, operationID string) error {
-	err := o.flow.EnqueueOperationCancelationRequest(ctx, ports.OperationCancelationRequest{
-		SchedulerName: schedulerName,
-		OperationID:   operationID,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to enqueue operation cancelation request: %w", err)
-	}
-
-	return nil
-}
-
 func (om *OperationManager) WatchOperationCancelationRequests(ctx context.Context) error {
 	requestChannel := om.flow.WatchOperationCancelationRequests(ctx)
 	defer close(requestChannel)
