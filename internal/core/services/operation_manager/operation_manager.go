@@ -37,12 +37,12 @@ import (
 )
 
 type OperationCancelFunctions struct {
-	mutex		*sync.RWMutex
-	functions	map[string]map[string]context.CancelFunc
+	mutex     *sync.RWMutex
+	functions map[string]map[string]context.CancelFunc
 }
 
 func NewOperationCancelFunctions() OperationCancelFunctions {
-	return OperationCancelFunctions {
+	return OperationCancelFunctions{
 		functions: map[string]map[string]context.CancelFunc{},
 	}
 }
@@ -203,7 +203,7 @@ func (o *OperationManager) FinishOperation(ctx context.Context, op *operation.Op
 	}
 
 	o.operationCancelFunctions.removeFunction(op.SchedulerName, op.ID)
-	
+
 	return nil
 }
 
