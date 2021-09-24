@@ -1267,7 +1267,7 @@ forwarders:
 		})
 	})
 
-	Describe("GET /scheduler/{schedulerName}/rooms/{status}", func() {
+	Describe("GET /scheduler/{schedulerName}/rooms/status/{status}", func() {
 		namespace := "scheduler-name"
 
 		Describe("when valid parameters are provided", func() {
@@ -1303,7 +1303,7 @@ forwarders:
 				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
 					Return(redis.NewStringResult(`{"status":{"startTime": "2021-01-02T15:04:05Z"}, "version": "13"}`, nil))
 
-				url := fmt.Sprintf("/scheduler/%s/rooms/%s?limit=%d&offset=%d", namespace, models.StatusReady, 10, 1)
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s?limit=%d&offset=%d", namespace, models.StatusReady, 10, 1)
 				request, err := http.NewRequest("GET", url, nil)
 				Expect(err).NotTo(HaveOccurred())
 				app.Router.ServeHTTP(recorder, request)
@@ -1368,7 +1368,7 @@ forwarders:
 				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
 					Return(redis.NewStringResult(`{"status":{"startTime": "2021-01-02T15:04:05Z"}, "version": "13"}`, nil))
 
-				url := fmt.Sprintf("/scheduler/%s/rooms/%s", namespace, models.StatusReady)
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s", namespace, models.StatusReady)
 				request, err := http.NewRequest("GET", url, nil)
 				Expect(err).NotTo(HaveOccurred())
 				app.Router.ServeHTTP(recorder, request)
@@ -1406,7 +1406,7 @@ forwarders:
 
 				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(nil, errors.New("some error")))
 
-				url := fmt.Sprintf("/scheduler/%s/rooms/%s", namespace, models.StatusReady)
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s", namespace, models.StatusReady)
 				request, err := http.NewRequest("GET", url, nil)
 				Expect(err).NotTo(HaveOccurred())
 				app.Router.ServeHTTP(recorder, request)
@@ -1434,7 +1434,7 @@ forwarders:
 				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
 					Return(redis.NewStringResult("", errors.New("some error")))
 
-				url := fmt.Sprintf("/scheduler/%s/rooms/%s", namespace, models.StatusReady)
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s", namespace, models.StatusReady)
 				request, err := http.NewRequest("GET", url, nil)
 				Expect(err).NotTo(HaveOccurred())
 				app.Router.ServeHTTP(recorder, request)
@@ -1452,7 +1452,7 @@ forwarders:
 			It("should return with error for negative offset", func() {
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 
-				url := fmt.Sprintf("/scheduler/%s/rooms/%s?limit=%d&offset=%d", "bla", models.StatusReady, 10, -1)
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s?limit=%d&offset=%d", "bla", models.StatusReady, 10, -1)
 				request, err := http.NewRequest("GET", url, nil)
 				Expect(err).NotTo(HaveOccurred())
 				app.Router.ServeHTTP(recorder, request)
@@ -1467,7 +1467,7 @@ forwarders:
 			It("should return with error for negative limit", func() {
 				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 
-				url := fmt.Sprintf("/scheduler/%s/rooms/%s?limit=%d&offset=%d", "bla", models.StatusReady, -10, 1)
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s?limit=%d&offset=%d", "bla", models.StatusReady, -10, 1)
 				request, err := http.NewRequest("GET", url, nil)
 				Expect(err).NotTo(HaveOccurred())
 				app.Router.ServeHTTP(recorder, request)

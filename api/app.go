@@ -349,7 +349,7 @@ func (a *App) getRouter() *mux.Router {
 		NewParamMiddleware(func() interface{} { return &models.SchedulerParams{} }),
 	).ServeHTTP).Methods("GET").Name("roomsByMetric")
 
-	r.HandleFunc("/scheduler/{schedulerName}/rooms/{status}", Chain(
+	r.HandleFunc("/scheduler/{schedulerName}/rooms/status/{status}", Chain(
 		NewRoomListBySchedulerAndStatusHandler(a),
 		NewResponseTimeMiddleware(a),
 		NewMetricsReporterMiddleware(a),
