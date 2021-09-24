@@ -57,6 +57,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		operation_manager.New,
 		workers.ProvideWorkerOptions,
 		workers_manager.NewWorkersManager,
+
 	)
 
 	return &workers_manager.WorkersManager{}, nil
