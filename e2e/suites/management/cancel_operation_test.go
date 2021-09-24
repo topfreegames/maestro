@@ -73,7 +73,7 @@ func TestCancelOperation(t *testing.T) {
 				SchedulerName:  schedulerName,
 				CreatedAt:      time.Now(),
 			}
-		
+
 			err = operationStorage.CreateOperation(ctx, op, definition.Marshal())
 			require.NoError(t, err)
 			err = operationFlow.InsertOperationID(ctx, op.SchedulerName, op.ID)
@@ -92,7 +92,6 @@ func TestCancelOperation(t *testing.T) {
 				require.Equal(t, "test_operation", listOperationsResponse.ActiveOperations[0].DefinitionName)
 				return true
 			}, 240*time.Second, time.Second)
-
 
 			cancelOperationRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: schedulerName, OperationId: op.ID}
 			cancelOperationResponse := &maestroApiV1.CancelOperationResponse{}

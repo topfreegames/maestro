@@ -37,12 +37,21 @@ func NewExecutor() *TestOperationExecutor {
 	return &TestOperationExecutor{}
 }
 
-func (e *TestOperationExecutor) Execute(_ctx context.Context, _op *operation.Operation, definition operations.Definition) error {
+func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Operation, definition operations.Definition) error {
 	testOperationDefinition := definition.(*TestOperationDefinition)
 
 	zap.L().Sugar().Infof("sleeping routine for %d seconds", testOperationDefinition.SleepSeconds)
 
-	time.Sleep(time.Duration(testOperationDefinition.SleepSeconds) * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
+	for i := 1; i < testOperationDefinition.SleepSeconds; i += 1 {
+		select {
+		case <-ticker.C:
+			continue
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 
 	zap.L().Sugar().Infof("routine slept for %d seconds", testOperationDefinition.SleepSeconds)
 
