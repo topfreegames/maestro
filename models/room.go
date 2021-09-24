@@ -543,6 +543,33 @@ func GetRoomsByStatus(redisClient interfaces.RedisClient, schedulerName string, 
 	return rooms, nil
 }
 
+// GetRoomDetails returns a room based on the provided schedulerName and roomId
+func GetRoomDetails(redisClient interfaces.RedisClient, schedulerName string, roomId string, mr *MixedMetricsReporter) (*Room, error) {
+	var roomData map[string]string
+	var redisKey string
+	err := mr.WithSegment(SegmentHGetAll, func() error {
+		var err error
+		redisKey = NewRoom(roomId, schedulerName).GetRoomRedisKey()
+		roomData, err = redisClient.HGetAll(redisKey).Result()
+
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	lastPingAt, _ := strconv.ParseInt(roomData["lastPing"], 10, 64)
+	status := roomData["status"]
+
+	return &Room{
+		ID:            roomId,
+		SchedulerName: schedulerName,
+		Status:        status,
+		LastPingAt:    lastPingAt,
+	}, nil
+}
+
 // GetRooms returns a list of rooms ids that are in any state
 func GetRooms(redisClient interfaces.RedisClient, schedulerName string, mr *MixedMetricsReporter) ([]string, error) {
 	var result, redisKeys []string

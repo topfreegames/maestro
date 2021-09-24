@@ -672,6 +672,40 @@ var _ = Describe("Room", func() {
 
 	})
 
+	Describe("GetRoomDetails", func() {
+		Context("when no error occurs", func() {
+			It("should return the room details", func() {
+				scheduler := "scheduler-name-1"
+				roomId := "room-id-1"
+
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name-1:rooms:room-id-1").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+
+				room, err := models.GetRoomDetails(mockRedisClient, scheduler, roomId, mmr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(room.Status).To(Equal("ready"))
+				Expect(room.LastPingAt).To(Equal(int64(1632405900)))
+				Expect(room.ID).To(Equal(roomId))
+				Expect(room.SchedulerName).To(Equal(scheduler))
+			})
+		})
+		Context("when no redis returns with error", func() {
+			It("should return with error", func() {
+				scheduler := "scheduler-name-1"
+				roomId := "room-id-1"
+
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name-1:rooms:room-id-1").
+					Return(redis.NewStringStringMapResult(nil, errors.New("some error")))
+
+				_, err := models.GetRoomDetails(mockRedisClient, scheduler, roomId, mmr)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("some error"))
+			})
+		})
+	})
 })
 
 var _ = Describe("GetRoomsMetadatas", func() {
