@@ -68,6 +68,8 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 	}
 
 	w.ctx, w.cancelFunc = context.WithCancel(ctx)
+	defer w.cancelFunc()
+
 	resultChan := watcher.ResultChan()
 	for {
 		select {

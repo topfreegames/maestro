@@ -80,6 +80,7 @@ func TestProcessRuntimeEvents(t *testing.T) {
 		require.Eventually(t, func() bool {
 			err := <-watcherDone
 			require.Error(t, err)
+			require.False(t, watcher.IsRunning())
 
 			return true
 		}, time.Second, time.Millisecond)
@@ -129,11 +130,69 @@ func TestProcessRuntimeEvents(t *testing.T) {
 		}, time.Second, 100*time.Millisecond)
 
 		// stop the watcher
+		require.True(t, watcher.IsRunning())
 		watcher.Stop(context.Background())
 
 		require.Eventually(t, func() bool {
 			err := <-watcherDone
 			require.NoError(t, err)
+			require.False(t, watcher.IsRunning())
+
+			return true
+		}, time.Second, time.Millisecond)
+	})
+
+	t.Run("when update instance fails, does nothing", func(t *testing.T) {
+		mockCtrl, instanceStorage, runtime, workerOptions := workerOptions(t)
+		defer mockCtrl.Finish()
+
+		scheduler := &entities.Scheduler{Name: "test"}
+		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
+
+		runtimeWatcher := runtimemock.NewMockRuntimeWatcher(mockCtrl)
+		runtime.EXPECT().WatchGameRoomInstances(gomock.Any(), scheduler).Return(runtimeWatcher, nil)
+
+		resultChan := make(chan game_room.InstanceEvent)
+		runtimeWatcher.EXPECT().ResultChan().Return(resultChan)
+		runtimeWatcher.EXPECT().Stop()
+
+		// instance updates
+		newInstance := &game_room.Instance{}
+
+		updateCalled := false
+		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), newInstance).DoAndReturn(func(_ context.Context, _ *game_room.Instance) error {
+			updateCalled = true
+			return porterrors.ErrUnexpected
+		})
+
+		watcherDone := make(chan error)
+		go func() {
+			err := watcher.Start(context.Background())
+			watcherDone <- err
+		}()
+
+		require.Eventually(t, func() bool {
+			resultChan <- game_room.InstanceEvent{
+				Type:     game_room.InstanceEventTypeAdded,
+				Instance: newInstance,
+			}
+
+			return true
+		}, time.Second, time.Millisecond)
+
+		// wait until the watcher process the event
+		require.Eventually(t, func() bool {
+			return updateCalled
+		}, time.Second, 100*time.Millisecond)
+
+		// stop the watcher
+		require.True(t, watcher.IsRunning())
+		watcher.Stop(context.Background())
+
+		require.Eventually(t, func() bool {
+			err := <-watcherDone
+			require.NoError(t, err)
+			require.False(t, watcher.IsRunning())
 
 			return true
 		}, time.Second, time.Millisecond)
