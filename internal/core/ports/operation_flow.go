@@ -38,6 +38,8 @@ type OperationFlow interface {
 	NextOperationID(ctx context.Context, schedulerName string) (string, error)
 	// ListSchedulerPendingOperationIDs list scheduler pending operation IDs.
 	ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) ([]string, error)
+	// Enqueues a operation cancelation request
+	EnqueueOperationCancelationRequest(ctx context.Context, request OperationCancelationRequest) error
 	// WatchOperationCancelationRequests watches for operation cancelation requests
 	WatchOperationCancelationRequests(ctx context.Context) chan OperationCancelationRequest
 }

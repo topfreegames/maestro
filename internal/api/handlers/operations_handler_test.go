@@ -27,18 +27,21 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
@@ -132,5 +135,64 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t,
 			"operation operation-1 not found in scheduler zooba",
 			body["message"])
+	})
+}
+
+func TestCancelOperation(t *testing.T) {
+	schedulerName := uuid.New().String()
+	operationID := uuid.New().String()
+
+	t.Run("enqueues operation cancelation request with success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, nil, nil)
+
+		operationFlow.EXPECT().EnqueueOperationCancelationRequest(gomock.Any(), gomock.Eq(ports.OperationCancelationRequest{
+			SchedulerName: schedulerName,
+			OperationID:   operationID,
+		})).Return(nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, operationID), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+	})
+
+	t.Run("fails to enqueues operation cancelation request when operation_flow fails", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, nil, nil)
+
+		operationFlow.EXPECT().EnqueueOperationCancelationRequest(gomock.Any(), gomock.Eq(ports.OperationCancelationRequest{
+			SchedulerName: schedulerName,
+			OperationID:   operationID,
+		})).Return(errors.NewErrUnexpected("failed to persist request"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, operationID), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 500, rr.Code)
 	})
 }

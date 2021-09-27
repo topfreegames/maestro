@@ -27,7 +27,7 @@ import (
 	"errors"
 	"time"
 
-	"gopkg.in/validator.v2"
+	validator "gopkg.in/validator.v2"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
