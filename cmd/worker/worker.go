@@ -24,7 +24,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"os"
 	"os/signal"
@@ -75,12 +74,13 @@ func main() {
 
 	go func() {
 		zap.L().Info("starting operation cancelation request watcher")
-		err := operationExecutionWorkerManager.WorkerOptions.OperationManager.WatchOperationCancelationRequests(ctx)
-		if err != nil && !errors.Is(err, context.Canceled) {
+		err = operationExecutionWorkerManager.WorkerOptions.OperationManager.WatchOperationCancelationRequests(ctx)
+		if err != nil {
 			zap.L().With(zap.Error(err)).Info("operation cancelation watcher stopped with error")
 			// enforce the cancelation
 			cancelFn()
 		}
+		zap.L().Info("operation cancelation request watcher stoped")
 	}()
 
 	go func() {
@@ -91,6 +91,7 @@ func main() {
 			// enforce the cancelation
 			cancelFn()
 		}
+		zap.L().Info("operation execution worker manager stoped")
 	}()
 
 	<-ctx.Done()

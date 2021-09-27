@@ -24,6 +24,7 @@ package operation_manager
 
 import (
 	"context"
+	goerrors "errors"
 	"fmt"
 	"sync"
 	"time"
@@ -221,7 +222,6 @@ func (o *OperationManager) EnqueueOperationCancelationRequest(ctx context.Contex
 
 func (om *OperationManager) WatchOperationCancelationRequests(ctx context.Context) error {
 	requestChannel := om.flow.WatchOperationCancelationRequests(ctx)
-	defer close(requestChannel)
 
 	for {
 		select {
@@ -238,7 +238,11 @@ func (om *OperationManager) WatchOperationCancelationRequests(ctx context.Contex
 
 			cancelFn()
 		case <-ctx.Done():
-			return ctx.Err()
+			if goerrors.Is(ctx.Err(), context.Canceled) {
+				return nil
+			}
+
+			return fmt.Errorf("loop to consume cancel operation requests received an error context event: %w", ctx.Err())
 		}
 	}
 }

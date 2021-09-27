@@ -62,33 +62,6 @@ services:
     ports:
     - "6379:6379"
 
-  worker:
-    build:
-      context: .
-      dockerfile: ./docker/worker/Dockerfile
-      args:
-        CONFIG_FILE_PATH: "config/worker_container.local.yaml"
-    ports:
-      - "8082:8082"
-
-  rooms-api:
-    build:
-      context: .
-      dockerfile: ./docker/rooms-api/Dockerfile
-      args:
-        CONFIG_FILE_PATH: "config/rooms-api_container.local.yaml"
-    ports:
-      - "8090:8090"
-
-  management-api:
-    build:
-      context: .
-      dockerfile: ./docker/management-api/Dockerfile
-      args:
-        CONFIG_FILE_PATH: "config/management-api_container.local.yaml"
-    ports:
-      - "8080:8080"
-
 volumes:
   k3s-server: {}
   postgres: {}
