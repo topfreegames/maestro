@@ -25,15 +25,70 @@ package operation_manager
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"go.uber.org/zap"
 )
 
+type OperationCancelFunctions struct {
+	mutex     sync.RWMutex
+	functions map[string]map[string]context.CancelFunc
+}
+
+func NewOperationCancelFunctions() *OperationCancelFunctions {
+	return &OperationCancelFunctions{
+		functions: map[string]map[string]context.CancelFunc{},
+	}
+}
+
+func (of *OperationCancelFunctions) putFunction(schedulerName, operationID string, cancelFunc context.CancelFunc) {
+	of.mutex.Lock()
+	schedulerCancelFunctions := of.functions[schedulerName]
+	if schedulerCancelFunctions == nil {
+		of.functions[schedulerName] = map[string]context.CancelFunc{}
+	}
+	of.functions[schedulerName][operationID] = cancelFunc
+	of.mutex.Unlock()
+}
+
+func (of *OperationCancelFunctions) removeFunction(schedulerName, operationID string) {
+	of.mutex.Lock()
+
+	schedulerOperationCancelationFunctions := of.functions[schedulerName]
+	if schedulerOperationCancelationFunctions == nil {
+		return
+	}
+
+	delete(schedulerOperationCancelationFunctions, operationID)
+
+	of.mutex.Unlock()
+}
+
+func (of *OperationCancelFunctions) getFunction(schedulerName, operationID string) (context.CancelFunc, error) {
+	of.mutex.RLock()
+	schedulerOperationCancelationFunctions := of.functions[schedulerName]
+	if schedulerOperationCancelationFunctions == nil {
+		return nil, errors.NewErrNotFound("no cancel scheduler found for scheduler name: %s", schedulerName)
+	}
+
+	if schedulerOperationCancelationFunctions[operationID] == nil {
+		return nil, errors.NewErrNotFound("no cancel function found for scheduler name: %s and operation id: %s", schedulerName, operationID)
+	}
+
+	function := schedulerOperationCancelationFunctions[operationID]
+	of.mutex.RUnlock()
+
+	return function, nil
+}
+
 type OperationManager struct {
+	operationCancelFunctions        *OperationCancelFunctions
 	flow                            ports.OperationFlow
 	storage                         ports.OperationStorage
 	operationDefinitionConstructors map[string]operations.DefinitionConstructor
@@ -44,6 +99,7 @@ func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefi
 		flow:                            flow,
 		storage:                         storage,
 		operationDefinitionConstructors: operationDefinitionConstructors,
+		operationCancelFunctions:        NewOperationCancelFunctions(),
 	}
 }
 
@@ -100,13 +156,15 @@ func (o *OperationManager) NextSchedulerOperation(ctx context.Context, scheduler
 }
 
 // StartOperation used when an operation will start executing.
-func (o *OperationManager) StartOperation(ctx context.Context, op *operation.Operation) error {
+func (o *OperationManager) StartOperation(ctx context.Context, op *operation.Operation, cancelFunction context.CancelFunc) error {
 	err := o.storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, operation.StatusInProgress)
 	if err != nil {
 		return fmt.Errorf("failed to start operation: %w", err)
 	}
 
 	op.Status = operation.StatusInProgress
+
+	o.operationCancelFunctions.putFunction(op.SchedulerName, op.ID, cancelFunction)
 	return nil
 }
 
@@ -144,5 +202,31 @@ func (o *OperationManager) FinishOperation(ctx context.Context, op *operation.Op
 		return fmt.Errorf("failed to finish operation: %w", err)
 	}
 
+	o.operationCancelFunctions.removeFunction(op.SchedulerName, op.ID)
+
 	return nil
+}
+
+func (om *OperationManager) WatchOperationCancelationRequests(ctx context.Context) error {
+	requestChannel := om.flow.WatchOperationCancelationRequests(ctx)
+	defer close(requestChannel)
+
+	for {
+		select {
+		case request, ok := <-requestChannel:
+			if !ok {
+				return errors.NewErrUnexpected("operation cancelation request channel closed")
+			}
+
+			cancelFn, err := om.operationCancelFunctions.getFunction(request.SchedulerName, request.OperationID)
+			if err != nil {
+				zap.L().With(zap.Error(err)).Sugar().Errorf("failed to fetch cancel function from operation: scheduler %s and ID %s", request.SchedulerName, request.OperationID)
+				continue
+			}
+
+			cancelFn()
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }

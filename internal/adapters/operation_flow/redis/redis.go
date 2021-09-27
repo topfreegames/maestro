@@ -24,14 +24,17 @@ package redis
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"go.uber.org/zap"
 )
 
 var _ ports.OperationFlow = (*redisOperationFlow)(nil)
+var watchOperationCancelationRequestKey = "scheduler:operation_cancelation_requests"
 
 // redisOperationFlow adapter of the OperationStorage port. It store store
 // the operations in lists to keep their creation/update order.
@@ -79,6 +82,40 @@ func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Contex
 	}
 
 	return operationsIDs, nil
+}
+
+func (r *redisOperationFlow) WatchOperationCancelationRequests(ctx context.Context) chan ports.OperationCancelationRequest {
+	sub := r.client.Subscribe(ctx, watchOperationCancelationRequestKey)
+
+	resultChan := make(chan ports.OperationCancelationRequest, 100)
+
+	go func() {
+		defer sub.Close()
+
+		for {
+			select {
+			case msg, ok := <-sub.Channel():
+				if !ok {
+					close(resultChan)
+					return
+				}
+
+				var request ports.OperationCancelationRequest
+				err := json.Unmarshal([]byte(msg.Payload), &request)
+				if err != nil {
+					zap.L().With(zap.Error(err)).Error("failed to parse operation cancelation request")
+					continue
+				}
+
+				resultChan <- request
+			case <-ctx.Done():
+				close(resultChan)
+				return
+			}
+		}
+	}()
+
+	return resultChan
 }
 
 func (r *redisOperationFlow) buildSchedulerPendingOperationsKey(schedulerName string) string {

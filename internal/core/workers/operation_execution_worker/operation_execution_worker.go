@@ -79,10 +79,6 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			return fmt.Errorf("failed to get next operation: %w", err)
 		}
 
-		// TODO(gabrielcorado): when we introduce operation cancelation this is
-		// the one to be cancelled. Right now it is only a placeholder.
-		operationContext := context.Background()
-
 		loopLogger := w.logger.With(
 			zap.String("operation_id", op.ID),
 			zap.String("operation_definition", def.Name()),
@@ -91,20 +87,22 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		executor, hasExecutor := w.executorsByName[def.Name()]
 		if !hasExecutor {
 			loopLogger.Warn("operation definition has no executor")
-			w.evictOperation(operationContext, loopLogger, op)
+			w.evictOperation(ctx, loopLogger, op)
 			reportOperationEvicted(w.schedulerName, op.DefinitionName, LabelNoOperationExecutorFound)
 			continue
 		}
 
-		if !def.ShouldExecute(operationContext, []*operation.Operation{}) {
-			w.evictOperation(operationContext, loopLogger, op)
+		if !def.ShouldExecute(ctx, []*operation.Operation{}) {
+			w.evictOperation(ctx, loopLogger, op)
 			reportOperationEvicted(w.schedulerName, op.DefinitionName, LabelShouldNotExecute)
 			continue
 		}
 
-		loopLogger.Info("Starting to process operation")
+		loopLogger.Info("Starting operation")
 
-		err = w.operationManager.StartOperation(operationContext, op)
+		operationContext, operationCancelationFunction := context.WithCancel(ctx)
+
+		err = w.operationManager.StartOperation(operationContext, op, operationCancelationFunction)
 		if err != nil {
 			w.Stop(ctx)
 
@@ -141,9 +139,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 		// TODO(gabrielcorado): we need to propagate the error reason.
 		// TODO(gabrielcorado): consider handling the finish operation error.
-		_ = w.operationManager.FinishOperation(operationContext, op)
+		err = w.operationManager.FinishOperation(ctx, op)
+		if err != nil {
+			loopLogger.Error("failed to finish operation", zap.Error(err))
+		}
 	}
-
 }
 
 func (w *OperationExecutionWorker) Stop(_ context.Context) {
