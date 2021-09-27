@@ -87,7 +87,7 @@ func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Contex
 func (r *redisOperationFlow) WatchOperationCancelationRequests(ctx context.Context) chan ports.OperationCancelationRequest {
 	sub := r.client.Subscribe(ctx, watchOperationCancelationRequestKey)
 
-	resultChan := make(chan ports.OperationCancelationRequest, 10000)
+	resultChan := make(chan ports.OperationCancelationRequest, 100)
 
 	go func() {
 		defer sub.Close()

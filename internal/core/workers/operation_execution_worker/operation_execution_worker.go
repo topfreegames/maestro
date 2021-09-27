@@ -100,8 +100,6 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 		loopLogger.Info("Starting operation")
 
-		// TODO(gabrielcorado): when we introduce operation cancelation this is
-		// the one to be cancelled. Right now it is only a placeholder.
 		operationContext, operationCancelationFunction := context.WithCancel(ctx)
 
 		err = w.operationManager.StartOperation(operationContext, op, operationCancelationFunction)

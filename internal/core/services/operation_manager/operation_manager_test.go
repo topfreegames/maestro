@@ -386,16 +386,15 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 		opManager := New(operationFlow, nil, nil)
 
 		cancelableContext, cancelFunction := context.WithCancel(context.Background())
-		opManager.operationCancelFunctions[schedulerName] = map[string]context.CancelFunc{
-			operationID: cancelFunction,
-		}
+		opManager.operationCancelFunctions.putFunction(schedulerName, operationID, cancelFunction)
 
 		requestChannel := make(chan ports.OperationCancelationRequest, 1000)
 		operationFlow.EXPECT().WatchOperationCancelationRequests(gomock.Any()).Return(requestChannel)
 
 		ctx, ctxCancelFunction := context.WithCancel(context.Background())
 		go func() {
-			opManager.WatchOperationCancelationRequests(ctx)
+			err := opManager.WatchOperationCancelationRequests(ctx)
+			require.ErrorIs(t, err, context.Canceled)
 		}()
 
 		requestChannel <- ports.OperationCancelationRequest{

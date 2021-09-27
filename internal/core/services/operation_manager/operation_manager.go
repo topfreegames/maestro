@@ -37,17 +37,17 @@ import (
 )
 
 type OperationCancelFunctions struct {
-	mutex     *sync.RWMutex
+	mutex     sync.RWMutex
 	functions map[string]map[string]context.CancelFunc
 }
 
-func NewOperationCancelFunctions() OperationCancelFunctions {
-	return OperationCancelFunctions{
+func NewOperationCancelFunctions() *OperationCancelFunctions {
+	return &OperationCancelFunctions{
 		functions: map[string]map[string]context.CancelFunc{},
 	}
 }
 
-func (of OperationCancelFunctions) putFunction(schedulerName, operationID string, cancelFunc context.CancelFunc) {
+func (of *OperationCancelFunctions) putFunction(schedulerName, operationID string, cancelFunc context.CancelFunc) {
 	of.mutex.Lock()
 	schedulerCancelFunctions := of.functions[schedulerName]
 	if schedulerCancelFunctions == nil {
@@ -57,7 +57,7 @@ func (of OperationCancelFunctions) putFunction(schedulerName, operationID string
 	of.mutex.Unlock()
 }
 
-func (of OperationCancelFunctions) removeFunction(schedulerName, operationID string) {
+func (of *OperationCancelFunctions) removeFunction(schedulerName, operationID string) {
 	of.mutex.Lock()
 
 	schedulerOperationCancelationFunctions := of.functions[schedulerName]
@@ -70,8 +70,8 @@ func (of OperationCancelFunctions) removeFunction(schedulerName, operationID str
 	of.mutex.Unlock()
 }
 
-func (of OperationCancelFunctions) getFunction(schedulerName, operationID string) (context.CancelFunc, error) {
-	of.mutex.Lock()
+func (of *OperationCancelFunctions) getFunction(schedulerName, operationID string) (context.CancelFunc, error) {
+	of.mutex.RLock()
 	schedulerOperationCancelationFunctions := of.functions[schedulerName]
 	if schedulerOperationCancelationFunctions == nil {
 		return nil, errors.NewErrNotFound("no cancel scheduler found for scheduler name: %s", schedulerName)
@@ -82,13 +82,13 @@ func (of OperationCancelFunctions) getFunction(schedulerName, operationID string
 	}
 
 	function := schedulerOperationCancelationFunctions[operationID]
-	of.mutex.Unlock()
+	of.mutex.RUnlock()
 
 	return function, nil
 }
 
 type OperationManager struct {
-	operationCancelFunctions        OperationCancelFunctions
+	operationCancelFunctions        *OperationCancelFunctions
 	flow                            ports.OperationFlow
 	storage                         ports.OperationStorage
 	operationDefinitionConstructors map[string]operations.DefinitionConstructor
