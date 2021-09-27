@@ -24,11 +24,13 @@ package room_manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 )
 
 type RoomManager struct {
@@ -152,6 +154,25 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 	err := m.instanceStorage.UpsertInstance(ctx, gameRoomInstance)
 	if err != nil {
 		return fmt.Errorf("failed when updating the game room instance on storage: %w", err)
+	}
+
+	return nil
+}
+
+// CleanRoomState cleans the remaining state of a room. This function is
+// intended to be used after a `DeleteRoom`, where the room instance is
+// signaled to terminate.
+//
+// It wouldn't return an error if the room was already cleaned.
+func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId string) error {
+	err := m.roomStorage.DeleteRoom(ctx, schedulerName, roomId)
+	if err != nil && !errors.Is(porterrors.ErrNotFound, err) {
+		return fmt.Errorf("failed to delete room state: %w", err)
+	}
+
+	err = m.instanceStorage.DeleteInstance(ctx, schedulerName, roomId)
+	if err != nil && !errors.Is(porterrors.ErrNotFound, err) {
+		return fmt.Errorf("failed to delete room state: %w", err)
 	}
 
 	return nil

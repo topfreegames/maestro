@@ -102,6 +102,11 @@ func (w *runtimeWatcherWorker) processEvent(ctx context.Context, event game_room
 		if err != nil {
 			return fmt.Errorf("failed to update room instance %s: %w", event.Instance.ID, err)
 		}
+	case game_room.InstanceEventTypeDeleted:
+		err := w.roomManager.CleanRoomState(ctx, event.Instance.SchedulerID, event.Instance.ID)
+		if err != nil {
+			return fmt.Errorf("failed to clean room %s state: %w", event.Instance.ID, err)
+		}
 	default:
 		return fmt.Errorf("not implemented")
 	}
