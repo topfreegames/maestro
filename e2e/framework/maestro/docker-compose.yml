@@ -110,6 +110,11 @@ services:
     image: redis:5.0.10-alpine
     ports:
     - "6379:6379"
+    healthcheck:
+      test:  [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
 volumes:
   kubeconfig: {}

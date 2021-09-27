@@ -403,7 +403,7 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 		ctx, ctxCancelFunction := context.WithCancel(context.Background())
 		go func() {
 			err := opManager.WatchOperationCancelationRequests(ctx)
-			require.ErrorIs(t, err, context.Canceled)
+			require.NoError(t, err)
 		}()
 
 		requestChannel <- ports.OperationCancelationRequest{

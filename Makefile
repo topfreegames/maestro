@@ -110,7 +110,6 @@ migrate:
 deps/start:
 	@echo "Starting dependencies "
 	@docker-compose --project-name maestro up -d
-	@sleep 10
 	@echo "Dependencies started successfully."
 
 .PHONY: deps/stop
