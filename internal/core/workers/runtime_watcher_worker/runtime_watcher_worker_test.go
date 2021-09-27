@@ -143,7 +143,7 @@ func TestProcessRuntimeEvents(t *testing.T) {
 	})
 
 	t.Run("when update instance fails, does nothing", func(t *testing.T) {
-		mockCtrl, instanceStorage, runtime, workerOptions := workerOptions(t)
+		mockCtrl, instanceStorage, _, runtime, workerOptions := workerOptions(t)
 		defer mockCtrl.Finish()
 
 		scheduler := &entities.Scheduler{Name: "test"}
@@ -244,6 +244,60 @@ func TestProcessRuntimeEvents(t *testing.T) {
 		// wait until the watcher process the event
 		require.Eventually(t, func() bool {
 			return removeRoom && removeInstance
+		}, time.Second, 100*time.Millisecond)
+
+		// stop the watcher
+		watcher.Stop(context.Background())
+
+		require.Eventually(t, func() bool {
+			err := <-watcherDone
+			require.NoError(t, err)
+
+			return true
+		}, time.Second, time.Millisecond)
+	})
+
+	t.Run("when clean room state fails, does nothing", func(t *testing.T) {
+		mockCtrl, _, roomStorage, runtime, workerOptions := workerOptions(t)
+		defer mockCtrl.Finish()
+
+		scheduler := &entities.Scheduler{Name: "test"}
+		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
+
+		runtimeWatcher := runtimemock.NewMockRuntimeWatcher(mockCtrl)
+		runtime.EXPECT().WatchGameRoomInstances(gomock.Any(), scheduler).Return(runtimeWatcher, nil)
+
+		resultChan := make(chan game_room.InstanceEvent)
+		runtimeWatcher.EXPECT().ResultChan().Return(resultChan)
+		runtimeWatcher.EXPECT().Stop()
+
+		// instance updates
+		instance := &game_room.Instance{ID: "room-id", SchedulerID: "room-scheduler"}
+
+		removeRoom := false
+		roomStorage.EXPECT().DeleteRoom(gomock.Any(), instance.SchedulerID, instance.ID).DoAndReturn(func(_ context.Context, _ string, _ string) error {
+			removeRoom = true
+			return porterrors.ErrUnexpected
+		})
+
+		watcherDone := make(chan error)
+		go func() {
+			err := watcher.Start(context.Background())
+			watcherDone <- err
+		}()
+
+		require.Eventually(t, func() bool {
+			resultChan <- game_room.InstanceEvent{
+				Type:     game_room.InstanceEventTypeDeleted,
+				Instance: instance,
+			}
+
+			return true
+		}, time.Second, time.Millisecond)
+
+		// wait until the watcher process the event
+		require.Eventually(t, func() bool {
+			return removeRoom
 		}, time.Second, 100*time.Millisecond)
 
 		// stop the watcher
