@@ -538,7 +538,7 @@ var _ = Describe("Room", func() {
 	Describe("GetRoomsByStatus", func() {
 		Context("when limit is greater than the number of rooms", func() {
 			It("should return all rooms for offset equal 1", func() {
-				scheduler := "pong-free-for-all"
+				scheduler := "scheduler-name"
 
 				expectedRooms := []string{
 					"scheduler:scheduler-name:rooms:test-ready-1",
@@ -574,7 +574,7 @@ var _ = Describe("Room", func() {
 				Expect(len(rooms)).To(Equal(len(expectedRooms)))
 			})
 			It("should return an empty list for offset greater than 1", func() {
-				scheduler := "pong-free-for-all"
+				scheduler := "scheduler-name"
 
 				expectedRooms := []string{
 					"scheduler:scheduler-name:rooms:test-ready-1",
@@ -592,7 +592,7 @@ var _ = Describe("Room", func() {
 		})
 		Context("when limit is less than the number of rooms", func() {
 			It("should return paginated rooms for even number of rooms", func() {
-				scheduler := "pong-free-for-all"
+				scheduler := "scheduler-name"
 
 				expectedRooms := []string{
 					"scheduler:scheduler-name:rooms:test-ready-1",
@@ -619,7 +619,7 @@ var _ = Describe("Room", func() {
 			})
 
 			It("should return paginated rooms for odd number of rooms", func() {
-				scheduler := "pong-free-for-all"
+				scheduler := "scheduler-name"
 
 				expectedRooms := []string{
 					"scheduler:scheduler-name:rooms:test-ready-1",
@@ -651,7 +651,7 @@ var _ = Describe("Room", func() {
 				Expect(err.Error()).To(Equal("some error"))
 			})
 			It("should return an error if redis returns an error on HGetAll", func() {
-				scheduler := "pong-free-for-all"
+				scheduler := "scheduler-name"
 				expectedRooms := []string{
 					"scheduler:scheduler-name:rooms:test-ready-1",
 					"scheduler:scheduler-name:rooms:test-ready-2",

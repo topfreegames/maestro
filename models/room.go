@@ -523,21 +523,13 @@ func GetRoomsByStatus(redisClient interfaces.RedisClient, schedulerName string, 
 	paginatedRedisKeys := paginateKeys(redisKeys, limit, offset)
 
 	for _, redisKey := range paginatedRedisKeys {
-		roomData, err := redisClient.HGetAll(redisKey).Result()
+		id := RoomFromRedisKey(redisKey)
+		room, err := GetRoomDetails(redisClient, schedulerName, id, mr)
 		if err != nil {
 			return nil, err
 		}
 
-		lastPingAt, _ := strconv.ParseInt(roomData["lastPing"], 10, 64)
-		status := roomData["status"]
-		id := RoomFromRedisKey(redisKey)
-
-		rooms = append(rooms, &Room{
-			ID:            id,
-			SchedulerName: schedulerName,
-			Status:        status,
-			LastPingAt:    lastPingAt,
-		})
+		rooms = append(rooms, room)
 	}
 
 	return rooms, nil
