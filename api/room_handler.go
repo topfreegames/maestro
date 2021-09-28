@@ -474,14 +474,14 @@ func (h *RoomListBySchedulerAndStatusHandler) ServeHTTP(w http.ResponseWriter, r
 	limit, offset, err := extractLimitAndOffset(r)
 
 	if err != nil {
-		triggerApiError(w, logger, err, http.StatusBadRequest, h)
+		triggerApiError(w, logger, err, http.StatusBadRequest, h.App)
 		return
 	}
 
 	rooms, err := models.GetRoomsByStatus(trace, params.SchedulerName, params.Status, limit, offset, mr)
 
 	if err != nil {
-		triggerApiError(w, logger, err, http.StatusInternalServerError, h)
+		triggerApiError(w, logger, err, http.StatusInternalServerError, h.App)
 		return
 	}
 
@@ -490,7 +490,7 @@ func (h *RoomListBySchedulerAndStatusHandler) ServeHTTP(w http.ResponseWriter, r
 	for _, room := range rooms {
 		pod, err := models.GetPodFromRedis(trace, mr, room.ID, params.SchedulerName)
 		if err != nil {
-			triggerApiError(w, logger, err, http.StatusInternalServerError, h)
+			triggerApiError(w, logger, err, http.StatusInternalServerError, h.App)
 			return
 		}
 		roomDetail := map[string]interface{}{
@@ -505,16 +505,16 @@ func (h *RoomListBySchedulerAndStatusHandler) ServeHTTP(w http.ResponseWriter, r
 
 	bytes, err := json.Marshal(roomsDetails)
 	if err != nil {
-		triggerApiError(w, logger, err, http.StatusInternalServerError, h)
+		triggerApiError(w, logger, err, http.StatusInternalServerError, h.App)
 		return
 	}
 	WriteBytes(w, http.StatusOK, bytes)
 	logger.Debug("performed list by status handler")
 }
 
-func triggerApiError(w http.ResponseWriter, logger *logrus.Entry, err error, status int, h *RoomListBySchedulerAndStatusHandler) {
+func triggerApiError(w http.ResponseWriter, logger *logrus.Entry, err error, status int, app *App) {
 	logger.WithError(err).Error("list by status handler failed")
-	h.App.HandleError(w, status, "list by status handler error", err)
+	app.HandleError(w, status, "list by status handler error", err)
 }
 
 func extractLimitAndOffset(r *http.Request) (int, int, error) {
@@ -535,4 +535,57 @@ func extractLimitAndOffset(r *http.Request) (int, int, error) {
 		return 0, 0, fmt.Errorf("limit value should be greater than 0")
 	}
 	return limit, offset, err
+}
+
+// RoomDetailsHandler handler
+type RoomDetailsHandler struct {
+	App *App
+}
+
+func NewRoomDetailsHandler(a *App) *RoomDetailsHandler {
+	m := &RoomDetailsHandler{App: a}
+	return m
+}
+
+// ServerHTTP method
+func (h *RoomDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	l := middleware.GetLogger(ctx)
+	mr := metricsReporterFromCtx(ctx)
+	params := schedulerRoomDetailsParamsFromContext(ctx)
+	trace := h.App.RedisClient.Trace(ctx)
+
+	logger := l.WithFields(logrus.Fields{
+		"source":    "roomHandler",
+		"operation": "roomDetailsHandler",
+	})
+	logger.Debug("get room details called")
+
+	room, err := models.GetRoomDetails(trace, params.SchedulerName, params.RoomId, mr)
+
+	if err != nil {
+		triggerApiError(w, logger, err, http.StatusInternalServerError, h.App)
+		return
+	}
+
+	pod, err := models.GetPodFromRedis(trace, mr, room.ID, params.SchedulerName)
+	if err != nil {
+		triggerApiError(w, logger, err, http.StatusInternalServerError, h.App)
+		return
+	}
+	roomDetail := map[string]interface{}{
+		"scheduler_name":    params.SchedulerName,
+		"scheduler_version": pod.Version,
+		"room_id":           room.ID,
+		"status":            room.Status,
+		"created_at":        pod.Status.StartTime,
+	}
+
+	bytes, err := json.Marshal(roomDetail)
+	if err != nil {
+		triggerApiError(w, logger, err, http.StatusInternalServerError, h.App)
+		return
+	}
+	WriteBytes(w, http.StatusOK, bytes)
+	logger.Debug("performed list by status handler")
 }
