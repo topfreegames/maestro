@@ -3,14 +3,15 @@ package management
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"testing"
-	"time"
 )
 
 func createSchedulerAndWaitForIt(
