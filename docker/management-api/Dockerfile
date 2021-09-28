@@ -18,25 +18,11 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-
-FROM golang:1.16.3-buster AS build-env
+FROM alpine:3
 
 MAINTAINER TFG Co <backend@tfgco.com>
 
-RUN mkdir -p /app
-
-RUN apt update && apt install --no-install-recommends -y git make
-RUN go install github.com/jteeuwen/go-bindata/...
-COPY . /go/src/github.com/topfreegames/maestro
-
-RUN cd /go/src/github.com/topfreegames/maestro && \
-  make build/management-api && \
-  mv bin/management-api /app/management-api && \
-  mv config /app/config
-
-FROM debian:buster-slim
-
-RUN apt update && apt install -y ca-certificates openssl
+RUN apk add ca-certificates openssl
 
 ARG MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL
 ENV MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=$MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL
@@ -47,8 +33,8 @@ ENV MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL=$MAESTRO_ADAPTERS_OPERATIONSTORA
 
 WORKDIR /app
 
-COPY --from=build-env /app/management-api /app/management-api
-COPY --from=build-env /app/config /app/config
+COPY ./bin/management-api-linux-x86_64 /app/management-api
+COPY ./config /app/config
 
 EXPOSE 8080
 

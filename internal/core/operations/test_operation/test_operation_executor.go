@@ -20,25 +20,46 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package framework
+package test_operation
 
 import (
-	"github.com/go-redis/redis"
-	redisV8 "github.com/go-redis/redis/v8"
+	"context"
+	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations"
+	"go.uber.org/zap"
 )
 
-func getRedisConnection(address string) (*redis.Client, error) {
-	opts, err := redis.ParseURL(address)
-	if err != nil {
-		return nil, err
-	}
-	return redis.NewClient(opts), nil
+type TestOperationExecutor struct{}
+
+func NewExecutor() *TestOperationExecutor {
+	return &TestOperationExecutor{}
 }
 
-func getRedisConnectionV8(address string) (*redisV8.Client, error) {
-	opts, err := redisV8.ParseURL(address)
-	if err != nil {
-		return nil, err
+func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Operation, definition operations.Definition) error {
+	testOperationDefinition := definition.(*TestOperationDefinition)
+
+	zap.L().Sugar().Infof("sleeping routine for %d seconds", testOperationDefinition.SleepSeconds)
+
+	ticker := time.NewTicker(time.Duration(testOperationDefinition.SleepSeconds) * time.Second)
+	select {
+	case <-ticker.C:
+
+	case <-ctx.Done():
+		return ctx.Err()
 	}
-	return redisV8.NewClient(opts), nil
+
+	zap.L().Sugar().Infof("routine slept for %d seconds", testOperationDefinition.SleepSeconds)
+
+	return nil
+}
+
+// OnError will do nothing.
+func (e *TestOperationExecutor) OnError(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
+	return nil
+}
+
+func (e *TestOperationExecutor) Name() string {
+	return OperationName
 }

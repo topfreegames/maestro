@@ -27,6 +27,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
+	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 )
@@ -43,6 +44,9 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 	definitionConstructors[remove_rooms.OperationName] = func() operations.Definition {
 		return &remove_rooms.RemoveRoomsDefinition{}
 	}
+	definitionConstructors[test_operation.OperationName] = func() operations.Definition {
+		return &test_operation.TestOperationDefinition{}
+	}
 
 	return definitionConstructors
 
@@ -57,6 +61,8 @@ func ProvideExecutors(
 	executors := map[string]operations.Executor{}
 	executors[create_scheduler.OperationName] = create_scheduler.NewExecutor(runtime, schedulerStorage)
 	executors[add_rooms.OperationName] = add_rooms.NewExecutor(roomManager, schedulerStorage)
+	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager)
+	executors[test_operation.OperationName] = test_operation.NewExecutor()
 
 	return executors
 

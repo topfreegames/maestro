@@ -106,12 +106,12 @@ func (r *redisOperationFlow) WatchOperationCancelationRequests(ctx context.Conte
 
 	go func() {
 		defer sub.Close()
+		defer close(resultChan)
 
 		for {
 			select {
 			case msg, ok := <-sub.Channel():
 				if !ok {
-					close(resultChan)
 					return
 				}
 
@@ -124,7 +124,6 @@ func (r *redisOperationFlow) WatchOperationCancelationRequests(ctx context.Conte
 
 				resultChan <- request
 			case <-ctx.Done():
-				close(resultChan)
 				return
 			}
 		}

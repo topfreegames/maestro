@@ -20,25 +20,46 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package framework
+package test_operation
 
 import (
-	"github.com/go-redis/redis"
-	redisV8 "github.com/go-redis/redis/v8"
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"go.uber.org/zap"
 )
 
-func getRedisConnection(address string) (*redis.Client, error) {
-	opts, err := redis.ParseURL(address)
-	if err != nil {
-		return nil, err
-	}
-	return redis.NewClient(opts), nil
+const OperationName = "test_operation"
+
+type TestOperationDefinition struct {
+	SleepSeconds int `json:"sleepSeconds"`
 }
 
-func getRedisConnectionV8(address string) (*redisV8.Client, error) {
-	opts, err := redisV8.ParseURL(address)
+func (d *TestOperationDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+	return true
+}
+
+func (d *TestOperationDefinition) Name() string {
+	return OperationName
+}
+
+func (d *TestOperationDefinition) Marshal() []byte {
+	bytes, err := json.Marshal(d)
 	if err != nil {
-		return nil, err
+		zap.L().With(zap.Error(err)).Error("error marshalling test operation definition")
+		return nil
 	}
-	return redisV8.NewClient(opts), nil
+
+	return bytes
+}
+
+func (d *TestOperationDefinition) Unmarshal(raw []byte) error {
+	err := json.Unmarshal(raw, d)
+	if err != nil {
+		return fmt.Errorf("error marshalling test operation definition: %w", err)
+	}
+
+	return nil
 }
