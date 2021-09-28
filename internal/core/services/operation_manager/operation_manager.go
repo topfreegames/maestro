@@ -230,13 +230,15 @@ func (om *OperationManager) WatchOperationCancelationRequests(ctx context.Contex
 				return errors.NewErrUnexpected("operation cancelation request channel closed")
 			}
 
-			cancelFn, err := om.operationCancelFunctions.getFunction(request.SchedulerName, request.OperationID)
+			err := om.cancelOperation(ctx, request.SchedulerName, request.OperationID)
 			if err != nil {
-				zap.L().With(zap.Error(err)).Sugar().Errorf("failed to fetch cancel function from operation: scheduler %s and ID %s", request.SchedulerName, request.OperationID)
-				continue
+				zap.L().
+					With(zap.String("schedulerName", request.SchedulerName)).
+					With(zap.String("operationID", request.OperationID)).
+					With(zap.Error(err)).
+					Error("failed to cancel operation")
 			}
 
-			cancelFn()
 		case <-ctx.Done():
 			if goerrors.Is(ctx.Err(), context.Canceled) {
 				return nil
@@ -245,4 +247,27 @@ func (om *OperationManager) WatchOperationCancelationRequests(ctx context.Contex
 			return fmt.Errorf("loop to consume cancel operation requests received an error context event: %w", ctx.Err())
 		}
 	}
+}
+
+func (om *OperationManager) cancelOperation(ctx context.Context, schedulerName, operationID string) error {
+
+	op, _, err := om.storage.GetOperation(ctx, schedulerName, operationID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch operation from storage: %w", err)
+	}
+
+	if op.Status == operation.StatusPending {
+		err = om.storage.UpdateOperationStatus(ctx, schedulerName, operationID, operation.StatusCanceled)
+		if err != nil {
+			return fmt.Errorf("failed update operation as canceled: %w", err)
+		}
+	} else {
+		cancelFn, err := om.operationCancelFunctions.getFunction(schedulerName, operationID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch cancel function from operation: %w", err)
+		}
+		cancelFn()
+	}
+
+	return nil
 }

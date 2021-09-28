@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// TODO: remove the old redis client version
 func WithClients(t *testing.T, testCase func(apiClient *APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, redisClientV8 *redisV8.Client, maestro *maestro.MaestroInstance)) {
 	client := NewAPIClient(defaultMaestro.ManagementApiServer.Address)
 

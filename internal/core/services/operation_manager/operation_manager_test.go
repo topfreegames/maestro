@@ -391,8 +391,9 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		opManager := New(operationFlow, nil, nil)
+		opManager := New(operationFlow, operationStorage, nil)
 
 		cancelableContext, cancelFunction := context.WithCancel(context.Background())
 		opManager.operationCancelFunctions.putFunction(schedulerName, operationID, cancelFunction)
@@ -401,6 +402,12 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 		operationFlow.EXPECT().WatchOperationCancelationRequests(gomock.Any()).Return(requestChannel)
 
 		ctx, ctxCancelFunction := context.WithCancel(context.Background())
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(&operation.Operation{
+			SchedulerName: schedulerName,
+			ID:            operationID,
+			Status:        operation.StatusInProgress,
+		}, nil, nil)
+
 		go func() {
 			err := opManager.WatchOperationCancelationRequests(ctx)
 			require.NoError(t, err)

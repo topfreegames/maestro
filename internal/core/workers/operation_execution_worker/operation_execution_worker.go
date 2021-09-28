@@ -84,6 +84,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			zap.String("operation_definition", def.Name()),
 		)
 
+		if op.Status != operation.StatusPending {
+			loopLogger.Warn("operation is at an invalid status to proceed")
+			continue
+		}
+
 		executor, hasExecutor := w.executorsByName[def.Name()]
 		if !hasExecutor {
 			loopLogger.Warn("operation definition has no executor")

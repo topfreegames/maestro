@@ -42,15 +42,12 @@ func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Oper
 
 	zap.L().Sugar().Infof("sleeping routine for %d seconds", testOperationDefinition.SleepSeconds)
 
-	ticker := time.NewTicker(1 * time.Second)
-	for i := 1; i < testOperationDefinition.SleepSeconds; i += 1 {
-		select {
-		case <-ticker.C:
-			continue
+	ticker := time.NewTicker(time.Duration(testOperationDefinition.SleepSeconds) * time.Second)
+	select {
+	case <-ticker.C:
 
-		case <-ctx.Done():
-			return ctx.Err()
-		}
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 
 	zap.L().Sugar().Infof("routine slept for %d seconds", testOperationDefinition.SleepSeconds)
