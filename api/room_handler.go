@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/topfreegames/extensions/middleware"
@@ -494,11 +495,12 @@ func (h *RoomListBySchedulerAndStatusHandler) ServeHTTP(w http.ResponseWriter, r
 			return
 		}
 		roomDetail := map[string]interface{}{
-			"scheduler_name":    params.SchedulerName,
-			"scheduler_version": pod.Version,
-			"room_id":           room.ID,
-			"status":            room.Status,
-			"created_at":        pod.Status.StartTime,
+			"schedulerName":    params.SchedulerName,
+			"schedulerVersion": pod.Version,
+			"roomId":           room.ID,
+			"status":           room.Status,
+			"createdAt":        pod.Status.StartTime,
+			"lastPingAt":       time.Unix(room.LastPingAt, 0).UTC().Format(time.RFC3339),
 		}
 		roomsDetails = append(roomsDetails, roomDetail)
 	}
@@ -582,11 +584,12 @@ func (h *RoomDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	roomDetail := map[string]interface{}{
-		"scheduler_name":    params.SchedulerName,
-		"scheduler_version": pod.Version,
-		"room_id":           room.ID,
-		"status":            room.Status,
-		"created_at":        pod.Status.StartTime,
+		"schedulerName":    params.SchedulerName,
+		"schedulerVersion": pod.Version,
+		"roomId":           room.ID,
+		"status":           room.Status,
+		"createdAt":        pod.Status.StartTime,
+		"lastPingAt":       time.Unix(room.LastPingAt, 0).UTC().Format(time.RFC3339),
 	}
 
 	bytes, err := json.Marshal(roomDetail)

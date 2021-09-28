@@ -1315,25 +1315,28 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(roomsResponse).To(HaveLen(3))
 				Expect(roomsResponse[0]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-1",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-1",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 				Expect(roomsResponse[1]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-2",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-2",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 				Expect(roomsResponse[2]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-3",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-3",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 			})
 			It("should return rooms with success for absent offset and limit", func() {
@@ -1380,25 +1383,28 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(roomsResponse).To(HaveLen(3))
 				Expect(roomsResponse[0]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-1",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-1",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 				Expect(roomsResponse[1]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-2",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-2",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 				Expect(roomsResponse[2]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-3",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-3",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 			})
 			It("should return with error if some error occur on getting rooms", func() {
@@ -1508,11 +1514,12 @@ forwarders:
 			err = json.Unmarshal([]byte(recorder.Body.String()), &roomsResponse)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(roomsResponse).To(Equal(map[string]interface{}{
-				"room_id":           roomId,
-				"created_at":        "2021-01-02T15:04:05Z",
-				"scheduler_name":    schedulerName,
-				"scheduler_version": "13",
-				"status":            "ready",
+				"roomId":           roomId,
+				"createdAt":        "2021-01-02T15:04:05Z",
+				"schedulerName":    schedulerName,
+				"schedulerVersion": "13",
+				"status":           "ready",
+				"lastPingAt":       "2021-09-23T14:05:00Z",
 			}))
 
 		})
