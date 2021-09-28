@@ -27,59 +27,45 @@ package redis
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/test"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
-	"github.com/go-redis/redis"
-	"github.com/orlangure/gnomock"
-	predis "github.com/orlangure/gnomock/preset/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
 )
 
-var dbNumber int32 = 0
 var lastPing = time.Unix(time.Now().Unix(), 0)
-var redisContainer *gnomock.Container
-
-func getRedisConnection() *redis.Client {
-	db := atomic.AddInt32(&dbNumber, 1)
-	return redis.NewClient(&redis.Options{
-		Addr: redisContainer.DefaultAddress(),
-		DB:   int(db),
-	})
-}
+var redisAddress string
 
 func TestMain(m *testing.M) {
-	var err error
-	redisContainer, err = gnomock.Start(predis.Preset())
-	if err != nil {
-		panic(fmt.Sprintf("error creating redis docker instance: %s\n", err))
-	}
-	code := m.Run()
-	_ = gnomock.Stop(redisContainer)
+	var code int
+	test.WithRedisContainer(func(redisContainerAddress string) {
+		redisAddress = redisContainerAddress
+		code = m.Run()
+	})
 	os.Exit(code)
 }
 
 func assertRedisState(t *testing.T, client *redis.Client, room *game_room.GameRoom) {
-	metadataCmd := client.Get(getRoomRedisKey(room.SchedulerID, room.ID))
+	metadataCmd := client.Get(context.Background(), getRoomRedisKey(room.SchedulerID, room.ID))
 	require.NoError(t, metadataCmd.Err())
 
 	var actualMetadata map[string]interface{}
 	require.NoError(t, json.NewDecoder(strings.NewReader(metadataCmd.Val())).Decode(&actualMetadata))
 	require.Equal(t, room.Metadata, actualMetadata)
 
-	statusCmd := client.ZScore(getRoomStatusSetRedisKey(room.SchedulerID), room.ID)
+	statusCmd := client.ZScore(context.Background(), getRoomStatusSetRedisKey(room.SchedulerID), room.ID)
 	require.NoError(t, statusCmd.Err())
 	require.Equal(t, room.Status, game_room.GameRoomStatus(statusCmd.Val()))
 
-	pingCmd := client.ZScore(getRoomPingRedisKey(room.SchedulerID), room.ID)
+	pingCmd := client.ZScore(context.Background(), getRoomPingRedisKey(room.SchedulerID), room.ID)
 	require.NoError(t, pingCmd.Err())
 	require.Equal(t, float64(room.LastPingAt.Unix()), pingCmd.Val())
 }
@@ -112,13 +98,13 @@ func assertUpdateStatusEventNotPublished(t *testing.T, sub *redis.PubSub) {
 }
 
 func assertRedisStateNonExistent(t *testing.T, client *redis.Client, room *game_room.GameRoom) {
-	metadataCmd := client.Get(getRoomRedisKey(room.SchedulerID, room.ID))
+	metadataCmd := client.Get(context.Background(), getRoomRedisKey(room.SchedulerID, room.ID))
 	require.Error(t, metadataCmd.Err())
 
-	statusCmd := client.ZScore(getRoomStatusSetRedisKey(room.SchedulerID), room.ID)
+	statusCmd := client.ZScore(context.Background(), getRoomStatusSetRedisKey(room.SchedulerID), room.ID)
 	require.Error(t, statusCmd.Err())
 
-	pingCmd := client.ZScore(getRoomPingRedisKey(room.SchedulerID), room.ID)
+	pingCmd := client.ZScore(context.Background(), getRoomPingRedisKey(room.SchedulerID), room.ID)
 	require.Error(t, pingCmd.Err())
 }
 
@@ -129,7 +115,7 @@ func requireErrorKind(t *testing.T, expected error, err error) {
 
 func TestRedisStateStorage_CreateRoom(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection()
+	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room without metadata", func(t *testing.T) {
@@ -189,7 +175,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 
 func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection()
+	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room without metadata", func(t *testing.T) {
@@ -199,7 +185,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		}
-		sub := client.Subscribe(getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
+		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
 		defer sub.Close()
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -220,7 +206,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 				"region": "us",
 			},
 		}
-		sub := client.Subscribe(getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
+		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
 		defer sub.Close()
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -241,7 +227,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 				"region": "us",
 			},
 		}
-		sub := client.Subscribe(getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
+		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
 		defer sub.Close()
 
 		requireErrorKind(t, errors.ErrNotFound, storage.UpdateRoom(ctx, room))
@@ -251,7 +237,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 
 func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection()
+	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room exists", func(t *testing.T) {
@@ -274,7 +260,7 @@ func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 
 func TestRedisStateStorage_GetRoom(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection()
+	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room without metadata", func(t *testing.T) {
@@ -318,7 +304,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 
 func TestRedisStateStorage_GetAllRoomIDs(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection()
+	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisStateStorage(client)
 
 	rooms := []*game_room.GameRoom{
@@ -365,7 +351,7 @@ func TestRedisStateStorage_GetAllRoomIDs(t *testing.T) {
 
 func TestRedisStateStorage_GetRoomIDsByLastPing(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection()
+	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisStateStorage(client)
 
 	rooms := []*game_room.GameRoom{
@@ -412,7 +398,7 @@ func TestRedisStateStorage_GetRoomIDsByLastPing(t *testing.T) {
 
 func TestRedisStateStorage_GetRoomCount(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection()
+	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisStateStorage(client)
 
 	rooms := []*game_room.GameRoom{
@@ -459,7 +445,7 @@ func TestRedisStateStorage_GetRoomCount(t *testing.T) {
 
 func TestRedisStateStorage_GetRoomCountByStatus(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection()
+	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisStateStorage(client)
 
 	rooms := []*game_room.GameRoom{
@@ -517,7 +503,7 @@ func TestRedisStateStorage_GetRoomCountByStatus(t *testing.T) {
 
 func TestRedisStateStorage_WatchRoomStatus(t *testing.T) {
 	ctx := context.Background()
-	client := getRedisConnection()
+	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisStateStorage(client)
 
 	room := &game_room.GameRoom{

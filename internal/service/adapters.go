@@ -26,7 +26,6 @@ import (
 	"fmt"
 
 	"github.com/go-pg/pg"
-	legacyRedis "github.com/go-redis/redis"
 	"github.com/go-redis/redis/v8"
 	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
@@ -85,7 +84,7 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 }
 
 func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
-	client, err := createLegacyRedisClient(c.GetString(roomStorageRedisUrlPath))
+	client, err := createRedisClient(c.GetString(roomStorageRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis room storage: %w", err)
 	}
@@ -94,7 +93,7 @@ func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
 }
 
 func NewGameRoomInstanceStorageRedis(c config.Config) (ports.GameRoomInstanceStorage, error) {
-	client, err := createLegacyRedisClient(c.GetString(instanceStorageRedisUrlPath))
+	client, err := createRedisClient(c.GetString(instanceStorageRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis instance storage: %w", err)
 	}
@@ -144,17 +143,6 @@ func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {
 	}
 
 	return operationFlowRedis.NewRedisOperationFlow(client), nil
-}
-
-// NOTE: We need this because some of our adapters are still using the old
-// version.
-func createLegacyRedisClient(url string) (*legacyRedis.Client, error) {
-	opts, err := legacyRedis.ParseURL(url)
-	if err != nil {
-		return nil, fmt.Errorf("invalid redis URL: %w", err)
-	}
-
-	return legacyRedis.NewClient(opts), nil
 }
 
 func connectToPostgres(url string) (*pg.Options, error) {

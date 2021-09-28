@@ -27,56 +27,39 @@ package redis
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/test"
 
-	"github.com/go-redis/redis"
-	"github.com/orlangure/gnomock"
-	predis "github.com/orlangure/gnomock/preset/redis"
+	"github.com/go-redis/redis/v8"
+
 	"github.com/stretchr/testify/require"
 )
 
-var dbNumber int32 = 0
-var redisContainer *gnomock.Container
-
-func getRedisConnection(t *testing.T) *redis.Client {
-	db := atomic.AddInt32(&dbNumber, 1)
-	client := redis.NewClient(&redis.Options{
-		Addr: redisContainer.DefaultAddress(),
-		DB:   int(db),
-	})
-	t.Cleanup(func() {
-		client.FlushDB()
-	})
-	return client
-}
+var redisAddress string
 
 func TestMain(m *testing.M) {
-	var err error
-	redisContainer, err = gnomock.Start(predis.Preset())
-	if err != nil {
-		panic(fmt.Sprintf("error creating redis docker instance: %s\n", err))
-	}
-	code := m.Run()
-	_ = gnomock.Stop(redisContainer)
+	var code int
+	test.WithRedisContainer(func(redisContainerAddress string) {
+		redisAddress = redisContainerAddress
+		code = m.Run()
+	})
 	os.Exit(code)
 }
 
 func assertInstanceRedis(t *testing.T, client *redis.Client, expectedInstance *game_room.Instance) {
 	actualInstance := new(game_room.Instance)
-	instanceJson, err := client.HGet(getPodMapRedisKey("game"), "1").Result()
+	instanceJson, err := client.HGet(context.Background(), getPodMapRedisKey("game"), "1").Result()
 	require.NoError(t, err)
 	require.NoError(t, json.NewDecoder(strings.NewReader(instanceJson)).Decode(actualInstance))
 	require.Equal(t, expectedInstance, actualInstance)
 }
 
 func TestRedisInstanceStorage_UpsertInstance(t *testing.T) {
-	client := getRedisConnection(t)
+	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisInstanceStorage(client, 0)
 	instance := &game_room.Instance{
 		ID:          "1",
@@ -108,7 +91,7 @@ func TestRedisInstanceStorage_UpsertInstance(t *testing.T) {
 
 func TestRedisInstanceStorage_GetInstance(t *testing.T) {
 	t.Run("when instance exists", func(t *testing.T) {
-		storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
+		storage := NewRedisInstanceStorage(test.GetRedisConnection(t, redisAddress), 0)
 		instance := &game_room.Instance{
 			ID:          "1",
 			SchedulerID: "game",
@@ -135,7 +118,7 @@ func TestRedisInstanceStorage_GetInstance(t *testing.T) {
 	})
 
 	t.Run("when instance does not exists", func(t *testing.T) {
-		storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
+		storage := NewRedisInstanceStorage(test.GetRedisConnection(t, redisAddress), 0)
 		_, err := storage.GetInstance(context.Background(), "game", "1")
 		require.Error(t, err)
 	})
@@ -143,7 +126,7 @@ func TestRedisInstanceStorage_GetInstance(t *testing.T) {
 
 func TestRedisInstanceStorage_RemoveInstance(t *testing.T) {
 	t.Run("when instance exists", func(t *testing.T) {
-		storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
+		storage := NewRedisInstanceStorage(test.GetRedisConnection(t, redisAddress), 0)
 		instance := &game_room.Instance{
 			ID:          "1",
 			SchedulerID: "game",
@@ -168,13 +151,13 @@ func TestRedisInstanceStorage_RemoveInstance(t *testing.T) {
 	})
 
 	t.Run("when instance does not exists", func(t *testing.T) {
-		storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
+		storage := NewRedisInstanceStorage(test.GetRedisConnection(t, redisAddress), 0)
 		require.Error(t, storage.DeleteInstance(context.Background(), "game", "1"))
 	})
 }
 
 func TestRedisInstanceStorage_GetAllInstances(t *testing.T) {
-	storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
+	storage := NewRedisInstanceStorage(test.GetRedisConnection(t, redisAddress), 0)
 	instances := []*game_room.Instance{
 		{
 			ID:          "1",
@@ -224,7 +207,7 @@ func TestRedisInstanceStorage_GetAllInstances(t *testing.T) {
 }
 
 func TestRedisInstanceStorage_GetInstanceCount(t *testing.T) {
-	storage := NewRedisInstanceStorage(getRedisConnection(t), 0)
+	storage := NewRedisInstanceStorage(test.GetRedisConnection(t, redisAddress), 0)
 	instances := []*game_room.Instance{
 		{
 			ID:          "1",

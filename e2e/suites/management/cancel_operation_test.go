@@ -28,8 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis"
-	redisV8 "github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation_flow/redis"
@@ -48,10 +47,10 @@ import (
 )
 
 func TestCancelOperation(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, redisClientV8 *redisV8.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 
-		operationStorage := operationStorageRedis.NewRedisOperationStorage(redisClientV8, timeClock.NewClock())
-		operationFlow := operationFlowRedis.NewRedisOperationFlow(redisClientV8)
+		operationStorage := operationStorageRedis.NewRedisOperationStorage(redisClient, timeClock.NewClock())
+		operationFlow := operationFlowRedis.NewRedisOperationFlow(redisClient)
 
 		t.Run("cancel pending and in-progress operations successfully", func(t *testing.T) {
 			ctx := context.Background()

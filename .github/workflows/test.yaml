@@ -41,21 +41,3 @@ jobs:
         make run/integration-tests
     - name: Upload coverage to Codecov
       run: bash <(curl -s https://codecov.io/bash)
-  e2e:
-    name: E2E tests
-    runs-on: ubuntu-latest
-    steps:
-    - name: Set up Go
-      uses: actions/setup-go@v1
-      with:
-        go-version: '1.16.3'
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Restore cache
-      uses: actions/cache@v2
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-    - name: Run tests
-      run: |
-        make run/e2e-tests

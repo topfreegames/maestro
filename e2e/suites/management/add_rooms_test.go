@@ -28,8 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis"
-	redisV8 "github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis/v8"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
@@ -44,7 +43,7 @@ import (
 )
 
 func TestAddRooms(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, redisClientV8 *redisV8.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 
 		roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 

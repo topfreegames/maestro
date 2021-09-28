@@ -34,7 +34,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 )
 
 type redisInstanceStorage struct {
@@ -45,7 +45,7 @@ type redisInstanceStorage struct {
 func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string, instanceId string) (*game_room.Instance, error) {
 	var instance game_room.Instance
 	podMapRedisKey := getPodMapRedisKey(scheduler)
-	instanceJson, err := r.client.WithContext(ctx).HGet(getPodMapRedisKey(scheduler), instanceId).Result()
+	instanceJson, err := r.client.HGet(ctx, getPodMapRedisKey(scheduler), instanceId).Result()
 	if err == redis.Nil {
 		return nil, errors.NewErrNotFound("instance %s not found in scheduler %s", instanceId, scheduler)
 	}
@@ -65,7 +65,7 @@ func (r redisInstanceStorage) UpsertInstance(ctx context.Context, instance *game
 		return errors.NewErrUnexpected("error marshalling room %s json", instance.ID).WithError(err)
 	}
 	podMapRedisKey := getPodMapRedisKey(instance.SchedulerID)
-	err = r.client.WithContext(ctx).HSet(podMapRedisKey, instance.ID, instanceJson).Err()
+	err = r.client.HSet(ctx, podMapRedisKey, instance.ID, instanceJson).Err()
 	if err != nil {
 		return errors.NewErrUnexpected("error updating member %s from hash %s", instance.ID, podMapRedisKey).WithError(err)
 	}
@@ -74,7 +74,7 @@ func (r redisInstanceStorage) UpsertInstance(ctx context.Context, instance *game
 
 func (r redisInstanceStorage) DeleteInstance(ctx context.Context, scheduler string, instanceId string) error {
 	podMapRedisKey := getPodMapRedisKey(scheduler)
-	deleted, err := r.client.WithContext(ctx).HDel(getPodMapRedisKey(scheduler), instanceId).Result()
+	deleted, err := r.client.HDel(ctx, getPodMapRedisKey(scheduler), instanceId).Result()
 	if err != nil {
 		return errors.NewErrUnexpected("error removing member %s from hash %s", instanceId, podMapRedisKey).WithError(err)
 	}
@@ -93,7 +93,7 @@ func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler str
 		var err error
 		var results []string
 
-		results, cursor, err := client.HScan(redisKey, cursor, "*", r.scanPageSize).Result()
+		results, cursor, err := client.HScan(ctx, redisKey, cursor, "*", r.scanPageSize).Result()
 		if err != nil {
 			return nil, errors.NewErrUnexpected("error scanning %s on redis", redisKey).WithError(err)
 		}
@@ -116,7 +116,7 @@ func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler str
 
 func (r redisInstanceStorage) GetInstanceCount(ctx context.Context, scheduler string) (int, error) {
 	podMapRedisKey := getPodMapRedisKey(scheduler)
-	count, err := r.client.WithContext(ctx).HLen(podMapRedisKey).Result()
+	count, err := r.client.HLen(ctx, podMapRedisKey).Result()
 	if err != nil {
 		return 0, errors.NewErrUnexpected("error counting %s on redis", podMapRedisKey).WithError(err)
 	}

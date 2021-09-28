@@ -27,56 +27,31 @@ package redis
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
-	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
-	"github.com/orlangure/gnomock"
-	predis "github.com/orlangure/gnomock/preset/redis"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/test"
 )
 
-var dbNumber int32 = 0
-var redisContainer *gnomock.Container
-
-func getRedisConnection(t *testing.T) *redis.Client {
-	db := atomic.AddInt32(&dbNumber, 1)
-
-	client := redis.NewClient(&redis.Options{
-		Addr: redisContainer.DefaultAddress(),
-		DB:   int(db),
-	})
-
-	t.Cleanup(func() {
-		client.FlushDB(context.Background())
-	})
-
-	return client
-}
+var redisAddress string
 
 func TestMain(m *testing.M) {
-	var err error
-	redisContainer, err = gnomock.Start(predis.Preset())
-
-	if err != nil {
-		panic(fmt.Sprintf("error creating redis docker instance: %s\n", err))
-	}
-
-	code := m.Run()
-
-	_ = gnomock.Stop(redisContainer)
+	var code int
+	test.WithRedisContainer(func(redisContainerAddress string) {
+		redisAddress = redisContainerAddress
+		code = m.Run()
+	})
 	os.Exit(code)
 }
 
 func TestInsertOperationID(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		flow := NewRedisOperationFlow(client)
 		schedulerName := "test-scheduler"
 		expectedOperationID := "some-op-id"
@@ -90,7 +65,7 @@ func TestInsertOperationID(t *testing.T) {
 	})
 
 	t.Run("fails on redis", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		flow := NewRedisOperationFlow(client)
 
 		// "drop" redis connection
@@ -103,7 +78,7 @@ func TestInsertOperationID(t *testing.T) {
 
 func TestNextOperationID(t *testing.T) {
 	t.Run("successfully receives the operation ID", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		flow := NewRedisOperationFlow(client)
 
 		schedulerName := "test-scheduler"
@@ -118,7 +93,7 @@ func TestNextOperationID(t *testing.T) {
 	})
 
 	t.Run("failed with context canceled", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		flow := NewRedisOperationFlow(client)
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -144,7 +119,7 @@ func TestNextOperationID(t *testing.T) {
 	})
 
 	t.Run("failed redis connection", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		storage := NewRedisOperationFlow(client)
 
 		nextWait := make(chan error)
@@ -173,7 +148,7 @@ func TestEnqueueOperationCancelationRequest(t *testing.T) {
 	operationID := uuid.New().String()
 
 	t.Run("successfully publishes the request to cancel", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		flow := NewRedisOperationFlow(client)
 		ctx := context.Background()
 
@@ -204,7 +179,7 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 	operationID := uuid.New().String()
 
 	t.Run("successfully receives the scheduler name and operation ID to cancel", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		flow := NewRedisOperationFlow(client)
 		ctx, ctxCancelFn := context.WithCancel(context.Background())
 
@@ -234,7 +209,7 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 	})
 
 	t.Run("when parent context is canceled, stops to watch requests", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		flow := NewRedisOperationFlow(client)
 		ctx, ctxCancelFn := context.WithCancel(context.Background())
 
@@ -253,7 +228,7 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 	})
 
 	t.Run("when redis connection fails, stops to watch requests", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		flow := NewRedisOperationFlow(client)
 		ctx := context.Background()
 
