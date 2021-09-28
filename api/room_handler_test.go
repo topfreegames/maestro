@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	goredis "github.com/go-redis/redis"
+
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/go-redis/redis"
@@ -1262,6 +1264,221 @@ forwarders:
 			Expect(obj).To(HaveKeyWithValue("description", "something went wrong"))
 			Expect(obj).To(HaveKeyWithValue("error", "list by metrics handler error"))
 			Expect(obj).To(HaveKeyWithValue("success", false))
+		})
+	})
+
+	Describe("GET /scheduler/{schedulerName}/rooms/status/{status}", func() {
+		namespace := "scheduler-name"
+
+		Describe("when valid parameters are provided", func() {
+			It("should return rooms with success with provided valid offset and limit", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				expectedRooms := []string{
+					"scheduler:scheduler-name:rooms:test-ready-1",
+					"scheduler:scheduler-name:rooms:test-ready-2",
+					"scheduler:scheduler-name:rooms:test-ready-3",
+				}
+
+				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(expectedRooms, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-2").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-3").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+
+				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-3").
+					Return(redis.NewStringResult(`{"status":{"startTime": "2021-01-02T15:04:05Z"}, "version": "13"}`, nil))
+				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-2").
+					Return(redis.NewStringResult(`{"status":{"startTime": "2021-01-02T15:04:05Z"}, "version": "13"}`, nil))
+				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
+					Return(redis.NewStringResult(`{"status":{"startTime": "2021-01-02T15:04:05Z"}, "version": "13"}`, nil))
+
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s?limit=%d&offset=%d", namespace, models.StatusReady, 10, 1)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+				app.Router.ServeHTTP(recorder, request)
+
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+
+				var roomsResponse []map[string]interface{}
+				err = json.Unmarshal([]byte(recorder.Body.String()), &roomsResponse)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(roomsResponse).To(HaveLen(3))
+				Expect(roomsResponse[0]).To(Equal(map[string]interface{}{
+					"room_id":           "test-ready-1",
+					"created_at":        "2021-01-02T15:04:05Z",
+					"scheduler_name":    "scheduler-name",
+					"scheduler_version": "13",
+					"status":            "ready",
+				}))
+				Expect(roomsResponse[1]).To(Equal(map[string]interface{}{
+					"room_id":           "test-ready-2",
+					"created_at":        "2021-01-02T15:04:05Z",
+					"scheduler_name":    "scheduler-name",
+					"scheduler_version": "13",
+					"status":            "ready",
+				}))
+				Expect(roomsResponse[2]).To(Equal(map[string]interface{}{
+					"room_id":           "test-ready-3",
+					"created_at":        "2021-01-02T15:04:05Z",
+					"scheduler_name":    "scheduler-name",
+					"scheduler_version": "13",
+					"status":            "ready",
+				}))
+			})
+			It("should return rooms with success for absent offset and limit", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				expectedRooms := []string{
+					"scheduler:scheduler-name:rooms:test-ready-1",
+					"scheduler:scheduler-name:rooms:test-ready-2",
+					"scheduler:scheduler-name:rooms:test-ready-3",
+				}
+
+				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(expectedRooms, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-2").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-3").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+
+				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-3").
+					Return(redis.NewStringResult(`{"status":{"startTime": "2021-01-02T15:04:05Z"}, "version": "13"}`, nil))
+				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-2").
+					Return(redis.NewStringResult(`{"status":{"startTime": "2021-01-02T15:04:05Z"}, "version": "13"}`, nil))
+				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
+					Return(redis.NewStringResult(`{"status":{"startTime": "2021-01-02T15:04:05Z"}, "version": "13"}`, nil))
+
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s", namespace, models.StatusReady)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+				app.Router.ServeHTTP(recorder, request)
+
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+
+				var roomsResponse []map[string]interface{}
+				err = json.Unmarshal([]byte(recorder.Body.String()), &roomsResponse)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(roomsResponse).To(HaveLen(3))
+				Expect(roomsResponse[0]).To(Equal(map[string]interface{}{
+					"room_id":           "test-ready-1",
+					"created_at":        "2021-01-02T15:04:05Z",
+					"scheduler_name":    "scheduler-name",
+					"scheduler_version": "13",
+					"status":            "ready",
+				}))
+				Expect(roomsResponse[1]).To(Equal(map[string]interface{}{
+					"room_id":           "test-ready-2",
+					"created_at":        "2021-01-02T15:04:05Z",
+					"scheduler_name":    "scheduler-name",
+					"scheduler_version": "13",
+					"status":            "ready",
+				}))
+				Expect(roomsResponse[2]).To(Equal(map[string]interface{}{
+					"room_id":           "test-ready-3",
+					"created_at":        "2021-01-02T15:04:05Z",
+					"scheduler_name":    "scheduler-name",
+					"scheduler_version": "13",
+					"status":            "ready",
+				}))
+			})
+			It("should return with error if some error occur on getting rooms", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(nil, errors.New("some error")))
+
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s", namespace, models.StatusReady)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+				app.Router.ServeHTTP(recorder, request)
+
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+
+				var response map[string]interface{}
+				err = json.Unmarshal([]byte(recorder.Body.String()), &response)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response["description"]).To(Equal("some error"))
+			})
+			It("should return with error if some error occur on getting pods", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+				expectedRooms := []string{
+					"scheduler:scheduler-name:rooms:test-ready-1",
+				}
+
+				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(expectedRooms, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+
+				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
+					Return(redis.NewStringResult("", errors.New("some error")))
+
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s", namespace, models.StatusReady)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+				app.Router.ServeHTTP(recorder, request)
+
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+
+				var response map[string]interface{}
+				err = json.Unmarshal([]byte(recorder.Body.String()), &response)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response["description"]).To(Equal("some error"))
+			})
+		})
+
+		Context("when invalid parameters are provided", func() {
+			It("should return with error for negative offset", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s?limit=%d&offset=%d", "bla", models.StatusReady, 10, -1)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+				app.Router.ServeHTTP(recorder, request)
+
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+
+				var response map[string]interface{}
+				err = json.Unmarshal([]byte(recorder.Body.String()), &response)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response["description"]).To(Equal("offset value should be greater than 0"))
+			})
+			It("should return with error for negative limit", func() {
+				mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+				url := fmt.Sprintf("/scheduler/%s/rooms/status/%s?limit=%d&offset=%d", "bla", models.StatusReady, -10, 1)
+				request, err := http.NewRequest("GET", url, nil)
+				Expect(err).NotTo(HaveOccurred())
+				app.Router.ServeHTTP(recorder, request)
+
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+
+				var response map[string]interface{}
+				err = json.Unmarshal([]byte(recorder.Body.String()), &response)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response["description"]).To(Equal("limit value should be greater than 0"))
+			})
 		})
 	})
 })

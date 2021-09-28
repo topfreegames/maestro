@@ -534,6 +534,144 @@ var _ = Describe("Room", func() {
 			})
 		})
 	})
+
+	Describe("GetRoomsByStatus", func() {
+		Context("when limit is greater than the number of rooms", func() {
+			It("should return all rooms for offset equal 1", func() {
+				scheduler := "pong-free-for-all"
+
+				expectedRooms := []string{
+					"scheduler:scheduler-name:rooms:test-ready-1",
+					"scheduler:scheduler-name:rooms:test-ready-2",
+					"scheduler:scheduler-name:rooms:test-ready-3",
+					"scheduler:scheduler-name:rooms:test-ready-4",
+				}
+
+				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(expectedRooms, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-2").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-3").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-4").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+
+				rooms, err := models.GetRoomsByStatus(mockRedisClient, scheduler, models.StatusReady, 5, 1, mmr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(rooms)).To(Equal(len(expectedRooms)))
+			})
+			It("should return an empty list for offset greater than 1", func() {
+				scheduler := "pong-free-for-all"
+
+				expectedRooms := []string{
+					"scheduler:scheduler-name:rooms:test-ready-1",
+					"scheduler:scheduler-name:rooms:test-ready-2",
+					"scheduler:scheduler-name:rooms:test-ready-3",
+					"scheduler:scheduler-name:rooms:test-ready-4",
+				}
+
+				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(expectedRooms, nil))
+
+				rooms, err := models.GetRoomsByStatus(mockRedisClient, scheduler, models.StatusReady, 5, 2, mmr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rooms).To(BeEmpty())
+			})
+		})
+		Context("when limit is less than the number of rooms", func() {
+			It("should return paginated rooms for even number of rooms", func() {
+				scheduler := "pong-free-for-all"
+
+				expectedRooms := []string{
+					"scheduler:scheduler-name:rooms:test-ready-1",
+					"scheduler:scheduler-name:rooms:test-ready-2",
+					"scheduler:scheduler-name:rooms:test-ready-3",
+					"scheduler:scheduler-name:rooms:test-ready-4",
+				}
+
+				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(expectedRooms, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-2").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+
+				rooms, err := models.GetRoomsByStatus(mockRedisClient, scheduler, models.StatusReady, 2, 1, mmr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(rooms)).To(Equal(2))
+			})
+
+			It("should return paginated rooms for odd number of rooms", func() {
+				scheduler := "pong-free-for-all"
+
+				expectedRooms := []string{
+					"scheduler:scheduler-name:rooms:test-ready-1",
+					"scheduler:scheduler-name:rooms:test-ready-2",
+					"scheduler:scheduler-name:rooms:test-ready-3",
+				}
+
+				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(expectedRooms, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-3").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+
+				rooms, err := models.GetRoomsByStatus(mockRedisClient, scheduler, models.StatusReady, 2, 2, mmr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(rooms)).To(Equal(1))
+			})
+		})
+
+		Context("when some error occurs", func() {
+			It("should return an error if redis returns an error on SMembers", func() {
+				scheduler := "pong-free-for-all"
+
+				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(nil, errors.New("some error")))
+
+				_, err := models.GetRoomsByStatus(mockRedisClient, scheduler, models.StatusReady, 2, 1, mmr)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("some error"))
+			})
+			It("should return an error if redis returns an error on HGetAll", func() {
+				scheduler := "pong-free-for-all"
+				expectedRooms := []string{
+					"scheduler:scheduler-name:rooms:test-ready-1",
+					"scheduler:scheduler-name:rooms:test-ready-2",
+					"scheduler:scheduler-name:rooms:test-ready-3",
+					"scheduler:scheduler-name:rooms:test-ready-4",
+				}
+
+				mockRedisClient.EXPECT().SMembers(gomock.Any()).Return(goredis.NewStringSliceResult(expectedRooms, nil))
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+					Return(redis.NewStringStringMapResult(map[string]string{}, errors.New("some error")))
+
+				_, err := models.GetRoomsByStatus(mockRedisClient, scheduler, models.StatusReady, 2, 1, mmr)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("some error"))
+			})
+
+		})
+
+	})
+
 })
 
 var _ = Describe("GetRoomsMetadatas", func() {

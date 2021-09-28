@@ -25,6 +25,12 @@ type SchedulerEventsParams struct {
 	SchedulerName string `json:"schedulerName" valid:"required"`
 }
 
+// SchedulerRoomsParams is the struct that defines the params for scheduler events routes
+type SchedulerRoomsParams struct {
+	SchedulerName string `json:"schedulerName" valid:"required"`
+	Status        string `json:"status" valid:"required"`
+}
+
 // SchedulerLockParams is the struct that defines the params for scheduler locks routes
 type SchedulerLockParams struct {
 	SchedulerName string `json:"schedulerName" valid:"required"`

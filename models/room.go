@@ -502,6 +502,47 @@ func GetRoomsOccupiedTimeout(redisClient interfaces.RedisClient, schedulerName s
 	return result, err
 }
 
+// GetRoomsByStatus returns a list of rooms that are in the provided state
+func GetRoomsByStatus(redisClient interfaces.RedisClient, schedulerName string, status string, limit int, offset int, mr *MixedMetricsReporter) ([]*Room, error) {
+	var redisKeys []string
+	var rooms []*Room
+
+	err := mr.WithSegment(SegmentSMembers, func() error {
+		var err error
+		keys, err := redisClient.SMembers(
+			GetRoomStatusSetRedisKey(schedulerName, status),
+		).Result()
+		redisKeys = append(redisKeys, keys...)
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	paginatedRedisKeys := paginateKeys(redisKeys, limit, offset)
+
+	for _, redisKey := range paginatedRedisKeys {
+		roomData, err := redisClient.HGetAll(redisKey).Result()
+		if err != nil {
+			return nil, err
+		}
+
+		lastPingAt, _ := strconv.ParseInt(roomData["lastPing"], 10, 64)
+		status := roomData["status"]
+		id := RoomFromRedisKey(redisKey)
+
+		rooms = append(rooms, &Room{
+			ID:            id,
+			SchedulerName: schedulerName,
+			Status:        status,
+			LastPingAt:    lastPingAt,
+		})
+	}
+
+	return rooms, nil
+}
+
 // GetRooms returns a list of rooms ids that are in any state
 func GetRooms(redisClient interfaces.RedisClient, schedulerName string, mr *MixedMetricsReporter) ([]string, error) {
 	var result, redisKeys []string
@@ -724,4 +765,24 @@ func IsRoomReadyOrOccupied(logger logrus.FieldLogger, redisClient interfaces.Red
 	}
 
 	return isReady || isOccupied
+}
+
+func paginateKeys(redisKeys []string, limit int, offset int) []string {
+	var paginatedRedisKeys []string
+	chunkedRedisKeys := chunkBy(redisKeys, limit)
+
+	if offset > len(chunkedRedisKeys) {
+		paginatedRedisKeys = []string{}
+	} else {
+		paginatedRedisKeys = chunkedRedisKeys[offset-1]
+	}
+	return paginatedRedisKeys
+}
+
+func chunkBy(items []string, chunkSize int) (chunks [][]string) {
+	for chunkSize < len(items) {
+		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
+	}
+
+	return append(chunks, items)
 }

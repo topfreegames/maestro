@@ -445,3 +445,94 @@ func (h *RoomListByMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	WriteBytes(w, http.StatusOK, bytes)
 	logger.Debug("performed list by metrics handler")
 }
+
+// RoomListBySchedulerAndStatusHandler handler
+type RoomListBySchedulerAndStatusHandler struct {
+	App *App
+}
+
+// NewRoomListBySchedulerAndStatusHandler creates a new address handler
+func NewRoomListBySchedulerAndStatusHandler(a *App) *RoomListBySchedulerAndStatusHandler {
+	m := &RoomListBySchedulerAndStatusHandler{App: a}
+	return m
+}
+
+// ServerHTTP method
+func (h *RoomListBySchedulerAndStatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	l := middleware.GetLogger(ctx)
+	mr := metricsReporterFromCtx(ctx)
+	params := schedulerRoomsParamsFromContext(ctx)
+	trace := h.App.RedisClient.Trace(ctx)
+
+	logger := l.WithFields(logrus.Fields{
+		"source":    "roomHandler",
+		"operation": "listBySchedulerAndStatusHandler",
+	})
+	logger.Debug("list game rooms by scheduler and status called")
+
+	limit, offset, err := extractLimitAndOffset(r)
+
+	if err != nil {
+		triggerApiError(w, logger, err, http.StatusBadRequest, h)
+		return
+	}
+
+	rooms, err := models.GetRoomsByStatus(trace, params.SchedulerName, params.Status, limit, offset, mr)
+
+	if err != nil {
+		triggerApiError(w, logger, err, http.StatusInternalServerError, h)
+		return
+	}
+
+	var roomsDetails []map[string]interface{}
+
+	for _, room := range rooms {
+		pod, err := models.GetPodFromRedis(trace, mr, room.ID, params.SchedulerName)
+		if err != nil {
+			triggerApiError(w, logger, err, http.StatusInternalServerError, h)
+			return
+		}
+		roomDetail := map[string]interface{}{
+			"scheduler_name":    params.SchedulerName,
+			"scheduler_version": pod.Version,
+			"room_id":           room.ID,
+			"status":            room.Status,
+			"created_at":        pod.Status.StartTime,
+		}
+		roomsDetails = append(roomsDetails, roomDetail)
+	}
+
+	bytes, err := json.Marshal(roomsDetails)
+	if err != nil {
+		triggerApiError(w, logger, err, http.StatusInternalServerError, h)
+		return
+	}
+	WriteBytes(w, http.StatusOK, bytes)
+	logger.Debug("performed list by status handler")
+}
+
+func triggerApiError(w http.ResponseWriter, logger *logrus.Entry, err error, status int, h *RoomListBySchedulerAndStatusHandler) {
+	logger.WithError(err).Error("list by status handler failed")
+	h.App.HandleError(w, status, "list by status handler error", err)
+}
+
+func extractLimitAndOffset(r *http.Request) (int, int, error) {
+	limitParam := r.URL.Query().Get("limit")
+	offsetParam := r.URL.Query().Get("offset")
+	if limitParam == "" {
+		limitParam = "10"
+	}
+	if offsetParam == "" {
+		offsetParam = "1"
+	}
+	limit, err := strconv.Atoi(limitParam)
+	offset, err := strconv.Atoi(offsetParam)
+	if offset <= 0 {
+		return 0, 0, fmt.Errorf("offset value should be greater than 0")
+	}
+	if limit <= 0 {
+		return 0, 0, fmt.Errorf("limit value should be greater than 0")
+	}
+	return limit, offset, err
+}
