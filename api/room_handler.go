@@ -564,6 +564,10 @@ func (h *RoomDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	room, err := models.GetRoomDetails(trace, params.SchedulerName, params.RoomId, mr)
 
 	if err != nil {
+		if err.Error() == "room not found" {
+			triggerApiError(w, logger, err, http.StatusNotFound, h.App)
+			return
+		}
 		triggerApiError(w, logger, err, http.StatusInternalServerError, h.App)
 		return
 	}
@@ -571,6 +575,10 @@ func (h *RoomDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	pod, err := models.GetPodFromRedis(trace, mr, room.ID, params.SchedulerName)
 	if err != nil {
 		triggerApiError(w, logger, err, http.StatusInternalServerError, h.App)
+		return
+	}
+	if pod == nil {
+		triggerApiError(w, logger, err, http.StatusNotFound, h.App)
 		return
 	}
 	roomDetail := map[string]interface{}{

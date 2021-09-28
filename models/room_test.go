@@ -692,7 +692,7 @@ var _ = Describe("Room", func() {
 				Expect(room.SchedulerName).To(Equal(scheduler))
 			})
 		})
-		Context("when no redis returns with error", func() {
+		Context("when redis returns with error", func() {
 			It("should return with error", func() {
 				scheduler := "scheduler-name-1"
 				roomId := "room-id-1"
@@ -703,6 +703,19 @@ var _ = Describe("Room", func() {
 				_, err := models.GetRoomDetails(mockRedisClient, scheduler, roomId, mmr)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("some error"))
+			})
+		})
+		Context("when no room is found", func() {
+			It("should return with error", func() {
+				scheduler := "scheduler-name-1"
+				roomId := "room-id-1"
+
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name-1:rooms:room-id-1").
+					Return(redis.NewStringStringMapResult(map[string]string{}, nil))
+
+				_, err := models.GetRoomDetails(mockRedisClient, scheduler, roomId, mmr)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("room not found"))
 			})
 		})
 	})

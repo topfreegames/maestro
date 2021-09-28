@@ -9,6 +9,7 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -549,6 +550,9 @@ func GetRoomDetails(redisClient interfaces.RedisClient, schedulerName string, ro
 
 	if err != nil {
 		return nil, err
+	}
+	if len(roomData) == 0 {
+		return nil, errors.New("room not found")
 	}
 
 	lastPingAt, _ := strconv.ParseInt(roomData["lastPing"], 10, 64)

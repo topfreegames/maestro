@@ -1516,6 +1516,43 @@ forwarders:
 			}))
 
 		})
+		It("should return with error if the room is not found", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+			mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+				Return(redis.NewStringStringMapResult(map[string]string{}, nil))
+
+			url := fmt.Sprintf("/scheduler/%s/rooms/%s", schedulerName, roomId)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusNotFound))
+
+			var response map[string]interface{}
+			err = json.Unmarshal([]byte(recorder.Body.String()), &response)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response["description"]).To(Equal("room not found"))
+		})
+		It("should return with error if the game room pod is not found", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+			mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+				Return(redis.NewStringStringMapResult(map[string]string{
+					"status":   "ready",
+					"lastPing": "1632405900",
+				}, nil))
+
+			mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
+				Return(redis.NewStringResult("", redis.Nil))
+
+			url := fmt.Sprintf("/scheduler/%s/rooms/%s", schedulerName, roomId)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusNotFound))
+		})
 		It("should return with error if some error occur on getting room", func() {
 			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
 
