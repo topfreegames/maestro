@@ -25,11 +25,11 @@ package management
 import (
 	"context"
 	"fmt"
-	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis"
+	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
+
 	redisV8 "github.com/go-redis/redis/v8"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -45,7 +45,7 @@ import (
 )
 
 func TestRemoveRooms(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, redisClientV8 *redisV8.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redisV8.Client, maestro *maestro.MaestroInstance) {
 		instanceStorage := instanceStorageRedis.NewRedisInstanceStorage(redisClient, 10)
 		roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 
@@ -160,7 +160,7 @@ func TestRemoveRooms(t *testing.T) {
 
 }
 
-func addRoomsAndWaitForIt(t *testing.T, schedulerName string, err error, apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client) (error, string) {
+func addRoomsAndWaitForIt(t *testing.T, schedulerName string, err error, apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redisV8.Client) (error, string) {
 	roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 
 	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
