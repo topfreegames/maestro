@@ -20,16 +20,42 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package framework
+package test
 
 import (
+	"context"
+	"fmt"
+	"sync/atomic"
+	"testing"
+
+	"github.com/orlangure/gnomock"
+
 	"github.com/go-redis/redis/v8"
+	predis "github.com/orlangure/gnomock/preset/redis"
 )
 
-func getRedisConnection(address string) (*redis.Client, error) {
-	opts, err := redis.ParseURL(address)
+var dbNumber int32 = 0
+
+func WithRedisContainer(exec func(redisAddress string)) {
+	var err error
+	redisContainer, err := gnomock.Start(predis.Preset())
 	if err != nil {
-		return nil, err
+		panic(fmt.Sprintf("error creating redis docker instance: %s\n", err))
 	}
-	return redis.NewClient(opts), nil
+
+	exec(redisContainer.DefaultAddress())
+
+	_ = gnomock.Stop(redisContainer)
+}
+
+func GetRedisConnection(t *testing.T, redisAddress string) *redis.Client {
+	db := atomic.AddInt32(&dbNumber, 1)
+	client := redis.NewClient(&redis.Options{
+		Addr: redisAddress,
+		DB:   int(db),
+	})
+	t.Cleanup(func() {
+		client.FlushDB(context.Background())
+	})
+	return client
 }

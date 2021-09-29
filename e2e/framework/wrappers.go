@@ -25,8 +25,7 @@ package framework
 import (
 	"testing"
 
-	"github.com/go-redis/redis"
-	redisV8 "github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis/v8"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
@@ -34,7 +33,7 @@ import (
 )
 
 // TODO: remove the old redis client version
-func WithClients(t *testing.T, testCase func(apiClient *APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, redisClientV8 *redisV8.Client, maestro *maestro.MaestroInstance)) {
+func WithClients(t *testing.T, testCase func(apiClient *APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance)) {
 	client := NewAPIClient(defaultMaestro.ManagementApiServer.Address)
 
 	kubeClient, err := getKubeClient()
@@ -45,10 +44,6 @@ func WithClients(t *testing.T, testCase func(apiClient *APIClient, kubeClient ku
 	if err != nil {
 		t.Fatal(err)
 	}
-	redisClientV8, err := getRedisConnectionV8(defaultMaestro.Deps.RedisAddress)
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	testCase(client, kubeClient, redisClient, redisClientV8, defaultMaestro)
+	testCase(client, kubeClient, redisClient, defaultMaestro)
 }

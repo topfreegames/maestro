@@ -26,58 +26,34 @@ package redis
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strconv"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
-	"github.com/orlangure/gnomock"
-	predis "github.com/orlangure/gnomock/preset/redis"
 	"github.com/stretchr/testify/require"
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/test"
 )
 
-var dbNumber int32 = 0
-var redisContainer *gnomock.Container
-
-func getRedisConnection(t *testing.T) *redis.Client {
-	db := atomic.AddInt32(&dbNumber, 1)
-
-	client := redis.NewClient(&redis.Options{
-		Addr: redisContainer.DefaultAddress(),
-		DB:   int(db),
-	})
-
-	t.Cleanup(func() {
-		client.FlushDB(context.Background())
-	})
-
-	return client
-}
+var redisAddress string
 
 func TestMain(m *testing.M) {
-	var err error
-	redisContainer, err = gnomock.Start(predis.Preset())
-
-	if err != nil {
-		panic(fmt.Sprintf("error creating redis docker instance: %s\n", err))
-	}
-
-	code := m.Run()
-
-	_ = gnomock.Stop(redisContainer)
+	var code int
+	test.WithRedisContainer(func(redisContainerAddress string) {
+		redisAddress = redisContainerAddress
+		code = m.Run()
+	})
 	os.Exit(code)
 }
 
 func TestCreateOperation(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationStorage(client, clock)
 		createdAtString := "2020-01-01T00:00:00.001Z"
@@ -109,7 +85,7 @@ func TestCreateOperation(t *testing.T) {
 	})
 
 	t.Run("fails on redis", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationStorage(client, clock)
 
@@ -131,7 +107,7 @@ func TestCreateOperation(t *testing.T) {
 
 func TestGetOperation(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationStorage(client, clock)
 
@@ -160,7 +136,7 @@ func TestGetOperation(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationStorage(client, clock)
 
@@ -171,7 +147,7 @@ func TestGetOperation(t *testing.T) {
 	})
 
 	t.Run("fail to parse created at field", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationStorage(client, clock)
 
@@ -198,7 +174,7 @@ func TestGetOperation(t *testing.T) {
 	})
 
 	t.Run("fails on redis", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationStorage(client, clock)
 
@@ -214,7 +190,7 @@ func TestGetOperation(t *testing.T) {
 
 func TestUpdateOperationStatus(t *testing.T) {
 	t.Run("set operation as active", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
 		clock := clockmock.NewFakeClock(now)
 		storage := NewRedisOperationStorage(client, clock)
@@ -247,7 +223,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 	})
 
 	t.Run("update operation status to inactive", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
 		clock := clockmock.NewFakeClock(now)
 		storage := NewRedisOperationStorage(client, clock)
@@ -285,7 +261,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 
 func TestListSchedulerActiveOperations(t *testing.T) {
 	t.Run("list all operations", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
 		storage := NewRedisOperationStorage(client, clockmock.NewFakeClock(now))
 
@@ -329,7 +305,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 	})
 
 	t.Run("failed to fetch a operation inside the list", func(t *testing.T) {
-		client := getRedisConnection(t)
+		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
 		storage := NewRedisOperationStorage(client, clockmock.NewFakeClock(now))
 
