@@ -52,7 +52,6 @@ type kubernetesWatcher struct {
 
 	stopped  bool
 	stopChan chan struct{}
-	stopOnce sync.Once
 }
 
 func (kw *kubernetesWatcher) ResultChan() chan game_room.InstanceEvent {
