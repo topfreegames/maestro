@@ -1315,25 +1315,28 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(roomsResponse).To(HaveLen(3))
 				Expect(roomsResponse[0]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-1",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-1",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 				Expect(roomsResponse[1]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-2",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-2",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 				Expect(roomsResponse[2]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-3",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-3",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 			})
 			It("should return rooms with success for absent offset and limit", func() {
@@ -1380,25 +1383,28 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(roomsResponse).To(HaveLen(3))
 				Expect(roomsResponse[0]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-1",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-1",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 				Expect(roomsResponse[1]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-2",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-2",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 				Expect(roomsResponse[2]).To(Equal(map[string]interface{}{
-					"room_id":           "test-ready-3",
-					"created_at":        "2021-01-02T15:04:05Z",
-					"scheduler_name":    "scheduler-name",
-					"scheduler_version": "13",
-					"status":            "ready",
+					"roomId":           "test-ready-3",
+					"createdAt":        "2021-01-02T15:04:05Z",
+					"schedulerName":    "scheduler-name",
+					"schedulerVersion": "13",
+					"status":           "ready",
+					"lastPingAt":       "2021-09-23T14:05:00Z",
 				}))
 			})
 			It("should return with error if some error occur on getting rooms", func() {
@@ -1479,6 +1485,122 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(response["description"]).To(Equal("limit value should be greater than 0"))
 			})
+		})
+	})
+
+	Describe("GET /scheduler/{schedulerName}/rooms/{roomId}", func() {
+		schedulerName := "scheduler-name"
+		roomId := "test-ready-1"
+		It("should return room details with success", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+			mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+				Return(redis.NewStringStringMapResult(map[string]string{
+					"status":   "ready",
+					"lastPing": "1632405900",
+				}, nil))
+
+			mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
+				Return(redis.NewStringResult(`{"status":{"startTime": "2021-01-02T15:04:05Z"}, "version": "13"}`, nil))
+
+			url := fmt.Sprintf("/scheduler/%s/rooms/%s", schedulerName, roomId)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var roomsResponse map[string]interface{}
+			err = json.Unmarshal([]byte(recorder.Body.String()), &roomsResponse)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(roomsResponse).To(Equal(map[string]interface{}{
+				"roomId":           roomId,
+				"createdAt":        "2021-01-02T15:04:05Z",
+				"schedulerName":    schedulerName,
+				"schedulerVersion": "13",
+				"status":           "ready",
+				"lastPingAt":       "2021-09-23T14:05:00Z",
+			}))
+
+		})
+		It("should return with error if the room is not found", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+			mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+				Return(redis.NewStringStringMapResult(map[string]string{}, nil))
+
+			url := fmt.Sprintf("/scheduler/%s/rooms/%s", schedulerName, roomId)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusNotFound))
+
+			var response map[string]interface{}
+			err = json.Unmarshal([]byte(recorder.Body.String()), &response)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response["description"]).To(Equal("room not found"))
+		})
+		It("should return with error if the game room pod is not found", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+			mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+				Return(redis.NewStringStringMapResult(map[string]string{
+					"status":   "ready",
+					"lastPing": "1632405900",
+				}, nil))
+
+			mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
+				Return(redis.NewStringResult("", redis.Nil))
+
+			url := fmt.Sprintf("/scheduler/%s/rooms/%s", schedulerName, roomId)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusNotFound))
+		})
+		It("should return with error if some error occur on getting room", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+			mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+				Return(redis.NewStringStringMapResult(nil, errors.New("some error")))
+
+			url := fmt.Sprintf("/scheduler/%s/rooms/%s", schedulerName, roomId)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+
+			var response map[string]interface{}
+			err = json.Unmarshal([]byte(recorder.Body.String()), &response)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response["description"]).To(Equal("some error"))
+		})
+		It("should return with error if some error occur on getting pod", func() {
+			mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
+
+			mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-1").
+				Return(redis.NewStringStringMapResult(map[string]string{
+					"status":   "ready",
+					"lastPing": "1632405900",
+				}, nil))
+
+			mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
+				Return(redis.NewStringResult("", errors.New("some error")))
+
+			url := fmt.Sprintf("/scheduler/%s/rooms/%s", schedulerName, roomId)
+			request, err := http.NewRequest("GET", url, nil)
+			Expect(err).NotTo(HaveOccurred())
+			app.Router.ServeHTTP(recorder, request)
+
+			Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+
+			var response map[string]interface{}
+			err = json.Unmarshal([]byte(recorder.Body.String()), &response)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response["description"]).To(Equal("some error"))
 		})
 	})
 })

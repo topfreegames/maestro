@@ -538,7 +538,7 @@ var _ = Describe("Room", func() {
 	Describe("GetRoomsByStatus", func() {
 		Context("when limit is greater than the number of rooms", func() {
 			It("should return all rooms for offset equal 1", func() {
-				scheduler := "pong-free-for-all"
+				scheduler := "scheduler-name"
 
 				expectedRooms := []string{
 					"scheduler:scheduler-name:rooms:test-ready-1",
@@ -574,7 +574,7 @@ var _ = Describe("Room", func() {
 				Expect(len(rooms)).To(Equal(len(expectedRooms)))
 			})
 			It("should return an empty list for offset greater than 1", func() {
-				scheduler := "pong-free-for-all"
+				scheduler := "scheduler-name"
 
 				expectedRooms := []string{
 					"scheduler:scheduler-name:rooms:test-ready-1",
@@ -592,7 +592,7 @@ var _ = Describe("Room", func() {
 		})
 		Context("when limit is less than the number of rooms", func() {
 			It("should return paginated rooms for even number of rooms", func() {
-				scheduler := "pong-free-for-all"
+				scheduler := "scheduler-name"
 
 				expectedRooms := []string{
 					"scheduler:scheduler-name:rooms:test-ready-1",
@@ -619,7 +619,7 @@ var _ = Describe("Room", func() {
 			})
 
 			It("should return paginated rooms for odd number of rooms", func() {
-				scheduler := "pong-free-for-all"
+				scheduler := "scheduler-name"
 
 				expectedRooms := []string{
 					"scheduler:scheduler-name:rooms:test-ready-1",
@@ -651,7 +651,7 @@ var _ = Describe("Room", func() {
 				Expect(err.Error()).To(Equal("some error"))
 			})
 			It("should return an error if redis returns an error on HGetAll", func() {
-				scheduler := "pong-free-for-all"
+				scheduler := "scheduler-name"
 				expectedRooms := []string{
 					"scheduler:scheduler-name:rooms:test-ready-1",
 					"scheduler:scheduler-name:rooms:test-ready-2",
@@ -672,6 +672,53 @@ var _ = Describe("Room", func() {
 
 	})
 
+	Describe("GetRoomDetails", func() {
+		Context("when no error occurs", func() {
+			It("should return the room details", func() {
+				scheduler := "scheduler-name-1"
+				roomId := "room-id-1"
+
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name-1:rooms:room-id-1").
+					Return(redis.NewStringStringMapResult(map[string]string{
+						"status":   "ready",
+						"lastPing": "1632405900",
+					}, nil))
+
+				room, err := models.GetRoomDetails(mockRedisClient, scheduler, roomId, mmr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(room.Status).To(Equal("ready"))
+				Expect(room.LastPingAt).To(Equal(int64(1632405900)))
+				Expect(room.ID).To(Equal(roomId))
+				Expect(room.SchedulerName).To(Equal(scheduler))
+			})
+		})
+		Context("when redis returns with error", func() {
+			It("should return with error", func() {
+				scheduler := "scheduler-name-1"
+				roomId := "room-id-1"
+
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name-1:rooms:room-id-1").
+					Return(redis.NewStringStringMapResult(nil, errors.New("some error")))
+
+				_, err := models.GetRoomDetails(mockRedisClient, scheduler, roomId, mmr)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("some error"))
+			})
+		})
+		Context("when no room is found", func() {
+			It("should return with error", func() {
+				scheduler := "scheduler-name-1"
+				roomId := "room-id-1"
+
+				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name-1:rooms:room-id-1").
+					Return(redis.NewStringStringMapResult(map[string]string{}, nil))
+
+				_, err := models.GetRoomDetails(mockRedisClient, scheduler, roomId, mmr)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("room not found"))
+			})
+		})
+	})
 })
 
 var _ = Describe("GetRoomsMetadatas", func() {
