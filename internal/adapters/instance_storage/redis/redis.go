@@ -45,7 +45,7 @@ type redisInstanceStorage struct {
 func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string, instanceId string) (*game_room.Instance, error) {
 	var instance game_room.Instance
 	podMapRedisKey := getPodMapRedisKey(scheduler)
-	instanceJson, err := r.client.HGet(ctx, getPodMapRedisKey(scheduler), instanceId).Result()
+	instanceJson, err := r.client.HGet(ctx, podMapRedisKey, instanceId).Result()
 	if err == redis.Nil {
 		return nil, errors.NewErrNotFound("instance %s not found in scheduler %s", instanceId, scheduler)
 	}
