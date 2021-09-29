@@ -31,7 +31,9 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
+	kube "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -41,30 +43,85 @@ var (
 )
 
 type kubernetesWatcher struct {
+	mu sync.Mutex
+
+	clientset   kube.Interface
+	ctx         context.Context
 	resultsChan chan game_room.InstanceEvent
-	stopChan    chan struct{}
-	stopOnce    sync.Once
+	err         error
+
+	stopped  bool
+	stopChan chan struct{}
+	stopOnce sync.Once
 }
 
 func (kw *kubernetesWatcher) ResultChan() chan game_room.InstanceEvent {
+	kw.mu.Lock()
+	defer kw.mu.Unlock()
+
 	return kw.resultsChan
 }
 
 func (kw *kubernetesWatcher) Stop() {
-	kw.stopOnce.Do(func() {
-		close(kw.stopChan)
-	})
+	kw.mu.Lock()
+	defer kw.mu.Unlock()
+
+	kw.stopWithError(nil)
+}
+
+func (kw *kubernetesWatcher) Err() error {
+	kw.mu.Lock()
+	defer kw.mu.Unlock()
+
+	return kw.err
+}
+
+func (kw *kubernetesWatcher) stopWithError(err error) {
+	if kw.stopped {
+		return
+	}
+
+	kw.stopped = true
+	kw.err = err
+	close(kw.resultsChan)
+	close(kw.stopChan)
+}
+
+func (kw *kubernetesWatcher) convertInstance(pod *v1.Pod) (*game_room.Instance, error) {
+	if pod.Spec.NodeName == "" {
+		return convertPod(pod, nil)
+	}
+
+	node, err := kw.clientset.CoreV1().Nodes().Get(kw.ctx, pod.Spec.NodeName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return convertPod(pod, node)
 }
 
 func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType, obj interface{}) {
+	kw.mu.Lock()
+	defer kw.mu.Unlock()
+
+	if kw.stopped {
+		return
+	}
+
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		return
 	}
 
+	instance, err := kw.convertInstance(pod)
+	if err != nil {
+		kw.stopWithError(err)
+		return
+	}
+
 	kw.resultsChan <- game_room.InstanceEvent{
 		Type:     eventType,
-		Instance: convertPod(pod),
+		Instance: instance,
 	}
 }
 
@@ -82,6 +139,8 @@ func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
 
 func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
 	watcher := &kubernetesWatcher{
+		clientset:   k.clientset,
+		ctx:         ctx,
 		resultsChan: make(chan game_room.InstanceEvent, eventsChanSize),
 		stopChan:    make(chan struct{}),
 	}

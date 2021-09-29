@@ -29,10 +29,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
 func TestGameRoomsWatch(t *testing.T) {
@@ -63,10 +62,31 @@ func TestGameRoomsWatch(t *testing.T) {
 		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
 		require.NoError(t, err)
 
-		event := <-watcher.ResultChan()
-		require.Equal(t, game_room.InstanceEventTypeAdded, event.Type)
-		require.Equal(t, instance.ID, event.Instance.ID)
-		require.Equal(t, game_room.InstancePending, event.Instance.Status.Type)
+		require.Eventually(t, func() bool {
+			select {
+			case event := <-watcher.ResultChan():
+				require.Equal(t, game_room.InstanceEventTypeAdded, event.Type)
+				require.Equal(t, instance.ID, event.Instance.ID)
+				require.Equal(t, game_room.InstancePending, event.Instance.Status.Type)
+				return true
+			default:
+				return false
+			}
+
+		}, 5*time.Second, 100*time.Millisecond)
+
+		watcher.Stop()
+		require.NoError(t, watcher.Err())
+
+		// ensure the result chan is closed
+		require.Eventually(t, func() bool {
+			select {
+			case _, ok := <-watcher.ResultChan():
+				return !ok
+			default:
+				return false
+			}
+		}, time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("watch pod becoming ready", func(t *testing.T) {
@@ -84,6 +104,14 @@ func TestGameRoomsWatch(t *testing.T) {
 				{
 					Name:  "nginx",
 					Image: "nginx:stable-alpine",
+					Ports: []game_room.ContainerPort{
+						{
+							Name:     "test",
+							Protocol: "tcp",
+							Port:     80,
+							HostPort: 9999,
+						},
+					},
 				},
 			},
 		}
@@ -104,6 +132,19 @@ func TestGameRoomsWatch(t *testing.T) {
 
 			return false
 		}, time.Minute, time.Second)
+
+		watcher.Stop()
+		require.NoError(t, watcher.Err())
+
+		// ensure the result chan is closed
+		require.Eventually(t, func() bool {
+			select {
+			case _, ok := <-watcher.ResultChan():
+				return !ok
+			default:
+				return false
+			}
+		}, time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("watch pod with error", func(t *testing.T) {
@@ -142,6 +183,19 @@ func TestGameRoomsWatch(t *testing.T) {
 
 			return false
 		}, time.Minute, time.Second)
+
+		watcher.Stop()
+		require.NoError(t, watcher.Err())
+
+		// ensure the result chan is closed
+		require.Eventually(t, func() bool {
+			select {
+			case _, ok := <-watcher.ResultChan():
+				return !ok
+			default:
+				return false
+			}
+		}, time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("watch pod deletion", func(t *testing.T) {
@@ -181,5 +235,18 @@ func TestGameRoomsWatch(t *testing.T) {
 
 			return false
 		}, time.Minute, time.Second)
+
+		watcher.Stop()
+		require.NoError(t, watcher.Err())
+
+		// ensure the result chan is closed
+		require.Eventually(t, func() bool {
+			select {
+			case _, ok := <-watcher.ResultChan():
+				return !ok
+			default:
+				return false
+			}
+		}, time.Second, 100*time.Millisecond)
 	})
 }

@@ -602,7 +602,9 @@ func TestConvertPodStatus(t *testing.T) {
 func TestConvertPod(t *testing.T) {
 	cases := map[string]struct {
 		pod              *v1.Pod
+		node             *v1.Node
 		expectedInstance game_room.Instance
+		expectedError    bool
 	}{
 		"id": {
 			pod: &v1.Pod{
@@ -636,15 +638,230 @@ func TestConvertPod(t *testing.T) {
 				Version: "v1.1.0",
 			},
 		},
+		"pod address error": {
+			node: &v1.Node{},
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pod-id",
+				},
+			},
+			expectedError: true,
+		},
 	}
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			res := convertPod(test.pod)
+			res, err := convertPod(test.pod, test.node)
+			if test.expectedError {
+				require.Error(t, err)
+				return
+			}
+
 			require.NotNil(t, res)
 			require.Equal(t, test.expectedInstance.ID, res.ID)
 			require.Equal(t, test.expectedInstance.SchedulerID, res.SchedulerID)
 			require.Equal(t, test.expectedInstance.Version, res.Version)
+		})
+	}
+}
+
+func TestConvertNodeAddress(t *testing.T) {
+	cases := map[string]struct {
+		node            *v1.Node
+		expectedAddress string
+		expectedErr     bool
+	}{
+		"node nil": {
+			node:            nil,
+			expectedAddress: "",
+		},
+		"node with external ip": {
+			node:            &v1.Node{Status: v1.NodeStatus{Addresses: []v1.NodeAddress{{Address: "0.0.0.0", Type: v1.NodeExternalIP}}}},
+			expectedAddress: "0.0.0.0",
+		},
+		"node with internal and external ip": {
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Address: "1.1.1.1", Type: v1.NodeInternalIP},
+						{Address: "0.0.0.0", Type: v1.NodeExternalIP},
+					},
+				},
+			},
+			expectedAddress: "0.0.0.0",
+			expectedErr:     false,
+		},
+		"node with external DNS": {
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Address: "internal.maestro.com", Type: v1.NodeInternalDNS},
+						{Address: "external.maestro.com", Type: v1.NodeExternalDNS},
+					},
+				},
+			},
+			expectedAddress: "external.maestro.com",
+			expectedErr:     false,
+		},
+		"node with external IP and DNS": {
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Address: "0.0.0.0", Type: v1.NodeExternalIP},
+						{Address: "external.maestro.com", Type: v1.NodeExternalDNS},
+					},
+				},
+			},
+			expectedAddress: "external.maestro.com",
+			expectedErr:     false,
+		},
+		"node without external addresses": {
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Address: "0.0.0.0", Type: v1.NodeInternalIP},
+						{Address: "internal.maestro.com", Type: v1.NodeInternalDNS},
+					},
+				},
+			},
+			expectedAddress: "internal.maestro.com",
+		},
+		"node with malformed external IP address": {
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{
+						{Address: "abc", Type: v1.NodeExternalIP},
+					},
+				},
+			},
+			expectedErr: true,
+		},
+		"node without addresses": {
+			node: &v1.Node{
+				Status: v1.NodeStatus{
+					Addresses: []v1.NodeAddress{},
+				},
+			},
+			expectedErr: true,
+		},
+	}
+
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			addr, err := convertNodeAddress(test.node)
+			if test.expectedErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.Equal(t, test.expectedAddress, addr)
+		})
+	}
+}
+
+func TestConvertPodAddress(t *testing.T) {
+	cases := map[string]struct {
+		pod           *v1.Pod
+		expectedPorts []game_room.Port
+	}{
+		"single container": {
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Ports: []v1.ContainerPort{
+								{
+									Name:     "tcp",
+									HostPort: 8080,
+									Protocol: v1.ProtocolTCP,
+								},
+								{
+									Name:     "second-tcp",
+									HostPort: 8081,
+									Protocol: v1.ProtocolTCP,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedPorts: []game_room.Port{
+				{
+					Name:     "tcp",
+					Protocol: "TCP",
+					Port:     8080,
+				},
+				{
+					Name:     "second-tcp",
+					Protocol: "TCP",
+					Port:     8081,
+				},
+			},
+		},
+		"multiple containers": {
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Ports: []v1.ContainerPort{
+								{
+									Name:     "tcp",
+									HostPort: 8080,
+									Protocol: v1.ProtocolTCP,
+								},
+								{
+									Name:     "second-tcp",
+									HostPort: 8081,
+									Protocol: v1.ProtocolTCP,
+								},
+							},
+						},
+						{
+							Ports: []v1.ContainerPort{
+								{
+									Name:     "tcp",
+									HostPort: 8082,
+									Protocol: v1.ProtocolTCP,
+								},
+								{
+									Name:     "udp",
+									HostPort: 8083,
+									Protocol: v1.ProtocolUDP,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedPorts: []game_room.Port{
+				{
+					Name:     "tcp",
+					Protocol: "TCP",
+					Port:     8080,
+				},
+				{
+					Name:     "second-tcp",
+					Protocol: "TCP",
+					Port:     8081,
+				},
+				{
+					Name:     "tcp",
+					Protocol: "TCP",
+					Port:     8082,
+				},
+				{
+					Name:     "udp",
+					Protocol: "UDP",
+					Port:     8083,
+				},
+			},
+		},
+	}
+
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			ports := convertPodPorts(test.pod)
+			require.Equal(t, test.expectedPorts, ports)
 		})
 	}
 }

@@ -132,6 +132,20 @@ func (m *MockRuntimeWatcher) EXPECT() *MockRuntimeWatcherMockRecorder {
 	return m.recorder
 }
 
+// Err mocks base method.
+func (m *MockRuntimeWatcher) Err() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Err")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Err indicates an expected call of Err.
+func (mr *MockRuntimeWatcherMockRecorder) Err() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Err", reflect.TypeOf((*MockRuntimeWatcher)(nil).Err))
+}
+
 // ResultChan mocks base method.
 func (m *MockRuntimeWatcher) ResultChan() chan game_room.InstanceEvent {
 	m.ctrl.T.Helper()

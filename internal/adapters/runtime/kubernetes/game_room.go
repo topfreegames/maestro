@@ -46,7 +46,14 @@ func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, schedulerID str
 		return nil, errors.NewErrUnexpected("error create game room instance: %s", err)
 	}
 
-	return convertPod(pod), nil
+	// when pod is created, we cannot have its node, so we're "forcing" node to
+	// be nil here.
+	instance, err := convertPod(pod, nil)
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed to convert game room instance: %s", err)
+	}
+
+	return instance, nil
 }
 
 func (k *kubernetes) DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error {
