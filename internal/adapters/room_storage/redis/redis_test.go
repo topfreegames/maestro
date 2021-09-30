@@ -28,6 +28,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -54,12 +55,16 @@ func TestMain(m *testing.M) {
 }
 
 func assertRedisState(t *testing.T, client *redis.Client, room *game_room.GameRoom) {
-	metadataCmd := client.Get(context.Background(), getRoomRedisKey(room.SchedulerID, room.ID))
-	require.NoError(t, metadataCmd.Err())
+	roomHash := client.HGetAll(context.Background(), getRoomRedisKey(room.SchedulerID, room.ID))
+	require.NoError(t, roomHash.Err())
 
 	var actualMetadata map[string]interface{}
-	require.NoError(t, json.NewDecoder(strings.NewReader(metadataCmd.Val())).Decode(&actualMetadata))
+	require.NoError(t, json.NewDecoder(strings.NewReader(roomHash.Val()[metadataKey])).Decode(&actualMetadata))
 	require.Equal(t, room.Metadata, actualMetadata)
+
+	pingStatusInt, err := strconv.Atoi(roomHash.Val()[pingStatusKey])
+	require.NoError(t, err)
+	require.Equal(t, room.PingStatus, game_room.GameRoomPingStatus(pingStatusInt))
 
 	statusCmd := client.ZScore(context.Background(), getRoomStatusSetRedisKey(room.SchedulerID), room.ID)
 	require.NoError(t, statusCmd.Err())
@@ -185,15 +190,11 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		}
-		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
-		defer sub.Close()
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
 
-		room.Status = game_room.GameStatusOccupied
 		require.NoError(t, storage.UpdateRoom(ctx, room))
 		assertRedisState(t, client, room)
-		assertUpdateStatusEventPublished(t, sub, room)
 	})
 
 	t.Run("game room with metadata", func(t *testing.T) {
@@ -206,32 +207,11 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 				"region": "us",
 			},
 		}
-		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
-		defer sub.Close()
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
 
-		room.Status = game_room.GameStatusOccupied
 		require.NoError(t, storage.UpdateRoom(ctx, room))
 		assertRedisState(t, client, room)
-		assertUpdateStatusEventPublished(t, sub, room)
-	})
-
-	t.Run("error when updating non existent room", func(t *testing.T) {
-		room := &game_room.GameRoom{
-			ID:          "room-3",
-			SchedulerID: "game",
-			Status:      game_room.GameStatusOccupied,
-			LastPingAt:  lastPing,
-			Metadata: map[string]interface{}{
-				"region": "us",
-			},
-		}
-		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
-		defer sub.Close()
-
-		requireErrorKind(t, errors.ErrNotFound, storage.UpdateRoom(ctx, room))
-		assertUpdateStatusEventNotPublished(t, sub)
 	})
 }
 
@@ -512,29 +492,68 @@ func TestRedisStateStorage_WatchRoomStatus(t *testing.T) {
 		Status:      game_room.GameStatusReady,
 		LastPingAt:  lastPing,
 	}
-	updatedRoom := &game_room.GameRoom{
-		ID:          "room-1",
-		SchedulerID: "game",
-		Status:      game_room.GameStatusOccupied,
-		LastPingAt:  lastPing,
-	}
+	expectedStatus := game_room.GameStatusOccupied
 
 	watcher, err := storage.WatchRoomStatus(ctx, room)
 	defer watcher.Stop()
 	require.NoError(t, err)
 
 	require.NoError(t, storage.CreateRoom(ctx, room))
-	require.NoError(t, storage.UpdateRoom(ctx, updatedRoom))
+	require.NoError(t, storage.UpdateRoomStatus(ctx, room.SchedulerID, room.ID, expectedStatus))
 
 	require.Eventually(t, func() bool {
 		select {
 		case event := <-watcher.ResultChan():
 			require.Equal(t, room.ID, event.RoomID)
-			require.Equal(t, game_room.GameStatusOccupied, event.Status)
+			require.Equal(t, expectedStatus, event.Status)
 			return true
 		default:
 		}
 
 		return false
 	}, time.Second, 100*time.Millisecond)
+}
+
+func TestRedisStateStorage_UpdateRoomStatus(t *testing.T) {
+	ctx := context.Background()
+	client := test.GetRedisConnection(t, redisAddress)
+	storage := NewRedisStateStorage(client)
+
+	t.Run("game room updates room status", func(t *testing.T) {
+		room := &game_room.GameRoom{
+			ID:          "room-1",
+			SchedulerID: "game",
+			Status:      game_room.GameStatusReady,
+			LastPingAt:  lastPing,
+		}
+
+		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
+		defer sub.Close()
+
+		require.NoError(t, storage.CreateRoom(ctx, room))
+		room.Status = game_room.GameStatusOccupied
+		require.NoError(t, storage.UpdateRoomStatus(ctx, room.SchedulerID, room.ID, room.Status))
+		assertRedisState(t, client, room)
+		assertUpdateStatusEventPublished(t, sub, room)
+	})
+
+	t.Run("game room doesn't update room status when room doesn't exists", func(t *testing.T) {
+		room := &game_room.GameRoom{
+			ID:          "room-not-found",
+			SchedulerID: "game",
+			Status:      game_room.GameStatusReady,
+			LastPingAt:  lastPing,
+		}
+
+		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
+		defer sub.Close()
+
+		require.Error(t, storage.UpdateRoomStatus(ctx, room.SchedulerID, room.ID, room.Status))
+
+		select {
+		case <-sub.Channel():
+			require.Fail(t, "received an update")
+		case <-time.After(time.Second):
+		}
+	})
 }

@@ -41,43 +41,46 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func TestRoomManager_ValidateRoomStatusTransition_SuccessTransitions(t *testing.T) {
+func TestComposeRoomStatus(t *testing.T) {
+	// validate that all the combinations have a final state
+	possiblePingStatus := []game_room.GameRoomPingStatus{
+		game_room.GameRoomPingStatusUnknown,
+		game_room.GameRoomPingStatusReady,
+		game_room.GameRoomPingStatusOccupied,
+		game_room.GameRoomPingStatusTerminating,
+		game_room.GameRoomPingStatusTerminated,
+	}
+
+	possibleInstanceStatusType := []game_room.InstanceStatusType{
+		game_room.InstanceUnknown,
+		game_room.InstancePending,
+		game_room.InstanceReady,
+		game_room.InstanceTerminating,
+		game_room.InstanceError,
+	}
+
+	// roomComposedStatus
+	for _, pingStatus := range possiblePingStatus {
+		for _, instanceStatusType := range possibleInstanceStatusType {
+			_, err := roomComposedStatus(pingStatus, instanceStatusType)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func TestValidateRoomStatusTransition_SuccessTransitions(t *testing.T) {
 	for fromStatus, transitions := range validStatusTransitions {
 		for transition := range transitions {
 			t.Run(fmt.Sprintf("transition from %s to %s", fromStatus.String(), transition.String()), func(t *testing.T) {
-				mockCtrl := gomock.NewController(t)
-				defer mockCtrl.Finish()
-
-				roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
-				roomManager := NewRoomManager(
-					clockmock.NewFakeClock(time.Now()),
-					pamock.NewMockPortAllocator(mockCtrl),
-					roomStorage,
-					ismock.NewMockGameRoomInstanceStorage(mockCtrl),
-					runtimemock.NewMockRuntime(mockCtrl),
-					RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000},
-				)
-				err := roomManager.validateRoomStatusTransition(fromStatus, transition)
+				err := validateRoomStatusTransition(fromStatus, transition)
 				require.NoError(t, err)
 			})
 		}
 	}
 }
 
-func TestRoomManager_ValidateRoomStatusTransition_InvalidTransition(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	roomManager := NewRoomManager(
-		clockmock.NewFakeClock(time.Now()),
-		pamock.NewMockPortAllocator(mockCtrl),
-		rsmock.NewMockRoomStorage(mockCtrl),
-		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
-		runtimemock.NewMockRuntime(mockCtrl),
-		RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000},
-	)
-
-	err := roomManager.validateRoomStatusTransition(game_room.GameStatusTerminating, game_room.GameStatusReady)
+func TestValidateRoomStatusTransition_InvalidTransition(t *testing.T) {
+	err := validateRoomStatusTransition(game_room.GameStatusTerminating, game_room.GameStatusReady)
 	require.Error(t, err)
 }
 

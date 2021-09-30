@@ -85,7 +85,6 @@ func TestExecute(t *testing.T) {
 
 		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[0].ID).Return(gameRoomInstance, nil)
 		runtimeMock.EXPECT().DeleteGameRoomInstance(ctx, gameRoomInstance).Return(nil)
-		roomStorageMock.EXPECT().UpdateRoom(ctx, availableRooms[0]).Return(nil)
 
 		err := executor.Execute(ctx, operation, definition)
 		require.NoError(t, err)
@@ -110,7 +109,6 @@ func TestExecute(t *testing.T) {
 		// first one is successfull
 		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[0].ID).Return(gameRoomInstance, nil)
 		runtimeMock.EXPECT().DeleteGameRoomInstance(ctx, gameRoomInstance).Return(nil)
-		roomStorageMock.EXPECT().UpdateRoom(ctx, availableRooms[0]).Return(nil)
 
 		// second one fails on runtime
 		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[1].ID).Return(gameRoomInstance, nil)

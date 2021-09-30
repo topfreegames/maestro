@@ -101,6 +101,7 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 	return room, instance, err
 }
 
+// TODO(gabrielcorado): should we "force" the room status to be "Terminating"?
 func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	instance, err := m.instanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
@@ -114,36 +115,20 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 		return fmt.Errorf("failed to delete instance on the runtime: %w", err)
 	}
 
-	err = m.validateRoomStatusTransition(gameRoom.Status, game_room.GameStatusTerminating)
-	if err != nil {
-		return fmt.Errorf("failed when validating game room status transition: %w", err)
-	}
-	gameRoom.Status = game_room.GameStatusTerminating
-
-	err = m.roomStorage.UpdateRoom(ctx, gameRoom)
-	if err != nil {
-		return fmt.Errorf("failed when updating game room in storage: %w", err)
-	}
-
 	return nil
 }
 
 func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
-	currentGameRoom, err := m.roomStorage.GetRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
-	if err != nil {
-		return err
-	}
-
-	err = m.validateRoomStatusTransition(currentGameRoom.Status, gameRoom.Status)
-	if err != nil {
-		return fmt.Errorf("failed when validating game room status transition: %w", err)
-	}
-
 	gameRoom.LastPingAt = m.clock.Now()
 
-	err = m.roomStorage.UpdateRoom(ctx, gameRoom)
+	err := m.roomStorage.UpdateRoom(ctx, gameRoom)
 	if err != nil {
 		return fmt.Errorf("failed when updating game room in storage with incoming ping data: %w", err)
+	}
+
+	err = m.updateGameRoomStatus(ctx, gameRoom.SchedulerID, gameRoom.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update game room status: %w", err)
 	}
 
 	return nil
@@ -154,6 +139,11 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 	err := m.instanceStorage.UpsertInstance(ctx, gameRoomInstance)
 	if err != nil {
 		return fmt.Errorf("failed when updating the game room instance on storage: %w", err)
+	}
+
+	err = m.updateGameRoomStatus(ctx, gameRoomInstance.SchedulerID, gameRoomInstance.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update game room status: %w", err)
 	}
 
 	return nil

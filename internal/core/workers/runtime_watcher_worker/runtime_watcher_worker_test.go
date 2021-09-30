@@ -87,7 +87,7 @@ func TestProcessRuntimeEvents(t *testing.T) {
 	})
 
 	t.Run("updates instance on added event", func(t *testing.T) {
-		mockCtrl, instanceStorage, _, runtime, workerOptions := workerOptions(t)
+		mockCtrl, instanceStorage, roomStorage, runtime, workerOptions := workerOptions(t)
 		defer mockCtrl.Finish()
 
 		scheduler := &entities.Scheduler{Name: "test"}
@@ -101,13 +101,17 @@ func TestProcessRuntimeEvents(t *testing.T) {
 		runtimeWatcher.EXPECT().Stop()
 
 		// instance updates
-		newInstance := &game_room.Instance{}
+		newInstance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+		gameRoom := &game_room.GameRoom{Status: game_room.GameStatusPending, PingStatus: game_room.GameRoomPingStatusReady}
 
 		updateCalled := false
 		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), newInstance).DoAndReturn(func(_ context.Context, _ *game_room.Instance) error {
 			updateCalled = true
 			return nil
 		})
+		roomStorage.EXPECT().GetRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil)
+		instanceStorage.EXPECT().GetInstance(gomock.Any(), gomock.Any(), gomock.Any()).Return(newInstance, nil)
+		roomStorage.EXPECT().UpdateRoomStatus(gomock.Any(), gomock.Any(), gomock.Any(), game_room.GameStatusReady).Return(nil)
 
 		watcherDone := make(chan error)
 		go func() {

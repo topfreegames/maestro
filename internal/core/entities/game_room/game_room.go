@@ -27,20 +27,24 @@ import (
 	"time"
 )
 
+// GameRoomStatus defines which state the room is. This state is composed
+// of the Ping status and Runtime status.
 type GameRoomStatus int
 
 const (
-	// room instance is still not running
+	// GameStatusPending room is being initialized, and it is not ready yet to
+	// receive matches.
 	GameStatusPending GameRoomStatus = iota
-	// room instance is running but not sending pings
+	// GameStatusUnready room is running, but it is not Ready yet.
 	GameStatusUnready
-	// room instance is running and sending ping with ready status
+	// GameStatusReady room is running and ready to receive matches.
 	GameStatusReady
-	// room instance is running and sending ping with occupied status
+	// GameStatusOccupied room is running, but not available for allocation.
 	GameStatusOccupied
-	// room instance is terminating
+	// GameStatusTerminating room is running, but it is in the termination
+	// process.
 	GameStatusTerminating
-	// room instance has errors (e.g. CrashLoopBackoff in kubernetes)
+	// GameStatusError room has errors (e.g. CrashLoopBackoff in kubernetes)
 	GameStatusError
 )
 
@@ -63,29 +67,60 @@ func (status GameRoomStatus) String() string {
 	}
 }
 
-func FromStringToGameRoomStatus(value string) (GameRoomStatus, error) {
+// GameRoomPingStatus room status informed through ping.
+type GameRoomPingStatus int
+
+const (
+	// GameStatusPingUnknown room hasn't sent a ping yet.
+	GameRoomPingStatusUnknown GameRoomPingStatus = iota
+	// GameStatusReady room is empty and ready to receive matches
+	GameRoomPingStatusReady
+	// GameStatusOccupied room has matches running inside of it.
+	GameRoomPingStatusOccupied
+	// GameStatusTerminating room is in the process of terminating itself.
+	GameRoomPingStatusTerminating
+	// GameStatusTerminating room has terminated.
+	GameRoomPingStatusTerminated
+)
+
+func (status GameRoomPingStatus) String() string {
+	switch status {
+	case GameRoomPingStatusUnknown:
+		return "unknown"
+	case GameRoomPingStatusReady:
+		return "ready"
+	case GameRoomPingStatusOccupied:
+		return "occupied"
+	case GameRoomPingStatusTerminating:
+		return "terminating"
+	case GameRoomPingStatusTerminated:
+		return "terminated"
+	default:
+		panic(fmt.Sprintf("invalid value for GameRoomPingStatus: %d", int(status)))
+	}
+}
+
+func FromStringToGameRoomPingStatus(value string) (GameRoomPingStatus, error) {
 	switch value {
-	case "pending":
-		return GameStatusPending, nil
-	case "unready":
-		return GameStatusUnready, nil
 	case "ready":
-		return GameStatusReady, nil
+		return GameRoomPingStatusReady, nil
 	case "occupied":
-		return GameStatusOccupied, nil
+		return GameRoomPingStatusOccupied, nil
 	case "terminating":
-		return GameStatusTerminating, nil
-	case "error":
-		return GameStatusError, nil
+		return GameRoomPingStatusTerminating, nil
+	case "terminated":
+		return GameRoomPingStatusTerminated, nil
 	default:
 	}
-	return GameStatusPending, fmt.Errorf("cannot convert string %s to a valid GameRoomStatus representation", value)
+
+	return GameRoomPingStatusUnknown, fmt.Errorf("cannot convert string %s to a valid GameRoomStatus representation", value)
 }
 
 type GameRoom struct {
 	ID          string
 	SchedulerID string
 	Status      GameRoomStatus
+	PingStatus  GameRoomPingStatus
 	Metadata    map[string]interface{}
 	LastPingAt  time.Time
 }

@@ -59,13 +59,16 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
+
+		// TODO(gabrielcorado): should we fail when the status transition fails?
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+
 	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 
 func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*game_room.GameRoom, error) {
-	status, err := game_room.FromStringToGameRoomStatus(request.GetStatus())
+	status, err := game_room.FromStringToGameRoomPingStatus(request.GetStatus())
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +76,7 @@ func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomW
 	return &game_room.GameRoom{
 		ID:          request.GetRoomName(),
 		SchedulerID: request.GetSchedulerName(),
-		Status:      status,
+		PingStatus:  status,
 		Metadata:    request.Metadata.AsMap(),
 		LastPingAt:  time.Unix(request.GetTimestamp(), 0),
 	}, nil

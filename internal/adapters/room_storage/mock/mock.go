@@ -154,6 +154,20 @@ func (mr *MockRoomStorageMockRecorder) UpdateRoom(ctx, room interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRoom", reflect.TypeOf((*MockRoomStorage)(nil).UpdateRoom), ctx, room)
 }
 
+// UpdateRoomStatus mocks base method.
+func (m *MockRoomStorage) UpdateRoomStatus(ctx context.Context, scheduler, roomId string, status game_room.GameRoomStatus) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateRoomStatus", ctx, scheduler, roomId, status)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateRoomStatus indicates an expected call of UpdateRoomStatus.
+func (mr *MockRoomStorageMockRecorder) UpdateRoomStatus(ctx, scheduler, roomId, status interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRoomStatus", reflect.TypeOf((*MockRoomStorage)(nil).UpdateRoomStatus), ctx, scheduler, roomId, status)
+}
+
 // WatchRoomStatus mocks base method.
 func (m *MockRoomStorage) WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (ports.RoomStorageStatusWatcher, error) {
 	m.ctrl.T.Helper()

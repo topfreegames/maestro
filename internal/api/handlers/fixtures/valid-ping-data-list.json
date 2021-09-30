@@ -1,17 +1,6 @@
 [
   {
     "metadata": {
-      "list-test": [
-        "test",
-        "test",
-        "test"
-      ]
-    },
-    "status": "unready",
-    "timestamp": 1629834996
-  },
-  {
-    "metadata": {
       "struct-test": {
         "field1": "field1",
         "field2": "field2",
@@ -41,7 +30,7 @@
       "null": null
 
     },
-    "status": "error",
+    "status": "terminated",
     "timestamp": 1629834996
   }
 ]
