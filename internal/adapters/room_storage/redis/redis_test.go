@@ -91,17 +91,6 @@ func assertUpdateStatusEventPublished(t *testing.T, sub *redis.PubSub, room *gam
 	}, time.Second, 100*time.Millisecond)
 }
 
-func assertUpdateStatusEventNotPublished(t *testing.T, sub *redis.PubSub) {
-	require.Eventually(t, func() bool {
-		select {
-		case <-sub.Channel():
-			return false
-		default:
-			return true
-		}
-	}, time.Second, 100*time.Millisecond)
-}
-
 func assertRedisStateNonExistent(t *testing.T, client *redis.Client, room *game_room.GameRoom) {
 	metadataCmd := client.Get(context.Background(), getRoomRedisKey(room.SchedulerID, room.ID))
 	require.Error(t, metadataCmd.Err())
