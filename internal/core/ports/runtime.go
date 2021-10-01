@@ -52,4 +52,7 @@ type RuntimeWatcher interface {
 	ResultChan() chan game_room.InstanceEvent
 	// Stop stops the watcher.
 	Stop()
+	// Err returns the error of the watcher. It is possible that the watcher
+	// doesn't have any error (returning nil).
+	Err() error
 }

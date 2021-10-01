@@ -23,7 +23,9 @@
 package kubernetes
 
 import (
+	"errors"
 	"fmt"
+	"net"
 	"strings"
 
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
@@ -280,13 +282,81 @@ func convertPodStatus(pod *v1.Pod) game_room.InstanceStatus {
 	return game_room.InstanceStatus{Type: game_room.InstanceUnknown}
 }
 
-func convertPod(pod *v1.Pod) *game_room.Instance {
+// TODO(gabrielcorado): currently we're supporting returning internal address,
+// we need to check if it is ok.
+func convertNodeAddress(node *v1.Node) (string, error) {
+	if node == nil {
+		return "", nil
+	}
+
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == v1.NodeExternalDNS {
+			return addr.Address, nil
+		}
+	}
+
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == v1.NodeExternalIP && net.ParseIP(addr.Address) != nil {
+			return addr.Address, nil
+		}
+	}
+
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == v1.NodeInternalDNS {
+			return addr.Address, nil
+		}
+	}
+
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == v1.NodeInternalIP && net.ParseIP(addr.Address) != nil {
+			return addr.Address, nil
+		}
+	}
+
+	return "", errors.New("game room node doesn't have public address")
+}
+
+func convertPodPorts(pod *v1.Pod) []game_room.Port {
+	ports := []game_room.Port{}
+
+	for _, container := range pod.Spec.Containers {
+		for _, port := range container.Ports {
+			if port.HostPort == 0 {
+				continue
+			}
+
+			ports = append(ports, game_room.Port{
+				Name:     port.Name,
+				Protocol: string(port.Protocol),
+				Port:     port.HostPort,
+			})
+		}
+	}
+
+	return ports
+}
+
+func convertPod(pod *v1.Pod, node *v1.Node) (*game_room.Instance, error) {
+	nodeAddress, err := convertNodeAddress(node)
+	if err != nil {
+		return nil, err
+	}
+
+	var address *game_room.Address
+	if nodeAddress != "" {
+		address = &game_room.Address{
+			Host:  nodeAddress,
+			Ports: convertPodPorts(pod),
+		}
+	}
+
 	return &game_room.Instance{
 		ID:          pod.ObjectMeta.Name,
 		SchedulerID: pod.ObjectMeta.Namespace,
 		Version:     pod.ObjectMeta.Labels[versionLabelKey],
 		Status:      convertPodStatus(pod),
-	}
+		Address:     address,
+	}, nil
 }
 
 func generateName(base string) string {
