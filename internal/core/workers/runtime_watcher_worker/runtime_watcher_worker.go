@@ -97,7 +97,7 @@ func (w *runtimeWatcherWorker) IsRunning() bool {
 
 func (w *runtimeWatcherWorker) processEvent(ctx context.Context, event game_room.InstanceEvent) error {
 	switch event.Type {
-	case game_room.InstanceEventTypeAdded:
+	case game_room.InstanceEventTypeAdded, game_room.InstanceEventTypeUpdated:
 		err := w.roomManager.UpdateRoomInstance(ctx, event.Instance)
 		if err != nil {
 			return fmt.Errorf("failed to update room instance %s: %w", event.Instance.ID, err)

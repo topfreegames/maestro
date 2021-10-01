@@ -22,6 +22,8 @@
 
 package game_room
 
+import "fmt"
+
 type InstanceEventType int
 
 const (
@@ -36,6 +38,19 @@ const (
 	// deleted from the runtime. Can happen only once per instance.
 	InstanceEventTypeDeleted
 )
+
+func (eventType InstanceEventType) String() string {
+	switch eventType {
+	case InstanceEventTypeAdded:
+		return "added"
+	case InstanceEventTypeUpdated:
+		return "updated"
+	case InstanceEventTypeDeleted:
+		return "deleted"
+	default:
+		panic(fmt.Sprintf("invalid value for InstanceEventType: %d", int(eventType)))
+	}
+}
 
 // InstanceEvent this struct repesents an event that happened on the
 // run time, check InstanceEventType to see which event is avaiable.
