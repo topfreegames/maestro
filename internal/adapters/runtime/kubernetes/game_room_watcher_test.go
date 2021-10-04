@@ -29,15 +29,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/test"
+
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
 func TestGameRoomsWatch(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	client := getKubernetesClientset(t)
+	client := test.GetKubernetesClientset(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("watch pod addition", func(t *testing.T) {

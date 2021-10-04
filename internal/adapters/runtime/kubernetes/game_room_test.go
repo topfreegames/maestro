@@ -33,13 +33,14 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestGameRoomCreation(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	client := getKubernetesClientset(t)
+	client := test.GetKubernetesClientset(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("successfully create a room", func(t *testing.T) {
@@ -92,7 +93,7 @@ func TestGameRoomCreation(t *testing.T) {
 func TestGameRoomDeletion(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	client := getKubernetesClientset(t)
+	client := test.GetKubernetesClientset(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("successfully delete a room", func(t *testing.T) {

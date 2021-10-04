@@ -31,13 +31,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/test"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestSchedulerCreation(t *testing.T) {
 	ctx := context.Background()
-	client := getKubernetesClientset(t)
+	client := test.GetKubernetesClientset(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("create single scheduler", func(t *testing.T) {
@@ -62,7 +63,7 @@ func TestSchedulerCreation(t *testing.T) {
 
 func TestSchedulerDeletion(t *testing.T) {
 	ctx := context.Background()
-	client := getKubernetesClientset(t)
+	client := test.GetKubernetesClientset(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("delete scheduler", func(t *testing.T) {

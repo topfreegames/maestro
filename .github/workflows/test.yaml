@@ -41,3 +41,27 @@ jobs:
         make run/integration-tests
     - name: Upload coverage to Codecov
       run: bash <(curl -s https://codecov.io/bash)
+  runtime-integration:
+    name: Runtime Integration tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        k3s-version: [v1.19.11, v1.20.7, v1.21.1]
+    env:
+      K3S_VERSION:  ${{ matrix.k3s-version }}
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: '1.16.3'
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Restore cache
+      uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+    - name: Run tests
+      run: |
+        make run/runtime-integration-tests

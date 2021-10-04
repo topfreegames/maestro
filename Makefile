@@ -34,6 +34,10 @@ run/unit-tests:
 run/integration-tests:
 	@go test -tags=integration -count=1 -timeout 20m -coverprofile=coverage.out -covermode=atomic ./...
 
+.PHONY: run/runtime-integration-tests
+run/runtime-integration-tests:
+	@go test -tags=integration -count=1 -timeout 20m ./internal/adapters/runtime/kubernetes/...
+
 .PHONY: license-check
 license-check:
 	@go run github.com/google/addlicense -skip yaml -skip yml -skip proto -check .
