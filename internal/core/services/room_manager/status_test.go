@@ -38,6 +38,7 @@ import (
 	rsmock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -165,4 +166,108 @@ func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 		require.Error(t, err)
 		return err != nil
 	}, 2*time.Second, time.Second)
+}
+
+func TestUpdateGameRoomStatus(t *testing.T) {
+	setup := func(mockCtrl *gomock.Controller) (*rsmock.MockRoomStorage, *ismock.MockGameRoomInstanceStorage, *RoomManager) {
+		roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
+		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+		roomManager := NewRoomManager(
+			clockmock.NewFakeClock(time.Now()),
+			pamock.NewMockPortAllocator(mockCtrl),
+			roomStorage,
+			instanceStorage,
+			runtimemock.NewMockRuntime(mockCtrl),
+			RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000},
+		)
+
+		return roomStorage, instanceStorage, roomManager
+	}
+
+	t.Run("when game room exists and changes states, it should return no error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		schedulerName := "schedulerName"
+		roomId := "room-id"
+		roomStorage, instanceStorage, roomManager := setup(mockCtrl)
+
+		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusPending}
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+
+		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+
+		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), schedulerName, roomId, game_room.GameStatusReady)
+
+		err := roomManager.updateGameRoomStatus(context.Background(), schedulerName, roomId)
+		require.NoError(t, err)
+	})
+
+	t.Run("when game room exists and there is not state transition, it should not update the room status and return no error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		schedulerName := "schedulerName"
+		roomId := "room-id"
+		roomStorage, instanceStorage, roomManager := setup(mockCtrl)
+
+		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusReady}
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+
+		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+
+		err := roomManager.updateGameRoomStatus(context.Background(), schedulerName, roomId)
+		require.NoError(t, err)
+	})
+
+	t.Run("when game room doens't exists, it should return error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		schedulerName := "schedulerName"
+		roomId := "room-id"
+		roomStorage, _, roomManager := setup(mockCtrl)
+
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(nil, porterrors.ErrNotFound)
+
+		err := roomManager.updateGameRoomStatus(context.Background(), schedulerName, roomId)
+		require.Error(t, err)
+	})
+
+	t.Run("when game room instance doens't exists, it should return error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		schedulerName := "schedulerName"
+		roomId := "room-id"
+		roomStorage, instanceStorage, roomManager := setup(mockCtrl)
+
+		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusPending}
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+
+		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(nil, porterrors.ErrNotFound)
+
+		err := roomManager.updateGameRoomStatus(context.Background(), schedulerName, roomId)
+		require.Error(t, err)
+	})
+
+	t.Run("when game room exists and state transition is invalid, it should return error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		schedulerName := "schedulerName"
+		roomId := "room-id"
+		roomStorage, instanceStorage, roomManager := setup(mockCtrl)
+
+		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusTerminating}
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+
+		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+
+		err := roomManager.updateGameRoomStatus(context.Background(), schedulerName, roomId)
+		require.Error(t, err)
+	})
 }
