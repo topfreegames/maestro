@@ -22,6 +22,8 @@
 
 package game_room
 
+import "fmt"
+
 // InstanceStatusType represents the status that a game room instance has.
 type InstanceStatusType int
 
@@ -38,6 +40,23 @@ const (
 	// Instance has some sort of error.
 	InstanceError
 )
+
+func (statusType InstanceStatusType) String() string {
+	switch statusType {
+	case InstanceUnknown:
+		return "unknown"
+	case InstancePending:
+		return "pending"
+	case InstanceReady:
+		return "ready"
+	case InstanceTerminating:
+		return "terminating"
+	case InstanceError:
+		return "error"
+	default:
+		panic(fmt.Sprintf("invalid value for InstanceStatusType : %d", int(statusType)))
+	}
+}
 
 type InstanceStatus struct {
 	Type InstanceStatusType `json:"type"`
