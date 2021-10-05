@@ -53,7 +53,7 @@ func workerOptions(t *testing.T) (*gomock.Controller, *instancemock.MockGameRoom
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	instanceStorage := instancemock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
-	config := room_manager.RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+	config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 	roomManager := room_manager.NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, config)
 
 	return mockCtrl, instanceStorage, roomStorage, runtime, &workers.WorkerOptions{

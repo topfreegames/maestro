@@ -184,6 +184,15 @@ func (r *redisStateStorage) GetAllRoomIDs(ctx context.Context, scheduler string)
 	return rooms, nil
 }
 
+func (r *redisStateStorage) GetRoomIDsByStatus(ctx context.Context, scheduler string, status game_room.GameRoomStatus) ([]string, error) {
+	statusIntStr := int64(status)
+	rooms, err := r.client.ZRange(ctx, getRoomStatusSetRedisKey(scheduler), statusIntStr, statusIntStr).Result()
+	if err != nil {
+		return nil, errors.NewErrUnexpected("error listing rooms on redis").WithError(err)
+	}
+	return rooms, nil
+}
+
 func (r *redisStateStorage) GetRoomIDsByLastPing(ctx context.Context, scheduler string, threshold time.Time) ([]string, error) {
 	rooms, err := r.client.ZRangeByScore(ctx, getRoomPingRedisKey(scheduler), &redis.ZRangeBy{
 		Min: "-inf",

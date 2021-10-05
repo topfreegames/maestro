@@ -30,8 +30,12 @@ import (
 )
 
 func NewRoomManagerConfig(c config.Config) (room_manager.RoomManagerConfig, error) {
+	pingTimeout := time.Duration(c.GetInt("services.roomManager.roomPingTimeoutMillis")) * time.Millisecond
 	initializationTimeout := time.Duration(c.GetInt("services.roomManager.roomInitializationTimeoutMillis")) * time.Millisecond
-	roomManagerConfig := room_manager.RoomManagerConfig{RoomInitializationTimeoutMillis: initializationTimeout}
+	roomManagerConfig := room_manager.RoomManagerConfig{
+		RoomPingTimeout:           pingTimeout,
+		RoomInitializationTimeout: initializationTimeout,
+	}
 
 	return roomManagerConfig, nil
 }

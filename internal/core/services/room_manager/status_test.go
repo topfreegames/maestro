@@ -97,7 +97,7 @@ func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
 		roomStorage,
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
-		RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000},
+		RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
 	)
 
 	transition := game_room.GameStatusReady
@@ -139,7 +139,7 @@ func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 		roomStorage,
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
-		RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000},
+		RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
 	)
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond))
@@ -178,7 +178,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 			roomStorage,
 			instanceStorage,
 			runtimemock.NewMockRuntime(mockCtrl),
-			RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000},
+			RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
 		)
 
 		return roomStorage, instanceStorage, roomManager

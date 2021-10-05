@@ -55,7 +55,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 	schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-	config := room_manager.RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+	config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 	roomStorageStatusWatcher := rs_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	definition := AddRoomsDefinition{Amount: 10}

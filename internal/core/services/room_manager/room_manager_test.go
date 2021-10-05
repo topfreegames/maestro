@@ -55,7 +55,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
-	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, config)
 	roomStorageStatusWatcher := rsmock.NewMockRoomStorageStatusWatcher(mockCtrl)
 
@@ -177,7 +177,7 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 
 	roomManager := NewRoomManager(
 		clockmock.NewFakeClock(time.Now()),
@@ -217,7 +217,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
-	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 	roomManager := NewRoomManager(
 		clock,
 		pamock.NewMockPortAllocator(mockCtrl),
@@ -278,66 +278,78 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
-	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
-	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	clock := clockmock.NewFakeClock(time.Now())
 	roomManager := NewRoomManager(
-		clock,
-		pamock.NewMockPortAllocator(mockCtrl),
+		nil,
+		nil,
 		roomStorage,
-		instanceStorage,
-		runtime,
-		RoomManagerConfig{},
+		nil,
+		nil,
+		RoomManagerConfig{RoomPingTimeout: time.Hour},
 	)
 
 	t.Run("when there are enough rooms it should return the specified number", func(t *testing.T) {
+		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		availableRooms := []*game_room.GameRoom{
-			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusError},
 			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
-			{ID: "third-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "third-room", SchedulerID: schedulerName, Status: game_room.GameStatusPending},
 			{ID: "forth-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "fifth-room", SchedulerID: schedulerName, Status: game_room.GameStatusOccupied},
 		}
 
-		roomStorage.EXPECT().GetAllRoomIDs(context.Background(), schedulerName).Return(
-			[]string{
-				availableRooms[0].ID,
-				availableRooms[1].ID,
-				availableRooms[2].ID,
-				availableRooms[3].ID,
-			},
-			nil,
-		)
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
+		roomStorage.EXPECT().
+			GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError).
+			Return([]string{availableRooms[0].ID}, nil)
 
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(context.Background(), schedulerName, 2)
+		roomStorage.EXPECT().
+			GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).
+			Return([]string{availableRooms[1].ID}, nil)
+
+		roomStorage.EXPECT().
+			GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusPending).
+			Return([]string{availableRooms[2].ID}, nil)
+
+		roomStorage.EXPECT().
+			GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusReady).
+			Return([]string{availableRooms[3].ID}, nil)
+
+		roomStorage.EXPECT().
+			GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusOccupied).
+			Return([]string{availableRooms[4].ID, availableRooms[1].ID}, nil)
+
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[2].ID).Return(availableRooms[2], nil)
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[3].ID).Return(availableRooms[3], nil)
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[4].ID).Return(availableRooms[4], nil)
+
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 5)
 		require.NoError(t, err)
-		require.Len(t, rooms, 2)
+		require.Len(t, rooms, 5)
 	})
 
 	t.Run("when error happens while fetch a room it returns error", func(t *testing.T) {
+		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		availableRooms := []*game_room.GameRoom{
 			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
 			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
 		}
 
-		roomStorage.EXPECT().GetAllRoomIDs(context.Background(), schedulerName).Return(
-			[]string{
-				availableRooms[0].ID,
-				availableRooms[1].ID,
-			},
-			nil,
-		)
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError).Return([]string{availableRooms[0].ID}, nil)
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[1].ID}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusPending).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusReady).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusOccupied).Return([]string{}, nil)
+
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
 
 		getRoomErr := errors.New("failed to get")
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, availableRooms[1].ID).Return(nil, getRoomErr)
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(nil, getRoomErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(context.Background(), schedulerName, 2)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomErr)
 	})
@@ -351,7 +363,7 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
-	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 	roomManager := NewRoomManager(
 		clock,
 		pamock.NewMockPortAllocator(mockCtrl),
@@ -389,7 +401,7 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
-	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
+	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 	roomManager := NewRoomManager(
 		clock,
 		pamock.NewMockPortAllocator(mockCtrl),
