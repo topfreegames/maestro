@@ -36,6 +36,7 @@ func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager,
 	if err != nil {
 		return nil, err
 	}
+
 	runtime, err := service.NewRuntimeKubernetes(c)
 	if err != nil {
 		return nil, err

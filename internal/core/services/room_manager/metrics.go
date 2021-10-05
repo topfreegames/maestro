@@ -20,46 +20,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//+build wireinject
-
-package main
+package room_manager
 
 import (
-	"context"
-
-	"github.com/google/wire"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/topfreegames/maestro/internal/api/handlers"
-	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-	"github.com/topfreegames/maestro/internal/service"
-	api "github.com/topfreegames/maestro/pkg/api/v1"
+	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
-func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.ServeMux, error) {
-	wire.Build(
-		// ports + adapters
-		service.NewClockTime,
-		service.NewPortAllocatorRandom,
-		service.NewRoomStorageRedis,
-		service.NewGameRoomInstanceStorageRedis,
-		service.NewRuntimeKubernetes,
-		service.NewRoomManagerConfig,
-		service.NewEventsForwarder,
+var (
+	failedPingForwardingMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemApi,
+		Name:      "failed_ping_forwarding",
+		Help:      "Current number of failed ping forwarding",
+		Labels: []string{
+			monitoring.LabelScheduler,
+		},
+	})
+)
 
-		// services
-		room_manager.NewRoomManager,
-
-		// api handlers
-		handlers.ProvideRoomsHandler,
-		provideRoomsMux,
-	)
-
-	return &runtime.ServeMux{}, nil
-}
-
-func provideRoomsMux(ctx context.Context, roomsHandler *handlers.RoomsHandler) *runtime.ServeMux {
-	mux := runtime.NewServeMux()
-	_ = api.RegisterRoomsServiceHandlerServer(ctx, mux, roomsHandler)
-	return mux
+func reportPingForwardingFailed(schedulerName string) {
+	failedPingForwardingMetric.WithLabelValues(schedulerName).Inc()
 }
