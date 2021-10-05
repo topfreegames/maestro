@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -138,8 +139,8 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
-
-	res, err := m.eventsForwarder.ForwardRoomEvent(ctx, gameRoom, "", "", gameRoom.Metadata)
+	gameRoomStatus := fmt.Sprintf("ping%s", strings.Title(gameRoom.Status.String()))
+	res, err := m.eventsForwarder.ForwardRoomEvent(ctx, gameRoom, gameRoomStatus, "", gameRoom.Metadata)
 	if err != nil || res.Code != 200 {
 		if err != nil {
 			m.logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))

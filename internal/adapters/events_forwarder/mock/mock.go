@@ -36,7 +36,7 @@ func (m *MockEventsForwarder) EXPECT() *MockEventsForwarderMockRecorder {
 	return m.recorder
 }
 
-// Forward mocks base method.
+// ForwardRoomEvent mocks base method.
 func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, status string, eventType string, metadata map[string]interface{}) (res *ports.Response, err error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForwardRoomEvent", ctx, room, status, eventType, metadata)
@@ -45,8 +45,8 @@ func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, room *game_r
 	return ret0, ret1
 }
 
-// Forward indicates an expected call of Forward.
-func (mr *MockEventsForwarderMockRecorder) Forward(ctx, room, status, eventType, metadata interface{}) *gomock.Call {
+// ForwardRoomEvent indicates an expected call of ForwardRoomEvent.
+func (mr *MockEventsForwarderMockRecorder) ForwardRoomEvent(ctx, room, status, eventType, metadata interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardRoomEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardRoomEvent), ctx, room, status, eventType, metadata)
 }
