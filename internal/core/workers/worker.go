@@ -62,6 +62,8 @@ func ProvideWorkerOptions(
 	return &WorkerOptions{
 		OperationManager:   operationManager,
 		OperationExecutors: operationExecutors,
+		RoomManager:        roomManager,
+		Runtime:            runtime,
 	}
 }
 
