@@ -36,5 +36,5 @@ func NewMatchmakerForwarder() *matchmakerForwarder {
 }
 
 func (matchmakerForwarder) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, status string, eventType string, metadata map[string]interface{}) (res *ports.Response, err error) {
-	panic("implement me")
+	return &ports.Response{Code: 200, Message: "OK"}, nil
 }
