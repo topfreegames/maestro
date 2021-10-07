@@ -171,7 +171,7 @@ func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId 
 }
 
 // ListRoomsWithDeletionPriority returns a specified number of rooms, following
-// the priority of it being deleted + the version informed, if no version has been passed,
+// the priority of it being deleted and filtering the ignored version,
 // the function will return rooms discarting such filter option.
 //
 // The priority is:
@@ -184,7 +184,7 @@ func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId 
 //
 // This function can return less rooms than the `amount` since it might not have
 // enough rooms on the scheduler.
-func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, version string, amount int) ([]*game_room.GameRoom, error) {
+func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int) ([]*game_room.GameRoom, error) {
 
 	var schedulerRoomsIDs []string
 	onErrorRoomIDs, err := m.roomStorage.GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError)
@@ -226,7 +226,7 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 			return nil, fmt.Errorf("failed to fetch room information: %w", err)
 		}
 
-		if version != "" && version != room.Version {
+		if ignoredVersion != "" && ignoredVersion == room.Version {
 			continue
 		}
 

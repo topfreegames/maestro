@@ -64,7 +64,6 @@ func TestRemoveRooms(t *testing.T) {
 			err = instanceStorage.UpsertInstance(context.Background(), &game_room.Instance{
 				ID:          createdGameRoomName,
 				SchedulerID: schedulerName,
-				Version:     "1.1",
 				Status: game_room.InstanceStatus{
 					Type:        2,
 					Description: "ready",
