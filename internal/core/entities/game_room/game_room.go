@@ -119,6 +119,7 @@ func FromStringToGameRoomPingStatus(value string) (GameRoomPingStatus, error) {
 type GameRoom struct {
 	ID          string
 	SchedulerID string
+	Version     string
 	Status      GameRoomStatus
 	PingStatus  GameRoomPingStatus
 	Metadata    map[string]interface{}

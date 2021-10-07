@@ -45,6 +45,7 @@ const (
 	// Room hash keys.
 	metadataKey   = "metadata"
 	pingStatusKey = "ping_status"
+	versionKey    = "version"
 )
 
 type redisStateStorage struct {
@@ -88,6 +89,7 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 	}
 
 	room.PingStatus = game_room.GameRoomPingStatus(pingStatusInt)
+	room.Version = roomHashCmd.Val()[versionKey]
 	return room, nil
 }
 
@@ -99,6 +101,7 @@ func (r *redisStateStorage) CreateRoom(ctx context.Context, room *game_room.Game
 
 	p := r.client.TxPipeline()
 	p.HSet(ctx, getRoomRedisKey(room.SchedulerID, room.ID), map[string]interface{}{
+		versionKey:    room.Version,
 		metadataKey:   metadataJson,
 		pingStatusKey: strconv.Itoa(int(room.PingStatus)),
 	})
