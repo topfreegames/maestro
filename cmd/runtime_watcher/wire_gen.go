@@ -36,8 +36,11 @@ func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager,
 	if err != nil {
 		return nil, err
 	}
-
 	runtime, err := service.NewRuntimeKubernetes(c)
+	if err != nil {
+		return nil, err
+	}
+	eventsForwarder, err := service.NewEventsForwarder(c)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +48,7 @@ func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager,
 	if err != nil {
 		return nil, err
 	}
-	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, roomManagerConfig)
+	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, eventsForwarder, roomManagerConfig)
 	workerOptions := &workers.WorkerOptions{
 		RoomManager: roomManager,
 		Runtime:     runtime,
@@ -62,4 +65,4 @@ func provideRuntimeWatcherBuilder() workers.WorkerBuilder {
 
 var WorkerOptionsSet = wire.NewSet(service.NewRuntimeKubernetes, RoomManagerSet, wire.Struct(new(workers.WorkerOptions), "RoomManager", "Runtime"))
 
-var RoomManagerSet = wire.NewSet(service.NewSchedulerStoragePg, service.NewClockTime, service.NewPortAllocatorRandom, service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewRoomManagerConfig, room_manager.NewRoomManager)
+var RoomManagerSet = wire.NewSet(service.NewSchedulerStoragePg, service.NewClockTime, service.NewPortAllocatorRandom, service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewRoomManagerConfig, service.NewEventsForwarder, room_manager.NewRoomManager)
