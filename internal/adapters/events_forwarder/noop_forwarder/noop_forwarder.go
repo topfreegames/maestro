@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package matchmaker_forwarder
+package noop_forwarder
 
 import (
 	"context"
@@ -29,12 +29,12 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 )
 
-type matchmakerForwarder struct{}
+type noopForwarder struct{}
 
-func NewMatchmakerForwarder() *matchmakerForwarder {
-	return &matchmakerForwarder{}
+func NewNoopForwarder() *noopForwarder {
+	return &noopForwarder{}
 }
 
-func (matchmakerForwarder) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, status string, eventType string, metadata map[string]interface{}) (res *ports.Response, err error) {
-	return &ports.Response{Code: 200, Message: "OK"}, nil
+func (noopForwarder) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, status string, eventType string, metadata map[string]interface{}) (res *ports.EventsForwarderResponse, err error) {
+	return &ports.EventsForwarderResponse{Code: 200, Message: "OK"}, nil
 }

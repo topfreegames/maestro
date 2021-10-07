@@ -245,7 +245,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
-		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), newGameRoom, "pingReady", "", newGameRoom.Metadata).Return(&ports.Response{Code: 200, Message: "OK"}, nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), newGameRoom, "pingReady", "", newGameRoom.Metadata).Return(&ports.EventsForwarderResponse{Code: 200, Message: "OK"}, nil)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 		require.NoError(t, err)
@@ -301,7 +301,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
-		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), newGameRoom, "pingReady", "", newGameRoom.Metadata).Return(&ports.Response{Code: 400, Message: "ERROR"}, nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), newGameRoom, "pingReady", "", newGameRoom.Metadata).Return(&ports.EventsForwarderResponse{Code: 400, Message: "ERROR"}, nil)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 		require.NoError(t, err)

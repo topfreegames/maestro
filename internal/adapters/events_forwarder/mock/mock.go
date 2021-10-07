@@ -37,10 +37,10 @@ func (m *MockEventsForwarder) EXPECT() *MockEventsForwarderMockRecorder {
 }
 
 // ForwardRoomEvent mocks base method.
-func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, status string, eventType string, metadata map[string]interface{}) (res *ports.Response, err error) {
+func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, status string, eventType string, metadata map[string]interface{}) (res *ports.EventsForwarderResponse, err error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForwardRoomEvent", ctx, room, status, eventType, metadata)
-	ret0, _ := ret[0].(*ports.Response)
+	ret0, _ := ret[0].(*ports.EventsForwarderResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

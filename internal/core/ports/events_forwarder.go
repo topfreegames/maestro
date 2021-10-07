@@ -29,11 +29,11 @@ import (
 )
 
 type EventsForwarder interface {
-	ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, status string, eventType string, metadata map[string]interface{}) (res *Response, err error)
+	ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, status string, eventType string, metadata map[string]interface{}) (res *EventsForwarderResponse, err error)
 }
 
-// Response is the struct that defines a forwarder response
-type Response struct {
+// EventsForwarderResponse is the struct that defines a forwarder response
+type EventsForwarderResponse struct {
 	Code    int
 	Message string
 }

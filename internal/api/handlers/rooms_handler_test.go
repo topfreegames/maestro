@@ -99,7 +99,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 				return updatedGameRoom, nil
 			})
 			roomStorageMock.EXPECT().UpdateRoomStatus(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-			eventsForwarder.EXPECT().ForwardRoomEvent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&ports.Response{
+			eventsForwarder.EXPECT().ForwardRoomEvent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&ports.EventsForwarderResponse{
 				Code:    200,
 				Message: "OK",
 			}, nil)
