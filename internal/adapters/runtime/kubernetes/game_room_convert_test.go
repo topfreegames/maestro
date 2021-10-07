@@ -626,18 +626,6 @@ func TestConvertPod(t *testing.T) {
 				SchedulerID: "some-scheduler",
 			},
 		},
-		"version": {
-			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						versionLabelKey: "v1.1.0",
-					},
-				},
-			},
-			expectedInstance: game_room.Instance{
-				Version: "v1.1.0",
-			},
-		},
 		"pod address error": {
 			node: &v1.Node{},
 			pod: &v1.Pod{
@@ -660,7 +648,6 @@ func TestConvertPod(t *testing.T) {
 			require.NotNil(t, res)
 			require.Equal(t, test.expectedInstance.ID, res.ID)
 			require.Equal(t, test.expectedInstance.SchedulerID, res.SchedulerID)
-			require.Equal(t, test.expectedInstance.Version, res.Version)
 		})
 	}
 }

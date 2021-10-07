@@ -91,7 +91,6 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	gameRoomInstance := game_room.Instance{
 		ID:          "game-1",
 		SchedulerID: "game",
-		Version:     "1",
 	}
 
 	t.Run("when room creation is successful then it returns the game room and instance", func(t *testing.T) {

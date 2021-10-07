@@ -77,6 +77,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	scheduler := entities.Scheduler{
 		Name: "zooba_blue:1.0.0",
 		Spec: game_room.Spec{
+			Version:    "1.0.0",
 			Containers: []game_room.Container{container1, container2},
 		},
 		PortRange: nil,
@@ -85,6 +86,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	gameRoom := game_room.GameRoom{
 		ID:          "game-1",
 		SchedulerID: "zooba_blue:1.0.0",
+		Version:     "1.0.0",
 		Status:      game_room.GameStatusPending,
 		LastPingAt:  clockMock.Now(),
 	}
@@ -92,7 +94,6 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	gameRoomInstance := game_room.Instance{
 		ID:          "game-1",
 		SchedulerID: "game",
-		Version:     "1",
 	}
 
 	operation := operation.Operation{
@@ -111,6 +112,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 			Return([]int32{5000, 6000}, nil).
 			Times(10)
 		runtimeMock.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
+			Version:    "1.0.0",
 			Containers: []game_room.Container{container1, container2},
 		}).
 			Return(&gameRoomInstance, nil).
@@ -140,11 +142,13 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 			Times(10)
 
 		runtimeMock.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
+			Version:    "1.0.0",
 			Containers: []game_room.Container{container1, container2},
 		}).
 			Return(&gameRoomInstance, nil).
 			Times(5)
 		runtimeMock.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
+			Version:    "1.0.0",
 			Containers: []game_room.Container{container1, container2},
 		}).
 			Return(nil, errors.NewErrUnexpected("error create game room instance")).

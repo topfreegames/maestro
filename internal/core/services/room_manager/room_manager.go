@@ -77,6 +77,7 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 	room := &game_room.GameRoom{
 		ID:          instance.ID,
 		SchedulerID: scheduler.Name,
+		Version:     scheduler.Spec.Version,
 		Status:      game_room.GameStatusPending,
 		LastPingAt:  m.clock.Now(),
 	}

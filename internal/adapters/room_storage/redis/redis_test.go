@@ -61,6 +61,7 @@ func assertRedisState(t *testing.T, client *redis.Client, room *game_room.GameRo
 	var actualMetadata map[string]interface{}
 	require.NoError(t, json.NewDecoder(strings.NewReader(roomHash.Val()[metadataKey])).Decode(&actualMetadata))
 	require.Equal(t, room.Metadata, actualMetadata)
+	require.Equal(t, room.Version, roomHash.Val()[versionKey])
 
 	pingStatusInt, err := strconv.Atoi(roomHash.Val()[pingStatusKey])
 	require.NoError(t, err)
@@ -116,6 +117,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 		room := &game_room.GameRoom{
 			ID:          "room-1",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		}
@@ -127,6 +129,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 		room := &game_room.GameRoom{
 			ID:          "room-2",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 			Metadata: map[string]interface{}{
@@ -142,6 +145,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 		firstRoom := &game_room.GameRoom{
 			ID:          "room-3",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 			Metadata: map[string]interface{}{
@@ -155,6 +159,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 		secondRoom := &game_room.GameRoom{
 			ID:          "room-3",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusOccupied,
 			LastPingAt:  lastPing,
 			Metadata: map[string]interface{}{
@@ -176,6 +181,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 		room := &game_room.GameRoom{
 			ID:          "room-1",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		}
@@ -190,6 +196,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 		room := &game_room.GameRoom{
 			ID:          "room-2",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 			Metadata: map[string]interface{}{
@@ -213,6 +220,7 @@ func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 		room := &game_room.GameRoom{
 			ID:          "room-1",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		}
@@ -236,6 +244,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 		expectedRoom := &game_room.GameRoom{
 			ID:          "room-1",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		}
@@ -251,6 +260,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 		expectedRoom := &game_room.GameRoom{
 			ID:          "room-2",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 			Metadata: map[string]interface{}{
@@ -280,30 +290,35 @@ func TestRedisStateStorage_GetAllRoomIDs(t *testing.T) {
 		{
 			ID:          "room-1",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		},
 		{
 			ID:          "room-2",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusOccupied,
 			LastPingAt:  lastPing,
 		},
 		{
 			ID:          "room-3",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		},
 		{
 			ID:          "room-4",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusPending,
 			LastPingAt:  lastPing,
 		},
 		{
 			ID:          "room-5",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusTerminating,
 			LastPingAt:  lastPing,
 		},
@@ -327,30 +342,35 @@ func TestRedisStateStorage_GetRoomIDsByLastPing(t *testing.T) {
 		{
 			ID:          "room-1",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  time.Unix(1, 0),
 		},
 		{
 			ID:          "room-2",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusOccupied,
 			LastPingAt:  time.Unix(2, 0),
 		},
 		{
 			ID:          "room-3",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  time.Unix(3, 0),
 		},
 		{
 			ID:          "room-4",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusPending,
 			LastPingAt:  time.Unix(4, 0),
 		},
 		{
 			ID:          "room-5",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusTerminating,
 			LastPingAt:  time.Unix(5, 0),
 		},
@@ -374,30 +394,35 @@ func TestRedisStateStorage_GetRoomCount(t *testing.T) {
 		{
 			ID:          "room-1",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  time.Unix(1, 0),
 		},
 		{
 			ID:          "room-2",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusOccupied,
 			LastPingAt:  time.Unix(2, 0),
 		},
 		{
 			ID:          "room-3",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  time.Unix(3, 0),
 		},
 		{
 			ID:          "room-4",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusPending,
 			LastPingAt:  time.Unix(4, 0),
 		},
 		{
 			ID:          "room-5",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusTerminating,
 			LastPingAt:  time.Unix(5, 0),
 		},
@@ -421,30 +446,35 @@ func TestRedisStateStorage_GetRoomCountByStatus(t *testing.T) {
 		{
 			ID:          "room-1",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  time.Unix(1, 0),
 		},
 		{
 			ID:          "room-2",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusOccupied,
 			LastPingAt:  time.Unix(2, 0),
 		},
 		{
 			ID:          "room-3",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  time.Unix(3, 0),
 		},
 		{
 			ID:          "room-4",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusPending,
 			LastPingAt:  time.Unix(4, 0),
 		},
 		{
 			ID:          "room-5",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusTerminating,
 			LastPingAt:  time.Unix(5, 0),
 		},
@@ -478,6 +508,7 @@ func TestRedisStateStorage_WatchRoomStatus(t *testing.T) {
 	room := &game_room.GameRoom{
 		ID:          "room-1",
 		SchedulerID: "game",
+		Version:     "1.0",
 		Status:      game_room.GameStatusReady,
 		LastPingAt:  lastPing,
 	}
@@ -500,7 +531,7 @@ func TestRedisStateStorage_WatchRoomStatus(t *testing.T) {
 		}
 
 		return false
-	}, time.Second, 100*time.Millisecond)
+	}, 5*time.Second, 100*time.Millisecond)
 }
 
 func TestRedisStateStorage_UpdateRoomStatus(t *testing.T) {
@@ -512,6 +543,7 @@ func TestRedisStateStorage_UpdateRoomStatus(t *testing.T) {
 		room := &game_room.GameRoom{
 			ID:          "room-1",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		}
@@ -530,6 +562,7 @@ func TestRedisStateStorage_UpdateRoomStatus(t *testing.T) {
 		room := &game_room.GameRoom{
 			ID:          "room-not-found",
 			SchedulerID: "game",
+			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
 		}
