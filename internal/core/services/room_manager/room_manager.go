@@ -171,10 +171,20 @@ func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId 
 }
 
 // ListRoomsWithDeletionPriority returns a specified number of rooms, following
-// the priority of it being deleted (which will be introduced later). This
-// function can return less rooms than the `amount` since it might not have
+// the priority of it being deleted + the version informed, if no version has been passed,
+// the function will return rooms discarting such filter option. 
+// 
+// The priority is:
+// 
+// - On error rooms;
+// - No ping received for x time rooms;
+// - Pending rooms;
+// - Ready rooms;
+// - Occupied rooms;
+//
+// This function can return less rooms than the `amount` since it might not have
 // enough rooms on the scheduler.
-func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName string, amount int) ([]*game_room.GameRoom, error) {
+func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, version string, amount int) ([]*game_room.GameRoom, error) {
 
 	var schedulerRoomsIDs []string
 	onErrorRoomIDs, err := m.roomStorage.GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError)
@@ -213,9 +223,11 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 	for _, roomID := range schedulerRoomsIDs {
 		room, err := m.roomStorage.GetRoom(ctx, schedulerName, roomID)
 		if err != nil {
-			// TODO(gabrielcorado): should we fail the entire process because of
-			// a room missing?
-			return nil, fmt.Errorf("failed to fetch room information %s: %w", roomID, err)
+			return nil, fmt.Errorf("failed to fetch room information: %w", err)
+		}
+
+		if version != "" && version != room.Version {
+			continue
 		}
 
 		result = append(result, room)

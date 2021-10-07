@@ -42,7 +42,7 @@ func NewExecutor(roomManager *room_manager.RoomManager) *RemoveRoomsExecutor {
 
 func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	removeDefiniton := definition.(*RemoveRoomsDefinition)
-	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, op.SchedulerName, removeDefiniton.Amount)
+	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, op.SchedulerName, removeDefiniton.Version, removeDefiniton.Amount)
 	if err != nil {
 		return fmt.Errorf("failed to list rooms to delete: %w", err)
 	}
