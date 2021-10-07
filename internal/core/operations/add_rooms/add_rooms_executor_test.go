@@ -92,7 +92,6 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	gameRoomInstance := game_room.Instance{
 		ID:          "game-1",
 		SchedulerID: "game",
-		Version:     "1",
 	}
 
 	operation := operation.Operation{

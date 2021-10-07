@@ -64,7 +64,6 @@ func TestRedisInstanceStorage_UpsertInstance(t *testing.T) {
 	instance := &game_room.Instance{
 		ID:          "1",
 		SchedulerID: "game",
-		Version:     "1",
 		Status: game_room.InstanceStatus{
 			Type: game_room.InstancePending,
 		},
@@ -95,7 +94,6 @@ func TestRedisInstanceStorage_GetInstance(t *testing.T) {
 		instance := &game_room.Instance{
 			ID:          "1",
 			SchedulerID: "game",
-			Version:     "1",
 			Status: game_room.InstanceStatus{
 				Type: game_room.InstanceReady,
 			},
@@ -130,7 +128,6 @@ func TestRedisInstanceStorage_RemoveInstance(t *testing.T) {
 		instance := &game_room.Instance{
 			ID:          "1",
 			SchedulerID: "game",
-			Version:     "1",
 			Status: game_room.InstanceStatus{
 				Type: game_room.InstanceReady,
 			},
@@ -162,7 +159,6 @@ func TestRedisInstanceStorage_GetAllInstances(t *testing.T) {
 		{
 			ID:          "1",
 			SchedulerID: "game",
-			Version:     "1",
 			Status: game_room.InstanceStatus{
 				Type: game_room.InstanceReady,
 			},
@@ -180,7 +176,6 @@ func TestRedisInstanceStorage_GetAllInstances(t *testing.T) {
 		{
 			ID:          "2",
 			SchedulerID: "game",
-			Version:     "1",
 			Status: game_room.InstanceStatus{
 				Type:        game_room.InstanceError,
 				Description: "error",
@@ -212,7 +207,6 @@ func TestRedisInstanceStorage_GetInstanceCount(t *testing.T) {
 		{
 			ID:          "1",
 			SchedulerID: "game",
-			Version:     "1",
 			Status: game_room.InstanceStatus{
 				Type: game_room.InstanceReady,
 			},
@@ -230,7 +224,6 @@ func TestRedisInstanceStorage_GetInstanceCount(t *testing.T) {
 		{
 			ID:          "2",
 			SchedulerID: "game",
-			Version:     "1",
 			Status: game_room.InstanceStatus{
 				Type:        game_room.InstanceError,
 				Description: "error",
