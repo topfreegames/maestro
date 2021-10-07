@@ -27,8 +27,6 @@ package main
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/operations/providers"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
@@ -40,31 +38,30 @@ func provideRuntimeWatcherBuilder() workers.WorkerBuilder {
 	return runtime_watcher_worker.NewRuntimeWatcherWorker
 }
 
+var WorkerOptionsSet = wire.NewSet(
+	service.NewRuntimeKubernetes,
+	RoomManagerSet,
+	wire.Struct(new(workers.WorkerOptions), "RoomManager", "Runtime"))
+
+var RoomManagerSet = wire.NewSet(
+	service.NewSchedulerStoragePg,
+	service.NewClockTime,
+	service.NewPortAllocatorRandom,
+	service.NewRoomStorageRedis,
+	service.NewGameRoomInstanceStorageRedis,
+	service.NewRoomManagerConfig,
+	room_manager.NewRoomManager,
+)
+
 func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager, error) {
 	wire.Build(
-		// ports + adapters
-		service.NewRuntimeKubernetes,
-		service.NewSchedulerStoragePg,
-		service.NewOperationFlowRedis,
-		service.NewClockTime,
-		service.NewOperationStorageRedis,
-		service.NewPortAllocatorRandom,
-		service.NewRoomStorageRedis,
-		service.NewGameRoomInstanceStorageRedis,
-		service.NewRoomManagerConfig,
-
-		// scheduler operations
-		providers.ProvideDefinitionConstructors,
-		providers.ProvideExecutors,
-
-		// services
-		room_manager.NewRoomManager,
-		operation_manager.New,
-		workers.ProvideWorkerOptions,
-		workers_manager.NewWorkersManager,
+		// workers options
+		WorkerOptionsSet,
 
 		// watcher builder
 		provideRuntimeWatcherBuilder,
+
+		workers_manager.NewWorkersManager,
 	)
 
 	return &workers_manager.WorkersManager{}, nil

@@ -52,6 +52,21 @@ services:
       postgres:
         condition: service_healthy
 
+  runtime-watcher:
+    build:
+      context: ../../..
+      dockerfile: ./docker/runtime-watcher/Dockerfile
+      args:
+        MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
+        MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
+        MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
+    ports:
+      - "9099:8083"
+    volumes:
+      - ../../../kubeconfig:/kubeconfig
+
   k3s_server:
     image: "rancher/k3s:v1.19.11-k3s1"
     command: server --bind-address k3s_server

@@ -38,4 +38,4 @@ COPY ./config /app/config
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "/app/management-api"]
+CMD ["/app/management-api"]
