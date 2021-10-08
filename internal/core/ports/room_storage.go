@@ -43,6 +43,8 @@ type RoomStorage interface {
 	DeleteRoom(ctx context.Context, scheduler string, roomID string) error
 	// GetAllRoomIDs gets all room ids in a scheduler
 	GetAllRoomIDs(ctx context.Context, scheduler string) ([]string, error)
+	// GetRoomIDsByStatus gets all room ids in a scheduler by a specific status
+	GetRoomIDsByStatus(ctx context.Context, scheduler string, status game_room.GameRoomStatus) ([]string, error)
 	// GetRoomIDsByLastPing gets all room ids in a scheduler where ping is less than threshold
 	GetRoomIDsByLastPing(ctx context.Context, scheduler string, threshold time.Time) ([]string, error)
 	// GetRoomCount gets the total count of rooms in a scheduler

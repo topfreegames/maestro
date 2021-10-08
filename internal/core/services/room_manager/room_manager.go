@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -89,7 +90,7 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 
 	// TODO: let each scheduler parametrize its timeout and use this config as fallback if the scheduler timeout value
 	// is absent.
-	duration := m.config.RoomInitializationTimeoutMillis
+	duration := m.config.RoomInitializationTimeout
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
 
 	err = m.WaitRoomStatus(timeoutContext, room, game_room.GameStatusReady)
@@ -170,24 +171,63 @@ func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId 
 }
 
 // ListRoomsWithDeletionPriority returns a specified number of rooms, following
-// the priority of it being deleted (which will be introduced later). This
-// function can return less rooms than the `amount` since it might not have
+// the priority of it being deleted and filtering the ignored version,
+// the function will return rooms discarting such filter option.
+//
+// The priority is:
+//
+// - On error rooms;
+// - No ping received for x time rooms;
+// - Pending rooms;
+// - Ready rooms;
+// - Occupied rooms;
+//
+// This function can return less rooms than the `amount` since it might not have
 // enough rooms on the scheduler.
-func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName string, amount int) ([]*game_room.GameRoom, error) {
-	// TODO(gabrielcorado): implement the priority. for now, we're listing all
-	// rooms and taking the necessary "amount".
-	schedulerRoomsIDs, err := m.roomStorage.GetAllRoomIDs(ctx, schedulerName)
+func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int) ([]*game_room.GameRoom, error) {
+
+	var schedulerRoomsIDs []string
+	onErrorRoomIDs, err := m.roomStorage.GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list scheduler rooms: %w", err)
+		return nil, fmt.Errorf("failed to list scheduler rooms on error: %w", err)
 	}
+
+	oldLastPingRoomIDs, err := m.roomStorage.GetRoomIDsByLastPing(ctx, schedulerName, time.Now().Add(m.config.RoomPingTimeout*-1))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduler rooms with old last ping datetime: %w", err)
+	}
+
+	pendingRoomIDs, err := m.roomStorage.GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusPending)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduler rooms on pending status: %w", err)
+	}
+
+	readyRoomIDs, err := m.roomStorage.GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusReady)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduler rooms on ready status: %w", err)
+	}
+
+	occupiedRoomIDs, err := m.roomStorage.GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusOccupied)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduler rooms on occupied status: %w", err)
+	}
+
+	schedulerRoomsIDs = append(schedulerRoomsIDs, onErrorRoomIDs...)
+	schedulerRoomsIDs = append(schedulerRoomsIDs, oldLastPingRoomIDs...)
+	schedulerRoomsIDs = append(schedulerRoomsIDs, pendingRoomIDs...)
+	schedulerRoomsIDs = append(schedulerRoomsIDs, readyRoomIDs...)
+	schedulerRoomsIDs = append(schedulerRoomsIDs, occupiedRoomIDs...)
+	schedulerRoomsIDs = removeDuplicateValues(schedulerRoomsIDs)
 
 	var result []*game_room.GameRoom
 	for _, roomID := range schedulerRoomsIDs {
 		room, err := m.roomStorage.GetRoom(ctx, schedulerName, roomID)
 		if err != nil {
-			// TODO(gabrielcorado): should we fail the entire process because of
-			// a room missing?
-			return nil, fmt.Errorf("failed to fetch room information %s: %w", roomID, err)
+			return nil, fmt.Errorf("failed to fetch room information: %w", err)
+		}
+
+		if ignoredVersion != "" && ignoredVersion == room.Version {
+			continue
 		}
 
 		result = append(result, room)
@@ -197,4 +237,20 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 	}
 
 	return result, nil
+}
+
+func removeDuplicateValues(slice []string) []string {
+
+	check := make(map[string]int)
+	res := make([]string, 0)
+	for _, val := range slice {
+		if check[val] == 1 {
+			continue
+		}
+
+		check[val] = 1
+		res = append(res, val)
+	}
+
+	return res
 }

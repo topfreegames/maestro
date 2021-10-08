@@ -579,3 +579,67 @@ func TestRedisStateStorage_UpdateRoomStatus(t *testing.T) {
 		}
 	})
 }
+
+func TestRedisStateStorage_GetRoomIDsByStatus(t *testing.T) {
+	ctx := context.Background()
+	client := test.GetRedisConnection(t, redisAddress)
+	storage := NewRedisStateStorage(client)
+
+	rooms := []*game_room.GameRoom{
+		{
+			ID:          "room-1",
+			SchedulerID: "game",
+			Version:     "1.0",
+			Status:      game_room.GameStatusReady,
+			LastPingAt:  lastPing,
+		},
+		{
+			ID:          "room-2",
+			SchedulerID: "game",
+			Version:     "1.0",
+			Status:      game_room.GameStatusOccupied,
+			LastPingAt:  lastPing,
+		},
+		{
+			ID:          "room-3",
+			SchedulerID: "game",
+			Version:     "1.0",
+			Status:      game_room.GameStatusReady,
+			LastPingAt:  lastPing,
+		},
+		{
+			ID:          "room-4",
+			SchedulerID: "game",
+			Version:     "1.0",
+			Status:      game_room.GameStatusPending,
+			LastPingAt:  lastPing,
+		},
+		{
+			ID:          "room-5",
+			SchedulerID: "game",
+			Version:     "1.0",
+			Status:      game_room.GameStatusTerminating,
+			LastPingAt:  lastPing,
+		},
+	}
+
+	for _, room := range rooms {
+		require.NoError(t, storage.CreateRoom(ctx, room))
+	}
+
+	readyRooms, err := storage.GetRoomIDsByStatus(ctx, "game", game_room.GameStatusReady)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"room-1", "room-3"}, readyRooms)
+
+	occupiedRooms, err := storage.GetRoomIDsByStatus(ctx, "game", game_room.GameStatusOccupied)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"room-2"}, occupiedRooms)
+
+	pendingRooms, err := storage.GetRoomIDsByStatus(ctx, "game", game_room.GameStatusPending)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"room-4"}, pendingRooms)
+
+	terminatingRooms, err := storage.GetRoomIDsByStatus(ctx, "game", game_room.GameStatusTerminating)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"room-5"}, terminatingRooms)
+}
