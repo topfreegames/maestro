@@ -47,6 +47,7 @@ func TestCreateScheduler(t *testing.T) {
 			Game:                   "test",
 			Version:                "v1.1",
 			TerminationGracePeriod: 15,
+			MaxSurge:               "10%",
 			Containers: []*maestrov1.Container{
 				{
 					Name:            "example",

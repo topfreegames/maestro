@@ -119,9 +119,10 @@ func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.Remove
 
 func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {
 	return &entities.Scheduler{
-		Name:  request.GetName(),
-		Game:  request.GetGame(),
-		State: entities.StateCreating,
+		Name:     request.GetName(),
+		Game:     request.GetGame(),
+		State:    entities.StateCreating,
+		MaxSurge: request.GetMaxSurge(),
 		PortRange: &entities.PortRange{
 			Start: request.GetPortRange().GetStart(),
 			End:   request.GetPortRange().GetEnd(),
@@ -144,6 +145,7 @@ func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Sched
 		Version:   entity.Spec.Version,
 		PortRange: getPortRange(entity.PortRange),
 		CreatedAt: timestamppb.New(entity.CreatedAt),
+		MaxSurge:  entity.MaxSurge,
 	}
 }
 

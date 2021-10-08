@@ -50,4 +50,5 @@ type Scheduler struct {
 	Spec            game_room.Spec
 	PortRange       *PortRange
 	CreatedAt       time.Time
+	MaxSurge        string `validate:"min=1"`
 }

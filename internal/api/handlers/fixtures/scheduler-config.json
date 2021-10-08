@@ -2,6 +2,7 @@
   "name": "scheduler-name-1",
   "game": "game-name",
   "version": "v1.0.0",
+  "maxSurge": "10%",
   "terminationGracePeriod": 100,
   "portRange": {
     "start": 1,

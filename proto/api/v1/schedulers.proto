@@ -75,6 +75,8 @@ message CreateSchedulerRequest {
   string toleration = 7;
   // Runtime game room affinity configuration.
   string affinity = 8;
+  // The max surge of new rooms, used to scale and update
+  string max_surge = 9;
 }
 
 // Container is the struct that defines a game room container configuration.

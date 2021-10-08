@@ -54,6 +54,7 @@ type schedulerInfo struct {
 	Affinity               string
 	Containers             []game_room.Container
 	PortRange              *entities.PortRange
+	MaxSurge               string
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -63,6 +64,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		Affinity:               scheduler.Spec.Affinity,
 		Containers:             scheduler.Spec.Containers,
 		PortRange:              scheduler.PortRange,
+		MaxSurge:               scheduler.MaxSurge,
 	}
 	yamlBytes, _ := yaml.Marshal(info)
 	return &Scheduler{
@@ -95,5 +97,6 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		PortRange:       info.PortRange,
 		RollbackVersion: s.RollbackVersion,
 		CreatedAt:       s.CreatedAt.Time,
+		MaxSurge:        info.MaxSurge,
 	}, nil
 }

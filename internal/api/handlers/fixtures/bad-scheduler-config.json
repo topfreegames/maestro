@@ -2,6 +2,7 @@
   "name": "",
   "game": "",
   "version": "",
+  "maxSurge": "",
   "terminationGracePeriod": null,
   "containers": [{
     "name": "",

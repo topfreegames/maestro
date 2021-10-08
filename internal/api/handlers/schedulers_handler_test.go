@@ -64,6 +64,7 @@ func TestGetAllSchedulers(t *testing.T) {
 				Name:            "zooba-us",
 				Game:            "zooba",
 				State:           entities.StateInSync,
+				MaxSurge:        "10%",
 				RollbackVersion: "1.0.0",
 				CreatedAt:       time.Now(),
 				PortRange: &entities.PortRange{
@@ -170,9 +171,10 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		scheduler := &entities.Scheduler{
-			Name:  "scheduler-name-1",
-			Game:  "game-name",
-			State: entities.StateCreating,
+			Name:     "scheduler-name-1",
+			Game:     "game-name",
+			State:    entities.StateCreating,
+			MaxSurge: "10%",
 			Spec: game_room.Spec{
 				Version:                "v1.0.0",
 				TerminationGracePeriod: 100 * time.Nanosecond,
@@ -242,6 +244,7 @@ func TestCreateScheduler(t *testing.T) {
 		require.NotNil(t, schedulerContent["portRange"])
 		require.Equal(t, "creating", schedulerContent["state"])
 		require.Equal(t, "v1.0.0", schedulerContent["version"])
+		require.Equal(t, "10%", schedulerContent["maxSurge"])
 		require.NotNil(t, schedulerContent["createdAt"])
 	})
 
@@ -283,6 +286,7 @@ func TestCreateScheduler(t *testing.T) {
 		require.Contains(t, schedulerMessage, "Spec.Containers[0].Requests.CPU: less than min")
 		require.Contains(t, schedulerMessage, "Spec.Containers[0].Name: less than min")
 		require.Contains(t, schedulerMessage, "Spec.Version: less than min")
+		require.Contains(t, schedulerMessage, "MaxSurge: less than min")
 		require.Contains(t, schedulerMessage, "Spec.Containers[0].Image: less than min")
 	})
 

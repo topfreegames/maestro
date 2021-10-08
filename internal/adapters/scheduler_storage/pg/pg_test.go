@@ -182,6 +182,7 @@ func TestSchedulerStorage_GetScheduler(t *testing.T) {
 			Name:            "scheduler",
 			Game:            "game",
 			State:           entities.StateCreating,
+			MaxSurge:        "10%",
 			RollbackVersion: "",
 			Spec: game_room.Spec{
 				Version:                "v1",
@@ -218,6 +219,7 @@ func TestSchedulerStorage_GetScheduler(t *testing.T) {
 			Name:            "scheduler",
 			Game:            "game",
 			State:           entities.StateCreating,
+			MaxSurge:        "10%",
 			RollbackVersion: "",
 			Spec: game_room.Spec{
 				Version:                "v1",
@@ -251,6 +253,7 @@ func TestSchedulerStorage_CreateScheduler(t *testing.T) {
 			Name:            "scheduler",
 			Game:            "game",
 			State:           entities.StateCreating,
+			MaxSurge:        "10%",
 			RollbackVersion: "",
 			Spec: game_room.Spec{
 				Version:                "v1",
@@ -280,6 +283,7 @@ func TestSchedulerStorage_CreateScheduler(t *testing.T) {
 			Name:            "scheduler",
 			Game:            "game",
 			State:           entities.StateCreating,
+			MaxSurge:        "10%",
 			RollbackVersion: "",
 			Spec: game_room.Spec{
 				Version:                "v1",
@@ -309,6 +313,7 @@ func TestSchedulerStorage_UpdateScheduler(t *testing.T) {
 			Name:            "scheduler",
 			Game:            "game",
 			State:           entities.StateCreating,
+			MaxSurge:        "10%",
 			RollbackVersion: "",
 			Spec: game_room.Spec{
 				Version:                "v1",
@@ -345,6 +350,7 @@ func TestSchedulerStorage_UpdateScheduler(t *testing.T) {
 			Name:            "scheduler",
 			Game:            "game",
 			State:           entities.StateCreating,
+			MaxSurge:        "10%",
 			RollbackVersion: "",
 			Spec: game_room.Spec{
 				Version:                "v1",
@@ -373,6 +379,7 @@ func TestSchedulerStorage_DeleteScheduler(t *testing.T) {
 			Name:            "scheduler",
 			Game:            "game",
 			State:           entities.StateCreating,
+			MaxSurge:        "10%",
 			RollbackVersion: "",
 			Spec: game_room.Spec{
 				Version:                "v1",
@@ -403,6 +410,7 @@ func TestSchedulerStorage_DeleteScheduler(t *testing.T) {
 			Name:            "scheduler",
 			Game:            "game",
 			State:           entities.StateCreating,
+			MaxSurge:        "10%",
 			RollbackVersion: "",
 			Spec: game_room.Spec{
 				Version:                "v1",
@@ -430,6 +438,7 @@ func TestSchedulerStorage_GetSchedulers(t *testing.T) {
 		Name:            "scheduler-1",
 		Game:            "game",
 		State:           entities.StateCreating,
+		MaxSurge:        "10%",
 		RollbackVersion: "",
 		Spec: game_room.Spec{
 			Version:                "v1",
@@ -447,6 +456,7 @@ func TestSchedulerStorage_GetSchedulers(t *testing.T) {
 		Name:            "scheduler-2",
 		Game:            "game",
 		State:           entities.StateCreating,
+		MaxSurge:        "10%",
 		RollbackVersion: "",
 		Spec: game_room.Spec{
 			Version:                "v1",
@@ -485,6 +495,7 @@ func TestSchedulerStorage_GetAllSchedulers(t *testing.T) {
 		Name:            "scheduler-1",
 		Game:            "game",
 		State:           entities.StateCreating,
+		MaxSurge:        "10%",
 		RollbackVersion: "",
 		Spec: game_room.Spec{
 			Version:                "v1",
@@ -502,6 +513,7 @@ func TestSchedulerStorage_GetAllSchedulers(t *testing.T) {
 		Name:            "scheduler-2",
 		Game:            "game",
 		State:           entities.StateCreating,
+		MaxSurge:        "10%",
 		RollbackVersion: "",
 		Spec: game_room.Spec{
 			Version:                "v1",
