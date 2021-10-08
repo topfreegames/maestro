@@ -33,6 +33,8 @@ message Scheduler {
   PortRange port_range = 5;
   // Time the scheduler was created.
   google.protobuf.Timestamp created_at = 6;
+  // Max surge of rooms 
+  string max_surge = 7;
 }
 
 // The operation object representation

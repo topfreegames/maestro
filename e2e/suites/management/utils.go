@@ -47,6 +47,7 @@ func createSchedulerAndWaitForIt(
 		Name:                   schedulerName,
 		Game:                   "test",
 		Version:                "v1.1",
+		MaxSurge:               "10%",
 		TerminationGracePeriod: 15,
 		Containers: []*maestroApiV1.Container{
 			{

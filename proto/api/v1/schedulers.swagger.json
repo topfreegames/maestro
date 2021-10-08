@@ -345,6 +345,10 @@
         "affinity": {
           "type": "string",
           "description": "Runtime game room affinity configuration."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "The max surge of new rooms, used to scale and update"
         }
       },
       "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -425,6 +429,10 @@
           "type": "string",
           "format": "date-time",
           "description": "Time the scheduler was created."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "Max surge of rooms"
         }
       },
       "description": "Scheduler definition."
