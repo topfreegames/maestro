@@ -41,4 +41,4 @@ COPY ./config /app/config
 
 EXPOSE 8090
 
-CMD ["sh", "-c", "/app/rooms-api"]
+CMD ["/app/rooms-api"]

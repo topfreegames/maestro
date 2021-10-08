@@ -29,11 +29,12 @@ import (
 )
 
 type MaestroInstance struct {
-	path                string
-	Deps                *dependencies
-	WorkerServer        *components.WorkerServer
-	ManagementApiServer *components.ManagementApiServer
-	RoomsApiServer      *components.RoomsApiServer
+	path                 string
+	Deps                 *dependencies
+	WorkerServer         *components.WorkerServer
+	ManagementApiServer  *components.ManagementApiServer
+	RoomsApiServer       *components.RoomsApiServer
+	RuntimeWatcherServer *components.RuntimeWatcherServer
 }
 
 func ProvideMaestro() (*MaestroInstance, error) {
@@ -64,18 +65,26 @@ func ProvideMaestro() (*MaestroInstance, error) {
 		return nil, fmt.Errorf("failed to start rooms api: %s", err)
 	}
 
+	runtimeWatcherInstance, err := components.ProvideRuntimeWatcher(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start runtime watcher: %s", err)
+	}
+
 	return &MaestroInstance{
 		"",
 		dependencies,
 		workerInstance,
 		managementApiInstance,
 		roomsApiInstance,
+		runtimeWatcherInstance,
 	}, nil
 }
 
 func (mi *MaestroInstance) Teardown() {
 	mi.ManagementApiServer.Teardown()
 	mi.WorkerServer.Teardown()
+	mi.RoomsApiServer.Teardown()
+	mi.RuntimeWatcherServer.Teardown()
 
 	// TODO(gabrielcorado): add a flag to not stop depedencies during
 	// development (this will make the e2e run way faster).

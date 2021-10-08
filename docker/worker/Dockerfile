@@ -48,5 +48,5 @@ COPY ./config /app/config
 
 EXPOSE 8082
 
-CMD ["sh", "-c", "/app/worker"]
+CMD ["/app/worker"]
 

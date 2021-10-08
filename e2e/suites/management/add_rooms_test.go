@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
@@ -44,10 +45,12 @@ import (
 
 func TestAddRooms(t *testing.T) {
 	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-
 		roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
+		instanceStorage := instanceStorageRedis.NewRedisInstanceStorage(redisClient, 10)
 
 		t.Run("when created rooms does not reply its state back then it finishes the operation successfully", func(t *testing.T) {
+			t.Parallel()
+
 			schedulerName, err := createSchedulerAndWaitForIt(
 				t,
 				maestro,
@@ -78,12 +81,15 @@ func TestAddRooms(t *testing.T) {
 			require.NoError(t, err)
 			require.NotEmpty(t, pods.Items)
 
-			room, err := roomsStorage.GetRoom(context.Background(), schedulerName, pods.Items[0].ObjectMeta.Name)
-			require.NoError(t, err)
-			require.Equal(t, room.Status, game_room.GameStatusPending)
+			require.Eventually(t, func() bool {
+				instance, err := instanceStorage.GetInstance(context.Background(), schedulerName, pods.Items[0].ObjectMeta.Name)
+
+				return err == nil && instance.Status.Type == game_room.InstanceReady
+			}, time.Minute, time.Second)
 		})
 
 		t.Run("when created rooms replies its state back then it finishes the operation successfully", func(t *testing.T) {
+			t.Parallel()
 
 			schedulerName, err := createSchedulerAndWaitForIt(t,
 				maestro,
@@ -115,12 +121,16 @@ func TestAddRooms(t *testing.T) {
 			require.NoError(t, err)
 			require.NotEmpty(t, pods.Items)
 
-			room, err := roomsStorage.GetRoom(context.Background(), schedulerName, pods.Items[0].ObjectMeta.Name)
-			require.NoError(t, err)
-			require.Equal(t, room.Status, game_room.GameStatusReady)
+			require.Eventually(t, func() bool {
+				room, err := roomsStorage.GetRoom(context.Background(), schedulerName, pods.Items[0].ObjectMeta.Name)
+
+				return err == nil && room.Status == game_room.GameStatusReady
+			}, time.Minute, time.Second)
 		})
 
 		t.Run("when trying to add rooms to a nonexistent scheduler then the operation fails", func(t *testing.T) {
+			t.Parallel()
+
 			schedulerName := "NonExistent"
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}

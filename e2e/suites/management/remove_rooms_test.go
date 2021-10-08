@@ -28,11 +28,10 @@ import (
 	"testing"
 	"time"
 
-	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
-
 	redisV8 "github.com/go-redis/redis/v8"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/stretchr/testify/require"
 
@@ -46,10 +45,11 @@ import (
 
 func TestRemoveRooms(t *testing.T) {
 	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redisV8.Client, maestro *maestro.MaestroInstance) {
-		instanceStorage := instanceStorageRedis.NewRedisInstanceStorage(redisClient, 10)
 		roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 
 		t.Run("when game rooms are previously created with success should remove rooms with success", func(t *testing.T) {
+			t.Parallel()
+
 			schedulerName, err := createSchedulerAndWaitForIt(t,
 				maestro,
 				apiClient,
@@ -60,16 +60,6 @@ func TestRemoveRooms(t *testing.T) {
 
 			err, createdGameRoomName := addRoomsAndWaitForIt(t, schedulerName, err, apiClient, kubeclient, redisClient)
 			require.NoError(t, err)
-
-			err = instanceStorage.UpsertInstance(context.Background(), &game_room.Instance{
-				ID:          createdGameRoomName,
-				SchedulerID: schedulerName,
-				Status: game_room.InstanceStatus{
-					Type:        2,
-					Description: "ready",
-				},
-				Address: nil,
-			})
 
 			removeRoomsRequest := &maestroApiV1.RemoveRoomsRequest{SchedulerName: schedulerName, Amount: 1}
 			removeRoomsResponse := &maestroApiV1.RemoveRoomsResponse{}
@@ -84,8 +74,11 @@ func TestRemoveRooms(t *testing.T) {
 				if len(listOperationsResponse.FinishedOperations) < 3 {
 					return false
 				}
-				fmt.Println(listOperationsResponse.FinishedOperations)
 
+				// TODO(gabrielcorado): sometimes the operations list is not
+				// ordered by execution date, this makes this test flaky. do we
+				// need to ensure the order? or we need to make this test lookup
+				// the slice searching for the right operation.
 				require.Equal(t, "remove_rooms", listOperationsResponse.FinishedOperations[2].DefinitionName)
 				return true
 			}, 240*time.Second, time.Second)
@@ -96,65 +89,23 @@ func TestRemoveRooms(t *testing.T) {
 				if len(pods.Items) > 0 {
 					return false
 				}
-				room, err := roomsStorage.GetRoom(context.Background(), schedulerName, createdGameRoomName)
-				require.NoError(t, err)
-				require.Equal(t, room.Status, game_room.GameStatusTerminating)
+
+				_, err = roomsStorage.GetRoom(context.Background(), schedulerName, createdGameRoomName)
+				require.Error(t, err)
+				require.ErrorIs(t, err, porterrors.ErrNotFound)
 				return true
 			}, 280*time.Second, time.Second*10)
 		})
 
-		t.Run("when some error occur when executing operation then it shouldn't remove room with success", func(t *testing.T) {
-			schedulerName, err := createSchedulerAndWaitForIt(t,
-				maestro,
-				apiClient,
-				kubeclient,
-				[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
-					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'"})
-
-			err, createdGameRoomName := addRoomsAndWaitForIt(t, schedulerName, err, apiClient, kubeclient, redisClient)
-			require.NoError(t, err)
-
-			removeRoomsRequest := &maestroApiV1.RemoveRoomsRequest{SchedulerName: schedulerName, Amount: 1}
-			removeRoomsResponse := &maestroApiV1.RemoveRoomsResponse{}
-			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/remove-rooms", schedulerName), removeRoomsRequest, removeRoomsResponse)
-
-			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
-				require.NoError(t, err)
-
-				if len(listOperationsResponse.FinishedOperations) < 3 {
-					return false
-				}
-				fmt.Println(listOperationsResponse.FinishedOperations)
-
-				require.Equal(t, "remove_rooms", listOperationsResponse.FinishedOperations[2].DefinitionName)
-				return true
-			}, 240*time.Second, time.Second)
-
-			require.Eventually(t, func() bool {
-				pods, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
-				require.NoError(t, err)
-				if len(pods.Items) <= 0 {
-					return false
-				}
-				room, err := roomsStorage.GetRoom(context.Background(), schedulerName, createdGameRoomName)
-				require.NoError(t, err)
-				require.Equal(t, room.Status, game_room.GameStatusReady)
-				return true
-			}, 240*time.Second, time.Second*10)
-		})
-
 		t.Run("when the provided scheduler doesn't exists then it should return error", func(t *testing.T) {
+			t.Parallel()
+
 			schedulerName := "non-existent-name"
 			removeRoomsRequest := &maestroApiV1.RemoveRoomsRequest{SchedulerName: schedulerName, Amount: 1}
 			removeRoomsResponse := &maestroApiV1.RemoveRoomsResponse{}
 			err := apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/remove-rooms", schedulerName), removeRoomsRequest, removeRoomsResponse)
 			require.Error(t, err)
 		})
-
 	})
 
 }
