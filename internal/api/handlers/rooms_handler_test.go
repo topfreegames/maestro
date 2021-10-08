@@ -33,8 +33,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/ports"
-
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
@@ -99,10 +97,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 				return updatedGameRoom, nil
 			})
 			roomStorageMock.EXPECT().UpdateRoomStatus(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-			eventsForwarder.EXPECT().ForwardRoomEvent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&ports.EventsForwarderResponse{
-				Code:    200,
-				Message: "OK",
-			}, nil)
+			eventsForwarder.EXPECT().ForwardRoomEvent(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 			request, err := validRawRequest.MarshalJSON()
 			require.NoError(t, err)

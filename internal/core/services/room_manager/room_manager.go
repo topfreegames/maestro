@@ -140,13 +140,9 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
 	gameRoomStatus := fmt.Sprintf("ping%s", strings.Title(gameRoom.Status.String()))
-	res, err := m.eventsForwarder.ForwardRoomEvent(ctx, gameRoom, gameRoomStatus, "", gameRoom.Metadata)
-	if err != nil || res.Code != 200 {
-		if err != nil {
-			m.logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))
-		} else {
-			m.logger.Error(fmt.Sprintf("Failed to forward ping event, response details: %s", res.Message))
-		}
+	err = m.eventsForwarder.ForwardRoomEvent(gameRoom, ctx, gameRoomStatus, "", gameRoom.Metadata)
+	if err != nil {
+		m.logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))
 		reportPingForwardingFailed(gameRoom.SchedulerID)
 	}
 

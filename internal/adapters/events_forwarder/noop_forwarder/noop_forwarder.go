@@ -26,7 +26,6 @@ import (
 	"context"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/ports"
 )
 
 type noopForwarder struct{}
@@ -35,6 +34,6 @@ func NewNoopForwarder() *noopForwarder {
 	return &noopForwarder{}
 }
 
-func (noopForwarder) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, status string, eventType string, metadata map[string]interface{}) (res *ports.EventsForwarderResponse, err error) {
-	return &ports.EventsForwarderResponse{Code: 200, Message: "OK"}, nil
+func (noopForwarder) ForwardRoomEvent(room *game_room.GameRoom, ctx context.Context, status string, eventType string, metadata map[string]interface{}) (err error) {
+	return nil
 }

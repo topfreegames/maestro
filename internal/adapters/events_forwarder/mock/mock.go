@@ -7,7 +7,6 @@ package mock
 import (
 	context "context"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/ports"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -37,12 +36,11 @@ func (m *MockEventsForwarder) EXPECT() *MockEventsForwarderMockRecorder {
 }
 
 // ForwardRoomEvent mocks base method.
-func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, status string, eventType string, metadata map[string]interface{}) (res *ports.EventsForwarderResponse, err error) {
+func (m *MockEventsForwarder) ForwardRoomEvent(room *game_room.GameRoom, ctx context.Context, status string, eventType string, metadata map[string]interface{}) (err error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForwardRoomEvent", ctx, room, status, eventType, metadata)
-	ret0, _ := ret[0].(*ports.EventsForwarderResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // ForwardRoomEvent indicates an expected call of ForwardRoomEvent.
