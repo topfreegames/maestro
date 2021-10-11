@@ -22,6 +22,8 @@ type RoomsServiceClient interface {
 	UpdateRoomWithPing(ctx context.Context, in *UpdateRoomWithPingRequest, opts ...grpc.CallOption) (*UpdateRoomWithPingResponse, error)
 	// Forward the incoming room event.
 	ForwardRoomEvent(ctx context.Context, in *ForwardRoomEventRequest, opts ...grpc.CallOption) (*ForwardRoomEventResponse, error)
+	// Forward the incoming room event.
+	ForwardPlayerEvent(ctx context.Context, in *ForwardPlayerEventRequest, opts ...grpc.CallOption) (*ForwardPlayerEventResponse, error)
 }
 
 type roomsServiceClient struct {
@@ -50,6 +52,15 @@ func (c *roomsServiceClient) ForwardRoomEvent(ctx context.Context, in *ForwardRo
 	return out, nil
 }
 
+func (c *roomsServiceClient) ForwardPlayerEvent(ctx context.Context, in *ForwardPlayerEventRequest, opts ...grpc.CallOption) (*ForwardPlayerEventResponse, error) {
+	out := new(ForwardPlayerEventResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.RoomsService/ForwardPlayerEvent", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoomsServiceServer is the server API for RoomsService service.
 // All implementations must embed UnimplementedRoomsServiceServer
 // for forward compatibility
@@ -58,6 +69,8 @@ type RoomsServiceServer interface {
 	UpdateRoomWithPing(context.Context, *UpdateRoomWithPingRequest) (*UpdateRoomWithPingResponse, error)
 	// Forward the incoming room event.
 	ForwardRoomEvent(context.Context, *ForwardRoomEventRequest) (*ForwardRoomEventResponse, error)
+	// Forward the incoming room event.
+	ForwardPlayerEvent(context.Context, *ForwardPlayerEventRequest) (*ForwardPlayerEventResponse, error)
 	mustEmbedUnimplementedRoomsServiceServer()
 }
 
@@ -70,6 +83,9 @@ func (UnimplementedRoomsServiceServer) UpdateRoomWithPing(context.Context, *Upda
 }
 func (UnimplementedRoomsServiceServer) ForwardRoomEvent(context.Context, *ForwardRoomEventRequest) (*ForwardRoomEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ForwardRoomEvent not implemented")
+}
+func (UnimplementedRoomsServiceServer) ForwardPlayerEvent(context.Context, *ForwardPlayerEventRequest) (*ForwardPlayerEventResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ForwardPlayerEvent not implemented")
 }
 func (UnimplementedRoomsServiceServer) mustEmbedUnimplementedRoomsServiceServer() {}
 
@@ -120,6 +136,24 @@ func _RoomsService_ForwardRoomEvent_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoomsService_ForwardPlayerEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ForwardPlayerEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoomsServiceServer).ForwardPlayerEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.RoomsService/ForwardPlayerEvent",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoomsServiceServer).ForwardPlayerEvent(ctx, req.(*ForwardPlayerEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoomsService_ServiceDesc is the grpc.ServiceDesc for RoomsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -134,6 +168,10 @@ var RoomsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ForwardRoomEvent",
 			Handler:    _RoomsService_ForwardRoomEvent_Handler,
+		},
+		{
+			MethodName: "ForwardPlayerEvent",
+			Handler:    _RoomsService_ForwardPlayerEvent_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
