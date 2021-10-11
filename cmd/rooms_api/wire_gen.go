@@ -44,7 +44,7 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 		return nil, err
 	}
 	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, portsRuntime, eventsForwarder, roomManagerConfig)
-	roomsHandler := handlers.ProvideRoomsHandler(roomManager)
+	roomsHandler := handlers.ProvideRoomsHandler(roomManager, eventsForwarder)
 	serveMux := provideRoomsMux(ctx, roomsHandler)
 	return serveMux, nil
 }
