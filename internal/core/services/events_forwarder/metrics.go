@@ -23,31 +23,21 @@
 package events_forwarder
 
 import (
-	"context"
-
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/ports"
-	"go.uber.org/zap"
+	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
-type EventsForwarderService struct {
-	eventsForwarder ports.EventsForwarder
-	logger          *zap.Logger
-}
+var (
+	failedRoomEventForwardingMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemApi,
+		Name:      "failed_room_event_forwarding",
+		Help:      "Current number of failed room event forwarding",
+		Labels: []string{
+			monitoring.LabelScheduler,
+		},
+	})
+)
 
-func NewEventsForwarderService(eventsForwader ports.EventsForwarder) *EventsForwarderService {
-	return &EventsForwarderService{
-		eventsForwader,
-		zap.L().With(zap.String("service", "rooms_api")),
-	}
-}
-
-func (es EventsForwarderService) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, eventType, status string) error {
-	err := es.eventsForwarder.ForwardRoomEvent(room, ctx, status, eventType, room.Metadata)
-	if err != nil {
-		reportRoomEventForwardingFailed(room.SchedulerID)
-		es.logger.Error("Failed to forward room event", zap.Error(err))
-		return err
-	}
-	return nil
+func reportRoomEventForwardingFailed(schedulerName string) {
+	failedRoomEventForwardingMetric.WithLabelValues(schedulerName).Inc()
 }
