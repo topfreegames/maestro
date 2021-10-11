@@ -295,7 +295,12 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 
 			require.Equal(t, 200, rr.Code)
 			bodyString := rr.Body.String()
-			require.Equal(t, "{\"success\":true, \"message\":\"\"}", bodyString)
+			var body map[string]interface{}
+			err = json.Unmarshal([]byte(bodyString), &body)
+			require.NoError(t, err)
+			require.Equal(t, true, body["success"])
+			require.Equal(t, "", body["message"])
+
 		}
 	})
 
@@ -330,7 +335,10 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 
 			require.Equal(t, 500, rr.Code)
 			bodyString := rr.Body.String()
-			require.Equal(t, "{\"code\":2, \"message\":\"Failed to forward room event\", \"details\":[]}", bodyString)
+			var body map[string]interface{}
+			err = json.Unmarshal([]byte(bodyString), &body)
+			require.NoError(t, err)
+			require.Equal(t, "Failed to forward room event", body["message"])
 		}
 	})
 }
