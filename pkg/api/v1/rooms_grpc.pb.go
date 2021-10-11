@@ -22,7 +22,7 @@ type RoomsServiceClient interface {
 	UpdateRoomWithPing(ctx context.Context, in *UpdateRoomWithPingRequest, opts ...grpc.CallOption) (*UpdateRoomWithPingResponse, error)
 	// Forward the incoming room event.
 	ForwardRoomEvent(ctx context.Context, in *ForwardRoomEventRequest, opts ...grpc.CallOption) (*ForwardRoomEventResponse, error)
-	// Forward the incoming room event.
+	// Forward the incoming player event.
 	ForwardPlayerEvent(ctx context.Context, in *ForwardPlayerEventRequest, opts ...grpc.CallOption) (*ForwardPlayerEventResponse, error)
 }
 
@@ -69,7 +69,7 @@ type RoomsServiceServer interface {
 	UpdateRoomWithPing(context.Context, *UpdateRoomWithPingRequest) (*UpdateRoomWithPingResponse, error)
 	// Forward the incoming room event.
 	ForwardRoomEvent(context.Context, *ForwardRoomEventRequest) (*ForwardRoomEventResponse, error)
-	// Forward the incoming room event.
+	// Forward the incoming player event.
 	ForwardPlayerEvent(context.Context, *ForwardPlayerEventRequest) (*ForwardPlayerEventResponse, error)
 	mustEmbedUnimplementedRoomsServiceServer()
 }

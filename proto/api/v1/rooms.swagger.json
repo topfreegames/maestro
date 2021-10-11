@@ -81,7 +81,7 @@
     },
     "/scheduler/{schedulerName}/rooms/{roomName}/playerevent": {
       "post": {
-        "summary": "Forward the incoming room event.",
+        "summary": "Forward the incoming player event.",
         "operationId": "RoomsService_ForwardPlayerEvent",
         "responses": {
           "200": {

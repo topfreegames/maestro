@@ -1,0 +1,25 @@
+[
+  {
+    "metadata": {
+      "struct": {
+        "field1": "field1"
+      },
+      "list": [
+        {
+          "field1": "field1"
+        }
+      ],
+      "bool": false,
+      "number": 123,
+      "string": "test",
+      "null": null
+    },
+    "event": "playerJoin",
+    "timestamp": 1629834996
+  },
+  {
+    "event": "playerJoin",
+    "timestamp": 1629834996
+  }
+]
+

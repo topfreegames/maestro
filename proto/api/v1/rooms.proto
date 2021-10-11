@@ -28,7 +28,7 @@ service RoomsService {
     };
   }
 
-  // Forward the incoming room event.
+  // Forward the incoming player event.
   rpc ForwardPlayerEvent(ForwardPlayerEventRequest) returns (ForwardPlayerEventResponse) {
     option (google.api.http) = {
       post: "/scheduler/{scheduler_name=*}/rooms/{room_name=*}/playerevent",

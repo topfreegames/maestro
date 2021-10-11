@@ -55,7 +55,7 @@ func (es *EventsForwarderService) ForwardRoomEvent(ctx context.Context, room *ga
 func (es EventsForwarderService) ForwardPlayerEvent(ctx context.Context, room *game_room.GameRoom, event string) error {
 	err := es.eventsForwarder.ForwardPlayerEvent(room, ctx, event, room.Metadata)
 	if err != nil {
-		reportRoomEventForwardingFailed(room.SchedulerID)
+		reportPlayerEventForwardingFailed(room.SchedulerID)
 		es.logger.Error("Failed to forward player event", zap.Error(err))
 		return err
 	}
