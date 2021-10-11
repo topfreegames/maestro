@@ -58,10 +58,8 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
-	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
-	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsForwarder, config)
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
-	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, config)
+	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsForwarder, config)
 	roomStorageStatusWatcher := rsmock.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	container1 := game_room.Container{
@@ -183,7 +181,6 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
-	config := RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000}
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 
 	roomManager := NewRoomManager(
@@ -300,21 +297,17 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
-	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	roomManager := NewRoomManager(
-		nil,
+		clock,
 		nil,
 		roomStorage,
 		nil,
-		nil,
-		RoomManagerConfig{RoomPingTimeout: time.Hour},
-		instanceStorage,
 		runtime,
 		eventsForwarder,
-		RoomManagerConfig{},
+		RoomManagerConfig{RoomPingTimeout: time.Hour},
 	)
 
 	t.Run("when there are enough rooms it should return the specified number", func(t *testing.T) {

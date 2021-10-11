@@ -100,7 +100,6 @@ func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
 		eventsForwarder.NewMockEventsForwarder(mockCtrl),
-		RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000},
 		RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
 	)
 
@@ -144,7 +143,6 @@ func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
 		eventsForwarder.NewMockEventsForwarder(mockCtrl),
-		RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000},
 		RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
 	)
 
@@ -185,7 +183,6 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 			instanceStorage,
 			runtimemock.NewMockRuntime(mockCtrl),
 			eventsForwarder.NewMockEventsForwarder(mockCtrl),
-			RoomManagerConfig{RoomInitializationTimeoutMillis: time.Millisecond * 1000},
 			RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
 		)
 
