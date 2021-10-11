@@ -64,7 +64,6 @@ const (
 )
 
 func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
-
 	return matchmakerEventsForwarder.NewNoopForwarder(), nil
 }
 

@@ -27,7 +27,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
 
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
@@ -41,20 +41,21 @@ import (
 )
 
 type RoomsHandler struct {
-	roomManager     *room_manager.RoomManager
-	eventsForwarder ports.EventsForwarder
+	roomManager            *room_manager.RoomManager
+	eventsForwarderService *events_forwarder.EventsForwarderService
 	api.UnimplementedRoomsServiceServer
 }
 
-func ProvideRoomsHandler(roomManager *room_manager.RoomManager, eventsForwarder ports.EventsForwarder) *RoomsHandler {
+func ProvideRoomsHandler(roomManager *room_manager.RoomManager, eventsForwarderService *events_forwarder.EventsForwarderService) *RoomsHandler {
 	return &RoomsHandler{
-		roomManager:     roomManager,
-		eventsForwarder: eventsForwarder,
+		roomManager:            roomManager,
+		eventsForwarderService: eventsForwarderService,
 	}
 }
 
 func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.ForwardRoomEventRequest) (*api.ForwardRoomEventResponse, error) {
 	room := &game_room.GameRoom{ID: message.RoomName, SchedulerID: message.SchedulerName, Metadata: message.Metadata.AsMap()}
+
 	if message.Metadata != nil {
 		room.Metadata["eventType"] = message.Event
 	} else {
@@ -63,7 +64,7 @@ func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.Forwar
 		}
 	}
 
-	err := h.eventsForwarder.ForwardRoomEvent(room, ctx, "roomEvent", "", room.Metadata)
+	err := h.eventsForwarderService.ForwardRoomEvent(ctx, room, "", "roomEvent")
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}

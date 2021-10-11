@@ -27,6 +27,8 @@ package main
 import (
 	"context"
 
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
+
 	"github.com/google/wire"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/topfreegames/maestro/internal/api/handlers"
@@ -49,6 +51,7 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 
 		// services
 		room_manager.NewRoomManager,
+		events_forwarder.NewEventsForwarderService,
 
 		// api handlers
 		handlers.ProvideRoomsHandler,

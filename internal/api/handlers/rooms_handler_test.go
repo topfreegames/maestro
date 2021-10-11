@@ -33,6 +33,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
@@ -77,9 +79,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarder))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		for _, validRawRequest := range validRawRequests {
@@ -130,9 +132,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarder))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		roomStorageMock.EXPECT().UpdateRoom(gomock.Any(), gomock.Any()).Return(errors.ErrNotFound)
@@ -161,9 +163,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarder))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		roomStorageMock.EXPECT().UpdateRoom(gomock.Any(), gomock.Any()).Return(errors.ErrUnexpected)
@@ -192,9 +194,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarder))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		for _, invalidStateRawRequest := range invalidStateRawRequests {
@@ -236,9 +238,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarder))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		request, err := ioutil.ReadFile(dirPath + "/fixtures/bad-ping-data.json")
@@ -274,9 +276,9 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarder))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		for _, rawRequest := range rawRequests {
@@ -293,7 +295,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 
 			require.Equal(t, 200, rr.Code)
 			bodyString := rr.Body.String()
-			require.Equal(t, "{\"success\":true,\"message\":\"\"}", bodyString)
+			require.Equal(t, "{\"success\":true, \"message\":\"\"}", bodyString)
 		}
 	})
 
@@ -309,9 +311,9 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarder))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		for _, rawRequest := range rawRequests {
@@ -328,7 +330,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 
 			require.Equal(t, 500, rr.Code)
 			bodyString := rr.Body.String()
-			require.Equal(t, "{\"code\":2,\"message\":\"Failed to forward room event\",\"details\":[]}", bodyString)
+			require.Equal(t, "{\"code\":2, \"message\":\"Failed to forward room event\", \"details\":[]}", bodyString)
 		}
 	})
 }
