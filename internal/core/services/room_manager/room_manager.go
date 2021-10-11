@@ -26,7 +26,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -40,17 +43,21 @@ type RoomManager struct {
 	roomStorage     ports.RoomStorage
 	instanceStorage ports.GameRoomInstanceStorage
 	runtime         ports.Runtime
+	eventsForwarder ports.EventsForwarder
 	config          RoomManagerConfig
+	logger          *zap.Logger
 }
 
-func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, config RoomManagerConfig) *RoomManager {
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsForwarder ports.EventsForwarder, config RoomManagerConfig) *RoomManager {
 	return &RoomManager{
 		clock:           clock,
 		portAllocator:   portAllocator,
 		roomStorage:     roomStorage,
 		instanceStorage: instanceStorage,
 		runtime:         runtime,
+		eventsForwarder: eventsForwarder,
 		config:          config,
+		logger:          zap.L().With(zap.String("service", "rooms_api")),
 	}
 }
 
@@ -131,6 +138,12 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 	err = m.updateGameRoomStatus(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
+	}
+	gameRoomStatus := fmt.Sprintf("ping%s", strings.Title(gameRoom.Status.String()))
+	err = m.eventsForwarder.ForwardRoomEvent(gameRoom, ctx, gameRoomStatus, "", gameRoom.Metadata)
+	if err != nil {
+		m.logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))
+		reportPingForwardingFailed(gameRoom.SchedulerID)
 	}
 
 	return nil

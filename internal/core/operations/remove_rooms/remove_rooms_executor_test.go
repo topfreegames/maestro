@@ -34,6 +34,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	clock_mock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
+	eventsForwarderMock "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
 	instance_storage_mock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	port_allocator_mock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	"github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
@@ -53,11 +54,12 @@ func TestExecute(t *testing.T) {
 	portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 	instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
+	eventsForwarderMock := eventsForwarderMock.NewMockEventsForwarder(mockCtrl)
 
 	t.Run("when there are no rooms to be deleted it returns without error", func(t *testing.T) {
 
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, room_manager.RoomManagerConfig{})
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, room_manager.RoomManagerConfig{})
 		executor := NewExecutor(roomsManager)
 
 		schedulerName := uuid.NewString()
@@ -76,7 +78,7 @@ func TestExecute(t *testing.T) {
 	t.Run("when rooms are successfully deleted it returns without error", func(t *testing.T) {
 
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, room_manager.RoomManagerConfig{})
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, room_manager.RoomManagerConfig{})
 		executor := NewExecutor(roomsManager)
 
 		schedulerName := uuid.NewString()
@@ -104,7 +106,7 @@ func TestExecute(t *testing.T) {
 	t.Run("when any room failed to delete it returns without error", func(t *testing.T) {
 
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, room_manager.RoomManagerConfig{})
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, room_manager.RoomManagerConfig{})
 		executor := NewExecutor(roomsManager)
 
 		schedulerName := uuid.NewString()
@@ -138,7 +140,7 @@ func TestExecute(t *testing.T) {
 	t.Run("when list rooms has error returns with error", func(t *testing.T) {
 
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, room_manager.RoomManagerConfig{})
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, room_manager.RoomManagerConfig{})
 		executor := NewExecutor(roomsManager)
 
 		definition := &RemoveRoomsDefinition{Amount: 2}

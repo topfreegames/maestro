@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	eventsForwarder "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
+
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/stretchr/testify/require"
@@ -53,10 +55,11 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	portAllocator := pamock.NewMockPortAllocator(mockCtrl)
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
-	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, config)
+	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsForwarder, config)
 	roomStorageStatusWatcher := rsmock.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	container1 := game_room.Container{
@@ -177,6 +180,7 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 
 	roomManager := NewRoomManager(
@@ -185,6 +189,7 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 		roomStorage,
 		instanceStorage,
 		runtime,
+		eventsForwarder,
 		config,
 	)
 
@@ -216,6 +221,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 	roomManager := NewRoomManager(
@@ -224,6 +230,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		roomStorage,
 		instanceStorage,
 		runtime,
+		eventsForwarder,
 		config,
 	)
 	currentInstance := &game_room.Instance{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
@@ -234,6 +241,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), newGameRoom, "pingReady", "", newGameRoom.Metadata).Return(nil)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 		require.NoError(t, err)
@@ -258,7 +266,6 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoomInvalidState).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(newGameRoomInvalidState, nil)
-		// roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoomInvalidState)
 		require.Error(t, err)
@@ -273,18 +280,33 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 		require.Error(t, err)
 	})
+
+	t.Run("when some error occurs on event forwarding then it does not return with error", func(t *testing.T) {
+		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
+		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
+		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), newGameRoom, "pingReady", "", newGameRoom.Metadata).Return(errors.New("some error"))
+
+		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
+		require.NoError(t, err)
+	})
 }
 
 func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
+	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
+	clock := clockmock.NewFakeClock(time.Now())
 	roomManager := NewRoomManager(
-		nil,
+		clock,
 		nil,
 		roomStorage,
 		nil,
-		nil,
+		runtime,
+		eventsForwarder,
 		RoomManagerConfig{RoomPingTimeout: time.Hour},
 	)
 
@@ -450,6 +472,7 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 	roomManager := NewRoomManager(
@@ -458,6 +481,7 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 		roomStorage,
 		instanceStorage,
 		runtime,
+		eventsForwarder,
 		config,
 	)
 	currentGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady, PingStatus: game_room.GameRoomPingStatusReady, LastPingAt: clock.Now()}
@@ -488,6 +512,7 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 	roomManager := NewRoomManager(
@@ -496,6 +521,7 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 		roomStorage,
 		instanceStorage,
 		runtime,
+		eventsForwarder,
 		config,
 	)
 	schedulerName := "scheduler-name"

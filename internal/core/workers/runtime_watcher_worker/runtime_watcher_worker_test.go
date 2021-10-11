@@ -33,6 +33,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
+	eventsForwarder "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
 	instancemock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	roomstoragemock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
@@ -54,7 +55,8 @@ func workerOptions(t *testing.T) (*gomock.Controller, *instancemock.MockGameRoom
 	instanceStorage := instancemock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
 	config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
-	roomManager := room_manager.NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, config)
+	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
+	roomManager := room_manager.NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsForwarder, config)
 
 	return mockCtrl, instanceStorage, roomStorage, runtime, &workers.WorkerOptions{
 		Runtime:     runtime,

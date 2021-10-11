@@ -28,6 +28,7 @@ import (
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
 	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
+	matchmakerEventsForwarder "github.com/topfreegames/maestro/internal/adapters/events_forwarder/noop_forwarder"
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
 	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation_flow/redis"
 	operationStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
@@ -61,6 +62,11 @@ const (
 	// Redis operation flow
 	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
 )
+
+func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
+
+	return matchmakerEventsForwarder.NewNoopForwarder(), nil
+}
 
 func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 	clientset, err := createKubernetesClient(
