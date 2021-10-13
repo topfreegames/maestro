@@ -99,6 +99,10 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 
+func (h RoomsHandler) NoopUpdateRoomStatus(ctx context.Context, message *api.NoopUpdateRoomStatusRequest) (*api.NoopUpdateRoomStatusResponse, error) {
+	return &api.NoopUpdateRoomStatusResponse{Success: true}, nil
+}
+
 func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*game_room.GameRoom, error) {
 	status, err := game_room.FromStringToGameRoomPingStatus(request.GetStatus())
 	if err != nil {
