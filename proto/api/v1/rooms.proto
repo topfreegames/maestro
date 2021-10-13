@@ -8,6 +8,7 @@ option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
 import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
 
+
 // Rooms Service.
 service RoomsService {
 
@@ -18,6 +19,38 @@ service RoomsService {
       body: "*"
     };
   }
+
+  // Forward the incoming room event.
+  rpc ForwardRoomEvent(ForwardRoomEventRequest) returns (ForwardRoomEventResponse) {
+    option (google.api.http) = {
+      post: "/scheduler/{scheduler_name=*}/rooms/{room_name=*}/roomevent",
+      body: "*"
+    };
+  }
+}
+
+// The room event request.
+message ForwardRoomEventRequest {
+  // Target scheduler name.
+  // NOTE: On http protocol, this operates as a path param.
+  string scheduler_name = 1;
+  // Target room name.
+  // NOTE: On http protocol, this operates as a path param.
+  string room_name = 2;
+  // Room event metadata.
+  google.protobuf.Struct metadata = 3;
+  // The room event name.
+  string event = 4;
+  // Timestamp of the room event.
+  int64 timestamp = 6;
+}
+
+// The room event response.
+message ForwardRoomEventResponse {
+  // Flag indicating if the forward process was successful or not
+  bool success = 1;
+  // Message from forwarding response (currently always blank)
+  string message = 2;
 }
 
 // The ping request.

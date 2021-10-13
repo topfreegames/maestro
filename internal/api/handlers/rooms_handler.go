@@ -27,6 +27,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
+
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"google.golang.org/grpc/codes"
@@ -39,14 +41,34 @@ import (
 )
 
 type RoomsHandler struct {
-	roomManager *room_manager.RoomManager
+	roomManager            *room_manager.RoomManager
+	eventsForwarderService *events_forwarder.EventsForwarderService
 	api.UnimplementedRoomsServiceServer
 }
 
-func ProvideRoomsHandler(roomManager *room_manager.RoomManager) *RoomsHandler {
+func ProvideRoomsHandler(roomManager *room_manager.RoomManager, eventsForwarderService *events_forwarder.EventsForwarderService) *RoomsHandler {
 	return &RoomsHandler{
-		roomManager: roomManager,
+		roomManager:            roomManager,
+		eventsForwarderService: eventsForwarderService,
 	}
+}
+
+func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.ForwardRoomEventRequest) (*api.ForwardRoomEventResponse, error) {
+	room := &game_room.GameRoom{ID: message.RoomName, SchedulerID: message.SchedulerName, Metadata: message.Metadata.AsMap()}
+
+	if message.Metadata != nil {
+		room.Metadata["eventType"] = message.Event
+	} else {
+		room.Metadata = map[string]interface{}{
+			"eventType": message.Event,
+		}
+	}
+
+	err := h.eventsForwarderService.ForwardRoomEvent(ctx, room, "", "roomEvent")
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	return &api.ForwardRoomEventResponse{Success: true, Message: ""}, nil
 }
 
 func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.UpdateRoomWithPingRequest) (*api.UpdateRoomWithPingResponse, error) {

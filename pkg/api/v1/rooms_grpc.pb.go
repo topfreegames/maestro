@@ -20,6 +20,8 @@ const _ = grpc.SupportPackageIsVersion7
 type RoomsServiceClient interface {
 	// Updates a game room with ping data.
 	UpdateRoomWithPing(ctx context.Context, in *UpdateRoomWithPingRequest, opts ...grpc.CallOption) (*UpdateRoomWithPingResponse, error)
+	// Forward the incoming room event.
+	ForwardRoomEvent(ctx context.Context, in *ForwardRoomEventRequest, opts ...grpc.CallOption) (*ForwardRoomEventResponse, error)
 }
 
 type roomsServiceClient struct {
@@ -39,12 +41,23 @@ func (c *roomsServiceClient) UpdateRoomWithPing(ctx context.Context, in *UpdateR
 	return out, nil
 }
 
+func (c *roomsServiceClient) ForwardRoomEvent(ctx context.Context, in *ForwardRoomEventRequest, opts ...grpc.CallOption) (*ForwardRoomEventResponse, error) {
+	out := new(ForwardRoomEventResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.RoomsService/ForwardRoomEvent", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoomsServiceServer is the server API for RoomsService service.
 // All implementations must embed UnimplementedRoomsServiceServer
 // for forward compatibility
 type RoomsServiceServer interface {
 	// Updates a game room with ping data.
 	UpdateRoomWithPing(context.Context, *UpdateRoomWithPingRequest) (*UpdateRoomWithPingResponse, error)
+	// Forward the incoming room event.
+	ForwardRoomEvent(context.Context, *ForwardRoomEventRequest) (*ForwardRoomEventResponse, error)
 	mustEmbedUnimplementedRoomsServiceServer()
 }
 
@@ -54,6 +67,9 @@ type UnimplementedRoomsServiceServer struct {
 
 func (UnimplementedRoomsServiceServer) UpdateRoomWithPing(context.Context, *UpdateRoomWithPingRequest) (*UpdateRoomWithPingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateRoomWithPing not implemented")
+}
+func (UnimplementedRoomsServiceServer) ForwardRoomEvent(context.Context, *ForwardRoomEventRequest) (*ForwardRoomEventResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ForwardRoomEvent not implemented")
 }
 func (UnimplementedRoomsServiceServer) mustEmbedUnimplementedRoomsServiceServer() {}
 
@@ -86,6 +102,24 @@ func _RoomsService_UpdateRoomWithPing_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoomsService_ForwardRoomEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ForwardRoomEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoomsServiceServer).ForwardRoomEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.RoomsService/ForwardRoomEvent",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoomsServiceServer).ForwardRoomEvent(ctx, req.(*ForwardRoomEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoomsService_ServiceDesc is the grpc.ServiceDesc for RoomsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -96,6 +130,10 @@ var RoomsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateRoomWithPing",
 			Handler:    _RoomsService_UpdateRoomWithPing_Handler,
+		},
+		{
+			MethodName: "ForwardRoomEvent",
+			Handler:    _RoomsService_ForwardRoomEvent_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

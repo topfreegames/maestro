@@ -1,0 +1,25 @@
+[
+  {
+    "metadata": {
+      "struct": {
+        "field1": "field1"
+      },
+      "list": [
+        {
+          "field1": "field1"
+        }
+      ],
+      "bool": false,
+      "number": 123,
+      "string": "test",
+      "null": null
+    },
+    "event": "RoomReady",
+    "timestamp": 1634161181
+  },
+  {
+    "event": "RoomReady",
+    "timestamp": 1634161181
+  }
+]
+

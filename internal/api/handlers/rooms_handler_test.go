@@ -33,6 +33,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
@@ -77,9 +79,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		for _, validRawRequest := range validRawRequests {
@@ -130,9 +132,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		roomStorageMock.EXPECT().UpdateRoom(gomock.Any(), gomock.Any()).Return(errors.ErrNotFound)
@@ -161,9 +163,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		roomStorageMock.EXPECT().UpdateRoom(gomock.Any(), gomock.Any()).Return(errors.ErrUnexpected)
@@ -192,9 +194,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		for _, invalidStateRawRequest := range invalidStateRawRequests {
@@ -236,9 +238,9 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
-
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager))
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
 		request, err := ioutil.ReadFile(dirPath + "/fixtures/bad-ping-data.json")
@@ -251,5 +253,92 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 400, rr.Code)
+	})
+}
+
+func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
+	dirPath, _ := os.Getwd()
+
+	requests, _ := ioutil.ReadFile(dirPath + "/fixtures/room-events.json")
+	var rawRequests []*json.RawMessage
+	err := json.Unmarshal(requests, &rawRequests)
+	require.NoError(t, err)
+
+	t.Run("when no error occur when forwarding then it return status code 200 with success = true", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		clockMock := clock_mock.NewFakeClock(time.Now())
+		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
+		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
+		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
+		eventsForwarder := eventsForwarderMock.NewMockEventsForwarder(mockCtrl)
+		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
+		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
+
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		for _, rawRequest := range rawRequests {
+			eventsForwarder.EXPECT().ForwardRoomEvent(gomock.Any(), gomock.Any(), "roomEvent", "", gomock.Any())
+
+			request, err := rawRequest.MarshalJSON()
+			require.NoError(t, err)
+
+			req, err := http.NewRequest(http.MethodPost, "/scheduler/schedulerName1/rooms/roomName1/roomevent", bytes.NewReader(request))
+			require.NoError(t, err)
+
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+
+			require.Equal(t, 200, rr.Code)
+			bodyString := rr.Body.String()
+			var body map[string]interface{}
+			err = json.Unmarshal([]byte(bodyString), &body)
+			require.NoError(t, err)
+			require.Equal(t, true, body["success"])
+			require.Equal(t, "", body["message"])
+
+		}
+	})
+
+	t.Run("when some error occur when forwarding then it return status code 500", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		clockMock := clock_mock.NewFakeClock(time.Now())
+		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
+		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
+		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
+		eventsForwarder := eventsForwarderMock.NewMockEventsForwarder(mockCtrl)
+		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
+		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
+
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		for _, rawRequest := range rawRequests {
+			eventsForwarder.EXPECT().ForwardRoomEvent(gomock.Any(), gomock.Any(), "roomEvent", "", gomock.Any()).Return(errors.NewErrUnexpected("Failed to forward room event"))
+
+			request, err := rawRequest.MarshalJSON()
+			require.NoError(t, err)
+
+			req, err := http.NewRequest(http.MethodPost, "/scheduler/schedulerName1/rooms/roomName1/roomevent", bytes.NewReader(request))
+			require.NoError(t, err)
+
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+
+			require.Equal(t, 500, rr.Code)
+			bodyString := rr.Body.String()
+			var body map[string]interface{}
+			err = json.Unmarshal([]byte(bodyString), &body)
+			require.NoError(t, err)
+			require.Equal(t, "Failed to forward room event", body["message"])
+		}
 	})
 }
