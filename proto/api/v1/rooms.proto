@@ -7,7 +7,6 @@ option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
 
 import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
-import "google/protobuf/timestamp.proto";
 
 
 // Rooms Service.
@@ -43,7 +42,7 @@ message ForwardRoomEventRequest {
   // The room event name.
   string event = 4;
   // Timestamp of the room event.
-  google.protobuf.Timestamp timestamp = 6;
+  int64 timestamp = 6;
 }
 
 // The room event response.
