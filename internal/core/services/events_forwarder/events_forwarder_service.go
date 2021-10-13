@@ -42,7 +42,7 @@ func NewEventsForwarderService(eventsForwader ports.EventsForwarder) *EventsForw
 	}
 }
 
-func (es EventsForwarderService) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, eventType, status string) error {
+func (es *EventsForwarderService) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, eventType, status string) error {
 	err := es.eventsForwarder.ForwardRoomEvent(room, ctx, status, eventType, room.Metadata)
 	if err != nil {
 		reportRoomEventForwardingFailed(room.SchedulerID)
