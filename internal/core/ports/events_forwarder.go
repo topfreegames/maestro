@@ -30,5 +30,5 @@ import (
 
 type EventsForwarder interface {
 	ForwardRoomEvent(room *game_room.GameRoom, ctx context.Context, status string, eventType string, metadata map[string]interface{}) (err error)
-	ForwardPlayerEvent(room *game_room.GameRoom, ctx context.Context, event string, metadata map[string]interface{}) (err error)
+	ForwardPlayerEvent(room *game_room.GameRoom, ctx context.Context, status string, metadata map[string]interface{}) (err error)
 }

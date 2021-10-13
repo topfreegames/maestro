@@ -38,6 +38,6 @@ func (*noopForwarder) ForwardRoomEvent(room *game_room.GameRoom, ctx context.Con
 	return nil
 }
 
-func (*noopForwarder) ForwardPlayerEvent(room *game_room.GameRoom, ctx context.Context, event string, metadata map[string]interface{}) (err error) {
+func (*noopForwarder) ForwardPlayerEvent(room *game_room.GameRoom, ctx context.Context, status string, metadata map[string]interface{}) (err error) {
 	return nil
 }
