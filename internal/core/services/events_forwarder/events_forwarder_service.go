@@ -35,9 +35,9 @@ type EventsForwarderService struct {
 	logger          *zap.Logger
 }
 
-func NewEventsForwarderService(eventsForwader ports.EventsForwarder) *EventsForwarderService {
+func NewEventsForwarderService(eventsForwarder ports.EventsForwarder) *EventsForwarderService {
 	return &EventsForwarderService{
-		eventsForwader,
+		eventsForwarder,
 		zap.L().With(zap.String("service", "rooms_api")),
 	}
 }
@@ -52,7 +52,7 @@ func (es *EventsForwarderService) ForwardRoomEvent(ctx context.Context, room *ga
 	return nil
 }
 
-func (es EventsForwarderService) ForwardPlayerEvent(ctx context.Context, room *game_room.GameRoom, event string) error {
+func (es *EventsForwarderService) ForwardPlayerEvent(ctx context.Context, room *game_room.GameRoom, event string) error {
 	err := es.eventsForwarder.ForwardPlayerEvent(room, ctx, event, room.Metadata)
 	if err != nil {
 		reportPlayerEventForwardingFailed(room.SchedulerID)
