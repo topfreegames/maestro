@@ -24,6 +24,8 @@ type RoomsServiceClient interface {
 	ForwardRoomEvent(ctx context.Context, in *ForwardRoomEventRequest, opts ...grpc.CallOption) (*ForwardRoomEventResponse, error)
 	// Forward the incoming player event.
 	ForwardPlayerEvent(ctx context.Context, in *ForwardPlayerEventRequest, opts ...grpc.CallOption) (*ForwardPlayerEventResponse, error)
+	// Noop endpoint created for maintaining compatibility with previous maestro version (v9).
+	NoopUpdateRoomStatus(ctx context.Context, in *NoopUpdateRoomStatusRequest, opts ...grpc.CallOption) (*NoopUpdateRoomStatusResponse, error)
 }
 
 type roomsServiceClient struct {
@@ -61,6 +63,15 @@ func (c *roomsServiceClient) ForwardPlayerEvent(ctx context.Context, in *Forward
 	return out, nil
 }
 
+func (c *roomsServiceClient) NoopUpdateRoomStatus(ctx context.Context, in *NoopUpdateRoomStatusRequest, opts ...grpc.CallOption) (*NoopUpdateRoomStatusResponse, error) {
+	out := new(NoopUpdateRoomStatusResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.RoomsService/NoopUpdateRoomStatus", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoomsServiceServer is the server API for RoomsService service.
 // All implementations must embed UnimplementedRoomsServiceServer
 // for forward compatibility
@@ -71,6 +82,8 @@ type RoomsServiceServer interface {
 	ForwardRoomEvent(context.Context, *ForwardRoomEventRequest) (*ForwardRoomEventResponse, error)
 	// Forward the incoming player event.
 	ForwardPlayerEvent(context.Context, *ForwardPlayerEventRequest) (*ForwardPlayerEventResponse, error)
+	// Noop endpoint created for maintaining compatibility with previous maestro version (v9).
+	NoopUpdateRoomStatus(context.Context, *NoopUpdateRoomStatusRequest) (*NoopUpdateRoomStatusResponse, error)
 	mustEmbedUnimplementedRoomsServiceServer()
 }
 
@@ -86,6 +99,9 @@ func (UnimplementedRoomsServiceServer) ForwardRoomEvent(context.Context, *Forwar
 }
 func (UnimplementedRoomsServiceServer) ForwardPlayerEvent(context.Context, *ForwardPlayerEventRequest) (*ForwardPlayerEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ForwardPlayerEvent not implemented")
+}
+func (UnimplementedRoomsServiceServer) NoopUpdateRoomStatus(context.Context, *NoopUpdateRoomStatusRequest) (*NoopUpdateRoomStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NoopUpdateRoomStatus not implemented")
 }
 func (UnimplementedRoomsServiceServer) mustEmbedUnimplementedRoomsServiceServer() {}
 
@@ -154,6 +170,24 @@ func _RoomsService_ForwardPlayerEvent_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoomsService_NoopUpdateRoomStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NoopUpdateRoomStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoomsServiceServer).NoopUpdateRoomStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.RoomsService/NoopUpdateRoomStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoomsServiceServer).NoopUpdateRoomStatus(ctx, req.(*NoopUpdateRoomStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoomsService_ServiceDesc is the grpc.ServiceDesc for RoomsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -172,6 +206,10 @@ var RoomsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ForwardPlayerEvent",
 			Handler:    _RoomsService_ForwardPlayerEvent_Handler,
+		},
+		{
+			MethodName: "NoopUpdateRoomStatus",
+			Handler:    _RoomsService_NoopUpdateRoomStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

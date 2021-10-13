@@ -35,6 +35,37 @@ service RoomsService {
       body: "*"
     };
   }
+
+  // Noop endpoint created for maintaining compatibility with previous maestro version (v9).
+  rpc NoopUpdateRoomStatus(NoopUpdateRoomStatusRequest) returns (NoopUpdateRoomStatusResponse) {
+    option (google.api.http) = {
+      put: "/scheduler/{scheduler_name=*}/rooms/{room_name=*}/status",
+      body: "*"
+    };
+  }
+
+}
+
+// The player event request.
+message NoopUpdateRoomStatusRequest {
+  // Target scheduler name.
+  // NOTE: On http protocol, this operates as a path param.
+  string scheduler_name = 1;
+  // Target room name.
+  // NOTE: On http protocol, this operates as a path param.
+  string room_name = 2;
+  // Status update metadata.
+  google.protobuf.Struct metadata = 3;
+  // The room status.
+  string status = 4;
+  // Timestamp of the status update.
+  int64 timestamp = 6;
+}
+
+// The player event response.
+message NoopUpdateRoomStatusResponse {
+  // Flag indicating if the status update process was successful or not
+  bool success = 1;
 }
 
 // The player event request.

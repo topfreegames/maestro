@@ -204,6 +204,69 @@
           "RoomsService"
         ]
       }
+    },
+    "/scheduler/{schedulerName}/rooms/{roomName}/status": {
+      "put": {
+        "summary": "Noop endpoint created for maintaining compatibility with previous maestro version (v9).",
+        "operationId": "RoomsService_NoopUpdateRoomStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1NoopUpdateRoomStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "roomName",
+            "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "type": "object",
+                  "description": "Status update metadata."
+                },
+                "status": {
+                  "type": "string",
+                  "description": "The room status."
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "int64",
+                  "description": "Timestamp of the status update."
+                }
+              },
+              "description": "The player event request."
+            }
+          }
+        ],
+        "tags": [
+          "RoomsService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -272,6 +335,16 @@
         }
       },
       "description": "The room event response."
+    },
+    "v1NoopUpdateRoomStatusResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "title": "Flag indicating if the status update process was successful or not"
+        }
+      },
+      "description": "The player event response."
     },
     "v1UpdateRoomWithPingResponse": {
       "type": "object",
