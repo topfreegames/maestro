@@ -428,3 +428,39 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 		}
 	})
 }
+
+func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
+
+	t.Run("it does nothing and returns 200 ok with success equal true for all requests", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		clockMock := clock_mock.NewFakeClock(time.Now())
+		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
+		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
+		instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
+		eventsForwarder := eventsForwarderMock.NewMockEventsForwarder(mockCtrl)
+		runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
+		config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
+
+		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarder, config)
+		eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPut, "/scheduler/schedulerName/rooms/roomName/status", bytes.NewReader([]byte{}))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+		require.NoError(t, err)
+		require.Equal(t, true, body["success"])
+	})
+}

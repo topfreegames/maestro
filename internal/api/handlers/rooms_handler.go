@@ -99,6 +99,12 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 
+// UpdateRoomStatus was only implemented to keep compatibility with previous maestro version (v9), it has no inner execution since the
+// ping event is already forwarding the incoming rooms status to matchmaker
+func (h *RoomsHandler) UpdateRoomStatus(ctx context.Context, message *api.UpdateRoomStatusRequest) (*api.UpdateRoomStatusResponse, error) {
+	return &api.UpdateRoomStatusResponse{Success: true}, nil
+}
+
 func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*game_room.GameRoom, error) {
 	status, err := game_room.FromStringToGameRoomPingStatus(request.GetStatus())
 	if err != nil {
