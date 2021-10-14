@@ -99,10 +99,10 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 
-// NoopUpdateRoomStatus was only implemented to keep compatibility with previous maestro version (v9), it has no inner execution since the
+// UpdateRoomStatus was only implemented to keep compatibility with previous maestro version (v9), it has no inner execution since the
 // ping event is already forwarding the incoming rooms status to matchmaker
-func (h RoomsHandler) NoopUpdateRoomStatus(ctx context.Context, message *api.NoopUpdateRoomStatusRequest) (*api.NoopUpdateRoomStatusResponse, error) {
-	return &api.NoopUpdateRoomStatusResponse{Success: true}, nil
+func (h *RoomsHandler) UpdateRoomStatus(ctx context.Context, message *api.UpdateRoomStatusRequest) (*api.UpdateRoomStatusResponse, error) {
+	return &api.UpdateRoomStatusResponse{Success: true}, nil
 }
 
 func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*game_room.GameRoom, error) {

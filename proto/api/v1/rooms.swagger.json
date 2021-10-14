@@ -207,13 +207,13 @@
     },
     "/scheduler/{schedulerName}/rooms/{roomName}/status": {
       "put": {
-        "summary": "Noop endpoint created for maintaining compatibility with previous maestro version (v9).",
-        "operationId": "RoomsService_NoopUpdateRoomStatus",
+        "summary": "Endpoint created for maintaining compatibility with previous maestro version (v9). It is currently deprecated.",
+        "operationId": "RoomsService_UpdateRoomStatus",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1NoopUpdateRoomStatusResponse"
+              "$ref": "#/definitions/v1UpdateRoomStatusResponse"
             }
           },
           "default": {
@@ -336,7 +336,7 @@
       },
       "description": "The room event response."
     },
-    "v1NoopUpdateRoomStatusResponse": {
+    "v1UpdateRoomStatusResponse": {
       "type": "object",
       "properties": {
         "success": {

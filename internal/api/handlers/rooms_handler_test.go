@@ -429,7 +429,7 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 	})
 }
 
-func TestRoomsHandler_NoopUpdateRoomStatus(t *testing.T) {
+func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 
 	t.Run("it does nothing and returns 200 ok with success equal true for all requests", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
