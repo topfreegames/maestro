@@ -48,3 +48,17 @@ func (mr *MockEventsForwarderMockRecorder) ForwardRoomEvent(ctx, room, status, e
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardRoomEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardRoomEvent), ctx, room, status, eventType, metadata)
 }
+
+// ForwardPlayerEvent mocks base method.
+func (m *MockEventsForwarder) ForwardPlayerEvent(room *game_room.GameRoom, ctx context.Context, status string, metadata map[string]interface{}) (err error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ForwardPlayerEvent", ctx, room, status, metadata)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ForwardPlayerEvent indicates an expected call of ForwardPlayerEvent.
+func (mr *MockEventsForwarderMockRecorder) ForwardPlayerEvent(ctx, room, status, metadata interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardPlayerEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardPlayerEvent), ctx, room, status, metadata)
+}

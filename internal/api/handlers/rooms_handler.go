@@ -71,6 +71,16 @@ func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.Forwar
 	return &api.ForwardRoomEventResponse{Success: true, Message: ""}, nil
 }
 
+func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.ForwardPlayerEventRequest) (*api.ForwardPlayerEventResponse, error) {
+	room := &game_room.GameRoom{ID: message.RoomName, SchedulerID: message.SchedulerName, Metadata: message.Metadata.AsMap()}
+
+	err := h.eventsForwarderService.ForwardPlayerEvent(ctx, room, message.Event)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	return &api.ForwardPlayerEventResponse{Success: true, Message: ""}, nil
+}
+
 func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.UpdateRoomWithPingRequest) (*api.UpdateRoomWithPingResponse, error) {
 	gameRoom, err := h.fromApiUpdateRoomRequestToEntity(message)
 	if err != nil {

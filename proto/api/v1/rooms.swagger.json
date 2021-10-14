@@ -79,6 +79,69 @@
         ]
       }
     },
+    "/scheduler/{schedulerName}/rooms/{roomName}/playerevent": {
+      "post": {
+        "summary": "Forward the incoming player event.",
+        "operationId": "RoomsService_ForwardPlayerEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ForwardPlayerEventResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "roomName",
+            "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "type": "object",
+                  "description": "Player event metadata."
+                },
+                "event": {
+                  "type": "string",
+                  "description": "The player event name."
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "int64",
+                  "description": "Timestamp of the player event."
+                }
+              },
+              "description": "The player event request."
+            }
+          }
+        ],
+        "tags": [
+          "RoomsService"
+        ]
+      }
+    },
     "/scheduler/{schedulerName}/rooms/{roomName}/roomevent": {
       "post": {
         "summary": "Forward the incoming room event.",
@@ -181,6 +244,20 @@
           }
         }
       }
+    },
+    "v1ForwardPlayerEventResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "title": "Flag indicating if the forward process was successful or not"
+        },
+        "message": {
+          "type": "string",
+          "title": "Message from forwarding response (currently always blank)"
+        }
+      },
+      "description": "The player event response."
     },
     "v1ForwardRoomEventResponse": {
       "type": "object",

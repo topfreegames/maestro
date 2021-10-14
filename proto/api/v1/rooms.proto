@@ -27,6 +27,38 @@ service RoomsService {
       body: "*"
     };
   }
+
+  // Forward the incoming player event.
+  rpc ForwardPlayerEvent(ForwardPlayerEventRequest) returns (ForwardPlayerEventResponse) {
+    option (google.api.http) = {
+      post: "/scheduler/{scheduler_name=*}/rooms/{room_name=*}/playerevent",
+      body: "*"
+    };
+  }
+}
+
+// The player event request.
+message ForwardPlayerEventRequest {
+  // Target scheduler name.
+  // NOTE: On http protocol, this operates as a path param.
+  string scheduler_name = 1;
+  // Target room name.
+  // NOTE: On http protocol, this operates as a path param.
+  string room_name = 2;
+  // Player event metadata.
+  google.protobuf.Struct metadata = 3;
+  // The player event name.
+  string event = 4;
+  // Timestamp of the player event.
+  int64 timestamp = 6;
+}
+
+// The player event response.
+message ForwardPlayerEventResponse {
+  // Flag indicating if the forward process was successful or not
+  bool success = 1;
+  // Message from forwarding response (currently always blank)
+  string message = 2;
 }
 
 // The room event request.
