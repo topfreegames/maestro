@@ -25,6 +25,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -50,6 +51,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+	sortOperationsByCreatedAt(pendingOperationEntities)
 
 	pendingOperationResponse, err := h.fromOperationsToResponses(pendingOperationEntities)
 	if err != nil {
@@ -60,6 +62,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+	sortOperationsByCreatedAt(activeOperationEntities)
 
 	activeOperationResponses, err := h.fromOperationsToResponses(activeOperationEntities)
 	if err != nil {
@@ -70,6 +73,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+	sortOperationsByCreatedAt(finishedOperationEntities)
 
 	finishedOperationResponse, err := h.fromOperationsToResponses(finishedOperationEntities)
 	if err != nil {
@@ -118,4 +122,10 @@ func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation)
 		SchedulerName:  entity.SchedulerName,
 		CreatedAt:      timestamppb.New(entity.CreatedAt),
 	}, nil
+}
+
+func sortOperationsByCreatedAt(operations []*operation.Operation) {
+	sort.Slice(operations, func(i, j int) bool {
+		return operations[i].CreatedAt.After(operations[j].CreatedAt)
+	})
 }
