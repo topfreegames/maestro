@@ -29,6 +29,10 @@ message ListOperationsRequest {
   // Scheduler name that the operations are part of.
   // NOTE: On http protocol, this operates as a path param.
   string scheduler_name = 1;
+  // Optional parameter for enabling operations sorting.
+  // General `order_by` string syntax: <field> (<asc|desc>)
+  // NOTE: On http protocol, this operates as a query parameter.
+  string order_by = 2;
 }
 
 // The list operation route response/reply
