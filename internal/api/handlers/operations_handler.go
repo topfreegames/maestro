@@ -28,8 +28,6 @@ import (
 	"sort"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
@@ -154,14 +152,14 @@ func extractSortingParameters(orderBy string) (string, error) {
 		sortingField = sortingParameters[0]
 		sortingOrder = sortingParameters[1]
 	case parametersLen > 2:
-		return "", errors.NewBadRequest("invalid sorting parameters number")
+		return "", fmt.Errorf("invalid sorting parameters number")
 	}
 
 	if sortingField != "createdAt" {
-		return "", errors.NewBadRequest(fmt.Sprintf("invalid sorting field: %s", sortingField))
+		return "", fmt.Errorf("invalid sorting field: %s", sortingField)
 	}
 	if sortingOrder != "asc" && sortingOrder != "desc" {
-		return "", errors.NewBadRequest(fmt.Sprintf("invalid sorting order: %s", sortingOrder))
+		return "", fmt.Errorf("invalid sorting order: %s", sortingOrder)
 	}
 	return sortingOrder, nil
 }
