@@ -34,7 +34,7 @@ type PortRange struct {
 	End   int32
 }
 
-// Total returns the total ports avaiable.
+// Total returns the total ports available.
 func (p *PortRange) Total() int32 {
 	return (p.End - p.Start) + 1
 }

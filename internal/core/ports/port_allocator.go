@@ -24,7 +24,7 @@ package ports
 
 import "github.com/topfreegames/maestro/internal/core/entities"
 
-// PortAllocator is responsbile for allocating ports for the game rooms.
+// PortAllocator is responsible for allocating ports for the game rooms.
 type PortAllocator interface {
 	// Allocate allocates some port numbers of any type. If the allocation fails
 	// for any reason, it returns an error.

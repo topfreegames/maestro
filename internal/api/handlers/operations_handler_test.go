@@ -565,14 +565,14 @@ func TestCancelOperation(t *testing.T) {
 	schedulerName := uuid.New().String()
 	operationID := uuid.New().String()
 
-	t.Run("enqueues operation cancelation request with success", func(t *testing.T) {
+	t.Run("enqueues operation cancellation request with success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationManager := operation_manager.New(operationFlow, nil, nil)
 
-		operationFlow.EXPECT().EnqueueOperationCancelationRequest(gomock.Any(), gomock.Eq(ports.OperationCancelationRequest{
+		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Eq(ports.OperationCancellationRequest{
 			SchedulerName: schedulerName,
 			OperationID:   operationID,
 		})).Return(nil)
@@ -592,14 +592,14 @@ func TestCancelOperation(t *testing.T) {
 		require.Equal(t, 200, rr.Code)
 	})
 
-	t.Run("fails to enqueues operation cancelation request when operation_flow fails", func(t *testing.T) {
+	t.Run("fails to enqueues operation cancellation request when operation_flow fails", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationManager := operation_manager.New(operationFlow, nil, nil)
 
-		operationFlow.EXPECT().EnqueueOperationCancelationRequest(gomock.Any(), gomock.Eq(ports.OperationCancelationRequest{
+		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Eq(ports.OperationCancellationRequest{
 			SchedulerName: schedulerName,
 			OperationID:   operationID,
 		})).Return(errors.NewErrUnexpected("failed to persist request"))

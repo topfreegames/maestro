@@ -61,28 +61,28 @@ func (of *OperationCancelFunctions) putFunction(schedulerName, operationID strin
 func (of *OperationCancelFunctions) removeFunction(schedulerName, operationID string) {
 	of.mutex.Lock()
 
-	schedulerOperationCancelationFunctions := of.functions[schedulerName]
-	if schedulerOperationCancelationFunctions == nil {
+	schedulerOperationCancellationFunctions := of.functions[schedulerName]
+	if schedulerOperationCancellationFunctions == nil {
 		return
 	}
 
-	delete(schedulerOperationCancelationFunctions, operationID)
+	delete(schedulerOperationCancellationFunctions, operationID)
 
 	of.mutex.Unlock()
 }
 
 func (of *OperationCancelFunctions) getFunction(schedulerName, operationID string) (context.CancelFunc, error) {
 	of.mutex.RLock()
-	schedulerOperationCancelationFunctions := of.functions[schedulerName]
-	if schedulerOperationCancelationFunctions == nil {
+	schedulerOperationCancellationFunctions := of.functions[schedulerName]
+	if schedulerOperationCancellationFunctions == nil {
 		return nil, errors.NewErrNotFound("no cancel scheduler found for scheduler name: %s", schedulerName)
 	}
 
-	if schedulerOperationCancelationFunctions[operationID] == nil {
+	if schedulerOperationCancellationFunctions[operationID] == nil {
 		return nil, errors.NewErrNotFound("no cancel function found for scheduler name: %s and operation id: %s", schedulerName, operationID)
 	}
 
-	function := schedulerOperationCancelationFunctions[operationID]
+	function := schedulerOperationCancellationFunctions[operationID]
 	of.mutex.RUnlock()
 
 	return function, nil
@@ -104,7 +104,7 @@ func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefi
 	}
 }
 
-func (o *OperationManager) CreateOperation(ctx context.Context, schedulerName string, definition operations.Definition) (*operation.Operation, error) {
+func (om *OperationManager) CreateOperation(ctx context.Context, schedulerName string, definition operations.Definition) (*operation.Operation, error) {
 	op := &operation.Operation{
 		ID:             uuid.NewString(),
 		Status:         operation.StatusPending,
@@ -113,12 +113,12 @@ func (o *OperationManager) CreateOperation(ctx context.Context, schedulerName st
 		CreatedAt:      time.Now(),
 	}
 
-	err := o.storage.CreateOperation(ctx, op, definition.Marshal())
+	err := om.storage.CreateOperation(ctx, op, definition.Marshal())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create operation: %w", err)
 	}
 
-	err = o.flow.InsertOperationID(ctx, op.SchedulerName, op.ID)
+	err = om.flow.InsertOperationID(ctx, op.SchedulerName, op.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert operation on flow: %w", err)
 	}
@@ -126,13 +126,13 @@ func (o *OperationManager) CreateOperation(ctx context.Context, schedulerName st
 	return op, nil
 }
 
-func (o *OperationManager) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, operations.Definition, error) {
-	op, definitionContents, err := o.storage.GetOperation(ctx, schedulerName, operationID)
+func (om *OperationManager) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, operations.Definition, error) {
+	op, definitionContents, err := om.storage.GetOperation(ctx, schedulerName, operationID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	definitionConstructor := o.operationDefinitionConstructors[op.DefinitionName]
+	definitionConstructor := om.operationDefinitionConstructors[op.DefinitionName]
 	if definitionConstructor == nil {
 		return nil, nil, fmt.Errorf("no definition constructor implemented for %s: %s", op.DefinitionName, err)
 	}
@@ -147,37 +147,37 @@ func (o *OperationManager) GetOperation(ctx context.Context, schedulerName, oper
 }
 
 // NextSchedulerOperation returns the next scheduler operation to be processed.
-func (o *OperationManager) NextSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, operations.Definition, error) {
-	operationID, err := o.flow.NextOperationID(ctx, schedulerName)
+func (om *OperationManager) NextSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, operations.Definition, error) {
+	operationID, err := om.flow.NextOperationID(ctx, schedulerName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to retrieve the next operation: %w", err)
 	}
 
-	return o.GetOperation(ctx, schedulerName, operationID)
+	return om.GetOperation(ctx, schedulerName, operationID)
 }
 
 // StartOperation used when an operation will start executing.
-func (o *OperationManager) StartOperation(ctx context.Context, op *operation.Operation, cancelFunction context.CancelFunc) error {
-	err := o.storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, operation.StatusInProgress)
+func (om *OperationManager) StartOperation(ctx context.Context, op *operation.Operation, cancelFunction context.CancelFunc) error {
+	err := om.storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, operation.StatusInProgress)
 	if err != nil {
 		return fmt.Errorf("failed to start operation: %w", err)
 	}
 
 	op.Status = operation.StatusInProgress
 
-	o.operationCancelFunctions.putFunction(op.SchedulerName, op.ID, cancelFunction)
+	om.operationCancelFunctions.putFunction(op.SchedulerName, op.ID, cancelFunction)
 	return nil
 }
 
-func (o *OperationManager) ListSchedulerPendingOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
+func (om *OperationManager) ListSchedulerPendingOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
 
-	pendingOperationIDs, err := o.flow.ListSchedulerPendingOperationIDs(ctx, schedulerName)
+	pendingOperationIDs, err := om.flow.ListSchedulerPendingOperationIDs(ctx, schedulerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list all pending operations: %w", err)
 	}
 	pendingOperations := make([]*operation.Operation, len(pendingOperationIDs))
 	for i, operationID := range pendingOperationIDs {
-		op, _, err := o.storage.GetOperation(ctx, schedulerName, operationID)
+		op, _, err := om.storage.GetOperation(ctx, schedulerName, operationID)
 		if err != nil {
 			return nil, err
 		}
@@ -187,47 +187,47 @@ func (o *OperationManager) ListSchedulerPendingOperations(ctx context.Context, s
 	return pendingOperations, nil
 }
 
-func (o *OperationManager) ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
+func (om *OperationManager) ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
 
-	return o.storage.ListSchedulerActiveOperations(ctx, schedulerName)
+	return om.storage.ListSchedulerActiveOperations(ctx, schedulerName)
 }
 
-func (o *OperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
+func (om *OperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
 
-	return o.storage.ListSchedulerFinishedOperations(ctx, schedulerName)
+	return om.storage.ListSchedulerFinishedOperations(ctx, schedulerName)
 }
 
-func (o *OperationManager) FinishOperation(ctx context.Context, op *operation.Operation) error {
-	err := o.storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, op.Status)
+func (om *OperationManager) FinishOperation(ctx context.Context, op *operation.Operation) error {
+	err := om.storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, op.Status)
 	if err != nil {
 		return fmt.Errorf("failed to finish operation: %w", err)
 	}
 
-	o.operationCancelFunctions.removeFunction(op.SchedulerName, op.ID)
+	om.operationCancelFunctions.removeFunction(op.SchedulerName, op.ID)
 
 	return nil
 }
 
-func (o *OperationManager) EnqueueOperationCancelationRequest(ctx context.Context, schedulerName, operationID string) error {
-	err := o.flow.EnqueueOperationCancelationRequest(ctx, ports.OperationCancelationRequest{
+func (om *OperationManager) EnqueueOperationCancellationRequest(ctx context.Context, schedulerName, operationID string) error {
+	err := om.flow.EnqueueOperationCancellationRequest(ctx, ports.OperationCancellationRequest{
 		SchedulerName: schedulerName,
 		OperationID:   operationID,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to enqueue operation cancelation request: %w", err)
+		return fmt.Errorf("failed to enqueue operation cancellation request: %w", err)
 	}
 
 	return nil
 }
 
-func (om *OperationManager) WatchOperationCancelationRequests(ctx context.Context) error {
-	requestChannel := om.flow.WatchOperationCancelationRequests(ctx)
+func (om *OperationManager) WatchOperationCancellationRequests(ctx context.Context) error {
+	requestChannel := om.flow.WatchOperationCancellationRequests(ctx)
 
 	for {
 		select {
 		case request, ok := <-requestChannel:
 			if !ok {
-				return errors.NewErrUnexpected("operation cancelation request channel closed")
+				return errors.NewErrUnexpected("operation cancellation request channel closed")
 			}
 
 			err := om.cancelOperation(ctx, request.SchedulerName, request.OperationID)

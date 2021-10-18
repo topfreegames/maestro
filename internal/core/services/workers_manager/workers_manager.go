@@ -41,12 +41,12 @@ const (
 	// Sync period: waiting time window respected by workers in
 	// order to control executions
 	syncWorkersIntervalPath = "workers.syncInterval"
-	// Workers stop timeout: duration that the workes have to stop their
+	// Workers stop timeout: duration that the workers have to stop their
 	// execution until the context is canceled.
 	workersStopTimeoutDurationPath = "workers.stopTimeoutDuration"
 )
 
-// Default struct of WorkersManager service
+// WorkersManager is the default struct of WorkersManager service
 type WorkersManager struct {
 	builder                    workers.WorkerBuilder
 	configs                    config.Config
@@ -58,7 +58,7 @@ type WorkersManager struct {
 	workersWaitGroup           sync.WaitGroup
 }
 
-// Default constructor of WorkersManager
+// NewWorkersManager is the default constructor of WorkersManager
 func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, schedulerStorage ports.SchedulerStorage, workerOptions *workers.WorkerOptions) *WorkersManager {
 
 	return &WorkersManager{
@@ -72,7 +72,7 @@ func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, sch
 	}
 }
 
-// Function to run a first sync and start a periodically sync worker. This
+// Start is a function to run a first sync and start a periodically sync worker. This
 // function blocks and returns an error if it happens during the
 // execution. It is cancellable through the provided context.
 func (w *WorkersManager) Start(ctx context.Context) error {
@@ -117,7 +117,7 @@ func (w *WorkersManager) stop() {
 	w.workersWaitGroup.Wait()
 }
 
-// Function responsible to run a single sync on operation workers. It will:
+// SyncWorkers is responsible to run a single sync on operation workers. It will:
 // - Get all schedulers
 // - Discover and start all desirable workers (not running);
 // - Discover and stop all dispensable workers (running);
@@ -128,14 +128,14 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 		return err
 	}
 
-	desirableWorkers := w.getDesirableWorkers(ctx, schedulers)
+	desirableWorkers := w.getDesirableWorkers(schedulers)
 	for name, worker := range desirableWorkers {
 		w.startWorker(ctx, name, worker)
 		zap.L().Info("new operation worker running", zap.String("scheduler", name))
 		reportWorkerStart(name)
 	}
 
-	dispensableWorkers := w.getDispensableWorkers(ctx, schedulers)
+	dispensableWorkers := w.getDispensableWorkers(schedulers)
 	for name, worker := range dispensableWorkers {
 		worker.Stop(ctx)
 		zap.L().Info("canceling operation worker", zap.String("scheduler", name))
@@ -163,7 +163,7 @@ func (w *WorkersManager) startWorker(ctx context.Context, name string, wkr worke
 }
 
 // Gets all desirable operation workers, the ones that are not running
-func (w *WorkersManager) getDesirableWorkers(ctx context.Context, schedulers []*entities.Scheduler) map[string]workers.Worker {
+func (w *WorkersManager) getDesirableWorkers(schedulers []*entities.Scheduler) map[string]workers.Worker {
 
 	desirableWorkers := map[string]workers.Worker{}
 	for _, scheduler := range schedulers {
@@ -179,7 +179,7 @@ func (w *WorkersManager) getDesirableWorkers(ctx context.Context, schedulers []*
 }
 
 // Gets all dispensable operation workers, the ones that are running but no more required
-func (w *WorkersManager) getDispensableWorkers(ctx context.Context, schedulers []*entities.Scheduler) map[string]workers.Worker {
+func (w *WorkersManager) getDispensableWorkers(schedulers []*entities.Scheduler) map[string]workers.Worker {
 
 	dispensableWorkers := map[string]workers.Worker{}
 	for name, worker := range w.CurrentWorkers {

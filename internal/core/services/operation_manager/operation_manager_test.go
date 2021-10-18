@@ -463,11 +463,11 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 		}, nil, nil)
 
 		go func() {
-			err := opManager.WatchOperationCancelationRequests(ctx)
+			err := opManager.WatchOperationCancellationRequests(ctx)
 			require.NoError(t, err)
 		}()
 
-		requestChannel <- ports.OperationCancelationRequest{
+		requestChannel <- ports.OperationCancellationRequest{
 			SchedulerName: schedulerName,
 			OperationID:   operationID,
 		}

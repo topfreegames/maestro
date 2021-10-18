@@ -143,7 +143,7 @@ func TestNextOperationID(t *testing.T) {
 	})
 }
 
-func TestEnqueueOperationCancelationRequest(t *testing.T) {
+func TestEnqueueOperationCancellationRequest(t *testing.T) {
 	schedulerName := uuid.New().String()
 	operationID := uuid.New().String()
 
@@ -152,8 +152,8 @@ func TestEnqueueOperationCancelationRequest(t *testing.T) {
 		flow := NewRedisOperationFlow(client)
 		ctx := context.Background()
 
-		cancelChan := flow.WatchOperationCancelationRequests(ctx)
-		err := flow.EnqueueOperationCancelationRequest(ctx, ports.OperationCancelationRequest{
+		cancelChan := flow.WatchOperationCancellationRequests(ctx)
+		err := flow.EnqueueOperationCancellationRequest(ctx, ports.OperationCancellationRequest{
 			SchedulerName: schedulerName,
 			OperationID:   operationID,
 		})
@@ -174,7 +174,7 @@ func TestEnqueueOperationCancelationRequest(t *testing.T) {
 	})
 }
 
-func TestWatchOperationCancelationRequests(t *testing.T) {
+func TestWatchOperationCancellationRequests(t *testing.T) {
 	schedulerName := uuid.New().String()
 	operationID := uuid.New().String()
 
@@ -183,14 +183,14 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 		flow := NewRedisOperationFlow(client)
 		ctx, ctxCancelFn := context.WithCancel(context.Background())
 
-		cancelChan := flow.WatchOperationCancelationRequests(ctx)
+		cancelChan := flow.WatchOperationCancellationRequests(ctx)
 
-		requestAsString, _ := json.Marshal(ports.OperationCancelationRequest{
+		requestAsString, _ := json.Marshal(ports.OperationCancellationRequest{
 			SchedulerName: schedulerName,
 			OperationID:   operationID,
 		})
 
-		err := client.Publish(ctx, watchOperationCancelationRequestKey, string(requestAsString)).Err()
+		err := client.Publish(ctx, watchOperationCancellationRequestKey, string(requestAsString)).Err()
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -213,7 +213,7 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 		flow := NewRedisOperationFlow(client)
 		ctx, ctxCancelFn := context.WithCancel(context.Background())
 
-		cancelChan := flow.WatchOperationCancelationRequests(ctx)
+		cancelChan := flow.WatchOperationCancellationRequests(ctx)
 		ctxCancelFn()
 
 		require.Eventually(t, func() bool {
@@ -232,7 +232,7 @@ func TestWatchOperationCancelationRequests(t *testing.T) {
 		flow := NewRedisOperationFlow(client)
 		ctx := context.Background()
 
-		cancelChan := flow.WatchOperationCancelationRequests(ctx)
+		cancelChan := flow.WatchOperationCancellationRequests(ctx)
 
 		client.Close()
 

@@ -43,14 +43,14 @@ func main() {
 	flag.Parse()
 	err := service.ConfigureLogging(*logConfig)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unabled to load logging configuration")
+		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
 	}
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 
 	config, err := viper.NewViperConfig(*configPath)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unabled to load config")
+		zap.L().With(zap.Error(err)).Fatal("unable to load config")
 	}
 
 	go func() {
@@ -75,7 +75,7 @@ func main() {
 		err := operationExecutionWorkerManager.Start(ctx)
 		if err != nil {
 			zap.L().With(zap.Error(err)).Info("operation execution worker manager stopped with error")
-			// enforce the cancelation
+			// enforce the cancellation
 			cancelFn()
 		}
 	}()
