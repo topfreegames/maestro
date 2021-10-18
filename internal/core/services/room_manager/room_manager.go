@@ -26,6 +26,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -252,8 +254,35 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 	return result, nil
 }
 
-func removeDuplicateValues(slice []string) []string {
+// SchedulerMaxSurge calculates the current scheduler max surge based on
+// the number of rooms the scheduler has.
+func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error) {
+	if scheduler.MaxSurge == "" {
+		// TODO(gabriel.corado): should we always have a default max surge?
+		return -1, fmt.Errorf("empty max surge")
+	}
 
+	isRelative := strings.HasSuffix(scheduler.MaxSurge, "%")
+	maxSurgeNum, err := strconv.Atoi(strings.TrimSuffix(scheduler.MaxSurge, "%"))
+	if err != nil {
+		return -1, fmt.Errorf("failed to parse max surge into a number: %w", err)
+	}
+
+	if !isRelative {
+		return maxSurgeNum, nil
+	}
+
+	// TODO(gabriel.corado): should we count terminating and error rooms?
+	roomsNum, err := m.roomStorage.GetRoomCount(ctx, scheduler.Name)
+	if err != nil {
+		return -1, fmt.Errorf("failed to count current number of game rooms: %w", err)
+	}
+
+	absoluteNum := math.Round((float64(roomsNum) / 100) * float64(maxSurgeNum))
+	return int(math.Max(1, absoluteNum)), nil
+}
+
+func removeDuplicateValues(slice []string) []string {
 	check := make(map[string]int)
 	res := make([]string, 0)
 	for _, val := range slice {
