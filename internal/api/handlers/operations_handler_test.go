@@ -48,27 +48,97 @@ import (
 )
 
 func TestListOperations(t *testing.T) {
-	t.Run("with success", func(t *testing.T) {
+	schedulerName := "zooba"
+
+	dates := []time.Time{
+		time.Time{}.AddDate(2020, 0, 0),
+		time.Time{}.AddDate(2020, 1, 0),
+		time.Time{}.AddDate(2020, 2, 0),
+	}
+	pendingOperations := []*operation.Operation{
+		&operation.Operation{
+			ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+			Status:         operation.StatusPending,
+			CreatedAt:      dates[0],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+		},
+		&operation.Operation{
+			ID:             "7af3250c-af5b-428a-955f-a8fa22fb7cf7",
+			Status:         operation.StatusPending,
+			CreatedAt:      dates[1],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+		},
+		&operation.Operation{
+			ID:             "83cc7850-9c90-4033-948f-368eea4b976e",
+			Status:         operation.StatusPending,
+			CreatedAt:      dates[2],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+		},
+	}
+	finishedOperations := []*operation.Operation{
+		&operation.Operation{
+			ID:             "c241b467-db15-42ba-b2a8-017c37234237",
+			Status:         operation.StatusFinished,
+			CreatedAt:      dates[0],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+		},
+		&operation.Operation{
+			ID:             "f1fce7b2-3374-464e-9eb4-08b25fa0da54",
+			Status:         operation.StatusFinished,
+			CreatedAt:      dates[1],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+		},
+		&operation.Operation{
+			ID:             "ae218cc1-2dd8-448b-a78f-0cc979f89f37",
+			Status:         operation.StatusFinished,
+			CreatedAt:      dates[2],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+		},
+	}
+	activeOperations := []*operation.Operation{
+		&operation.Operation{
+			ID:             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
+			Status:         operation.StatusInProgress,
+			CreatedAt:      dates[0],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+		},
+		&operation.Operation{
+			ID:             "59e58c61-1758-4f02-b6ea-a87a64172902",
+			Status:         operation.StatusInProgress,
+			CreatedAt:      dates[1],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+		},
+		&operation.Operation{
+			ID:             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
+			Status:         operation.StatusInProgress,
+			CreatedAt:      dates[2],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+		},
+	}
+
+	t.Run("with success and default sorting", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
-		createdAtString := "2020-01-01T00:00:00.001Z"
-		createdAt, _ := time.Parse(time.RFC3339Nano, createdAtString)
 
-		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), "zooba").Return([]string{}, nil)
-		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), "zooba").Return([]*operation.Operation{}, nil)
-		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), "zooba").Return([]*operation.Operation{
-			{
-				ID:             "operation-1",
-				Status:         operation.StatusInProgress,
-				DefinitionName: "create_scheduler",
-				SchedulerName:  "zooba",
-				CreatedAt:      createdAt,
-			},
-		}, nil)
+		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{"1", "2", "3"}, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "1").Return(pendingOperations[0], []byte{}, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "2").Return(pendingOperations[1], []byte{}, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "3").Return(pendingOperations[2], []byte{}, nil)
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
+		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -89,15 +159,368 @@ func TestListOperations(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t,
-			[]interface{}([]interface{}{
-				map[string]interface{}{
-					"definitionName": "create_scheduler",
-					"id":             "operation-1",
-					"schedulerName":  "zooba",
-					"status":         "in_progress",
-					"createdAt":      createdAtString,
-				},
-			}), body["activeOperations"])
+			[]interface{}(
+				[]interface{}{
+					map[string]interface{}{
+						"createdAt":      "2021-03-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
+						"schedulerName":  schedulerName,
+						"status":         "in_progress",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-02-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "59e58c61-1758-4f02-b6ea-a87a64172902",
+						"schedulerName":  schedulerName,
+						"status":         "in_progress",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-01-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
+						"schedulerName":  schedulerName,
+						"status":         "in_progress",
+					},
+				}),
+			body["activeOperations"])
+		require.Equal(t,
+			[]interface{}(
+				[]interface{}{
+					map[string]interface{}{
+						"createdAt":      "2021-03-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "ae218cc1-2dd8-448b-a78f-0cc979f89f37",
+						"schedulerName":  schedulerName,
+						"status":         "finished",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-02-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "f1fce7b2-3374-464e-9eb4-08b25fa0da54",
+						"schedulerName":  schedulerName,
+						"status":         "finished",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-01-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "c241b467-db15-42ba-b2a8-017c37234237",
+						"schedulerName":  schedulerName,
+						"status":         "finished",
+					},
+				}),
+			body["finishedOperations"])
+		require.Equal(t,
+			[]interface{}(
+				[]interface{}{
+					map[string]interface{}{
+						"createdAt":      "2021-03-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "83cc7850-9c90-4033-948f-368eea4b976e",
+						"schedulerName":  schedulerName,
+						"status":         "pending",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-02-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "7af3250c-af5b-428a-955f-a8fa22fb7cf7",
+						"schedulerName":  schedulerName,
+						"status":         "pending",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-01-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+						"schedulerName":  schedulerName,
+						"status":         "pending",
+					},
+				}),
+			body["pendingOperations"])
+	})
+
+	t.Run("with success and ascending sorting", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+
+		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{"1", "2", "3"}, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "1").Return(pendingOperations[0], []byte{}, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "2").Return(pendingOperations[1], []byte{}, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "3").Return(pendingOperations[2], []byte{}, nil)
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
+		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?order_by=createdAt asc", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+
+		require.NoError(t, err)
+		require.Equal(t,
+			[]interface{}(
+				[]interface{}{
+					map[string]interface{}{
+						"createdAt":      "2021-03-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
+						"schedulerName":  schedulerName,
+						"status":         "in_progress",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-02-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "59e58c61-1758-4f02-b6ea-a87a64172902",
+						"schedulerName":  schedulerName,
+						"status":         "in_progress",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-01-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
+						"schedulerName":  schedulerName,
+						"status":         "in_progress",
+					},
+				}),
+			body["activeOperations"])
+		require.Equal(t,
+			[]interface{}(
+				[]interface{}{
+					map[string]interface{}{
+						"createdAt":      "2021-03-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "ae218cc1-2dd8-448b-a78f-0cc979f89f37",
+						"schedulerName":  schedulerName,
+						"status":         "finished",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-02-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "f1fce7b2-3374-464e-9eb4-08b25fa0da54",
+						"schedulerName":  schedulerName,
+						"status":         "finished",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-01-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "c241b467-db15-42ba-b2a8-017c37234237",
+						"schedulerName":  schedulerName,
+						"status":         "finished",
+					},
+				}),
+			body["finishedOperations"])
+		require.Equal(t,
+			[]interface{}(
+				[]interface{}{
+					map[string]interface{}{
+						"createdAt":      "2021-03-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "83cc7850-9c90-4033-948f-368eea4b976e",
+						"schedulerName":  schedulerName,
+						"status":         "pending",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-02-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "7af3250c-af5b-428a-955f-a8fa22fb7cf7",
+						"schedulerName":  schedulerName,
+						"status":         "pending",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-01-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+						"schedulerName":  schedulerName,
+						"status":         "pending",
+					},
+				}),
+			body["pendingOperations"])
+	})
+
+	t.Run("with success and descending sorting", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+
+		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{"1", "2", "3"}, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "1").Return(pendingOperations[0], []byte{}, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "2").Return(pendingOperations[1], []byte{}, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "3").Return(pendingOperations[2], []byte{}, nil)
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
+		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?order_by=createdAt desc", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+
+		require.NoError(t, err)
+		require.Equal(t,
+			[]interface{}(
+				[]interface{}{
+					map[string]interface{}{
+						"createdAt":      "2021-01-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
+						"schedulerName":  schedulerName,
+						"status":         "in_progress",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-02-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "59e58c61-1758-4f02-b6ea-a87a64172902",
+						"schedulerName":  schedulerName,
+						"status":         "in_progress",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-03-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
+						"schedulerName":  schedulerName,
+						"status":         "in_progress",
+					},
+				}),
+			body["activeOperations"])
+		require.Equal(t,
+			[]interface{}(
+				[]interface{}{
+
+					map[string]interface{}{
+						"createdAt":      "2021-01-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "c241b467-db15-42ba-b2a8-017c37234237",
+						"schedulerName":  schedulerName,
+						"status":         "finished",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-02-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "f1fce7b2-3374-464e-9eb4-08b25fa0da54",
+						"schedulerName":  schedulerName,
+						"status":         "finished",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-03-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "ae218cc1-2dd8-448b-a78f-0cc979f89f37",
+						"schedulerName":  schedulerName,
+						"status":         "finished",
+					},
+				}),
+			body["finishedOperations"])
+		require.Equal(t,
+			[]interface{}(
+				[]interface{}{
+					map[string]interface{}{
+						"createdAt":      "2021-01-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+						"schedulerName":  schedulerName,
+						"status":         "pending",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-02-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "7af3250c-af5b-428a-955f-a8fa22fb7cf7",
+						"schedulerName":  schedulerName,
+						"status":         "pending",
+					},
+					map[string]interface{}{
+						"createdAt":      "2021-03-01T00:00:00Z",
+						"definitionName": "create_scheduler",
+						"id":             "83cc7850-9c90-4033-948f-368eea4b976e",
+						"schedulerName":  schedulerName,
+						"status":         "pending",
+					},
+				}),
+			body["pendingOperations"])
+	})
+
+	t.Run("with invalid sorting field", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?order_by=invalidField", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 400, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+		require.NoError(t, err)
+		require.Equal(t, "invalid sorting field: invalidField", body["message"])
+	})
+
+	t.Run("with invalid sorting order", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?order_by=createdAt invalidOrder", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 400, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+		require.NoError(t, err)
+		require.Equal(t, "invalid sorting order: invalidOrder", body["message"])
 	})
 
 	t.Run("fails when operation is listed but does not exists", func(t *testing.T) {

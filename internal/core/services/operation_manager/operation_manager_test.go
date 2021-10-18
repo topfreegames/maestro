@@ -358,8 +358,8 @@ func TestFinishOperation(t *testing.T) {
 	})
 }
 
-func TestListActiveOperations(t *testing.T) {
-	t.Run("lists", func(t *testing.T) {
+func TestListSchedulerActiveOperations(t *testing.T) {
+	t.Run("it returns an operation list with pending status", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -383,7 +383,61 @@ func TestListActiveOperations(t *testing.T) {
 	})
 }
 
-func TestWatchOperationCancelationRequests(t *testing.T) {
+func TestListSchedulerFinishedOperations(t *testing.T) {
+	t.Run("it returns an operation list with finished status", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
+
+		ctx := context.Background()
+		operationsResult := []*operation.Operation{
+			{ID: uuid.NewString()},
+			{ID: uuid.NewString()},
+			{ID: uuid.NewString()},
+		}
+
+		schedulerName := "test-scheduler"
+		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
+		operations, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
+		require.NoError(t, err)
+		require.ElementsMatch(t, operationsResult, operations)
+	})
+}
+
+func TestListSchedulerPendingOperations(t *testing.T) {
+	t.Run("it returns an operation list with pending status", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		opManager := New(operationFlow, operationStorage, definitionConstructors)
+
+		ctx := context.Background()
+		operationsResult := []*operation.Operation{
+			{ID: uuid.NewString()},
+			{ID: uuid.NewString()},
+			{ID: uuid.NewString()},
+		}
+
+		schedulerName := "test-scheduler"
+		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(ctx, schedulerName).Return([]string{"1", "2", "3"}, nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "1").Return(operationsResult[0], []byte{}, nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "2").Return(operationsResult[1], []byte{}, nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "3").Return(operationsResult[2], []byte{}, nil)
+
+		operations, err := opManager.ListSchedulerPendingOperations(ctx, schedulerName)
+		require.NoError(t, err)
+		require.ElementsMatch(t, operationsResult, operations)
+	})
+}
+
+func TestWatchOperationCancellationRequests(t *testing.T) {
 	schedulerName := uuid.New().String()
 	operationID := uuid.New().String()
 

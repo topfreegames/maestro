@@ -25,6 +25,8 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -46,10 +48,16 @@ func ProvideOperationsHandler(operationManager *operation_manager.OperationManag
 }
 
 func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.ListOperationsRequest) (*api.ListOperationsResponse, error) {
+	sortingOrder, err := extractSortingParameters(request.OrderBy)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, request.GetSchedulerName())
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+	sortOperationsByCreatedAt(pendingOperationEntities, sortingOrder)
 
 	pendingOperationResponse, err := h.fromOperationsToResponses(pendingOperationEntities)
 	if err != nil {
@@ -60,6 +68,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+	sortOperationsByCreatedAt(activeOperationEntities, sortingOrder)
 
 	activeOperationResponses, err := h.fromOperationsToResponses(activeOperationEntities)
 	if err != nil {
@@ -70,6 +79,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+	sortOperationsByCreatedAt(finishedOperationEntities, sortingOrder)
 
 	finishedOperationResponse, err := h.fromOperationsToResponses(finishedOperationEntities)
 	if err != nil {
@@ -118,4 +128,38 @@ func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation)
 		SchedulerName:  entity.SchedulerName,
 		CreatedAt:      timestamppb.New(entity.CreatedAt),
 	}, nil
+}
+
+func sortOperationsByCreatedAt(operations []*operation.Operation, order string) {
+	sort.Slice(operations, func(i, j int) bool {
+		if order == "asc" {
+			return operations[i].CreatedAt.After(operations[j].CreatedAt)
+		} else {
+			return operations[i].CreatedAt.Before(operations[j].CreatedAt)
+		}
+	})
+}
+
+func extractSortingParameters(orderBy string) (string, error) {
+	sortingOrder := "asc"
+	sortingField := "createdAt"
+	sortingParameters := strings.Fields(orderBy)
+	parametersLen := len(sortingParameters)
+	switch {
+	case parametersLen == 1:
+		sortingField = sortingParameters[0]
+	case parametersLen == 2:
+		sortingField = sortingParameters[0]
+		sortingOrder = sortingParameters[1]
+	case parametersLen > 2:
+		return "", fmt.Errorf("invalid sorting parameters number")
+	}
+
+	if sortingField != "createdAt" {
+		return "", fmt.Errorf("invalid sorting field: %s", sortingField)
+	}
+	if sortingOrder != "asc" && sortingOrder != "desc" {
+		return "", fmt.Errorf("invalid sorting order: %s", sortingOrder)
+	}
+	return sortingOrder, nil
 }

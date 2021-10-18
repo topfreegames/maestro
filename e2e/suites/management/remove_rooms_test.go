@@ -75,10 +75,6 @@ func TestRemoveRooms(t *testing.T) {
 					return false
 				}
 
-				// TODO(gabrielcorado): sometimes the operations list is not
-				// ordered by execution date, this makes this test flaky. do we
-				// need to ensure the order? or we need to make this test lookup
-				// the slice searching for the right operation.
 				require.Equal(t, "remove_rooms", listOperationsResponse.FinishedOperations[2].DefinitionName)
 				return true
 			}, 240*time.Second, time.Second)
