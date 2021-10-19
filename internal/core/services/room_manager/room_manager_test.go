@@ -27,6 +27,7 @@ package room_manager
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -562,5 +563,102 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 
 		err = roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
 		require.Error(t, err)
+	})
+}
+
+func TestSchedulerMaxSurge(t *testing.T) {
+	setupRoomStorage := func(mockCtrl *gomock.Controller) (*rsmock.MockRoomStorage, *RoomManager) {
+		roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
+		roomManager := NewRoomManager(
+			clockmock.NewFakeClock(time.Now()),
+			pamock.NewMockPortAllocator(mockCtrl),
+			roomStorage,
+			ismock.NewMockGameRoomInstanceStorage(mockCtrl),
+			runtimemock.NewMockRuntime(mockCtrl),
+			eventsForwarder.NewMockEventsForwarder(mockCtrl),
+			RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
+		)
+
+		return roomStorage, roomManager
+	}
+
+	t.Run("max surge is empty, returns minimum value without error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		_, roomManager := setupRoomStorage(mockCtrl)
+		scheduler := &entities.Scheduler{Name: "test", MaxSurge: ""}
+
+		maxSurgeValue, err := roomManager.SchedulerMaxSurge(context.Background(), scheduler)
+		require.NoError(t, err)
+		require.Equal(t, 1, maxSurgeValue)
+	})
+
+	t.Run("max surge uses absolute number, returns value without error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		_, roomManager := setupRoomStorage(mockCtrl)
+		scheduler := &entities.Scheduler{Name: "test", MaxSurge: "100"}
+
+		maxSurgeValue, err := roomManager.SchedulerMaxSurge(context.Background(), scheduler)
+		require.NoError(t, err)
+		require.Equal(t, 100, maxSurgeValue)
+	})
+
+	t.Run("max surge uses absolute number less than the minimum, returns minimum without error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		_, roomManager := setupRoomStorage(mockCtrl)
+		scheduler := &entities.Scheduler{Name: "test", MaxSurge: "0"}
+
+		maxSurgeValue, err := roomManager.SchedulerMaxSurge(context.Background(), scheduler)
+		require.NoError(t, err)
+		require.Equal(t, 1, maxSurgeValue)
+	})
+
+	t.Run("max surge uses relative number and there are rooms, returns value without error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		roomStorage, roomManager := setupRoomStorage(mockCtrl)
+		scheduler := &entities.Scheduler{Name: "test", MaxSurge: "50%"}
+
+		roomStorage.EXPECT().GetRoomCount(gomock.Any(), scheduler.Name).Return(10, nil)
+
+		maxSurgeValue, err := roomManager.SchedulerMaxSurge(context.Background(), scheduler)
+		require.NoError(t, err)
+		require.Equal(t, 5, maxSurgeValue)
+	})
+
+	t.Run("max surge uses relative number and there low number of rooms, returns min 1 without error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		roomStorage, roomManager := setupRoomStorage(mockCtrl)
+		scheduler := &entities.Scheduler{Name: "test", MaxSurge: "10%"}
+
+		roomStorage.EXPECT().GetRoomCount(gomock.Any(), scheduler.Name).Return(1, nil)
+
+		maxSurgeValue, err := roomManager.SchedulerMaxSurge(context.Background(), scheduler)
+		require.NoError(t, err)
+		require.Equal(t, 1, maxSurgeValue)
+	})
+
+	t.Run("max surge uses relative number and failed to retrieve rooms count, returns error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		roomStorage, roomManager := setupRoomStorage(mockCtrl)
+		scheduler := &entities.Scheduler{Name: "test", MaxSurge: "10%"}
+
+		roomStorage.EXPECT().GetRoomCount(gomock.Any(), scheduler.Name).Return(0, porterrors.ErrUnexpected)
+
+		_, err := roomManager.SchedulerMaxSurge(context.Background(), scheduler)
+		require.Error(t, err)
+	})
+
+	t.Run("max surge is invalid, returns error", func(t *testing.T) {
+		invalidMaxSurges := []string{"%", "a%", "a", "1a", "%123"}
+
+		for _, invalidMaxSurge := range invalidMaxSurges {
+			t.Run(fmt.Sprintf("max surge = %s", invalidMaxSurge), func(t *testing.T) {
+				mockCtrl := gomock.NewController(t)
+				_, roomManager := setupRoomStorage(mockCtrl)
+				scheduler := &entities.Scheduler{Name: "test", MaxSurge: invalidMaxSurge}
+
+				_, err := roomManager.SchedulerMaxSurge(context.Background(), scheduler)
+				require.Error(t, err)
+			})
+		}
 	})
 }
