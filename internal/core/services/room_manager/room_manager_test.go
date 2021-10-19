@@ -582,6 +582,16 @@ func TestSchedulerMaxSurge(t *testing.T) {
 		return roomStorage, roomManager
 	}
 
+	t.Run("max surge is empty, returns minimum value without error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		_, roomManager := setupRoomStorage(mockCtrl)
+		scheduler := &entities.Scheduler{Name: "test", MaxSurge: ""}
+
+		maxSurgeValue, err := roomManager.SchedulerMaxSurge(context.Background(), scheduler)
+		require.NoError(t, err)
+		require.Equal(t, 1, maxSurgeValue)
+	})
+
 	t.Run("max surge uses absolute number, returns value without error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		_, roomManager := setupRoomStorage(mockCtrl)
@@ -590,6 +600,16 @@ func TestSchedulerMaxSurge(t *testing.T) {
 		maxSurgeValue, err := roomManager.SchedulerMaxSurge(context.Background(), scheduler)
 		require.NoError(t, err)
 		require.Equal(t, 100, maxSurgeValue)
+	})
+
+	t.Run("max surge uses absolute number less than the minimum, returns minimum without error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		_, roomManager := setupRoomStorage(mockCtrl)
+		scheduler := &entities.Scheduler{Name: "test", MaxSurge: "0"}
+
+		maxSurgeValue, err := roomManager.SchedulerMaxSurge(context.Background(), scheduler)
+		require.NoError(t, err)
+		require.Equal(t, 1, maxSurgeValue)
 	})
 
 	t.Run("max surge uses relative number and there are rooms, returns value without error", func(t *testing.T) {
@@ -628,7 +648,7 @@ func TestSchedulerMaxSurge(t *testing.T) {
 	})
 
 	t.Run("max surge is invalid, returns error", func(t *testing.T) {
-		invalidMaxSurges := []string{"", "%", "a%", "a", "1a", "%123"}
+		invalidMaxSurges := []string{"%", "a%", "a", "1a", "%123"}
 
 		for _, invalidMaxSurge := range invalidMaxSurges {
 			t.Run(fmt.Sprintf("max surge = %s", invalidMaxSurge), func(t *testing.T) {

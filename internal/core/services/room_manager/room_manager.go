@@ -39,6 +39,11 @@ import (
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 )
 
+const (
+	minSchedulerMaxSurge            = 1
+	schedulerMaxSurgeRelativeSymbol = "%"
+)
+
 type RoomManager struct {
 	clock           ports.Clock
 	portAllocator   ports.PortAllocator
@@ -258,17 +263,20 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 // the number of rooms the scheduler has.
 func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error) {
 	if scheduler.MaxSurge == "" {
-		// TODO(gabriel.corado): should we always have a default max surge?
-		return -1, fmt.Errorf("empty max surge")
+		return minSchedulerMaxSurge, nil
 	}
 
-	isRelative := strings.HasSuffix(scheduler.MaxSurge, "%")
-	maxSurgeNum, err := strconv.Atoi(strings.TrimSuffix(scheduler.MaxSurge, "%"))
+	isRelative := strings.HasSuffix(scheduler.MaxSurge, schedulerMaxSurgeRelativeSymbol)
+	maxSurgeNum, err := strconv.Atoi(strings.TrimSuffix(scheduler.MaxSurge, schedulerMaxSurgeRelativeSymbol))
 	if err != nil {
 		return -1, fmt.Errorf("failed to parse max surge into a number: %w", err)
 	}
 
 	if !isRelative {
+		if minSchedulerMaxSurge > maxSurgeNum {
+			return minSchedulerMaxSurge, nil
+		}
+
 		return maxSurgeNum, nil
 	}
 
@@ -279,7 +287,7 @@ func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities
 	}
 
 	absoluteNum := math.Round((float64(roomsNum) / 100) * float64(maxSurgeNum))
-	return int(math.Max(1, absoluteNum)), nil
+	return int(math.Max(minSchedulerMaxSurge, absoluteNum)), nil
 }
 
 func removeDuplicateValues(slice []string) []string {
