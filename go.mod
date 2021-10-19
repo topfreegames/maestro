@@ -3,6 +3,7 @@ module github.com/topfreegames/maestro
 go 1.16
 
 require (
+	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/bufbuild/buf v0.47.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-pg/pg v6.13.2+incompatible
@@ -12,6 +13,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/golangci/golangci-lint v1.41.1
 	github.com/google/addlicense v0.0.0-20210729153508-ef04bb38a16b
+	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/google/wire v0.5.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
