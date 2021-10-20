@@ -94,7 +94,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 }
 
 func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.CancelOperationRequest) (*api.CancelOperationResponse, error) {
-	err := h.operationManager.EnqueueOperationCancelationRequest(ctx, request.SchedulerName, request.OperationId)
+	err := h.operationManager.EnqueueOperationCancellationRequest(ctx, request.SchedulerName, request.OperationId)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}

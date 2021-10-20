@@ -32,14 +32,13 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 )
 
-// This interface aims to map all required functions of a worker
+// Worker interface maps all required functions of a worker
 type Worker interface {
-	// Starts the worker with its own execution
-	// configuration details
+	// Start starts the worker with its own execution configuration details
 	Start(ctx context.Context) error
-	// Stops the worker
+	// Stop stops the worker
 	Stop(ctx context.Context)
-	// Returns if the worker is running
+	// IsRunning indicate if the worker is running
 	IsRunning() bool
 }
 
@@ -67,5 +66,5 @@ func ProvideWorkerOptions(
 	}
 }
 
-// WorkerBuilder defines a function that nows how to construct a worker.
+// WorkerBuilder defines a function that knows how to construct a worker.
 type WorkerBuilder func(scheduler *entities.Scheduler, options *WorkerOptions) Worker

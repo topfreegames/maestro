@@ -58,7 +58,7 @@ func initConfig() {
 	flag.Parse()
 	err := service.ConfigureLogging(*logConfig)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unabled to load logging configuration")
+		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
 	}
 
 	viper.SetConfigFile(*configPath)

@@ -41,8 +41,8 @@ func NewExecutor(roomManager *room_manager.RoomManager) *RemoveRoomsExecutor {
 }
 
 func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
-	removeDefiniton := definition.(*RemoveRoomsDefinition)
-	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, op.SchedulerName, removeDefiniton.Version, removeDefiniton.Amount)
+	removeDefinition := definition.(*RemoveRoomsDefinition)
+	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, op.SchedulerName, removeDefinition.Version, removeDefinition.Amount)
 	if err != nil {
 		return fmt.Errorf("failed to list rooms to delete: %w", err)
 	}
@@ -53,7 +53,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 		zap.String("operation_id", op.ID),
 	)
 
-	logger.Debug("start deleting rooms", zap.Int("amonut", len(rooms)))
+	logger.Debug("start deleting rooms", zap.Int("amount", len(rooms)))
 
 	for _, room := range rooms {
 		err = e.roomManager.DeleteRoom(ctx, room)

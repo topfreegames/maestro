@@ -26,7 +26,7 @@ import (
 	"context"
 )
 
-type OperationCancelationRequest struct {
+type OperationCancellationRequest struct {
 	SchedulerName string `json:"schedulerName"`
 	OperationID   string `json:"operationID"`
 }
@@ -38,8 +38,8 @@ type OperationFlow interface {
 	NextOperationID(ctx context.Context, schedulerName string) (string, error)
 	// ListSchedulerPendingOperationIDs list scheduler pending operation IDs.
 	ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) ([]string, error)
-	// Enqueues a operation cancelation request
-	EnqueueOperationCancelationRequest(ctx context.Context, request OperationCancelationRequest) error
-	// WatchOperationCancelationRequests watches for operation cancelation requests
-	WatchOperationCancelationRequests(ctx context.Context) chan OperationCancelationRequest
+	// EnqueueOperationCancellationRequest enqueue a operation cancellation request
+	EnqueueOperationCancellationRequest(ctx context.Context, request OperationCancellationRequest) error
+	// WatchOperationCancellationRequests watches for operation cancellation requests
+	WatchOperationCancellationRequests(ctx context.Context) chan OperationCancellationRequest
 }

@@ -34,14 +34,14 @@ import (
 type Runtime interface {
 	// CreateScheduler Creates a scheduler on the runtime.
 	CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
-	// CreateScheduler Deletes a scheduler on the runtime.
+	// DeleteScheduler Deletes a scheduler on the runtime.
 	DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	// CreateGameRoomInstance Creates a game room instance on the runtime using
 	// the specification provided.
 	CreateGameRoomInstance(ctx context.Context, schedulerId string, spec game_room.Spec) (*game_room.Instance, error)
 	// DeleteGameRoomInstance Deletes a game room instance on the runtime.
 	DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error
-	// WathGameRooms Watches for changes of a scheduler game room instances.
+	// WatchGameRoomInstances Watches for changes of a scheduler game room instances.
 	WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (RuntimeWatcher, error)
 }
 

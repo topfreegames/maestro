@@ -44,14 +44,14 @@ func main() {
 	flag.Parse()
 	err := service.ConfigureLogging(*logConfig)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unabled to load logging configuration")
+		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
 	}
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 
 	config, err := viper.NewViperConfig(*configPath)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unabled to load config")
+		zap.L().With(zap.Error(err)).Fatal("unable to load config")
 	}
 
 	go func() {
@@ -73,14 +73,14 @@ func main() {
 	}
 
 	go func() {
-		zap.L().Info("starting operation cancelation request watcher")
-		err = operationExecutionWorkerManager.WorkerOptions.OperationManager.WatchOperationCancelationRequests(ctx)
+		zap.L().Info("starting operation cancellation request watcher")
+		err = operationExecutionWorkerManager.WorkerOptions.OperationManager.WatchOperationCancellationRequests(ctx)
 		if err != nil {
-			zap.L().With(zap.Error(err)).Info("operation cancelation watcher stopped with error")
-			// enforce the cancelation
+			zap.L().With(zap.Error(err)).Info("operation cancellation watcher stopped with error")
+			// enforce the cancellation
 			cancelFn()
 		}
-		zap.L().Info("operation cancelation request watcher stoped")
+		zap.L().Info("operation cancellation request watcher stopped")
 	}()
 
 	go func() {
@@ -88,10 +88,10 @@ func main() {
 		err := operationExecutionWorkerManager.Start(ctx)
 		if err != nil {
 			zap.L().With(zap.Error(err)).Info("operation execution worker manager stopped with error")
-			// enforce the cancelation
+			// enforce the cancellation
 			cancelFn()
 		}
-		zap.L().Info("operation execution worker manager stoped")
+		zap.L().Info("operation execution worker manager stopped")
 	}()
 
 	<-ctx.Done()

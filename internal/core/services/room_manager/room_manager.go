@@ -192,7 +192,7 @@ func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId 
 
 // ListRoomsWithDeletionPriority returns a specified number of rooms, following
 // the priority of it being deleted and filtering the ignored version,
-// the function will return rooms discarting such filter option.
+// the function will return rooms discarding such filter option.
 //
 // The priority is:
 //

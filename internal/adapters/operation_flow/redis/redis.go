@@ -34,9 +34,9 @@ import (
 )
 
 var _ ports.OperationFlow = (*redisOperationFlow)(nil)
-var watchOperationCancelationRequestKey = "scheduler:operation_cancelation_requests"
+var watchOperationCancellationRequestKey = "scheduler:operation_cancellation_requests"
 
-// redisOperationFlow adapter of the OperationStorage port. It store store
+// redisOperationFlow adapter of the OperationStorage port. It stores
 // the operations in lists to keep their creation/update order.
 type redisOperationFlow struct {
 	client *redis.Client
@@ -84,25 +84,25 @@ func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Contex
 	return operationsIDs, nil
 }
 
-func (r *redisOperationFlow) EnqueueOperationCancelationRequest(ctx context.Context, request ports.OperationCancelationRequest) error {
+func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Context, request ports.OperationCancellationRequest) error {
 
 	requestAsString, err := json.Marshal(request)
 	if err != nil {
-		return fmt.Errorf("failed to marshal operation cancelation request to string: %w", err)
+		return fmt.Errorf("failed to marshal operation cancellation request to string: %w", err)
 	}
 
-	err = r.client.Publish(ctx, watchOperationCancelationRequestKey, string(requestAsString)).Err()
+	err = r.client.Publish(ctx, watchOperationCancellationRequestKey, string(requestAsString)).Err()
 	if err != nil {
-		return fmt.Errorf("failed to publish operation cancelation request: %w", err)
+		return fmt.Errorf("failed to publish operation cancellation request: %w", err)
 	}
 
 	return nil
 }
 
-func (r *redisOperationFlow) WatchOperationCancelationRequests(ctx context.Context) chan ports.OperationCancelationRequest {
-	sub := r.client.Subscribe(ctx, watchOperationCancelationRequestKey)
+func (r *redisOperationFlow) WatchOperationCancellationRequests(ctx context.Context) chan ports.OperationCancellationRequest {
+	sub := r.client.Subscribe(ctx, watchOperationCancellationRequestKey)
 
-	resultChan := make(chan ports.OperationCancelationRequest, 100)
+	resultChan := make(chan ports.OperationCancellationRequest, 100)
 
 	go func() {
 		defer sub.Close()
@@ -115,10 +115,10 @@ func (r *redisOperationFlow) WatchOperationCancelationRequests(ctx context.Conte
 					return
 				}
 
-				var request ports.OperationCancelationRequest
+				var request ports.OperationCancellationRequest
 				err := json.Unmarshal([]byte(msg.Payload), &request)
 				if err != nil {
-					zap.L().With(zap.Error(err)).Error("failed to parse operation cancelation request")
+					zap.L().With(zap.Error(err)).Error("failed to parse operation cancellation request")
 					continue
 				}
 

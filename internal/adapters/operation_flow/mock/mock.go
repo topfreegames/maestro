@@ -35,18 +35,18 @@ func (m *MockOperationFlow) EXPECT() *MockOperationFlowMockRecorder {
 	return m.recorder
 }
 
-// EnqueueOperationCancelationRequest mocks base method.
-func (m *MockOperationFlow) EnqueueOperationCancelationRequest(ctx context.Context, request ports.OperationCancelationRequest) error {
+// EnqueueOperationCancellationRequest mocks base method.
+func (m *MockOperationFlow) EnqueueOperationCancellationRequest(ctx context.Context, request ports.OperationCancellationRequest) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnqueueOperationCancelationRequest", ctx, request)
+	ret := m.ctrl.Call(m, "EnqueueOperationCancellationRequest", ctx, request)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// EnqueueOperationCancelationRequest indicates an expected call of EnqueueOperationCancelationRequest.
-func (mr *MockOperationFlowMockRecorder) EnqueueOperationCancelationRequest(ctx, request interface{}) *gomock.Call {
+// EnqueueOperationCancellationRequest indicates an expected call of EnqueueOperationCancellationRequest.
+func (mr *MockOperationFlowMockRecorder) EnqueueOperationCancellationRequest(ctx, request interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueOperationCancelationRequest", reflect.TypeOf((*MockOperationFlow)(nil).EnqueueOperationCancelationRequest), ctx, request)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueOperationCancellationRequest", reflect.TypeOf((*MockOperationFlow)(nil).EnqueueOperationCancellationRequest), ctx, request)
 }
 
 // InsertOperationID mocks base method.
@@ -93,16 +93,16 @@ func (mr *MockOperationFlowMockRecorder) NextOperationID(ctx, schedulerName inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextOperationID", reflect.TypeOf((*MockOperationFlow)(nil).NextOperationID), ctx, schedulerName)
 }
 
-// WatchOperationCancelationRequests mocks base method.
-func (m *MockOperationFlow) WatchOperationCancelationRequests(ctx context.Context) chan ports.OperationCancelationRequest {
+// WatchOperationCancellationRequests mocks base method.
+func (m *MockOperationFlow) WatchOperationCancellationRequests(ctx context.Context) chan ports.OperationCancellationRequest {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WatchOperationCancelationRequests", ctx)
-	ret0, _ := ret[0].(chan ports.OperationCancelationRequest)
+	ret := m.ctrl.Call(m, "WatchOperationCancellationRequests", ctx)
+	ret0, _ := ret[0].(chan ports.OperationCancellationRequest)
 	return ret0
 }
 
-// WatchOperationCancelationRequests indicates an expected call of WatchOperationCancelationRequests.
-func (mr *MockOperationFlowMockRecorder) WatchOperationCancelationRequests(ctx interface{}) *gomock.Call {
+// WatchOperationCancellationRequests indicates an expected call of WatchOperationCancellationRequests.
+func (mr *MockOperationFlowMockRecorder) WatchOperationCancellationRequests(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WatchOperationCancelationRequests", reflect.TypeOf((*MockOperationFlow)(nil).WatchOperationCancelationRequests), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WatchOperationCancellationRequests", reflect.TypeOf((*MockOperationFlow)(nil).WatchOperationCancellationRequests), ctx)
 }

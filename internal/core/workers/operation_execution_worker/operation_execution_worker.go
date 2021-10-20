@@ -105,14 +105,14 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 		loopLogger.Info("Starting operation")
 
-		operationContext, operationCancelationFunction := context.WithCancel(ctx)
+		operationContext, operationCancellationFunction := context.WithCancel(ctx)
 
-		err = w.operationManager.StartOperation(operationContext, op, operationCancelationFunction)
+		err = w.operationManager.StartOperation(operationContext, op, operationCancellationFunction)
 		if err != nil {
 			w.Stop(ctx)
 
 			// NOTE: currently, we're not treating if the operation exists or
-			// not. In this case, when there is error it will be a unexpected
+			// not. In this case, when there is error it will be an unexpected
 			// error.
 			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
 			return fmt.Errorf("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
