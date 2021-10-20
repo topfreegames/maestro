@@ -1,0 +1,15 @@
+site_name: Maestro
+repo_url: https://github.com/topfreegames/maestro
+
+nav:
+  - Home: 'index.md'
+  - UserGuides: 'User Guides.md'
+  - Developers: 'Developers.md'
+  - Architecture: 'Architecture.md'
+  - Guidelines: 'Guidelines.md'
+
+theme:
+  name: material
+
+plugins:
+  - git-revision-date
