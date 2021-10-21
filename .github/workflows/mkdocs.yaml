@@ -18,6 +18,7 @@ jobs:
         with:
           python-version: 3.x
       - run: pip install mkdocs-material 
+      - run: pip install mkdocs-git-revision-date-plugin 
       - run: git config user.name 'github-actions[bot]' && git config user.email 'github-actions[bot]@users.noreply.github.com'
       - name: Publish docs
         run: mkdocs gh-deploy --force
