@@ -4,7 +4,7 @@ What it does, and the problem it solves.
 
 ## Features & Components
 
-Short list of the features or elements that the user needs to know to make the best of your application, with a short description.
+TBD: Short list of the features or elements that the user needs to know to make the best of your application, with a short description.
 For details on how to use it, please use the Developers and User guides.
 
 ## Support & Community
