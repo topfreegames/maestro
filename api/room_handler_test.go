@@ -1,5 +1,7 @@
 // maestro
+//go:build unit
 // +build unit
+
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:
@@ -1284,16 +1286,19 @@ forwarders:
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-2").
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-3").
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 
 				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-3").
@@ -1321,6 +1326,7 @@ forwarders:
 					"schedulerVersion": "13",
 					"status":           "ready",
 					"lastPingAt":       "2021-09-23T14:05:00Z",
+					"lastPingMetadata": `{"region":"us","type":"sometype"}`,
 				}))
 				Expect(roomsResponse[1]).To(Equal(map[string]interface{}{
 					"roomId":           "test-ready-2",
@@ -1329,6 +1335,7 @@ forwarders:
 					"schedulerVersion": "13",
 					"status":           "ready",
 					"lastPingAt":       "2021-09-23T14:05:00Z",
+					"lastPingMetadata": `{"region":"us","type":"sometype"}`,
 				}))
 				Expect(roomsResponse[2]).To(Equal(map[string]interface{}{
 					"roomId":           "test-ready-3",
@@ -1337,6 +1344,7 @@ forwarders:
 					"schedulerVersion": "13",
 					"status":           "ready",
 					"lastPingAt":       "2021-09-23T14:05:00Z",
+					"lastPingMetadata": `{"region":"us","type":"sometype"}`,
 				}))
 			})
 			It("should return rooms with success for absent offset and limit", func() {
@@ -1352,16 +1360,19 @@ forwarders:
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-2").
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-3").
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 
 				mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-3").
@@ -1380,6 +1391,7 @@ forwarders:
 
 				var roomsResponse []map[string]interface{}
 				err = json.Unmarshal([]byte(recorder.Body.String()), &roomsResponse)
+				fmt.Println(recorder.Body.String())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(roomsResponse).To(HaveLen(3))
 				Expect(roomsResponse[0]).To(Equal(map[string]interface{}{
@@ -1389,6 +1401,7 @@ forwarders:
 					"schedulerVersion": "13",
 					"status":           "ready",
 					"lastPingAt":       "2021-09-23T14:05:00Z",
+					"lastPingMetadata": "\"{\"region\":\"us\",\"type\":\"sometype\"}\"",
 				}))
 				Expect(roomsResponse[1]).To(Equal(map[string]interface{}{
 					"roomId":           "test-ready-2",
@@ -1397,6 +1410,7 @@ forwarders:
 					"schedulerVersion": "13",
 					"status":           "ready",
 					"lastPingAt":       "2021-09-23T14:05:00Z",
+					"lastPingMetadata": "\"{\"region\":\"us\",\"type\":\"sometype\"}\"",
 				}))
 				Expect(roomsResponse[2]).To(Equal(map[string]interface{}{
 					"roomId":           "test-ready-3",
@@ -1405,6 +1419,7 @@ forwarders:
 					"schedulerVersion": "13",
 					"status":           "ready",
 					"lastPingAt":       "2021-09-23T14:05:00Z",
+					"lastPingMetadata": "\"{\"region\":\"us\",\"type\":\"sometype\"}\"",
 				}))
 			})
 			It("should return with error if some error occur on getting rooms", func() {

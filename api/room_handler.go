@@ -501,6 +501,7 @@ func (h *RoomListBySchedulerAndStatusHandler) ServeHTTP(w http.ResponseWriter, r
 			"status":           room.Status,
 			"createdAt":        pod.Status.StartTime,
 			"lastPingAt":       time.Unix(room.LastPingAt, 0).UTC().Format(time.RFC3339),
+			"lastPingMetadata": room.LastPingMetadata,
 		}
 		roomsDetails = append(roomsDetails, roomDetail)
 	}
@@ -590,6 +591,7 @@ func (h *RoomDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"status":           room.Status,
 		"createdAt":        pod.Status.StartTime,
 		"lastPingAt":       time.Unix(room.LastPingAt, 0).UTC().Format(time.RFC3339),
+		"lastPingMetadata": room.LastPingMetadata,
 	}
 
 	bytes, err := json.Marshal(roomDetail)

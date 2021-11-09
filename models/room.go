@@ -39,10 +39,11 @@ const (
 
 // Room is the struct that defines a room in maestro
 type Room struct {
-	ID            string
-	SchedulerName string
-	Status        string
-	LastPingAt    int64
+	ID               string
+	SchedulerName    string
+	Status           string
+	LastPingAt       int64
+	LastPingMetadata map[string]interface{}
 }
 
 // RoomAddresses struct
@@ -557,12 +558,19 @@ func GetRoomDetails(redisClient interfaces.RedisClient, schedulerName string, ro
 
 	lastPingAt, _ := strconv.ParseInt(roomData["lastPing"], 10, 64)
 	status := roomData["status"]
+	var lastPingMetadata map[string]interface{}
+	err = json.Unmarshal([]byte(roomData["metadata"]), &lastPingMetadata)
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &Room{
-		ID:            roomId,
-		SchedulerName: schedulerName,
-		Status:        status,
-		LastPingAt:    lastPingAt,
+		ID:               roomId,
+		SchedulerName:    schedulerName,
+		Status:           status,
+		LastPingAt:       lastPingAt,
+		LastPingMetadata: lastPingMetadata,
 	}, nil
 }
 
