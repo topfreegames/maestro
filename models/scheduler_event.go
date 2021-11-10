@@ -8,6 +8,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -64,10 +65,23 @@ type SchedulerEvent struct {
 
 // NewSchedulerEvent is the scheduler event constructor
 func NewSchedulerEvent(eventName, schedulerName string, metadata map[string]interface{}) *SchedulerEvent {
+	metadata = checkMetadataError(metadata)
+
 	return &SchedulerEvent{
 		Name:          eventName,
 		SchedulerName: schedulerName,
 		CreatedAt:     time.Now(),
 		Metadata:      metadata,
 	}
+}
+
+func checkMetadataError (metadata map[string]interface{}) map[string]interface{} {
+	if metadataErr, existsError := metadata[ErrorMetadataName]; existsError {
+		if err, isError := metadataErr.(error); isError {
+			metadata[ErrorMetadataName] = err.Error()
+		} else {
+			metadata[ErrorMetadataName] = fmt.Sprintf("%v", metadataErr)
+		}
+	}
+	return metadata
 }
