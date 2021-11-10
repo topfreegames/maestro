@@ -1,5 +1,4 @@
 // maestro
-//go:build unit
 // +build unit
 
 // https://github.com/topfreegames/maestro
@@ -1513,7 +1512,6 @@ forwarders:
 				Return(redis.NewStringStringMapResult(map[string]string{
 					"status":   "ready",
 					"lastPing": "1632405900",
-					"metadata": `{"region":"us","type":"sometype"}`,
 				}, nil))
 
 			mockRedisClient.EXPECT().HGet("scheduler:scheduler-name:podMap", "test-ready-1").
@@ -1536,7 +1534,7 @@ forwarders:
 				"schedulerVersion": "13",
 				"status":           "ready",
 				"lastPingAt":       "2021-09-23T14:05:00Z",
-				"lastPingMetadata": map[string]interface{}{"region": "us", "type": "sometype"},
+				"lastPingMetadata": map[string]interface{}{},
 			}))
 
 		})

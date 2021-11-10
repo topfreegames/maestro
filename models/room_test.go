@@ -1,5 +1,4 @@
 // maestro
-//go:build unit
 // +build unit
 
 // https://github.com/topfreegames/maestro

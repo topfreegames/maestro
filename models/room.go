@@ -558,11 +558,13 @@ func GetRoomDetails(redisClient interfaces.RedisClient, schedulerName string, ro
 
 	lastPingAt, _ := strconv.ParseInt(roomData["lastPing"], 10, 64)
 	status := roomData["status"]
-	var lastPingMetadata map[string]interface{}
-	err = json.Unmarshal([]byte(roomData["metadata"]), &lastPingMetadata)
 
-	if err != nil {
-		return nil, err
+	lastPingMetadata := map[string]interface{}{}
+
+	if metadata, exist := roomData["metadata"]; exist {
+		if err := json.Unmarshal([]byte(metadata), &lastPingMetadata); err != nil {
+			return nil, err
+		}
 	}
 
 	return &Room{
