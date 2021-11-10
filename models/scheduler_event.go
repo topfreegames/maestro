@@ -65,7 +65,7 @@ type SchedulerEvent struct {
 
 // NewSchedulerEvent is the scheduler event constructor
 func NewSchedulerEvent(eventName, schedulerName string, metadata map[string]interface{}) *SchedulerEvent {
-	metadata = checkMetadataError(metadata)
+	metadata = stringfyMetadataError(metadata)
 
 	return &SchedulerEvent{
 		Name:          eventName,
@@ -75,7 +75,7 @@ func NewSchedulerEvent(eventName, schedulerName string, metadata map[string]inte
 	}
 }
 
-func checkMetadataError (metadata map[string]interface{}) map[string]interface{} {
+func stringfyMetadataError (metadata map[string]interface{}) map[string]interface{} {
 	if metadataErr, existsError := metadata[ErrorMetadataName]; existsError {
 		if err, isError := metadataErr.(error); isError {
 			metadata[ErrorMetadataName] = err.Error()
