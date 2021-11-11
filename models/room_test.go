@@ -1,5 +1,6 @@
 // maestro
 // +build unit
+
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:
@@ -552,21 +553,25 @@ var _ = Describe("Room", func() {
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-2").
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-3").
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-4").
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 
 				rooms, err := models.GetRoomsByStatus(mockRedisClient, scheduler, models.StatusReady, 5, 1, mmr)
@@ -606,11 +611,13 @@ var _ = Describe("Room", func() {
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 				mockRedisClient.EXPECT().HGetAll("scheduler:scheduler-name:rooms:test-ready-2").
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 
 				rooms, err := models.GetRoomsByStatus(mockRedisClient, scheduler, models.StatusReady, 2, 1, mmr)
@@ -632,6 +639,7 @@ var _ = Describe("Room", func() {
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 
 				rooms, err := models.GetRoomsByStatus(mockRedisClient, scheduler, models.StatusReady, 2, 2, mmr)
@@ -682,6 +690,7 @@ var _ = Describe("Room", func() {
 					Return(redis.NewStringStringMapResult(map[string]string{
 						"status":   "ready",
 						"lastPing": "1632405900",
+						"metadata": `{"region":"us","type":"sometype"}`,
 					}, nil))
 
 				room, err := models.GetRoomDetails(mockRedisClient, scheduler, roomId, mmr)
