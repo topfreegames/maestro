@@ -80,6 +80,42 @@ var _ = Describe("Scheduler events", func() {
 			err := NewRedisSchedulerEventStorage(mockRedisClient).PersistSchedulerEvent(event)
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("should persist error event message", func() {
+			metadata := make(map[string]interface{})
+			metadata[ErrorMetadataName] = errors.New("Forced Error test")
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().ZAdd(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any()).Times(1)
+			mockPipeline.EXPECT().ZRemRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any(), gomock.Any()).Times(1)
+			mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis failed"))
+
+			event := NewSchedulerEvent("UPDATE_STARTED", schedulerName, metadata)
+
+			err := NewRedisSchedulerEventStorage(mockRedisClient).PersistSchedulerEvent(event)
+			Expect(err).To(HaveOccurred())
+			Expect(event.Metadata).To(Equal(map[string]interface{}{
+				"error": "Forced Error test",
+			}))
+		})
+
+		It("should persist error event message if error is not an error", func() {
+			metadata := make(map[string]interface{})
+			metadata[ErrorMetadataName] = "Forced Error test"
+
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockPipeline.EXPECT().ZAdd(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any()).Times(1)
+			mockPipeline.EXPECT().ZRemRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), gomock.Any(), gomock.Any()).Times(1)
+			mockPipeline.EXPECT().Exec().Return(nil, errors.New("redis failed"))
+
+			event := NewSchedulerEvent("UPDATE_STARTED", schedulerName, metadata)
+
+			err := NewRedisSchedulerEventStorage(mockRedisClient).PersistSchedulerEvent(event)
+			Expect(err).To(HaveOccurred())
+			Expect(event.Metadata).To(Equal(map[string]interface{}{
+				"error": "Forced Error test",
+			}))
+		})
 	})
 
 	Describe("LoadSchedulerEvents", func() {
@@ -91,6 +127,37 @@ var _ = Describe("Scheduler events", func() {
 			createdAt := time.Now()
 			expectedEvent := models.SchedulerEvent{
 				Name:          "UPDATE_STARTED",
+				SchedulerName: schedulerName,
+				CreatedAt:     createdAt,
+				Metadata:      metadata,
+			}
+			expectedEventString, _ := json.Marshal(expectedEvent)
+
+			mockRedisClient.EXPECT().ZRevRangeByScore(fmt.Sprintf("scheduler:%s:events", schedulerName), redis.ZRangeBy{
+				Min:    "-inf",
+				Max:    "+inf",
+				Count:  30,
+				Offset: int64((page-1)*30 + 1),
+			}).Return(redis.NewStringSliceResult([]string{string(expectedEventString)}, nil))
+
+			events, err := NewRedisSchedulerEventStorage(mockRedisClient).LoadSchedulerEvents(schedulerName, page)
+			Expect(err).To(BeNil())
+			Expect(events).To(HaveLen(1))
+			event := events[0]
+			Expect(event.Name).To(Equal(expectedEvent.Name))
+			Expect(event.SchedulerName).To(Equal(expectedEvent.SchedulerName))
+			Expect(event.CreatedAt.UnixNano()).To(Equal(expectedEvent.CreatedAt.UnixNano()))
+			Expect(event.Metadata).To(Equal(expectedEvent.Metadata))
+		})
+
+		It("should unmarshall metadata error correctly", func() {
+			metadata := make(map[string]interface{})
+			metadata["error"] = "Forced Error Test"
+			page := 30
+
+			createdAt := time.Now()
+			expectedEvent := models.SchedulerEvent{
+				Name:          "AUTO_SCALE_FINISHED",
 				SchedulerName: schedulerName,
 				CreatedAt:     createdAt,
 				Metadata:      metadata,
