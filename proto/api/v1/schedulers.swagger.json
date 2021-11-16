@@ -70,6 +70,38 @@
         ]
       }
     },
+    "/schedulers/{schedulerName}": {
+      "get": {
+        "summary": "Get Specific Scheduler by name",
+        "operationId": "SchedulersService_GetScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name where the rooms will be added.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
+    },
     "/schedulers/{schedulerName}/add-rooms": {
       "post": {
         "summary": "Given a amount, add rooms to a scheduler.",
@@ -171,14 +203,11 @@
     "protobufAny": {
       "type": "object",
       "properties": {
-        "typeUrl": {
+        "@type": {
           "type": "string"
-        },
-        "value": {
-          "type": "string",
-          "format": "byte"
         }
-      }
+      },
+      "additionalProperties": {}
     },
     "rpcStatus": {
       "type": "object",
@@ -362,6 +391,16 @@
         }
       },
       "description": "Response for the create scheduler."
+    },
+    "v1GetSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "scheduler": {
+          "$ref": "#/definitions/v1Scheduler",
+          "description": "List of schedulers fetched."
+        }
+      },
+      "description": "The list schedulers reponse message."
     },
     "v1ListSchedulersResponse": {
       "type": "object",
