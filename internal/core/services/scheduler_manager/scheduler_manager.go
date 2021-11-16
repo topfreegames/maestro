@@ -79,6 +79,10 @@ func (s *SchedulerManager) GetAllSchedulers(ctx context.Context) ([]*entities.Sc
 	return s.schedulerStorage.GetAllSchedulers(ctx)
 }
 
+func (s *SchedulerManager) GetScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
+	return s.schedulerStorage.GetScheduler(ctx, schedulerName)
+}
+
 func (s *SchedulerManager) AddRooms(ctx context.Context, schedulerName string, amount int32) (*operation.Operation, error) {
 
 	_, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)

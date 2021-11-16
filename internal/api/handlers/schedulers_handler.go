@@ -66,6 +66,15 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 	}, nil
 }
 
+func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSchedulerRequest) (*api.GetSchedulerResponse, error) {
+	scheduler, err := h.schedulerManager.GetScheduler(ctx, request.GetSchedulerName())
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.GetSchedulerResponse{Scheduler: h.fromEntitySchedulerToResponse(scheduler)}, nil
+}
+
 func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
 	scheduler := h.fromApiCreateSchedulerRequestToEntity(request)
 
