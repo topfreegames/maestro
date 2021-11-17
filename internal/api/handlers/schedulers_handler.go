@@ -25,7 +25,7 @@ package handlers
 import (
 	"context"
 	"errors"
-	validator "gopkg.in/validator.v2"
+	"gopkg.in/validator.v2"
 	"strings"
 	"time"
 

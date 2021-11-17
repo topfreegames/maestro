@@ -94,18 +94,18 @@ func (mr *MockSchedulerStorageMockRecorder) GetScheduler(ctx, name interface{}) 
 }
 
 // GetSchedulerByVersion mocks base method.
-func (m *MockSchedulerStorage) GetSchedulerByVersion(ctx context.Context, name string, version string) (*entities.Scheduler, error) {
+func (m *MockSchedulerStorage) GetSchedulerByVersion(ctx context.Context, name, version string) (*entities.Scheduler, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetScheduler", ctx, name, version)
+	ret := m.ctrl.Call(m, "GetSchedulerByVersion", ctx, name, version)
 	ret0, _ := ret[0].(*entities.Scheduler)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetSchedulerByVersion indicates an expected call of GetScheduler.
-func (mr *MockSchedulerStorageMockRecorder) GetSchedulerByVersion(ctx, name interface{}, version interface{}) *gomock.Call {
+// GetSchedulerByVersion indicates an expected call of GetSchedulerByVersion.
+func (mr *MockSchedulerStorageMockRecorder) GetSchedulerByVersion(ctx, name, version interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScheduler", reflect.TypeOf((*MockSchedulerStorage)(nil).GetScheduler), ctx, name, version)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulerByVersion", reflect.TypeOf((*MockSchedulerStorage)(nil).GetSchedulerByVersion), ctx, name, version)
 }
 
 // GetSchedulers mocks base method.
