@@ -56,8 +56,8 @@ WHERE s.name = ?
 order by created_at desc`
 	queryGetSchedulerByVersion = `
 SELECT
-	s.id, s.name, s.game, s.yaml, s.state, s.state_last_changed_at, last_scale_op_at, s.created_at, s.updated_at, s.version,
-	v.rolling_update_status, v.rollback_version
+	s.id, s.name, s.game, v.yaml, s.state, s.state_last_changed_at, last_scale_op_at, v.created_at, s.updated_at, v.version,
+    v.rolling_update_status, v.rollback_version
 FROM schedulers s join scheduler_versions v
 	ON s.name=v.name AND v.version=s.version
 WHERE s.name = ?
