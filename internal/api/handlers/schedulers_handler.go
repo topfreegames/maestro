@@ -25,9 +25,9 @@ package handlers
 import (
 	"context"
 	"errors"
-	"time"
-
 	validator "gopkg.in/validator.v2"
+	"strings"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -67,8 +67,18 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 }
 
 func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSchedulerRequest) (*api.GetSchedulerResponse, error) {
-	scheduler, err := h.schedulerManager.GetScheduler(ctx, request.GetSchedulerName())
+	var scheduler *entities.Scheduler
+	var err error
+	if request.GetVersion() != "" {
+		scheduler, err = h.schedulerManager.GetSchedulerByVersion(ctx, request.GetSchedulerName(), request.GetVersion())
+	} else {
+		scheduler, err = h.schedulerManager.GetScheduler(ctx, request.GetSchedulerName())
+	}
+
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 

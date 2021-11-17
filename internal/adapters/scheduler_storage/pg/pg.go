@@ -52,7 +52,16 @@ SELECT
 	v.rolling_update_status, v.rollback_version
 FROM schedulers s join scheduler_versions v
 	ON s.name=v.name AND v.version=s.version
-WHERE s.name = ?`
+WHERE s.name = ?
+order by created_at desc`
+	queryGetSchedulerByVersion = `
+SELECT
+	s.id, s.name, s.game, s.yaml, s.state, s.state_last_changed_at, last_scale_op_at, s.created_at, s.updated_at, s.version,
+	v.rolling_update_status, v.rollback_version
+FROM schedulers s join scheduler_versions v
+	ON s.name=v.name AND v.version=s.version
+WHERE s.name = ?
+	and v.version = ?`
 	queryGetSchedulers    = `SELECT * FROM schedulers WHERE name IN (?)`
 	queryGetAllSchedulers = `SELECT * FROM schedulers`
 	queryInsertScheduler  = `
@@ -75,6 +84,23 @@ func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entit
 	client := s.db.WithContext(ctx)
 	var dbScheduler Scheduler
 	_, err := client.QueryOne(&dbScheduler, queryGetScheduler, name)
+	if err == pg.ErrNoRows {
+		return nil, errors.NewErrNotFound("scheduler %s not found", name)
+	}
+	if err != nil {
+		return nil, errors.NewErrUnexpected("error getting scheduler %s", name).WithError(err)
+	}
+	scheduler, err := dbScheduler.ToScheduler()
+	if err != nil {
+		return nil, errors.NewErrEncoding("error decoding scheduler %s", name).WithError(err)
+	}
+	return scheduler, nil
+}
+
+func (s schedulerStorage) GetSchedulerByVersion(ctx context.Context, name string, version string) (*entities.Scheduler, error) {
+	client := s.db.WithContext(ctx)
+	var dbScheduler Scheduler
+	_, err := client.QueryOne(&dbScheduler, queryGetSchedulerByVersion, name, version)
 	if err == pg.ErrNoRows {
 		return nil, errors.NewErrNotFound("scheduler %s not found", name)
 	}

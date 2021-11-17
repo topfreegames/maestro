@@ -30,6 +30,7 @@ import (
 
 type SchedulerStorage interface {
 	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
+	GetSchedulerByVersion(ctx context.Context, name string, version string) (*entities.Scheduler, error)
 	GetSchedulers(ctx context.Context, names []string) ([]*entities.Scheduler, error)
 	GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error)
 	CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
