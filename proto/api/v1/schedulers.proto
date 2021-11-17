@@ -18,7 +18,7 @@ service SchedulersService {
   }
 
   // Create a scheduler.
-  rpc CreateScheduler(CreateSchedulerRequest) returns (CreateSchedulerResponse) {
+  rpc CreateScheduler(SchedulerRequest) returns (CreateSchedulerResponse) {
     option (google.api.http) = {
       post: "/schedulers",
       body: "*"
@@ -58,7 +58,7 @@ message CreateSchedulerResponse {
 }
 
 // Scheduler is the struct that defines a maestro scheduler.
-message CreateSchedulerRequest {
+message SchedulerRequest {
   // Unique identifier for the scheduler.
   string name = 1;
   // Game the new scheduler will be part of.

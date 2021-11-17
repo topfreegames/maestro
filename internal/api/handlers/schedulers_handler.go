@@ -66,8 +66,8 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 	}, nil
 }
 
-func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
-	scheduler := h.fromApiCreateSchedulerRequestToEntity(request)
+func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.SchedulerRequest) (*api.CreateSchedulerResponse, error) {
+	scheduler := h.fromApiSchedulerRequestToEntity(request)
 
 	scheduler, err := h.schedulerManager.CreateScheduler(ctx, scheduler)
 	if errors.Is(err, portsErrors.ErrAlreadyExists) {
@@ -117,11 +117,10 @@ func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.Remove
 	}, nil
 }
 
-func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {
+func (h *SchedulersHandler) fromApiSchedulerRequestToEntity(request *api.SchedulerRequest) *entities.Scheduler {
 	return &entities.Scheduler{
 		Name:     request.GetName(),
 		Game:     request.GetGame(),
-		State:    entities.StateCreating,
 		MaxSurge: request.GetMaxSurge(),
 		PortRange: &entities.PortRange{
 			Start: request.GetPortRange().GetStart(),

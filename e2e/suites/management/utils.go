@@ -43,7 +43,7 @@ func createSchedulerAndWaitForIt(
 	kubeclient kubernetes.Interface,
 	gruCommand []string) (string, error) {
 	schedulerName := framework.GenerateSchedulerName()
-	createRequest := &maestroApiV1.CreateSchedulerRequest{
+	createRequest := &maestroApiV1.SchedulerRequest{
 		Name:                   schedulerName,
 		Game:                   "test",
 		Version:                "v1.1",
