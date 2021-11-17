@@ -166,14 +166,42 @@ func TestGetScheduler(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(
-			&entities.Scheduler{
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(&entities.Scheduler{
 				Name:            "zooba-us",
 				Game:            "zooba",
 				State:           entities.StateInSync,
 				MaxSurge:        "10%",
 				RollbackVersion: "1.0.0",
-				Spec: game_room.Spec{},
+				Spec: game_room.Spec{
+					Version:                "v1.0.0",
+					TerminationGracePeriod: 100 * time.Nanosecond,
+					Containers: []game_room.Container{
+						{
+							Name:            "game-room-container-name",
+							Image:           "game-room-container-image",
+							ImagePullPolicy: "IfNotPresent",
+							Command:         []string{"./run"},
+							Environment: []game_room.ContainerEnvironment{{
+								Name:  "env-var-name",
+								Value: "env-var-value",
+							}},
+							Requests: game_room.ContainerResources{
+								Memory: "100mi",
+								CPU:    "100m",
+							},
+							Limits: game_room.ContainerResources{
+								Memory: "200mi",
+								CPU:    "200m",
+							},
+							Ports: []game_room.ContainerPort{{
+								Name:     "container-port-name",
+								Protocol: "https",
+								Port:     12345,
+								HostPort: 54321,
+							}},
+						},
+					},
+				},
 				CreatedAt:       time.Now(),
 				PortRange: &entities.PortRange{
 					Start: 1,
@@ -244,14 +272,42 @@ func TestGetScheduler(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
-		schedulerStorage.EXPECT().GetSchedulerByVersion(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-			&entities.Scheduler{
+		schedulerStorage.EXPECT().GetSchedulerByVersion(gomock.Any(), gomock.Any(), gomock.Any()).Return(&entities.Scheduler{
 				Name:            "zooba-us",
 				Game:            "zooba",
 				State:           entities.StateInSync,
 				MaxSurge:        "10%",
 				RollbackVersion: "1.0.0",
-				Spec: game_room.Spec{},
+				Spec: game_room.Spec{
+					Version:                "v1.0.0",
+					TerminationGracePeriod: 100 * time.Nanosecond,
+					Containers: []game_room.Container{
+						{
+							Name:            "game-room-container-name",
+							Image:           "game-room-container-image",
+							ImagePullPolicy: "IfNotPresent",
+							Command:         []string{"./run"},
+							Environment: []game_room.ContainerEnvironment{{
+								Name:  "env-var-name",
+								Value: "env-var-value",
+							}},
+							Requests: game_room.ContainerResources{
+								Memory: "100mi",
+								CPU:    "100m",
+							},
+							Limits: game_room.ContainerResources{
+								Memory: "200mi",
+								CPU:    "200m",
+							},
+							Ports: []game_room.ContainerPort{{
+								Name:     "container-port-name",
+								Protocol: "https",
+								Port:     12345,
+								HostPort: 54321,
+							}},
+						},
+					},
+				},
 				CreatedAt:       time.Now(),
 				PortRange: &entities.PortRange{
 					Start: 1,

@@ -25,9 +25,10 @@ package handlers
 import (
 	"context"
 	"errors"
-	"gopkg.in/validator.v2"
 	"strings"
 	"time"
+
+	validator "gopkg.in/validator.v2"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
