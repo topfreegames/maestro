@@ -202,7 +202,7 @@ func TestGetScheduler(t *testing.T) {
 					},
 				},
 			},
-			CreatedAt:       time.Now(),
+			CreatedAt: time.Now(),
 			PortRange: &entities.PortRange{
 				Start: 1,
 				End:   2,
@@ -307,7 +307,7 @@ func TestGetScheduler(t *testing.T) {
 						},
 					},
 				},
-				CreatedAt:       time.Now(),
+				CreatedAt: time.Now(),
 				PortRange: &entities.PortRange{
 					Start: 1,
 					End:   2,
