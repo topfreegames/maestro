@@ -488,3 +488,144 @@ func TestRemoveRooms(t *testing.T) {
 		require.Contains(t, rr.Body.String(), "not able to schedule the 'remove rooms' operation: failed to create operation: storage offline")
 	})
 }
+
+func TestUpdateScheduler(t *testing.T) {
+	dirPath, _ := os.Getwd()
+
+	t.Run("with success", func(t *testing.T) {
+		currentScheduler := newValidScheduler()
+		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
+
+		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+		operationFlow.EXPECT().InsertOperationID(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").DoAndReturn(func(_ context.Context, _ string)( *entities.Scheduler, error) {
+			return currentScheduler, nil
+		})
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		request, err := ioutil.ReadFile(dirPath + "/fixtures/scheduler-config.json")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPut, "/schedulers/scheduler-name-1", bytes.NewReader(request))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, body["operationId"])
+	})
+
+	t.Run("fails when scheduler does not exists", func(t *testing.T){
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, errors.NewErrNotFound("err"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		request, err := ioutil.ReadFile(dirPath + "/fixtures/scheduler-config.json")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPut, "/schedulers/scheduler-name-1", bytes.NewReader(request))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 404, rr.Code)
+		require.Contains(t, rr.Body.String(), "no scheduler found to be updated: err")
+	})
+
+	t.Run("with failure", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors())
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
+		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		request, err := ioutil.ReadFile(dirPath + "/fixtures/scheduler-config.json")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPut, "/schedulers/scheduler-name-1", bytes.NewReader(request))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 500, rr.Code)
+		require.Contains(t, rr.Body.String(), "failed to schedule 'update scheduler' operation")
+	})
+}
+
+func schedulerUpdatePayload() []byte {
+	return []byte(" {\"game\": \"game-scheduler-lyra-campos-100\", \"version\": \"v1.2\",\"terminationGracePeriod\": \"100\",     \"maxSurge\": \"10\",     \"containers\": [         {             \"name\": \"container-scheduler-lyra-campos\",             \"image\": \"alpine\",             \"imagePullPolicy\": \"Always\",             \"command\": [\"sh\", \"-c\", \"tail -f /dev/null\"],             \"environment\": [],             \"requests\": {                 \"memory\": \"20Mi\",                 \"cpu\": \"10m\"             },             \"limits\": {                 \"memory\": \"20Mi\",                 \"cpu\": \"10m\"             },             \"ports\": [                 {                     \"name\": \"default\",                     \"protocol\": \"tcp\",                     \"port\": 80,                     \"hostPort\": 80                 }             ]         }     ],     \"portRange\": {         \"start\": 0,         \"end\": 100     } }")
+	return []byte("{\"amount\": 10}")
+}
+
+func newValidScheduler() *entities.Scheduler {
+	return &entities.Scheduler{
+		Name:            "scheduler",
+		Game:            "game",
+		State:           entities.StateCreating,
+		MaxSurge:        "10%",
+		RollbackVersion: "",
+		Spec: game_room.Spec{
+			Version:                "v1",
+			TerminationGracePeriod: 60,
+			Toleration:             "toleration",
+			Affinity:               "affinity",
+			Containers: []game_room.Container{
+				{
+					Name:            "default",
+					Image:           "some-image",
+					ImagePullPolicy: "Always",
+					Command:         []string{"hello"},
+					Ports: []game_room.ContainerPort{
+						{Name: "tcp", Protocol: "tcp", Port: 80},
+					},
+					Requests: game_room.ContainerResources{
+						CPU:    "10m",
+						Memory: "100Mi",
+					},
+					Limits: game_room.ContainerResources{
+						CPU:    "10m",
+						Memory: "100Mi",
+					},
+				},
+			},
+		},
+		PortRange: &entities.PortRange{
+			Start: 40000,
+			End:   60000,
+		},
+	}
+}

@@ -83,7 +83,7 @@ func (e *UpdateSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 	)
 	logger.Debug("start updating scheduler")
 
-	updateDefinition := definition.(*operations.UpdateSchedulerDefinition)
+	updateDefinition := definition.(*UpdateSchedulerDefinition)
 	scheduler := &updateDefinition.NewScheduler
 	isMajor, err := e.schedulerManager.UpdateSchedulerConfig(ctx, scheduler)
 	if err != nil {
@@ -141,7 +141,7 @@ func (e *UpdateSchedulerExecutor) OnError(ctx context.Context, op *operation.Ope
 }
 
 func (e *UpdateSchedulerExecutor) Name() string {
-	return operations.OperationName
+	return OperationName
 }
 
 func replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager *room_manager.RoomManager, scheduler entities.Scheduler) {

@@ -25,7 +25,7 @@ package scheduler_manager
 import (
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/operations/update_scheduler"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-cmp/cmp"
@@ -161,13 +161,13 @@ func (s *SchedulerManager) CreateUpdateSchedulerOperation(ctx context.Context, s
 		return nil, err
 	}
 
-	dbScheduler, err := s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
-	if err != nil || dbScheduler == nil {
+	_, err = s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
+	if err != nil {
 		return nil, fmt.Errorf("no scheduler found to be updated: %w", err)
 	}
 
-	scheduler.State = dbScheduler.State
-	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &operations.UpdateSchedulerDefinition{ NewScheduler: *scheduler})
+	scheduler.State = entities.StateCreating //TODO (guilhermelyra): what correct value should be set for state in this case?
+	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &update_scheduler.UpdateSchedulerDefinition{ NewScheduler: *scheduler})
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule 'update scheduler' operation: %w", err)
 	}

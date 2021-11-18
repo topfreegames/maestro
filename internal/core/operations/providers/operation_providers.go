@@ -49,8 +49,8 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 	definitionConstructors[test_operation.OperationName] = func() operations.Definition {
 		return &test_operation.TestOperationDefinition{}
 	}
-	definitionConstructors[operations.OperationName] = func() operations.Definition {
-		return &operations.UpdateSchedulerDefinition{}
+	definitionConstructors[update_scheduler.OperationName] = func() operations.Definition {
+		return &update_scheduler.UpdateSchedulerDefinition{}
 	}
 	return definitionConstructors
 
@@ -68,7 +68,7 @@ func ProvideExecutors(
 	executors[add_rooms.OperationName] = add_rooms.NewExecutor(roomManager, schedulerStorage)
 	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager)
 	executors[test_operation.OperationName] = test_operation.NewExecutor()
-	executors[operations.OperationName] = update_scheduler.NewExecutor(roomManager, schedulerManager)
+	executors[update_scheduler.OperationName] = update_scheduler.NewExecutor(roomManager, schedulerManager)
 
 	return executors
 
