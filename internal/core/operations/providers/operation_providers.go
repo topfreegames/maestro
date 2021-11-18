@@ -71,4 +71,5 @@ func ProvideExecutors(
 	executors[update_scheduler.OperationName] = update_scheduler.NewExecutor(roomManager, schedulerManager)
 
 	return executors
+
 }
