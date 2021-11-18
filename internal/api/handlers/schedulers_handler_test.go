@@ -493,9 +493,6 @@ func TestUpdateScheduler(t *testing.T) {
 	dirPath, _ := os.Getwd()
 
 	t.Run("with success", func(t *testing.T) {
-		currentScheduler := newValidScheduler()
-		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
-
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -506,9 +503,7 @@ func TestUpdateScheduler(t *testing.T) {
 
 		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 		operationFlow.EXPECT().InsertOperationID(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil)
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").DoAndReturn(func(_ context.Context, _ string)( *entities.Scheduler, error) {
-			return currentScheduler, nil
-		})
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -532,7 +527,7 @@ func TestUpdateScheduler(t *testing.T) {
 		require.NotEmpty(t, body["operationId"])
 	})
 
-	t.Run("fails when scheduler does not exists", func(t *testing.T){
+	t.Run("fails when scheduler does not exists", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -584,48 +579,4 @@ func TestUpdateScheduler(t *testing.T) {
 		require.Equal(t, 500, rr.Code)
 		require.Contains(t, rr.Body.String(), "failed to schedule 'update scheduler' operation")
 	})
-}
-
-func schedulerUpdatePayload() []byte {
-	return []byte(" {\"game\": \"game-scheduler-lyra-campos-100\", \"version\": \"v1.2\",\"terminationGracePeriod\": \"100\",     \"maxSurge\": \"10\",     \"containers\": [         {             \"name\": \"container-scheduler-lyra-campos\",             \"image\": \"alpine\",             \"imagePullPolicy\": \"Always\",             \"command\": [\"sh\", \"-c\", \"tail -f /dev/null\"],             \"environment\": [],             \"requests\": {                 \"memory\": \"20Mi\",                 \"cpu\": \"10m\"             },             \"limits\": {                 \"memory\": \"20Mi\",                 \"cpu\": \"10m\"             },             \"ports\": [                 {                     \"name\": \"default\",                     \"protocol\": \"tcp\",                     \"port\": 80,                     \"hostPort\": 80                 }             ]         }     ],     \"portRange\": {         \"start\": 0,         \"end\": 100     } }")
-	return []byte("{\"amount\": 10}")
-}
-
-func newValidScheduler() *entities.Scheduler {
-	return &entities.Scheduler{
-		Name:            "scheduler",
-		Game:            "game",
-		State:           entities.StateCreating,
-		MaxSurge:        "10%",
-		RollbackVersion: "",
-		Spec: game_room.Spec{
-			Version:                "v1",
-			TerminationGracePeriod: 60,
-			Toleration:             "toleration",
-			Affinity:               "affinity",
-			Containers: []game_room.Container{
-				{
-					Name:            "default",
-					Image:           "some-image",
-					ImagePullPolicy: "Always",
-					Command:         []string{"hello"},
-					Ports: []game_room.ContainerPort{
-						{Name: "tcp", Protocol: "tcp", Port: 80},
-					},
-					Requests: game_room.ContainerResources{
-						CPU:    "10m",
-						Memory: "100Mi",
-					},
-					Limits: game_room.ContainerResources{
-						CPU:    "10m",
-						Memory: "100Mi",
-					},
-				},
-			},
-		},
-		PortRange: &entities.PortRange{
-			Start: 40000,
-			End:   60000,
-		},
-	}
 }
