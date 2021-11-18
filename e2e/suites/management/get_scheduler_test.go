@@ -40,7 +40,7 @@ import (
 func TestGetScheduler(t *testing.T) {
 	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("Should Succeed - Get scheduler without query parameter version", func(t *testing.T) {
-
+			t.Parallel()
 
 			schedulerName, err := createSchedulerAndWaitForIt(
 				t,
@@ -60,7 +60,7 @@ func TestGetScheduler(t *testing.T) {
 		})
 
 		t.Run("Should Fail - Get scheduler 404 with non-existent query version", func(t *testing.T) {
-
+			t.Parallel()
 
 			schedulerName, err := createSchedulerAndWaitForIt(
 				t,
@@ -75,11 +75,22 @@ func TestGetScheduler(t *testing.T) {
 
 			err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s?version=non-existent", schedulerName), getSchedulerRequest, getSchedulerResponse)
 
-			require.Error(t, err, "failed with status 404, response body: {\"code\":5, \"message\":\"Not Found\", \"details\":[]}")
+			require.Error(t, err, "failed with status 404, response body: {\"code\":5, \"message\":\"scheduler " + schedulerName + " not found\", \"details\":[]}")
+		})
+
+		t.Run("Should Fail - non-existent scheduler", func(t *testing.T) {
+			t.Parallel()
+
+			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: "NonExistent"}
+			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
+
+			err := apiClient.Do("GET", "/schedulers/NonExistent", getSchedulerRequest, getSchedulerResponse)
+
+			require.Error(t, err, "failed with status 404, response body: {\"code\":5, \"message\":\"scheduler NonExistent not found\", \"details\":[]}")
 		})
 
 		t.Run("Should succeed - Get scheduler with query version", func(t *testing.T) {
-
+			t.Parallel()
 
 			schedulerName, err := createSchedulerAndWaitForIt(
 				t,
@@ -92,10 +103,11 @@ func TestGetScheduler(t *testing.T) {
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
 
-			err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s?version=non-existent", schedulerName), getSchedulerRequest, getSchedulerResponse)
+			err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s?version=v1.1", schedulerName), getSchedulerRequest, getSchedulerResponse)
 
 			require.NoError(t, err)
 			require.Equal(t, getSchedulerResponse.Scheduler.Name, schedulerName)
+			require.Equal(t, getSchedulerResponse.Scheduler.GetVersion(), "v1.1")
 		})
 
 	})
