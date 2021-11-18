@@ -377,7 +377,7 @@ func TestCreateSchedulerOperation(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, nil)
 		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
 
-		op, err := schedulerManager.CreateUpdateSchedulerOperation(ctx,scheduler)
+		op, err := schedulerManager.CreateUpdateSchedulerOperation(ctx, scheduler)
 		require.Nil(t, op)
 		require.ErrorIs(t, err, errors.ErrUnexpected)
 		require.Contains(t, err.Error(), "failed to schedule 'update scheduler' operation")
