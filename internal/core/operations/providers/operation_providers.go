@@ -28,8 +28,10 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
+	"github.com/topfreegames/maestro/internal/core/operations/update_scheduler"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 )
 
 func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor {
@@ -47,7 +49,9 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 	definitionConstructors[test_operation.OperationName] = func() operations.Definition {
 		return &test_operation.TestOperationDefinition{}
 	}
-
+	definitionConstructors[operations.OperationName] = func() operations.Definition {
+		return &operations.UpdateSchedulerDefinition{}
+	}
 	return definitionConstructors
 
 }
@@ -56,6 +60,7 @@ func ProvideExecutors(
 	runtime ports.Runtime,
 	schedulerStorage ports.SchedulerStorage,
 	roomManager *room_manager.RoomManager,
+	schedulerManager *scheduler_manager.SchedulerManager,
 ) map[string]operations.Executor {
 
 	executors := map[string]operations.Executor{}
@@ -63,6 +68,7 @@ func ProvideExecutors(
 	executors[add_rooms.OperationName] = add_rooms.NewExecutor(roomManager, schedulerStorage)
 	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager)
 	executors[test_operation.OperationName] = test_operation.NewExecutor()
+	executors[operations.OperationName] = update_scheduler.NewExecutor(roomManager, schedulerManager)
 
 	return executors
 

@@ -70,6 +70,85 @@
         ]
       }
     },
+    "/schedulers/{name=*}": {
+      "put": {
+        "summary": "Update a scheduler.",
+        "operationId": "SchedulersService_UpdateScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Unique identifier for the scheduler.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "game": {
+                  "type": "string",
+                  "description": "Game the new scheduler will be part of."
+                },
+                "version": {
+                  "type": "string",
+                  "description": "?."
+                },
+                "terminationGracePeriod": {
+                  "type": "string",
+                  "format": "int64",
+                  "description": "The game room termination grace period."
+                },
+                "containers": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/v1Container"
+                  },
+                  "description": "The container object array defines all the game room container configurations."
+                },
+                "portRange": {
+                  "$ref": "#/definitions/v1PortRange",
+                  "description": "The port range object describes what is the port range used to allocate game rooms."
+                },
+                "toleration": {
+                  "type": "string",
+                  "description": "Runtime game room toleration configuration."
+                },
+                "affinity": {
+                  "type": "string",
+                  "description": "Runtime game room affinity configuration."
+                },
+                "maxSurge": {
+                  "type": "string",
+                  "title": "The max surge of new rooms, used to scale and update"
+                }
+              },
+              "description": "Scheduler is the struct that defines a maestro scheduler."
+            }
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
+    },
     "/schedulers/{schedulerName}/add-rooms": {
       "post": {
         "summary": "Given a amount, add rooms to a scheduler.",
@@ -436,6 +515,16 @@
         }
       },
       "description": "Scheduler is the struct that defines a maestro scheduler."
+    },
+    "v1UpdateSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Operation ID, further this id can be used to consult its state."
+        }
+      },
+      "description": "Update schedule operation response payload."
     }
   }
 }

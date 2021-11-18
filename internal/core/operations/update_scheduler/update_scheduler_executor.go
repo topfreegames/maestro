@@ -32,16 +32,31 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"go.uber.org/zap"
 )
 
-type UpdateSchedulerExecutor struct {
-	roomManager      *room_manager.RoomManager
-	schedulerManager *scheduler_manager.SchedulerManager
+type SchedulerManager interface {
+	UpdateSchedulerConfig(ctx context.Context, scheduler *entities.Scheduler) (bool, error)
 }
 
-func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager *scheduler_manager.SchedulerManager) *UpdateSchedulerExecutor {
+// type UpdateSchedulerExecutor struct {
+// 	roomManager      *room_manager.RoomManager
+// 	schedulerManager *scheduler_manager.SchedulerManager
+// }
+
+// func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager *scheduler_manager.SchedulerManager) *UpdateSchedulerExecutor {
+// 	return &UpdateSchedulerExecutor{
+// 		roomManager:      roomManager,
+// 		schedulerManager: schedulerManager,
+// 	}
+// }
+
+type UpdateSchedulerExecutor struct {
+	roomManager      *room_manager.RoomManager
+	schedulerManager SchedulerManager
+}
+
+func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager SchedulerManager) *UpdateSchedulerExecutor {
 	return &UpdateSchedulerExecutor{
 		roomManager:      roomManager,
 		schedulerManager: schedulerManager,
@@ -68,7 +83,7 @@ func (e *UpdateSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 	)
 	logger.Debug("start updating scheduler")
 
-	updateDefinition := definition.(*UpdateSchedulerDefinition)
+	updateDefinition := definition.(*operations.UpdateSchedulerDefinition)
 	scheduler := &updateDefinition.NewScheduler
 	isMajor, err := e.schedulerManager.UpdateSchedulerConfig(ctx, scheduler)
 	if err != nil {
@@ -126,7 +141,7 @@ func (e *UpdateSchedulerExecutor) OnError(ctx context.Context, op *operation.Ope
 }
 
 func (e *UpdateSchedulerExecutor) Name() string {
-	return OperationName
+	return operations.OperationName
 }
 
 func replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager *room_manager.RoomManager, scheduler entities.Scheduler) {

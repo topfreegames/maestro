@@ -25,6 +25,7 @@ package scheduler_manager
 import (
 	"context"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/operations"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-cmp/cmp"
@@ -152,6 +153,26 @@ func (s *SchedulerManager) UpdateSchedulerConfig(ctx context.Context, scheduler 
 	}
 
 	return isMajorUpdate, nil
+}
+
+func (s *SchedulerManager) CreateUpdateSchedulerOperation(ctx context.Context, scheduler *entities.Scheduler) (*operation.Operation, error) {
+	err := s.validateScheduler(scheduler)
+	if err != nil {
+		return nil, err
+	}
+
+	dbScheduler, err := s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
+	if err != nil || dbScheduler == nil {
+		return nil, fmt.Errorf("no scheduler found to be updated: %w", err)
+	}
+
+	scheduler.State = dbScheduler.State
+	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &operations.UpdateSchedulerDefinition{ NewScheduler: *scheduler})
+	if err != nil {
+		return nil, fmt.Errorf("failed to schedule 'update scheduler' operation: %w", err)
+	}
+
+	return op, nil
 }
 
 // isMajorVersionUpdate checks if the scheduler changes are major or not.

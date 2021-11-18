@@ -40,6 +40,14 @@ service SchedulersService {
       body: "*"
     };
   }
+
+  // Update a scheduler.
+  rpc UpdateScheduler(SchedulerRequest) returns (UpdateSchedulerResponse) {
+    option (google.api.http) = {
+      put: "/schedulers/{name=*}",
+      body: "*"
+    };
+  }
 }
 
 // List scheduler request options.
@@ -154,4 +162,11 @@ message RemoveRoomsResponse {
   // Remove rooms operation ID, further this id can be used to consult its state.
   string operation_id = 1;
 }
+
+// Update schedule operation response payload.
+message UpdateSchedulerResponse {
+  // Operation ID, further this id can be used to consult its state.
+  string operation_id = 1;
+}
+
 

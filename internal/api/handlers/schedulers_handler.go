@@ -117,6 +117,22 @@ func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.Remove
 	}, nil
 }
 
+func (h *SchedulersHandler) UpdateScheduler(ctx context.Context, request *api.SchedulerRequest) (*api.UpdateSchedulerResponse, error) {
+	scheduler := h.fromApiSchedulerRequestToEntity(request)
+
+	operation, err := h.schedulerManager.CreateUpdateSchedulerOperation(ctx, scheduler)
+	if errors.Is(err, portsErrors.ErrNotFound) {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.UpdateSchedulerResponse{
+		OperationId: operation.ID,
+	}, nil
+}
+
 func (h *SchedulersHandler) fromApiSchedulerRequestToEntity(request *api.SchedulerRequest) *entities.Scheduler {
 	return &entities.Scheduler{
 		Name:     request.GetName(),
