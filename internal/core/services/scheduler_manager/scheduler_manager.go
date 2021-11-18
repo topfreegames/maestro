@@ -167,7 +167,7 @@ func (s *SchedulerManager) CreateUpdateSchedulerOperation(ctx context.Context, s
 	}
 
 	scheduler.State = entities.StateCreating //TODO (guilhermelyra): what correct value should be set for state in this case?
-	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &update_scheduler.UpdateSchedulerDefinition{ NewScheduler: *scheduler})
+	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &update_scheduler.UpdateSchedulerDefinition{NewScheduler: *scheduler})
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule 'update scheduler' operation: %w", err)
 	}
