@@ -52,6 +52,7 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 	definitionConstructors[update_scheduler.OperationName] = func() operations.Definition {
 		return &update_scheduler.UpdateSchedulerDefinition{}
 	}
+
 	return definitionConstructors
 
 }
