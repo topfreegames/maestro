@@ -25,7 +25,6 @@ package scheduler_manager
 import (
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/operations/update_scheduler"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-cmp/cmp"
@@ -35,6 +34,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
+	"github.com/topfreegames/maestro/internal/core/operations/update_scheduler"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"go.uber.org/zap"
