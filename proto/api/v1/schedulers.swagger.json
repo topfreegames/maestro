@@ -98,6 +98,7 @@
           },
           {
             "name": "version",
+            "description": "Scheduler version to be queried (query param).",
             "in": "query",
             "required": false,
             "type": "string"
