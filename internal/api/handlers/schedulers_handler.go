@@ -233,11 +233,11 @@ func getPortRange(portRange *entities.PortRange) *api.PortRange {
 func getSpec(spec game_room.Spec) *api.Spec {
 	if spec.Version != "" {
 		return &api.Spec{
-			Version: spec.Version,
-			Toleration: spec.Toleration,
-			Containers: fromEntityContainerToApiContainer(spec.Containers),
+			Version:                spec.Version,
+			Toleration:             spec.Toleration,
+			Containers:             fromEntityContainerToApiContainer(spec.Containers),
 			TerminationGracePeriod: int64(spec.TerminationGracePeriod),
-			Affinity: spec.Affinity,
+			Affinity:               spec.Affinity,
 		}
 	}
 
@@ -252,7 +252,7 @@ func fromEntityContainerToApiContainer(containers []game_room.Container) []*api.
 			Image:           container.Image,
 			ImagePullPolicy: container.ImagePullPolicy,
 			Command:         container.Command,
-			Environment:     fromEntityEnvironmentToApiEnvironment(container.Environment),
+			Environment:     fromEntityContainerEnvironmentToApiContainerEnvironment(container.Environment),
 			Requests:        fromEntityContainerResourcesToApiContainerResources(container.Requests),
 			Limits:          fromEntityContainerResourcesToApiContainerResources(container.Limits),
 			Ports:           fromEntityContainerPortsToApiContainerPorts(container.Ports),
@@ -261,7 +261,7 @@ func fromEntityContainerToApiContainer(containers []game_room.Container) []*api.
 	return convertedContainers
 }
 
-func fromEntityEnvironmentToApiEnvironment(environments []game_room.ContainerEnvironment) []*api.ContainerEnvironment {
+func fromEntityContainerEnvironmentToApiContainerEnvironment(environments []game_room.ContainerEnvironment) []*api.ContainerEnvironment {
 	var convertedContainerEnvironment []*api.ContainerEnvironment
 	for _, environment := range environments {
 		convertedContainerEnvironment = append(convertedContainerEnvironment, &api.ContainerEnvironment{
