@@ -21,13 +21,13 @@ type SchedulersServiceClient interface {
 	// Lists all schedulers.
 	ListSchedulers(ctx context.Context, in *ListSchedulersRequest, opts ...grpc.CallOption) (*ListSchedulersResponse, error)
 	// Create a scheduler.
-	CreateScheduler(ctx context.Context, in *SchedulerRequest, opts ...grpc.CallOption) (*CreateSchedulerResponse, error)
+	CreateScheduler(ctx context.Context, in *CreateSchedulerRequest, opts ...grpc.CallOption) (*CreateSchedulerResponse, error)
 	// Given a amount, add rooms to a scheduler.
 	AddRooms(ctx context.Context, in *AddRoomsRequest, opts ...grpc.CallOption) (*AddRoomsResponse, error)
 	// Given a amount, remove rooms of a scheduler.
 	RemoveRooms(ctx context.Context, in *RemoveRoomsRequest, opts ...grpc.CallOption) (*RemoveRoomsResponse, error)
 	// Update a scheduler.
-	UpdateScheduler(ctx context.Context, in *SchedulerRequest, opts ...grpc.CallOption) (*UpdateSchedulerResponse, error)
+	UpdateScheduler(ctx context.Context, in *UpdateSchedulerRequest, opts ...grpc.CallOption) (*UpdateSchedulerResponse, error)
 }
 
 type schedulersServiceClient struct {
@@ -47,7 +47,7 @@ func (c *schedulersServiceClient) ListSchedulers(ctx context.Context, in *ListSc
 	return out, nil
 }
 
-func (c *schedulersServiceClient) CreateScheduler(ctx context.Context, in *SchedulerRequest, opts ...grpc.CallOption) (*CreateSchedulerResponse, error) {
+func (c *schedulersServiceClient) CreateScheduler(ctx context.Context, in *CreateSchedulerRequest, opts ...grpc.CallOption) (*CreateSchedulerResponse, error) {
 	out := new(CreateSchedulerResponse)
 	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/CreateScheduler", in, out, opts...)
 	if err != nil {
@@ -74,7 +74,7 @@ func (c *schedulersServiceClient) RemoveRooms(ctx context.Context, in *RemoveRoo
 	return out, nil
 }
 
-func (c *schedulersServiceClient) UpdateScheduler(ctx context.Context, in *SchedulerRequest, opts ...grpc.CallOption) (*UpdateSchedulerResponse, error) {
+func (c *schedulersServiceClient) UpdateScheduler(ctx context.Context, in *UpdateSchedulerRequest, opts ...grpc.CallOption) (*UpdateSchedulerResponse, error) {
 	out := new(UpdateSchedulerResponse)
 	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/UpdateScheduler", in, out, opts...)
 	if err != nil {
@@ -90,13 +90,13 @@ type SchedulersServiceServer interface {
 	// Lists all schedulers.
 	ListSchedulers(context.Context, *ListSchedulersRequest) (*ListSchedulersResponse, error)
 	// Create a scheduler.
-	CreateScheduler(context.Context, *SchedulerRequest) (*CreateSchedulerResponse, error)
+	CreateScheduler(context.Context, *CreateSchedulerRequest) (*CreateSchedulerResponse, error)
 	// Given a amount, add rooms to a scheduler.
 	AddRooms(context.Context, *AddRoomsRequest) (*AddRoomsResponse, error)
 	// Given a amount, remove rooms of a scheduler.
 	RemoveRooms(context.Context, *RemoveRoomsRequest) (*RemoveRoomsResponse, error)
 	// Update a scheduler.
-	UpdateScheduler(context.Context, *SchedulerRequest) (*UpdateSchedulerResponse, error)
+	UpdateScheduler(context.Context, *UpdateSchedulerRequest) (*UpdateSchedulerResponse, error)
 	mustEmbedUnimplementedSchedulersServiceServer()
 }
 
@@ -107,7 +107,7 @@ type UnimplementedSchedulersServiceServer struct {
 func (UnimplementedSchedulersServiceServer) ListSchedulers(context.Context, *ListSchedulersRequest) (*ListSchedulersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSchedulers not implemented")
 }
-func (UnimplementedSchedulersServiceServer) CreateScheduler(context.Context, *SchedulerRequest) (*CreateSchedulerResponse, error) {
+func (UnimplementedSchedulersServiceServer) CreateScheduler(context.Context, *CreateSchedulerRequest) (*CreateSchedulerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateScheduler not implemented")
 }
 func (UnimplementedSchedulersServiceServer) AddRooms(context.Context, *AddRoomsRequest) (*AddRoomsResponse, error) {
@@ -116,7 +116,7 @@ func (UnimplementedSchedulersServiceServer) AddRooms(context.Context, *AddRoomsR
 func (UnimplementedSchedulersServiceServer) RemoveRooms(context.Context, *RemoveRoomsRequest) (*RemoveRoomsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRooms not implemented")
 }
-func (UnimplementedSchedulersServiceServer) UpdateScheduler(context.Context, *SchedulerRequest) (*UpdateSchedulerResponse, error) {
+func (UnimplementedSchedulersServiceServer) UpdateScheduler(context.Context, *UpdateSchedulerRequest) (*UpdateSchedulerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateScheduler not implemented")
 }
 func (UnimplementedSchedulersServiceServer) mustEmbedUnimplementedSchedulersServiceServer() {}
@@ -151,7 +151,7 @@ func _SchedulersService_ListSchedulers_Handler(srv interface{}, ctx context.Cont
 }
 
 func _SchedulersService_CreateScheduler_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SchedulerRequest)
+	in := new(CreateSchedulerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -163,7 +163,7 @@ func _SchedulersService_CreateScheduler_Handler(srv interface{}, ctx context.Con
 		FullMethod: "/api.v1.SchedulersService/CreateScheduler",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SchedulersServiceServer).CreateScheduler(ctx, req.(*SchedulerRequest))
+		return srv.(SchedulersServiceServer).CreateScheduler(ctx, req.(*CreateSchedulerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -205,7 +205,7 @@ func _SchedulersService_RemoveRooms_Handler(srv interface{}, ctx context.Context
 }
 
 func _SchedulersService_UpdateScheduler_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SchedulerRequest)
+	in := new(UpdateSchedulerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func _SchedulersService_UpdateScheduler_Handler(srv interface{}, ctx context.Con
 		FullMethod: "/api.v1.SchedulersService/UpdateScheduler",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SchedulersServiceServer).UpdateScheduler(ctx, req.(*SchedulerRequest))
+		return srv.(SchedulersServiceServer).UpdateScheduler(ctx, req.(*UpdateSchedulerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

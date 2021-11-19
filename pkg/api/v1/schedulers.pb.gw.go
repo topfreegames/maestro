@@ -50,7 +50,7 @@ func local_request_SchedulersService_ListSchedulers_0(ctx context.Context, marsh
 }
 
 func request_SchedulersService_CreateScheduler_0(ctx context.Context, marshaler runtime.Marshaler, client SchedulersServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SchedulerRequest
+	var protoReq CreateSchedulerRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -67,7 +67,7 @@ func request_SchedulersService_CreateScheduler_0(ctx context.Context, marshaler 
 }
 
 func local_request_SchedulersService_CreateScheduler_0(ctx context.Context, marshaler runtime.Marshaler, server SchedulersServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SchedulerRequest
+	var protoReq CreateSchedulerRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -220,7 +220,7 @@ func local_request_SchedulersService_RemoveRooms_0(ctx context.Context, marshale
 }
 
 func request_SchedulersService_UpdateScheduler_0(ctx context.Context, marshaler runtime.Marshaler, client SchedulersServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SchedulerRequest
+	var protoReq UpdateSchedulerRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -254,7 +254,7 @@ func request_SchedulersService_UpdateScheduler_0(ctx context.Context, marshaler 
 }
 
 func local_request_SchedulersService_UpdateScheduler_0(ctx context.Context, marshaler runtime.Marshaler, server SchedulersServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SchedulerRequest
+	var protoReq UpdateSchedulerRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

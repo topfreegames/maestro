@@ -66,8 +66,8 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 	}, nil
 }
 
-func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.SchedulerRequest) (*api.CreateSchedulerResponse, error) {
-	scheduler := h.fromApiSchedulerRequestToEntity(request)
+func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
+	scheduler := h.fromApiCreateSchedulerRequestToEntity(request)
 
 	scheduler, err := h.schedulerManager.CreateScheduler(ctx, scheduler)
 	if errors.Is(err, portsErrors.ErrAlreadyExists) {
@@ -117,8 +117,8 @@ func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.Remove
 	}, nil
 }
 
-func (h *SchedulersHandler) UpdateScheduler(ctx context.Context, request *api.SchedulerRequest) (*api.UpdateSchedulerResponse, error) {
-	scheduler := h.fromApiSchedulerRequestToEntity(request)
+func (h *SchedulersHandler) UpdateScheduler(ctx context.Context, request *api.UpdateSchedulerRequest) (*api.UpdateSchedulerResponse, error) {
+	scheduler := h.fromApiUpdateSchedulerRequestToEntity(request)
 
 	operation, err := h.schedulerManager.CreateUpdateSchedulerOperation(ctx, scheduler)
 	if errors.Is(err, portsErrors.ErrNotFound) {
@@ -133,7 +133,27 @@ func (h *SchedulersHandler) UpdateScheduler(ctx context.Context, request *api.Sc
 	}, nil
 }
 
-func (h *SchedulersHandler) fromApiSchedulerRequestToEntity(request *api.SchedulerRequest) *entities.Scheduler {
+func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {
+	return &entities.Scheduler{
+		Name:     request.GetName(),
+		Game:     request.GetGame(),
+		State: entities.StateCreating,
+		MaxSurge: request.GetMaxSurge(),
+		PortRange: &entities.PortRange{
+			Start: request.GetPortRange().GetStart(),
+			End:   request.GetPortRange().GetEnd(),
+		},
+		Spec: game_room.Spec{
+			Version:                request.GetVersion(),
+			TerminationGracePeriod: time.Duration(request.GetTerminationGracePeriod()),
+			Affinity:               request.GetAffinity(),
+			Toleration:             request.GetToleration(),
+			Containers:             h.fromApiContainers(request.GetContainers()),
+		},
+	}
+}
+
+func (h *SchedulersHandler) fromApiUpdateSchedulerRequestToEntity(request *api.UpdateSchedulerRequest) *entities.Scheduler {
 	return &entities.Scheduler{
 		Name:     request.GetName(),
 		Game:     request.GetGame(),
