@@ -481,13 +481,13 @@
           "title": "Max surge of rooms"
         },
         "spec": {
-          "$ref": "#/definitions/v1spec",
+          "$ref": "#/definitions/v1Spec",
           "title": "GameRoom spec"
         }
       },
       "description": "Scheduler definition."
     },
-    "v1spec": {
+    "v1Spec": {
       "type": "object",
       "properties": {
         "version": {
@@ -514,7 +514,8 @@
           "type": "string",
           "description": "Runtime game room affinity configuration."
         }
-      }
+      },
+      "title": "Spec is the specifications of the scheduler, with relevant info about what is being used"
     }
   }
 }

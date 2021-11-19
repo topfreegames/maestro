@@ -65,7 +65,8 @@ message PortRange {
 	int32 end = 2;
 }
 
-message spec {
+// Spec is the specifications of the scheduler, with relevant info about what is being used
+message Spec {
   // GameRoom.spec version
   string version = 1;
   // The game room termination grace period.
@@ -96,7 +97,7 @@ message Scheduler {
   // Max surge of rooms 
   string max_surge = 7;
   // GameRoom spec
-  spec spec = 8;
+  Spec spec = 8;
 }
 
 // The operation object representation
