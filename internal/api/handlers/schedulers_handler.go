@@ -162,6 +162,7 @@ func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Sched
 		PortRange: getPortRange(entity.PortRange),
 		CreatedAt: timestamppb.New(entity.CreatedAt),
 		MaxSurge:  entity.MaxSurge,
+		Spec: getSpec(entity.Spec),
 	}
 }
 
@@ -227,4 +228,66 @@ func getPortRange(portRange *entities.PortRange) *api.PortRange {
 	}
 
 	return nil
+}
+
+func getSpec(spec game_room.Spec) *api.Spec {
+	if spec.Version != "" {
+		return &api.Spec{
+			Version: spec.Version,
+			Toleration: spec.Toleration,
+			Containers: fromEntityContainerToApiContainer(spec.Containers),
+			TerminationGracePeriod: int64(spec.TerminationGracePeriod),
+			Affinity: spec.Affinity,
+		}
+	}
+
+	return nil
+}
+
+func fromEntityContainerToApiContainer(containers []game_room.Container) []*api.Container {
+	var convertedContainers []*api.Container
+	for _, container := range containers {
+		convertedContainers = append(convertedContainers, &api.Container{
+			Name:            container.Name,
+			Image:           container.Image,
+			ImagePullPolicy: container.ImagePullPolicy,
+			Command:         container.Command,
+			Environment:     fromEntityEnvironmentToApiEnvironment(container.Environment),
+			Requests:        fromEntityContainerResourcesToApiContainerResources(container.Requests),
+			Limits:          fromEntityContainerResourcesToApiContainerResources(container.Limits),
+			Ports:           fromEntityContainerPortsToApiContainerPorts(container.Ports),
+		})
+	}
+	return convertedContainers
+}
+
+func fromEntityEnvironmentToApiEnvironment(environments []game_room.ContainerEnvironment) []*api.ContainerEnvironment {
+	var convertedContainerEnvironment []*api.ContainerEnvironment
+	for _, environment := range environments {
+		convertedContainerEnvironment = append(convertedContainerEnvironment, &api.ContainerEnvironment{
+			Name:  environment.Name,
+			Value: environment.Value,
+		})
+	}
+	return convertedContainerEnvironment
+}
+
+func fromEntityContainerResourcesToApiContainerResources(resources game_room.ContainerResources) *api.ContainerResources {
+	return &api.ContainerResources{
+		Memory: resources.Memory,
+		Cpu:    resources.CPU,
+	}
+}
+
+func fromEntityContainerPortsToApiContainerPorts(ports []game_room.ContainerPort) []*api.ContainerPort {
+	var convertedContainerPort []*api.ContainerPort
+	for _, port := range ports {
+		convertedContainerPort = append(convertedContainerPort, &api.ContainerPort{
+			Name:     port.Name,
+			Protocol: port.Protocol,
+			Port:     int32(port.Port),
+			HostPort: int32(port.HostPort),
+		})
+	}
+	return convertedContainerPort
 }

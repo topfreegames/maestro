@@ -461,7 +461,7 @@
         },
         "state": {
           "type": "string",
-          "description": "Current state of the scheduler.\nTODO(gabrielcorado): move this to an ENUM."
+          "description": "Current state of the scheduler."
         },
         "version": {
           "type": "string",
@@ -479,9 +479,42 @@
         "maxSurge": {
           "type": "string",
           "title": "Max surge of rooms"
+        },
+        "spec": {
+          "$ref": "#/definitions/v1spec",
+          "title": "GameRoom spec"
         }
       },
       "description": "Scheduler definition."
+    },
+    "v1spec": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "title": "GameRoom.spec version"
+        },
+        "terminationGracePeriod": {
+          "type": "string",
+          "format": "int64",
+          "description": "The game room termination grace period."
+        },
+        "containers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Container"
+          },
+          "description": "The container object array defines all the game room container configurations."
+        },
+        "toleration": {
+          "type": "string",
+          "description": "Runtime game room toleration configuration."
+        },
+        "affinity": {
+          "type": "string",
+          "description": "Runtime game room affinity configuration."
+        }
+      }
     }
   }
 }
