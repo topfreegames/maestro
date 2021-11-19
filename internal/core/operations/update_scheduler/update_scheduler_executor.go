@@ -39,18 +39,6 @@ type SchedulerManager interface {
 	UpdateSchedulerConfig(ctx context.Context, scheduler *entities.Scheduler) (bool, error)
 }
 
-// type UpdateSchedulerExecutor struct {
-// 	roomManager      *room_manager.RoomManager
-// 	schedulerManager *scheduler_manager.SchedulerManager
-// }
-
-// func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager *scheduler_manager.SchedulerManager) *UpdateSchedulerExecutor {
-// 	return &UpdateSchedulerExecutor{
-// 		roomManager:      roomManager,
-// 		schedulerManager: schedulerManager,
-// 	}
-// }
-
 type UpdateSchedulerExecutor struct {
 	roomManager      *room_manager.RoomManager
 	schedulerManager SchedulerManager
