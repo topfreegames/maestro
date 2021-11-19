@@ -137,7 +137,7 @@ func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.C
 	return &entities.Scheduler{
 		Name:     request.GetName(),
 		Game:     request.GetGame(),
-		State: 	  entities.StateCreating,
+		State:    entities.StateCreating,
 		MaxSurge: request.GetMaxSurge(),
 		PortRange: &entities.PortRange{
 			Start: request.GetPortRange().GetStart(),
