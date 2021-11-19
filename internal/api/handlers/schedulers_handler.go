@@ -162,7 +162,7 @@ func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Sched
 		PortRange: getPortRange(entity.PortRange),
 		CreatedAt: timestamppb.New(entity.CreatedAt),
 		MaxSurge:  entity.MaxSurge,
-		Spec: getSpec(entity.Spec),
+		Spec:      getSpec(entity.Spec),
 	}
 }
 
