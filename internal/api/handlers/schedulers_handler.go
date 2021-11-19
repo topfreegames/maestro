@@ -70,11 +70,7 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSchedulerRequest) (*api.GetSchedulerResponse, error) {
 	var scheduler *entities.Scheduler
 	var err error
-	if request.GetVersion() != "" {
-		scheduler, err = h.schedulerManager.GetSchedulerByVersion(ctx, request.GetSchedulerName(), request.GetVersion())
-	} else {
-		scheduler, err = h.schedulerManager.GetScheduler(ctx, request.GetSchedulerName())
-	}
+	scheduler, err = h.schedulerManager.GetScheduler(ctx, request.GetSchedulerName(), request.GetVersion())
 
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
