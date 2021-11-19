@@ -42,7 +42,7 @@ import (
 func TestCreateScheduler(t *testing.T) {
 	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		schedulerName := framework.GenerateSchedulerName()
-		createRequest := &maestrov1.SchedulerRequest{
+		createRequest := &maestrov1.CreateSchedulerRequest{
 			Name:                   schedulerName,
 			Game:                   "test",
 			Version:                "v1.1",
