@@ -163,7 +163,6 @@ func (h *SchedulersHandler) fromApiUpdateSchedulerRequestToEntity(request *api.U
 			End:   request.GetPortRange().GetEnd(),
 		},
 		Spec: game_room.Spec{
-			Version:                request.GetVersion(),
 			TerminationGracePeriod: time.Duration(request.GetTerminationGracePeriod()),
 			Affinity:               request.GetAffinity(),
 			Toleration:             request.GetToleration(),

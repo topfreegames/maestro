@@ -107,10 +107,6 @@
                   "type": "string",
                   "description": "Game the new scheduler will be part of."
                 },
-                "version": {
-                  "type": "string",
-                  "description": "?."
-                },
                 "terminationGracePeriod": {
                   "type": "string",
                   "format": "int64",
