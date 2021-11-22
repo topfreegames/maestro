@@ -32,19 +32,16 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
+	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	"go.uber.org/zap"
 )
 
-type SchedulerManager interface {
-	UpdateSchedulerConfig(ctx context.Context, scheduler *entities.Scheduler) (bool, error)
-}
-
 type UpdateSchedulerExecutor struct {
 	roomManager      *room_manager.RoomManager
-	schedulerManager SchedulerManager
+	schedulerManager interfaces.SchedulerManager
 }
 
-func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager SchedulerManager) *UpdateSchedulerExecutor {
+func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfaces.SchedulerManager) *UpdateSchedulerExecutor {
 	return &UpdateSchedulerExecutor{
 		roomManager:      roomManager,
 		schedulerManager: schedulerManager,

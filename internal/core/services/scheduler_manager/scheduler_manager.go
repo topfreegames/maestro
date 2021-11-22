@@ -161,12 +161,12 @@ func (s *SchedulerManager) CreateUpdateSchedulerOperation(ctx context.Context, s
 		return nil, err
 	}
 
-	_, err = s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
-	if err != nil {
+	schedulerDb, err := s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
+	if err != nil && schedulerDb == nil {
 		return nil, fmt.Errorf("no scheduler found to be updated: %w", err)
 	}
 
-	scheduler.State = entities.StateCreating //TODO (guilhermelyra): what correct value should be set for state in this case?
+	scheduler.State = entities.StateCreating
 	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &update_scheduler.UpdateSchedulerDefinition{NewScheduler: *scheduler})
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule 'update scheduler' operation: %w", err)
