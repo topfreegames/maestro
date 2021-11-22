@@ -102,7 +102,7 @@ message Scheduler {
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
 // on this message since it's unecessary for the list function
-message ListedScheduler {
+message SchedulerWithoutSpec {
   // Name is an unique identifier for the scheduler.
   string name = 1;
   // Game is the "scope" where the scheduler will be placed. It is required, and
