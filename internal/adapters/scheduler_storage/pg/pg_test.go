@@ -27,6 +27,7 @@ package pg
 import (
 	"context"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/filters"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -537,6 +538,120 @@ func TestSchedulerStorage_GetAllSchedulers(t *testing.T) {
 
 	require.NoError(t, err)
 	assertSchedulers(t, []*entities.Scheduler{scheduler1, scheduler2}, actualSchedulers)
+}
+
+func TestSchedulerStorage_GetSchedulerWithFilter(t *testing.T) {
+	t.Run("scheduler exists and is valid", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		expectedScheduler := &entities.Scheduler{
+			Name:            "scheduler",
+			Game:            "game",
+			State:           entities.StateCreating,
+			MaxSurge:        "10%",
+			RollbackVersion: "",
+			Spec: game_room.Spec{
+				Version:                "v1",
+				TerminationGracePeriod: 60,
+				Containers:             []game_room.Container{},
+				Toleration:             "toleration",
+				Affinity:               "affinity",
+			},
+			PortRange: &entities.PortRange{
+				Start: 40000,
+				End:   60000,
+			},
+		}
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+
+		actualScheduler, err := storage.GetSchedulerWithFilter(context.Background(), &filters.SchedulerFilter{
+			Name:    "scheduler",
+			Version: "v1",
+		})
+		require.NoError(t, err)
+		assertSchedulers(t, []*entities.Scheduler{expectedScheduler}, []*entities.Scheduler{actualScheduler})
+	})
+
+	t.Run("scheduler does not exists", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		_, err := storage.GetSchedulerWithFilter(context.Background(), &filters.SchedulerFilter{
+			Name:    "scheduler",
+			Version: "",
+		})
+		require.Error(t, err)
+		require.ErrorIs(t, errors.ErrNotFound, err)
+	})
+
+	t.Run("invalid scheduler", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		expectedScheduler := &entities.Scheduler{
+			Name:            "scheduler",
+			Game:            "game",
+			State:           entities.StateCreating,
+			MaxSurge:        "10%",
+			RollbackVersion: "",
+			Spec: game_room.Spec{
+				Version:                "v1",
+				TerminationGracePeriod: 60,
+				Containers:             []game_room.Container{},
+				Toleration:             "toleration",
+				Affinity:               "affinity",
+			},
+			PortRange: &entities.PortRange{
+				Start: 40000,
+				End:   60000,
+			},
+		}
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+
+		_, err := db.Exec("UPDATE schedulers SET yaml = 'invalid yaml' WHERE name = 'scheduler' and version = 'v1' ")
+		require.NoError(t, err)
+		_, err = db.Exec("UPDATE scheduler_versions SET yaml = 'invalid yaml' WHERE name = 'scheduler' and version = 'v1' ")
+		require.NoError(t, err)
+
+		_, err = storage.GetSchedulerWithFilter(context.Background(), &filters.SchedulerFilter{
+			Name:    "scheduler",
+			Version: "",
+		})
+		require.Error(t, err)
+		require.ErrorIs(t, errors.ErrEncoding, err)
+	})
+
+	t.Run("miss scheduler name", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		expectedScheduler := &entities.Scheduler{
+			Name:            "scheduler",
+			Game:            "game",
+			State:           entities.StateCreating,
+			MaxSurge:        "10%",
+			RollbackVersion: "",
+			Spec: game_room.Spec{
+				Version:                "v1",
+				TerminationGracePeriod: 60,
+				Containers:             []game_room.Container{},
+				Toleration:             "toleration",
+				Affinity:               "affinity",
+			},
+			PortRange: &entities.PortRange{
+				Start: 40000,
+				End:   60000,
+			},
+		}
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+
+		_, err := storage.GetSchedulerWithFilter(context.Background(), &filters.SchedulerFilter{
+			Name:    "",
+			Version: "",
+		})
+		require.Error(t, err)
+		require.ErrorIs(t, errors.ErrInvalidArgument, err)
+	})
 }
 
 func assertSchedulers(t *testing.T, expectedSchedulers []*entities.Scheduler, actualSchedulers []*entities.Scheduler) {
