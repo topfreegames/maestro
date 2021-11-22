@@ -281,7 +281,7 @@ func TestGetScheduler(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		
+
 		rr := httptest.NewRecorder()
 
 		mux.ServeHTTP(rr, req)
