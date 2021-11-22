@@ -10,6 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	entities "github.com/topfreegames/maestro/internal/core/entities"
+	filters "github.com/topfreegames/maestro/internal/core/filters"
 )
 
 // MockSchedulerStorage is a mock of SchedulerStorage interface.
@@ -93,19 +94,19 @@ func (mr *MockSchedulerStorageMockRecorder) GetScheduler(ctx, name interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScheduler", reflect.TypeOf((*MockSchedulerStorage)(nil).GetScheduler), ctx, name)
 }
 
-// GetSchedulerByVersion mocks base method.
-func (m *MockSchedulerStorage) GetSchedulerByVersion(ctx context.Context, name, version string) (*entities.Scheduler, error) {
+// GetSchedulerWithFilter mocks base method.
+func (m *MockSchedulerStorage) GetSchedulerWithFilter(ctx context.Context, schedulerFilter *filters.SchedulerFilter) (*entities.Scheduler, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSchedulerByVersion", ctx, name, version)
+	ret := m.ctrl.Call(m, "GetSchedulerWithFilter", ctx, schedulerFilter)
 	ret0, _ := ret[0].(*entities.Scheduler)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetSchedulerByVersion indicates an expected call of GetSchedulerByVersion.
-func (mr *MockSchedulerStorageMockRecorder) GetSchedulerByVersion(ctx, name, version interface{}) *gomock.Call {
+// GetSchedulerWithFilter indicates an expected call of GetSchedulerWithFilter.
+func (mr *MockSchedulerStorageMockRecorder) GetSchedulerWithFilter(ctx, schedulerFilter interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulerByVersion", reflect.TypeOf((*MockSchedulerStorage)(nil).GetSchedulerByVersion), ctx, name, version)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulerWithFilter", reflect.TypeOf((*MockSchedulerStorage)(nil).GetSchedulerWithFilter), ctx, schedulerFilter)
 }
 
 // GetSchedulers mocks base method.

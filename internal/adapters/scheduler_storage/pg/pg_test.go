@@ -236,7 +236,9 @@ func TestSchedulerStorage_GetScheduler(t *testing.T) {
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
 
-		_, err := db.Exec("UPDATE schedulers SET yaml = 'invalid yaml' WHERE name = 'scheduler'")
+		_, err := db.Exec("UPDATE schedulers SET yaml = 'invalid yaml' WHERE name = 'scheduler' and version = 'v1' ")
+		require.NoError(t, err)
+		_, err = db.Exec("UPDATE scheduler_versions SET yaml = 'invalid yaml' WHERE name = 'scheduler' and version = 'v1' ")
 		require.NoError(t, err)
 
 		_, err = storage.GetScheduler(context.Background(), "scheduler")

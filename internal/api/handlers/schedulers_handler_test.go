@@ -166,7 +166,7 @@ func TestGetScheduler(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(&entities.Scheduler{
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(&entities.Scheduler{
 			Name:            "zooba-us",
 			Game:            "zooba",
 			State:           entities.StateInSync,
@@ -239,7 +239,7 @@ func TestGetScheduler(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(&entities.Scheduler{}, nil)
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(&entities.Scheduler{}, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -271,7 +271,7 @@ func TestGetScheduler(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
-		schedulerStorage.EXPECT().GetSchedulerByVersion(gomock.Any(), gomock.Any(), gomock.Any()).Return(&entities.Scheduler{
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(&entities.Scheduler{
 			Name:            "zooba-us",
 			Game:            "zooba",
 			State:           entities.StateInSync,

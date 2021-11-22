@@ -31,6 +31,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
@@ -80,11 +81,10 @@ func (s *SchedulerManager) GetAllSchedulers(ctx context.Context) ([]*entities.Sc
 }
 
 func (s *SchedulerManager) GetScheduler(ctx context.Context, schedulerName, version string) (*entities.Scheduler, error) {
-	if version == "" {
-		return s.schedulerStorage.GetScheduler(ctx, schedulerName)
-	} else {
-		return s.schedulerStorage.GetSchedulerByVersion(ctx, schedulerName, version)
-	}
+	return s.schedulerStorage.GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
+		Name:    schedulerName,
+		Version: version,
+	})
 }
 
 func (s *SchedulerManager) AddRooms(ctx context.Context, schedulerName string, amount int32) (*operation.Operation, error) {

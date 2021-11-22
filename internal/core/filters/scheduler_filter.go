@@ -20,21 +20,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package ports
+package filters
 
-import (
-	"context"
-
-	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/filters"
-)
-
-type SchedulerStorage interface {
-	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
-	GetSchedulerWithFilter(ctx context.Context, schedulerFilter *filters.SchedulerFilter) (*entities.Scheduler, error)
-	GetSchedulers(ctx context.Context, names []string) ([]*entities.Scheduler, error)
-	GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error)
-	CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
-	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
-	DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error
+type SchedulerFilter struct {
+	Name    string
+	Version string
 }
