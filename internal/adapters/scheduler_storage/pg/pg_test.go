@@ -27,7 +27,6 @@ package pg
 import (
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/filters"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -41,6 +40,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/filters"
 
 	"github.com/stretchr/testify/require"
 

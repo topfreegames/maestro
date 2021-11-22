@@ -246,6 +246,9 @@ func TestGetScheduler(t *testing.T) {
 		require.NoError(t, err)
 
 		req, err := http.NewRequest("GET", "/schedulers/NonExistentSchedule", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		rr := httptest.NewRecorder()
 
@@ -275,7 +278,10 @@ func TestGetScheduler(t *testing.T) {
 		require.NoError(t, err)
 
 		req, err := http.NewRequest("GET", "/schedulers/NonExistentSchedule", nil)
-
+		if err != nil {
+			t.Fatal(err)
+		}
+		
 		rr := httptest.NewRecorder()
 
 		mux.ServeHTTP(rr, req)
