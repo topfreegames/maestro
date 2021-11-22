@@ -100,6 +100,26 @@ message Scheduler {
   Spec spec = 8;
 }
 
+// Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
+// on this message since it's unecessary for the list function
+message ListedScheduler {
+  // Name is an unique identifier for the scheduler.
+  string name = 1;
+  // Game is the "scope" where the scheduler will be placed. It is required, and
+  // games name are unique.
+  string game = 2;
+  // Current state of the scheduler.
+  string state = 3;
+  // Scheduler current version.
+  string version = 4;
+  // Port range for the scheduler rooms.
+  PortRange port_range = 5;
+  // Time the scheduler was created.
+  google.protobuf.Timestamp created_at = 6;
+  // Max surge of rooms
+  string max_surge = 7;
+}
+
 // The operation object representation
 message Operation {
   // Unique identifier for the operation.

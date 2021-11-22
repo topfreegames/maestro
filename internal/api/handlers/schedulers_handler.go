@@ -57,9 +57,9 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	schedulers := make([]*api.Scheduler, len(entities))
+	schedulers := make([]*api.ListedScheduler, len(entities))
 	for i, entity := range entities {
-		schedulers[i] = h.fromEntitySchedulerToResponse(entity)
+		schedulers[i] = h.fromEntitySchedulerToListResponse(entity)
 	}
 
 	return &api.ListSchedulersResponse{
@@ -150,6 +150,18 @@ func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.C
 			Toleration:             request.GetToleration(),
 			Containers:             h.fromApiContainers(request.GetContainers()),
 		},
+	}
+}
+
+func (h *SchedulersHandler) fromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.ListedScheduler {
+	return &api.ListedScheduler{
+		Name:      entity.Name,
+		Game:      entity.Game,
+		State:     entity.State,
+		Version:   entity.Spec.Version,
+		PortRange: getPortRange(entity.PortRange),
+		CreatedAt: timestamppb.New(entity.CreatedAt),
+		MaxSurge:  entity.MaxSurge,
 	}
 }
 

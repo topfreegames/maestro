@@ -55,7 +55,7 @@ message ListSchedulersRequest {}
 // The list schedulers reponse message.
 message ListSchedulersResponse {
   // List of schedulers fetched.
-  repeated Scheduler schedulers = 1;
+  repeated ListedScheduler schedulers = 1;
 }
 
 // Response for the create scheduler.

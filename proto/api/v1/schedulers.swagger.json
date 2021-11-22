@@ -415,12 +415,47 @@
         "schedulers": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/v1Scheduler"
+            "$ref": "#/definitions/v1ListedScheduler"
           },
           "description": "List of schedulers fetched."
         }
       },
       "description": "The list schedulers reponse message."
+    },
+    "v1ListedScheduler": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name is an unique identifier for the scheduler."
+        },
+        "game": {
+          "type": "string",
+          "description": "Game is the \"scope\" where the scheduler will be placed. It is required, and\ngames name are unique."
+        },
+        "state": {
+          "type": "string",
+          "description": "Current state of the scheduler."
+        },
+        "version": {
+          "type": "string",
+          "description": "Scheduler current version."
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "Port range for the scheduler rooms."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the scheduler was created."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "Max surge of rooms"
+        }
+      },
+      "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unecessary for the list function"
     },
     "v1PortRange": {
       "type": "object",
