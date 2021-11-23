@@ -7,6 +7,54 @@ option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
 
 import "google/protobuf/timestamp.proto";
 
+// Container is the struct that defines a game room container configuration.
+message Container {
+  // Name of the container.
+  string name = 1;
+  // Image address .
+  string image = 2;
+  // Image pull policy: Always, Never and IfNotExists.
+  string image_pull_policy = 3;
+  // Container command to be called when container is instantiated.
+  repeated string command = 4;
+  // Container environment variables.
+  repeated ContainerEnvironment environment = 5;
+  // Container resources request (cpu/memory).
+  ContainerResources requests = 6;
+  // Container resources limits (cpu/memory).
+  ContainerResources limits = 7;
+  // Container exposed ports definitions.
+  repeated ContainerPort ports = 8;
+}
+
+// Container environment variables.
+message ContainerEnvironment {
+  // Container environment variable name.
+  string name = 1;
+  // Container environment variable value.
+  string value = 2;
+}
+
+// Container resources (cpu/memory) (request and limits).
+message ContainerResources {
+  // Container memory amount.
+  string memory = 1;
+  // Container cpu amount.
+  string cpu = 2;
+}
+
+// Container exposed port definition.
+message ContainerPort {
+  // Name of the exposed port.
+  string name = 1;
+  // Protocol used to expose the port (TCP, UDP, SCTP).
+  string protocol = 2;
+  // Port number used.
+  int32 port = 3;
+  // Optional container host port.
+  int32 host_port = 4;
+}
+
 // Port range is the range definition that the rooms will use. If a scheduler
 // defines its range as 0-1000 (start-end), it is guarantee that all rooms be
 // within this range.
@@ -17,6 +65,20 @@ message PortRange {
 	int32 end = 2;
 }
 
+// Spec is the specifications of the scheduler, with relevant info about what is being used
+message Spec {
+  // GameRoom.spec version
+  string version = 1;
+  // The game room termination grace period.
+  int64 termination_grace_period = 2;
+  // The container object array defines all the game room container configurations.
+  repeated Container containers = 3;
+  // Runtime game room toleration configuration.
+  string toleration = 4;
+  // Runtime game room affinity configuration.
+  string affinity = 5;
+}
+
 // Scheduler definition.
 message Scheduler {
   // Name is an unique identifier for the scheduler.
@@ -25,7 +87,6 @@ message Scheduler {
   // games name are unique.
   string game = 2;
   // Current state of the scheduler.
-  // TODO(gabrielcorado): move this to an ENUM.
   string state = 3;
   // Scheduler current version.
   string version = 4;
@@ -34,6 +95,28 @@ message Scheduler {
   // Time the scheduler was created.
   google.protobuf.Timestamp created_at = 6;
   // Max surge of rooms 
+  string max_surge = 7;
+  // GameRoom spec
+  Spec spec = 8;
+}
+
+// Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
+// on this message since it's unecessary for the list function
+message SchedulerWithoutSpec {
+  // Name is an unique identifier for the scheduler.
+  string name = 1;
+  // Game is the "scope" where the scheduler will be placed. It is required, and
+  // games name are unique.
+  string game = 2;
+  // Current state of the scheduler.
+  string state = 3;
+  // Scheduler current version.
+  string version = 4;
+  // Port range for the scheduler rooms.
+  PortRange port_range = 5;
+  // Time the scheduler was created.
+  google.protobuf.Timestamp created_at = 6;
+  // Max surge of rooms
   string max_surge = 7;
 }
 

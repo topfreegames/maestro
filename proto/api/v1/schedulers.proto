@@ -17,6 +17,13 @@ service SchedulersService {
     };
   }
 
+  // Get Specific Scheduler by name
+  rpc GetScheduler(GetSchedulerRequest) returns (GetSchedulerResponse) {
+    option (google.api.http) = {
+      get: "/schedulers/{scheduler_name=*}"
+    };
+  }
+
   // Create a scheduler.
   rpc CreateScheduler(CreateSchedulerRequest) returns (CreateSchedulerResponse) {
     option (google.api.http) = {
@@ -56,7 +63,7 @@ message ListSchedulersRequest {}
 // The list schedulers reponse message.
 message ListSchedulersResponse {
   // List of schedulers fetched.
-  repeated Scheduler schedulers = 1;
+  repeated SchedulerWithoutSpec schedulers = 1;
 }
 
 // Response for the create scheduler.
@@ -87,54 +94,6 @@ message CreateSchedulerRequest {
   string max_surge = 9;
 }
 
-// Container is the struct that defines a game room container configuration.
-message Container {
-  // Name of the container.
-  string name = 1;
-  // Image address .
-  string image = 2;
-  // Image pull policy: Always, Never and IfNotExists.
-  string image_pull_policy = 3;
-  // Container command to be called when container is instantiated.
-  repeated string command = 4;
-  // Container environment variables.
-  repeated ContainerEnvironment environment = 5;
-  // Container resources request (cpu/memory).
-  ContainerResources requests = 6;
-  // Container resources limits (cpu/memory).
-  ContainerResources limits = 7;
-  // Container exposed ports definitions.
-  repeated ContainerPort ports = 8;
-}
-
-// Container environment variables.
-message ContainerEnvironment {
-  // Container environment variable name.
-  string name = 1;
-  // Container environment variable value.
-  string value = 2;
-}
-
-// Container resources (cpu/memory) (request and limits).
-message ContainerResources {
-  // Container memory amount.
-  string memory = 1;
-  // Container cpu amount.
-  string cpu = 2;
-}
-
-// Container exposed port definition.
-message ContainerPort {
-  // Name of the exposed port.
-  string name = 1;
-  // Protocol used to expose the port (TCP, UDP, SCTP).
-  string protocol = 2;
-  // Port number used.
-  int32 port = 3;
-  // Optional container host port.
-  int32 host_port = 4;
-}
-
 // Add rooms operation request payload + path parameters.
 message AddRoomsRequest {
   // Scheduler name where the rooms will be added.
@@ -163,6 +122,20 @@ message RemoveRoomsResponse {
   string operation_id = 1;
 }
 
+// Get Scheduler operation request
+message GetSchedulerRequest {
+  // Scheduler name where the rooms will be added.
+  string scheduler_name = 1;
+  // Scheduler version to be queried (query param)
+  string version = 2;
+}
+
+// The list schedulers reponse message.
+message GetSchedulerResponse {
+  // List of schedulers fetched.
+  Scheduler scheduler = 1;
+}
+
 // Scheduler is the struct that defines a maestro scheduler.
 message UpdateSchedulerRequest {
   // Unique identifier for the scheduler.
@@ -183,11 +156,8 @@ message UpdateSchedulerRequest {
   string max_surge = 8;
 }
 
-
 // Update schedule operation response payload.
 message UpdateSchedulerResponse {
   // Operation ID, further this id can be used to consult its state.
   string operation_id = 1;
 }
-
-

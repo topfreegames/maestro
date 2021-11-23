@@ -25,6 +25,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	validator "gopkg.in/validator.v2"
@@ -56,14 +57,29 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	schedulers := make([]*api.Scheduler, len(entities))
+	schedulers := make([]*api.SchedulerWithoutSpec, len(entities))
 	for i, entity := range entities {
-		schedulers[i] = h.fromEntitySchedulerToResponse(entity)
+		schedulers[i] = h.fromEntitySchedulerToListResponse(entity)
 	}
 
 	return &api.ListSchedulersResponse{
 		Schedulers: schedulers,
 	}, nil
+}
+
+func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSchedulerRequest) (*api.GetSchedulerResponse, error) {
+	var scheduler *entities.Scheduler
+	var err error
+	scheduler, err = h.schedulerManager.GetScheduler(ctx, request.GetSchedulerName(), request.GetVersion())
+
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.GetSchedulerResponse{Scheduler: h.fromEntitySchedulerToResponse(scheduler)}, nil
 }
 
 func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
@@ -153,6 +169,18 @@ func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.C
 	}
 }
 
+func (h *SchedulersHandler) fromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.SchedulerWithoutSpec {
+	return &api.SchedulerWithoutSpec{
+		Name:      entity.Name,
+		Game:      entity.Game,
+		State:     entity.State,
+		Version:   entity.Spec.Version,
+		PortRange: getPortRange(entity.PortRange),
+		CreatedAt: timestamppb.New(entity.CreatedAt),
+		MaxSurge:  entity.MaxSurge,
+	}
+}
+
 func (h *SchedulersHandler) fromApiUpdateSchedulerRequestToEntity(request *api.UpdateSchedulerRequest) *entities.Scheduler {
 	return &entities.Scheduler{
 		Name:     request.GetName(),
@@ -180,6 +208,7 @@ func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Sched
 		PortRange: getPortRange(entity.PortRange),
 		CreatedAt: timestamppb.New(entity.CreatedAt),
 		MaxSurge:  entity.MaxSurge,
+		Spec:      getSpec(entity.Spec),
 	}
 }
 
@@ -245,4 +274,66 @@ func getPortRange(portRange *entities.PortRange) *api.PortRange {
 	}
 
 	return nil
+}
+
+func getSpec(spec game_room.Spec) *api.Spec {
+	if spec.Version != "" {
+		return &api.Spec{
+			Version:                spec.Version,
+			Toleration:             spec.Toleration,
+			Containers:             fromEntityContainerToApiContainer(spec.Containers),
+			TerminationGracePeriod: int64(spec.TerminationGracePeriod),
+			Affinity:               spec.Affinity,
+		}
+	}
+
+	return nil
+}
+
+func fromEntityContainerToApiContainer(containers []game_room.Container) []*api.Container {
+	var convertedContainers []*api.Container
+	for _, container := range containers {
+		convertedContainers = append(convertedContainers, &api.Container{
+			Name:            container.Name,
+			Image:           container.Image,
+			ImagePullPolicy: container.ImagePullPolicy,
+			Command:         container.Command,
+			Environment:     fromEntityContainerEnvironmentToApiContainerEnvironment(container.Environment),
+			Requests:        fromEntityContainerResourcesToApiContainerResources(container.Requests),
+			Limits:          fromEntityContainerResourcesToApiContainerResources(container.Limits),
+			Ports:           fromEntityContainerPortsToApiContainerPorts(container.Ports),
+		})
+	}
+	return convertedContainers
+}
+
+func fromEntityContainerEnvironmentToApiContainerEnvironment(environments []game_room.ContainerEnvironment) []*api.ContainerEnvironment {
+	var convertedContainerEnvironment []*api.ContainerEnvironment
+	for _, environment := range environments {
+		convertedContainerEnvironment = append(convertedContainerEnvironment, &api.ContainerEnvironment{
+			Name:  environment.Name,
+			Value: environment.Value,
+		})
+	}
+	return convertedContainerEnvironment
+}
+
+func fromEntityContainerResourcesToApiContainerResources(resources game_room.ContainerResources) *api.ContainerResources {
+	return &api.ContainerResources{
+		Memory: resources.Memory,
+		Cpu:    resources.CPU,
+	}
+}
+
+func fromEntityContainerPortsToApiContainerPorts(ports []game_room.ContainerPort) []*api.ContainerPort {
+	var convertedContainerPort []*api.ContainerPort
+	for _, port := range ports {
+		convertedContainerPort = append(convertedContainerPort, &api.ContainerPort{
+			Name:     port.Name,
+			Protocol: port.Protocol,
+			Port:     int32(port.Port),
+			HostPort: int32(port.HostPort),
+		})
+	}
+	return convertedContainerPort
 }

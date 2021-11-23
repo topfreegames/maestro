@@ -157,6 +157,147 @@ func TestGetAllSchedulers(t *testing.T) {
 	})
 }
 
+func TestGetScheduler(t *testing.T) {
+
+	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(&entities.Scheduler{
+			Name:            "zooba-us",
+			Game:            "zooba",
+			State:           entities.StateInSync,
+			MaxSurge:        "10%",
+			RollbackVersion: "1.0.0",
+			Spec: game_room.Spec{
+				Version:                "v1.0.0",
+				TerminationGracePeriod: 100 * time.Nanosecond,
+				Containers: []game_room.Container{
+					{
+						Name:            "game-room-container-name",
+						Image:           "game-room-container-image",
+						ImagePullPolicy: "IfNotPresent",
+						Command:         []string{"./run"},
+						Environment: []game_room.ContainerEnvironment{{
+							Name:  "env-var-name",
+							Value: "env-var-value",
+						}},
+						Requests: game_room.ContainerResources{
+							Memory: "100mi",
+							CPU:    "100m",
+						},
+						Limits: game_room.ContainerResources{
+							Memory: "200mi",
+							CPU:    "200m",
+						},
+						Ports: []game_room.ContainerPort{{
+							Name:     "container-port-name",
+							Protocol: "https",
+							Port:     12345,
+							HostPort: 54321,
+						}},
+					},
+				},
+			},
+			CreatedAt: time.Now(),
+			PortRange: &entities.PortRange{
+				Start: 1,
+				End:   2,
+			},
+		}, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("GET", "/schedulers/zooba-us", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+
+		bodyString := rr.Body.String()
+		var response api.GetSchedulerResponse
+		err = json.Unmarshal([]byte(bodyString), &response)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, response.Scheduler)
+	})
+
+	t.Run("with valid request and no scheduler found", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("scheduler NonExistentSchedule not found"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("GET", "/schedulers/NonExistentSchedule", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 404, rr.Code)
+
+		bodyString := rr.Body.String()
+		var response api.GetSchedulerResponse
+		err = json.Unmarshal([]byte(bodyString), &response)
+		require.NoError(t, err)
+
+		require.Empty(t, response.Scheduler)
+	})
+
+	t.Run("with invalid request", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrInvalidArgument("Error"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("GET", "/schedulers/NonExistentSchedule", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 500, rr.Code)
+
+		bodyString := rr.Body.String()
+		var response api.GetSchedulerResponse
+		err = json.Unmarshal([]byte(bodyString), &response)
+		require.NoError(t, err)
+
+		require.Empty(t, response.Scheduler)
+	})
+
+}
+
 func TestCreateScheduler(t *testing.T) {
 	dirPath, _ := os.Getwd()
 

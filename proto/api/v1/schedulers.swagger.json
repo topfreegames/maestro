@@ -145,6 +145,45 @@
         ]
       }
     },
+    "/schedulers/{schedulerName}": {
+      "get": {
+        "summary": "Get Specific Scheduler by name",
+        "operationId": "SchedulersService_GetScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name where the rooms will be added.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "version",
+            "description": "Scheduler version to be queried (query param).",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
+    },
     "/schedulers/{schedulerName}/add-rooms": {
       "post": {
         "summary": "Given a amount, add rooms to a scheduler.",
@@ -246,14 +285,11 @@
     "protobufAny": {
       "type": "object",
       "properties": {
-        "typeUrl": {
+        "@type": {
           "type": "string"
-        },
-        "value": {
-          "type": "string",
-          "format": "byte"
         }
-      }
+      },
+      "additionalProperties": {}
     },
     "rpcStatus": {
       "type": "object",
@@ -438,13 +474,23 @@
       },
       "description": "Response for the create scheduler."
     },
+    "v1GetSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "scheduler": {
+          "$ref": "#/definitions/v1Scheduler",
+          "description": "List of schedulers fetched."
+        }
+      },
+      "description": "The list schedulers reponse message."
+    },
     "v1ListSchedulersResponse": {
       "type": "object",
       "properties": {
         "schedulers": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/v1Scheduler"
+            "$ref": "#/definitions/v1SchedulerWithoutSpec"
           },
           "description": "List of schedulers fetched."
         }
@@ -490,7 +536,46 @@
         },
         "state": {
           "type": "string",
-          "description": "Current state of the scheduler.\nTODO(gabrielcorado): move this to an ENUM."
+          "description": "Current state of the scheduler."
+        },
+        "version": {
+          "type": "string",
+          "description": "Scheduler current version."
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "Port range for the scheduler rooms."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the scheduler was created."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "Max surge of rooms"
+        },
+        "spec": {
+          "$ref": "#/definitions/v1Spec",
+          "title": "GameRoom spec"
+        }
+      },
+      "description": "Scheduler definition."
+    },
+    "v1SchedulerWithoutSpec": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name is an unique identifier for the scheduler."
+        },
+        "game": {
+          "type": "string",
+          "description": "Game is the \"scope\" where the scheduler will be placed. It is required, and\ngames name are unique."
+        },
+        "state": {
+          "type": "string",
+          "description": "Current state of the scheduler."
         },
         "version": {
           "type": "string",
@@ -510,7 +595,37 @@
           "title": "Max surge of rooms"
         }
       },
-      "description": "Scheduler definition."
+      "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unecessary for the list function"
+    },
+    "v1Spec": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "title": "GameRoom.spec version"
+        },
+        "terminationGracePeriod": {
+          "type": "string",
+          "format": "int64",
+          "description": "The game room termination grace period."
+        },
+        "containers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Container"
+          },
+          "description": "The container object array defines all the game room container configurations."
+        },
+        "toleration": {
+          "type": "string",
+          "description": "Runtime game room toleration configuration."
+        },
+        "affinity": {
+          "type": "string",
+          "description": "Runtime game room affinity configuration."
+        }
+      },
+      "title": "Spec is the specifications of the scheduler, with relevant info about what is being used"
     },
     "v1UpdateSchedulerResponse": {
       "type": "object",

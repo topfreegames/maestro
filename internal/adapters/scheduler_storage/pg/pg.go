@@ -33,6 +33,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/filters"
 )
 
 var _ ports.SchedulerStorage = (*schedulerStorage)(nil)
@@ -48,10 +49,10 @@ func NewSchedulerStorage(opts *pg.Options) *schedulerStorage {
 const (
 	queryGetScheduler = `
 SELECT
-	s.id, s.name, s.game, s.yaml, s.state, s.state_last_changed_at, last_scale_op_at, s.created_at, s.updated_at, s.version,
+	s.id, s.name, s.game, v.yaml, s.state, s.state_last_changed_at, last_scale_op_at, v.created_at, s.updated_at, v.version,
 	v.rolling_update_status, v.rollback_version
 FROM schedulers s join scheduler_versions v
-	ON s.name=v.name AND v.version=s.version
+	ON s.name=v.name
 WHERE s.name = ?`
 	queryGetSchedulers    = `SELECT * FROM schedulers WHERE name IN (?)`
 	queryGetAllSchedulers = `SELECT * FROM schedulers`
@@ -74,7 +75,10 @@ INSERT INTO scheduler_versions (name, version, yaml, rollback_version)
 func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error) {
 	client := s.db.WithContext(ctx)
 	var dbScheduler Scheduler
-	_, err := client.QueryOne(&dbScheduler, queryGetScheduler, name)
+
+	queryString := queryGetScheduler
+	queryString = queryString + " order by created_at desc limit 1"
+	_, err := client.QueryOne(&dbScheduler, queryString, name)
 	if err == pg.ErrNoRows {
 		return nil, errors.NewErrNotFound("scheduler %s not found", name)
 	}
@@ -84,6 +88,37 @@ func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entit
 	scheduler, err := dbScheduler.ToScheduler()
 	if err != nil {
 		return nil, errors.NewErrEncoding("error decoding scheduler %s", name).WithError(err)
+	}
+	return scheduler, nil
+}
+
+func (s schedulerStorage) GetSchedulerWithFilter(ctx context.Context, SchedulerFilter *filters.SchedulerFilter) (*entities.Scheduler, error) {
+	client := s.db.WithContext(ctx)
+	var dbScheduler Scheduler
+	queryString := queryGetScheduler
+
+	var queryArr []interface{}
+	if SchedulerFilter.Name == "" {
+		return nil, errors.NewErrInvalidArgument("Scheduler need at least a name")
+	}
+	queryArr = append(queryArr, SchedulerFilter.Name)
+
+	if SchedulerFilter.Version != "" {
+		queryString = queryString + " and v.version = ?"
+		queryArr = append(queryArr, SchedulerFilter.Version)
+	}
+
+	queryString = queryString + " order by created_at desc limit 1"
+	_, err := client.QueryOne(&dbScheduler, queryString, queryArr...)
+	if err == pg.ErrNoRows {
+		return nil, errors.NewErrNotFound("scheduler %s not found", SchedulerFilter.Name)
+	}
+	if err != nil {
+		return nil, errors.NewErrUnexpected("error getting scheduler %s", SchedulerFilter.Name).WithError(err)
+	}
+	scheduler, err := dbScheduler.ToScheduler()
+	if err != nil {
+		return nil, errors.NewErrEncoding("error decoding scheduler %s", SchedulerFilter.Name).WithError(err)
 	}
 	return scheduler, nil
 }
