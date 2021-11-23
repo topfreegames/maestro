@@ -77,7 +77,7 @@ func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entit
 	var dbScheduler Scheduler
 
 	queryString := queryGetScheduler
-	queryString = queryString + " order by created_at desc"
+	queryString = queryString + " order by created_at desc limit 1"
 	_, err := client.QueryOne(&dbScheduler, queryString, name)
 	if err == pg.ErrNoRows {
 		return nil, errors.NewErrNotFound("scheduler %s not found", name)
@@ -108,7 +108,7 @@ func (s schedulerStorage) GetSchedulerWithFilter(ctx context.Context, SchedulerF
 		queryArr = append(queryArr, SchedulerFilter.Version)
 	}
 
-	queryString = queryString + " order by created_at desc"
+	queryString = queryString + " order by created_at desc limit 1"
 	_, err := client.QueryOne(&dbScheduler, queryString, queryArr...)
 	if err == pg.ErrNoRows {
 		return nil, errors.NewErrNotFound("scheduler %s not found", SchedulerFilter.Name)
