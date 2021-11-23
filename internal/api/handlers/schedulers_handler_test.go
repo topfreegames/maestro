@@ -570,7 +570,7 @@ func TestUpdateScheduler(t *testing.T) {
 		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors())
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return( errors.NewErrUnexpected("storage offline"))
+		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(currentScheduler, nil)
 
 

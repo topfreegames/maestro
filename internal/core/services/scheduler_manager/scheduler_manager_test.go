@@ -396,7 +396,7 @@ func newValidScheduler() *entities.Scheduler {
 		State:           entities.StateCreating,
 		MaxSurge:        "10%",
 		RollbackVersion: "",
-	Spec: game_room.Spec{
+		Spec: game_room.Spec{
 			Version:                "v1",
 			TerminationGracePeriod: 60,
 			Toleration:             "toleration",
