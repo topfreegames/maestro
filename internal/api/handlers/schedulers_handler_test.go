@@ -573,7 +573,6 @@ func TestUpdateScheduler(t *testing.T) {
 		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(currentScheduler, nil)
 
-
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
