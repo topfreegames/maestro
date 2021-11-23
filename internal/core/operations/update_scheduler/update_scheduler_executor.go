@@ -31,17 +31,17 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"go.uber.org/zap"
 )
 
 type UpdateSchedulerExecutor struct {
 	roomManager      *room_manager.RoomManager
-	schedulerManager *scheduler_manager.SchedulerManager
+	schedulerManager interfaces.SchedulerManager
 }
 
-func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager *scheduler_manager.SchedulerManager) *UpdateSchedulerExecutor {
+func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfaces.SchedulerManager) *UpdateSchedulerExecutor {
 	return &UpdateSchedulerExecutor{
 		roomManager:      roomManager,
 		schedulerManager: schedulerManager,

@@ -31,6 +31,7 @@ type ListOperationsRequest struct {
 	// NOTE: On http protocol, this operates as a path param.
 	SchedulerName string `protobuf:"bytes,1,opt,name=scheduler_name,json=schedulerName,proto3" json:"scheduler_name,omitempty"`
 	// Optional parameter for enabling operations sorting.
+	// General `order_by` string syntax: <field> (<asc|desc>)
 	// NOTE: On http protocol, this operates as a query parameter.
 	OrderBy string `protobuf:"bytes,2,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
 }
