@@ -493,6 +493,10 @@ func TestUpdateScheduler(t *testing.T) {
 	dirPath, _ := os.Getwd()
 
 	t.Run("with success", func(t *testing.T) {
+
+		currentScheduler := newValidScheduler()
+		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -503,7 +507,7 @@ func TestUpdateScheduler(t *testing.T) {
 
 		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 		operationFlow.EXPECT().InsertOperationID(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil)
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(currentScheduler, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -553,6 +557,12 @@ func TestUpdateScheduler(t *testing.T) {
 	})
 
 	t.Run("with failure", func(t *testing.T) {
+		currentScheduler := newValidScheduler()
+		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -560,8 +570,9 @@ func TestUpdateScheduler(t *testing.T) {
 		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors())
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
+		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return( errors.NewErrUnexpected("storage offline"))
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(currentScheduler, nil)
+
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -579,4 +590,43 @@ func TestUpdateScheduler(t *testing.T) {
 		require.Equal(t, 500, rr.Code)
 		require.Contains(t, rr.Body.String(), "failed to schedule 'update scheduler' operation")
 	})
+}
+
+func newValidScheduler() *entities.Scheduler {
+	return &entities.Scheduler{
+		Name:            "scheduler-name-1",
+		Game:            "game",
+		State:           entities.StateCreating,
+		MaxSurge:        "10%",
+		RollbackVersion: "",
+		Spec: game_room.Spec{
+			Version:                "v1",
+			TerminationGracePeriod: 60,
+			Toleration:             "toleration",
+			Affinity:               "affinity",
+			Containers: []game_room.Container{
+				{
+					Name:            "default",
+					Image:           "some-image",
+					ImagePullPolicy: "Always",
+					Command:         []string{"hello"},
+					Ports: []game_room.ContainerPort{
+						{Name: "tcp", Protocol: "tcp", Port: 80},
+					},
+					Requests: game_room.ContainerResources{
+						CPU:    "10m",
+						Memory: "100Mi",
+					},
+					Limits: game_room.ContainerResources{
+						CPU:    "10m",
+						Memory: "100Mi",
+					},
+				},
+			},
+		},
+		PortRange: &entities.PortRange{
+			Start: 40000,
+			End:   60000,
+		},
+	}
 }

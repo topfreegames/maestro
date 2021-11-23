@@ -156,17 +156,18 @@ func (s *SchedulerManager) UpdateSchedulerConfig(ctx context.Context, scheduler 
 }
 
 func (s *SchedulerManager) CreateUpdateSchedulerOperation(ctx context.Context, scheduler *entities.Scheduler) (*operation.Operation, error) {
-	err := s.validateScheduler(scheduler)
+	currentScheduler, err := s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
+	if err != nil || currentScheduler == nil {
+		return nil, fmt.Errorf("no scheduler found to be updated: %w", err)
+	}
+
+	scheduler.Spec.Version = currentScheduler.Spec.Version
+	scheduler.State = entities.StateCreating
+	err = s.validateScheduler(scheduler)
 	if err != nil {
 		return nil, err
 	}
 
-	schedulerDb, err := s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
-	if err != nil && schedulerDb == nil {
-		return nil, fmt.Errorf("no scheduler found to be updated: %w", err)
-	}
-
-	scheduler.State = entities.StateCreating
 	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &update_scheduler.UpdateSchedulerDefinition{NewScheduler: *scheduler})
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule 'update scheduler' operation: %w", err)

@@ -364,7 +364,11 @@ func TestCreateSchedulerOperation(t *testing.T) {
 	})
 
 	t.Run("with failure", func(t *testing.T) {
+		currentScheduler := newValidScheduler()
+		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+
 		scheduler := newValidScheduler()
+		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
 
 		ctx := context.Background()
 		mockCtrl := gomock.NewController(t)
@@ -374,7 +378,7 @@ func TestCreateSchedulerOperation(t *testing.T) {
 		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors())
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
-		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, nil)
+		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(currentScheduler, nil)
 		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
 
 		op, err := schedulerManager.CreateUpdateSchedulerOperation(ctx, scheduler)
@@ -392,7 +396,7 @@ func newValidScheduler() *entities.Scheduler {
 		State:           entities.StateCreating,
 		MaxSurge:        "10%",
 		RollbackVersion: "",
-		Spec: game_room.Spec{
+	Spec: game_room.Spec{
 			Version:                "v1",
 			TerminationGracePeriod: 60,
 			Toleration:             "toleration",
