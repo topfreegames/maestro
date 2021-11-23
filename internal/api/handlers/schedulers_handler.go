@@ -169,7 +169,6 @@ func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.C
 	}
 }
 
-
 func (h *SchedulersHandler) fromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.SchedulerWithoutSpec {
 	return &api.SchedulerWithoutSpec{
 		Name:      entity.Name,
