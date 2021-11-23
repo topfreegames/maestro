@@ -40,6 +40,14 @@ service SchedulersService {
       body: "*"
     };
   }
+
+  // Update a scheduler.
+  rpc UpdateScheduler(UpdateSchedulerRequest) returns (UpdateSchedulerResponse) {
+    option (google.api.http) = {
+      put: "/schedulers/{name=*}",
+      body: "*"
+    };
+  }
 }
 
 // List scheduler request options.
@@ -154,4 +162,32 @@ message RemoveRoomsResponse {
   // Remove rooms operation ID, further this id can be used to consult its state.
   string operation_id = 1;
 }
+
+// Scheduler is the struct that defines a maestro scheduler.
+message UpdateSchedulerRequest {
+  // Unique identifier for the scheduler.
+  string name = 1;
+  // Game the new scheduler will be part of.
+  string game = 2;
+  // The game room termination grace period.
+  int64 termination_grace_period = 3;
+  // The container object array defines all the game room container configurations.
+  repeated Container containers = 4;
+  // The port range object describes what is the port range used to allocate game rooms.
+  PortRange port_range = 5;
+  // Runtime game room toleration configuration.
+  string toleration = 6;
+  // Runtime game room affinity configuration.
+  string affinity = 7;
+  // The max surge of new rooms, used to scale and update
+  string max_surge = 8;
+}
+
+
+// Update schedule operation response payload.
+message UpdateSchedulerResponse {
+  // Operation ID, further this id can be used to consult its state.
+  string operation_id = 1;
+}
+
 

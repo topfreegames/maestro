@@ -316,6 +316,78 @@ func TestIsMajorVersionUpdate(t *testing.T) {
 	}
 }
 
+func TestCreateSchedulerOperation(t *testing.T) {
+
+	t.Run("with success", func(t *testing.T) {
+
+		currentScheduler := newValidScheduler()
+		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+
+		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(nil)
+		operationFlow.EXPECT().InsertOperationID(ctx, scheduler.Name, gomock.Any()).Return(nil)
+		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(currentScheduler, nil)
+
+		op, err := schedulerManager.CreateUpdateSchedulerOperation(ctx, scheduler)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+		require.NotNil(t, op.ID)
+
+	})
+
+	t.Run("fails when scheduler does not exists", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.NewErrNotFound("err"))
+
+		op, err := schedulerManager.CreateUpdateSchedulerOperation(ctx, scheduler)
+		require.Nil(t, op)
+		require.ErrorIs(t, err, errors.ErrNotFound)
+		require.Contains(t, err.Error(), "no scheduler found to be updated: err")
+	})
+
+	t.Run("with failure", func(t *testing.T) {
+		currentScheduler := newValidScheduler()
+		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors())
+		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(currentScheduler, nil)
+		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
+
+		op, err := schedulerManager.CreateUpdateSchedulerOperation(ctx, scheduler)
+		require.Nil(t, op)
+		require.ErrorIs(t, err, errors.ErrUnexpected)
+		require.Contains(t, err.Error(), "failed to schedule 'update scheduler' operation")
+	})
+}
+
 // newValidScheduler generates a valid scheduler with the required fields.
 func newValidScheduler() *entities.Scheduler {
 	return &entities.Scheduler{
