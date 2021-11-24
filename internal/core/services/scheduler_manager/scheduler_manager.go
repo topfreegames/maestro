@@ -152,7 +152,7 @@ func (s *SchedulerManager) UpdateSchedulerConfig(ctx context.Context, scheduler 
 		newVersion = currentVersion.IncMajor()
 	}
 
-	scheduler.Spec.Version = newVersion.String()
+	scheduler.Spec.Version = newVersion.Original()
 	scheduler.RollbackVersion = currentScheduler.Spec.Version
 
 	err = s.schedulerStorage.UpdateScheduler(ctx, scheduler)
