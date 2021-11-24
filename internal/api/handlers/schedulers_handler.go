@@ -82,6 +82,21 @@ func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSc
 	return &api.GetSchedulerResponse{Scheduler: h.fromEntitySchedulerToResponse(scheduler)}, nil
 }
 
+func (h *SchedulersHandler) GetSchedulerVersions(ctx context.Context, request *api.GetSchedulerVersionsRequest) (*api.GetSchedulerVersionsResponse, error) {
+	var versions []*entities.SchedulerVersion
+	var err error
+	versions, err = h.schedulerManager.GetSchedulerVersions(ctx, request.GetSchedulerName())
+
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.GetSchedulerVersionsResponse{Versions: h.fromEntitySchedulerVersionListToResponse(versions)}, nil
+}
+
 func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
 	scheduler := h.fromApiCreateSchedulerRequestToEntity(request)
 
@@ -212,6 +227,17 @@ func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Sched
 	}
 }
 
+func (h *SchedulersHandler) fromEntitySchedulerVersionListToResponse(entity []*entities.SchedulerVersion) []*api.SchedulerVersion {
+	versions := make([]*api.SchedulerVersion, len(entity))
+	for i, version := range entity {
+		versions[i] = &api.SchedulerVersion{
+			Version:   version.Version,
+			CreatedAt: timestamppb.New(version.CreatedAt),
+		}
+	}
+	return versions
+}
+
 func (h *SchedulersHandler) fromApiContainers(apiContainers []*api.Container) []game_room.Container {
 	var containers []game_room.Container
 	for _, apiContainer := range apiContainers {
@@ -337,3 +363,4 @@ func fromEntityContainerPortsToApiContainerPorts(ports []game_room.ContainerPort
 	}
 	return convertedContainerPort
 }
+
