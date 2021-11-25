@@ -685,6 +685,14 @@ func TestSchedulerStorage_GetSchedulerVersions(t *testing.T) {
 		require.Equal(t, expectedScheduler.Spec.Version, versions[0].Version)
 		require.NotEqual(t, versions[0].Version, nil)
 	})
+
+	t.Run("scheduler does not exists", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		_, err := storage.GetSchedulerVersions(context.Background(), "NonExistentScheduler")
+		require.Error(t, err)
+		require.ErrorIs(t, errors.ErrNotFound, err)
+	})
 }
 
 func assertSchedulers(t *testing.T, expectedSchedulers []*entities.Scheduler, actualSchedulers []*entities.Scheduler) {

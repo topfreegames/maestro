@@ -32,9 +32,9 @@ type SchedulerVersion struct {
 	CreatedAt pg.NullTime `db:"created_at"`
 }
 
-func (s *SchedulerVersion) ToSchedulerVersion() (*entities.SchedulerVersion, error) {
+func (s *SchedulerVersion) ToSchedulerVersion() *entities.SchedulerVersion {
 	return &entities.SchedulerVersion{
 		Version:   s.Version,
 		CreatedAt: s.CreatedAt.Time,
-	}, nil
+	}
 }
