@@ -52,13 +52,13 @@ func ProvideSchedulersHandler(schedulerManager *scheduler_manager.SchedulerManag
 }
 
 func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
-	entities, err := h.schedulerManager.GetAllSchedulers(ctx)
+	schedulerEntities, err := h.schedulerManager.GetAllSchedulers(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	schedulers := make([]*api.SchedulerWithoutSpec, len(entities))
-	for i, entity := range entities {
+	schedulers := make([]*api.SchedulerWithoutSpec, len(schedulerEntities))
+	for i, entity := range schedulerEntities {
 		schedulers[i] = h.fromEntitySchedulerToListResponse(entity)
 	}
 
@@ -83,9 +83,7 @@ func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSc
 }
 
 func (h *SchedulersHandler) GetSchedulerVersions(ctx context.Context, request *api.GetSchedulerVersionsRequest) (*api.GetSchedulerVersionsResponse, error) {
-	var versions []*entities.SchedulerVersion
-	var err error
-	versions, err = h.schedulerManager.GetSchedulerVersions(ctx, request.GetSchedulerName())
+	versions, err := h.schedulerManager.GetSchedulerVersions(ctx, request.GetSchedulerName())
 
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
