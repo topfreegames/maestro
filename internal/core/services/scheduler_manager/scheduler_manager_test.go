@@ -20,13 +20,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//+build unit
+//go:build unit
+// +build unit
 
 package scheduler_manager
 
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/golang/mock/gomock"
@@ -36,6 +38,7 @@ import (
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -388,6 +391,104 @@ func TestCreateSchedulerOperation(t *testing.T) {
 	})
 }
 
+func TestGetSchedulerVersions(t *testing.T) {
+
+	t.Run("with success", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		schedulerVersionList := newValidSchedulerVersionList()
+
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+
+		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerStorage.EXPECT().GetSchedulerVersions(ctx, scheduler.Name).Return(schedulerVersionList, nil)
+
+		versions, err := schedulerManager.GetSchedulerVersions(ctx, scheduler.Name)
+		require.NoError(t, err)
+		require.NotNil(t, versions)
+		require.Equal(t, versions, schedulerVersionList)
+	})
+
+	t.Run("error", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+
+		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerStorage.EXPECT().GetSchedulerVersions(ctx, scheduler.Name).Return(nil, errors.NewErrNotFound("scheduler not found"))
+
+		versions, err := schedulerManager.GetSchedulerVersions(ctx, scheduler.Name)
+		require.Error(t, err)
+		require.Nil(t, versions)
+	})
+}
+
+func TestGetScheduler(t *testing.T) {
+
+	t.Run("with success", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+
+		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerFilter := &filters.SchedulerFilter{
+			Name:    scheduler.Name,
+			Version: scheduler.Spec.Version,
+		}
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, schedulerFilter).Return(scheduler, nil)
+
+		retScheduler, err := schedulerManager.GetScheduler(ctx, schedulerFilter.Name, schedulerFilter.Version)
+		require.NoError(t, err)
+		require.NotNil(t, retScheduler)
+		require.Equal(t, retScheduler, scheduler)
+	})
+
+	t.Run("error", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+
+		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerFilter := &filters.SchedulerFilter{
+			Name:    scheduler.Name,
+			Version: scheduler.Spec.Version,
+		}
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, schedulerFilter).Return(nil, errors.NewErrNotFound("scheduler not found"))
+
+		retScheduler, err := schedulerManager.GetScheduler(ctx, schedulerFilter.Name, schedulerFilter.Version)
+		require.Error(t, err)
+		require.Nil(t, retScheduler)
+	})
+}
+
 // newValidScheduler generates a valid scheduler with the required fields.
 func newValidScheduler() *entities.Scheduler {
 	return &entities.Scheduler{
@@ -426,4 +527,18 @@ func newValidScheduler() *entities.Scheduler {
 			End:   60000,
 		},
 	}
+}
+
+// newValidSchedulerVersionList generates a valid list with SchedulerVersions.
+func newValidSchedulerVersionList() []*entities.SchedulerVersion {
+	listSchedulerVersions := make([]*entities.SchedulerVersion, 2)
+	listSchedulerVersions[0] = &entities.SchedulerVersion{
+		Version:   "v2.0",
+		CreatedAt: time.Now(),
+	}
+	listSchedulerVersions[1] = &entities.SchedulerVersion{
+		Version:   "v1.0",
+		CreatedAt: time.Now(),
+	}
+	return listSchedulerVersions
 }
