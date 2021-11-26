@@ -298,6 +298,112 @@ func TestGetScheduler(t *testing.T) {
 
 }
 
+func TestGetSchedulerVersions(t *testing.T) {
+
+	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+
+		versions := make([]*entities.SchedulerVersion, 1)
+		versions[0] = &entities.SchedulerVersion{
+			Version:   "v1.1",
+			CreatedAt: time.Now(),
+		}
+
+		schedulerStorage.EXPECT().GetSchedulerVersions(gomock.Any(), gomock.Any()).Return(versions, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("GET", "/schedulers/scheduler/versions", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+
+		bodyString := rr.Body.String()
+		var response api.GetSchedulerVersionsResponse
+		err = json.Unmarshal([]byte(bodyString), &response)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, response.Versions)
+	})
+
+	t.Run("with valid request and no scheduler found", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetSchedulerVersions(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("scheduler NonExistentScheduler not found"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("GET", "/schedulers/NonExistentScheduler/versions", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 404, rr.Code)
+
+		bodyString := rr.Body.String()
+		var response api.GetSchedulerVersionsResponse
+		err = json.Unmarshal([]byte(bodyString), &response)
+		require.NoError(t, err)
+
+		require.Empty(t, response.Versions)
+	})
+
+	t.Run("with invalid request", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetSchedulerVersions(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrInvalidArgument("Error"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("GET", "/schedulers/NonExistentScheduler/versions", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 500, rr.Code)
+
+		bodyString := rr.Body.String()
+		var response api.GetSchedulerVersionsResponse
+		err = json.Unmarshal([]byte(bodyString), &response)
+		require.NoError(t, err)
+
+		require.Empty(t, response.Versions)
+	})
+
+}
+
 func TestCreateScheduler(t *testing.T) {
 	dirPath, _ := os.Getwd()
 

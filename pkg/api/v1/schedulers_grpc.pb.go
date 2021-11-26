@@ -30,6 +30,8 @@ type SchedulersServiceClient interface {
 	RemoveRooms(ctx context.Context, in *RemoveRoomsRequest, opts ...grpc.CallOption) (*RemoveRoomsResponse, error)
 	// Update a scheduler.
 	UpdateScheduler(ctx context.Context, in *UpdateSchedulerRequest, opts ...grpc.CallOption) (*UpdateSchedulerResponse, error)
+	// Given a Scheduler, returns it's versions
+	GetSchedulerVersions(ctx context.Context, in *GetSchedulerVersionsRequest, opts ...grpc.CallOption) (*GetSchedulerVersionsResponse, error)
 }
 
 type schedulersServiceClient struct {
@@ -94,6 +96,15 @@ func (c *schedulersServiceClient) UpdateScheduler(ctx context.Context, in *Updat
 	return out, nil
 }
 
+func (c *schedulersServiceClient) GetSchedulerVersions(ctx context.Context, in *GetSchedulerVersionsRequest, opts ...grpc.CallOption) (*GetSchedulerVersionsResponse, error) {
+	out := new(GetSchedulerVersionsResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/GetSchedulerVersions", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SchedulersServiceServer is the server API for SchedulersService service.
 // All implementations must embed UnimplementedSchedulersServiceServer
 // for forward compatibility
@@ -110,6 +121,8 @@ type SchedulersServiceServer interface {
 	RemoveRooms(context.Context, *RemoveRoomsRequest) (*RemoveRoomsResponse, error)
 	// Update a scheduler.
 	UpdateScheduler(context.Context, *UpdateSchedulerRequest) (*UpdateSchedulerResponse, error)
+	// Given a Scheduler, returns it's versions
+	GetSchedulerVersions(context.Context, *GetSchedulerVersionsRequest) (*GetSchedulerVersionsResponse, error)
 	mustEmbedUnimplementedSchedulersServiceServer()
 }
 
@@ -134,6 +147,9 @@ func (UnimplementedSchedulersServiceServer) RemoveRooms(context.Context, *Remove
 }
 func (UnimplementedSchedulersServiceServer) UpdateScheduler(context.Context, *UpdateSchedulerRequest) (*UpdateSchedulerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateScheduler not implemented")
+}
+func (UnimplementedSchedulersServiceServer) GetSchedulerVersions(context.Context, *GetSchedulerVersionsRequest) (*GetSchedulerVersionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSchedulerVersions not implemented")
 }
 func (UnimplementedSchedulersServiceServer) mustEmbedUnimplementedSchedulersServiceServer() {}
 
@@ -256,6 +272,24 @@ func _SchedulersService_UpdateScheduler_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SchedulersService_GetSchedulerVersions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSchedulerVersionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SchedulersServiceServer).GetSchedulerVersions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.SchedulersService/GetSchedulerVersions",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SchedulersServiceServer).GetSchedulerVersions(ctx, req.(*GetSchedulerVersionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SchedulersService_ServiceDesc is the grpc.ServiceDesc for SchedulersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -286,6 +320,10 @@ var SchedulersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateScheduler",
 			Handler:    _SchedulersService_UpdateScheduler_Handler,
+		},
+		{
+			MethodName: "GetSchedulerVersions",
+			Handler:    _SchedulersService_GetSchedulerVersions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

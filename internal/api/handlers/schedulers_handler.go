@@ -52,13 +52,13 @@ func ProvideSchedulersHandler(schedulerManager *scheduler_manager.SchedulerManag
 }
 
 func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
-	entities, err := h.schedulerManager.GetAllSchedulers(ctx)
+	schedulerEntities, err := h.schedulerManager.GetAllSchedulers(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	schedulers := make([]*api.SchedulerWithoutSpec, len(entities))
-	for i, entity := range entities {
+	schedulers := make([]*api.SchedulerWithoutSpec, len(schedulerEntities))
+	for i, entity := range schedulerEntities {
 		schedulers[i] = h.fromEntitySchedulerToListResponse(entity)
 	}
 
@@ -80,6 +80,19 @@ func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSc
 	}
 
 	return &api.GetSchedulerResponse{Scheduler: h.fromEntitySchedulerToResponse(scheduler)}, nil
+}
+
+func (h *SchedulersHandler) GetSchedulerVersions(ctx context.Context, request *api.GetSchedulerVersionsRequest) (*api.GetSchedulerVersionsResponse, error) {
+	versions, err := h.schedulerManager.GetSchedulerVersions(ctx, request.GetSchedulerName())
+
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.GetSchedulerVersionsResponse{Versions: h.fromEntitySchedulerVersionListToResponse(versions)}, nil
 }
 
 func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
@@ -210,6 +223,17 @@ func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Sched
 		MaxSurge:  entity.MaxSurge,
 		Spec:      getSpec(entity.Spec),
 	}
+}
+
+func (h *SchedulersHandler) fromEntitySchedulerVersionListToResponse(entity []*entities.SchedulerVersion) []*api.SchedulerVersion {
+	versions := make([]*api.SchedulerVersion, len(entity))
+	for i, version := range entity {
+		versions[i] = &api.SchedulerVersion{
+			Version:   version.Version,
+			CreatedAt: timestamppb.New(version.CreatedAt),
+		}
+	}
+	return versions
 }
 
 func (h *SchedulersHandler) fromApiContainers(apiContainers []*api.Container) []game_room.Container {

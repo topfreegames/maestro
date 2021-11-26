@@ -279,6 +279,38 @@
           "SchedulersService"
         ]
       }
+    },
+    "/schedulers/{schedulerName}/versions": {
+      "get": {
+        "summary": "Given a Scheduler, returns it's versions",
+        "operationId": "SchedulersService_GetSchedulerVersions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetSchedulerVersionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name whose versions the client wants to fetch",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -484,6 +516,19 @@
       },
       "description": "The list schedulers reponse message."
     },
+    "v1GetSchedulerVersionsResponse": {
+      "type": "object",
+      "properties": {
+        "versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1SchedulerVersion"
+          },
+          "title": "List of versions for an scheduler"
+        }
+      },
+      "title": "Get Scheduler Versions payload"
+    },
     "v1ListSchedulersResponse": {
       "type": "object",
       "properties": {
@@ -561,6 +606,21 @@
         }
       },
       "description": "Scheduler definition."
+    },
+    "v1SchedulerVersion": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "title": "Specific version"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Specifies when the version has been created"
+        }
+      },
+      "title": "Represents the version of a Scheduler"
     },
     "v1SchedulerWithoutSpec": {
       "type": "object",

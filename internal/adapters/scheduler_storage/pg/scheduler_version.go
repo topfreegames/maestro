@@ -20,22 +20,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package ports
+package pg
 
 import (
-	"context"
-
+	"github.com/go-pg/pg"
 	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/filters"
 )
 
-type SchedulerStorage interface {
-	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
-	GetSchedulerWithFilter(ctx context.Context, schedulerFilter *filters.SchedulerFilter) (*entities.Scheduler, error)
-	GetSchedulerVersions(ctx context.Context, name string) ([]*entities.SchedulerVersion, error)
-	GetSchedulers(ctx context.Context, names []string) ([]*entities.Scheduler, error)
-	GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error)
-	CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
-	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
-	DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error
+type SchedulerVersion struct {
+	Version   string      `db:"version"`
+	CreatedAt pg.NullTime `db:"created_at"`
+}
+
+func (s *SchedulerVersion) ToSchedulerVersion() *entities.SchedulerVersion {
+	return &entities.SchedulerVersion{
+		Version:   s.Version,
+		CreatedAt: s.CreatedAt.Time,
+	}
 }

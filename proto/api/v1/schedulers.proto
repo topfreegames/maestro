@@ -55,6 +55,13 @@ service SchedulersService {
       body: "*"
     };
   }
+
+  // Given a Scheduler, returns it's versions
+  rpc GetSchedulerVersions(GetSchedulerVersionsRequest) returns (GetSchedulerVersionsResponse) {
+    option (google.api.http) = {
+      get: "/schedulers/{scheduler_name=*}/versions"
+    };
+  }
 }
 
 // List scheduler request options.
@@ -160,4 +167,16 @@ message UpdateSchedulerRequest {
 message UpdateSchedulerResponse {
   // Operation ID, further this id can be used to consult its state.
   string operation_id = 1;
+}
+
+// Get Scheduler Versions request
+message GetSchedulerVersionsRequest {
+  // Scheduler name whose versions the client wants to fetch
+  string scheduler_name = 1;
+}
+
+// Get Scheduler Versions payload
+message GetSchedulerVersionsResponse {
+  // List of versions for an scheduler
+  repeated SchedulerVersion versions = 1;
 }

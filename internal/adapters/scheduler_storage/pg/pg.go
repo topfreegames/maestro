@@ -70,6 +70,7 @@ UPDATE schedulers
 INSERT INTO scheduler_versions (name, version, yaml, rollback_version)
 	VALUES (?, ?, ?, ?)
 	ON CONFLICT DO NOTHING`
+	queryGetSchedulerVersions = ` SELECT version, created_at FROM scheduler_versions WHERE name = ? ORDER BY created_at DESC`
 )
 
 func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error) {
@@ -121,6 +122,24 @@ func (s schedulerStorage) GetSchedulerWithFilter(ctx context.Context, SchedulerF
 		return nil, errors.NewErrEncoding("error decoding scheduler %s", SchedulerFilter.Name).WithError(err)
 	}
 	return scheduler, nil
+}
+
+func (s schedulerStorage) GetSchedulerVersions(ctx context.Context, name string) ([]*entities.SchedulerVersion, error) {
+	client := s.db.WithContext(ctx)
+	var dbSchedulerVersions []SchedulerVersion
+	_, err := client.Query(&dbSchedulerVersions, queryGetSchedulerVersions, name)
+	if len(dbSchedulerVersions) == 0 {
+		return nil, errors.NewErrNotFound("scheduler %s not found", name)
+	}
+	if err != nil {
+		return nil, errors.NewErrUnexpected("error getting scheduler versions").WithError(err)
+	}
+	versions := make([]*entities.SchedulerVersion, len(dbSchedulerVersions))
+	for i := range dbSchedulerVersions {
+		scheduler := dbSchedulerVersions[i].ToSchedulerVersion()
+		versions[i] = scheduler
+	}
+	return versions, nil
 }
 
 func (s schedulerStorage) GetSchedulers(ctx context.Context, names []string) ([]*entities.Scheduler, error) {

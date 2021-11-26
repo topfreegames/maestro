@@ -134,3 +134,11 @@ message Operation {
   // Time the operation was created.
   google.protobuf.Timestamp created_at = 5;
 }
+
+// Represents the version of a Scheduler
+message SchedulerVersion {
+  // Specific version
+  string version = 1;
+  // Specifies when the version has been created
+  google.protobuf.Timestamp created_at = 2;
+}

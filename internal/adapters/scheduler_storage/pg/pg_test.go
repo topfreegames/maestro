@@ -98,7 +98,7 @@ func getDBUrl(opts *pg.Options) string {
 	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", opts.User, opts.Password, opts.Addr, opts.Database)
 }
 
-type SchedulerVersion struct {
+type dbSchedulerVersion struct {
 	ID                  string      `db:"id"`
 	Name                string      `db:"name"`
 	Yaml                string      `db:"yaml"`
@@ -108,7 +108,7 @@ type SchedulerVersion struct {
 	RollingUpdateStatus string      `db:"rolling_update_status"`
 }
 
-func getDBSchedulerAndVersions(t *testing.T, db *pg.DB, schedulerName string) (*Scheduler, []*SchedulerVersion) {
+func getDBSchedulerAndVersions(t *testing.T, db *pg.DB, schedulerName string) (*Scheduler, []*dbSchedulerVersion) {
 	dbScheduler := new(Scheduler)
 	res, err := db.Query(dbScheduler, "select * from schedulers where name = ?;", schedulerName)
 	require.NoError(t, err)
@@ -116,14 +116,14 @@ func getDBSchedulerAndVersions(t *testing.T, db *pg.DB, schedulerName string) (*
 		return nil, nil
 	}
 
-	var versions []*SchedulerVersion
+	var versions []*dbSchedulerVersion
 	_, err = db.Query(&versions, "select * from scheduler_versions where name = ?;", schedulerName)
 	require.NoError(t, err)
 
 	return dbScheduler, versions
 }
 
-func requireCorrectScheduler(t *testing.T, expectedScheduler *entities.Scheduler, dbScheduler *Scheduler, dbVersion *SchedulerVersion, update bool) {
+func requireCorrectScheduler(t *testing.T, expectedScheduler *entities.Scheduler, dbScheduler *Scheduler, dbVersion *dbSchedulerVersion, update bool) {
 	// postgres scheduler version is valid
 	require.Equal(t, dbScheduler.Name, dbVersion.Name)
 	require.Equal(t, dbScheduler.Yaml, dbVersion.Yaml)
@@ -654,8 +654,48 @@ func TestSchedulerStorage_GetSchedulerWithFilter(t *testing.T) {
 	})
 }
 
-func assertSchedulers(t *testing.T, expectedSchedulers []*entities.Scheduler, actualSchedulers []*entities.Scheduler) {
+func TestSchedulerStorage_GetSchedulerVersions(t *testing.T) {
+	t.Run("scheduler exists and is valid", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		expectedScheduler := &entities.Scheduler{
+			Name:            "scheduler",
+			Game:            "game",
+			State:           entities.StateCreating,
+			MaxSurge:        "10%",
+			RollbackVersion: "",
+			Spec: game_room.Spec{
+				Version:                "v1",
+				TerminationGracePeriod: 60,
+				Containers:             []game_room.Container{},
+				Toleration:             "toleration",
+				Affinity:               "affinity",
+			},
+			PortRange: &entities.PortRange{
+				Start: 40000,
+				End:   60000,
+			},
+		}
 
+		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+
+		versions, err := storage.GetSchedulerVersions(context.Background(), expectedScheduler.Name)
+
+		require.NoError(t, err)
+		require.Equal(t, expectedScheduler.Spec.Version, versions[0].Version)
+		require.NotEqual(t, versions[0].Version, nil)
+	})
+
+	t.Run("scheduler does not exists", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		_, err := storage.GetSchedulerVersions(context.Background(), "NonExistentScheduler")
+		require.Error(t, err)
+		require.ErrorIs(t, errors.ErrNotFound, err)
+	})
+}
+
+func assertSchedulers(t *testing.T, expectedSchedulers []*entities.Scheduler, actualSchedulers []*entities.Scheduler) {
 	for i, expectedScheduler := range expectedSchedulers {
 		require.Equal(t, expectedScheduler.Name, actualSchedulers[i].Name)
 		require.Equal(t, expectedScheduler.Game, actualSchedulers[i].Game)
@@ -664,5 +704,4 @@ func assertSchedulers(t *testing.T, expectedSchedulers []*entities.Scheduler, ac
 		require.Equal(t, expectedScheduler.Spec, actualSchedulers[i].Spec)
 		require.Equal(t, expectedScheduler.PortRange, actualSchedulers[i].PortRange)
 	}
-
 }
