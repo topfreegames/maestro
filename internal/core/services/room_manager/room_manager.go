@@ -117,7 +117,6 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 	return room, instance, err
 }
 
-// TODO(gabrielcorado): should we "force" the room status to be "Terminating"?
 func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	instance, err := m.instanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
@@ -130,6 +129,14 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 		// TODO(gabriel.corado): deal better with instance not found.
 		return fmt.Errorf("failed to delete instance on the runtime: %w", err)
 	}
+
+	duration := m.config.RoomDeletionTimeout
+	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
+	err = m.WaitRoomStatus(timeoutContext, gameRoom, game_room.GameStatusTerminating)
+	if err != nil {
+		return fmt.Errorf("got timeout while waiting game room status to be terminating: %w", err)
+	}
+	defer cancelFunc()
 
 	return nil
 }
@@ -246,7 +253,7 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 			return nil, fmt.Errorf("failed to fetch room information: %w", err)
 		}
 
-		if ignoredVersion != "" && ignoredVersion == room.Version {
+		if room.Status == game_room.GameStatusTerminating || (ignoredVersion != "" && ignoredVersion == room.Version) {
 			continue
 		}
 
