@@ -53,7 +53,6 @@ type RoomStorage interface {
 	GetRoomCountByStatus(ctx context.Context, scheduler string, status game_room.GameRoomStatus) (int, error)
 	// UpdateRoomStatus updates the game room status.
 	UpdateRoomStatus(ctx context.Context, scheduler, roomId string, status game_room.GameRoomStatus) error
-
 	// WatchRoomStatus watch for status changes on the storage.
 	WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (RoomStorageStatusWatcher, error)
 }

@@ -34,7 +34,7 @@ const (
 	// change on the runtime, for example, if its status change. Can happen
 	// multiple times for an instance.
 	InstanceEventTypeUpdated
-	// InstanceEventTypeDelete will happen when the instance is
+	// InstanceEventTypeDeleted will happen when the instance is
 	// deleted from the runtime. Can happen only once per instance.
 	InstanceEventTypeDeleted
 )
