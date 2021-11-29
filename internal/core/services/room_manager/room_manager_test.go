@@ -486,6 +486,27 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, rooms)
 	})
+
+	t.Run("when retrieving rooms with terminating status it returns an empty list", func(t *testing.T) {
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		ignoredVersion := "v1.2.3"
+		availableRooms := []*game_room.GameRoom{
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
+			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
+		}
+
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{}, nil).AnyTimes()
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID}, nil)
+
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
+
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, 2)
+		require.NoError(t, err)
+		require.Empty(t, rooms)
+	})
+
 }
 
 func TestRoomManager_UpdateRoomInstance(t *testing.T) {
