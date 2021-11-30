@@ -132,11 +132,11 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 
 	duration := m.config.RoomDeletionTimeout
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
+	defer cancelFunc()
 	err = m.WaitRoomStatus(timeoutContext, gameRoom, game_room.GameStatusTerminating)
 	if err != nil {
 		return fmt.Errorf("got timeout while waiting game room status to be terminating: %w", err)
 	}
-	defer cancelFunc()
 
 	return nil
 }

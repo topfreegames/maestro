@@ -75,7 +75,7 @@ func TestGetScheduler(t *testing.T) {
 
 			err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s?version=non-existent", schedulerName), getSchedulerRequest, getSchedulerResponse)
 
-			require.Error(t, err, "failed with status 404, response body: {\"code\":5, \"message\":\"scheduler " + schedulerName + " not found\", \"details\":[]}")
+			require.Error(t, err, "failed with status 404, response body: {\"code\":5, \"message\":\"scheduler "+schedulerName+" not found\", \"details\":[]}")
 		})
 
 		t.Run("Should Fail - non-existent scheduler", func(t *testing.T) {

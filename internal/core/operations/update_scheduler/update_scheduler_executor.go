@@ -37,8 +37,9 @@ import (
 )
 
 type UpdateSchedulerExecutor struct {
-	roomManager      *room_manager.RoomManager
-	schedulerManager interfaces.SchedulerManager
+	roomManager        *room_manager.RoomManager
+	schedulerManager   interfaces.SchedulerManager
+	roomsBeingReplaced sync.Map
 }
 
 func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfaces.SchedulerManager) *UpdateSchedulerExecutor {
@@ -90,7 +91,7 @@ func (e *UpdateSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 
 	maxSurgeWg.Add(maxSurgeNum)
 	for i := 0; i < maxSurgeNum; i++ {
-		go replaceRoom(logger, &maxSurgeWg, roomsChan, e.roomManager, *scheduler)
+		go e.replaceRoom(logger, &maxSurgeWg, roomsChan, e.roomManager, *scheduler)
 	}
 
 roomsListLoop:
@@ -101,6 +102,14 @@ roomsListLoop:
 		}
 
 		for _, room := range rooms {
+			isRoomBeingReplaced, exists := e.roomsBeingReplaced.Load(room.ID)
+
+			if !exists {
+				e.roomsBeingReplaced.Store(room.ID, true)
+			} else if isRoomBeingReplaced.(bool) {
+				continue
+			}
+
 			select {
 			case roomsChan <- room:
 			case <-ctx.Done():
@@ -129,7 +138,7 @@ func (e *UpdateSchedulerExecutor) Name() string {
 	return OperationName
 }
 
-func replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager *room_manager.RoomManager, scheduler entities.Scheduler) {
+func (e *UpdateSchedulerExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager *room_manager.RoomManager, scheduler entities.Scheduler) {
 	defer wg.Done()
 
 	// we're going to use a separated context for each replaceRoom since we
@@ -149,6 +158,7 @@ func replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_ro
 			// to decide if we need to remove the newly created room or not.
 			// This logic could be placed in a more "safe" RoomManager
 			// CreateRoom function.
+			e.roomsBeingReplaced.Store(room.ID, false)
 			continue
 		}
 
@@ -158,8 +168,11 @@ func replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_ro
 			// issues since this room could be replaced again. should we perform
 			// a "force delete" or fail the update here?
 			logger.Warn("failed to delete room", zap.Error(err))
+			e.roomsBeingReplaced.Store(room.ID, false)
+			continue
 		}
 
 		logger.Sugar().Debugf("replaced room \"%s\" with \"%s\"", room.ID, gameRoom.ID)
+		e.roomsBeingReplaced.Store(room.ID, false)
 	}
 }
