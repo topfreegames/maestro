@@ -29,6 +29,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -211,7 +212,7 @@ func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId 
 //
 // This function can return less rooms than the `amount` since it might not have
 // enough rooms on the scheduler.
-func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int) ([]*game_room.GameRoom, error) {
+func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error) {
 
 	var schedulerRoomsIDs []string
 	onErrorRoomIDs, err := m.roomStorage.GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError)
@@ -251,6 +252,12 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 		room, err := m.roomStorage.GetRoom(ctx, schedulerName, roomID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch room information: %w", err)
+		}
+
+		_, roomIsBeingReplaced := roomsBeingReplaced.Load(room.ID)
+
+		if roomIsBeingReplaced {
+			continue
 		}
 
 		if room.Status == game_room.GameStatusTerminating || (ignoredVersion != "" && ignoredVersion == room.Version) {

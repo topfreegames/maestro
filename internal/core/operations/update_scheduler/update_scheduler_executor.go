@@ -39,13 +39,14 @@ import (
 type UpdateSchedulerExecutor struct {
 	roomManager        *room_manager.RoomManager
 	schedulerManager   interfaces.SchedulerManager
-	roomsBeingReplaced sync.Map
+	roomsBeingReplaced *sync.Map
 }
 
 func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfaces.SchedulerManager) *UpdateSchedulerExecutor {
 	return &UpdateSchedulerExecutor{
-		roomManager:      roomManager,
-		schedulerManager: schedulerManager,
+		roomManager:        roomManager,
+		schedulerManager:   schedulerManager,
+		roomsBeingReplaced: &sync.Map{},
 	}
 }
 
@@ -96,20 +97,13 @@ func (e *UpdateSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 
 roomsListLoop:
 	for {
-		rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum)
+		rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum, e.roomsBeingReplaced)
 		if err != nil {
 			return fmt.Errorf("failed to list rooms for deletion")
 		}
 
 		for _, room := range rooms {
-			isRoomBeingReplaced, exists := e.roomsBeingReplaced.Load(room.ID)
-
-			if !exists {
-				e.roomsBeingReplaced.Store(room.ID, true)
-			} else if isRoomBeingReplaced.(bool) {
-				continue
-			}
-
+			e.roomsBeingReplaced.Store(room.ID, true)
 			select {
 			case roomsChan <- room:
 			case <-ctx.Done():
@@ -158,7 +152,7 @@ func (e *UpdateSchedulerExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitG
 			// to decide if we need to remove the newly created room or not.
 			// This logic could be placed in a more "safe" RoomManager
 			// CreateRoom function.
-			e.roomsBeingReplaced.Store(room.ID, false)
+			e.roomsBeingReplaced.Delete(room.ID)
 			continue
 		}
 
@@ -168,11 +162,11 @@ func (e *UpdateSchedulerExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitG
 			// issues since this room could be replaced again. should we perform
 			// a "force delete" or fail the update here?
 			logger.Warn("failed to delete room", zap.Error(err))
-			e.roomsBeingReplaced.Store(room.ID, false)
+			e.roomsBeingReplaced.Delete(room.ID)
 			continue
 		}
 
 		logger.Sugar().Debugf("replaced room \"%s\" with \"%s\"", room.ID, gameRoom.ID)
-		e.roomsBeingReplaced.Store(room.ID, false)
+		e.roomsBeingReplaced.Delete(room.ID)
 	}
 }

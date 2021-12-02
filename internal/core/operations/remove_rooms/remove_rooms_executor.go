@@ -25,6 +25,7 @@ package remove_rooms
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
@@ -42,7 +43,7 @@ func NewExecutor(roomManager *room_manager.RoomManager) *RemoveRoomsExecutor {
 
 func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	removeDefinition := definition.(*RemoveRoomsDefinition)
-	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, op.SchedulerName, removeDefinition.Version, removeDefinition.Amount)
+	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, op.SchedulerName, removeDefinition.Version, removeDefinition.Amount, &sync.Map{})
 	if err != nil {
 		return fmt.Errorf("failed to list rooms to delete: %w", err)
 	}
