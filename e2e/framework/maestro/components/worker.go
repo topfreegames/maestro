@@ -61,7 +61,7 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 		}
 
 		return fmt.Errorf("not ready")
-	}, time.Second, 60*time.Second)
+	}, time.Second, 120*time.Second)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to reach worker API: %s", err)
