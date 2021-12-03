@@ -35,3 +35,4 @@ services:
   roomManager:
     roomPingTimeoutMillis: 90000
     roomInitializationTimeoutMillis: 120000
+    roomDeletionTimeoutMillis: 120000

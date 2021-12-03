@@ -36,6 +36,8 @@ import (
 	clock_mock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	eventsForwarderMock "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
 	instance_storage_mock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
+	room_storage_mock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
+
 	port_allocator_mock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	"github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtime_mock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
@@ -96,15 +98,20 @@ func TestExecute(t *testing.T) {
 		roomStorageMock.EXPECT().GetRoomIDsByLastPing(ctx, operation.SchedulerName, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID}, nil).AnyTimes()
 		roomStorageMock.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
 
+		gameRoomTerminating := *availableRooms[0]
+		gameRoomTerminating.Status = game_room.GameStatusTerminating
 		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[0].ID).Return(gameRoomInstance, nil)
-		runtimeMock.EXPECT().DeleteGameRoomInstance(ctx, gameRoomInstance).Return(nil)
+		roomStorageStatusWatcher := room_storage_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
+		roomStorageMock.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
+		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoomTerminating.SchedulerID, gameRoomTerminating.ID).Return(&gameRoomTerminating, nil)
+		runtimeMock.EXPECT().DeleteGameRoomInstance(gomock.Any(), gameRoomInstance).Return(nil)
+		roomStorageStatusWatcher.EXPECT().Stop()
 
 		err := executor.Execute(ctx, operation, definition)
 		require.NoError(t, err)
 	})
 
 	t.Run("when any room failed to delete it returns without error", func(t *testing.T) {
-
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
 		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, room_manager.RoomManagerConfig{})
 		executor := NewExecutor(roomsManager)
@@ -126,8 +133,14 @@ func TestExecute(t *testing.T) {
 		roomStorageMock.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
 
 		// first one is successfull
+		gameRoomTerminating := *availableRooms[0]
+		gameRoomTerminating.Status = game_room.GameStatusTerminating
 		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[0].ID).Return(gameRoomInstance, nil)
-		runtimeMock.EXPECT().DeleteGameRoomInstance(ctx, gameRoomInstance).Return(nil)
+		roomStorageStatusWatcher := room_storage_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
+		roomStorageMock.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
+		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoomTerminating.SchedulerID, gameRoomTerminating.ID).Return(&gameRoomTerminating, nil)
+		runtimeMock.EXPECT().DeleteGameRoomInstance(gomock.Any(), gameRoomInstance).Return(nil)
+		roomStorageStatusWatcher.EXPECT().Stop()
 
 		// second one fails on runtime
 		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[1].ID).Return(gameRoomInstance, nil)
