@@ -94,7 +94,7 @@ func TestCancelOperation(t *testing.T) {
 					return false
 				}
 
-				require.Equal(t, secondSlowOp.ID, listOperationsResponse.FinishedOperations[1].Id)
+				require.Equal(t, secondSlowOp.ID, listOperationsResponse.FinishedOperations[0].Id)
 				require.Equal(t, firstSlowOp.ID, listOperationsResponse.ActiveOperations[0].Id)
 				return true
 			}, 240*time.Second, time.Second)
@@ -114,8 +114,8 @@ func TestCancelOperation(t *testing.T) {
 					return false
 				}
 
-				require.Equal(t, secondSlowOp.ID, listOperationsResponse.FinishedOperations[1].Id)
-				require.Equal(t, firstSlowOp.ID, listOperationsResponse.FinishedOperations[2].Id)
+				require.Equal(t, secondSlowOp.ID, listOperationsResponse.FinishedOperations[0].Id)
+				require.Equal(t, firstSlowOp.ID, listOperationsResponse.FinishedOperations[1].Id)
 				return true
 			}, 240*time.Second, time.Second)
 		})

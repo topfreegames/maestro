@@ -75,7 +75,7 @@ func TestRemoveRooms(t *testing.T) {
 					return false
 				}
 
-				require.Equal(t, "remove_rooms", listOperationsResponse.FinishedOperations[2].DefinitionName)
+				require.Equal(t, "remove_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
 				return true
 			}, 240*time.Second, time.Second)
 
@@ -123,7 +123,7 @@ func addRoomsAndWaitForIt(t *testing.T, schedulerName string, err error, apiClie
 			return false
 		}
 
-		require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[1].DefinitionName)
+		require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
 		return true
 	}, 240*time.Second, time.Second)
 
