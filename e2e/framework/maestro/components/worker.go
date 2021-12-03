@@ -51,7 +51,7 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 	}
 
 	err := helpers.TimedRetry(func() error {
-		res, err := client.Get("http://localhost:9096/healthz")
+		res, err := client.Get("http://127.0.0.1:9096/healthz")
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 		}
 
 		return fmt.Errorf("not ready")
-	}, time.Second, 120*time.Second)
+	}, 5*time.Second, 5*time.Minute)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to reach worker API: %s", err)
