@@ -41,6 +41,7 @@ jobs:
         make run/integration-tests
     - name: Upload coverage to Codecov
       run: bash <(curl -s https://codecov.io/bash)
+
   runtime-integration:
     name: Runtime Integration tests
     runs-on: ubuntu-latest

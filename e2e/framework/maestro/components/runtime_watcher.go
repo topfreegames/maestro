@@ -61,7 +61,7 @@ func ProvideRuntimeWatcher(maestroPath string) (*RuntimeWatcherServer, error) {
 		}
 
 		return fmt.Errorf("not ready")
-	}, time.Second, 30*time.Second)
+	}, time.Second, 120*time.Second)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to reach runtime watcher API: %s", err)

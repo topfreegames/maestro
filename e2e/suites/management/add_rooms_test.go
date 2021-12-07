@@ -73,7 +73,7 @@ func TestAddRooms(t *testing.T) {
 					return false
 				}
 
-				require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[1].DefinitionName)
+				require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
 				return true
 			}, 240*time.Second, time.Second)
 
@@ -113,7 +113,7 @@ func TestAddRooms(t *testing.T) {
 					return false
 				}
 
-				require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[1].DefinitionName)
+				require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
 				return true
 			}, 240*time.Second, time.Second)
 
