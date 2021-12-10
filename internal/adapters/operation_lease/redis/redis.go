@@ -24,13 +24,13 @@ package redis
 
 import (
 	"context"
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/ports"
 )
-
 
 var _ ports.OperationLeaseStorage = (*redisOperationLeaseStorage)(nil)
 
@@ -44,7 +44,6 @@ type redisOperationLeaseStorage struct {
 func NewRedisOperationStorage(client *redis.Client, clock ports.Clock) *redisOperationLeaseStorage {
 	return &redisOperationLeaseStorage{client, clock}
 }
-
 
 func (r *redisOperationLeaseStorage) GrantLease(ctx context.Context, schedulerName, operationID string, initialTTL time.Duration) error {
 	return nil

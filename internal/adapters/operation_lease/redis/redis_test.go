@@ -20,15 +20,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//+build integration
+//go:build integration
+// +build integration
 
 package redis
 
 import (
-	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/test"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/test"
 )
 
 var redisAddress string
