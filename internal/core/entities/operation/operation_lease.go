@@ -24,7 +24,7 @@ package operation
 
 import "time"
 
-// OperationLease.exists for operations with status inProgress
+// OperationLease exists for operations with status inProgress
 type OperationLease struct {
 	OperationID string
 	Ttl         time.Time

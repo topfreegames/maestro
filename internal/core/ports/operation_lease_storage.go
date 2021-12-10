@@ -30,7 +30,7 @@ import (
 )
 
 type OperationLeaseStorage interface {
-	// Grant takes a lease from an operation. NOTE: only one worker can have the operation lease, meaning that if a GrantLease called for an operation that already has it, it will return an error.
+	// GrantLease takes a lease from an operation. NOTE: only one worker can have the operation lease, meaning that if a GrantLease called for an operation that already has it, it will return an error.
 	GrantLease(ctx context.Context, schedulerName, operationID string, initialTTL time.Duration) error
 	// RevokeLease frees the operation lease.
 	RevokeLease(ctx context.Context, schedulerName, operationID string) error

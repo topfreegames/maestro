@@ -34,8 +34,8 @@ import (
 
 var _ ports.OperationLeaseStorage = (*redisOperationLeaseStorage)(nil)
 
-// redisOperationLeaseStorage adapter of the OperationLeaseStorage port. It store store
-// the operations in lists to keep their creation/update order.
+// redisOperationLeaseStorage adapter of the OperationLeaseStorage port. It will
+// use a sorted set to store the operation lease
 type redisOperationLeaseStorage struct {
 	client *redis.Client
 	clock  ports.Clock
