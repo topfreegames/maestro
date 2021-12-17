@@ -24,9 +24,11 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -41,11 +43,31 @@ type redisOperationLeaseStorage struct {
 	clock  ports.Clock
 }
 
-func NewRedisOperationStorage(client *redis.Client, clock ports.Clock) *redisOperationLeaseStorage {
+func NewRedisOperationLeaseStorage(client *redis.Client, clock ports.Clock) *redisOperationLeaseStorage {
 	return &redisOperationLeaseStorage{client, clock}
 }
 
 func (r *redisOperationLeaseStorage) GrantLease(ctx context.Context, schedulerName, operationID string, initialTTL time.Duration) error {
+	expireUnixTime := r.clock.Now().Add(initialTTL).Unix()
+
+	alreadyExistsLease, err := r.existsOperationLease(ctx, schedulerName, operationID)
+	if err != nil {
+		return err
+	}
+
+	if alreadyExistsLease {
+		return errors.NewErrAlreadyExists("Lease already exists for operation %s on scheduler %s", operationID, schedulerName)
+	}
+
+	err = r.client.ZAdd(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), &redis.Z{
+		Member: operationID,
+		Score: float64(expireUnixTime),
+	}).Err()
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -63,4 +85,16 @@ func (r *redisOperationLeaseStorage) FetchLeaseTTL(ctx context.Context, schedule
 
 func (r *redisOperationLeaseStorage) ListExpiredLeases(ctx context.Context, schedulerName string, maxLease time.Time) ([]operation.OperationLease, error) {
 	return nil, nil
+}
+
+func (r *redisOperationLeaseStorage) buildSchedulerOperationLeaseKey(schedulerName string) string {
+	return fmt.Sprintf("operations:%s:operationsLease", schedulerName)
+}
+
+func (r *redisOperationLeaseStorage) existsOperationLease(ctx context.Context, schedulerName, operationId string) (bool, error) {
+	operationLeaseList, _, err := r.client.ZScan(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), 0, operationId, 0).Result()
+	if err != nil {
+		return false, errors.NewErrUnexpected("failed to list active operations for \"%s\"", schedulerName).WithError(err)
+	}
+	return len(operationLeaseList) > 0, nil
 }
