@@ -5,7 +5,21 @@ package api.v1;
 option java_package = "com.topfreegames.maestro.pkg.api.v1";
 option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
 
+
+
 import "google/protobuf/timestamp.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Maestro";
+  };
+  schemes: HTTP;
+  schemes: HTTPS;
+  consumes: "application/json";
+  produces: "application/json";
+};
 
 // Container is the struct that defines a game room container configuration.
 message Container {

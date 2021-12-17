@@ -6,10 +6,14 @@ nav:
   - UserGuides: 'User Guides.md'
   - Developers: 'Developers.md'
   - Architecture: 'Architecture.md'
+  - OpenAPI: 'OpenAPI.md'
   - Guidelines: 'Guidelines.md'
+
 
 theme:
   name: material
 
 plugins:
   - git-revision-date
+  - search
+  - render_swagger

@@ -5,7 +5,7 @@ Short list of the components, features or elements that the user needs to know t
 
 
 ## Navigation & How To Guides
-Describe any menus and butttons in the user interface not covered in the previous section
+Describe any menus and buttons in the user interface not covered in the previous section
 Include how users can interact with the features on your interface to get the desired results.
 
 ## Troubleshooting
