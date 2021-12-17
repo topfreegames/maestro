@@ -61,7 +61,7 @@ func (r *redisOperationLeaseStorage) GrantLease(ctx context.Context, schedulerNa
 
 	err = r.client.ZAdd(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), &redis.Z{
 		Member: operationID,
-		Score: float64(expireUnixTime),
+		Score:  float64(expireUnixTime),
 	}).Err()
 
 	if err != nil {
