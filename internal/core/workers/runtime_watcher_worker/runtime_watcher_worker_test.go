@@ -20,7 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//+build unit
+//go:build unit
+// +build unit
 
 package runtime_watcher_worker
 
