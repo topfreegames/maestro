@@ -57,7 +57,7 @@ func TestGrantLease(t *testing.T) {
 		err := storage.GrantLease(context.Background(), "schedulerName", "operationID", time.Minute)
 		require.NoError(t, err)
 
-		operationLeaseList, _, err := client.ZScan(context.Background(), "operations:schedulerName:operationsLease", 0, "operationID", 0).Result()
+		operationLeaseList, _, _ := client.ZScan(context.Background(), "operations:schedulerName:operationsLease", 0, "operationID", 0).Result()
 		require.Greater(t, len(operationLeaseList), 1)
 	})
 
@@ -69,7 +69,7 @@ func TestGrantLease(t *testing.T) {
 		err := storage.GrantLease(context.Background(), "schedulerName", "operationID", time.Minute)
 		require.NoError(t, err)
 
-		operationLeaseList, _, err := client.ZScan(context.Background(), "operations:schedulerName:operationsLease", 0, "operationID", 0).Result()
+		operationLeaseList, _, _ := client.ZScan(context.Background(), "operations:schedulerName:operationsLease", 0, "operationID", 0).Result()
 		require.Greater(t, len(operationLeaseList), 1)
 
 		err = storage.GrantLease(context.Background(), "schedulerName", "operationID", time.Minute)
