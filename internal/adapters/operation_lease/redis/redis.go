@@ -97,7 +97,7 @@ func (r *redisOperationLeaseStorage) existsOperationLease(ctx context.Context, s
 		if err == redis.Nil {
 			return false, nil
 		}
-		return false, errors.NewErrUnexpected("failed to list active operations for \"%s\"", schedulerName).WithError(err)
+		return false, errors.NewErrUnexpected("failed on finding operationsLease for \"%s\" and operationID \"%s\"", schedulerName, operationId).WithError(err)
 	}
 	return true, nil
 }
