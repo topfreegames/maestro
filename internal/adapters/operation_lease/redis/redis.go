@@ -92,9 +92,12 @@ func (r *redisOperationLeaseStorage) buildSchedulerOperationLeaseKey(schedulerNa
 }
 
 func (r *redisOperationLeaseStorage) existsOperationLease(ctx context.Context, schedulerName, operationId string) (bool, error) {
-	operationLeaseList, _, err := r.client.ZScan(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), 0, operationId, 0).Result()
+	_, err := r.client.ZScore(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), operationId).Result()
 	if err != nil {
+		if err == redis.Nil {
+			return false, nil
+		}
 		return false, errors.NewErrUnexpected("failed to list active operations for \"%s\"", schedulerName).WithError(err)
 	}
-	return len(operationLeaseList) > 0, nil
+	return true, nil
 }

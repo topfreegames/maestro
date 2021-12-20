@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	errors "github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -57,8 +58,8 @@ func TestGrantLease(t *testing.T) {
 		err := storage.GrantLease(context.Background(), "schedulerName", "operationID", time.Minute)
 		require.NoError(t, err)
 
-		operationLeaseList, _, _ := client.ZScan(context.Background(), "operations:schedulerName:operationsLease", 0, "operationID", 0).Result()
-		require.Greater(t, len(operationLeaseList), 1)
+		_, err = client.ZScore(context.Background(), "operations:schedulerName:operationsLease", "operationID").Result()
+		require.NotEqual(t, err, redis.Nil)
 	})
 
 	t.Run("with error - lease already exists", func(t *testing.T) {
@@ -69,8 +70,8 @@ func TestGrantLease(t *testing.T) {
 		err := storage.GrantLease(context.Background(), "schedulerName", "operationID", time.Minute)
 		require.NoError(t, err)
 
-		operationLeaseList, _, _ := client.ZScan(context.Background(), "operations:schedulerName:operationsLease", 0, "operationID", 0).Result()
-		require.Greater(t, len(operationLeaseList), 1)
+		_, err = client.ZScore(context.Background(), "operations:schedulerName:operationsLease", "operationID").Result()
+		require.NotEqual(t, err, redis.Nil)
 
 		err = storage.GrantLease(context.Background(), "schedulerName", "operationID", time.Minute)
 		require.Error(t, err)
