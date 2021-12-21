@@ -92,7 +92,47 @@ func TestGrantLease(t *testing.T) {
 
 func TestRevokeLease(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
-		require.Equal(t, 1, 1)
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		err := storage.GrantLease(context.Background(), "schedulerName", "operationID", time.Minute)
+		require.NoError(t, err)
+
+		_, err = client.ZScore(context.Background(), "operations:schedulerName:operationsLease", "operationID").Result()
+		require.NotEqual(t, err, redis.Nil)
+
+		err = storage.RevokeLease(context.Background(), "schedulerName", "operationID")
+		require.Equal(t, err, nil)
+
+		_, err = client.ZScore(context.Background(), "operations:schedulerName:operationsLease", "operationID").Result()
+		require.Equal(t, err, redis.Nil)
+	})
+
+	t.Run("with error - not exists", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		schedulerName := "schedulerName"
+		operationId := "operationID"
+
+		err := storage.RevokeLease(context.Background(), schedulerName, operationId)
+		require.Equal(t, err, errors.NewErrNotFound("Lease of scheduler \"%s\" and operationId \"%s\" does not exist", schedulerName, operationId))
+	})
+
+	t.Run("with error - redis fails", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		schedulerName := "schedulerName"
+		operationId := "operationID"
+
+		client.Close()
+
+		err := storage.RevokeLease(context.Background(), schedulerName, operationId)
+		require.Error(t, err)
 	})
 }
 
