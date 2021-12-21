@@ -24,10 +24,11 @@ package redis
 
 import (
 	"context"
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"fmt"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -42,16 +43,35 @@ type redisOperationLeaseStorage struct {
 	clock  ports.Clock
 }
 
-func NewRedisOperationStorage(client *redis.Client, clock ports.Clock) *redisOperationLeaseStorage {
+func NewRedisOperationLeaseStorage(client *redis.Client, clock ports.Clock) *redisOperationLeaseStorage {
 	return &redisOperationLeaseStorage{client, clock}
 }
 
 func (r *redisOperationLeaseStorage) GrantLease(ctx context.Context, schedulerName, operationID string, initialTTL time.Duration) error {
+	expireUnixTime := r.clock.Now().Add(initialTTL).Unix()
+
+	alreadyExistsLease, err := r.existsOperationLease(ctx, schedulerName, operationID)
+	if err != nil {
+		return err
+	}
+
+	if alreadyExistsLease {
+		return errors.NewErrAlreadyExists("Lease already exists for operation %s on scheduler %s", operationID, schedulerName)
+	}
+
+	err = r.client.ZAdd(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), &redis.Z{
+		Member: operationID,
+		Score:  float64(expireUnixTime),
+	}).Err()
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (r *redisOperationLeaseStorage) RevokeLease(ctx context.Context, schedulerName, operationID string) error {
-	//TODO(caio.rodrigues): rebase with master after GrantLease merge request for functions "existsOperationLease" and "buildSchedulerOperationLeaseKey"
 	existsLease, err := r.existsOperationLease(ctx, schedulerName, operationID)
 	if err != nil {
 		return err
@@ -65,6 +85,7 @@ func (r *redisOperationLeaseStorage) RevokeLease(ctx context.Context, schedulerN
 	if err != nil {
 		return errors.NewErrUnexpected("Unexpected error on ZRem function")
 	}
+	return nil
 }
 
 func (r *redisOperationLeaseStorage) RenewLease(ctx context.Context, schedulerName, operationID string, ttl time.Duration) error {
@@ -77,4 +98,19 @@ func (r *redisOperationLeaseStorage) FetchLeaseTTL(ctx context.Context, schedule
 
 func (r *redisOperationLeaseStorage) ListExpiredLeases(ctx context.Context, schedulerName string, maxLease time.Time) ([]operation.OperationLease, error) {
 	return nil, nil
+}
+
+func (r *redisOperationLeaseStorage) buildSchedulerOperationLeaseKey(schedulerName string) string {
+	return fmt.Sprintf("operations:%s:operationsLease", schedulerName)
+}
+
+func (r *redisOperationLeaseStorage) existsOperationLease(ctx context.Context, schedulerName, operationId string) (bool, error) {
+	_, err := r.client.ZScore(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), operationId).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return false, nil
+		}
+		return false, errors.NewErrUnexpected("failed on finding operationsLease for \"%s\" and operationID \"%s\"", schedulerName, operationId).WithError(err)
+	}
+	return true, nil
 }
