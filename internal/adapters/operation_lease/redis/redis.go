@@ -24,6 +24,7 @@ package redis
 
 import (
 	"context"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -50,7 +51,20 @@ func (r *redisOperationLeaseStorage) GrantLease(ctx context.Context, schedulerNa
 }
 
 func (r *redisOperationLeaseStorage) RevokeLease(ctx context.Context, schedulerName, operationID string) error {
-	return nil
+	//TODO(caio.rodrigues): rebase with master after GrantLease merge request for functions "existsOperationLease" and "buildSchedulerOperationLeaseKey"
+	existsLease, err := r.existsOperationLease(ctx, schedulerName, operationID)
+	if err != nil {
+		return err
+	}
+
+	if !existsLease {
+		return errors.NewErrNotFound("Lease of scheduler \"%s\" and operationId \"%s\" trying to be revoked does not exist", schedulerName, operationID)
+	}
+
+	_, err = r.client.ZRem(context.Background(), r.buildSchedulerOperationLeaseKey(schedulerName), operationID).Result()
+	if err != nil {
+		return errors.NewErrUnexpected("Unexpected error on ZRem function")
+	}
 }
 
 func (r *redisOperationLeaseStorage) RenewLease(ctx context.Context, schedulerName, operationID string, ttl time.Duration) error {
