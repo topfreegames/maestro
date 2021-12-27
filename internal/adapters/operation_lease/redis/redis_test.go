@@ -27,6 +27,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -137,8 +138,46 @@ func TestRevokeLease(t *testing.T) {
 }
 
 func TestRenewLease(t *testing.T) {
+	schedulerName := "schedulerName"
+	operationId := "operationID"
+
 	t.Run("with success", func(t *testing.T) {
-		require.Equal(t, 1, 1)
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		err := storage.GrantLease(context.Background(), schedulerName, operationId, time.Minute)
+		require.NoError(t, err)
+
+		score_initial, err := client.ZScore(context.Background(), buildOperationLeaseKey(schedulerName), operationId).Result()
+		require.NotEqual(t, err, redis.Nil)
+
+		err = storage.RenewLease(context.Background(), schedulerName, operationId, time.Minute)
+		require.Equal(t, err, nil)
+
+		score_after_renew, err := client.ZScore(context.Background(), buildOperationLeaseKey(schedulerName), operationId).Result()
+		require.NoError(t, err)
+		require.Greater(t, score_after_renew, score_initial)
+	})
+
+	t.Run("with error - not exists", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		err := storage.RenewLease(context.Background(), schedulerName, operationId, time.Minute)
+		require.Equal(t, err, errors.NewErrNotFound("Lease of scheduler \"%s\" and operationId \"%s\" does not exist", schedulerName, operationId))
+	})
+
+	t.Run("with error - redis fails", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		client.Close()
+
+		err := storage.RenewLease(context.Background(), schedulerName, operationId, time.Minute)
+		require.Error(t, err)
 	})
 }
 
@@ -152,4 +191,8 @@ func TestListExpiredLeases(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		require.Equal(t, 1, 1)
 	})
+}
+
+func buildOperationLeaseKey(schedulerName string) string {
+	return fmt.Sprintf("operations:%s:operationsLease", schedulerName)
 }

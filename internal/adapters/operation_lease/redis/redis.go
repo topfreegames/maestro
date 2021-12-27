@@ -89,6 +89,20 @@ func (r *redisOperationLeaseStorage) RevokeLease(ctx context.Context, schedulerN
 }
 
 func (r *redisOperationLeaseStorage) RenewLease(ctx context.Context, schedulerName, operationID string, ttl time.Duration) error {
+	existsLease, err := r.existsOperationLease(ctx, schedulerName, operationID)
+	if err != nil {
+		return err
+	}
+
+	if !existsLease {
+		return errors.NewErrNotFound("Lease of scheduler \"%s\" and operationId \"%s\" does not exist", schedulerName, operationID)
+	}
+
+	err = r.client.ZIncrBy(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), ttl.Seconds(), operationID).Err()
+	if err != nil {
+		return errors.NewErrUnexpected("Unexpected error on incrementing sorted set member score")
+	}
+
 	return nil
 }
 
