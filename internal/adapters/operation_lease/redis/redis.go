@@ -72,6 +72,19 @@ func (r *redisOperationLeaseStorage) GrantLease(ctx context.Context, schedulerNa
 }
 
 func (r *redisOperationLeaseStorage) RevokeLease(ctx context.Context, schedulerName, operationID string) error {
+	existsLease, err := r.existsOperationLease(ctx, schedulerName, operationID)
+	if err != nil {
+		return err
+	}
+
+	if !existsLease {
+		return errors.NewErrNotFound("Lease of scheduler \"%s\" and operationId \"%s\" does not exist", schedulerName, operationID)
+	}
+
+	_, err = r.client.ZRem(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), operationID).Result()
+	if err != nil {
+		return errors.NewErrUnexpected("Unexpected error on ZRem function")
+	}
 	return nil
 }
 
