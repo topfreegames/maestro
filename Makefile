@@ -120,4 +120,4 @@ deps/start:
 deps/stop:
 	@echo "Stopping dependencies "
 	@docker-compose --project-name maestro down
-	@echo "Dependencies stoped successfully."
+	@echo "Dependencies stopped successfully."

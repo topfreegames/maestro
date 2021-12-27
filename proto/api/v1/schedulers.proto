@@ -67,7 +67,7 @@ service SchedulersService {
 // List scheduler request options.
 message ListSchedulersRequest {}
 
-// The list schedulers reponse message.
+// The list schedulers response message.
 message ListSchedulersResponse {
   // List of schedulers fetched.
   repeated SchedulerWithoutSpec schedulers = 1;
@@ -137,7 +137,7 @@ message GetSchedulerRequest {
   string version = 2;
 }
 
-// The list schedulers reponse message.
+// The list schedulers response message.
 message GetSchedulerResponse {
   // List of schedulers fetched.
   Scheduler scheduler = 1;

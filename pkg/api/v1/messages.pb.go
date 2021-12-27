@@ -585,7 +585,7 @@ func (x *Scheduler) GetSpec() *Spec {
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
-// on this message since it's unecessary for the list function
+// on this message since it's unnecessary for the list function
 type SchedulerWithoutSpec struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -702,7 +702,7 @@ type Operation struct {
 	Status string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 	// Name of the operation being executed.
 	DefinitionName string `protobuf:"bytes,3,opt,name=definition_name,json=definitionName,proto3" json:"definition_name,omitempty"`
-	// Scheduler indentifier that the operation is from.
+	// Scheduler identifier that the operation is from.
 	SchedulerName string `protobuf:"bytes,4,opt,name=scheduler_name,json=schedulerName,proto3" json:"scheduler_name,omitempty"`
 	// Time the operation was created.
 	CreatedAt *timestamp.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`

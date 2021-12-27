@@ -158,7 +158,7 @@ func TestGetOperation(t *testing.T) {
 		require.IsType(t, defFunc(), definition)
 	})
 
-	t.Run("defition not found", func(t *testing.T) {
+	t.Run("definition not found", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 

@@ -219,13 +219,13 @@ func TestUpdateScheduler(t *testing.T) {
 	})
 }
 
-func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.MaestroInstance, apiClient *framework.APIClient, kubeclient kubernetes.Interface) (string, error) {
+func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.MaestroInstance, apiClient *framework.APIClient, kubeClient kubernetes.Interface) (string, error) {
 	// Create scheduler
 	schedulerName, err := createSchedulerAndWaitForIt(
 		t,
 		maestro,
 		apiClient,
-		kubeclient,
+		kubeClient,
 		[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
 			"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},

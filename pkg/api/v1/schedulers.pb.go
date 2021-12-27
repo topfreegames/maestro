@@ -60,7 +60,7 @@ func (*ListSchedulersRequest) Descriptor() ([]byte, []int) {
 	return file_api_v1_schedulers_proto_rawDescGZIP(), []int{0}
 }
 
-// The list schedulers reponse message.
+// The list schedulers response message.
 type ListSchedulersResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -551,7 +551,7 @@ func (x *GetSchedulerRequest) GetVersion() string {
 	return ""
 }
 
-// The list schedulers reponse message.
+// The list schedulers response message.
 type GetSchedulerResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

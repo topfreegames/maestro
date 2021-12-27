@@ -78,7 +78,7 @@ func TestGameRoomCreation(t *testing.T) {
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
 
-		// no containers, meaning it will fail (bacause it can be a pod
+		// no containers, meaning it will fail (because it can be a pod
 		// without containers).
 		gameRoomSpec := game_room.Spec{}
 		_, err = kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
@@ -137,7 +137,7 @@ func TestGameRoomDeletion(t *testing.T) {
 		require.NoError(t, err)
 
 		gameRoomInstance := &game_room.Instance{
-			// force a name, so that the delete can run.
+			// force a name, so that to delete can run.
 			ID:          "game-room-inexistent-room-id",
 			SchedulerID: scheduler.Name,
 		}
