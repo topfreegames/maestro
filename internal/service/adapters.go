@@ -68,7 +68,7 @@ func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
 }
 
 func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
-	clientset, err := createKubernetesClient(
+	clientSet, err := createKubernetesClient(
 		c.GetString(runtimeKubernetesMasterUrlPath),
 		c.GetString(runtimeKubernetesKubeconfigPath),
 	)
@@ -76,7 +76,7 @@ func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 		return nil, fmt.Errorf("failed to initialize Kubernetes runtime: %w", err)
 	}
 
-	return kubernetesRuntime.New(clientset), nil
+	return kubernetesRuntime.New(clientSet), nil
 }
 
 func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.OperationStorage, error) {

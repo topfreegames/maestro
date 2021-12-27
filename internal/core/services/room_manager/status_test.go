@@ -228,7 +228,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("when game room doens't exists, it should return error", func(t *testing.T) {
+	t.Run("when game room doesn't exists, it should return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -242,7 +242,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("when game room instance doens't exists, it should return error", func(t *testing.T) {
+	t.Run("when game room instance doesn't exists, it should return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 

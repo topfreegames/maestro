@@ -39,7 +39,7 @@ import (
 
 func TestSchedulerCreation(t *testing.T) {
 	ctx := context.Background()
-	client := test.GetKubernetesClientset(t, kubernetesContainer)
+	client := test.GetKubernetesClientSet(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("create single scheduler", func(t *testing.T) {
@@ -64,7 +64,7 @@ func TestSchedulerCreation(t *testing.T) {
 
 func TestSchedulerDeletion(t *testing.T) {
 	ctx := context.Background()
-	client := test.GetKubernetesClientset(t, kubernetesContainer)
+	client := test.GetKubernetesClientSet(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("delete scheduler", func(t *testing.T) {

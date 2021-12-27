@@ -39,7 +39,7 @@ func (k *kubernetes) CreateScheduler(ctx context.Context, scheduler *entities.Sc
 		},
 	}
 
-	_, err := k.clientset.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
+	_, err := k.clientSet.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 	if err != nil {
 		if kerrors.IsAlreadyExists(err) {
 			return errors.NewErrAlreadyExists("scheduler '%s' already exists", scheduler.Name)
@@ -52,7 +52,7 @@ func (k *kubernetes) CreateScheduler(ctx context.Context, scheduler *entities.Sc
 }
 
 func (k *kubernetes) DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
-	err := k.clientset.CoreV1().Namespaces().Delete(ctx, scheduler.Name, metav1.DeleteOptions{})
+	err := k.clientSet.CoreV1().Namespaces().Delete(ctx, scheduler.Name, metav1.DeleteOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return errors.NewErrNotFound("scheduler '%s' not found", scheduler.Name)

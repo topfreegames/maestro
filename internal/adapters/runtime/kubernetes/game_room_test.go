@@ -41,7 +41,7 @@ import (
 func TestGameRoomCreation(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	client := test.GetKubernetesClientset(t, kubernetesContainer)
+	client := test.GetKubernetesClientSet(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("successfully create a room", func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestGameRoomCreation(t *testing.T) {
 func TestGameRoomDeletion(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	client := test.GetKubernetesClientset(t, kubernetesContainer)
+	client := test.GetKubernetesClientSet(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("successfully delete a room", func(t *testing.T) {

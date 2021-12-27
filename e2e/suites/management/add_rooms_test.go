@@ -44,7 +44,7 @@ import (
 )
 
 func TestAddRooms(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 		instanceStorage := instanceStorageRedis.NewRedisInstanceStorage(redisClient, 10)
 
@@ -55,7 +55,7 @@ func TestAddRooms(t *testing.T) {
 				t,
 				maestro,
 				apiClient,
-				kubeclient,
+				kubeClient,
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
@@ -77,7 +77,7 @@ func TestAddRooms(t *testing.T) {
 				return true
 			}, 240*time.Second, time.Second)
 
-			pods, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, pods.Items)
 
@@ -94,7 +94,7 @@ func TestAddRooms(t *testing.T) {
 			schedulerName, err := createSchedulerAndWaitForIt(t,
 				maestro,
 				apiClient,
-				kubeclient,
+				kubeClient,
 				[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
 					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'"})
@@ -117,7 +117,7 @@ func TestAddRooms(t *testing.T) {
 				return true
 			}, 240*time.Second, time.Second)
 
-			pods, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, pods.Items)
 

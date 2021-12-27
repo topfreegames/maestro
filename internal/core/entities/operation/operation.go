@@ -38,7 +38,7 @@ const (
 	StatusCanceled
 	// Operation finished with success.
 	StatusFinished
-	// Operation could not execute because it didn’t meet the requirements.
+	// Operation could not execute because it didn't meet the requirements.
 	StatusEvicted
 	// Operation finished with error.
 	StatusError

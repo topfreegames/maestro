@@ -106,7 +106,7 @@ func TestRemoveRooms(t *testing.T) {
 
 }
 
-func addRoomsAndWaitForIt(t *testing.T, schedulerName string, err error, apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redisV8.Client) (error, string) {
+func addRoomsAndWaitForIt(t *testing.T, schedulerName string, err error, apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redisV8.Client) (error, string) {
 	roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 
 	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
@@ -127,7 +127,7 @@ func addRoomsAndWaitForIt(t *testing.T, schedulerName string, err error, apiClie
 		return true
 	}, 240*time.Second, time.Second)
 
-	pods, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+	pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 	require.NoError(t, err)
 	require.NotEmpty(t, pods.Items)
 

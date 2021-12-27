@@ -52,8 +52,8 @@ func (eventType InstanceEventType) String() string {
 	}
 }
 
-// InstanceEvent this struct repesents an event that happened on the
-// run time, check InstanceEventType to see which event is avaiable.
+// InstanceEvent this struct represents an event that happened on the
+// run time, check InstanceEventType to see which event is available.
 type InstanceEvent struct {
 	Type     InstanceEventType
 	Instance *Instance

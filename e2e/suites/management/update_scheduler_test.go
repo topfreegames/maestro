@@ -42,13 +42,13 @@ import (
 )
 
 func TestUpdateScheduler(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("Should Succeed - When scheduler spec don't change it updates the scheduler with minor version and don't replace any pod", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, apiClient, kubeclient)
+			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, apiClient, kubeClient)
 
-			podsBeforeUpdate, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 
 			// Update scheduler
@@ -97,7 +97,7 @@ func TestUpdateScheduler(t *testing.T) {
 
 			waitForOperationToFinish(t, apiClient, schedulerName, "update_scheduler")
 
-			podsAfterUpdate, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, podsAfterUpdate.Items)
 
@@ -115,9 +115,9 @@ func TestUpdateScheduler(t *testing.T) {
 		t.Run("Should Succeed - When scheduler spec changes it updates the scheduler with major version and replace all pods", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, apiClient, kubeclient)
+			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, apiClient, kubeClient)
 
-			podsBeforeUpdate, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 
 			updateRequest := &maestroApiV1.UpdateSchedulerRequest{
@@ -172,7 +172,7 @@ func TestUpdateScheduler(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
-				podsAfterUpdate, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+				podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 				require.NoError(t, err)
 				require.NotEmpty(t, podsAfterUpdate.Items)
 
@@ -183,7 +183,7 @@ func TestUpdateScheduler(t *testing.T) {
 				return false
 			}, 2*time.Minute, time.Second)
 
-			podsAfterUpdate, err := kubeclient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, podsAfterUpdate.Items)
 
@@ -197,7 +197,7 @@ func TestUpdateScheduler(t *testing.T) {
 		t.Run("Should Fail - When scheduler when sending invalid request to update endpoint it fails fast", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, apiClient, kubeclient)
+			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, apiClient, kubeClient)
 
 			invalidUpdateRequest := &maestroApiV1.UpdateSchedulerRequest{}
 			updateResponse := &maestroApiV1.UpdateSchedulerResponse{}

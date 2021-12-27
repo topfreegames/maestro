@@ -38,7 +38,7 @@ var (
 	configPath = flag.String("config-path", "config/utils.local.yaml", "path of the configuration YAML file")
 	rootCmd    = &cobra.Command{
 		Use:   "migrate",
-		Short: "Migrates datasources of maestro",
+		Short: "Migrates datasource's of maestro",
 	}
 )
 
