@@ -44,7 +44,7 @@ func ProvideRuntimeWatcher(maestroPath string) (*RuntimeWatcherServer, error) {
 	identifier := strings.ToLower("test-something")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "runtime-watcher"}).Invoke()
+	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "runtime-watcher"}).Invoke()
 
 	if composeErr.Error != nil {
 		return nil, fmt.Errorf("failed to start runtime watcher API: %s", composeErr.Error)

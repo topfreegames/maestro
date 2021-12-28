@@ -49,7 +49,7 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 	identifier := strings.ToLower("test-something")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "rooms-api"}).Invoke()
+	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "rooms-api"}).Invoke()
 
 	if composeErr.Error != nil {
 		return nil, fmt.Errorf("failed to start rooms API: %s", composeErr.Error)

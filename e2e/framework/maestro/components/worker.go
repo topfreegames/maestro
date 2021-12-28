@@ -44,7 +44,7 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 	identifier := strings.ToLower("test-something")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "worker"}).Invoke()
+	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "worker"}).Invoke()
 
 	if composeErr.Error != nil {
 		return nil, fmt.Errorf("failed to start worker API: %s", composeErr.Error)
