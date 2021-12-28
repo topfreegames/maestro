@@ -24,7 +24,7 @@ lint/go:
 
 .PHONY: lint/protobuf
 lint/protobuf:
-	@go run github.com/bufbuild/buf/cmd/buf lint --config buf.yaml
+	@go run github.com/bufbuild/buf/cmd/buf lint
 
 .PHONY: run/unit-tests
 run/unit-tests:
