@@ -37,8 +37,8 @@ import (
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
 
-	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
-	configMock "github.com/topfreegames/maestro/internal/config/mock"
+	schedulerstoragemock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
+	configmock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/workers"
@@ -64,8 +64,8 @@ func TestStart(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		BeforeTest(t)
 
-		configs := configMock.NewMockConfig(mockCtrl)
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		configs := configmock.NewMockConfig(mockCtrl)
+		schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return &workerMock.MockWorker{Run: false, StopCh: workerStopCh}
@@ -125,8 +125,8 @@ func TestStart(t *testing.T) {
 	t.Run("fails when schedulerStorage fails to list all schedulers", func(t *testing.T) {
 		BeforeTest(t)
 
-		configs := configMock.NewMockConfig(mockCtrl)
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		configs := configmock.NewMockConfig(mockCtrl)
+		schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
 
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
 		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
@@ -160,8 +160,8 @@ func TestStart(t *testing.T) {
 	t.Run("stops when context stops with no error", func(t *testing.T) {
 		BeforeTest(t)
 
-		configs := configMock.NewMockConfig(mockCtrl)
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		configs := configmock.NewMockConfig(mockCtrl)
+		schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
@@ -225,8 +225,8 @@ func TestStart(t *testing.T) {
 	t.Run("with success when scheduler added after initial sync", func(t *testing.T) {
 		BeforeTest(t)
 
-		configs := configMock.NewMockConfig(mockCtrl)
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		configs := configmock.NewMockConfig(mockCtrl)
+		schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
@@ -307,8 +307,8 @@ func TestStart(t *testing.T) {
 	t.Run("with success when scheduler removed after bootstrap", func(t *testing.T) {
 		BeforeTest(t)
 
-		configs := configMock.NewMockConfig(mockCtrl)
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		configs := configmock.NewMockConfig(mockCtrl)
+		schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {

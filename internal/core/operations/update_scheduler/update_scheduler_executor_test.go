@@ -35,14 +35,14 @@ import (
 	instance_storage_mock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	port_allocator_mock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	room_storage_mock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
-	runtime_mock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
-	scheduler_storage_mock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
+	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
+	schedulerstoragemock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	scheduler_update "github.com/topfreegames/maestro/internal/core/operations/update_scheduler"
+	updatescheduler "github.com/topfreegames/maestro/internal/core/operations/update_scheduler"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	portserrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 )
@@ -63,7 +63,7 @@ func TestUpdateSchedulerExecutor_Execute_ReplaceRooms(t *testing.T) {
 	newScheduler.PortRange.Start = 1000
 	newScheduler.MaxSurge = "3"
 
-	definition := &scheduler_update.UpdateSchedulerDefinition{
+	definition := &updatescheduler.UpdateSchedulerDefinition{
 		NewScheduler: newScheduler,
 	}
 
@@ -136,7 +136,7 @@ func TestUpdateSchedulerExecutor_Execute_ReplaceRooms(t *testing.T) {
 		roomStorageStatusWatcher.EXPECT().Stop().Times(2)
 	}
 
-	executor := scheduler_update.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 	err := executor.Execute(context.Background(), &operation.Operation{}, definition)
 	require.NoError(t, err)
 }
@@ -154,7 +154,7 @@ func TestUpdateSchedulerExecutor_Execute_NoRunningRooms(t *testing.T) {
 	newScheduler.PortRange.Start = 1000
 	newScheduler.MaxSurge = "3"
 
-	definition := &scheduler_update.UpdateSchedulerDefinition{
+	definition := &updatescheduler.UpdateSchedulerDefinition{
 		NewScheduler: newScheduler,
 	}
 
@@ -164,7 +164,7 @@ func TestUpdateSchedulerExecutor_Execute_NoRunningRooms(t *testing.T) {
 	mocks.roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), definition.NewScheduler.Name, gomock.Any()).Times(4).Return([]string{}, nil)
 	mocks.roomStorage.EXPECT().GetRoomIDsByLastPing(gomock.Any(), definition.NewScheduler.Name, gomock.Any()).Return([]string{}, nil)
 
-	executor := scheduler_update.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 	err := executor.Execute(context.Background(), &operation.Operation{}, definition)
 	require.NoError(t, err)
 }
@@ -179,14 +179,14 @@ func TestUpdateSchedulerExecutor_Execute_MinorUpdate(t *testing.T) {
 	newScheduler := newValidScheduler()
 	newScheduler.MaxSurge = "5"
 
-	definition := &scheduler_update.UpdateSchedulerDefinition{
+	definition := &updatescheduler.UpdateSchedulerDefinition{
 		NewScheduler: newScheduler,
 	}
 
 	mocks.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), definition.NewScheduler.Name).Return(&currentScheduler, nil)
 	mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
 
-	executor := scheduler_update.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 	err := executor.Execute(context.Background(), &operation.Operation{}, definition)
 	require.NoError(t, err)
 }
@@ -207,7 +207,7 @@ func TestUpdateSchedulerExecutor_Execute_ReplaceRooms_MaxSurge(t *testing.T) {
 	newScheduler.PortRange.Start = 1000
 	newScheduler.MaxSurge = "2"
 
-	definition := &scheduler_update.UpdateSchedulerDefinition{
+	definition := &updatescheduler.UpdateSchedulerDefinition{
 		NewScheduler: newScheduler,
 	}
 
@@ -328,7 +328,7 @@ func TestUpdateSchedulerExecutor_Execute_ReplaceRooms_MaxSurge(t *testing.T) {
 		roomStorageStatusWatcher.EXPECT().Stop().Times(2)
 	}
 
-	executor := scheduler_update.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 	err := executor.Execute(context.Background(), &operation.Operation{}, definition)
 	require.NoError(t, err)
 }
@@ -349,7 +349,7 @@ func TestUpdateSchedulerExecutor_Execute_ReplaceRooms_ReplaceFail(t *testing.T) 
 	newScheduler.PortRange.Start = 1000
 	newScheduler.MaxSurge = "2"
 
-	definition := &scheduler_update.UpdateSchedulerDefinition{
+	definition := &updatescheduler.UpdateSchedulerDefinition{
 		NewScheduler: newScheduler,
 	}
 
@@ -412,7 +412,7 @@ func TestUpdateSchedulerExecutor_Execute_ReplaceRooms_ReplaceFail(t *testing.T) 
 	roomStorageStatusWatcher.EXPECT().Stop().Times(1)
 	mocks.instanceStorage.EXPECT().GetInstance(gomock.Any(), definition.NewScheduler.Name, currentGameRoom.ID).Return(&currentGameRoomInstance, nil)
 	// fail the first room exclusion
-	mocks.runtime.EXPECT().DeleteGameRoomInstance(gomock.Any(), &currentGameRoomInstance).Return(porterrors.ErrUnexpected)
+	mocks.runtime.EXPECT().DeleteGameRoomInstance(gomock.Any(), &currentGameRoomInstance).Return(portserrors.ErrUnexpected)
 
 	for _, roomId := range append(firstRoomsIds[1:], secondRoomsIds...) {
 		currentGameRoom := game_room.GameRoom{
@@ -461,7 +461,7 @@ func TestUpdateSchedulerExecutor_Execute_ReplaceRooms_ReplaceFail(t *testing.T) 
 		roomStorageStatusWatcher.EXPECT().Stop().Times(2)
 	}
 
-	executor := scheduler_update.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 	err := executor.Execute(context.Background(), &operation.Operation{}, definition)
 	require.NoError(t, err)
 }
@@ -485,7 +485,7 @@ func TestUpdateSchedulerExecutor_Execute_StopDuringReplace(t *testing.T) {
 	newScheduler.PortRange.Start = 1000
 	newScheduler.MaxSurge = "3"
 
-	definition := &scheduler_update.UpdateSchedulerDefinition{
+	definition := &updatescheduler.UpdateSchedulerDefinition{
 		NewScheduler: newScheduler,
 	}
 
@@ -555,7 +555,7 @@ func TestUpdateSchedulerExecutor_Execute_StopDuringReplace(t *testing.T) {
 	mocks.runtime.EXPECT().DeleteGameRoomInstance(gomock.Any(), &currentGameRoomInstance).Return(nil)
 	roomStorageStatusWatcher.EXPECT().Stop().Times(1)
 
-	executor := scheduler_update.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 
 	operationDone := make(chan error)
 	go func() {
@@ -595,11 +595,11 @@ func TestUpdateSchedulerExecutor_Execute_InvalidScheduler(t *testing.T) {
 	currentScheduler.PortRange.Start = 5000
 
 	newScheduler := entities.Scheduler{}
-	definition := &scheduler_update.UpdateSchedulerDefinition{
+	definition := &updatescheduler.UpdateSchedulerDefinition{
 		NewScheduler: newScheduler,
 	}
 
-	executor := scheduler_update.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 	err := executor.Execute(ctx, &operation.Operation{}, definition)
 	require.Error(t, err)
 }
@@ -617,14 +617,14 @@ func TestUpdateSchedulerExecutor_Execute_UpdateFails(t *testing.T) {
 	newScheduler := newValidScheduler()
 	newScheduler.MaxSurge = "5"
 
-	definition := &scheduler_update.UpdateSchedulerDefinition{
+	definition := &updatescheduler.UpdateSchedulerDefinition{
 		NewScheduler: newScheduler,
 	}
 
 	mocks.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), definition.NewScheduler.Name).Return(&currentScheduler, nil)
-	mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(porterrors.ErrUnexpected)
+	mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(portserrors.ErrUnexpected)
 
-	executor := scheduler_update.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 	err := executor.Execute(ctx, &operation.Operation{}, definition)
 	require.Error(t, err)
 }
@@ -644,16 +644,16 @@ func TestUpdateSchedulerExecutor_Execute_MaxSurgeFails(t *testing.T) {
 	newScheduler.PortRange.Start = 1000
 	newScheduler.MaxSurge = "10%"
 
-	definition := &scheduler_update.UpdateSchedulerDefinition{
+	definition := &updatescheduler.UpdateSchedulerDefinition{
 		NewScheduler: newScheduler,
 	}
 
 	mocks.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), definition.NewScheduler.Name).Return(&currentScheduler, nil)
 	mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
 
-	mocks.roomStorage.EXPECT().GetRoomCount(gomock.Any(), definition.NewScheduler.Name).Return(0, porterrors.ErrUnexpected)
+	mocks.roomStorage.EXPECT().GetRoomCount(gomock.Any(), definition.NewScheduler.Name).Return(0, portserrors.ErrUnexpected)
 
-	executor := scheduler_update.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 	err := executor.Execute(ctx, &operation.Operation{}, definition)
 	require.Error(t, err)
 }
@@ -673,16 +673,16 @@ func TestUpdateSchedulerExecutor_Execute_FailedToListRoomsToBeReplaced(t *testin
 	newScheduler.PortRange.Start = 1000
 	newScheduler.MaxSurge = "3"
 
-	definition := &scheduler_update.UpdateSchedulerDefinition{
+	definition := &updatescheduler.UpdateSchedulerDefinition{
 		NewScheduler: newScheduler,
 	}
 
 	mocks.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), definition.NewScheduler.Name).Return(&currentScheduler, nil)
 	mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
 
-	mocks.roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), definition.NewScheduler.Name, gomock.Any()).Return([]string{}, porterrors.ErrUnexpected)
+	mocks.roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), definition.NewScheduler.Name, gomock.Any()).Return([]string{}, portserrors.ErrUnexpected)
 
-	executor := scheduler_update.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 	err := executor.Execute(ctx, &operation.Operation{}, definition)
 	require.Error(t, err)
 }
@@ -695,9 +695,9 @@ type mockRoomAndSchedulerManager struct {
 	portAllocator    *port_allocator_mock.MockPortAllocator
 	roomStorage      *room_storage_mock.MockRoomStorage
 	instanceStorage  *instance_storage_mock.MockGameRoomInstanceStorage
-	runtime          *runtime_mock.MockRuntime
+	runtime          *runtimemock.MockRuntime
 	eventsForwarder  *events_forwarder_mock.MockEventsForwarder
-	schedulerStorage *scheduler_storage_mock.MockSchedulerStorage
+	schedulerStorage *schedulerstoragemock.MockSchedulerStorage
 }
 
 func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSchedulerManager {
@@ -705,9 +705,9 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 	portAllocator := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 	roomStorage := room_storage_mock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
-	runtime := runtime_mock.NewMockRuntime(mockCtrl)
+	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsForwarder := events_forwarder_mock.NewMockEventsForwarder(mockCtrl)
-	schedulerStorage := scheduler_storage_mock.NewMockSchedulerStorage(mockCtrl)
+	schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
 
 	config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Second * 2}
 	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsForwarder, config)

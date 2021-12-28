@@ -45,7 +45,7 @@ var (
 type kubernetesWatcher struct {
 	mu sync.Mutex
 
-	clientset   kube.Interface
+	clientSet   kube.Interface
 	ctx         context.Context
 	resultsChan chan game_room.InstanceEvent
 	err         error
@@ -91,7 +91,7 @@ func (kw *kubernetesWatcher) convertInstance(pod *v1.Pod) (*game_room.Instance, 
 		return convertPod(pod, nil)
 	}
 
-	node, err := kw.clientset.CoreV1().Nodes().Get(kw.ctx, pod.Spec.NodeName, metav1.GetOptions{})
+	node, err := kw.clientSet.CoreV1().Nodes().Get(kw.ctx, pod.Spec.NodeName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -138,14 +138,14 @@ func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
 
 func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
 	watcher := &kubernetesWatcher{
-		clientset:   k.clientset,
+		clientSet:   k.clientSet,
 		ctx:         ctx,
 		resultsChan: make(chan game_room.InstanceEvent, eventsChanSize),
 		stopChan:    make(chan struct{}),
 	}
 
 	podsInformer := informers.NewSharedInformerFactoryWithOptions(
-		k.clientset,
+		k.clientSet,
 		defaultResyncTime,
 		informers.WithNamespace(scheduler.Name),
 	).Core().V1().Pods().Informer()

@@ -50,7 +50,7 @@ In addition, we provide templates for enhancements and bug fixes.
 
 ## Workflow
 Every pull request is required to pass on our entire workflow executed on
-Github Actions. The workflow consists on:
+GitHub Actions. The workflow consists on:
 1. Run the lint;
     * golangci-lint, for Golang code;
     * buf (TODO), for Protobuf files;

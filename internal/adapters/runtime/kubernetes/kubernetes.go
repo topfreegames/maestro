@@ -30,9 +30,9 @@ import (
 var _ ports.Runtime = (*kubernetes)(nil)
 
 type kubernetes struct {
-	clientset kube.Interface
+	clientSet kube.Interface
 }
 
-func New(clientset kube.Interface) *kubernetes {
-	return &kubernetes{clientset}
+func New(clientSet kube.Interface) *kubernetes {
+	return &kubernetes{clientSet}
 }

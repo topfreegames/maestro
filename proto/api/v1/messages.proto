@@ -115,7 +115,7 @@ message Scheduler {
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
-// on this message since it's unecessary for the list function
+// on this message since it's unnecessary for the list function
 message SchedulerWithoutSpec {
   // Name is an unique identifier for the scheduler.
   string name = 1;
@@ -143,7 +143,7 @@ message Operation {
   string status = 2;
   // Name of the operation being executed.
   string definition_name = 3;
-  // Scheduler indentifier that the operation is from.
+  // Scheduler identifier that the operation is from.
   string scheduler_name = 4;
   // Time the operation was created.
   google.protobuf.Timestamp created_at = 5;

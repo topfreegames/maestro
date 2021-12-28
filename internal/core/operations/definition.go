@@ -46,6 +46,6 @@ type Definition interface {
 	// Unmarshal decodes the definition into itself.
 	Unmarshal(raw []byte) error
 	// Name returns the definition name. This is used to compare and identify it
-	// amond other definitions.
+	// among other definitions.
 	Name() string
 }

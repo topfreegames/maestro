@@ -3,8 +3,22 @@ Maestro: Kubernetes Game Room Scheduler
 [![Build Status](https://github.com/topfreegames/maestro/actions/workflows/test.yaml/badge.svg?branch=next)](https://github.com/topfreegames/maestro/actions/workflows/test.yaml)
 [![Codecov Status](https://codecov.io/gh/topfreegames/maestro/branch/next/graph/badge.svg?token=KCN2SZDRJF)](https://codecov.io/gh/topfreegames/maestro)
 
-## Building and running locally
+## Dependencies
 
+### Grpc gateway
+In order to run make generate with success, you need to have grpc-gateway dependencies installed with the following command:
+```shell
+go install \
+    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
+    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
+    google.golang.org/protobuf/cmd/protoc-gen-go \
+    google.golang.org/grpc/cmd/protoc-gen-go-grpc
+```
+
+### Golang version
+The project requires golang version 1.16 or higher.
+
+## Building and running locally
 1. Run `make deps` to get all required modules
 2. Run `make generate` to generate mocks, protos and wire (dependency injection)
 3. Run `make deps/start` to startup service dependencies

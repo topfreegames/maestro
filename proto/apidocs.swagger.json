@@ -697,7 +697,7 @@
         },
         "schedulerName": {
           "type": "string",
-          "description": "Scheduler indentifier that the operation is from."
+          "description": "Scheduler identifier that the operation is from."
         },
         "createdAt": {
           "type": "string",
@@ -960,7 +960,7 @@
           "description": "List of schedulers fetched."
         }
       },
-      "description": "The list schedulers reponse message."
+      "description": "The list schedulers response message."
     },
     "v1GetSchedulerVersionsResponse": {
       "type": "object",
@@ -1013,7 +1013,7 @@
           "description": "List of schedulers fetched."
         }
       },
-      "description": "The list schedulers reponse message."
+      "description": "The list schedulers response message."
     },
     "v1PortRange": {
       "type": "object",
@@ -1128,7 +1128,7 @@
           "title": "Max surge of rooms"
         }
       },
-      "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unecessary for the list function"
+      "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unnecessary for the list function"
     },
     "v1Spec": {
       "type": "object",

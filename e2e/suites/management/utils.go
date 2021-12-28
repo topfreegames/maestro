@@ -40,7 +40,7 @@ func createSchedulerAndWaitForIt(
 	t *testing.T,
 	maestro *maestro.MaestroInstance,
 	apiClient *framework.APIClient,
-	kubeclient kubernetes.Interface,
+	kubeClient kubernetes.Interface,
 	gruCommand []string) (string, error) {
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
@@ -100,14 +100,14 @@ func createSchedulerAndWaitForIt(
 	}, 30*time.Second, time.Second)
 
 	// Check on kubernetes that the scheduler namespace was created.
-	_, err = kubeclient.CoreV1().Namespaces().Get(context.Background(), schedulerName, metav1.GetOptions{})
+	_, err = kubeClient.CoreV1().Namespaces().Get(context.Background(), schedulerName, metav1.GetOptions{})
 	require.NoError(t, err)
 
 	// wait for service account to be created
 	// TODO: check if we need to wait the service account to be created on internal/adapters/runtime/kubernetes/scheduler.go
 	// we were having errors when not waiting for this in this test, reported in this issue https://github.com/kubernetes/kubernetes/issues/66689
 	require.Eventually(t, func() bool {
-		svcAccs, err := kubeclient.CoreV1().ServiceAccounts(schedulerName).List(context.Background(), metav1.ListOptions{})
+		svcAccs, err := kubeClient.CoreV1().ServiceAccounts(schedulerName).List(context.Background(), metav1.ListOptions{})
 		require.NoError(t, err)
 
 		return len(svcAccs.Items) > 0

@@ -34,14 +34,14 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	clock_mock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
-	eventsForwarderMock "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
-	instance_storage_mock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
-	room_storage_mock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
+	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
+	eventsforwardermock "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
+	instancestoragemock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
+	roomstoragemock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 
-	port_allocator_mock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
+	portallocatormock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	"github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
-	runtime_mock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
+	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -53,11 +53,11 @@ func TestExecute(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	clockMock := clock_mock.NewFakeClock(time.Now())
-	portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
-	instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
-	runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
-	eventsForwarderMock := eventsForwarderMock.NewMockEventsForwarder(mockCtrl)
+	clockMock := clockmock.NewFakeClock(time.Now())
+	portAllocatorMock := portallocatormock.NewMockPortAllocator(mockCtrl)
+	instanceStorageMock := instancestoragemock.NewMockGameRoomInstanceStorage(mockCtrl)
+	runtimeMock := runtimemock.NewMockRuntime(mockCtrl)
+	eventsForwarderMock := eventsforwardermock.NewMockEventsForwarder(mockCtrl)
 
 	t.Run("when there are no rooms to be deleted it returns without error", func(t *testing.T) {
 
@@ -102,7 +102,7 @@ func TestExecute(t *testing.T) {
 		gameRoomTerminating := *availableRooms[0]
 		gameRoomTerminating.Status = game_room.GameStatusTerminating
 		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[0].ID).Return(gameRoomInstance, nil)
-		roomStorageStatusWatcher := room_storage_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
+		roomStorageStatusWatcher := roomstoragemock.NewMockRoomStorageStatusWatcher(mockCtrl)
 		roomStorageMock.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
 		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoomTerminating.SchedulerID, gameRoomTerminating.ID).Return(&gameRoomTerminating, nil)
 		runtimeMock.EXPECT().DeleteGameRoomInstance(gomock.Any(), gameRoomInstance).Return(nil)
@@ -133,11 +133,11 @@ func TestExecute(t *testing.T) {
 		roomStorageMock.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
 		roomStorageMock.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
 
-		// first one is successfull
+		// first one is successful
 		gameRoomTerminating := *availableRooms[0]
 		gameRoomTerminating.Status = game_room.GameStatusTerminating
 		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[0].ID).Return(gameRoomInstance, nil)
-		roomStorageStatusWatcher := room_storage_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
+		roomStorageStatusWatcher := roomstoragemock.NewMockRoomStorageStatusWatcher(mockCtrl)
 		roomStorageMock.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
 		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoomTerminating.SchedulerID, gameRoomTerminating.ID).Return(&gameRoomTerminating, nil)
 		runtimeMock.EXPECT().DeleteGameRoomInstance(gomock.Any(), gameRoomInstance).Return(nil)

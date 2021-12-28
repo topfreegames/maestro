@@ -47,7 +47,7 @@ import (
 )
 
 func TestCancelOperation(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		operationStorage := operationStorageRedis.NewRedisOperationStorage(redisClient, timeClock.NewClock())
 		operationFlow := operationFlowRedis.NewRedisOperationFlow(redisClient)
 
@@ -57,7 +57,7 @@ func TestCancelOperation(t *testing.T) {
 				t,
 				maestro,
 				apiClient,
-				kubeclient,
+				kubeClient,
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 

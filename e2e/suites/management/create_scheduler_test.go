@@ -40,7 +40,7 @@ import (
 )
 
 func TestCreateScheduler(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeclient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		schedulerName := framework.GenerateSchedulerName()
 		createRequest := &maestrov1.CreateSchedulerRequest{
 			Name:                   schedulerName,
@@ -95,7 +95,7 @@ func TestCreateScheduler(t *testing.T) {
 		}, 30*time.Second, time.Second)
 
 		// Check on kubernetes that the namespace was created.
-		_, err = kubeclient.CoreV1().Namespaces().Get(context.Background(), schedulerName, metav1.GetOptions{})
+		_, err = kubeClient.CoreV1().Namespaces().Get(context.Background(), schedulerName, metav1.GetOptions{})
 		require.NoError(t, err)
 	})
 }

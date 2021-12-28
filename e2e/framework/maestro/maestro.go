@@ -86,7 +86,7 @@ func (mi *MaestroInstance) Teardown() {
 	mi.RoomsApiServer.Teardown()
 	mi.RuntimeWatcherServer.Teardown()
 
-	// TODO(gabrielcorado): add a flag to not stop depedencies during
+	// TODO(gabrielcorado): add a flag to not stop dependencies during
 	// development (this will make the e2e run way faster).
 	mi.Deps.Teardown()
 }
