@@ -130,11 +130,10 @@ func TestGameRoomsWatch(t *testing.T) {
 					event.Instance.Status.Type == game_room.InstanceReady {
 					return true
 				}
-			default:
 			}
 
 			return false
-		}, time.Minute, time.Second)
+		}, time.Minute * 2, time.Second)
 
 		watcher.Stop()
 		require.NoError(t, watcher.Err())
@@ -181,11 +180,10 @@ func TestGameRoomsWatch(t *testing.T) {
 					event.Instance.Status.Type == game_room.InstanceError {
 					return true
 				}
-			default:
 			}
 
 			return false
-		}, time.Minute, time.Second)
+		}, time.Minute * 2, time.Second)
 
 		watcher.Stop()
 		require.NoError(t, watcher.Err())
