@@ -9,7 +9,7 @@ require (
 	github.com/go-pg/pg v6.13.2+incompatible
 	github.com/go-redis/redis/v8 v8.10.0
 	github.com/golang-migrate/migrate/v4 v4.14.1
-	github.com/golang/mock v1.5.0
+	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/golangci/golangci-lint v1.41.1
 	github.com/google/addlicense v0.0.0-20210729153508-ef04bb38a16b
