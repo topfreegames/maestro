@@ -31,8 +31,8 @@ import (
 	matchmakerEventsForwarder "github.com/topfreegames/maestro/internal/adapters/events_forwarder/noop_forwarder"
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
 	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation_flow/redis"
-	operationStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
 	operationLeaseStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_lease/redis"
+	operationStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
 	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/port_allocator/random"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
@@ -50,7 +50,7 @@ const (
 	runtimeKubernetesMasterUrlPath  = "adapters.runtime.kubernetes.masterUrl"
 	runtimeKubernetesKubeconfigPath = "adapters.runtime.kubernetes.kubeconfig"
 	// Redis operation storage
-	operationStorageRedisUrlPath = "adapters.operationStorage.redis.url"
+	operationStorageRedisUrlPath      = "adapters.operationStorage.redis.url"
 	operationLeaseStorageRedisUrlPath = "adapters.operationLeaseStorage.redis.url"
 	// Redis room storage
 	roomStorageRedisUrlPath = "adapters.roomStorage.redis.url"

@@ -500,3 +500,116 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 		ctxCancelFunction()
 	})
 }
+
+func TestGrantLease(t *testing.T) {
+	t.Run("Grant Lease success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		ttl := time.Minute
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		operationLeaseStorage.EXPECT().GrantLease(ctx, schedulerName, operationID, ttl).Return(nil)
+		err := opManager.GrantLease(ctx, op, ttl)
+		require.NoError(t, err)
+
+	})
+
+	t.Run("Grant Lease error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		ttl := time.Minute
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		operationLeaseStorage.EXPECT().GrantLease(ctx, schedulerName, operationID, ttl).Return(errors.New("error"))
+		err := opManager.GrantLease(ctx, op, ttl)
+		require.Error(t, err)
+		require.Equal(t, err.Error(), "failed to grant lease to operation: error")
+	})
+}
+
+func TestRevokeLease(t *testing.T) {
+	t.Run("Revoke Lease success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		operationLeaseStorage.EXPECT().RevokeLease(ctx, schedulerName, operationID).Return(nil)
+		err := opManager.RevokeLease(ctx, op)
+		require.NoError(t, err)
+	})
+
+	t.Run("Revoke Lease error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		operationLeaseStorage.EXPECT().RevokeLease(ctx, schedulerName, operationID).Return(errors.New("error"))
+		err := opManager.RevokeLease(ctx, op)
+		require.Error(t, err)
+		require.Equal(t, err.Error(), "failed to revoke lease to operation: error")
+	})
+}
