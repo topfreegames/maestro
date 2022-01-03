@@ -111,7 +111,28 @@ func (r *redisOperationLeaseStorage) FetchLeaseTTL(ctx context.Context, schedule
 }
 
 func (r *redisOperationLeaseStorage) ListExpiredLeases(ctx context.Context, schedulerName string, maxLease time.Time) ([]operation.OperationLease, error) {
-	return nil, nil
+	ops, err := r.client.ZRangeByScoreWithScores(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), &redis.ZRangeBy{
+		Min: "-inf",
+		Max: fmt.Sprintf("%d", maxLease.Unix()),
+	}).Result()
+
+	if err != nil {
+		return nil, err
+	}
+
+	expiredOperations := r.convertToOperationLeaseList(ops)
+	return expiredOperations, nil
+}
+
+func (r *redisOperationLeaseStorage) convertToOperationLeaseList(ops []redis.Z) []operation.OperationLease {
+	var operationsLease []operation.OperationLease
+	for _, op := range ops {
+		operationsLease = append(operationsLease, operation.OperationLease{
+			OperationID: op.Member.(string),
+			Ttl:         time.Unix(int64(op.Score), 0),
+		})
+	}
+	return operationsLease
 }
 
 func (r *redisOperationLeaseStorage) buildSchedulerOperationLeaseKey(schedulerName string) string {

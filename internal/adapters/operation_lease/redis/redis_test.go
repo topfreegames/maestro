@@ -188,8 +188,52 @@ func TestFetchLeaseTTL(t *testing.T) {
 }
 
 func TestListExpiredLeases(t *testing.T) {
-	t.Run("with success", func(t *testing.T) {
-		require.Equal(t, 1, 1)
+	t.Run("when some lease's are expired it returns a list", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		err := storage.GrantLease(context.Background(), "schedulerName", "opId1", 5*time.Minute)
+		require.NoError(t, err)
+		err = storage.GrantLease(context.Background(), "schedulerName", "opId2", 6*time.Minute)
+		require.NoError(t, err)
+		err = storage.GrantLease(context.Background(), "schedulerName", "opId3", 4*time.Minute)
+		require.NoError(t, err)
+
+		ops, err := storage.ListExpiredLeases(context.Background(), "schedulerName", clock.Now().Add(5*time.Minute))
+
+		require.NoError(t, err)
+		require.Equal(t, 2, len(ops))
+		require.Equal(t, "opId3", ops[0].OperationID)
+		require.Equal(t, clock.Now().Add(4*time.Minute).Unix(), ops[0].Ttl.Unix())
+		require.Equal(t, "opId1", ops[1].OperationID)
+		require.Equal(t, clock.Now().Add(5*time.Minute).Unix(), ops[1].Ttl.Unix())
+	})
+
+	t.Run("when no lease is expired it returns an empty list", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		err := storage.GrantLease(context.Background(), "schedulerName", "opId1", 5*time.Minute)
+		require.NoError(t, err)
+		err = storage.GrantLease(context.Background(), "schedulerName", "opId2", 4*time.Minute)
+		require.NoError(t, err)
+		err = storage.GrantLease(context.Background(), "schedulerName", "opId3", 6*time.Minute)
+		require.NoError(t, err)
+
+		ops, err := storage.ListExpiredLeases(context.Background(), "schedulerName", clock.Now())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(ops))
+	})
+
+	t.Run("when no lease exists it returns an empty list", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+		ops, err := storage.ListExpiredLeases(context.Background(), "schedulerName", clock.Now())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(ops))
 	})
 }
 
