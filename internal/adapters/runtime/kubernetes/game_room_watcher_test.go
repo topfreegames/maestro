@@ -134,7 +134,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			}
 
 			return false
-		}, time.Minute, time.Second)
+		}, time.Minute*2, time.Second)
 
 		watcher.Stop()
 		require.NoError(t, watcher.Err())
@@ -185,7 +185,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			}
 
 			return false
-		}, time.Minute, time.Second)
+		}, time.Minute*2, time.Second)
 
 		watcher.Stop()
 		require.NoError(t, watcher.Err())
