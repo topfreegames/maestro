@@ -32,6 +32,7 @@ import (
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
 	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation_flow/redis"
 	operationStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
+	operationLeaseStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_lease/redis"
 	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/port_allocator/random"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
@@ -50,6 +51,7 @@ const (
 	runtimeKubernetesKubeconfigPath = "adapters.runtime.kubernetes.kubeconfig"
 	// Redis operation storage
 	operationStorageRedisUrlPath = "adapters.operationStorage.redis.url"
+	operationLeaseStorageRedisUrlPath = "adapters.operationLeaseStorage.redis.url"
 	// Redis room storage
 	roomStorageRedisUrlPath = "adapters.roomStorage.redis.url"
 	// Redis instance storage
@@ -86,6 +88,15 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 	}
 
 	return operationStorageRedis.NewRedisOperationStorage(client, clock), nil
+}
+
+func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.OperationLeaseStorage, error) {
+	client, err := createRedisClient(c.GetString(operationLeaseStorageRedisUrlPath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Redis operation lease storage: %w", err)
+	}
+
+	return operationLeaseStorageRedis.NewRedisOperationLeaseStorage(client, clock), nil
 }
 
 func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
