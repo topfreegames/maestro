@@ -46,7 +46,7 @@ func ProvideManagementApi(maestroPath string) (*ManagementApiServer, error) {
 	identifier := strings.ToLower("test-something")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "management-api"}).Invoke()
+	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "management-api"}).Invoke()
 
 	if composeErr.Error != nil {
 		return nil, fmt.Errorf("failed to start management API: %s", composeErr.Error)

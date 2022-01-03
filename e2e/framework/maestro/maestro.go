@@ -50,9 +50,9 @@ func ProvideMaestro() (*MaestroInstance, error) {
 		return nil, fmt.Errorf("failed to start dependencies: %s", err)
 	}
 
-	workerInstance, err := components.ProvideWorker(path)
+	roomsApiInstance, err := components.ProvideRoomsApi(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start worker: %s", err)
+		return nil, fmt.Errorf("failed to start rooms api: %s", err)
 	}
 
 	managementApiInstance, err := components.ProvideManagementApi(path)
@@ -60,9 +60,9 @@ func ProvideMaestro() (*MaestroInstance, error) {
 		return nil, fmt.Errorf("failed to start worker: %s", err)
 	}
 
-	roomsApiInstance, err := components.ProvideRoomsApi(path)
+	workerInstance, err := components.ProvideWorker(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start rooms api: %s", err)
+		return nil, fmt.Errorf("failed to start worker: %s", err)
 	}
 
 	runtimeWatcherInstance, err := components.ProvideRuntimeWatcher(path)
