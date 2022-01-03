@@ -117,7 +117,8 @@ func (r *redisOperationLeaseStorage) ListExpiredLeases(ctx context.Context, sche
 	}).Result()
 
 	if err != nil {
-		return nil, err
+		return nil, errors.NewErrUnexpected("failed on listing expired lease for \"%s\"", schedulerName).WithError(err)
+
 	}
 
 	expiredOperations := r.convertToOperationLeaseList(ops)
