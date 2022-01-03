@@ -107,7 +107,14 @@ func (r *redisOperationLeaseStorage) RenewLease(ctx context.Context, schedulerNa
 }
 
 func (r *redisOperationLeaseStorage) FetchLeaseTTL(ctx context.Context, schedulerName, operationID string) (time.Time, error) {
-	return time.Time{}, nil
+	ttl, err := r.client.ZScore(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), operationID).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return time.Time{}, errors.NewErrNotFound("lease of scheduler \"%s\" and operationId \"%s\" does not exist", schedulerName, operationID)
+		}
+		return time.Time{}, errors.NewErrUnexpected("failed on fetching ttl for \"%s\" and operationID \"%s\"", schedulerName, operationID).WithError(err)
+	}
+	return time.Unix(int64(ttl), 0), err
 }
 
 func (r *redisOperationLeaseStorage) ListExpiredLeases(ctx context.Context, schedulerName string, maxLease time.Time) ([]operation.OperationLease, error) {
