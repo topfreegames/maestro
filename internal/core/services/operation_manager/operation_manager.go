@@ -201,29 +201,6 @@ func (om *OperationManager) WatchOperationCancellationRequests(ctx context.Conte
 	}
 }
 
-func (om *OperationManager) cancelOperation(ctx context.Context, schedulerName, operationID string) error {
-
-	op, _, err := om.storage.GetOperation(ctx, schedulerName, operationID)
-	if err != nil {
-		return fmt.Errorf("failed to fetch operation from storage: %w", err)
-	}
-
-	if op.Status == operation.StatusPending {
-		err = om.storage.UpdateOperationStatus(ctx, schedulerName, operationID, operation.StatusCanceled)
-		if err != nil {
-			return fmt.Errorf("failed update operation as canceled: %w", err)
-		}
-	} else {
-		cancelFn, err := om.operationCancelFunctions.getFunction(schedulerName, operationID)
-		if err != nil {
-			return fmt.Errorf("failed to fetch cancel function from operation: %w", err)
-		}
-		cancelFn()
-	}
-
-	return nil
-}
-
 func (om *OperationManager) GrantLease(ctx context.Context, operation *operation.Operation) error {
 	err := om.leaseStorage.GrantLease(ctx, operation.SchedulerName, operation.ID, om.config.OperationLeaseTtl)
 	if err != nil {
@@ -280,4 +257,27 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 			}
 		}
 	}()
+}
+
+func (om *OperationManager) cancelOperation(ctx context.Context, schedulerName, operationID string) error {
+
+	op, _, err := om.storage.GetOperation(ctx, schedulerName, operationID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch operation from storage: %w", err)
+	}
+
+	if op.Status == operation.StatusPending {
+		err = om.storage.UpdateOperationStatus(ctx, schedulerName, operationID, operation.StatusCanceled)
+		if err != nil {
+			return fmt.Errorf("failed update operation as canceled: %w", err)
+		}
+	} else {
+		cancelFn, err := om.operationCancelFunctions.getFunction(schedulerName, operationID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch cancel function from operation: %w", err)
+		}
+		cancelFn()
+	}
+
+	return nil
 }
