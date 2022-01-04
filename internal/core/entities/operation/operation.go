@@ -49,6 +49,7 @@ type Operation struct {
 	Status         Status
 	DefinitionName string
 	SchedulerName  string
+	Lease          OperationLease
 	CreatedAt      time.Time
 }
 
