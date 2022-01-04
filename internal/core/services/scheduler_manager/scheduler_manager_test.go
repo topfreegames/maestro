@@ -34,6 +34,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
+	oplstorage "github.com/topfreegames/maestro/internal/adapters/operation_lease/mock"
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -55,7 +56,8 @@ func TestAddRooms(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
 		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(nil)
@@ -89,7 +91,8 @@ func TestAddRooms(t *testing.T) {
 		defer mockCtrl.Finish()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors())
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, schedulerName).Return(nil, nil)
@@ -113,7 +116,8 @@ func TestRemoveRooms(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 		//operationDefinition := remove_rooms.RemoveRoomsDefinition{Amount: 10}
 
@@ -148,7 +152,8 @@ func TestRemoveRooms(t *testing.T) {
 		defer mockCtrl.Finish()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors())
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, schedulerName).Return(nil, nil)
@@ -335,7 +340,8 @@ func TestCreateSchedulerOperation(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
 		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(nil)
@@ -378,7 +384,8 @@ func TestCreateSchedulerOperation(t *testing.T) {
 		defer mockCtrl.Finish()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors())
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(currentScheduler, nil)
@@ -404,7 +411,8 @@ func TestGetSchedulerVersions(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
 
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
@@ -425,7 +433,8 @@ func TestGetSchedulerVersions(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
 
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
@@ -448,7 +457,8 @@ func TestGetScheduler(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
 
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
@@ -473,7 +483,8 @@ func TestGetScheduler(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors())
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
 
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 

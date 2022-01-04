@@ -34,7 +34,11 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		return nil, err
 	}
 	v := providers.ProvideDefinitionConstructors()
-	operationManager := operation_manager.New(operationFlow, operationStorage, v)
+	operationLeaseStorage, err := service.NewOperationLeaseStorageRedis(clock, c)
+	if err != nil {
+		return nil, err
+	}
+	operationManager := operation_manager.New(operationFlow, operationStorage, v, operationLeaseStorage)
 	runtime, err := service.NewRuntimeKubernetes(c)
 	if err != nil {
 		return nil, err

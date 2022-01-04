@@ -92,15 +92,17 @@ type OperationManager struct {
 	operationCancelFunctions        *OperationCancelFunctions
 	flow                            ports.OperationFlow
 	storage                         ports.OperationStorage
+	leaseStorage                    ports.OperationLeaseStorage
 	operationDefinitionConstructors map[string]operations.DefinitionConstructor
 }
 
-func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor) *OperationManager {
+func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage) *OperationManager {
 	return &OperationManager{
 		flow:                            flow,
 		storage:                         storage,
 		operationDefinitionConstructors: operationDefinitionConstructors,
 		operationCancelFunctions:        NewOperationCancelFunctions(),
+		leaseStorage:                    leaseStorage,
 	}
 }
 
@@ -270,4 +272,62 @@ func (om *OperationManager) cancelOperation(ctx context.Context, schedulerName, 
 	}
 
 	return nil
+}
+
+func (om *OperationManager) GrantLease(ctx context.Context, operation *operation.Operation, initialTTL time.Duration) error {
+	err := om.leaseStorage.GrantLease(ctx, operation.SchedulerName, operation.ID, initialTTL)
+	if err != nil {
+		return fmt.Errorf("failed to grant lease to operation: %w", err)
+	}
+
+	return nil
+}
+
+func (om *OperationManager) RevokeLease(ctx context.Context, operation *operation.Operation) error {
+	err := om.leaseStorage.RevokeLease(ctx, operation.SchedulerName, operation.ID)
+	if err != nil {
+		return fmt.Errorf("failed to revoke lease to operation: %w", err)
+	}
+
+	return nil
+}
+
+func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Context, op *operation.Operation, ttl time.Duration) {
+	go func() {
+		zap.L().Info("starting operation lease renew go routine")
+
+		ticker := time.NewTicker(ttl)
+		defer ticker.Stop()
+
+	renewLeaseLoop:
+		for {
+			select {
+			case <-ticker.C:
+				if op.Status == operation.StatusFinished {
+					zap.L().Info("finish operation lease renew go routine since operation got status finished")
+					break renewLeaseLoop
+				}
+
+				err := om.leaseStorage.RenewLease(operationCtx, op.SchedulerName, op.ID, ttl)
+				if err != nil {
+					zap.L().
+						With(zap.String("schedulerName", op.SchedulerName)).
+						With(zap.String("operationID", op.ID)).
+						With(zap.Error(err)).
+						Error("failed to renew operation lease")
+				}
+			case <-operationCtx.Done():
+				if goerrors.Is(operationCtx.Err(), context.Canceled) {
+					zap.L().Info("finish operation lease renew go routine since operation is canceled")
+				} else {
+					zap.L().
+						With(zap.String("schedulerName", op.SchedulerName)).
+						With(zap.String("operationID", op.ID)).
+						With(zap.Error(operationCtx.Err())).
+						Error("loop to renew operation lease received an error context event")
+				}
+				break renewLeaseLoop
+			}
+		}
+	}()
 }

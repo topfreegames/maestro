@@ -45,6 +45,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		service.NewOperationFlowRedis,
 		service.NewClockTime,
 		service.NewOperationStorageRedis,
+		service.NewOperationLeaseStorageRedis,
 		service.NewPortAllocatorRandom,
 		service.NewRoomStorageRedis,
 		service.NewGameRoomInstanceStorageRedis,
