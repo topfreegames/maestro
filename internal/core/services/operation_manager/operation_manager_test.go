@@ -398,13 +398,75 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 			{ID: uuid.NewString()},
 			{ID: uuid.NewString()},
 		}
+		operationsLease := []operation.OperationLease{
+			{OperationID: operationsResult[0].ID, Ttl: time.Unix(1641306511, 0)},
+			{OperationID: operationsResult[1].ID, Ttl: time.Unix(1641306522, 0)},
+			{OperationID: operationsResult[2].ID, Ttl: time.Unix(1641306533, 0)},
+		}
+		operationsResult[0].Lease = operationsLease[0]
+		operationsResult[1].Lease = operationsLease[1]
+		operationsResult[2].Lease = operationsLease[2]
 
 		schedulerName := "test-scheduler"
 		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, operationsResult[0].ID).Return(operationsLease[0].Ttl, nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, operationsResult[1].ID).Return(operationsLease[1].Ttl, nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, operationsResult[2].ID).Return(operationsLease[2].Ttl, nil)
 		operations, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
 		require.NoError(t, err)
 		require.ElementsMatch(t, operationsResult, operations)
 	})
+
+	t.Run("it returns error when some error occurs in operation storage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+
+		ctx := context.Background()
+
+		schedulerName := "test-scheduler"
+		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(nil, errors.New("some error"))
+		_, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
+		require.Error(t, err, fmt.Errorf("failed get active operations list fort scheduler %s : %w", schedulerName, errors.New("some error")))
+	})
+
+	t.Run("it returns error when some error occurs in operation lease storage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+
+		ctx := context.Background()
+		operationsResult := []*operation.Operation{
+			{ID: uuid.NewString()},
+			{ID: uuid.NewString()},
+			{ID: uuid.NewString()},
+		}
+		operationsLease := []operation.OperationLease{
+			{OperationID: operationsResult[0].ID, Ttl: time.Unix(1641306511, 0)},
+			{OperationID: operationsResult[1].ID, Ttl: time.Unix(1641306522, 0)},
+			{OperationID: operationsResult[2].ID, Ttl: time.Unix(1641306533, 0)},
+		}
+		operationsResult[0].Lease = operationsLease[0]
+		operationsResult[1].Lease = operationsLease[1]
+		operationsResult[2].Lease = operationsLease[2]
+
+		schedulerName := "test-scheduler"
+		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, operationsResult[0].ID).Return(time.Now(), errors.New("some error"))
+		_, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
+		require.Error(t, err, fmt.Errorf("failed to fetch lease data for scheduler %s operation %s: %w", operationsResult[0].ID, schedulerName, err))
+	})
+
 }
 
 func TestListSchedulerFinishedOperations(t *testing.T) {
@@ -427,8 +489,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		}
 
 		schedulerName := "test-scheduler"
-		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
-		operations, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName).Return(operationsResult, nil)
+		operations, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName)
 		require.NoError(t, err)
 		require.ElementsMatch(t, operationsResult, operations)
 	})

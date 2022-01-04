@@ -140,8 +140,15 @@ func (om *OperationManager) ListSchedulerPendingOperations(ctx context.Context, 
 }
 
 func (om *OperationManager) ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
-
-	return om.storage.ListSchedulerActiveOperations(ctx, schedulerName)
+	ops, err := om.storage.ListSchedulerActiveOperations(ctx, schedulerName)
+	if err != nil {
+		return nil, fmt.Errorf("failed get active operations list fort scheduler %s : %w", schedulerName, err)
+	}
+	err = om.addOperationsLeaseData(ctx, schedulerName, ops)
+	if err != nil {
+		return nil, err
+	}
+	return ops, nil
 }
 
 func (om *OperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
@@ -259,7 +266,18 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 	}()
 }
 
-func (om *OperationManager) cancelOperation(ctx context.Context, schedulerName, operationID string) error {
+func (om *OperationManager) addOperationsLeaseData(ctx context.Context, schedulerName string, ops []*operation.Operation) error {
+	for _, op := range ops {
+		ttl, err := om.leaseStorage.FetchLeaseTTL(ctx, schedulerName, op.ID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch lease data for scheduler %s operation %s: %w", op.ID, schedulerName, err)
+		}
+		op.Lease = operation.OperationLease{OperationID: op.ID, Ttl: ttl}
+	}
+	return nil
+}
+
+func (om OperationManager) cancelOperation(ctx context.Context, schedulerName, operationID string) error {
 
 	op, _, err := om.storage.GetOperation(ctx, schedulerName, operationID)
 	if err != nil {
