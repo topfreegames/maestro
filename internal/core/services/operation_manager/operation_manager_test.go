@@ -643,6 +643,36 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 		opManager.StartLeaseRenewGoRoutine(ctx, op, ttl)
 		time.Sleep(time.Second * 1)
 	})
+	t.Run("changed op.status = finished after starting renew lease go routine", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		ttl := time.Second
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+			Status:        operation.StatusInProgress,
+		}
+
+		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, ttl).MaxTimes(1)
+		opManager.StartLeaseRenewGoRoutine(ctx, op, ttl)
+		time.Sleep(time.Second * 1)
+		op.Status = operation.StatusFinished
+		time.Sleep(time.Second * 2)
+	})
 
 	t.Run("Renews lease error does not panic", func(t *testing.T) {
 		t.Parallel()
