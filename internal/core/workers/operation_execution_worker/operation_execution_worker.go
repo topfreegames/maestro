@@ -106,7 +106,6 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		loopLogger.Info("Starting operation")
 
 		operationContext, operationCancellationFunction := context.WithCancel(ctx)
-
 		err = w.operationManager.StartOperation(operationContext, op, operationCancellationFunction)
 		if err != nil {
 			w.Stop(ctx)
@@ -117,6 +116,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
 			return fmt.Errorf("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 		}
+		err = w.operationManager.GrantLease(operationContext, op)
+		if err != nil {
+			return fmt.Errorf("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
+		}
+		w.operationManager.StartLeaseRenewGoRoutine(operationContext, op)
 
 		executeStartTime := time.Now()
 		executionErr := executor.Execute(operationContext, op, def)
@@ -147,6 +151,10 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		err = w.operationManager.FinishOperation(ctx, op)
 		if err != nil {
 			loopLogger.Error("failed to finish operation", zap.Error(err))
+		}
+		err = w.operationManager.RevokeLease(operationContext, op)
+		if err != nil {
+			loopLogger.Error("failed to revoke operation lease", zap.Error(err))
 		}
 	}
 }

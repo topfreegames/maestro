@@ -533,14 +533,13 @@ func TestGrantLease(t *testing.T) {
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		operationID := uuid.NewString()
-		ttl := time.Minute
 		op := &operation.Operation{
 			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
 			SchedulerName: schedulerName,
 		}
 
-		operationLeaseStorage.EXPECT().GrantLease(ctx, schedulerName, operationID, ttl).Return(nil)
-		err := opManager.GrantLease(ctx, op, ttl)
+		operationLeaseStorage.EXPECT().GrantLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).Return(nil)
+		err := opManager.GrantLease(ctx, op)
 		require.NoError(t, err)
 
 	})
@@ -562,14 +561,13 @@ func TestGrantLease(t *testing.T) {
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		operationID := uuid.NewString()
-		ttl := time.Minute
 		op := &operation.Operation{
 			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
 			SchedulerName: schedulerName,
 		}
 
-		operationLeaseStorage.EXPECT().GrantLease(ctx, schedulerName, operationID, ttl).Return(errors.New("error"))
-		err := opManager.GrantLease(ctx, op, ttl)
+		operationLeaseStorage.EXPECT().GrantLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).Return(errors.New("error"))
+		err := opManager.GrantLease(ctx, op)
 		require.Error(t, err)
 		require.Equal(t, err.Error(), "failed to grant lease to operation: error")
 	})
@@ -650,7 +648,6 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
-		ttl := time.Second
 		operationID := uuid.NewString()
 		op := &operation.Operation{
 			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
@@ -658,8 +655,8 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 			Status:        operation.StatusFinished,
 		}
 
-		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, ttl).MaxTimes(0)
-		opManager.StartLeaseRenewGoRoutine(ctx, op, ttl)
+		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).MaxTimes(0)
+		opManager.StartLeaseRenewGoRoutine(ctx, op)
 		time.Sleep(time.Second * 1)
 	})
 	t.Run("changed op.status = finished after starting renew lease go routine", func(t *testing.T) {
@@ -679,7 +676,6 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
-		ttl := time.Second
 		operationID := uuid.NewString()
 		op := &operation.Operation{
 			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
@@ -687,8 +683,8 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 			Status:        operation.StatusInProgress,
 		}
 
-		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, ttl).MaxTimes(1)
-		opManager.StartLeaseRenewGoRoutine(ctx, op, ttl)
+		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).MaxTimes(1)
+		opManager.StartLeaseRenewGoRoutine(ctx, op)
 		time.Sleep(time.Second * 1)
 		op.Status = operation.StatusFinished
 		time.Sleep(time.Second * 2)
@@ -711,15 +707,14 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 
 		ctx, cancelFunction := context.WithCancel(context.Background())
 		schedulerName := "test-scheduler"
-		ttl := time.Second
 		operationID := uuid.NewString()
 		op := &operation.Operation{
 			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
 			SchedulerName: schedulerName,
 		}
 
-		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, ttl).Return(errors.New("error")).MinTimes(1).MaxTimes(2)
-		opManager.StartLeaseRenewGoRoutine(ctx, op, ttl)
+		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).Return(errors.New("error")).MinTimes(1).MaxTimes(2)
+		opManager.StartLeaseRenewGoRoutine(ctx, op)
 		time.Sleep(time.Second * 2)
 		cancelFunction()
 	})
@@ -741,15 +736,14 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 
 		ctx, cancelFunction := context.WithCancel(context.Background())
 		schedulerName := "test-scheduler"
-		ttl := time.Second
 		operationID := uuid.NewString()
 		op := &operation.Operation{
 			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
 			SchedulerName: schedulerName,
 		}
 
-		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, ttl).MaxTimes(3).MinTimes(2)
-		opManager.StartLeaseRenewGoRoutine(ctx, op, ttl)
+		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).MaxTimes(3).MinTimes(2)
+		opManager.StartLeaseRenewGoRoutine(ctx, op)
 		time.Sleep(time.Second * 3)
 		cancelFunction()
 	})
@@ -771,14 +765,13 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 
 		ctx, cancelFunction := context.WithCancel(context.Background())
 		schedulerName := "test-scheduler"
-		ttl := time.Second
 		operationID := uuid.NewString()
 		op := &operation.Operation{
 			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
 			SchedulerName: schedulerName,
 		}
 
-		opManager.StartLeaseRenewGoRoutine(ctx, op, ttl)
+		opManager.StartLeaseRenewGoRoutine(ctx, op)
 		cancelFunction()
 		require.Eventually(t, func() bool {
 			return ctx.Err() == context.Canceled
