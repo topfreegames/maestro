@@ -182,8 +182,25 @@ func TestRenewLease(t *testing.T) {
 }
 
 func TestFetchLeaseTTL(t *testing.T) {
-	t.Run("with success", func(t *testing.T) {
-		require.Equal(t, 1, 1)
+	t.Run("when the lease exists it returns its ttl", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		err := storage.GrantLease(context.Background(), "schedulerName", "operationID", time.Minute)
+		require.NoError(t, err)
+
+		ttl, err := storage.FetchLeaseTTL(context.Background(), "schedulerName", "operationID")
+		require.NoError(t, err)
+		require.Equal(t, clock.Now().Add(time.Minute).Unix(), ttl.Unix())
+	})
+	t.Run("when the lease doesn't exists it returns an error", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		_, err := storage.FetchLeaseTTL(context.Background(), "schedulerName", "operationID")
+		require.Error(t, err, errors.NewErrNotFound("Lease of scheduler schedulerName and operationId operationID does not exist"))
 	})
 }
 
