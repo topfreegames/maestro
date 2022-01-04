@@ -27,6 +27,7 @@ package operation_execution_worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -90,6 +91,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationStorage.EXPECT().GetOperation(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID).Return(expectedOperation, []byte{}, nil)
 		operationStorage.EXPECT().UpdateOperationStatus(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, operation.StatusInProgress).Return(nil)
 		operationStorage.EXPECT().UpdateOperationStatus(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, operation.StatusFinished).Return(nil)
+		operationLeaseStorage.EXPECT().GrantLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, config.OperationLeaseTtl).Return(nil)
+		operationLeaseStorage.EXPECT().RevokeLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID).Return(nil)
+		operationLeaseStorage.EXPECT().RenewLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, config.OperationLeaseTtl).Return(nil)
 		// ends the worker by cancelling it
 		operationFlow.EXPECT().NextOperationID(gomock.Any(), expectedOperation.SchedulerName).Return("", context.Canceled)
 
@@ -146,6 +150,10 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationStorage.EXPECT().GetOperation(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID).Return(expectedOperation, []byte{}, nil)
 		operationStorage.EXPECT().UpdateOperationStatus(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, operation.StatusInProgress).Return(nil)
 		operationStorage.EXPECT().UpdateOperationStatus(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, operation.StatusError).Return(nil)
+
+		operationLeaseStorage.EXPECT().GrantLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, config.OperationLeaseTtl).Return(nil)
+		operationLeaseStorage.EXPECT().RevokeLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID).Return(nil)
+		operationLeaseStorage.EXPECT().RenewLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, config.OperationLeaseTtl).Return(nil)
 		// ends the worker by cancelling it
 		operationFlow.EXPECT().NextOperationID(gomock.Any(), expectedOperation.SchedulerName).Return("", context.Canceled)
 
@@ -191,6 +199,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationFlow.EXPECT().NextOperationID(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation.ID, nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID).Return(expectedOperation, []byte{}, nil)
 		operationStorage.EXPECT().UpdateOperationStatus(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, operation.StatusEvicted).Return(nil)
+
 		// ends the worker by cancelling it
 		operationFlow.EXPECT().NextOperationID(gomock.Any(), expectedOperation.SchedulerName).Return("", context.Canceled)
 
@@ -242,6 +251,97 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		err := workerService.Start(context.Background())
 		require.NoError(t, err)
+
+		workerService.Stop(context.Background())
+		require.False(t, workerService.IsRunning())
+	})
+
+	t.Run("error granting lease should stop execution of operation", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+
+		operationName := "test_operation"
+		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
+		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
+		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
+
+		defFunc := func() operations.Definition { return operationDefinition }
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
+
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config)
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
+		expectedOperation := &operation.Operation{
+			ID:             "random-operation-id",
+			SchedulerName:  scheduler.Name,
+			Status:         operation.StatusPending,
+			DefinitionName: operationName,
+		}
+
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+
+		operationDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
+		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
+
+		operationFlow.EXPECT().NextOperationID(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation.ID, nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID).Return(expectedOperation, []byte{}, nil)
+		operationStorage.EXPECT().UpdateOperationStatus(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, operation.StatusInProgress).Return(nil)
+
+		operationLeaseStorage.EXPECT().GrantLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, config.OperationLeaseTtl).Return(errors.New("error"))
+
+		err := workerService.Start(context.Background())
+		require.Error(t, err)
+
+		workerService.Stop(context.Background())
+		require.False(t, workerService.IsRunning())
+	})
+
+	t.Run("error getting next operation should stop execution of operation", func(t *testing.T) {
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+
+		operationName := "test_operation"
+		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
+		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
+		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
+
+		defFunc := func() operations.Definition { return operationDefinition }
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
+
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config)
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
+		expectedOperation := &operation.Operation{
+			ID:             "random-operation-id",
+			SchedulerName:  scheduler.Name,
+			Status:         operation.StatusPending,
+			DefinitionName: operationName,
+		}
+
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+
+		operationFlow.EXPECT().NextOperationID(gomock.Any(), expectedOperation.SchedulerName).Return("", errors.New("error"))
+
+		err := workerService.Start(context.Background())
+		require.Error(t, err)
 
 		workerService.Stop(context.Background())
 		require.False(t, workerService.IsRunning())

@@ -118,6 +118,8 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		}
 		err = w.operationManager.GrantLease(operationContext, op)
 		if err != nil {
+			w.Stop(ctx)
+			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
 			return fmt.Errorf("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 		}
 		w.operationManager.StartLeaseRenewGoRoutine(operationContext, op)
