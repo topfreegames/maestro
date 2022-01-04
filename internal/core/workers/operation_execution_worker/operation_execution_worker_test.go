@@ -64,7 +64,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		definitionConstructors[operationName] = defFunc
 
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config)
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
@@ -118,7 +119,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		definitionConstructors[operationName] = defFunc
 
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config)
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
@@ -171,7 +173,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		definitionConstructors[operationName] = defFunc
 
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config)
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",
@@ -214,7 +217,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		definitionConstructors[operationName] = defFunc
 
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config)
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		expectedOperation := &operation.Operation{
 			ID:             "random-operation-id",

@@ -50,6 +50,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		service.NewRoomStorageRedis,
 		service.NewGameRoomInstanceStorageRedis,
 		service.NewRoomManagerConfig,
+		service.NewOperationManagerConfig,
 		service.NewEventsForwarder,
 
 		// scheduler operations

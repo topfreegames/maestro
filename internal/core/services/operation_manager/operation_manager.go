@@ -93,16 +93,18 @@ type OperationManager struct {
 	flow                            ports.OperationFlow
 	storage                         ports.OperationStorage
 	leaseStorage                    ports.OperationLeaseStorage
+	config                          OperationManagerConfig
 	operationDefinitionConstructors map[string]operations.DefinitionConstructor
 }
 
-func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage) *OperationManager {
+func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config OperationManagerConfig) *OperationManager {
 	return &OperationManager{
 		flow:                            flow,
 		storage:                         storage,
 		operationDefinitionConstructors: operationDefinitionConstructors,
 		operationCancelFunctions:        NewOperationCancelFunctions(),
 		leaseStorage:                    leaseStorage,
+		config:                          config,
 	}
 }
 

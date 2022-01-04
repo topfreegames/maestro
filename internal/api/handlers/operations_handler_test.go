@@ -134,7 +134,8 @@ func TestListOperations(t *testing.T) {
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
 
 		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{"1", "2", "3"}, nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "1").Return(pendingOperations[0], []byte{}, nil)
@@ -248,7 +249,8 @@ func TestListOperations(t *testing.T) {
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
 
 		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{"1", "2", "3"}, nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "1").Return(pendingOperations[0], []byte{}, nil)
@@ -362,7 +364,8 @@ func TestListOperations(t *testing.T) {
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
 
 		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{"1", "2", "3"}, nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "1").Return(pendingOperations[0], []byte{}, nil)
@@ -477,7 +480,8 @@ func TestListOperations(t *testing.T) {
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -507,7 +511,8 @@ func TestListOperations(t *testing.T) {
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -537,7 +542,8 @@ func TestListOperations(t *testing.T) {
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
 
 		operationID := "operation-1"
 		schedulerName := "zooba"
@@ -578,7 +584,8 @@ func TestCancelOperation(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, nil, nil, nil)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, nil, nil, nil, config)
 
 		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Eq(ports.OperationCancellationRequest{
 			SchedulerName: schedulerName,
@@ -605,7 +612,8 @@ func TestCancelOperation(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationManager := operation_manager.New(operationFlow, nil, nil, nil)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, nil, nil, nil, config)
 
 		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Eq(ports.OperationCancellationRequest{
 			SchedulerName: schedulerName,
