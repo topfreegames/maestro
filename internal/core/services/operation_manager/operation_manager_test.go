@@ -425,7 +425,8 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+		operationManagerConfig := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, operationManagerConfig)
 
 		ctx := context.Background()
 
@@ -443,7 +444,8 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage)
+		operationManagerConfig := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, operationManagerConfig)
 
 		ctx := context.Background()
 		operationsResult := []*operation.Operation{
