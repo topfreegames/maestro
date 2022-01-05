@@ -93,16 +93,18 @@ type OperationManager struct {
 	flow                            ports.OperationFlow
 	storage                         ports.OperationStorage
 	leaseStorage                    ports.OperationLeaseStorage
+	config                          OperationManagerConfig
 	operationDefinitionConstructors map[string]operations.DefinitionConstructor
 }
 
-func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage) *OperationManager {
+func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config OperationManagerConfig) *OperationManager {
 	return &OperationManager{
 		flow:                            flow,
 		storage:                         storage,
 		operationDefinitionConstructors: operationDefinitionConstructors,
 		operationCancelFunctions:        NewOperationCancelFunctions(),
 		leaseStorage:                    leaseStorage,
+		config:                          config,
 	}
 }
 
@@ -274,8 +276,8 @@ func (om *OperationManager) cancelOperation(ctx context.Context, schedulerName, 
 	return nil
 }
 
-func (om *OperationManager) GrantLease(ctx context.Context, operation *operation.Operation, initialTTL time.Duration) error {
-	err := om.leaseStorage.GrantLease(ctx, operation.SchedulerName, operation.ID, initialTTL)
+func (om *OperationManager) GrantLease(ctx context.Context, operation *operation.Operation) error {
+	err := om.leaseStorage.GrantLease(ctx, operation.SchedulerName, operation.ID, om.config.OperationLeaseTtl)
 	if err != nil {
 		return fmt.Errorf("failed to grant lease to operation: %w", err)
 	}
@@ -292,11 +294,11 @@ func (om *OperationManager) RevokeLease(ctx context.Context, operation *operatio
 	return nil
 }
 
-func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Context, op *operation.Operation, ttl time.Duration) {
+func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Context, op *operation.Operation) {
 	go func() {
 		zap.L().Info("starting operation lease renew go routine")
 
-		ticker := time.NewTicker(ttl)
+		ticker := time.NewTicker(om.config.OperationLeaseTtl)
 		defer ticker.Stop()
 
 	renewLeaseLoop:
@@ -308,7 +310,7 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 					break renewLeaseLoop
 				}
 
-				err := om.leaseStorage.RenewLease(operationCtx, op.SchedulerName, op.ID, ttl)
+				err := om.leaseStorage.RenewLease(operationCtx, op.SchedulerName, op.ID, om.config.OperationLeaseTtl)
 				if err != nil {
 					zap.L().
 						With(zap.String("schedulerName", op.SchedulerName)).

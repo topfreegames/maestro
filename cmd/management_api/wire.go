@@ -60,6 +60,9 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 		handlers.ProvideOperationsHandler,
 		handlers.ProvidePingHandler,
 		provideManagementMux,
+
+		// config
+		service.NewOperationManagerConfig,
 	)
 
 	return &runtime.ServeMux{}, nil

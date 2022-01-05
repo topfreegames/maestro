@@ -38,7 +38,11 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	if err != nil {
 		return nil, err
 	}
-	operationManager := operation_manager.New(operationFlow, operationStorage, v, operationLeaseStorage)
+	operationManagerConfig, err := service.NewOperationManagerConfig(c)
+	if err != nil {
+		return nil, err
+	}
+	operationManager := operation_manager.New(operationFlow, operationStorage, v, operationLeaseStorage, operationManagerConfig)
 	runtime, err := service.NewRuntimeKubernetes(c)
 	if err != nil {
 		return nil, err

@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/config"
+	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 )
 
@@ -41,4 +42,14 @@ func NewRoomManagerConfig(c config.Config) (room_manager.RoomManagerConfig, erro
 	}
 
 	return roomManagerConfig, nil
+}
+
+func NewOperationManagerConfig(c config.Config) (operation_manager.OperationManagerConfig, error) {
+	operationLeaseTtl := time.Duration(c.GetInt("services.operationManager.operationLeaseTtlMillis")) * time.Millisecond
+
+	operationManagerConfig := operation_manager.OperationManagerConfig{
+		OperationLeaseTtl: operationLeaseTtl,
+	}
+
+	return operationManagerConfig, nil
 }
