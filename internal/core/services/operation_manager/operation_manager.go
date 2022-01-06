@@ -26,7 +26,6 @@ import (
 	"context"
 	goerrors "errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,57 +35,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
 )
-
-type OperationCancelFunctions struct {
-	mutex     sync.RWMutex
-	functions map[string]map[string]context.CancelFunc
-}
-
-func NewOperationCancelFunctions() *OperationCancelFunctions {
-	return &OperationCancelFunctions{
-		functions: map[string]map[string]context.CancelFunc{},
-	}
-}
-
-func (of *OperationCancelFunctions) putFunction(schedulerName, operationID string, cancelFunc context.CancelFunc) {
-	of.mutex.Lock()
-	schedulerCancelFunctions := of.functions[schedulerName]
-	if schedulerCancelFunctions == nil {
-		of.functions[schedulerName] = map[string]context.CancelFunc{}
-	}
-	of.functions[schedulerName][operationID] = cancelFunc
-	of.mutex.Unlock()
-}
-
-func (of *OperationCancelFunctions) removeFunction(schedulerName, operationID string) {
-	of.mutex.Lock()
-
-	schedulerOperationCancellationFunctions := of.functions[schedulerName]
-	if schedulerOperationCancellationFunctions == nil {
-		return
-	}
-
-	delete(schedulerOperationCancellationFunctions, operationID)
-
-	of.mutex.Unlock()
-}
-
-func (of *OperationCancelFunctions) getFunction(schedulerName, operationID string) (context.CancelFunc, error) {
-	of.mutex.RLock()
-	schedulerOperationCancellationFunctions := of.functions[schedulerName]
-	if schedulerOperationCancellationFunctions == nil {
-		return nil, errors.NewErrNotFound("no cancel scheduler found for scheduler name: %s", schedulerName)
-	}
-
-	if schedulerOperationCancellationFunctions[operationID] == nil {
-		return nil, errors.NewErrNotFound("no cancel function found for scheduler name: %s and operation id: %s", schedulerName, operationID)
-	}
-
-	function := schedulerOperationCancellationFunctions[operationID]
-	of.mutex.RUnlock()
-
-	return function, nil
-}
 
 type OperationManager struct {
 	operationCancelFunctions        *OperationCancelFunctions
@@ -192,8 +140,15 @@ func (om *OperationManager) ListSchedulerPendingOperations(ctx context.Context, 
 }
 
 func (om *OperationManager) ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
-
-	return om.storage.ListSchedulerActiveOperations(ctx, schedulerName)
+	ops, err := om.storage.ListSchedulerActiveOperations(ctx, schedulerName)
+	if err != nil {
+		return nil, fmt.Errorf("failed get active operations list fort scheduler %s : %w", schedulerName, err)
+	}
+	err = om.addOperationsLeaseData(ctx, schedulerName, ops)
+	if err != nil {
+		return nil, err
+	}
+	return ops, nil
 }
 
 func (om *OperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
@@ -253,29 +208,6 @@ func (om *OperationManager) WatchOperationCancellationRequests(ctx context.Conte
 	}
 }
 
-func (om *OperationManager) cancelOperation(ctx context.Context, schedulerName, operationID string) error {
-
-	op, _, err := om.storage.GetOperation(ctx, schedulerName, operationID)
-	if err != nil {
-		return fmt.Errorf("failed to fetch operation from storage: %w", err)
-	}
-
-	if op.Status == operation.StatusPending {
-		err = om.storage.UpdateOperationStatus(ctx, schedulerName, operationID, operation.StatusCanceled)
-		if err != nil {
-			return fmt.Errorf("failed update operation as canceled: %w", err)
-		}
-	} else {
-		cancelFn, err := om.operationCancelFunctions.getFunction(schedulerName, operationID)
-		if err != nil {
-			return fmt.Errorf("failed to fetch cancel function from operation: %w", err)
-		}
-		cancelFn()
-	}
-
-	return nil
-}
-
 func (om *OperationManager) GrantLease(ctx context.Context, operation *operation.Operation) error {
 	err := om.leaseStorage.GrantLease(ctx, operation.SchedulerName, operation.ID, om.config.OperationLeaseTtl)
 	if err != nil {
@@ -332,4 +264,38 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 			}
 		}
 	}()
+}
+
+func (om *OperationManager) addOperationsLeaseData(ctx context.Context, schedulerName string, ops []*operation.Operation) error {
+	for _, op := range ops {
+		ttl, err := om.leaseStorage.FetchLeaseTTL(ctx, schedulerName, op.ID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch lease data for scheduler %s operation %s: %w", op.ID, schedulerName, err)
+		}
+		op.Lease = operation.OperationLease{OperationID: op.ID, Ttl: ttl}
+	}
+	return nil
+}
+
+func (om OperationManager) cancelOperation(ctx context.Context, schedulerName, operationID string) error {
+
+	op, _, err := om.storage.GetOperation(ctx, schedulerName, operationID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch operation from storage: %w", err)
+	}
+
+	if op.Status == operation.StatusPending {
+		err = om.storage.UpdateOperationStatus(ctx, schedulerName, operationID, operation.StatusCanceled)
+		if err != nil {
+			return fmt.Errorf("failed update operation as canceled: %w", err)
+		}
+	} else {
+		cancelFn, err := om.operationCancelFunctions.getFunction(schedulerName, operationID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch cancel function from operation: %w", err)
+		}
+		cancelFn()
+	}
+
+	return nil
 }

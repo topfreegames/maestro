@@ -143,6 +143,9 @@ func TestListOperations(t *testing.T) {
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "3").Return(pendingOperations[2], []byte{}, nil)
 		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
 		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), schedulerName, activeOperations[0].ID).Return(time.Unix(1641306511, 0), nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), schedulerName, activeOperations[1].ID).Return(time.Unix(1641306522, 0), nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), schedulerName, activeOperations[2].ID).Return(time.Unix(1641306533, 0), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -258,6 +261,9 @@ func TestListOperations(t *testing.T) {
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "3").Return(pendingOperations[2], []byte{}, nil)
 		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
 		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), schedulerName, activeOperations[0].ID).Return(time.Unix(1641306511, 0), nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), schedulerName, activeOperations[1].ID).Return(time.Unix(1641306522, 0), nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), schedulerName, activeOperations[2].ID).Return(time.Unix(1641306533, 0), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -373,6 +379,9 @@ func TestListOperations(t *testing.T) {
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "3").Return(pendingOperations[2], []byte{}, nil)
 		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
 		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), schedulerName, activeOperations[0].ID).Return(time.Unix(1641306511, 0), nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), schedulerName, activeOperations[1].ID).Return(time.Unix(1641306522, 0), nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), schedulerName, activeOperations[2].ID).Return(time.Unix(1641306533, 0), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
