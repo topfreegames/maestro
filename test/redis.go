@@ -49,6 +49,9 @@ func WithRedisContainer(exec func(redisAddress string)) {
 }
 
 func GetRedisConnection(t *testing.T, redisAddress string) *redis.Client {
+	if atomic.LoadInt32(&dbNumber) >= 15 {
+		atomic.StoreInt32(&dbNumber, -1)
+	}
 	db := atomic.AddInt32(&dbNumber, 1)
 	client := redis.NewClient(&redis.Options{
 		Addr: redisAddress,
