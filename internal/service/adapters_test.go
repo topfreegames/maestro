@@ -39,7 +39,7 @@ import (
 )
 
 func getRedisUrl(t *testing.T) string {
-	redisContainer, err := gnomock.Start(predis.Preset())
+	redisContainer, err := gnomock.Start(predis.Preset(predis.WithVersion("6.2.0")))
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

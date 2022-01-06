@@ -122,7 +122,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:5.0.10-alpine
+    image: redis:6.2.0-alpine
     ports:
     - "6379:6379"
     healthcheck:

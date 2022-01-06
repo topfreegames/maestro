@@ -32,6 +32,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
@@ -178,6 +180,65 @@ func TestRenewLease(t *testing.T) {
 
 		err := storage.RenewLease(context.Background(), schedulerName, operationId, time.Minute)
 		require.Error(t, err)
+	})
+}
+
+func TestFetchLeaseOperationLeases(t *testing.T) {
+	t.Run("when all the operations lease exists it returns its ttls", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+		expectedOperationLeases := []operation.OperationLease{
+			{
+				OperationID: "operationID1",
+				Ttl:         time.Unix(clock.Now().Add(time.Minute).Unix(), 0),
+			},
+			{
+				OperationID: "operationID2",
+				Ttl:         time.Unix(clock.Now().Add(2*time.Minute).Unix(), 0),
+			},
+			{
+				OperationID: "operationID3",
+				Ttl:         time.Unix(clock.Now().Add(3*time.Minute).Unix(), 0),
+			},
+		}
+
+		err := storage.GrantLease(context.Background(), "schedulerName", "operationID1", time.Minute)
+		require.NoError(t, err)
+		err = storage.GrantLease(context.Background(), "schedulerName", "operationID2", 2*time.Minute)
+		require.NoError(t, err)
+		err = storage.GrantLease(context.Background(), "schedulerName", "operationID3", 3*time.Minute)
+		require.NoError(t, err)
+
+		leases, err := storage.FetchLeaseOperationsLease(context.Background(), "schedulerName", "operationID1", "operationID2", "operationID3")
+
+		require.NoError(t, err)
+		require.Equal(t, expectedOperationLeases, leases)
+	})
+
+	t.Run("when not all the operations lease exists it returns error", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		err := storage.GrantLease(context.Background(), "schedulerName", "operationID1", time.Minute)
+		require.NoError(t, err)
+		err = storage.GrantLease(context.Background(), "schedulerName", "operationID3", 3*time.Minute)
+		require.NoError(t, err)
+
+		_, err = storage.FetchLeaseOperationsLease(context.Background(), "schedulerName", "operationID1", "operationID2", "operationID3")
+
+		require.Error(t, err, "failed on fetching ttl for operation schedulerName in scheduler operationID2")
+	})
+
+	t.Run("when no operation lease exists it returns an error", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		_, err := storage.FetchLeaseOperationsLease(context.Background(), "schedulerName", "operationID1", "operationID2", "operationID3")
+
+		require.Error(t, err, "failed on fetching ttl for operation schedulerName in scheduler operationID1")
 	})
 }
 
