@@ -210,7 +210,7 @@ func TestFetchLeaseOperationLeases(t *testing.T) {
 		err = storage.GrantLease(context.Background(), "schedulerName", "operationID3", 3*time.Minute)
 		require.NoError(t, err)
 
-		leases, err := storage.FetchLeaseOperationsLease(context.Background(), "schedulerName", "operationID1", "operationID2", "operationID3")
+		leases, err := storage.FetchOperationsLease(context.Background(), "schedulerName", "operationID1", "operationID2", "operationID3")
 
 		require.NoError(t, err)
 		require.Equal(t, expectedOperationLeases, leases)
@@ -226,7 +226,7 @@ func TestFetchLeaseOperationLeases(t *testing.T) {
 		err = storage.GrantLease(context.Background(), "schedulerName", "operationID3", 3*time.Minute)
 		require.NoError(t, err)
 
-		_, err = storage.FetchLeaseOperationsLease(context.Background(), "schedulerName", "operationID1", "operationID2", "operationID3")
+		_, err = storage.FetchOperationsLease(context.Background(), "schedulerName", "operationID1", "operationID2", "operationID3")
 
 		require.Error(t, err, "failed on fetching ttl for operation schedulerName in scheduler operationID2")
 	})
@@ -236,7 +236,7 @@ func TestFetchLeaseOperationLeases(t *testing.T) {
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationLeaseStorage(client, clock)
 
-		_, err := storage.FetchLeaseOperationsLease(context.Background(), "schedulerName", "operationID1", "operationID2", "operationID3")
+		_, err := storage.FetchOperationsLease(context.Background(), "schedulerName", "operationID1", "operationID2", "operationID3")
 
 		require.Error(t, err, "failed on fetching ttl for operation schedulerName in scheduler operationID1")
 	})

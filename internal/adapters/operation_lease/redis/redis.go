@@ -117,7 +117,7 @@ func (r *redisOperationLeaseStorage) FetchLeaseTTL(ctx context.Context, schedule
 	return time.Unix(int64(ttl), 0), err
 }
 
-func (r *redisOperationLeaseStorage) FetchLeaseOperationsLease(ctx context.Context, schedulerName string, operationIDs ...string) ([]operation.OperationLease, error) {
+func (r *redisOperationLeaseStorage) FetchOperationsLease(ctx context.Context, schedulerName string, operationIDs ...string) ([]operation.OperationLease, error) {
 	leases := make([]operation.OperationLease, 0, len(operationIDs))
 
 	ttls, err := r.client.ZMScore(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), operationIDs...).Result()
