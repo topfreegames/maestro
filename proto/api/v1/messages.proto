@@ -143,10 +143,18 @@ message Operation {
   string status = 2;
   // Name of the operation being executed.
   string definition_name = 3;
+  // Operation lease.
+  Lease lease = 4;
   // Scheduler identifier that the operation is from.
-  string scheduler_name = 4;
+  string scheduler_name = 5;
   // Time the operation was created.
-  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// The operation lease object representation
+message Lease {
+  // Lease time to live, if the current time is greater than this value, the lease is probably expired.
+  string ttl = 1;
 }
 
 // Represents the version of a Scheduler
