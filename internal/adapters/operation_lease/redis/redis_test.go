@@ -188,7 +188,7 @@ func TestFetchLeaseOperationLeases(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationLeaseStorage(client, clock)
-		expectedOperationLeases := []operation.OperationLease{
+		expectedOperationLeases := []*operation.OperationLease{
 			{
 				OperationID: "operationID1",
 				Ttl:         time.Unix(clock.Now().Add(time.Minute).Unix(), 0),

@@ -398,7 +398,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 			{ID: uuid.NewString()},
 			{ID: uuid.NewString()},
 		}
-		operationsLease := []operation.OperationLease{
+		operationsLease := []*operation.OperationLease{
 			{OperationID: operationsResult[0].ID, Ttl: time.Unix(1641306511, 0)},
 			{OperationID: operationsResult[1].ID, Ttl: time.Unix(1641306522, 0)},
 			{OperationID: operationsResult[2].ID, Ttl: time.Unix(1641306533, 0)},
@@ -473,7 +473,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		}
 		schedulerName := "test-scheduler"
 		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
-		operationLeaseStorage.EXPECT().FetchOperationsLease(ctx, schedulerName, operationsResult[0].ID, operationsResult[1].ID, operationsResult[2].ID).Return([]operation.OperationLease{}, errors.New("some error"))
+		operationLeaseStorage.EXPECT().FetchOperationsLease(ctx, schedulerName, operationsResult[0].ID, operationsResult[1].ID, operationsResult[2].ID).Return([]*operation.OperationLease{}, errors.New("some error"))
 		_, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
 		require.Error(t, err, fmt.Errorf("failed to fetch operations lease for scheduler %s: %w", schedulerName, errors.New("some error")))
 	})

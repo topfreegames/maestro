@@ -52,14 +52,14 @@ func (mr *MockOperationLeaseStorageMockRecorder) FetchLeaseTTL(ctx, schedulerNam
 }
 
 // FetchOperationsLease mocks base method.
-func (m *MockOperationLeaseStorage) FetchOperationsLease(ctx context.Context, schedulerName string, operationIDs ...string) ([]operation.OperationLease, error) {
+func (m *MockOperationLeaseStorage) FetchOperationsLease(ctx context.Context, schedulerName string, operationIDs ...string) ([]*operation.OperationLease, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, schedulerName}
 	for _, a := range operationIDs {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "FetchOperationsLease", varargs...)
-	ret0, _ := ret[0].([]operation.OperationLease)
+	ret0, _ := ret[0].([]*operation.OperationLease)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
