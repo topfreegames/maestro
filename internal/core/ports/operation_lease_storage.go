@@ -36,8 +36,10 @@ type OperationLeaseStorage interface {
 	RevokeLease(ctx context.Context, schedulerName, operationID string) error
 	// RenewLease renews an active lease adding the specified TTL to it. NOTE: The lease must exist (by calling GrantLease) before renewing it.
 	RenewLease(ctx context.Context, schedulerName, operationID string, ttl time.Duration) error
-	// FetchLeaseTTL fetches the time the lease will expire given the operation.
+	// FetchLeaseTTL fetches the time the lease will expire given the operation. Return error if the lease does not exist.
 	FetchLeaseTTL(ctx context.Context, schedulerName, operationID string) (time.Time, error)
+	// FetchOperationsLease fetches operation lease for each operationId in the function argument. Return error if some lease does not exist.
+	FetchOperationsLease(ctx context.Context, schedulerName string, operationIDs ...string) ([]operation.OperationLease, error)
 	// ListExpiredLeases returns a list of leases that are expired based on the maxLease, which defines the max time for a lease to be considered expired.
 	ListExpiredLeases(ctx context.Context, schedulerName string, maxLease time.Time) ([]operation.OperationLease, error)
 }

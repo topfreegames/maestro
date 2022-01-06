@@ -267,13 +267,22 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 }
 
 func (om *OperationManager) addOperationsLeaseData(ctx context.Context, schedulerName string, ops []*operation.Operation) error {
+	opMap := make(map[string]*operation.Operation)
+	opIds := make([]string, 0, len(ops))
 	for _, op := range ops {
-		ttl, err := om.leaseStorage.FetchLeaseTTL(ctx, schedulerName, op.ID)
-		if err != nil {
-			return fmt.Errorf("failed to fetch lease data for scheduler %s operation %s: %w", op.ID, schedulerName, err)
-		}
-		op.Lease = operation.OperationLease{OperationID: op.ID, Ttl: ttl}
+		opMap[op.ID] = op
+		opIds = append(opIds, op.ID)
 	}
+
+	leases, err := om.leaseStorage.FetchOperationsLease(ctx, schedulerName, opIds...)
+	if err != nil {
+		return fmt.Errorf("failed to fetch operations lease for scheduler %s: %w", schedulerName, err)
+	}
+
+	for _, lease := range leases {
+		opMap[lease.OperationID].Lease = lease
+	}
+
 	return nil
 }
 
