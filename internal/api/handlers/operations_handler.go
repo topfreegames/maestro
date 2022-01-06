@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -120,12 +121,17 @@ func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert operation entity to response: %w", err)
 	}
+	var leaseTtl string
+	if entity.Lease != nil {
+		leaseTtl = entity.Lease.Ttl.Format(time.RFC3339)
+	}
 
 	return &api.Operation{
 		Id:             entity.ID,
 		Status:         status,
 		DefinitionName: entity.DefinitionName,
 		SchedulerName:  entity.SchedulerName,
+		Lease:          &api.Lease{Ttl: leaseTtl},
 		CreatedAt:      timestamppb.New(entity.CreatedAt),
 	}, nil
 }
