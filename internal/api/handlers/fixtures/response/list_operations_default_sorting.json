@@ -4,9 +4,6 @@
       "id": "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
       "status": "pending",
       "definitionName": "create_scheduler",
-      "lease": {
-        "ttl": ""
-      },
       "schedulerName": "zooba",
       "createdAt": "2021-01-01T00:00:00Z"
     },
@@ -14,9 +11,6 @@
       "id": "7af3250c-af5b-428a-955f-a8fa22fb7cf7",
       "status": "pending",
       "definitionName": "create_scheduler",
-      "lease": {
-        "ttl": ""
-      },
       "schedulerName": "zooba",
       "createdAt": "2021-02-01T00:00:00Z"
     },
@@ -24,9 +18,6 @@
       "id": "83cc7850-9c90-4033-948f-368eea4b976e",
       "status": "pending",
       "definitionName": "create_scheduler",
-      "lease": {
-        "ttl": ""
-      },
       "schedulerName": "zooba",
       "createdAt": "2021-03-01T00:00:00Z"
     }
@@ -68,9 +59,6 @@
       "id": "c241b467-db15-42ba-b2a8-017c37234237",
       "status": "finished",
       "definitionName": "create_scheduler",
-      "lease": {
-        "ttl": ""
-      },
       "schedulerName": "zooba",
       "createdAt": "2021-01-01T00:00:00Z"
     },
@@ -78,9 +66,6 @@
       "id": "f1fce7b2-3374-464e-9eb4-08b25fa0da54",
       "status": "finished",
       "definitionName": "create_scheduler",
-      "lease": {
-        "ttl": ""
-      },
       "schedulerName": "zooba",
       "createdAt": "2021-02-01T00:00:00Z"
     },
@@ -88,9 +73,6 @@
       "id": "ae218cc1-2dd8-448b-a78f-0cc979f89f37",
       "status": "finished",
       "definitionName": "create_scheduler",
-      "lease": {
-        "ttl": ""
-      },
       "schedulerName": "zooba",
       "createdAt": "2021-03-01T00:00:00Z"
     }

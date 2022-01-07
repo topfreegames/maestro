@@ -697,7 +697,7 @@
         },
         "lease": {
           "$ref": "#/definitions/v1Lease",
-          "description": "Operation lease."
+          "description": "Operation lease. This is an optional field since not all operations have a lease."
         },
         "schedulerName": {
           "type": "string",

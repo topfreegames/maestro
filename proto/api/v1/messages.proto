@@ -143,8 +143,8 @@ message Operation {
   string status = 2;
   // Name of the operation being executed.
   string definition_name = 3;
-  // Operation lease.
-  Lease lease = 4;
+  // Operation lease. This is an optional field since not all operations have a lease.
+  optional Lease lease = 4;
   // Scheduler identifier that the operation is from.
   string scheduler_name = 5;
   // Time the operation was created.
