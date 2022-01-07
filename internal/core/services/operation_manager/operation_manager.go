@@ -144,6 +144,9 @@ func (om *OperationManager) ListSchedulerActiveOperations(ctx context.Context, s
 	if err != nil {
 		return nil, fmt.Errorf("failed get active operations list fort scheduler %s : %w", schedulerName, err)
 	}
+	if len(ops) == 0 {
+		return []*operation.Operation{}, err
+	}
 	err = om.addOperationsLeaseData(ctx, schedulerName, ops)
 	if err != nil {
 		return nil, err

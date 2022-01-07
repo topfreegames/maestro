@@ -426,11 +426,10 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config)
 
 		ctx := context.Background()
-		operationsResult := []*operation.Operation{}
+		var operationsResult []*operation.Operation
 
 		schedulerName := "test-scheduler"
 		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
-		operationLeaseStorage.EXPECT().FetchOperationsLease(ctx, schedulerName, []string{}).Return([]operation.OperationLease{}, nil)
 		operations, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
 		require.NoError(t, err)
 		require.Empty(t, operations)
