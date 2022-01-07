@@ -53,7 +53,7 @@ type Operation struct {
 	CreatedAt      time.Time
 }
 
-func (o *Operation) SetLease(lease OperationLease) {
+func (o *Operation) SetLease(lease *OperationLease) {
 	o.Lease = lease
 }
 
