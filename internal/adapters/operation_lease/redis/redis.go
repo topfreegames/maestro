@@ -117,6 +117,30 @@ func (r *redisOperationLeaseStorage) FetchLeaseTTL(ctx context.Context, schedule
 	return time.Unix(int64(ttl), 0), err
 }
 
+func (r *redisOperationLeaseStorage) FetchOperationsLease(ctx context.Context, schedulerName string, operationIDs ...string) ([]operation.OperationLease, error) {
+	leases := make([]operation.OperationLease, 0, len(operationIDs))
+
+	if len(operationIDs) == 0 {
+		return leases, nil
+	}
+
+	ttls, err := r.client.ZMScore(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), operationIDs...).Result()
+	if err != nil {
+		return []operation.OperationLease{}, errors.NewErrUnexpected("failed on fetching ttl for \"%s\"", schedulerName).WithError(err)
+	}
+
+	for i, opID := range operationIDs {
+		if ttls[i] == 0 {
+			return []operation.OperationLease{}, errors.NewErrUnexpected("lease for operation \"%s\" in scheduler \"%s\" does not exist", opID, schedulerName).WithError(err)
+		}
+		leases = append(leases, operation.OperationLease{
+			OperationID: opID,
+			Ttl:         time.Unix(int64(ttls[i]), 0),
+		})
+	}
+	return leases, nil
+}
+
 func (r *redisOperationLeaseStorage) ListExpiredLeases(ctx context.Context, schedulerName string, maxLease time.Time) ([]operation.OperationLease, error) {
 	ops, err := r.client.ZRangeByScoreWithScores(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), &redis.ZRangeBy{
 		Min: "-inf",
