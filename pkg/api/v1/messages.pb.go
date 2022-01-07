@@ -790,7 +790,8 @@ type Lease struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Lease time to live, if the current time is greater than this value, the lease is probably expired.
+	// Lease time to live in RFC3999 format UTC. if the current time is greater than this value,
+	// the lease is probably expired.
 	Ttl string `protobuf:"bytes,1,opt,name=ttl,proto3" json:"ttl,omitempty"`
 }
 

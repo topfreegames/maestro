@@ -153,7 +153,8 @@ message Operation {
 
 // The operation lease object representation
 message Lease {
-  // Lease time to live, if the current time is greater than this value, the lease is probably expired.
+  // Lease time to live in RFC3999 format UTC. if the current time is greater than this value,
+  // the lease is probably expired.
   string ttl = 1;
 }
 

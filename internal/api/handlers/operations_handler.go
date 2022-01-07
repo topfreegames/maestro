@@ -123,7 +123,7 @@ func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation)
 	}
 	var leaseTtl string
 	if entity.Lease != nil {
-		leaseTtl = entity.Lease.Ttl.Format(time.RFC3339)
+		leaseTtl = entity.Lease.Ttl.UTC().Format(time.RFC3339)
 	}
 
 	return &api.Operation{

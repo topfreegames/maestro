@@ -184,7 +184,7 @@ func TestListOperations(t *testing.T) {
 						"id":             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
 						"schedulerName":  schedulerName,
 						"lease": map[string]interface{}{
-							"ttl": "2022-01-04T11:28:51-03:00",
+							"ttl": "2022-01-04T14:28:51Z",
 						},
 						"status": "in_progress",
 					},
@@ -194,7 +194,7 @@ func TestListOperations(t *testing.T) {
 						"id":             "59e58c61-1758-4f02-b6ea-a87a64172902",
 						"schedulerName":  schedulerName,
 						"lease": map[string]interface{}{
-							"ttl": "2022-01-04T11:28:41-03:00",
+							"ttl": "2022-01-04T14:28:41Z",
 						},
 						"status": "in_progress",
 					},
@@ -204,7 +204,7 @@ func TestListOperations(t *testing.T) {
 						"id":             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
 						"schedulerName":  schedulerName,
 						"lease": map[string]interface{}{
-							"ttl": "2022-01-04T11:28:31-03:00",
+							"ttl": "2022-01-04T14:28:31Z",
 						},
 						"status": "in_progress",
 					},
@@ -339,7 +339,7 @@ func TestListOperations(t *testing.T) {
 						"id":             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
 						"schedulerName":  schedulerName,
 						"lease": map[string]interface{}{
-							"ttl": "2022-01-04T11:28:31-03:00",
+							"ttl": "2022-01-04T14:28:31Z",
 						},
 						"status": "in_progress",
 					},
@@ -349,7 +349,7 @@ func TestListOperations(t *testing.T) {
 						"id":             "59e58c61-1758-4f02-b6ea-a87a64172902",
 						"schedulerName":  schedulerName,
 						"lease": map[string]interface{}{
-							"ttl": "2022-01-04T11:28:41-03:00",
+							"ttl": "2022-01-04T14:28:41Z",
 						},
 						"status": "in_progress",
 					},
@@ -359,7 +359,7 @@ func TestListOperations(t *testing.T) {
 						"id":             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
 						"schedulerName":  schedulerName,
 						"lease": map[string]interface{}{
-							"ttl": "2022-01-04T11:28:51-03:00",
+							"ttl": "2022-01-04T14:28:51Z",
 						},
 						"status": "in_progress",
 					},
@@ -494,7 +494,7 @@ func TestListOperations(t *testing.T) {
 						"id":             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
 						"schedulerName":  schedulerName,
 						"lease": map[string]interface{}{
-							"ttl": "2022-01-04T11:28:51-03:00",
+							"ttl": "2022-01-04T14:28:51Z",
 						},
 						"status": "in_progress",
 					},
@@ -504,7 +504,7 @@ func TestListOperations(t *testing.T) {
 						"id":             "59e58c61-1758-4f02-b6ea-a87a64172902",
 						"schedulerName":  schedulerName,
 						"lease": map[string]interface{}{
-							"ttl": "2022-01-04T11:28:41-03:00",
+							"ttl": "2022-01-04T14:28:41Z",
 						},
 						"status": "in_progress",
 					},
@@ -514,7 +514,7 @@ func TestListOperations(t *testing.T) {
 						"id":             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
 						"schedulerName":  schedulerName,
 						"lease": map[string]interface{}{
-							"ttl": "2022-01-04T11:28:31-03:00",
+							"ttl": "2022-01-04T14:28:31Z",
 						},
 						"status": "in_progress",
 					},

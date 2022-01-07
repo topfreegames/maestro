@@ -984,7 +984,7 @@
       "properties": {
         "ttl": {
           "type": "string",
-          "description": "Lease time to live, if the current time is greater than this value, the lease is probably expired."
+          "description": "Lease time to live in RFC3999 format UTC. if the current time is greater than this value,\nthe lease is probably expired."
         }
       },
       "title": "The operation lease object representation"
