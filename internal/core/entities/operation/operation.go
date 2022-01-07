@@ -53,6 +53,10 @@ type Operation struct {
 	CreatedAt      time.Time
 }
 
+func (o *Operation) SetLease(lease OperationLease) {
+	o.Lease = lease
+}
+
 func (s Status) String() (string, error) {
 	switch s {
 	case StatusPending:

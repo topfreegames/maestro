@@ -280,7 +280,7 @@ func (om *OperationManager) addOperationsLeaseData(ctx context.Context, schedule
 	}
 
 	for _, lease := range leases {
-		opMap[lease.OperationID].Lease = lease
+		opMap[lease.OperationID].SetLease(lease)
 	}
 
 	return nil
