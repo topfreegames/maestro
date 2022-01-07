@@ -120,6 +120,10 @@ func (r *redisOperationLeaseStorage) FetchLeaseTTL(ctx context.Context, schedule
 func (r *redisOperationLeaseStorage) FetchOperationsLease(ctx context.Context, schedulerName string, operationIDs ...string) ([]operation.OperationLease, error) {
 	leases := make([]operation.OperationLease, 0, len(operationIDs))
 
+	if len(operationIDs) == 0 {
+		return leases, nil
+	}
+
 	ttls, err := r.client.ZMScore(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), operationIDs...).Result()
 	if err != nil {
 		return []operation.OperationLease{}, errors.NewErrUnexpected("failed on fetching ttl for \"%s\"", schedulerName).WithError(err)

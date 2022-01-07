@@ -231,6 +231,22 @@ func TestFetchLeaseOperationLeases(t *testing.T) {
 		require.Error(t, err, "failed on fetching ttl for operation schedulerName in scheduler operationID2")
 	})
 
+	t.Run("when the provided operation ids args are empty then it returns an empty list", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		storage := NewRedisOperationLeaseStorage(client, clock)
+
+		err := storage.GrantLease(context.Background(), "schedulerName", "operationID1", time.Minute)
+		require.NoError(t, err)
+		err = storage.GrantLease(context.Background(), "schedulerName", "operationID3", 3*time.Minute)
+		require.NoError(t, err)
+
+		leases, err := storage.FetchOperationsLease(context.Background(), "schedulerName", []string{}...)
+
+		require.NoError(t, err)
+		require.Empty(t, leases)
+	})
+
 	t.Run("when no operation lease exists it returns an error", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())

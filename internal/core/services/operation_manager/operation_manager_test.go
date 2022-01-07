@@ -414,6 +414,27 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		require.NoError(t, err)
 		require.ElementsMatch(t, operationsResult, operations)
 	})
+	t.Run("it returns an empty list when there is no operation", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config)
+
+		ctx := context.Background()
+		operationsResult := []*operation.Operation{}
+
+		schedulerName := "test-scheduler"
+		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
+		operationLeaseStorage.EXPECT().FetchOperationsLease(ctx, schedulerName, []string{}).Return([]operation.OperationLease{}, nil)
+		operations, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
+		require.NoError(t, err)
+		require.Empty(t, operations)
+	})
 
 	t.Run("it returns error when some error occurs in operation storage", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
