@@ -695,6 +695,10 @@
           "type": "string",
           "description": "Name of the operation being executed."
         },
+        "lease": {
+          "$ref": "#/definitions/v1Lease",
+          "description": "Operation lease. This is an optional field since not all operations have a lease."
+        },
         "schedulerName": {
           "type": "string",
           "description": "Scheduler identifier that the operation is from."
@@ -974,6 +978,16 @@
         }
       },
       "title": "Get Scheduler Versions payload"
+    },
+    "v1Lease": {
+      "type": "object",
+      "properties": {
+        "ttl": {
+          "type": "string",
+          "description": "Lease time to live in RFC3999 format UTC. if the current time is greater than this value,\nthe lease is probably expired."
+        }
+      },
+      "title": "The operation lease object representation"
     },
     "v1ListOperationsResponse": {
       "type": "object",

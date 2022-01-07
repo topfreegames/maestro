@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -120,22 +121,32 @@ func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert operation entity to response: %w", err)
 	}
-
-	return &api.Operation{
-		Id:             entity.ID,
-		Status:         status,
-		DefinitionName: entity.DefinitionName,
-		SchedulerName:  entity.SchedulerName,
-		CreatedAt:      timestamppb.New(entity.CreatedAt),
-	}, nil
+	if entity.Lease != nil {
+		return &api.Operation{
+			Id:             entity.ID,
+			Status:         status,
+			DefinitionName: entity.DefinitionName,
+			SchedulerName:  entity.SchedulerName,
+			Lease:          &api.Lease{Ttl: entity.Lease.Ttl.UTC().Format(time.RFC3339)},
+			CreatedAt:      timestamppb.New(entity.CreatedAt),
+		}, nil
+	} else {
+		return &api.Operation{
+			Id:             entity.ID,
+			Status:         status,
+			DefinitionName: entity.DefinitionName,
+			SchedulerName:  entity.SchedulerName,
+			CreatedAt:      timestamppb.New(entity.CreatedAt),
+		}, nil
+	}
 }
 
 func sortOperationsByCreatedAt(operations []*operation.Operation, order string) {
 	sort.Slice(operations, func(i, j int) bool {
 		if order == "asc" {
-			return operations[i].CreatedAt.After(operations[j].CreatedAt)
-		} else {
 			return operations[i].CreatedAt.Before(operations[j].CreatedAt)
+		} else {
+			return operations[i].CreatedAt.After(operations[j].CreatedAt)
 		}
 	})
 }

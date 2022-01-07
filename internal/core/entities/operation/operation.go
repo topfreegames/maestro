@@ -49,11 +49,11 @@ type Operation struct {
 	Status         Status
 	DefinitionName string
 	SchedulerName  string
-	Lease          OperationLease
+	Lease          *OperationLease
 	CreatedAt      time.Time
 }
 
-func (o *Operation) SetLease(lease OperationLease) {
+func (o *Operation) SetLease(lease *OperationLease) {
 	o.Lease = lease
 }
 
