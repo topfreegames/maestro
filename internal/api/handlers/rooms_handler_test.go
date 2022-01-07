@@ -57,12 +57,12 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 
 	instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
 
-	validRequests, _ := ioutil.ReadFile(dirPath + "/fixtures/valid-ping-data-list.json")
+	validRequests, _ := ioutil.ReadFile(dirPath + "/fixtures/request/valid-ping-data-list.json")
 	var validRawRequests []*json.RawMessage
 	err := json.Unmarshal(validRequests, &validRawRequests)
 	require.NoError(t, err)
 
-	invalidStateRequests, _ := ioutil.ReadFile(dirPath + "/fixtures/invalid-state-transition-ping-data.json")
+	invalidStateRequests, _ := ioutil.ReadFile(dirPath + "/fixtures/request/invalid-state-transition-ping-data.json")
 	var invalidStateRawRequests []*json.RawMessage
 	err = json.Unmarshal(invalidStateRequests, &invalidStateRawRequests)
 	require.NoError(t, err)
@@ -243,7 +243,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(dirPath + "/fixtures/bad-ping-data.json")
+		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/bad-ping-data.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/room-name-1/ping", bytes.NewReader(request))
@@ -259,7 +259,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 	dirPath, _ := os.Getwd()
 
-	requests, _ := ioutil.ReadFile(dirPath + "/fixtures/room-events.json")
+	requests, _ := ioutil.ReadFile(dirPath + "/fixtures/request/room-events.json")
 	var rawRequests []*json.RawMessage
 	err := json.Unmarshal(requests, &rawRequests)
 	require.NoError(t, err)
@@ -346,7 +346,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 	dirPath, _ := os.Getwd()
 
-	requests, _ := ioutil.ReadFile(dirPath + "/fixtures/player-events.json")
+	requests, _ := ioutil.ReadFile(dirPath + "/fixtures/request/player-events.json")
 	var rawRequests []*json.RawMessage
 	err := json.Unmarshal(requests, &rawRequests)
 	require.NoError(t, err)

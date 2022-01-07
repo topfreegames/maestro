@@ -139,9 +139,9 @@ func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation)
 func sortOperationsByCreatedAt(operations []*operation.Operation, order string) {
 	sort.Slice(operations, func(i, j int) bool {
 		if order == "asc" {
-			return operations[i].CreatedAt.After(operations[j].CreatedAt)
-		} else {
 			return operations[i].CreatedAt.Before(operations[j].CreatedAt)
+		} else {
+			return operations[i].CreatedAt.After(operations[j].CreatedAt)
 		}
 	})
 }
