@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
@@ -72,8 +74,10 @@ func (r *redisOperationLeaseStorage) GrantLease(ctx context.Context, schedulerNa
 }
 
 func (r *redisOperationLeaseStorage) RevokeLease(ctx context.Context, schedulerName, operationID string) error {
+	zap.L().Info("********* In RevokeLease *********")
 	existsLease, err := r.existsOperationLease(ctx, schedulerName, operationID)
 	if err != nil {
+		zap.L().Info("********* Lease dont exist error*********")
 		return err
 	}
 
@@ -175,8 +179,12 @@ func (r *redisOperationLeaseStorage) existsOperationLease(ctx context.Context, s
 	_, err := r.client.ZScore(ctx, r.buildSchedulerOperationLeaseKey(schedulerName), operationId).Result()
 	if err != nil {
 		if err == redis.Nil {
+			zap.L().Info("********* Redis nil error *********")
+
 			return false, nil
 		}
+		zap.L().Info(fmt.Sprintf("********* Redis error: %s *********", err))
+
 		return false, errors.NewErrUnexpected("failed on finding operationsLease for \"%s\" and operationID \"%s\"", schedulerName, operationId).WithError(err)
 	}
 	return true, nil

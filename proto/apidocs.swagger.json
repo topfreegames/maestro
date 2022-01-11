@@ -548,7 +548,7 @@
           },
           {
             "name": "orderBy",
-            "description": "Optional parameter for enabling operations sorting.\nGeneral `order_by` string syntax: \u003cfield\u003e (\u003casc|desc\u003e)\nNOTE: On http protocol, this operates as a query parameter.",
+            "description": "Optional parameter for enabling operations sorting.\nGeneral `order_by` string syntax: \u003cfield\u003e (\u003casc|desc\u003e)\nDefault value is `created_at desc`\nNOTE: On http protocol, this operates as a query parameter.",
             "in": "query",
             "required": false,
             "type": "string"

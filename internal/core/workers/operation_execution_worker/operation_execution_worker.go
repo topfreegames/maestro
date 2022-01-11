@@ -154,7 +154,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		if err != nil {
 			loopLogger.Error("failed to finish operation", zap.Error(err))
 		}
-		err = w.operationManager.RevokeLease(operationContext, op)
+		err = w.operationManager.RevokeLease(ctx, op)
 		if err != nil {
 			loopLogger.Error("failed to revoke operation lease", zap.Error(err))
 		}
