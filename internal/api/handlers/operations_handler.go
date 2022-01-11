@@ -152,7 +152,7 @@ func sortOperationsByCreatedAt(operations []*operation.Operation, order string) 
 }
 
 func extractSortingParameters(orderBy string) (string, error) {
-	sortingOrder := "asc"
+	sortingOrder := "desc"
 	sortingField := "createdAt"
 	sortingParameters := strings.Fields(orderBy)
 	parametersLen := len(sortingParameters)
