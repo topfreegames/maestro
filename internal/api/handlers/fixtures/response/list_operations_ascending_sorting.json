@@ -28,7 +28,7 @@
       "status": "in_progress",
       "definitionName": "create_scheduler",
       "lease": {
-        "ttl": "2022-01-04T14:28:31Z"
+        "ttl": "2022-01-04T14:28:51Z"
       },
       "schedulerName": "zooba",
       "createdAt": "2021-01-01T00:00:00Z"
@@ -48,7 +48,7 @@
       "status": "in_progress",
       "definitionName": "create_scheduler",
       "lease": {
-        "ttl": "2022-01-04T14:28:51Z"
+        "ttl": "2022-01-04T14:28:31Z"
       },
       "schedulerName": "zooba",
       "createdAt": "2021-03-01T00:00:00Z"
