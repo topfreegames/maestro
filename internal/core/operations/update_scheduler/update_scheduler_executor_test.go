@@ -28,10 +28,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/services/interfaces"
+	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	clock_mock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
-	events_forwarder_mock "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
 	instance_storage_mock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	port_allocator_mock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	room_storage_mock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
@@ -696,7 +698,7 @@ type mockRoomAndSchedulerManager struct {
 	roomStorage      *room_storage_mock.MockRoomStorage
 	instanceStorage  *instance_storage_mock.MockGameRoomInstanceStorage
 	runtime          *runtimemock.MockRuntime
-	eventsForwarder  *events_forwarder_mock.MockEventsForwarder
+	eventsService    interfaces.EventsService
 	schedulerStorage *schedulerstoragemock.MockSchedulerStorage
 }
 
@@ -706,11 +708,11 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 	roomStorage := room_storage_mock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	eventsForwarder := events_forwarder_mock.NewMockEventsForwarder(mockCtrl)
+	eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
 	schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
 
 	config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Second * 2}
-	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsForwarder, config)
+	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsForwarderService, config)
 	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
 	return &mockRoomAndSchedulerManager{
@@ -720,7 +722,7 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 		roomStorage,
 		instanceStorage,
 		runtime,
-		eventsForwarder,
+		eventsForwarderService,
 		schedulerStorage,
 	}
 }

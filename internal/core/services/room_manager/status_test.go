@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	eventsForwarder "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
+	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -100,7 +100,7 @@ func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
 		roomStorage,
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
-		eventsForwarder.NewMockEventsForwarder(mockCtrl),
+		mockeventsservice.NewMockEventsService(mockCtrl),
 		RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
 	)
 
@@ -143,7 +143,7 @@ func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 		roomStorage,
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
-		eventsForwarder.NewMockEventsForwarder(mockCtrl),
+		mockeventsservice.NewMockEventsService(mockCtrl),
 		RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
 	)
 
@@ -183,7 +183,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 			roomStorage,
 			instanceStorage,
 			runtimemock.NewMockRuntime(mockCtrl),
-			eventsForwarder.NewMockEventsForwarder(mockCtrl),
+			mockeventsservice.NewMockEventsService(mockCtrl),
 			RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
 		)
 
