@@ -20,31 +20,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package noop_forwarder
+package interfaces
 
 import (
 	"context"
 
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/events"
 )
 
-type noopForwarder struct{}
-
-func NewNoopForwarder() *noopForwarder {
-	return &noopForwarder{}
-}
-
-// ForwardRoomEvent forwards room events. It receives the game room, its instance, and additional attributes.
-func (*noopForwarder) ForwardRoomEvent(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
-	return nil
-}
-
-// ForwardPlayerEvent forwards a player events. It receives the game room and additional attributes.
-func (*noopForwarder) ForwardPlayerEvent(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
-	return nil
-}
-
-// Name returns the forwarder name. This name should be unique among other events forwarders.
-func (*noopForwarder) Name() string {
-	return "noop_forwarder"
+type EventsService interface {
+	// ProduceEvent forwards an events. Internally it resolves the scheduler to fetch the forwarders configuration and calls the proper events forwarders.
+	ProduceEvent(ctx context.Context, event *events.Event) error
 }

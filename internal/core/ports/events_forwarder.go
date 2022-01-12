@@ -29,6 +29,10 @@ import (
 )
 
 type EventsForwarder interface {
-	ForwardRoomEvent(room *game_room.GameRoom, ctx context.Context, status string, eventType string, metadata map[string]interface{}) (err error)
-	ForwardPlayerEvent(room *game_room.GameRoom, ctx context.Context, status string, metadata map[string]interface{}) (err error)
+	// ForwardRoomEvent forwards room events. It receives the game room, its instance, and additional attributes.
+	ForwardRoomEvent(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error
+	// ForwardPlayerEvent forwards a player events. It receives the game room and additional attributes.
+	ForwardPlayerEvent(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error
+	// Name returns the forwarder name. This name should be unique among other events forwarders.
+	Name() string
 }
