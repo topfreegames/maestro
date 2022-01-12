@@ -27,7 +27,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
+	"github.com/topfreegames/maestro/internal/core/services/interfaces"
+
+	"github.com/topfreegames/maestro/internal/core/entities/events"
 
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
@@ -41,15 +43,15 @@ import (
 )
 
 type RoomsHandler struct {
-	roomManager            *room_manager.RoomManager
-	eventsForwarderService *events_forwarder.EventsForwarderService
+	roomManager   *room_manager.RoomManager
+	eventsService interfaces.EventsService
 	api.UnimplementedRoomsServiceServer
 }
 
-func ProvideRoomsHandler(roomManager *room_manager.RoomManager, eventsForwarderService *events_forwarder.EventsForwarderService) *RoomsHandler {
+func ProvideRoomsHandler(roomManager *room_manager.RoomManager, eventsService interfaces.EventsService) *RoomsHandler {
 	return &RoomsHandler{
-		roomManager:            roomManager,
-		eventsForwarderService: eventsForwarderService,
+		roomManager:   roomManager,
+		eventsService: eventsService,
 	}
 }
 
@@ -64,7 +66,7 @@ func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.Forwar
 		}
 	}
 
-	err := h.eventsForwarderService.ForwardRoomEvent(ctx, room, "", "roomEvent")
+	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(room.SchedulerID, room.ID, map[string]interface{}{}))
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
@@ -74,7 +76,7 @@ func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.Forwar
 func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.ForwardPlayerEventRequest) (*api.ForwardPlayerEventResponse, error) {
 	room := &game_room.GameRoom{ID: message.RoomName, SchedulerID: message.SchedulerName, Metadata: message.Metadata.AsMap()}
 
-	err := h.eventsForwarderService.ForwardPlayerEvent(ctx, room, message.Event)
+	err := h.eventsService.ProduceEvent(ctx, events.NewPlayerEvent(room.SchedulerID, room.ID, map[string]interface{}{}))
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}

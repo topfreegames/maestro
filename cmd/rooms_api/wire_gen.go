@@ -41,13 +41,13 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 	if err != nil {
 		return nil, err
 	}
+	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 	roomManagerConfig, err := service.NewRoomManagerConfig(conf)
 	if err != nil {
 		return nil, err
 	}
-	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, portsRuntime, eventsForwarder, roomManagerConfig)
-	eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder)
-	roomsHandler := handlers.ProvideRoomsHandler(roomManager, eventsForwarderService)
+	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, portsRuntime, eventsService, roomManagerConfig)
+	roomsHandler := handlers.ProvideRoomsHandler(roomManager, eventsService)
 	serveMux := provideRoomsMux(ctx, roomsHandler)
 	return serveMux, nil
 }
