@@ -56,7 +56,7 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManag
 func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) (*entities.Scheduler, error) {
 	err := scheduler.Validate()
 	if err != nil {
-		return nil, fmt.Errorf("failed create schedule - invalid arguments: %w", err)
+		return nil, fmt.Errorf("failing in creating schedule: %w", err)
 	}
 
 	err = s.schedulerStorage.CreateScheduler(ctx, scheduler)
@@ -66,7 +66,7 @@ func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entit
 
 	operation, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &create_scheduler.CreateSchedulerDefinition{})
 	if err != nil {
-		return nil, fmt.Errorf("failed create schedule - fails operation: %w", err)
+		return nil, fmt.Errorf("failing in creating the operation: %s: %s", create_scheduler.OperationName, err)
 	}
 
 	zap.L().Info("scheduler enqueued to be created", zap.String("scheduler", scheduler.Name), zap.String("operation", operation.ID))

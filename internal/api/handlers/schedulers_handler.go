@@ -160,7 +160,7 @@ func (h *SchedulersHandler) UpdateScheduler(ctx context.Context, request *api.Up
 }
 
 func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {
-	scheduler, err := entities.NewScheduler(
+	return entities.NewScheduler(
 		request.GetName(),
 		request.GetGame(),
 		entities.StateCreating,
@@ -176,7 +176,6 @@ func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.C
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		))
-	return scheduler, err
 }
 
 func (h *SchedulersHandler) fromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.SchedulerWithoutSpec {
