@@ -49,6 +49,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
+	"github.com/topfreegames/maestro/internal/validations"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
@@ -409,6 +410,11 @@ func TestGetSchedulerVersions(t *testing.T) {
 func TestCreateScheduler(t *testing.T) {
 	dirPath, _ := os.Getwd()
 
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
 	t.Run("with success", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -449,7 +455,7 @@ func TestCreateScheduler(t *testing.T) {
 						},
 						Ports: []game_room.ContainerPort{{
 							Name:     "container-port-name",
-							Protocol: "https",
+							Protocol: "tcp",
 							Port:     12345,
 							HostPort: 54321,
 						}},
@@ -527,18 +533,18 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerMessage, ok := body["message"]
 		require.True(t, ok)
 		require.NotNil(t, schedulerMessage)
-		require.Contains(t, schedulerMessage, "Name: less than min")
-		require.Contains(t, schedulerMessage, "Spec.Containers[0].Environment[0].Name: less than min")
-		require.Contains(t, schedulerMessage, "Spec.Containers[0].ImagePullPolicy: regular expression mismatch")
-		require.Contains(t, schedulerMessage, "Spec.Containers[0].Requests.Memory: less than min")
-		require.Contains(t, schedulerMessage, "Spec.TerminationGracePeriod: less than min")
-		require.Contains(t, schedulerMessage, "Spec.Containers[0].Command: less than min")
-		require.Contains(t, schedulerMessage, "Game: less than min")
-		require.Contains(t, schedulerMessage, "Spec.Containers[0].Requests.CPU: less than min")
-		require.Contains(t, schedulerMessage, "Spec.Containers[0].Name: less than min")
-		require.Contains(t, schedulerMessage, "Spec.Version: less than min")
-		require.Contains(t, schedulerMessage, "MaxSurge: less than min")
-		require.Contains(t, schedulerMessage, "Spec.Containers[0].Image: less than min")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Name' Error:Field validation for 'Name' failed on the 'required' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Environment[0].Name' Error:Field validation for 'Name' failed on the 'required' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].ImagePullPolicy' Error:Field validation for 'ImagePullPolicy' failed on the 'image_pull_policy' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Requests.Memory' Error:Field validation for 'Memory' failed on the 'required' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.TerminationGracePeriod' Error:Field validation for 'TerminationGracePeriod' failed on the 'gt' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Command' Error:Field validation for 'Command' failed on the 'required' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Game' Error:Field validation for 'Game' failed on the 'required' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Requests.CPU' Error:Field validation for 'CPU' failed on the 'required' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Name' Error:Field validation for 'Name' failed on the 'required' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Version' Error:Field validation for 'Version' failed on the 'required' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.MaxSurge' Error:Field validation for 'MaxSurge' failed on the 'required' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Image' Error:Field validation for 'Image' failed on the 'required' tag")
 	})
 
 	t.Run("fails when scheduler already exists", func(t *testing.T) {
@@ -750,6 +756,11 @@ func TestRemoveRooms(t *testing.T) {
 
 func TestUpdateScheduler(t *testing.T) {
 	dirPath, _ := os.Getwd()
+
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
 
 	t.Run("with success", func(t *testing.T) {
 
