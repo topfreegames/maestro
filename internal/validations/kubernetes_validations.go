@@ -20,52 +20,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package entities
+package validations
 
 import (
-	"time"
-
+	"github.com/go-playground/validator/v10"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/validations"
 )
 
-const (
-	//StateCreating represents a cluster state
-	StateCreating = "creating"
-
-	//StateTerminating represents a cluster state
-	StateTerminating = "terminating"
-
-	//StateInSync represents a cluster state
-	StateInSync = "in-sync"
-
-	//StateTerminating represents a cluster state
-	StateOnError = "on-error"
-)
-
-type Scheduler struct {
-	Name            string `validate:"required"`
-	Game            string `validate:"required"`
-	State           string `validate:"required"`
-	RollbackVersion string
-	Spec            game_room.Spec
-	PortRange       *PortRange
-	CreatedAt       time.Time
-	MaxSurge        string `validate:"required"`
+func ImagePullPolicyValidate(fl validator.FieldLevel) bool {
+	return game_room.IsImagePullPolicySupported(fl.Field().String())
 }
 
-func NewScheduler(name string, game string, state string, maxSurge string, spec game_room.Spec, portRange *PortRange) (*Scheduler, error) {
-	scheduler := &Scheduler{
-		Name:      name,
-		Game:      game,
-		State:     state,
-		Spec:      spec,
-		PortRange: portRange,
-		MaxSurge:  maxSurge}
-	return scheduler, scheduler.Validate()
-}
-
-func (s *Scheduler) Validate() error {
-	err := validations.Validate.Struct(s)
-	return err
+func PortsProtocolValidate(fl validator.FieldLevel) bool {
+	return game_room.IsProtocolSupported(fl.Field().String())
 }

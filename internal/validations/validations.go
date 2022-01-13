@@ -20,36 +20,38 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package game_room
+package validations
 
 import (
-	"github.com/Masterminds/semver"
+	"errors"
 
-	"time"
+	"github.com/go-playground/validator/v10"
 )
 
-type Spec struct {
-	Version                string        `validate:"required,semantic_version"`
-	TerminationGracePeriod time.Duration `validate:"gt=0"`
-	Containers             []Container   `validate:"required,dive"`
+var (
+	Validate *validator.Validate
+)
 
-	// NOTE: consider moving it to a kubernetes-specific option?
-	Toleration string
-	// NOTE: consider moving it to a kubernetes-specific option?
-	Affinity string
-}
+func RegisterValidations() error {
+	Validate = validator.New()
 
-func NewSpec(version string, terminationGracePeriod time.Duration, containers []Container, toleration string, affinity string) *Spec {
-	return &Spec{
-		Version:                version,
-		TerminationGracePeriod: terminationGracePeriod,
-		Containers:             containers,
-		Toleration:             toleration,
-		Affinity:               affinity}
-}
+	err := Validate.RegisterValidation("semantic_version", SemanticValidate)
+	if err != nil {
+		return errors.New("could not register SemanticValidate")
+	}
 
-// IsVersionSemantically check if version value is according to semantic definitions
-func IsVersionSemantically(version string) bool {
-	_, err := semver.NewVersion(version)
-	return err == nil
+	err = Validate.RegisterValidation("image_pull_policy", ImagePullPolicyValidate)
+	if err != nil {
+		return errors.New("could not register ImagePullPolicyValidate")
+	}
+
+	err = Validate.RegisterValidation("ports_protocol", PortsProtocolValidate)
+	if err != nil {
+		return errors.New("could not register PortsProtocolValidate")
+	}
+
+	if Validate == nil {
+		return errors.New("it was not possible to register validations")
+	}
+	return nil
 }

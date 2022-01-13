@@ -23,29 +23,51 @@
 package game_room
 
 type Container struct {
-	Name            string   `validate:"min=1"`
-	Image           string   `validate:"min=1"`
-	ImagePullPolicy string   `validate:"regexp=^(Always|Never|IfNotPresent){1}$"`
-	Command         []string `validate:"min=1"`
-	Environment     []ContainerEnvironment
+	Name            string                 `validate:"required"`
+	Image           string                 `validate:"required"`
+	ImagePullPolicy string                 `validate:"required,image_pull_policy"`
+	Command         []string               `validate:"required"`
+	Environment     []ContainerEnvironment `validate:"dive"`
 	Requests        ContainerResources
 	Limits          ContainerResources
-	Ports           []ContainerPort `validate:"min=1"`
+	Ports           []ContainerPort `validate:"required,dive"`
 }
 
 type ContainerEnvironment struct {
-	Name  string `validate:"min=1"`
+	Name  string `validate:"required"`
 	Value string
 }
 
 type ContainerResources struct {
-	Memory string `validate:"min=1"`
-	CPU    string `validate:"min=1"`
+	Memory string `validate:"required"`
+	CPU    string `validate:"required"`
 }
 
 type ContainerPort struct {
-	Name     string `validate:"min=1"`
-	Protocol string `validate:"min=1"`
-	Port     int    `validate:"min=1"`
+	Name     string `validate:"required"`
+	Protocol string `validate:"required,ports_protocol"`
+	Port     int    `validate:"required"`
 	HostPort int
+}
+
+// IsImagePullPolicySupported check if received policy is supported by maestro
+func IsImagePullPolicySupported(policy string) bool {
+	policies := []string{"Always", "Never", "IfNotPresent"}
+	for _, item := range policies {
+		if item == policy {
+			return true
+		}
+	}
+	return false
+}
+
+// IsProtocolSupported check if received protocol is supported by kubernetes
+func IsProtocolSupported(protocol string) bool {
+	protocols := []string{"tcp", "udp", "sctp"}
+	for _, item := range protocols {
+		if item == protocol {
+			return true
+		}
+	}
+	return false
 }

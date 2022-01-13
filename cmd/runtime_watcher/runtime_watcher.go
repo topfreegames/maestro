@@ -31,6 +31,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/config/viper"
 	"github.com/topfreegames/maestro/internal/service"
+	"github.com/topfreegames/maestro/internal/validations"
 	"go.uber.org/zap"
 )
 
@@ -44,6 +45,11 @@ func main() {
 	err := service.ConfigureLogging(*logConfig)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
+	}
+
+	err = validations.RegisterValidations()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal(err.Error())
 	}
 
 	ctx, cancelFn := context.WithCancel(context.Background())

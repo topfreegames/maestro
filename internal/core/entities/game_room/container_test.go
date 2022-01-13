@@ -20,52 +20,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package entities
+package game_room_test
 
 import (
-	"time"
-
+	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/validations"
+
+	"testing"
 )
 
-const (
-	//StateCreating represents a cluster state
-	StateCreating = "creating"
+func TestIsImagePullPolicySupported(t *testing.T) {
+	t.Run("with success when policy is supported by maestro", func(t *testing.T) {
+		supported := game_room.IsImagePullPolicySupported("Always")
+		require.True(t, supported)
+	})
 
-	//StateTerminating represents a cluster state
-	StateTerminating = "terminating"
-
-	//StateInSync represents a cluster state
-	StateInSync = "in-sync"
-
-	//StateTerminating represents a cluster state
-	StateOnError = "on-error"
-)
-
-type Scheduler struct {
-	Name            string `validate:"required"`
-	Game            string `validate:"required"`
-	State           string `validate:"required"`
-	RollbackVersion string
-	Spec            game_room.Spec
-	PortRange       *PortRange
-	CreatedAt       time.Time
-	MaxSurge        string `validate:"required"`
+	t.Run("fails when policy is not supported by maestro", func(t *testing.T) {
+		wrongPolicy := "unsupported"
+		supported := game_room.IsImagePullPolicySupported(wrongPolicy)
+		require.False(t, supported)
+	})
 }
 
-func NewScheduler(name string, game string, state string, maxSurge string, spec game_room.Spec, portRange *PortRange) (*Scheduler, error) {
-	scheduler := &Scheduler{
-		Name:      name,
-		Game:      game,
-		State:     state,
-		Spec:      spec,
-		PortRange: portRange,
-		MaxSurge:  maxSurge}
-	return scheduler, scheduler.Validate()
-}
+func TestIsProtocolSupported(t *testing.T) {
+	t.Run("with success when port protocol is supported by maestro", func(t *testing.T) {
+		supported := game_room.IsProtocolSupported("tcp")
+		require.True(t, supported)
+	})
 
-func (s *Scheduler) Validate() error {
-	err := validations.Validate.Struct(s)
-	return err
+	t.Run("fails when port protocol is not supported by maestro", func(t *testing.T) {
+		wrongProtocol := "unsupported"
+		supported := game_room.IsProtocolSupported(wrongProtocol)
+		require.False(t, supported)
+	})
 }
