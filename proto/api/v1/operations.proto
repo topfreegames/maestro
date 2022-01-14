@@ -31,6 +31,7 @@ message ListOperationsRequest {
   string scheduler_name = 1;
   // Optional parameter for enabling operations sorting.
   // General `order_by` string syntax: <field> (<asc|desc>)
+  // Default value is `created_at desc`
   // NOTE: On http protocol, this operates as a query parameter.
   string order_by = 2;
 }
