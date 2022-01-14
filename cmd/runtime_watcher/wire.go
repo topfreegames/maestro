@@ -28,6 +28,7 @@ package main
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
@@ -52,6 +53,7 @@ var RoomManagerSet = wire.NewSet(
 	service.NewGameRoomInstanceStorageRedis,
 	service.NewRoomManagerConfig,
 	service.NewEventsForwarder,
+	events_forwarder.NewEventsForwarderService,
 	room_manager.NewRoomManager,
 )
 

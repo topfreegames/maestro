@@ -20,31 +20,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package noop_forwarder
+package events
 
-import (
-	"context"
+// EventName defines the events service possible events.
+type EventName string
 
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+var (
+	RoomEvent   EventName = "RoomEvent"
+	PlayerEvent EventName = "PlayerEvent"
 )
 
-type noopForwarder struct{}
-
-func NewNoopForwarder() *noopForwarder {
-	return &noopForwarder{}
+// Event struct that holds information about the events.
+type Event struct {
+	Name        EventName
+	SchedulerID string
+	RoomID      string
+	Attributes  map[string]interface{}
 }
 
-// ForwardRoomEvent forwards room events. It receives the game room, its instance, and additional attributes.
-func (*noopForwarder) ForwardRoomEvent(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
-	return nil
+func NewRoomEvent(schedulerID, roomId string, attributes map[string]interface{}) *Event {
+	return &Event{
+		Name:        RoomEvent,
+		SchedulerID: schedulerID,
+		RoomID:      roomId,
+		Attributes:  attributes,
+	}
 }
-
-// ForwardPlayerEvent forwards a player events. It receives the game room and additional attributes.
-func (*noopForwarder) ForwardPlayerEvent(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
-	return nil
-}
-
-// Name returns the forwarder name. This name should be unique among other events forwarders.
-func (*noopForwarder) Name() string {
-	return "noop_forwarder"
+func NewPlayerEvent(schedulerID, roomId string, attributes map[string]interface{}) *Event {
+	return &Event{
+		Name:        PlayerEvent,
+		SchedulerID: schedulerID,
+		RoomID:      roomId,
+		Attributes:  attributes,
+	}
 }

@@ -9,6 +9,7 @@ package main
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
@@ -45,11 +46,12 @@ func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager,
 	if err != nil {
 		return nil, err
 	}
+	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder)
 	roomManagerConfig, err := service.NewRoomManagerConfig(c)
 	if err != nil {
 		return nil, err
 	}
-	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, eventsForwarder, roomManagerConfig)
+	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, eventsService, roomManagerConfig)
 	workerOptions := &workers.WorkerOptions{
 		RoomManager: roomManager,
 		Runtime:     runtime,
@@ -66,4 +68,4 @@ func provideRuntimeWatcherBuilder() workers.WorkerBuilder {
 
 var WorkerOptionsSet = wire.NewSet(service.NewRuntimeKubernetes, RoomManagerSet, wire.Struct(new(workers.WorkerOptions), "RoomManager", "Runtime"))
 
-var RoomManagerSet = wire.NewSet(service.NewSchedulerStoragePg, service.NewClockTime, service.NewPortAllocatorRandom, service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewRoomManagerConfig, service.NewEventsForwarder, room_manager.NewRoomManager)
+var RoomManagerSet = wire.NewSet(service.NewSchedulerStoragePg, service.NewClockTime, service.NewPortAllocatorRandom, service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewRoomManagerConfig, service.NewEventsForwarder, events_forwarder.NewEventsForwarderService, room_manager.NewRoomManager)

@@ -32,6 +32,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/events"
+
+	"github.com/topfreegames/maestro/internal/core/services/interfaces"
+
 	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -51,19 +55,19 @@ type RoomManager struct {
 	roomStorage     ports.RoomStorage
 	instanceStorage ports.GameRoomInstanceStorage
 	runtime         ports.Runtime
-	eventsForwarder ports.EventsForwarder
+	eventsService   interfaces.EventsService
 	config          RoomManagerConfig
 	logger          *zap.Logger
 }
 
-func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsForwarder ports.EventsForwarder, config RoomManagerConfig) *RoomManager {
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService interfaces.EventsService, config RoomManagerConfig) *RoomManager {
 	return &RoomManager{
 		clock:           clock,
 		portAllocator:   portAllocator,
 		roomStorage:     roomStorage,
 		instanceStorage: instanceStorage,
 		runtime:         runtime,
-		eventsForwarder: eventsForwarder,
+		eventsService:   eventsService,
 		config:          config,
 		logger:          zap.L().With(zap.String("service", "rooms_api")),
 	}
@@ -154,8 +158,7 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
-	gameRoomStatus := fmt.Sprintf("ping%s", strings.Title(gameRoom.Status.String()))
-	err = m.eventsForwarder.ForwardRoomEvent(gameRoom, ctx, gameRoomStatus, "", gameRoom.Metadata)
+	err = m.eventsService.ProduceEvent(ctx, events.NewRoomEvent(gameRoom.SchedulerID, gameRoom.ID, map[string]interface{}{}))
 	if err != nil {
 		m.logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))
 		reportPingForwardingFailed(gameRoom.SchedulerID)

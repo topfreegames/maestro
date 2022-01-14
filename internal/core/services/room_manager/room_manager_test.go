@@ -33,7 +33,7 @@ import (
 	"testing"
 	"time"
 
-	eventsForwarder "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
+	"github.com/topfreegames/maestro/internal/core/entities/events"
 
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
@@ -42,6 +42,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
 	"github.com/golang/mock/gomock"
+	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
 
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	ismock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
@@ -58,11 +59,11 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	portAllocator := pamock.NewMockPortAllocator(mockCtrl)
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
+	eventsService := mockeventsservice.NewMockEventsService(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsForwarder, config)
+	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
 	roomStorageStatusWatcher := rsmock.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	container1 := game_room.Container{
@@ -183,7 +184,7 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
+	eventsService := mockeventsservice.NewMockEventsService(mockCtrl)
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
 	roomStorageStatusWatcher := rsmock.NewMockRoomStorageStatusWatcher(mockCtrl)
 
@@ -193,7 +194,7 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 		roomStorage,
 		instanceStorage,
 		runtime,
-		eventsForwarder,
+		eventsService,
 		config,
 	)
 
@@ -245,7 +246,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
+	eventsService := mockeventsservice.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
 
@@ -255,7 +256,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		roomStorage,
 		instanceStorage,
 		runtime,
-		eventsForwarder,
+		eventsService,
 		config,
 	)
 	currentInstance := &game_room.Instance{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
@@ -266,7 +267,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
-		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), newGameRoom, "pingReady", "", newGameRoom.Metadata).Return(nil)
+		eventsService.EXPECT().ProduceEvent(context.Background(), events.NewRoomEvent(newGameRoom.SchedulerID, newGameRoom.ID, map[string]interface{}{}))
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 		require.NoError(t, err)
@@ -306,12 +307,12 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("when some error occurs on event forwarding then it does not return with error", func(t *testing.T) {
+	t.Run("when some error occurs on events forwarding then it does not return with error", func(t *testing.T) {
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
-		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), newGameRoom, "pingReady", "", newGameRoom.Metadata).Return(errors.New("some error"))
+		eventsService.EXPECT().ProduceEvent(context.Background(), events.NewRoomEvent(newGameRoom.SchedulerID, newGameRoom.ID, map[string]interface{}{}))
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 		require.NoError(t, err)
@@ -323,7 +324,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 	defer mockCtrl.Finish()
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
+	eventsService := mockeventsservice.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	roomManager := NewRoomManager(
 		clock,
@@ -331,7 +332,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		roomStorage,
 		nil,
 		runtime,
-		eventsForwarder,
+		eventsService,
 		RoomManagerConfig{RoomPingTimeout: time.Hour},
 	)
 	roomsBeingReplaced := &sync.Map{}
@@ -519,7 +520,7 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
+	eventsService := mockeventsservice.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
 	roomManager := NewRoomManager(
@@ -528,7 +529,7 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 		roomStorage,
 		instanceStorage,
 		runtime,
-		eventsForwarder,
+		eventsService,
 		config,
 	)
 	currentGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady, PingStatus: game_room.GameRoomPingStatusReady, LastPingAt: clock.Now()}
@@ -559,7 +560,7 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
+	eventsService := mockeventsservice.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
 	roomManager := NewRoomManager(
@@ -568,7 +569,7 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 		roomStorage,
 		instanceStorage,
 		runtime,
-		eventsForwarder,
+		eventsService,
 		config,
 	)
 	schedulerName := "scheduler-name"
@@ -621,7 +622,7 @@ func TestSchedulerMaxSurge(t *testing.T) {
 			roomStorage,
 			ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 			runtimemock.NewMockRuntime(mockCtrl),
-			eventsForwarder.NewMockEventsForwarder(mockCtrl),
+			mockeventsservice.NewMockEventsService(mockCtrl),
 			RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
 		)
 

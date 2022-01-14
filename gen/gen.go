@@ -28,7 +28,12 @@ package gen
 // Wire
 //go:generate go run github.com/google/wire/cmd/wire ./../...
 
-// Mocks
+// Services Mocks
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/services/interfaces/events_service.go -destination=../internal/core/services/interfaces/mock/events_service/mock.go -package=mock
+
+// Ports Mocks
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/port_allocator.go -destination=../internal/adapters/port_allocator/mock/mock.go -package=mock
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/events_forwarder.go -destination=../internal/adapters/events_forwarder/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/port_allocator.go -destination=../internal/adapters/port_allocator/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/runtime.go -destination=../internal/adapters/runtime/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/room_storage.go -destination=../internal/adapters/room_storage/mock/mock.go -package=mock

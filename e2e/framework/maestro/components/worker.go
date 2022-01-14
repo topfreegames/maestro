@@ -47,7 +47,7 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "worker"}).Invoke()
 
 	if composeErr.Error != nil {
-		return nil, fmt.Errorf("failed to start worker API: %s", composeErr.Error)
+		return nil, fmt.Errorf("failed to start worker %s", composeErr.Error)
 	}
 
 	err := helpers.TimedRetry(func() error {
@@ -64,7 +64,7 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 	}, 5*time.Second, 5*time.Minute)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to reach worker API: %s", err)
+		return nil, fmt.Errorf("unable to reach worker %s", err)
 	}
 
 	return &WorkerServer{compose: compose}, nil

@@ -27,11 +27,35 @@ import (
 )
 
 var (
+	successRoomEventForwardingMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemApi,
+		Name:      "success_room_event_forwarding",
+		Help:      "Current number of room events forwarding with success",
+		Labels: []string{
+			monitoring.LabelScheduler,
+		},
+	})
+)
+
+var (
+	successPlayerEventForwardingMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemApi,
+		Name:      "success_player_event_forwarding",
+		Help:      "Current number of player events forwarding with success",
+		Labels: []string{
+			monitoring.LabelScheduler,
+		},
+	})
+)
+
+var (
 	failedRoomEventForwardingMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemApi,
 		Name:      "failed_room_event_forwarding",
-		Help:      "Current number of failed room event forwarding",
+		Help:      "Current number of failed room events forwarding",
 		Labels: []string{
 			monitoring.LabelScheduler,
 		},
@@ -43,12 +67,20 @@ var (
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemApi,
 		Name:      "failed_player_event_forwarding",
-		Help:      "Current number of failed player event forwarding",
+		Help:      "Current number of failed player events forwarding",
 		Labels: []string{
 			monitoring.LabelScheduler,
 		},
 	})
 )
+
+func reportRoomEventForwardingSuccess(schedulerName string) {
+	successRoomEventForwardingMetric.WithLabelValues(schedulerName).Inc()
+}
+
+func reportPlayerEventForwardingSuccess(schedulerName string) {
+	successPlayerEventForwardingMetric.WithLabelValues(schedulerName).Inc()
+}
 
 func reportRoomEventForwardingFailed(schedulerName string) {
 	failedRoomEventForwardingMetric.WithLabelValues(schedulerName).Inc()

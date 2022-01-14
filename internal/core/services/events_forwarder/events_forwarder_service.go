@@ -24,9 +24,13 @@ package events_forwarder
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/topfreegames/maestro/internal/core/entities/events"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	"go.uber.org/zap"
 )
 
@@ -35,29 +39,45 @@ type EventsForwarderService struct {
 	logger          *zap.Logger
 }
 
-func NewEventsForwarderService(eventsForwarder ports.EventsForwarder) *EventsForwarderService {
+func NewEventsForwarderService(eventsForwarder ports.EventsForwarder) interfaces.EventsService {
 	return &EventsForwarderService{
 		eventsForwarder,
 		zap.L().With(zap.String("service", "rooms_api")),
 	}
 }
 
-func (es *EventsForwarderService) ForwardRoomEvent(ctx context.Context, room *game_room.GameRoom, eventType, status string) error {
-	err := es.eventsForwarder.ForwardRoomEvent(room, ctx, status, eventType, room.Metadata)
+func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *events.Event) error {
+	room := &game_room.GameRoom{}
+	instance := &game_room.Instance{}
+
+	switch event.Name {
+	case events.RoomEvent:
+		return es.forwardRoomEvent(ctx, room, instance, map[string]interface{}{}, "")
+	case events.PlayerEvent:
+		return es.forwardPlayerEvent(ctx, room, map[string]interface{}{}, "")
+	}
+	return nil
+
+}
+
+func (es *EventsForwarderService) forwardRoomEvent(ctx context.Context, room *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
+	err := es.eventsForwarder.ForwardRoomEvent(ctx, room, instance, attributes, options)
 	if err != nil {
 		reportRoomEventForwardingFailed(room.SchedulerID)
-		es.logger.Error("Failed to forward room event", zap.Error(err))
+		es.logger.Error(fmt.Sprintf("Failed to forward room events for room %s and scheduler %s", room.ID, room.SchedulerID), zap.Error(err))
 		return err
 	}
+	reportRoomEventForwardingSuccess(room.SchedulerID)
 	return nil
 }
 
-func (es *EventsForwarderService) ForwardPlayerEvent(ctx context.Context, room *game_room.GameRoom, status string) error {
-	err := es.eventsForwarder.ForwardPlayerEvent(room, ctx, status, room.Metadata)
+func (es *EventsForwarderService) forwardPlayerEvent(ctx context.Context, room *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
+	err := es.eventsForwarder.ForwardPlayerEvent(ctx, room, attributes, options)
 	if err != nil {
 		reportPlayerEventForwardingFailed(room.SchedulerID)
-		es.logger.Error("Failed to forward player event", zap.Error(err))
+		es.logger.Error(fmt.Sprintf("Failed to forward player events for room %s and scheduler %s", room.ID, room.SchedulerID), zap.Error(err))
 		return err
 	}
+	reportPlayerEventForwardingSuccess(room.SchedulerID)
 	return nil
 }
