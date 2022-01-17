@@ -49,25 +49,3 @@ type ContainerPort struct {
 	Port     int    `validate:"required"`
 	HostPort int
 }
-
-// IsImagePullPolicySupported check if received policy is supported by maestro
-func IsImagePullPolicySupported(policy string) bool {
-	policies := []string{"Always", "Never", "IfNotPresent"}
-	for _, item := range policies {
-		if item == policy {
-			return true
-		}
-	}
-	return false
-}
-
-// IsProtocolSupported check if received protocol is supported by kubernetes
-func IsProtocolSupported(protocol string) bool {
-	protocols := []string{"tcp", "udp", "sctp"}
-	for _, item := range protocols {
-		if item == protocol {
-			return true
-		}
-	}
-	return false
-}

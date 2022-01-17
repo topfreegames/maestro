@@ -29,14 +29,32 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
-func TestIsVersionSemantically(t *testing.T) {
-	t.Run("with success when semantic version is valid", func(t *testing.T) {
-		valid := game_room.IsVersionSemantically("1.0.0-rc")
-		require.True(t, valid)
-	})
-
-	t.Run("fails when policy is not supported by maestro", func(t *testing.T) {
-		invalid := game_room.IsVersionSemantically("0x0x0")
-		require.False(t, invalid)
+func TestNewSpec(t *testing.T) {
+	t.Run("with success when create a new spec", func(t *testing.T) {
+		containers := []game_room.Container{
+			game_room.Container{
+				Name:            "default",
+				Image:           "some-image",
+				ImagePullPolicy: "Always",
+				Command:         []string{"hello"},
+				Ports: []game_room.ContainerPort{
+					{Name: "tcp", Protocol: "tcp", Port: 80},
+				},
+				Requests: game_room.ContainerResources{
+					CPU:    "10m",
+					Memory: "100Mi",
+				},
+				Limits: game_room.ContainerResources{
+					CPU:    "10m",
+					Memory: "100Mi",
+				},
+			}}
+		spec := game_room.NewSpec(
+			"v1",
+			10,
+			containers,
+			"10",
+			"10")
+		require.NotNil(t, spec)
 	})
 }

@@ -23,8 +23,6 @@
 package game_room
 
 import (
-	"github.com/Masterminds/semver"
-
 	"time"
 )
 
@@ -46,10 +44,4 @@ func NewSpec(version string, terminationGracePeriod time.Duration, containers []
 		Containers:             containers,
 		Toleration:             toleration,
 		Affinity:               affinity}
-}
-
-// IsVersionSemantically check if version value is according to semantic definitions
-func IsVersionSemantically(version string) bool {
-	_, err := semver.NewVersion(version)
-	return err == nil
 }

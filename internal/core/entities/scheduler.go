@@ -51,7 +51,7 @@ type Scheduler struct {
 	Spec            game_room.Spec
 	PortRange       *PortRange
 	CreatedAt       time.Time
-	MaxSurge        string `validate:"required"`
+	MaxSurge        string `validate:"required,max_surge"`
 }
 
 func NewScheduler(name string, game string, state string, maxSurge string, spec game_room.Spec, portRange *PortRange) (*Scheduler, error) {
@@ -66,6 +66,5 @@ func NewScheduler(name string, game string, state string, maxSurge string, spec 
 }
 
 func (s *Scheduler) Validate() error {
-	err := validations.Validate.Struct(s)
-	return err
+	return validations.Validate.Struct(s)
 }

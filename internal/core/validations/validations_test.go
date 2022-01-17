@@ -20,37 +20,70 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package game_room_test
+package validations
 
 import (
-	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
+
+func TestIsMaxSurgeValid(t *testing.T) {
+	t.Run("with success when max surge is a number greater than zero", func(t *testing.T) {
+		maxSurgeValid := IsMaxSurgeValid("5")
+		require.True(t, maxSurgeValid)
+	})
+
+	t.Run("with success when maxSurge is a number greater than zero with suffix '%'", func(t *testing.T) {
+		maxSurgeValid := IsMaxSurgeValid("5%")
+		require.True(t, maxSurgeValid)
+	})
+
+	t.Run("fails when maxSurge is empty", func(t *testing.T) {
+		maxSurgeValid := IsMaxSurgeValid("")
+		require.False(t, maxSurgeValid)
+	})
+
+	t.Run("fails when maxSurge is less or equal zero", func(t *testing.T) {
+		maxSurgeValid := IsMaxSurgeValid("0")
+		require.False(t, maxSurgeValid)
+	})
+}
 
 func TestIsImagePullPolicySupported(t *testing.T) {
 	t.Run("with success when policy is supported by maestro", func(t *testing.T) {
-		supported := game_room.IsImagePullPolicySupported("Always")
+		supported := IsImagePullPolicySupported("Always")
 		require.True(t, supported)
 	})
 
 	t.Run("fails when policy is not supported by maestro", func(t *testing.T) {
 		wrongPolicy := "unsupported"
-		supported := game_room.IsImagePullPolicySupported(wrongPolicy)
+		supported := IsImagePullPolicySupported(wrongPolicy)
 		require.False(t, supported)
 	})
 }
 
 func TestIsProtocolSupported(t *testing.T) {
 	t.Run("with success when port protocol is supported by maestro", func(t *testing.T) {
-		supported := game_room.IsProtocolSupported("tcp")
+		supported := IsProtocolSupported("tcp")
 		require.True(t, supported)
 	})
 
 	t.Run("fails when port protocol is not supported by maestro", func(t *testing.T) {
 		wrongProtocol := "unsupported"
-		supported := game_room.IsProtocolSupported(wrongProtocol)
+		supported := IsProtocolSupported(wrongProtocol)
 		require.False(t, supported)
+	})
+}
+
+func TestIsVersionValid(t *testing.T) {
+	t.Run("with success when semantic version is valid", func(t *testing.T) {
+		valid := IsVersionValid("1.0.0-rc")
+		require.True(t, valid)
+	})
+
+	t.Run("fails when policy is not supported by maestro", func(t *testing.T) {
+		invalid := IsVersionValid("0x0x0")
+		require.False(t, invalid)
 	})
 }

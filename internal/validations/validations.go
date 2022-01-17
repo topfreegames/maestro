@@ -25,6 +25,8 @@ package validations
 import (
 	"errors"
 
+	"github.com/topfreegames/maestro/internal/core/validations"
+
 	"github.com/go-playground/validator/v10"
 )
 
@@ -35,23 +37,44 @@ var (
 func RegisterValidations() error {
 	Validate = validator.New()
 
-	err := Validate.RegisterValidation("semantic_version", SemanticValidate)
+	err := Validate.RegisterValidation("semantic_version", semanticValidate)
 	if err != nil {
-		return errors.New("could not register SemanticValidate")
+		return errors.New("could not register semanticValidate")
 	}
 
-	err = Validate.RegisterValidation("image_pull_policy", ImagePullPolicyValidate)
+	err = Validate.RegisterValidation("image_pull_policy", imagePullPolicyValidate)
 	if err != nil {
-		return errors.New("could not register ImagePullPolicyValidate")
+		return errors.New("could not register imagePullPolicyValidate")
 	}
 
-	err = Validate.RegisterValidation("ports_protocol", PortsProtocolValidate)
+	err = Validate.RegisterValidation("ports_protocol", portsProtocolValidate)
 	if err != nil {
-		return errors.New("could not register PortsProtocolValidate")
+		return errors.New("could not register portsProtocolValidate")
+	}
+
+	err = Validate.RegisterValidation("max_surge", maxSurgeValidate)
+	if err != nil {
+		return errors.New("could not register maxSurgeValidate")
 	}
 
 	if Validate == nil {
 		return errors.New("it was not possible to register validations")
 	}
 	return nil
+}
+
+func imagePullPolicyValidate(fl validator.FieldLevel) bool {
+	return validations.IsImagePullPolicySupported(fl.Field().String())
+}
+
+func portsProtocolValidate(fl validator.FieldLevel) bool {
+	return validations.IsProtocolSupported(fl.Field().String())
+}
+
+func maxSurgeValidate(fl validator.FieldLevel) bool {
+	return validations.IsMaxSurgeValid(fl.Field().String())
+}
+
+func semanticValidate(fl validator.FieldLevel) bool {
+	return validations.IsVersionValid(fl.Field().String())
 }
