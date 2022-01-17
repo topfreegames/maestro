@@ -22,15 +22,26 @@
 
 package game_room
 
-import "time"
+import (
+	"time"
+)
 
 type Spec struct {
-	Version                string        `validate:"min=1"`
-	TerminationGracePeriod time.Duration `validate:"min=1"`
-	Containers             []Container   `validate:"min=1"`
+	Version                string        `validate:"required,semantic_version"`
+	TerminationGracePeriod time.Duration `validate:"gt=0"`
+	Containers             []Container   `validate:"required,dive"`
 
 	// NOTE: consider moving it to a kubernetes-specific option?
 	Toleration string
 	// NOTE: consider moving it to a kubernetes-specific option?
 	Affinity string
+}
+
+func NewSpec(version string, terminationGracePeriod time.Duration, containers []Container, toleration string, affinity string) *Spec {
+	return &Spec{
+		Version:                version,
+		TerminationGracePeriod: terminationGracePeriod,
+		Containers:             containers,
+		Toleration:             toleration,
+		Affinity:               affinity}
 }

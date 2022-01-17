@@ -47,11 +47,17 @@ import (
 	portserrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
+	"github.com/topfreegames/maestro/internal/validations"
 )
 
 func TestUpdateSchedulerExecutor_Execute_ReplaceRooms(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mocks := newMockRoomAndSchedulerManager(mockCtrl)
+
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
 
 	currentVersion := "10.0.0"
 	newVersion := "11.0.0"
@@ -139,7 +145,7 @@ func TestUpdateSchedulerExecutor_Execute_ReplaceRooms(t *testing.T) {
 	}
 
 	executor := updatescheduler.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-	err := executor.Execute(context.Background(), &operation.Operation{}, definition)
+	err = executor.Execute(context.Background(), &operation.Operation{}, definition)
 	require.NoError(t, err)
 }
 

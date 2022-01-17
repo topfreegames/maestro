@@ -39,7 +39,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"go.uber.org/zap"
-	"gopkg.in/validator.v2"
 )
 
 type SchedulerManager struct {
@@ -55,11 +54,9 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManag
 }
 
 func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) (*entities.Scheduler, error) {
-	scheduler.State = entities.StateCreating
-
-	err := s.validateScheduler(scheduler)
+	err := scheduler.Validate()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failing in creating schedule: %w", err)
 	}
 
 	err = s.schedulerStorage.CreateScheduler(ctx, scheduler)
@@ -69,7 +66,7 @@ func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entit
 
 	operation, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &create_scheduler.CreateSchedulerDefinition{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to schedule 'create scheduler' operation: %w", err)
+		return nil, fmt.Errorf("failing in creating the operation: %s: %s", create_scheduler.OperationName, err)
 	}
 
 	zap.L().Info("scheduler enqueued to be created", zap.String("scheduler", scheduler.Name), zap.String("operation", operation.ID))
@@ -133,7 +130,7 @@ func (s *SchedulerManager) RemoveRooms(ctx context.Context, schedulerName string
 //
 // TODO(gabrielcorado): should we update if no changes were made?
 func (s *SchedulerManager) UpdateSchedulerConfig(ctx context.Context, scheduler *entities.Scheduler) (bool, error) {
-	err := s.validateScheduler(scheduler)
+	err := scheduler.Validate()
 	if err != nil {
 		return false, err
 	}
@@ -174,8 +171,7 @@ func (s *SchedulerManager) CreateUpdateSchedulerOperation(ctx context.Context, s
 	}
 
 	scheduler.Spec.Version = currentScheduler.Spec.Version
-	scheduler.State = entities.StateCreating
-	err = s.validateScheduler(scheduler)
+	err = scheduler.Validate()
 	if err != nil {
 		return nil, err
 	}
@@ -208,10 +204,4 @@ func isMajorVersionUpdate(currentScheduler, newScheduler *entities.Scheduler) bo
 			"MaxSurge",
 		),
 	)
-}
-
-// WARN: This function should be called only on private scope of SchedulerManager.
-// WARN: Other packages should NEVER call this function.
-func (s *SchedulerManager) validateScheduler(scheduler *entities.Scheduler) error {
-	return validator.Validate(scheduler)
 }

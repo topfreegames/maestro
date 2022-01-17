@@ -27,7 +27,7 @@
     },
     "ports": [{
       "name": "container-port-name",
-      "protocol": "https",
+      "protocol": "tcp",
       "port": 12345,
       "hostPort": 54321
     }]

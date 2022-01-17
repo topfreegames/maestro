@@ -43,6 +43,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
+	"github.com/topfreegames/maestro/internal/validations"
 )
 
 func TestAddRooms(t *testing.T) {
@@ -171,6 +172,11 @@ func TestRemoveRooms(t *testing.T) {
 }
 
 func TestUpdateSchedulerConfig(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
 	mockSchedulerManager := func(ctrl *gomock.Controller) (*SchedulerManager, *schedulerStorageMock.MockSchedulerStorage) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(ctrl)
 		return NewSchedulerManager(schedulerStorage, nil), schedulerStorage

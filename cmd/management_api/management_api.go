@@ -26,6 +26,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+
 	"net/http"
 	"os"
 	"os/signal"
@@ -42,6 +43,7 @@ import (
 	"github.com/slok/go-http-metrics/middleware/std"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
+	"github.com/topfreegames/maestro/internal/validations"
 )
 
 var (
@@ -54,6 +56,11 @@ func main() {
 	err := service.ConfigureLogging(*logConfig)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
+	}
+
+	err = validations.RegisterValidations()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal(err.Error())
 	}
 
 	ctx, cancelFn := context.WithCancel(context.Background())

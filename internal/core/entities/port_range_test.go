@@ -91,3 +91,10 @@ func TestParsePortRange(t *testing.T) {
 		})
 	}
 }
+
+func TestNewPortRange(t *testing.T) {
+	t.Run("with success when create a new por range", func(t *testing.T) {
+		portRange := PortRange{1, 10}
+		require.NotNil(t, portRange)
+	})
+}

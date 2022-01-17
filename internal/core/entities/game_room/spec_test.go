@@ -20,51 +20,41 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package entities
+package game_room_test
 
 import (
-	"time"
+	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/validations"
 )
 
-const (
-	//StateCreating represents a cluster state
-	StateCreating = "creating"
-
-	//StateTerminating represents a cluster state
-	StateTerminating = "terminating"
-
-	//StateInSync represents a cluster state
-	StateInSync = "in-sync"
-
-	//StateTerminating represents a cluster state
-	StateOnError = "on-error"
-)
-
-type Scheduler struct {
-	Name            string `validate:"required"`
-	Game            string `validate:"required"`
-	State           string `validate:"required"`
-	RollbackVersion string
-	Spec            game_room.Spec
-	PortRange       *PortRange
-	CreatedAt       time.Time
-	MaxSurge        string `validate:"required,max_surge"`
-}
-
-func NewScheduler(name string, game string, state string, maxSurge string, spec game_room.Spec, portRange *PortRange) (*Scheduler, error) {
-	scheduler := &Scheduler{
-		Name:      name,
-		Game:      game,
-		State:     state,
-		Spec:      spec,
-		PortRange: portRange,
-		MaxSurge:  maxSurge}
-	return scheduler, scheduler.Validate()
-}
-
-func (s *Scheduler) Validate() error {
-	return validations.Validate.Struct(s)
+func TestNewSpec(t *testing.T) {
+	t.Run("with success when create a new spec", func(t *testing.T) {
+		containers := []game_room.Container{
+			game_room.Container{
+				Name:            "default",
+				Image:           "some-image",
+				ImagePullPolicy: "Always",
+				Command:         []string{"hello"},
+				Ports: []game_room.ContainerPort{
+					{Name: "tcp", Protocol: "tcp", Port: 80},
+				},
+				Requests: game_room.ContainerResources{
+					CPU:    "10m",
+					Memory: "100Mi",
+				},
+				Limits: game_room.ContainerResources{
+					CPU:    "10m",
+					Memory: "100Mi",
+				},
+			}}
+		spec := game_room.NewSpec(
+			"v1",
+			10,
+			containers,
+			"10",
+			"10")
+		require.NotNil(t, spec)
+	})
 }
