@@ -31,18 +31,12 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 
-	"github.com/topfreegames/maestro/internal/validations"
-
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
 func TestScheduler_ToScheduler(t *testing.T) {
-	err := validations.RegisterValidations()
-	if err != nil {
-		t.Errorf("unexpected error %d'", err)
-	}
 	t.Run("valid schedulers", func(t *testing.T) {
 		fwd := &forwarder.Forwarder{
 			Name:        "fwd",

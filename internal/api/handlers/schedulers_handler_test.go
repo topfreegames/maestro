@@ -56,10 +56,7 @@ import (
 )
 
 func TestGetAllSchedulers(t *testing.T) {
-	err := validations.RegisterValidations()
-	if err != nil {
-		t.Errorf("unexpected error %d'", err)
-	}
+
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -166,10 +163,6 @@ func TestGetAllSchedulers(t *testing.T) {
 }
 
 func TestGetScheduler(t *testing.T) {
-	err := validations.RegisterValidations()
-	if err != nil {
-		t.Errorf("unexpected error %d'", err)
-	}
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -310,10 +303,7 @@ func TestGetScheduler(t *testing.T) {
 }
 
 func TestGetSchedulerVersions(t *testing.T) {
-	err := validations.RegisterValidations()
-	if err != nil {
-		t.Errorf("unexpected error %d'", err)
-	}
+
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -594,10 +584,7 @@ func TestCreateScheduler(t *testing.T) {
 }
 
 func TestAddRooms(t *testing.T) {
-	err := validations.RegisterValidations()
-	if err != nil {
-		t.Errorf("unexpected error %d'", err)
-	}
+
 	t.Run("with success", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -684,10 +671,7 @@ func TestAddRooms(t *testing.T) {
 }
 
 func TestRemoveRooms(t *testing.T) {
-	err := validations.RegisterValidations()
-	if err != nil {
-		t.Errorf("unexpected error %d'", err)
-	}
+
 	t.Run("with success", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
