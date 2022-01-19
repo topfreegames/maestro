@@ -52,8 +52,8 @@ type Scheduler struct {
 	Spec            game_room.Spec
 	PortRange       *PortRange
 	CreatedAt       time.Time
-	MaxSurge        string `validate:"required,max_surge"`
-	Forwarders      []*forwarder.Forwarder
+	MaxSurge        string                 `validate:"required,max_surge"`
+	Forwarders      []*forwarder.Forwarder `validate:"dive"`
 }
 
 func NewScheduler(name string, game string, state string, maxSurge string, spec game_room.Spec, portRange *PortRange, forwarders []*forwarder.Forwarder) (*Scheduler, error) {
