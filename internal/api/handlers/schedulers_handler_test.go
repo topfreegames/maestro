@@ -36,6 +36,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+
 	"github.com/golang/mock/gomock"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
@@ -54,7 +56,10 @@ import (
 )
 
 func TestGetAllSchedulers(t *testing.T) {
-
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -161,7 +166,10 @@ func TestGetAllSchedulers(t *testing.T) {
 }
 
 func TestGetScheduler(t *testing.T) {
-
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -302,7 +310,10 @@ func TestGetScheduler(t *testing.T) {
 }
 
 func TestGetSchedulerVersions(t *testing.T) {
-
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -538,11 +549,11 @@ func TestCreateScheduler(t *testing.T) {
 		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].ImagePullPolicy' Error:Field validation for 'ImagePullPolicy' failed on the 'image_pull_policy' tag")
 		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Requests.Memory' Error:Field validation for 'Memory' failed on the 'required' tag")
 		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.TerminationGracePeriod' Error:Field validation for 'TerminationGracePeriod' failed on the 'gt' tag")
+		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Version' Error:Field validation for 'Version' failed on the 'required' tag")
 		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Command' Error:Field validation for 'Command' failed on the 'required' tag")
 		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Game' Error:Field validation for 'Game' failed on the 'required' tag")
 		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Requests.CPU' Error:Field validation for 'CPU' failed on the 'required' tag")
 		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Name' Error:Field validation for 'Name' failed on the 'required' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Version' Error:Field validation for 'Version' failed on the 'required' tag")
 		require.Contains(t, schedulerMessage, "Key: 'Scheduler.MaxSurge' Error:Field validation for 'MaxSurge' failed on the 'required' tag")
 		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Image' Error:Field validation for 'Image' failed on the 'required' tag")
 	})
@@ -583,6 +594,10 @@ func TestCreateScheduler(t *testing.T) {
 }
 
 func TestAddRooms(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
 	t.Run("with success", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -669,6 +684,10 @@ func TestAddRooms(t *testing.T) {
 }
 
 func TestRemoveRooms(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
 	t.Run("with success", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
@@ -866,6 +885,18 @@ func TestUpdateScheduler(t *testing.T) {
 }
 
 func newValidScheduler() *entities.Scheduler {
+	fwd := &forwarder.Forwarder{
+		Name:    "fwd",
+		Enabled: true,
+		FwdType: forwarder.TypeGrpc,
+		Address: "address",
+		Options: &forwarder.FwdOptions{
+			Timeout:  time.Second * 5,
+			Metadata: nil,
+		},
+	}
+	forwarders := []*forwarder.Forwarder{fwd}
+
 	return &entities.Scheduler{
 		Name:            "scheduler-name-1",
 		Game:            "game",
@@ -901,5 +932,6 @@ func newValidScheduler() *entities.Scheduler {
 			Start: 40000,
 			End:   60000,
 		},
+		Forwarders: forwarders,
 	}
 }

@@ -24,11 +24,14 @@ package entities_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/validations"
+
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
 func TestNewScheduler(t *testing.T) {
@@ -55,6 +58,18 @@ func TestNewScheduler(t *testing.T) {
 			},
 		}}
 
+	fwd := &forwarder.Forwarder{
+		Name:    "fwd",
+		Enabled: true,
+		FwdType: forwarder.TypeGrpc,
+		Address: "address",
+		Options: &forwarder.FwdOptions{
+			Timeout:  time.Second * 5,
+			Metadata: nil,
+		},
+	}
+	forwarders := []*forwarder.Forwarder{fwd}
+
 	t.Run("with success when create valid scheduler", func(t *testing.T) {
 		scheduler, err := entities.NewScheduler(
 			"scheduler-name",
@@ -66,10 +81,13 @@ func TestNewScheduler(t *testing.T) {
 				10,
 				containers,
 				"10",
-				"10"),
+				"10",
+			),
 			entities.NewPortRange(
 				1,
-				2))
+				2,
+			),
+			forwarders)
 
 		require.NoError(t, err)
 		require.NotNil(t, scheduler)
@@ -86,10 +104,13 @@ func TestNewScheduler(t *testing.T) {
 				10,
 				containers,
 				"10",
-				"10"),
+				"10",
+			),
 			entities.NewPortRange(
 				1,
-				2))
+				2,
+			),
+			forwarders)
 
 		require.NotNil(t, err)
 	})

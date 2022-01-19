@@ -1,6 +1,26 @@
-package forwarder
+// MIT License
+//
+// Copyright (c) 2021 TFG Co
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
-import "github.com/topfreegames/maestro/internal/validations"
+package forwarder
 
 type FwdType string
 
@@ -14,23 +34,4 @@ type Forwarder struct {
 	FwdType FwdType `validate:"required"`
 	Address string  `validate:"required"`
 	Options *FwdOptions
-}
-
-func NewForwarder(name string, enabled bool, fwdType FwdType, address string, options *FwdOptions) (*Forwarder, error) {
-	forwarder := &Forwarder{
-		Name:    name,
-		Enabled: enabled,
-		FwdType: fwdType,
-		Address: address,
-		Options: options,
-	}
-	validationErr := forwarder.Validate()
-	if validationErr != nil {
-		return nil, validationErr
-	}
-	return forwarder, nil
-}
-
-func (f *Forwarder) Validate() error {
-	return validations.Validate.Struct(f)
 }
