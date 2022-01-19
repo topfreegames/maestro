@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-type FwdOptions struct {
+type ForwardOptions struct {
 	Timeout  time.Duration `validate:"required"`
 	Metadata map[string]interface{}
 }

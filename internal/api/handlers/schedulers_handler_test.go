@@ -886,11 +886,11 @@ func TestUpdateScheduler(t *testing.T) {
 
 func newValidScheduler() *entities.Scheduler {
 	fwd := &forwarder.Forwarder{
-		Name:    "fwd",
-		Enabled: true,
-		FwdType: forwarder.TypeGrpc,
-		Address: "address",
-		Options: &forwarder.FwdOptions{
+		Name:        "fwd",
+		Enabled:     true,
+		ForwardType: forwarder.TypeGrpc,
+		Address:     "address",
+		Options: &forwarder.ForwardOptions{
 			Timeout:  time.Second * 5,
 			Metadata: nil,
 		},

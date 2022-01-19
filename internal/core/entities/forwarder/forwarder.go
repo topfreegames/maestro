@@ -22,16 +22,16 @@
 
 package forwarder
 
-type FwdType string
+type ForwardType string
 
 const (
-	TypeGrpc FwdType = "gRPC"
+	TypeGrpc ForwardType = "gRPC"
 )
 
 type Forwarder struct {
-	Name    string `validate:"required"`
-	Enabled bool
-	FwdType FwdType `validate:"required"`
-	Address string  `validate:"required"`
-	Options *FwdOptions
+	Name        string `validate:"required"`
+	Enabled     bool
+	ForwardType ForwardType `validate:"required"`
+	Address     string      `validate:"required"`
+	Options     *ForwardOptions
 }

@@ -59,11 +59,11 @@ func TestNewScheduler(t *testing.T) {
 		}}
 
 	fwd := &forwarder.Forwarder{
-		Name:    "fwd",
-		Enabled: true,
-		FwdType: forwarder.TypeGrpc,
-		Address: "address",
-		Options: &forwarder.FwdOptions{
+		Name:        "fwd",
+		Enabled:     true,
+		ForwardType: forwarder.TypeGrpc,
+		Address:     "address",
+		Options: &forwarder.ForwardOptions{
 			Timeout:  time.Second * 5,
 			Metadata: nil,
 		},
