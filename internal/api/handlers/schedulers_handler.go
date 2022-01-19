@@ -175,7 +175,7 @@ func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.C
 		entities.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
-		))
+		), nil)
 }
 
 func (h *SchedulersHandler) fromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.SchedulerWithoutSpec {
@@ -206,7 +206,7 @@ func (h *SchedulersHandler) fromApiUpdateSchedulerRequestToEntity(request *api.U
 		entities.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
-		))
+		), nil)
 }
 
 func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Scheduler) *api.Scheduler {

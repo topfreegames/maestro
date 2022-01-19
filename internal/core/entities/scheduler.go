@@ -25,6 +25,7 @@ package entities
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/validations"
 )
@@ -39,7 +40,7 @@ const (
 	//StateInSync represents a cluster state
 	StateInSync = "in-sync"
 
-	//StateTerminating represents a cluster state
+	//StateOnError represents a cluster state
 	StateOnError = "on-error"
 )
 
@@ -51,17 +52,20 @@ type Scheduler struct {
 	Spec            game_room.Spec
 	PortRange       *PortRange
 	CreatedAt       time.Time
-	MaxSurge        string `validate:"required,max_surge"`
+	MaxSurge        string                 `validate:"required,max_surge"`
+	Forwarders      []*forwarder.Forwarder `validate:"dive"`
 }
 
-func NewScheduler(name string, game string, state string, maxSurge string, spec game_room.Spec, portRange *PortRange) (*Scheduler, error) {
+func NewScheduler(name string, game string, state string, maxSurge string, spec game_room.Spec, portRange *PortRange, forwarders []*forwarder.Forwarder) (*Scheduler, error) {
 	scheduler := &Scheduler{
-		Name:      name,
-		Game:      game,
-		State:     state,
-		Spec:      spec,
-		PortRange: portRange,
-		MaxSurge:  maxSurge}
+		Name:       name,
+		Game:       game,
+		State:      state,
+		Spec:       spec,
+		PortRange:  portRange,
+		MaxSurge:   maxSurge,
+		Forwarders: forwarders,
+	}
 	return scheduler, scheduler.Validate()
 }
 

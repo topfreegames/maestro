@@ -27,6 +27,9 @@ package pg
 
 import (
 	"testing"
+	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -35,6 +38,18 @@ import (
 
 func TestScheduler_ToScheduler(t *testing.T) {
 	t.Run("valid schedulers", func(t *testing.T) {
+		fwd := &forwarder.Forwarder{
+			Name:        "fwd",
+			Enabled:     true,
+			ForwardType: forwarder.TypeGrpc,
+			Address:     "address",
+			Options: &forwarder.ForwardOptions{
+				Timeout:  time.Second * 5,
+				Metadata: nil,
+			},
+		}
+		forwarders := []*forwarder.Forwarder{fwd}
+
 		schedulers := []*entities.Scheduler{
 			{
 				Name:            "scheduler-1",
@@ -155,6 +170,19 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Start: 40000,
 					End:   60000,
 				},
+			},
+			{
+				Name:            "scheduler-5",
+				Game:            "game",
+				State:           entities.StateInSync,
+				RollbackVersion: "v1",
+				Spec: game_room.Spec{
+					Version:                "v2",
+					TerminationGracePeriod: 60,
+					Toleration:             "toleration",
+					Affinity:               "affinity",
+				},
+				Forwarders: forwarders,
 			},
 		}
 

@@ -25,6 +25,8 @@ package pg
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+
 	"github.com/ghodss/yaml"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -55,6 +57,7 @@ type schedulerInfo struct {
 	Containers             []game_room.Container
 	PortRange              *entities.PortRange
 	MaxSurge               string
+	Forwarders             []*forwarder.Forwarder
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -65,6 +68,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		Containers:             scheduler.Spec.Containers,
 		PortRange:              scheduler.PortRange,
 		MaxSurge:               scheduler.MaxSurge,
+		Forwarders:             scheduler.Forwarders,
 	}
 	yamlBytes, _ := yaml.Marshal(info)
 	return &Scheduler{
@@ -98,5 +102,6 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		RollbackVersion: s.RollbackVersion,
 		CreatedAt:       s.CreatedAt.Time,
 		MaxSurge:        info.MaxSurge,
+		Forwarders:      info.Forwarders,
 	}, nil
 }
