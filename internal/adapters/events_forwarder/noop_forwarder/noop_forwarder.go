@@ -25,6 +25,9 @@ package noop_forwarder
 import (
 	"context"
 
+	"github.com/topfreegames/maestro/internal/core/entities/events"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
@@ -35,12 +38,22 @@ func NewNoopForwarder() *noopForwarder {
 }
 
 // ForwardRoomEvent forwards room events. It receives the game room, its instance, and additional attributes.
-func (*noopForwarder) ForwardRoomEvent(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
-	return nil
+func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarderOptions forwarder.ForwardOptions) error {
+	panic("implement me")
 }
 
 // ForwardPlayerEvent forwards a player events. It receives the game room and additional attributes.
-func (*noopForwarder) ForwardPlayerEvent(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
+func (f *noopForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarderOptions forwarder.ForwardOptions) error {
+	panic("implement me")
+}
+
+// ForwardRoomEventObsolete forwards room events. It receives the game room, its instance, and additional attributes.
+func (*noopForwarder) ForwardRoomEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
+	return nil
+}
+
+// ForwardPlayerEventObsolete forwards a player events. It receives the game room and additional attributes.
+func (*noopForwarder) ForwardPlayerEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
 	return nil
 }
 

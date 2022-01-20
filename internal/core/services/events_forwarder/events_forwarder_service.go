@@ -61,7 +61,7 @@ func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *event
 }
 
 func (es *EventsForwarderService) forwardRoomEvent(ctx context.Context, room *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
-	err := es.eventsForwarder.ForwardRoomEvent(ctx, room, instance, attributes, options)
+	err := es.eventsForwarder.ForwardRoomEventObsolete(ctx, room, instance, attributes, options)
 	if err != nil {
 		reportRoomEventForwardingFailed(room.SchedulerID)
 		es.logger.Error(fmt.Sprintf("Failed to forward room events for room %s and scheduler %s", room.ID, room.SchedulerID), zap.Error(err))
@@ -72,7 +72,7 @@ func (es *EventsForwarderService) forwardRoomEvent(ctx context.Context, room *ga
 }
 
 func (es *EventsForwarderService) forwardPlayerEvent(ctx context.Context, room *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
-	err := es.eventsForwarder.ForwardPlayerEvent(ctx, room, attributes, options)
+	err := es.eventsForwarder.ForwardPlayerEventObsolete(ctx, room, attributes, options)
 	if err != nil {
 		reportPlayerEventForwardingFailed(room.SchedulerID)
 		es.logger.Error(fmt.Sprintf("Failed to forward player events for room %s and scheduler %s", room.ID, room.SchedulerID), zap.Error(err))
