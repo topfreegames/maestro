@@ -39,12 +39,12 @@ func NewNoopForwarder() *noopForwarder {
 
 // ForwardRoomEvent forwards room events. It receives the game room, its instance, and additional attributes.
 func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarderOptions forwarder.ForwardOptions) error {
-	panic("implement me")
+	return nil
 }
 
 // ForwardPlayerEvent forwards a player events. It receives the game room and additional attributes.
 func (f *noopForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarderOptions forwarder.ForwardOptions) error {
-	panic("implement me")
+	return nil
 }
 
 // ForwardRoomEventObsolete forwards room events. It receives the game room, its instance, and additional attributes.
