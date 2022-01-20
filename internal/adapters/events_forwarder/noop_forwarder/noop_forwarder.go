@@ -25,6 +25,9 @@ package noop_forwarder
 import (
 	"context"
 
+	"github.com/topfreegames/maestro/internal/core/entities/events"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
@@ -34,13 +37,23 @@ func NewNoopForwarder() *noopForwarder {
 	return &noopForwarder{}
 }
 
-// ForwardRoomEvent forwards room events. It receives the game room, its instance, and additional attributes.
-func (*noopForwarder) ForwardRoomEvent(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
+// ForwardRoomEvent forwards room events. It receives the room event attributes and forwarder configuration.
+func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder forwarder.Forwarder) error {
 	return nil
 }
 
-// ForwardPlayerEvent forwards a player events. It receives the game room and additional attributes.
-func (*noopForwarder) ForwardPlayerEvent(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
+// ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
+func (f *noopForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder forwarder.Forwarder) error {
+	return nil
+}
+
+// ForwardRoomEventObsolete forwards room events. It receives the game room, its instance, and additional attributes.
+func (*noopForwarder) ForwardRoomEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
+	return nil
+}
+
+// ForwardPlayerEventObsolete forwards a player events. It receives the game room and additional attributes.
+func (*noopForwarder) ForwardPlayerEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
 	return nil
 }
 

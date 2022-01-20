@@ -9,6 +9,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	events "github.com/topfreegames/maestro/internal/core/entities/events"
+	forwarder "github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	game_room "github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
@@ -36,31 +38,59 @@ func (m *MockEventsForwarder) EXPECT() *MockEventsForwarderMockRecorder {
 }
 
 // ForwardPlayerEvent mocks base method.
-func (m *MockEventsForwarder) ForwardPlayerEvent(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
+func (m *MockEventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarderOptions forwarder.ForwardOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ForwardPlayerEvent", ctx, gameRoom, attributes, options)
+	ret := m.ctrl.Call(m, "ForwardPlayerEvent", ctx, eventAttributes, forwarderOptions)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ForwardPlayerEvent indicates an expected call of ForwardPlayerEvent.
-func (mr *MockEventsForwarderMockRecorder) ForwardPlayerEvent(ctx, gameRoom, attributes, options interface{}) *gomock.Call {
+func (mr *MockEventsForwarderMockRecorder) ForwardPlayerEvent(ctx, eventAttributes, forwarderOptions interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardPlayerEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardPlayerEvent), ctx, gameRoom, attributes, options)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardPlayerEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardPlayerEvent), ctx, eventAttributes, forwarderOptions)
+}
+
+// ForwardPlayerEventObsolete mocks base method.
+func (m *MockEventsForwarder) ForwardPlayerEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ForwardPlayerEventObsolete", ctx, gameRoom, attributes, options)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ForwardPlayerEventObsolete indicates an expected call of ForwardPlayerEventObsolete.
+func (mr *MockEventsForwarderMockRecorder) ForwardPlayerEventObsolete(ctx, gameRoom, attributes, options interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardPlayerEventObsolete", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardPlayerEventObsolete), ctx, gameRoom, attributes, options)
 }
 
 // ForwardRoomEvent mocks base method.
-func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
+func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarderOptions forwarder.ForwardOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ForwardRoomEvent", ctx, gameRoom, instance, attributes, options)
+	ret := m.ctrl.Call(m, "ForwardRoomEvent", ctx, eventAttributes, forwarderOptions)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ForwardRoomEvent indicates an expected call of ForwardRoomEvent.
-func (mr *MockEventsForwarderMockRecorder) ForwardRoomEvent(ctx, gameRoom, instance, attributes, options interface{}) *gomock.Call {
+func (mr *MockEventsForwarderMockRecorder) ForwardRoomEvent(ctx, eventAttributes, forwarderOptions interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardRoomEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardRoomEvent), ctx, gameRoom, instance, attributes, options)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardRoomEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardRoomEvent), ctx, eventAttributes, forwarderOptions)
+}
+
+// ForwardRoomEventObsolete mocks base method.
+func (m *MockEventsForwarder) ForwardRoomEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ForwardRoomEventObsolete", ctx, gameRoom, instance, attributes, options)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ForwardRoomEventObsolete indicates an expected call of ForwardRoomEventObsolete.
+func (mr *MockEventsForwarderMockRecorder) ForwardRoomEventObsolete(ctx, gameRoom, instance, attributes, options interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardRoomEventObsolete", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardRoomEventObsolete), ctx, gameRoom, instance, attributes, options)
 }
 
 // Name mocks base method.
