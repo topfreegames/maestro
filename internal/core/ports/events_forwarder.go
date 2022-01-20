@@ -32,10 +32,10 @@ import (
 )
 
 type EventsForwarder interface {
-	// ForwardRoomEvent forwards room events. It receives the game room, its instance, and additional attributes.
-	ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarderOptions forwarder.ForwardOptions) error
-	// ForwardPlayerEvent forwards a player events. It receives the game room and additional attributes.
-	ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarderOptions forwarder.ForwardOptions) error
+	// ForwardRoomEvent forwards room events. It receives the room event attributes and forwarder configuration.
+	ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder forwarder.Forwarder) error
+	// ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
+	ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder forwarder.Forwarder) error
 	// ForwardRoomEventObsolete forwards room events. It receives the game room, its instance, and additional attributes.
 	ForwardRoomEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error
 	// ForwardPlayerEventObsolete forwards a player events. It receives the game room and additional attributes.
