@@ -28,11 +28,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -175,7 +178,9 @@ func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.C
 		entities.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
-		), nil)
+		),
+		h.fromApiForwarders(request.GetForwarders()),
+	)
 }
 
 func (h *SchedulersHandler) fromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.SchedulerWithoutSpec {
@@ -206,7 +211,9 @@ func (h *SchedulersHandler) fromApiUpdateSchedulerRequestToEntity(request *api.U
 		entities.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
-		), nil)
+		),
+		h.fromApiForwarders(request.GetForwarders()),
+	)
 }
 
 func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Scheduler) *api.Scheduler {
@@ -357,4 +364,22 @@ func fromEntityContainerPortsToApiContainerPorts(ports []game_room.ContainerPort
 		})
 	}
 	return convertedContainerPort
+}
+
+func (h *SchedulersHandler) fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
+	var forwarders []*forwarder.Forwarder
+	for _, apiForwarder := range apiForwarders {
+		forwarder := forwarder.Forwarder{
+			Name:        apiForwarder.GetName(),
+			Enabled:     apiForwarder.GetEnable(),
+			ForwardType: forwarder.ForwardType(apiForwarder.GetType()),
+			Address:     apiForwarder.GetAddress(),
+			Options: &forwarder.ForwardOptions{
+				Timeout:  time.Duration(apiForwarder.Options.GetTimeout()),
+				Metadata: apiForwarder.Options.Metadata.AsMap(),
+			},
+		}
+		forwarders = append(forwarders, &forwarder)
+	}
+	return forwarders
 }

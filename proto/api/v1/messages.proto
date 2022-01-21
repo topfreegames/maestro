@@ -112,6 +112,8 @@ message Scheduler {
   string max_surge = 7;
   // GameRoom spec
   Spec spec = 8;
+  // List of Scheduler forwarders
+  repeated Forwarder forwarders = 9;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
@@ -177,7 +179,7 @@ message Forwarder {
   // Forwarder gRPC service address.
   string address = 4;
   // Forwarder Options
-  repeated ForwarderOptions options = 5;
+  optional ForwarderOptions options = 5;
 }
 
 // Forwarder Options definitions.
