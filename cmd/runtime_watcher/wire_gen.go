@@ -46,7 +46,7 @@ func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager,
 	if err != nil {
 		return nil, err
 	}
-	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder)
+	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, roomStorage, gameRoomInstanceStorage)
 	roomManagerConfig, err := service.NewRoomManagerConfig(c)
 	if err != nil {
 		return nil, err
