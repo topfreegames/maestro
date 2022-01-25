@@ -24,6 +24,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/topfreegames/maestro/internal/adapters/forwarder_grpc/grpc"
 
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
@@ -69,7 +70,8 @@ const (
 )
 
 func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
-	return matchmakerEventsForwarder.NewNoopForwarder(), nil
+	forwarderGrpc := grpc.NewForwarderGrpc()
+	return matchmakerEventsForwarder.NewNoopForwarder(forwarderGrpc), nil
 }
 
 func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {

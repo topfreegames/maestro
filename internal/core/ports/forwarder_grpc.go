@@ -20,28 +20,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package forwarder
+package ports
 
-type ForwardType string
-
-const (
-	TypeGrpc ForwardType = "gRPC"
+import (
+	"context"
+	pb "github.com/topfreegames/protos/maestro/grpc/generated"
+	"google.golang.org/grpc"
 )
 
-type Forwarder struct {
-	Name        string `validate:"required"`
-	Enabled     bool
-	ForwardType ForwardType `validate:"required"`
-	Address     string      `validate:"required"`
-	Options     *ForwardOptions
-}
-
-func FromForwardTypeToString(value ForwardType) string {
-	switch value {
-	case  TypeGrpc:
-		return "grpc"
-	default:
-	}
-
-	return "unknown type"
+type ForwarderGrpc interface {
+	SendRoomEvent(ctx context.Context, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error)
+	SendRoomResync(ctx context.Context, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error)
 }
