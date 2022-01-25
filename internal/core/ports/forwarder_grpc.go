@@ -20,31 +20,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package events
+package ports
 
-type RoomEventAttributes struct {
-	Game       string
-	RoomId     string
-	Host       string
-	Port       int32
-	EventType  RoomEventType
-	PingType   *RoomPingEventType
-	Attributes map[string]interface{}
+import (
+	"context"
+	pb "github.com/topfreegames/protos/maestro/grpc/generated"
+	"google.golang.org/grpc"
+)
+
+type ForwarderGrpc interface {
+	SendRoomEvent(ctx context.Context, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error)
+	SendRoomResync(ctx context.Context, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error)
 }
-
-type RoomEventType string
-
-var (
-	Ping      RoomEventType = "resync"
-	Arbitrary RoomEventType = "roomEvent"
-)
-
-type RoomPingEventType string
-
-var (
-	RoomPingUnknown				RoomPingEventType = "unknown"
-	RoomPingReady       RoomPingEventType = "roomReady"
-	RoomPingOccupied    RoomPingEventType = "roomOccupied"
-	RoomPingTerminating RoomPingEventType = "roomOccupied"
-	RoomPingTerminated  RoomPingEventType = "roomOccupied"
-)

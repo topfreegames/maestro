@@ -35,3 +35,13 @@ type Forwarder struct {
 	Address     string      `validate:"required"`
 	Options     *ForwardOptions
 }
+
+func FromForwardTypeToString(value ForwardType) string {
+	switch value {
+	case  TypeGrpc:
+		return "grpc"
+	default:
+	}
+
+	return "unknown type"
+}

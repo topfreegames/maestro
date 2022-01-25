@@ -42,9 +42,11 @@ package gen
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/operation_lease_storage.go -destination=../internal/adapters/operation_lease/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/scheduler_storage.go -destination=../internal/adapters/scheduler_storage/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/operation_flow.go -destination=../internal/adapters/operation_flow/mock/mock.go -package=mock
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/forwarder_grpc.go -destination=../internal/adapters/forwarder_grpc/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/config/config.go -destination=../internal/config/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/operations/definition.go -destination=../internal/core/operations/mock/definition.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/operations/executor.go -destination=../internal/core/operations/mock/executor.go -package=mock
+
 
 // License
 //go:generate go run github.com/google/addlicense -v -skip yml -skip yaml -skip proto -f ../LICENSE ../
