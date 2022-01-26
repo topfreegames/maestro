@@ -99,6 +99,8 @@ message CreateSchedulerRequest {
   string affinity = 8;
   // The max surge of new rooms, used to scale and update
   string max_surge = 9;
+  // List of Scheduler forwarders
+  repeated Forwarder forwarders = 10;
 }
 
 // Add rooms operation request payload + path parameters.
@@ -161,6 +163,8 @@ message UpdateSchedulerRequest {
   string affinity = 7;
   // The max surge of new rooms, used to scale and update
   string max_surge = 8;
+  // List of Scheduler forwarders
+  repeated Forwarder forwarders = 9;
 }
 
 // Update schedule operation response payload.

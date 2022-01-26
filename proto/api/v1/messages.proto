@@ -8,8 +8,8 @@ option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
 
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
-
 
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
@@ -112,6 +112,8 @@ message Scheduler {
   string max_surge = 7;
   // GameRoom spec
   Spec spec = 8;
+  // List of Scheduler forwarders
+  repeated Forwarder forwarders = 9;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
@@ -164,4 +166,26 @@ message SchedulerVersion {
   string version = 1;
   // Specifies when the version has been created
   google.protobuf.Timestamp created_at = 2;
+}
+
+// Forwarder definitions.
+message Forwarder {
+  // Forwarder name used to identify it. Must be unique within the scheduler
+  string name = 1;
+  // Defines if the forwarder is going to receive events or not
+  bool enable = 2;
+  // Forwarder type
+  string type = 3;
+  // Forwarder gRPC service address.
+  string address = 4;
+  // Forwarder Options
+  optional ForwarderOptions options = 5;
+}
+
+// Forwarder Options definitions.
+message ForwarderOptions {
+  // Timeout of a request.
+  int64 timeout = 1;
+  // Additional information
+  google.protobuf.Struct metadata = 2;
 }

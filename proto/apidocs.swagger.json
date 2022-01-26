@@ -422,6 +422,13 @@
                 "maxSurge": {
                   "type": "string",
                   "title": "The max surge of new rooms, used to scale and update"
+                },
+                "forwarders": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/v1Forwarder"
+                  },
+                  "title": "List of Scheduler forwarders"
                 }
               },
               "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -904,6 +911,13 @@
         "maxSurge": {
           "type": "string",
           "title": "The max surge of new rooms, used to scale and update"
+        },
+        "forwarders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Forwarder"
+          },
+          "title": "List of Scheduler forwarders"
         }
       },
       "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -945,6 +959,47 @@
         }
       },
       "description": "The room event response."
+    },
+    "v1Forwarder": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Forwarder name used to identify it. Must be unique within the scheduler"
+        },
+        "enable": {
+          "type": "boolean",
+          "title": "Defines if the forwarder is going to receive events or not"
+        },
+        "type": {
+          "type": "string",
+          "title": "Forwarder type"
+        },
+        "address": {
+          "type": "string",
+          "description": "Forwarder gRPC service address."
+        },
+        "options": {
+          "$ref": "#/definitions/v1ForwarderOptions",
+          "title": "Forwarder Options"
+        }
+      },
+      "description": "Forwarder definitions."
+    },
+    "v1ForwarderOptions": {
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timeout of a request."
+        },
+        "metadata": {
+          "type": "object",
+          "title": "Additional information"
+        }
+      },
+      "description": "Forwarder Options definitions."
     },
     "v1GetPingResponse": {
       "type": "object",
@@ -1090,6 +1145,13 @@
         "spec": {
           "$ref": "#/definitions/v1Spec",
           "title": "GameRoom spec"
+        },
+        "forwarders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Forwarder"
+          },
+          "title": "List of Scheduler forwarders"
         }
       },
       "description": "Scheduler definition."
