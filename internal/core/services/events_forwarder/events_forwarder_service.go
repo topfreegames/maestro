@@ -64,25 +64,14 @@ func NewEventsForwarderService(
 }
 
 func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *events.Event) error {
-	var eventType string
-	if _, ok := event.Attributes["eventType"]; ok {
-		eventType = event.Attributes["eventType"].(string)
-	} else {
+	if _, ok := event.Attributes["eventType"]; !ok {
 		return errors.New("eventAttributes must contain key \"eventType\"")
 	}
+	eventType := event.Attributes["eventType"].(string)
 
-	var scheduler *entities.Scheduler
-	var err error
-	scheduler, _ = es.schedulerCache.GetScheduler(ctx, event.SchedulerID)
-	if scheduler == nil {
-		scheduler, err = es.schedulerStorage.GetScheduler(ctx, event.SchedulerID)
-		if err != nil {
-			es.logger.Error(fmt.Sprintf("Failed to get scheduler \"%v\" info", event.SchedulerID), zap.Error(err))
-			return err
-		}
-		if err := es.schedulerCache.SetScheduler(ctx, scheduler); err != nil {
-			es.logger.Error(fmt.Sprintf("Failed to set scheduler \"%v\" in cache", event.SchedulerID), zap.Error(err))
-		}
+	scheduler, err := es.getScheduler(ctx, event.SchedulerID)
+	if err != nil {
+		return err
 	}
 
 	forwarderList := scheduler.Forwarders
@@ -121,23 +110,19 @@ func (es *EventsForwarderService) forwardRoomEvent(
 	scheduler entities.Scheduler,
 	_forwarder *forwarder.Forwarder,
 ) error {
-	var selectedPort int32
-	if len(instance.Address.Ports) > 0 {
-		selectedPort = instance.Address.Ports[0].Port
-	} else {
-		return errors.New("no room port found to forward roomEvent")
+	if len(instance.Address.Ports) == 0 {
+		return fmt.Errorf("no room port found to forward roomEvent. Forwarder name: \"%v\", Scheduler: \"%v\"", _forwarder.Name, event.SchedulerID)
 	}
+	selectedPort := instance.Address.Ports[0].Port
 
 	roomEvent := events.RoomEventType(eventType)
 
 	var pingType events.RoomPingEventType
 	if roomEvent == events.Ping {
-		if _type, ok := event.Attributes["pingType"]; ok {
-			pingType = events.RoomPingEventType(_type.(string))
-		} else {
+		if _, ok := event.Attributes["pingType"]; !ok {
 			return errors.New("roomEvent of type ping must contain key \"pingType\" in eventAttributes")
 		}
-
+		pingType = events.RoomPingEventType(event.Attributes["pingType"].(string))
 	}
 
 	roomAttributes := events.RoomEventAttributes{
@@ -166,14 +151,13 @@ func (es *EventsForwarderService) forwardPlayerEvent(
 	eventType string,
 	_forwarder *forwarder.Forwarder,
 ) error {
-	var playerId string
-	if _playerId, ok := event.Attributes["playerId"]; ok {
-		playerId = _playerId.(string)
-	} else {
-		return errors.New("eventAttributes must contain key \"playerId\" in playerEvent events")
+	if _, ok := event.Attributes["playerId"]; !ok {
+		return fmt.Errorf("eventAttributes must contain key \"playerId\" in playerEvent events. Forwarder name: \"%v\", Scheduler: \"%v\"", _forwarder.Name, event.SchedulerID)
 	}
 
+	playerId := event.Attributes["playerId"].(string)
 	playerEvent := events.PlayerEventType(eventType)
+
 	playerAttributes := events.PlayerEventAttributes{
 		RoomId:    event.RoomID,
 		PlayerId:  playerId,
@@ -189,4 +173,21 @@ func (es *EventsForwarderService) forwardPlayerEvent(
 	}
 	reportPlayerEventForwardingSuccess(event.SchedulerID)
 	return nil
+}
+
+func (es *EventsForwarderService) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
+	var scheduler *entities.Scheduler
+	var err error
+	scheduler, _ = es.schedulerCache.GetScheduler(ctx, schedulerName)
+	if scheduler == nil {
+		scheduler, err = es.schedulerStorage.GetScheduler(ctx, schedulerName)
+		if err != nil {
+			es.logger.Error(fmt.Sprintf("Failed to get scheduler \"%v\" info", schedulerName), zap.Error(err))
+			return nil, err
+		}
+		if err = es.schedulerCache.SetScheduler(ctx, scheduler); err != nil {
+			es.logger.Error(fmt.Sprintf("Failed to set scheduler \"%v\" in cache", schedulerName), zap.Error(err))
+		}
+	}
+	return scheduler, nil
 }
