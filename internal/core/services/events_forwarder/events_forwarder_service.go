@@ -80,6 +80,9 @@ func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *event
 			es.logger.Error(fmt.Sprintf("Failed to get scheduler \"%v\" info", event.SchedulerID), zap.Error(err))
 			return err
 		}
+		if err := es.schedulerCache.SetScheduler(ctx, scheduler); err != nil {
+			es.logger.Error(fmt.Sprintf("Failed to set scheduler \"%v\" in cache", event.SchedulerID), zap.Error(err))
+		}
 	}
 
 	forwarderList := scheduler.Forwarders

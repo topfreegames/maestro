@@ -43,3 +43,7 @@ func NewRedisSchedulerCache(client *redis.Client) *redisSchedulerCache {
 func (r redisSchedulerCache) GetScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
 	return nil, nil
 }
+
+func (r redisSchedulerCache) SetScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	return nil
+}

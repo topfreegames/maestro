@@ -49,3 +49,17 @@ func (mr *MockSchedulerCacheMockRecorder) GetScheduler(ctx, name interface{}) *g
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScheduler", reflect.TypeOf((*MockSchedulerCache)(nil).GetScheduler), ctx, name)
 }
+
+// SetScheduler mocks base method.
+func (m *MockSchedulerCache) SetScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetScheduler", ctx, scheduler)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetScheduler indicates an expected call of SetScheduler.
+func (mr *MockSchedulerCacheMockRecorder) SetScheduler(ctx, scheduler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScheduler", reflect.TypeOf((*MockSchedulerCache)(nil).SetScheduler), ctx, scheduler)
+}

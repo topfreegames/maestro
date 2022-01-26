@@ -30,4 +30,5 @@ import (
 
 type SchedulerCache interface {
 	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
+	SetScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 }
