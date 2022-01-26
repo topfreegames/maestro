@@ -20,30 +20,26 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package events
+package redis
 
-type RoomEventAttributes struct {
-	Game      string
-	RoomId    string
-	Host      string
-	Port      string
-	EventType RoomEventType
-	PingType  *RoomPingEventType
-	Other     map[string]interface{}
+import (
+	"context"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/ports"
+)
+
+type redisSchedulerCache struct {
+	client *redis.Client
 }
 
-type RoomEventType string
+var _ ports.SchedulerCache = (*redisSchedulerCache)(nil)
 
-var (
-	Ping      RoomEventType = "resync"
-	Arbitrary RoomEventType = "roomEvent"
-)
+func NewRedisSchedulerCache(client *redis.Client) *redisSchedulerCache {
+	return &redisSchedulerCache{client: client}
+}
 
-type RoomPingEventType string
-
-var (
-	RoomPingReady       RoomPingEventType = "roomReady"
-	RoomPingOccupied    RoomPingEventType = "roomOccupied"
-	RoomPingTerminating RoomPingEventType = "roomOccupied"
-	RoomPingTerminated  RoomPingEventType = "roomOccupied"
-)
+func (r redisSchedulerCache) GetScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
+	return nil, nil
+}

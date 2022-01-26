@@ -41,7 +41,15 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 	if err != nil {
 		return nil, err
 	}
-	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder)
+	schedulerStorage, err := service.NewSchedulerStoragePg(conf)
+	if err != nil {
+		return nil, err
+	}
+	schedulerCache, err := service.NewSchedulerCacheRedis(conf)
+	if err != nil {
+		return nil, err
+	}
+	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, gameRoomInstanceStorage, schedulerCache)
 	roomManagerConfig, err := service.NewRoomManagerConfig(conf)
 	if err != nil {
 		return nil, err

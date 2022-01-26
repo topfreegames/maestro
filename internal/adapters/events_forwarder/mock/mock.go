@@ -38,17 +38,17 @@ func (m *MockEventsForwarder) EXPECT() *MockEventsForwarderMockRecorder {
 }
 
 // ForwardPlayerEvent mocks base method.
-func (m *MockEventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarderOptions forwarder.ForwardOptions) error {
+func (m *MockEventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder forwarder.Forwarder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ForwardPlayerEvent", ctx, eventAttributes, forwarderOptions)
+	ret := m.ctrl.Call(m, "ForwardPlayerEvent", ctx, eventAttributes, forwarder)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ForwardPlayerEvent indicates an expected call of ForwardPlayerEvent.
-func (mr *MockEventsForwarderMockRecorder) ForwardPlayerEvent(ctx, eventAttributes, forwarderOptions interface{}) *gomock.Call {
+func (mr *MockEventsForwarderMockRecorder) ForwardPlayerEvent(ctx, eventAttributes, forwarder interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardPlayerEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardPlayerEvent), ctx, eventAttributes, forwarderOptions)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardPlayerEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardPlayerEvent), ctx, eventAttributes, forwarder)
 }
 
 // ForwardPlayerEventObsolete mocks base method.
@@ -66,17 +66,17 @@ func (mr *MockEventsForwarderMockRecorder) ForwardPlayerEventObsolete(ctx, gameR
 }
 
 // ForwardRoomEvent mocks base method.
-func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarderOptions forwarder.ForwardOptions) error {
+func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder forwarder.Forwarder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ForwardRoomEvent", ctx, eventAttributes, forwarderOptions)
+	ret := m.ctrl.Call(m, "ForwardRoomEvent", ctx, eventAttributes, forwarder)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ForwardRoomEvent indicates an expected call of ForwardRoomEvent.
-func (mr *MockEventsForwarderMockRecorder) ForwardRoomEvent(ctx, eventAttributes, forwarderOptions interface{}) *gomock.Call {
+func (mr *MockEventsForwarderMockRecorder) ForwardRoomEvent(ctx, eventAttributes, forwarder interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardRoomEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardRoomEvent), ctx, eventAttributes, forwarderOptions)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardRoomEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardRoomEvent), ctx, eventAttributes, forwarder)
 }
 
 // ForwardRoomEventObsolete mocks base method.

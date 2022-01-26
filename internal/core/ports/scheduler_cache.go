@@ -20,30 +20,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package events
+package ports
 
-type RoomEventAttributes struct {
-	Game      string
-	RoomId    string
-	Host      string
-	Port      string
-	EventType RoomEventType
-	PingType  *RoomPingEventType
-	Other     map[string]interface{}
+import (
+	"context"
+
+	"github.com/topfreegames/maestro/internal/core/entities"
+)
+
+type SchedulerCache interface {
+	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
 }
-
-type RoomEventType string
-
-var (
-	Ping      RoomEventType = "resync"
-	Arbitrary RoomEventType = "roomEvent"
-)
-
-type RoomPingEventType string
-
-var (
-	RoomPingReady       RoomPingEventType = "roomReady"
-	RoomPingOccupied    RoomPingEventType = "roomOccupied"
-	RoomPingTerminating RoomPingEventType = "roomOccupied"
-	RoomPingTerminated  RoomPingEventType = "roomOccupied"
-)

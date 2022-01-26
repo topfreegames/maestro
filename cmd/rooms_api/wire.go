@@ -46,9 +46,11 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 		service.NewPortAllocatorRandom,
 		service.NewRoomStorageRedis,
 		service.NewGameRoomInstanceStorageRedis,
+		service.NewSchedulerCacheRedis,
 		service.NewRuntimeKubernetes,
 		service.NewRoomManagerConfig,
 		service.NewEventsForwarder,
+		service.NewSchedulerStoragePg,
 
 		// services
 		events_forwarder.NewEventsForwarderService,

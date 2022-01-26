@@ -27,13 +27,15 @@ package events_forwarder_test
 
 import (
 	"context"
-	"github.com/stretchr/testify/require"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	efmock "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
 	isMock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
-	rsMock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
+	scMock "github.com/topfreegames/maestro/internal/adapters/scheduler_cache/mock"
 	ssMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/events"
@@ -50,10 +52,10 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 
 	eventsForwarder := efmock.NewMockEventsForwarder(mockCtrl)
 	schedulerStorage := ssMock.NewMockSchedulerStorage(mockCtrl)
-	roomStorage := rsMock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := isMock.NewMockGameRoomInstanceStorage(mockCtrl)
+	schedulerCache := scMock.NewMockSchedulerCache(mockCtrl)
 
-	eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, roomStorage, instanceStorage)
+	eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, instanceStorage, schedulerCache)
 
 	fwd := &forwarder.Forwarder{
 		Name:        "fwd",
@@ -79,35 +81,247 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		Forwarders:      forwarders,
 	}
 
-	expectedGameRoom := &game_room.GameRoom{
-		ID:          "room",
-		SchedulerID: "scheduler",
-		Status:      game_room.GameStatusPending,
-		Metadata: map[string]interface{}{
-			"playerId":  "player",
-			"eventType": "playerLeft",
-		},
+	port := game_room.Port{
+		Name:     "port",
+		Port:     8080,
+		Protocol: "TCP",
 	}
-
+	ports := []game_room.Port{port}
 	expectedGameRoomInstance := &game_room.Instance{
 		ID:          "instance",
 		SchedulerID: "scheduler",
+		Address: &game_room.Address{
+			Host:  "host",
+			Ports: ports,
+		},
 	}
 
-	t.Run("when event type is PlayerEvent", func(t *testing.T) {
+	t.Run("should succeed when scheduler do not have forwarders configured", func(t *testing.T) {
 		event := &events.Event{
 			Name:        events.PlayerEvent,
 			SchedulerID: expectedScheduler.Name,
-			RoomID:      expectedGameRoom.ID,
-			Attributes:  nil,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "playerLeft",
+				"playerId":  "player",
+			},
 		}
 
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoom, nil)
-		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
+		scheduler := &entities.Scheduler{
+			Name:            "scheduler",
+			Game:            "game",
+			State:           "",
+			RollbackVersion: "",
+			Spec:            game_room.Spec{},
+			PortRange:       nil,
+			CreatedAt:       time.Time{},
+			MaxSurge:        "",
+			Forwarders:      nil,
+		}
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(scheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
 		require.NoError(t, err)
 	})
 
+	t.Run("should succeed when event is PlayerEvent", func(t *testing.T) {
+		event := &events.Event{
+			Name:        events.PlayerEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "playerLeft",
+				"playerId":  "player",
+			},
+		}
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.NoError(t, err)
+	})
+
+	t.Run("should succeed when event is RoomEvent", func(t *testing.T) {
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "resync",
+				"pingType":  "ready",
+			},
+		}
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.NoError(t, err)
+	})
+
+	t.Run("should fail when event type is not in eventAttributes", func(t *testing.T) {
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes:  map[string]interface{}{},
+		}
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.Error(t, err)
+	})
+
+	t.Run("should fail when event is RoomEvent but address has no ports", func(t *testing.T) {
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "resync",
+				"pingType":  "ready",
+			},
+		}
+
+		instance := &game_room.Instance{
+			ID:          "instance",
+			SchedulerID: "scheduler",
+			Address: &game_room.Address{
+				Host:  "host",
+				Ports: nil,
+			},
+		}
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(instance, nil)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.Error(t, err)
+	})
+
+	t.Run("should fail when event is PlayerEvent but playerId is not found", func(t *testing.T) {
+		event := &events.Event{
+			Name:        events.PlayerEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "playerLeft",
+			},
+		}
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.Error(t, err)
+	})
+
+	t.Run("should fail when event is RoomEvent, type is ping but pingType is not found", func(t *testing.T) {
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "resync",
+			},
+		}
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.Error(t, err)
+	})
+
+	t.Run("should fail when scheduler not found", func(t *testing.T) {
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "resync",
+			},
+		}
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, errors.New("scheduler not found"))
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.Error(t, err)
+	})
+
+	t.Run("should fail when instance needed but not found", func(t *testing.T) {
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "resync",
+			},
+		}
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(nil, errors.New("error"))
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.Error(t, err)
+	})
+
+	t.Run("should fail when forwardRoomEvent fails", func(t *testing.T) {
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "resync",
+				"pingType":  "ready",
+			},
+		}
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(errors.New("error"))
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.Error(t, err)
+	})
+
+	t.Run("should fail when forwardPlayerEvent fails", func(t *testing.T) {
+		event := &events.Event{
+			Name:        events.PlayerEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "playerLeft",
+				"playerId":  "player",
+			},
+		}
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(errors.New("error"))
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.Error(t, err)
+	})
 }

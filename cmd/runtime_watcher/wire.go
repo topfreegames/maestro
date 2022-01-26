@@ -51,6 +51,7 @@ var RoomManagerSet = wire.NewSet(
 	service.NewPortAllocatorRandom,
 	service.NewRoomStorageRedis,
 	service.NewGameRoomInstanceStorageRedis,
+	service.NewSchedulerCacheRedis,
 	service.NewRoomManagerConfig,
 	service.NewEventsForwarder,
 	events_forwarder.NewEventsForwarderService,
