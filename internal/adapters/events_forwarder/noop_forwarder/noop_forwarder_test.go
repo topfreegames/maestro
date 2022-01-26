@@ -23,69 +23,143 @@
 package noop_forwarder
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	pb "github.com/topfreegames/protos/maestro/grpc/generated"
+
 	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/internal/adapters/forwarder_grpc/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 )
 
+var (
+	mockCtrl *gomock.Controller
+	forwarderGrpcMock  *mock.MockForwarderGrpc
+	noopForwarderAdapter *noopForwarder
+)
+
 func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 	t.Run("with success when event type is Arbitrary", func(t *testing.T) {
-		// mockCtrl := gomock.NewController(t)
-		// defer mockCtrl.Finish()
-		// forwarderGrpc := forwarderGrpcMock.NewMockForwarderGrpc(mockCtrl)
+		// arr
+		basicArrange(t)
+		forwarderGrpcMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil )
 
-		// noopForwarder := NewNoopForwarder(forwarderGrpc)
-		// //forwarderGrpc.EXPECT().GetClient(gomock.Any()).Return(nil)
-		// err := noopForwarder.ForwardRoomEvent(context.Background(), newEventAttributes(events.Arbitrary), newForwarder())
+		// act
+		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary), newForwarder())
 
-		// require.NoError(t, err)
-		// require.Nil(t, err)
+		// ass
+		require.NoError(t, err)
+		require.Nil(t, err)
 	})
 
 	t.Run("failed when grpcClient returns error", func(t *testing.T) {
-		// mockCtrl := gomock.NewController(t)
-		// defer mockCtrl.Finish()
-		// forwarderGrpc := forwarderGrpcMock.NewMockForwarderGrpc(mockCtrl)
+		// arr
+		basicArrange(t)
+		forwarderGrpcMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
-		// noopForwarder := NewNoopForwarder(forwarderGrpc)
-		// //forwarderGrpc.EXPECT().GetClient(gomock.Any()).Return(errors.NewErrUnexpected("wrong"))
-		// err := noopForwarder.ForwardRoomEvent(context.Background(), newEventAttributes(events.Arbitrary), newForwarder())
+		// act
+		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary), newForwarder())
 
-		// require.Error(t, err)
-		// require.NotNil(t, err)
+		// ass
+		require.Error(t, err)
+		require.NotNil(t, err)
 	})
 
 	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
-		require.True(t, true)
+		basicArrange(t)
+		forwarderGrpcMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
+
+		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary), newForwarder())
+
+		require.Error(t, err)
+		require.NotNil(t, err)
 	})
 }
 
 func TestForwardRoomEvent_Ping(t *testing.T) {
 	t.Run("with success when event type is Ping", func(t *testing.T) {
-		// mockCtrl := gomock.NewController(t)
-		// defer mockCtrl.Finish()
-		// forwarderGrpc := forwarderGrpcMock.NewMockForwarderGrpc(mockCtrl)
+		// arr
+		basicArrange(t)
+		forwarderGrpcMock.EXPECT().SendRoomResync(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil )
 
-		// noopForwarder := NewNoopForwarder(forwarderGrpc)
-		// err := noopForwarder.ForwardRoomEvent(context.Background(), newEventAttributes(events.Ping), newForwarder())
+		// act
+		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping), newForwarder())
 
-		// require.NoError(t, err)
-		// require.Nil(t, err)
+		// ass
+		require.NoError(t, err)
+		require.Nil(t, err)
 	})
 
 	t.Run("failed when grpcClient returns error", func(t *testing.T) {
-		require.True(t, true)
+		// arr
+		basicArrange(t)
+		forwarderGrpcMock.EXPECT().SendRoomResync(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
+
+		// act
+		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping), newForwarder())
+
+		// ass
+		require.Error(t, err)
+		require.NotNil(t, err)
 	})
 
 	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
-		require.True(t, true)
+		basicArrange(t)
+		forwarderGrpcMock.EXPECT().SendRoomResync(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
+
+		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping), newForwarder())
+
+		require.Error(t, err)
+		require.NotNil(t, err)
 	})
 }
 
-func newEventAttributes(eventType events.RoomEventType) events.RoomEventAttributes {
+func TestForwardPlayerEvent(t *testing.T) {
+	t.Run("with success", func(t *testing.T) {
+		// arr
+		basicArrange(t)
+		forwarderGrpcMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil )
+
+		// act
+		err := noopForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
+
+		// ass
+		require.NoError(t, err)
+		require.Nil(t, err)
+	})
+
+	t.Run("failed when grpcClient returns error", func(t *testing.T) {
+		// arr
+		basicArrange(t)
+		forwarderGrpcMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
+
+		// act
+		err := noopForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
+
+		// ass
+		require.Error(t, err)
+		require.NotNil(t, err)
+	})
+
+	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
+		// arr
+		basicArrange(t)
+		forwarderGrpcMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
+
+		// act
+		err := noopForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
+
+		require.Error(t, err)
+		require.NotNil(t, err)
+	})
+}
+
+func newRoomEventAttributes(eventType events.RoomEventType) events.RoomEventAttributes {
 	return events.RoomEventAttributes{
 		Game:      "game-test",
 		RoomId:    "123",
@@ -94,6 +168,22 @@ func newEventAttributes(eventType events.RoomEventType) events.RoomEventAttribut
 		EventType: eventType,
 		PingType:  &events.RoomPingReady,
 		Attributes: map[string]interface{}{
+			"bacon": "delicious",
+			"eggs": struct {
+				source string
+				price  float64
+			}{"chicken", 1.75},
+			"steak": true,
+		},
+	}
+}
+
+func newPlayerEventAttributes() events.PlayerEventAttributes {
+	return events.PlayerEventAttributes{
+		RoomId:    "123",
+		PlayerId:  "123",
+		EventType: events.PlayerLeft,
+		Other:     map[string]interface{}{
 			"bacon": "delicious",
 			"eggs": struct {
 				source string
@@ -118,4 +208,11 @@ func newForwarder() forwarder.Forwarder {
 			},
 		},
 	}
+}
+
+func basicArrange(t *testing.T){
+	mockCtrl = gomock.NewController(t)
+	defer mockCtrl.Finish()
+	forwarderGrpcMock = mock.NewMockForwarderGrpc(mockCtrl)
+	noopForwarderAdapter = NewNoopForwarder(forwarderGrpcMock)
 }

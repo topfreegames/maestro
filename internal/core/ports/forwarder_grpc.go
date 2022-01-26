@@ -24,6 +24,7 @@ package ports
 
 import (
 	"context"
+
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	"google.golang.org/grpc"
 )
@@ -31,4 +32,5 @@ import (
 type ForwarderGrpc interface {
 	SendRoomEvent(ctx context.Context, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error)
 	SendRoomResync(ctx context.Context, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error)
+	SendPlayerEvent(ctx context.Context, in *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error)
 }

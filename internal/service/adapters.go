@@ -24,6 +24,7 @@ package service
 
 import (
 	"fmt"
+
 	"github.com/topfreegames/maestro/internal/adapters/forwarder_grpc/grpc"
 
 	"github.com/go-pg/pg"

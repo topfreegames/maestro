@@ -25,8 +25,11 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/opentracing/opentracing-go"
+	"github.com/patrickmn/go-cache"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
@@ -39,11 +42,13 @@ var (
 )
 
 type forwarderGrpc struct {
-
+	c *cache.Cache
 }
 
 func NewForwarderGrpc() *forwarderGrpc {
-	return &forwarderGrpc{}
+	return &forwarderGrpc{
+		c: cache.New(5*time.Minute, 10*time.Minute),
+	}
 }
 
 func (f *forwarderGrpc) SendRoomEvent(ctx context.Context, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error) {
@@ -72,8 +77,30 @@ func (f *forwarderGrpc) SendRoomResync(ctx context.Context, in *pb.RoomStatus, o
 	return client.SendRoomResync(ctx, in)
 }
 
+func (f *forwarderGrpc) SendPlayerEvent(ctx context.Context, in *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error) {
+	forwarderAddress := "address"
+	client, err := f.getGrpcClient(forwarderAddress)
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarderAddress).WithError(err)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10)
+	defer cancel()
+
+	return client.SendPlayerEvent(ctx, in)
+}
+
 func (f *forwarderGrpc) getGrpcClient(address string) (pb.GRPCForwarderClient, error) {
-	return nil, nil
+	clientFromCache, found := f.c.Get(address)
+	if !found {
+		client, err := f.configureGrpcClient(address)
+		if err != nil {
+			return nil, err
+		}
+		f.c.Set(address, client, cache.DefaultExpiration)
+		return client, nil
+	}
+	return clientFromCache.(pb.GRPCForwarderClient), nil
 }
 
 func (f *forwarderGrpc) configureGrpcClient(address string) (pb.GRPCForwarderClient, error) {
