@@ -176,9 +176,10 @@ func (es *EventsForwarderService) forwardPlayerEvent(
 }
 
 func (es *EventsForwarderService) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
-	var scheduler *entities.Scheduler
-	var err error
-	scheduler, _ = es.schedulerCache.GetScheduler(ctx, schedulerName)
+	scheduler, err := es.schedulerCache.GetScheduler(ctx, schedulerName)
+	if err != nil {
+		es.logger.Error(fmt.Sprintf("Failed to get scheduler \"%v\" from cache", schedulerName), zap.Error(err))
+	}
 	if scheduler == nil {
 		scheduler, err = es.schedulerStorage.GetScheduler(ctx, schedulerName)
 		if err != nil {
