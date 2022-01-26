@@ -42,7 +42,7 @@ var (
 type RoomPingEventType string
 
 var (
-	RoomPingUnknown				RoomPingEventType = "unknown"
+	RoomPingUnknown		RoomPingEventType = "unknown"
 	RoomPingReady       RoomPingEventType = "roomReady"
 	RoomPingOccupied    RoomPingEventType = "roomOccupied"
 	RoomPingTerminating RoomPingEventType = "roomOccupied"

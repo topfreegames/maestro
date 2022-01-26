@@ -37,10 +37,8 @@ import (
 )
 
 var (
-		_ ports.SchedulerStorage = (*schedulerStorage)(nil)
-		//MetadataGui map[string]string
+	_ ports.SchedulerStorage = (*schedulerStorage)(nil)
 )
-
 
 type schedulerStorage struct {
 	db *pg.DB

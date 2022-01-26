@@ -37,11 +37,8 @@ type Forwarder struct {
 }
 
 func FromForwardTypeToString(value ForwardType) string {
-	switch value {
-	case  TypeGrpc:
+	if value == TypeGrpc {
 		return "grpc"
-	default:
 	}
-
 	return "unknown type"
 }

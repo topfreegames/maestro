@@ -47,6 +47,5 @@ package gen
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/operations/definition.go -destination=../internal/core/operations/mock/definition.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/operations/executor.go -destination=../internal/core/operations/mock/executor.go -package=mock
 
-
 // License
 //go:generate go run github.com/google/addlicense -v -skip yml -skip yaml -skip proto -f ../LICENSE ../
