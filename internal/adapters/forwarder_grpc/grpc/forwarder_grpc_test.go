@@ -86,13 +86,22 @@ func TestGetGrpcClient(t *testing.T) {
 	t.Run("success returning configuration from cache", func(t *testing.T) {
 		basicArrange(t)
 		forwarderAddress := "matchmaker.svc.io"
-		_, errArrange := forwarderGrpcAdapter.getGrpcClient(forwarderAddress)
+		_, errArrange := forwarderGrpcAdapter.getGrpcClient(Address(forwarderAddress))
 		require.NoError(t, errArrange)
 
-		grpcClient, err := forwarderGrpcAdapter.getGrpcClient(forwarderAddress)
+		grpcClient, err := forwarderGrpcAdapter.getGrpcClient(Address(forwarderAddress))
 
 		require.NotNil(t, grpcClient)
 		require.NoError(t, err)
+	})
+
+	t.Run("failed when argument is invalid", func(t *testing.T) {
+		basicArrange(t)
+
+		grpcClient, err := forwarderGrpcAdapter.getGrpcClient("")
+
+		require.Nil(t, grpcClient)
+		require.Error(t, err)
 	})
 }
 
@@ -121,7 +130,7 @@ func TestCacheDelete(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		basicArrange(t)
 		forwarderAddress := "matchmaker.svc.io"
-		_, errArrange := forwarderGrpcAdapter.getGrpcClient(forwarderAddress)
+		_, errArrange := forwarderGrpcAdapter.getGrpcClient(Address(forwarderAddress))
 		require.NoError(t, errArrange)
 
 		err := forwarderGrpcAdapter.CacheDelete(forwarderAddress)
@@ -130,6 +139,14 @@ func TestCacheDelete(t *testing.T) {
 	})
 
 	t.Run("failed when forwarder not found", func(t *testing.T) {
+		basicArrange(t)
+
+		err := forwarderGrpcAdapter.CacheDelete("matchmaker.svc.io")
+
+		require.Error(t, err)
+	})
+
+	t.Run("failed when argument is invalid", func(t *testing.T) {
 		basicArrange(t)
 
 		err := forwarderGrpcAdapter.CacheDelete("matchmaker.svc.io")
