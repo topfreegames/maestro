@@ -61,7 +61,7 @@ func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes ev
 			Metadata:  *fromMapInterfaceToMapString(forwarder.Options.Metadata),
 		}
 
-		eventResponse, err := f.forwarderGrpc.SendRoomEvent(ctx, &event)
+		eventResponse, err := f.forwarderGrpc.SendRoomEvent(ctx, forwarder, &event)
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	}
 
@@ -77,7 +77,7 @@ func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes ev
 			StatusType: fromRoomPingEventTypeToRoomStatusType(*eventAttributes.PingType),
 		}
 
-		eventResponse, err := f.forwarderGrpc.SendRoomResync(ctx, &event)
+		eventResponse, err := f.forwarderGrpc.SendRoomReSync(ctx, forwarder, &event)
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	}
 
@@ -96,7 +96,7 @@ func (f *noopForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes 
 		Metadata:  *fromMapInterfaceToMapString(forwarder.Options.Metadata),
 	}
 
-	eventResponse, err := f.forwarderGrpc.SendPlayerEvent(ctx, &event)
+	eventResponse, err := f.forwarderGrpc.SendPlayerEvent(ctx, forwarder, &event)
 	return handlerGrpcClientResponse(forwarder, eventResponse, err)
 }
 

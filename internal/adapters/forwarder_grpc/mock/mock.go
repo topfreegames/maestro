@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	forwarder "github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	eventforwarder "github.com/topfreegames/protos/maestro/grpc/generated"
 	grpc "google.golang.org/grpc"
 )
@@ -36,10 +37,36 @@ func (m *MockForwarderGrpc) EXPECT() *MockForwarderGrpcMockRecorder {
 	return m.recorder
 }
 
-// SendPlayerEvent mocks base method.
-func (m *MockForwarderGrpc) SendPlayerEvent(ctx context.Context, in *eventforwarder.PlayerEvent, opts ...grpc.CallOption) (*eventforwarder.Response, error) {
+// CacheDelete mocks base method.
+func (m *MockForwarderGrpc) CacheDelete(forwarderAddress string) error {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx, in}
+	ret := m.ctrl.Call(m, "CacheDelete", forwarderAddress)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CacheDelete indicates an expected call of CacheDelete.
+func (mr *MockForwarderGrpcMockRecorder) CacheDelete(forwarderAddress interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CacheDelete", reflect.TypeOf((*MockForwarderGrpc)(nil).CacheDelete), forwarderAddress)
+}
+
+// CacheFlush mocks base method.
+func (m *MockForwarderGrpc) CacheFlush() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "CacheFlush")
+}
+
+// CacheFlush indicates an expected call of CacheFlush.
+func (mr *MockForwarderGrpcMockRecorder) CacheFlush() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CacheFlush", reflect.TypeOf((*MockForwarderGrpc)(nil).CacheFlush))
+}
+
+// SendPlayerEvent mocks base method.
+func (m *MockForwarderGrpc) SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *eventforwarder.PlayerEvent, opts ...grpc.CallOption) (*eventforwarder.Response, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, forwarder, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
@@ -50,16 +77,16 @@ func (m *MockForwarderGrpc) SendPlayerEvent(ctx context.Context, in *eventforwar
 }
 
 // SendPlayerEvent indicates an expected call of SendPlayerEvent.
-func (mr *MockForwarderGrpcMockRecorder) SendPlayerEvent(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+func (mr *MockForwarderGrpcMockRecorder) SendPlayerEvent(ctx, forwarder, in interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx, in}, opts...)
+	varargs := append([]interface{}{ctx, forwarder, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendPlayerEvent", reflect.TypeOf((*MockForwarderGrpc)(nil).SendPlayerEvent), varargs...)
 }
 
 // SendRoomEvent mocks base method.
-func (m *MockForwarderGrpc) SendRoomEvent(ctx context.Context, in *eventforwarder.RoomEvent, opts ...grpc.CallOption) (*eventforwarder.Response, error) {
+func (m *MockForwarderGrpc) SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *eventforwarder.RoomEvent, opts ...grpc.CallOption) (*eventforwarder.Response, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx, in}
+	varargs := []interface{}{ctx, forwarder, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
@@ -70,28 +97,28 @@ func (m *MockForwarderGrpc) SendRoomEvent(ctx context.Context, in *eventforwarde
 }
 
 // SendRoomEvent indicates an expected call of SendRoomEvent.
-func (mr *MockForwarderGrpcMockRecorder) SendRoomEvent(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+func (mr *MockForwarderGrpcMockRecorder) SendRoomEvent(ctx, forwarder, in interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx, in}, opts...)
+	varargs := append([]interface{}{ctx, forwarder, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRoomEvent", reflect.TypeOf((*MockForwarderGrpc)(nil).SendRoomEvent), varargs...)
 }
 
-// SendRoomResync mocks base method.
-func (m *MockForwarderGrpc) SendRoomResync(ctx context.Context, in *eventforwarder.RoomStatus, opts ...grpc.CallOption) (*eventforwarder.Response, error) {
+// SendRoomReSync mocks base method.
+func (m *MockForwarderGrpc) SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *eventforwarder.RoomStatus, opts ...grpc.CallOption) (*eventforwarder.Response, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx, in}
+	varargs := []interface{}{ctx, forwarder, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "SendRoomResync", varargs...)
+	ret := m.ctrl.Call(m, "SendRoomReSync", varargs...)
 	ret0, _ := ret[0].(*eventforwarder.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SendRoomResync indicates an expected call of SendRoomResync.
-func (mr *MockForwarderGrpcMockRecorder) SendRoomResync(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+// SendRoomReSync indicates an expected call of SendRoomReSync.
+func (mr *MockForwarderGrpcMockRecorder) SendRoomReSync(ctx, forwarder, in interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx, in}, opts...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRoomResync", reflect.TypeOf((*MockForwarderGrpc)(nil).SendRoomResync), varargs...)
+	varargs := append([]interface{}{ctx, forwarder, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRoomReSync", reflect.TypeOf((*MockForwarderGrpc)(nil).SendRoomReSync), varargs...)
 }
