@@ -110,19 +110,26 @@ func (es *EventsForwarderService) forwardRoomEvent(
 	scheduler entities.Scheduler,
 	_forwarder *forwarder.Forwarder,
 ) error {
-	if len(instance.Address.Ports) == 0 {
+	selectedPort, err := es.selectPort(instance.Address.Ports)
+	if err != nil {
 		return fmt.Errorf("no room port found to forward roomEvent. Forwarder name: \"%v\", Scheduler: \"%v\"", _forwarder.Name, event.SchedulerID)
 	}
-	selectedPort := instance.Address.Ports[0].Port
+	es.incrementEventAttributesWithPortsInfo(event, instance.Address.Ports)
 
-	roomEvent := events.RoomEventType(eventType)
+	roomEvent, err := events.ConvertToRoomEventType(eventType)
+	if err != nil {
+		return err
+	}
 
 	var pingType events.RoomPingEventType
 	if roomEvent == events.Ping {
 		if _, ok := event.Attributes["pingType"]; !ok {
 			return errors.New("roomEvent of type ping must contain key \"pingType\" in eventAttributes")
 		}
-		pingType = events.RoomPingEventType(event.Attributes["pingType"].(string))
+		pingType, err = events.ConvertToRoomPingEventType(event.Attributes["pingType"].(string))
+		if err != nil {
+			return err
+		}
 	}
 
 	roomAttributes := events.RoomEventAttributes{
@@ -134,7 +141,7 @@ func (es *EventsForwarderService) forwardRoomEvent(
 		PingType:  &pingType,
 		Other:     event.Attributes,
 	}
-	err := es.eventsForwarder.ForwardRoomEvent(ctx, roomAttributes, *_forwarder)
+	err = es.eventsForwarder.ForwardRoomEvent(ctx, roomAttributes, *_forwarder)
 	if err != nil {
 		reportRoomEventForwardingFailed(event.SchedulerID)
 		es.logger.Error(fmt.Sprintf("Failed to forward room events for room %s and scheduler %s", event.RoomID, event.SchedulerID), zap.Error(err))
@@ -151,12 +158,15 @@ func (es *EventsForwarderService) forwardPlayerEvent(
 	eventType string,
 	_forwarder *forwarder.Forwarder,
 ) error {
-	if _, ok := event.Attributes["playerId"]; !ok {
+	playerId, err := es.getPlayerInfo(event)
+	if err != nil {
 		return fmt.Errorf("eventAttributes must contain key \"playerId\" in playerEvent events. Forwarder name: \"%v\", Scheduler: \"%v\"", _forwarder.Name, event.SchedulerID)
 	}
 
-	playerId := event.Attributes["playerId"].(string)
-	playerEvent := events.PlayerEventType(eventType)
+	playerEvent, err := events.ConvertToPlayerEventType(eventType)
+	if err != nil {
+		return err
+	}
 
 	playerAttributes := events.PlayerEventAttributes{
 		RoomId:    event.RoomID,
@@ -165,7 +175,7 @@ func (es *EventsForwarderService) forwardPlayerEvent(
 		Other:     event.Attributes,
 	}
 
-	err := es.eventsForwarder.ForwardPlayerEvent(ctx, playerAttributes, *_forwarder)
+	err = es.eventsForwarder.ForwardPlayerEvent(ctx, playerAttributes, *_forwarder)
 	if err != nil {
 		reportPlayerEventForwardingFailed(event.SchedulerID)
 		es.logger.Error(fmt.Sprintf("Failed to forward player events for room %s and scheduler %s", event.RoomID, event.SchedulerID), zap.Error(err))
@@ -191,4 +201,41 @@ func (es *EventsForwarderService) getScheduler(ctx context.Context, schedulerNam
 		}
 	}
 	return scheduler, nil
+}
+
+func (es *EventsForwarderService) selectPort(ports []game_room.Port) (int32, error) {
+	if len(ports) == 0 {
+		return 0, errors.New("port not found")
+	}
+	selectedPort := ports[0].Port
+
+	for _, port := range ports {
+		if port.Name == "clientPort" {
+			selectedPort = port.Port
+			break
+		}
+	}
+
+	return selectedPort, nil
+}
+
+func (es *EventsForwarderService) incrementEventAttributesWithPortsInfo(event *events.Event, ports []game_room.Port) {
+	portsMap := make(map[int]interface{})
+	for i, port := range ports {
+		portsMap[i] = map[string]interface{}{
+			"port":     port.Port,
+			"name":     port.Name,
+			"protocol": port.Protocol,
+		}
+	}
+	event.Attributes["ports"] = portsMap
+}
+
+func (es *EventsForwarderService) getPlayerInfo(event *events.Event) (string, error) {
+	if _, ok := event.Attributes["playerId"]; !ok {
+		return "", fmt.Errorf("playerId not found on eventAttributes")
+	}
+
+	playerId := event.Attributes["playerId"].(string)
+	return playerId, nil
 }

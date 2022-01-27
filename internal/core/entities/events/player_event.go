@@ -22,6 +22,8 @@
 
 package events
 
+import "fmt"
+
 type PlayerEventAttributes struct {
 	RoomId    string
 	PlayerId  string
@@ -31,7 +33,18 @@ type PlayerEventAttributes struct {
 
 type PlayerEventType string
 
-var (
+const (
 	PlayerLeft PlayerEventType = "playerLeft"
 	PlayerJoin PlayerEventType = "playerJoin"
 )
+
+func ConvertToPlayerEventType(value string) (PlayerEventType, error) {
+	switch value {
+	case "playerLeft":
+		return PlayerLeft, nil
+	case "playerJoin":
+		return PlayerJoin, nil
+	default:
+		return "", fmt.Errorf("invalid PlayerEventType. Should be \"playerLeft\" or \"playerJoin\"")
+	}
+}

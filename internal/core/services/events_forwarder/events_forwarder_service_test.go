@@ -82,11 +82,16 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	}
 
 	port := game_room.Port{
-		Name:     "port",
+		Name:     "clientPort",
 		Port:     8080,
 		Protocol: "TCP",
 	}
-	ports := []game_room.Port{port}
+	port2 := game_room.Port{
+		Name:     "notClientPort",
+		Port:     8081,
+		Protocol: "TCP",
+	}
+	ports := []game_room.Port{port, port2}
 	expectedGameRoomInstance := &game_room.Instance{
 		ID:          "instance",
 		SchedulerID: "scheduler",
@@ -148,6 +153,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
 		require.NoError(t, err)
+		require.Empty(t, event.Attributes["ports"])
 	})
 
 	t.Run("should succeed when event is RoomEvent", func(t *testing.T) {
@@ -157,7 +163,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			RoomID:      "room",
 			Attributes: map[string]interface{}{
 				"eventType": "resync",
-				"pingType":  "ready",
+				"pingType":  "roomReady",
 			},
 		}
 
@@ -169,6 +175,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
 		require.NoError(t, err)
+		require.NotEmpty(t, event.Attributes["ports"])
 	})
 
 	t.Run("should fail when event type is not in eventAttributes", func(t *testing.T) {
@@ -190,7 +197,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			RoomID:      "room",
 			Attributes: map[string]interface{}{
 				"eventType": "resync",
-				"pingType":  "ready",
+				"pingType":  "roomReady",
 			},
 		}
 
@@ -299,7 +306,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			RoomID:      "room",
 			Attributes: map[string]interface{}{
 				"eventType": "resync",
-				"pingType":  "ready",
+				"pingType":  "roomReady",
 			},
 		}
 
@@ -339,7 +346,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			RoomID:      "room",
 			Attributes: map[string]interface{}{
 				"eventType": "resync",
-				"pingType":  "ready",
+				"pingType":  "roomReady",
 			},
 		}
 
@@ -360,7 +367,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			RoomID:      "room",
 			Attributes: map[string]interface{}{
 				"eventType": "resync",
-				"pingType":  "ready",
+				"pingType":  "roomReady",
 			},
 		}
 
