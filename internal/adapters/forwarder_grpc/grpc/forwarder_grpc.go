@@ -30,6 +30,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
@@ -51,43 +52,44 @@ func NewForwarderGrpc() *forwarderGrpc {
 	}
 }
 
-func (f *forwarderGrpc) SendRoomEvent(ctx context.Context, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error) {
-	forwarderAddress := "address"
-	client, err := f.getGrpcClient(forwarderAddress)
+func (f *forwarderGrpc) SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error) {
+	client, err := f.getGrpcClient(forwarder.Address)
 	if err != nil {
-		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarderAddress).WithError(err)
+		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, 10)
-	defer cancel()
 
 	return client.SendRoomEvent(ctx, in)
 }
 
-func (f *forwarderGrpc) SendRoomResync(ctx context.Context, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error) {
-	forwarderAddress := "address"
-	client, err := f.getGrpcClient(forwarderAddress)
+func (f *forwarderGrpc) SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error) {
+	client, err := f.getGrpcClient(forwarder.Address)
 	if err != nil {
-		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarderAddress).WithError(err)
+		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, 10)
-	defer cancel()
 
 	return client.SendRoomResync(ctx, in)
 }
 
-func (f *forwarderGrpc) SendPlayerEvent(ctx context.Context, in *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error) {
-	forwarderAddress := "address"
-	client, err := f.getGrpcClient(forwarderAddress)
+func (f *forwarderGrpc) SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error) {
+	client, err := f.getGrpcClient(forwarder.Address)
 	if err != nil {
-		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarderAddress).WithError(err)
+		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10)
-	defer cancel()
-
 	return client.SendPlayerEvent(ctx, in)
+}
+
+func (f *forwarderGrpc) CacheFlush() {
+	f.c.Flush()
+}
+
+func (f *forwarderGrpc) CacheDelete(forwarderAddress string) error {
+	_, found := f.c.Get(forwarderAddress)
+	if !found {
+		return errors.NewErrNotFound("could not found forwarder Address in cache %s", forwarderAddress)
+	}
+	f.c.Delete(forwarderAddress)
+	return nil
 }
 
 func (f *forwarderGrpc) getGrpcClient(address string) (pb.GRPCForwarderClient, error) {

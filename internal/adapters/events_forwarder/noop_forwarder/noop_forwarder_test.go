@@ -28,26 +28,25 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/topfreegames/maestro/internal/adapters/forwarder_grpc/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/events"
-	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 )
 
-var (
-	mockCtrl *gomock.Controller
-	forwarderGrpcMock  *mock.MockForwarderGrpc
-	noopForwarderAdapter *noopForwarder
-)
+var noopForwarderAdapter *noopForwarder
+var forwarderGrpcMock *mock.MockForwarderGrpc
+var mockCtrl *gomock.Controller
 
 func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 	t.Run("with success when event type is Arbitrary", func(t *testing.T) {
 		// arr
 		basicArrange(t)
-		forwarderGrpcMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil )
+		forwarderGrpcMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
 		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary), newForwarder())
@@ -60,7 +59,7 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 	t.Run("failed when grpcClient returns error", func(t *testing.T) {
 		// arr
 		basicArrange(t)
-		forwarderGrpcMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
+		forwarderGrpcMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
 		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary), newForwarder())
@@ -72,7 +71,7 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 
 	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
 		basicArrange(t)
-		forwarderGrpcMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
+		forwarderGrpcMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
 		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary), newForwarder())
 
@@ -85,7 +84,7 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 	t.Run("with success when event type is Ping", func(t *testing.T) {
 		// arr
 		basicArrange(t)
-		forwarderGrpcMock.EXPECT().SendRoomResync(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil )
+		forwarderGrpcMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
 		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping), newForwarder())
@@ -98,7 +97,7 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 	t.Run("failed when grpcClient returns error", func(t *testing.T) {
 		// arr
 		basicArrange(t)
-		forwarderGrpcMock.EXPECT().SendRoomResync(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
+		forwarderGrpcMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
 		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping), newForwarder())
@@ -110,7 +109,7 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 
 	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
 		basicArrange(t)
-		forwarderGrpcMock.EXPECT().SendRoomResync(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
+		forwarderGrpcMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
 		err := noopForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping), newForwarder())
 
@@ -123,7 +122,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		// arr
 		basicArrange(t)
-		forwarderGrpcMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil )
+		forwarderGrpcMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
 		err := noopForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
@@ -136,7 +135,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 	t.Run("failed when grpcClient returns error", func(t *testing.T) {
 		// arr
 		basicArrange(t)
-		forwarderGrpcMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
+		forwarderGrpcMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
 		err := noopForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
@@ -149,7 +148,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
 		// arr
 		basicArrange(t)
-		forwarderGrpcMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
+		forwarderGrpcMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
 		// act
 		err := noopForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
@@ -183,7 +182,7 @@ func newPlayerEventAttributes() events.PlayerEventAttributes {
 		RoomId:    "123",
 		PlayerId:  "123",
 		EventType: events.PlayerLeft,
-		Other:     map[string]interface{}{
+		Other: map[string]interface{}{
 			"bacon": "delicious",
 			"eggs": struct {
 				source string
@@ -210,7 +209,7 @@ func newForwarder() forwarder.Forwarder {
 	}
 }
 
-func basicArrange(t *testing.T){
+func basicArrange(t *testing.T) {
 	mockCtrl = gomock.NewController(t)
 	defer mockCtrl.Finish()
 	forwarderGrpcMock = mock.NewMockForwarderGrpc(mockCtrl)

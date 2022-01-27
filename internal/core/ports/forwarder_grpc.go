@@ -25,12 +25,16 @@ package ports
 import (
 	"context"
 
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	"google.golang.org/grpc"
 )
 
 type ForwarderGrpc interface {
-	SendRoomEvent(ctx context.Context, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error)
-	SendRoomResync(ctx context.Context, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error)
-	SendPlayerEvent(ctx context.Context, in *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error)
+	SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error)
+	SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error)
+	SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error)
+	CacheFlush()
+	CacheDelete(forwarderAddress string) error
 }
