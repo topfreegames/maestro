@@ -31,7 +31,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type ForwarderGrpc interface {
+type ForwarderGrpcClient interface {
 	SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error)
 	SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error)
 	SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error)

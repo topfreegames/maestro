@@ -26,7 +26,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -136,7 +135,7 @@ func (es *EventsForwarderService) forwardRoomEvent(
 		Game:      scheduler.Game,
 		RoomId:    event.RoomID,
 		Host:      instance.Address.Host,
-		Port:      strconv.Itoa(int(selectedPort)),
+		Port:      selectedPort,
 		EventType: roomEvent,
 		PingType:  &pingType,
 		Other:     event.Attributes,

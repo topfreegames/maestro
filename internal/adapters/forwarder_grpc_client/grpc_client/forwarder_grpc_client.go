@@ -41,20 +41,20 @@ import (
 type Address string
 
 var (
-	_ ports.ForwarderGrpc = (*forwarderGrpc)(nil)
+	_ ports.ForwarderGrpcClient = (*forwarderGrpcClient)(nil)
 )
 
-type forwarderGrpc struct {
+type forwarderGrpcClient struct {
 	c *cache.Cache
 }
 
-func NewForwarderGrpc() *forwarderGrpc {
-	return &forwarderGrpc{
+func NewForwarderGrpcClient() *forwarderGrpcClient {
+	return &forwarderGrpcClient{
 		c: cache.New(5*time.Minute, 10*time.Minute),
 	}
 }
 
-func (f *forwarderGrpc) SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error) {
+func (f *forwarderGrpcClient) SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error) {
 	client, err := f.getGrpcClient(Address(forwarder.Address))
 	if err != nil {
 		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
@@ -63,7 +63,7 @@ func (f *forwarderGrpc) SendRoomEvent(ctx context.Context, forwarder forwarder.F
 	return client.SendRoomEvent(ctx, in)
 }
 
-func (f *forwarderGrpc) SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error) {
+func (f *forwarderGrpcClient) SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error) {
 	client, err := f.getGrpcClient(Address(forwarder.Address))
 	if err != nil {
 		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
@@ -72,7 +72,7 @@ func (f *forwarderGrpc) SendRoomReSync(ctx context.Context, forwarder forwarder.
 	return client.SendRoomResync(ctx, in)
 }
 
-func (f *forwarderGrpc) SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error) {
+func (f *forwarderGrpcClient) SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error) {
 	client, err := f.getGrpcClient(Address(forwarder.Address))
 	if err != nil {
 		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
@@ -81,11 +81,11 @@ func (f *forwarderGrpc) SendPlayerEvent(ctx context.Context, forwarder forwarder
 	return client.SendPlayerEvent(ctx, in)
 }
 
-func (f *forwarderGrpc) CacheFlush() {
+func (f *forwarderGrpcClient) CacheFlush() {
 	f.c.Flush()
 }
 
-func (f *forwarderGrpc) CacheDelete(forwarderAddress string) error {
+func (f *forwarderGrpcClient) CacheDelete(forwarderAddress string) error {
 	if forwarderAddress == "" {
 		return errors.NewErrInvalidArgument("no grpc server address informed")
 	}
@@ -97,7 +97,7 @@ func (f *forwarderGrpc) CacheDelete(forwarderAddress string) error {
 	return nil
 }
 
-func (f *forwarderGrpc) getGrpcClient(address Address) (pb.GRPCForwarderClient, error) {
+func (f *forwarderGrpcClient) getGrpcClient(address Address) (pb.GRPCForwarderClient, error) {
 	if address == "" {
 		return nil, errors.NewErrInvalidArgument("no grpc server address informed")
 	}
@@ -114,7 +114,7 @@ func (f *forwarderGrpc) getGrpcClient(address Address) (pb.GRPCForwarderClient, 
 	return clientFromCache.(pb.GRPCForwarderClient), nil
 }
 
-func (f *forwarderGrpc) configureGrpcClient(address string) (pb.GRPCForwarderClient, error) {
+func (f *forwarderGrpcClient) configureGrpcClient(address string) (pb.GRPCForwarderClient, error) {
 	if address == "" {
 		return nil, errors.NewErrInvalidArgument("no grpc server address informed")
 	}

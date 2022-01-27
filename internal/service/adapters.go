@@ -25,7 +25,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/adapters/forwarder_grpc/grpc"
+	"github.com/topfreegames/maestro/internal/adapters/forwarder_grpc_client/grpc_client"
 
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
@@ -71,7 +71,7 @@ const (
 )
 
 func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
-	forwarderGrpc := grpc.NewForwarderGrpc()
+	forwarderGrpc := grpc.NewForwarderGrpcClient()
 	return matchmakerEventsForwarder.NewNoopForwarder(forwarderGrpc), nil
 }
 

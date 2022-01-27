@@ -36,11 +36,11 @@ import (
 )
 
 type noopForwarder struct {
-	forwarderGrpc ports.ForwarderGrpc
+	forwarderGrpc ports.ForwarderGrpcClient
 	GrpcClient    pb.GRPCForwarderClient
 }
 
-func NewNoopForwarder(forwarderGrpc ports.ForwarderGrpc) *noopForwarder {
+func NewNoopForwarder(forwarderGrpc ports.ForwarderGrpcClient) *noopForwarder {
 	return &noopForwarder{
 		forwarderGrpc: forwarderGrpc,
 	}
@@ -55,7 +55,7 @@ func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes ev
 				RoomId:   eventAttributes.RoomId,
 				Host:     eventAttributes.Host,
 				Port:     eventAttributes.Port,
-				Metadata: *fromMapInterfaceToMapString(eventAttributes.Attributes),
+				Metadata: *fromMapInterfaceToMapString(eventAttributes.Other),
 			},
 			EventType: entities.FromForwardTypeToString(forwarder.ForwardType),
 			Metadata:  *fromMapInterfaceToMapString(forwarder.Options.Metadata),
@@ -72,7 +72,7 @@ func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes ev
 				RoomId:   eventAttributes.RoomId,
 				Host:     eventAttributes.Host,
 				Port:     eventAttributes.Port,
-				Metadata: *fromMapInterfaceToMapString(eventAttributes.Attributes),
+				Metadata: *fromMapInterfaceToMapString(eventAttributes.Other),
 			},
 			StatusType: fromRoomPingEventTypeToRoomStatusType(*eventAttributes.PingType),
 		}

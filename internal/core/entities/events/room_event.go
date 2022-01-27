@@ -28,7 +28,7 @@ type RoomEventAttributes struct {
 	Game      string
 	RoomId    string
 	Host      string
-	Port      string
+	Port      int32
 	EventType RoomEventType
 	PingType  *RoomPingEventType
 	Other     map[string]interface{}

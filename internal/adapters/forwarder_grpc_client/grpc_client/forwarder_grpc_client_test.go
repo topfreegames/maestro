@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	forwarderGrpcAdapter *forwarderGrpc
+	forwarderGrpcAdapter *forwarderGrpcClient
 )
 
 func TestSendRoomEvent(t *testing.T) {
@@ -156,7 +156,7 @@ func TestCacheDelete(t *testing.T) {
 }
 
 func basicArrange(t *testing.T) {
-	forwarderGrpcAdapter = NewForwarderGrpc()
+	forwarderGrpcAdapter = NewForwarderGrpcClient()
 }
 
 func newRoomEvent() pb.RoomEvent {

@@ -34,7 +34,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/topfreegames/maestro/internal/adapters/forwarder_grpc/mock"
+	"github.com/topfreegames/maestro/internal/adapters/forwarder_grpc_client/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 )
 
@@ -159,20 +159,17 @@ func TestForwardPlayerEvent(t *testing.T) {
 }
 
 func newRoomEventAttributes(eventType events.RoomEventType) events.RoomEventAttributes {
+	pingType := events.RoomPingReady
 	return events.RoomEventAttributes{
 		Game:      "game-test",
 		RoomId:    "123",
 		Host:      "host.com",
 		Port:      5050,
 		EventType: eventType,
-		PingType:  &events.RoomPingReady,
-		Attributes: map[string]interface{}{
-			"bacon": "delicious",
-			"eggs": struct {
-				source string
-				price  float64
-			}{"chicken", 1.75},
-			"steak": true,
+		PingType:  &pingType,
+		Other:     map[string]interface{}{
+			"roomType": "red",
+			"ping":     true,
 		},
 	}
 }
@@ -183,12 +180,8 @@ func newPlayerEventAttributes() events.PlayerEventAttributes {
 		PlayerId:  "123",
 		EventType: events.PlayerLeft,
 		Other: map[string]interface{}{
-			"bacon": "delicious",
-			"eggs": struct {
-				source string
-				price  float64
-			}{"chicken", 1.75},
-			"steak": true,
+			"roomType": "red",
+			"ping":     true,
 		},
 	}
 }
