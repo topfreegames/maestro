@@ -24,6 +24,9 @@ package redis
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -41,9 +44,37 @@ func NewRedisSchedulerCache(client *redis.Client) *redisSchedulerCache {
 }
 
 func (r redisSchedulerCache) GetScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
-	return nil, nil
+	schedulerCacheKey := r.buildSchedulerKey(schedulerName)
+	schedulerJson, err := r.client.Get(ctx, schedulerCacheKey).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, nil
+		}
+		return nil, err
+	}
+	scheduler := &entities.Scheduler{}
+	err = json.Unmarshal([]byte(schedulerJson), scheduler)
+	if err != nil {
+		return nil, err
+	}
+	return scheduler, nil
 }
 
 func (r redisSchedulerCache) SetScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	jsonScheduler, err := json.Marshal(scheduler)
+	if err != nil {
+		return err
+	}
+
+	schedulerCacheKey := r.buildSchedulerKey(scheduler.Name)
+	err = r.client.Set(ctx, schedulerCacheKey, jsonScheduler, time.Hour*24).Err()
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (r redisSchedulerCache) buildSchedulerKey(schedulerName string) string {
+	return fmt.Sprintf("scheduler:%s", schedulerName)
 }
