@@ -25,6 +25,8 @@ package service
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
+
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
@@ -52,4 +54,21 @@ func NewOperationManagerConfig(c config.Config) (operation_manager.OperationMana
 	}
 
 	return operationManagerConfig, nil
+}
+
+func NewEventsForwarderServiceConfig(c config.Config) (events_forwarder.EventsForwarderConfig, error) {
+	var schedulerCacheTtl time.Duration
+	defaultSchedulerCacheTtl := time.Hour * 24
+
+	if configuredSchedulerCacheTtlInt := c.GetInt("services.eventsForwarder.schedulerCacheTtlMillis"); configuredSchedulerCacheTtlInt > 0 {
+		schedulerCacheTtl = time.Duration(configuredSchedulerCacheTtlInt) * time.Millisecond
+	} else {
+		schedulerCacheTtl = defaultSchedulerCacheTtl
+	}
+
+	eventsForwarderConfig := events_forwarder.EventsForwarderConfig{
+		SchedulerCacheTtl: schedulerCacheTtl,
+	}
+
+	return eventsForwarderConfig, nil
 }

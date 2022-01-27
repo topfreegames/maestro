@@ -78,7 +78,7 @@ func TestSetScheduler(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		storage := NewRedisSchedulerCache(client)
 
-		err := storage.SetScheduler(context.Background(), expectedScheduler)
+		err := storage.SetScheduler(context.Background(), expectedScheduler, time.Minute)
 		require.NoError(t, err)
 
 		schedulerJson, err := client.Get(context.Background(), storage.buildSchedulerKey(expectedScheduler.Name)).Result()
@@ -92,7 +92,7 @@ func TestSetScheduler(t *testing.T) {
 
 		client.Close()
 
-		err := storage.SetScheduler(context.Background(), expectedScheduler)
+		err := storage.SetScheduler(context.Background(), expectedScheduler, time.Minute)
 		require.Error(t, err)
 	})
 }
@@ -113,7 +113,7 @@ func TestGetScheduler(t *testing.T) {
 		storage := NewRedisSchedulerCache(client)
 
 		ctx := context.Background()
-		err := storage.SetScheduler(ctx, expectedScheduler)
+		err := storage.SetScheduler(ctx, expectedScheduler, time.Minute)
 		require.NoError(t, err)
 
 		scheduler, err := storage.GetScheduler(ctx, expectedScheduler.Name)
@@ -126,7 +126,7 @@ func TestGetScheduler(t *testing.T) {
 		storage := NewRedisSchedulerCache(client)
 
 		ctx := context.Background()
-		err := storage.SetScheduler(ctx, expectedScheduler)
+		err := storage.SetScheduler(ctx, expectedScheduler, time.Minute)
 		require.NoError(t, err)
 
 		client.Close()

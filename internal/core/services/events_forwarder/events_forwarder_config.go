@@ -20,16 +20,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package ports
+package events_forwarder
 
-import (
-	"context"
-	"time"
+import "time"
 
-	"github.com/topfreegames/maestro/internal/core/entities"
-)
-
-type SchedulerCache interface {
-	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
-	SetScheduler(ctx context.Context, scheduler *entities.Scheduler, ttl time.Duration) error
+type EventsForwarderConfig struct {
+	SchedulerCacheTtl time.Duration
 }

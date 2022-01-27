@@ -60,14 +60,14 @@ func (r redisSchedulerCache) GetScheduler(ctx context.Context, schedulerName str
 	return scheduler, nil
 }
 
-func (r redisSchedulerCache) SetScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+func (r redisSchedulerCache) SetScheduler(ctx context.Context, scheduler *entities.Scheduler, ttl time.Duration) error {
 	jsonScheduler, err := json.Marshal(scheduler)
 	if err != nil {
 		return err
 	}
 
 	schedulerCacheKey := r.buildSchedulerKey(scheduler.Name)
-	err = r.client.Set(ctx, schedulerCacheKey, jsonScheduler, time.Hour*24).Err()
+	err = r.client.Set(ctx, schedulerCacheKey, jsonScheduler, ttl).Err()
 	if err != nil {
 		return err
 	}

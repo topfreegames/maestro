@@ -7,6 +7,7 @@ package mock
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 	entities "github.com/topfreegames/maestro/internal/core/entities"
@@ -51,15 +52,15 @@ func (mr *MockSchedulerCacheMockRecorder) GetScheduler(ctx, name interface{}) *g
 }
 
 // SetScheduler mocks base method.
-func (m *MockSchedulerCache) SetScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+func (m *MockSchedulerCache) SetScheduler(ctx context.Context, scheduler *entities.Scheduler, ttl time.Duration) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetScheduler", ctx, scheduler)
+	ret := m.ctrl.Call(m, "SetScheduler", ctx, scheduler, ttl)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetScheduler indicates an expected call of SetScheduler.
-func (mr *MockSchedulerCacheMockRecorder) SetScheduler(ctx, scheduler interface{}) *gomock.Call {
+func (mr *MockSchedulerCacheMockRecorder) SetScheduler(ctx, scheduler, ttl interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScheduler", reflect.TypeOf((*MockSchedulerCache)(nil).SetScheduler), ctx, scheduler)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScheduler", reflect.TypeOf((*MockSchedulerCache)(nil).SetScheduler), ctx, scheduler, ttl)
 }

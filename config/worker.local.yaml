@@ -44,3 +44,5 @@ services:
     roomDeletionTimeoutMillis: 120000
   operationManager:
     operationLeaseTtlMillis: 5000
+  eventsForwarder:
+    schedulerCacheTtlMillis: 120000
