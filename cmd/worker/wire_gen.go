@@ -64,7 +64,11 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	if err != nil {
 		return nil, err
 	}
-	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder)
+	schedulerCache, err := service.NewSchedulerCacheRedis(c)
+	if err != nil {
+		return nil, err
+	}
+	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, gameRoomInstanceStorage, schedulerCache)
 	roomManagerConfig, err := service.NewRoomManagerConfig(c)
 	if err != nil {
 		return nil, err

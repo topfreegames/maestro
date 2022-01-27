@@ -22,28 +22,56 @@
 
 package events
 
+import "fmt"
+
 type RoomEventAttributes struct {
-	Game       string
-	RoomId     string
-	Host       string
-	Port       string
-	EventType  RoomEventType
-	PingType   *RoomPingEventType
-	Attributes map[string]interface{}
+	Game      string
+	RoomId    string
+	Host      string
+	Port      string
+	EventType RoomEventType
+	PingType  *RoomPingEventType
+	Other     map[string]interface{}
 }
 
 type RoomEventType string
 
-var (
+const (
 	Ping      RoomEventType = "resync"
 	Arbitrary RoomEventType = "roomEvent"
 )
 
 type RoomPingEventType string
 
-var (
+const (
 	RoomPingReady       RoomPingEventType = "roomReady"
 	RoomPingOccupied    RoomPingEventType = "roomOccupied"
-	RoomPingTerminating RoomPingEventType = "roomOccupied"
-	RoomPingTerminated  RoomPingEventType = "roomOccupied"
+	RoomPingTerminating RoomPingEventType = "roomTerminating"
+	RoomPingTerminated  RoomPingEventType = "roomTerminated"
 )
+
+func ConvertToRoomEventType(value string) (RoomEventType, error) {
+	switch value {
+	case "resync":
+		return Ping, nil
+	case "roomEvent":
+		return Arbitrary, nil
+	default:
+		return "", fmt.Errorf("invalid RoomEventType. Should be \"resync\" or \"roomEvent\"")
+	}
+}
+
+func ConvertToRoomPingEventType(value string) (RoomPingEventType, error) {
+	switch value {
+	case "roomReady":
+		return RoomPingReady, nil
+	case "roomOccupied":
+		return RoomPingOccupied, nil
+	case "roomTerminating":
+		return RoomPingTerminating, nil
+	case "roomTerminated":
+		return RoomPingTerminated, nil
+	default:
+		return "", fmt.Errorf("invalid RoomPingEventType. Should be \"roomReady\", \"roomOccupied\", \"roomTerminating\" or \"roomTerminated\"")
+	}
+}

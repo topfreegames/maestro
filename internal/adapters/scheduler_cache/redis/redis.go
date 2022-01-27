@@ -20,31 +20,30 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package events
+package redis
 
-import "fmt"
+import (
+	"context"
 
-type PlayerEventAttributes struct {
-	RoomId    string
-	PlayerId  string
-	EventType PlayerEventType
-	Other     map[string]interface{}
-}
-
-type PlayerEventType string
-
-const (
-	PlayerLeft PlayerEventType = "playerLeft"
-	PlayerJoin PlayerEventType = "playerJoin"
+	"github.com/go-redis/redis/v8"
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/ports"
 )
 
-func ConvertToPlayerEventType(value string) (PlayerEventType, error) {
-	switch value {
-	case "playerLeft":
-		return PlayerLeft, nil
-	case "playerJoin":
-		return PlayerJoin, nil
-	default:
-		return "", fmt.Errorf("invalid PlayerEventType. Should be \"playerLeft\" or \"playerJoin\"")
-	}
+type redisSchedulerCache struct {
+	client *redis.Client
+}
+
+var _ ports.SchedulerCache = (*redisSchedulerCache)(nil)
+
+func NewRedisSchedulerCache(client *redis.Client) *redisSchedulerCache {
+	return &redisSchedulerCache{client: client}
+}
+
+func (r redisSchedulerCache) GetScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
+	return nil, nil
+}
+
+func (r redisSchedulerCache) SetScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	return nil
 }

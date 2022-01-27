@@ -22,29 +22,27 @@
 
 package events
 
-import "fmt"
+import (
+	"testing"
 
-type PlayerEventAttributes struct {
-	RoomId    string
-	PlayerId  string
-	EventType PlayerEventType
-	Other     map[string]interface{}
-}
-
-type PlayerEventType string
-
-const (
-	PlayerLeft PlayerEventType = "playerLeft"
-	PlayerJoin PlayerEventType = "playerJoin"
+	"github.com/stretchr/testify/require"
 )
 
-func ConvertToPlayerEventType(value string) (PlayerEventType, error) {
-	switch value {
-	case "playerLeft":
-		return PlayerLeft, nil
-	case "playerJoin":
-		return PlayerJoin, nil
-	default:
-		return "", fmt.Errorf("invalid PlayerEventType. Should be \"playerLeft\" or \"playerJoin\"")
-	}
+func TestPlayerEvent(t *testing.T) {
+	t.Run("with success when converting to RoomEventType", func(t *testing.T) {
+
+		converted, err := ConvertToPlayerEventType("playerLeft")
+		require.NoError(t, err)
+		require.IsType(t, PlayerEventType("playerLeft"), converted)
+
+		converted, err = ConvertToPlayerEventType("playerJoin")
+		require.NoError(t, err)
+		require.IsType(t, PlayerEventType("playerJoin"), converted)
+	})
+
+	t.Run("with error when converting to RoomPingEventType", func(t *testing.T) {
+
+		_, err := ConvertToPlayerEventType("INVALID")
+		require.Error(t, err)
+	})
 }

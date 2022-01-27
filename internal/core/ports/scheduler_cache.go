@@ -20,31 +20,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package events
+package ports
 
-import "fmt"
+import (
+	"context"
 
-type PlayerEventAttributes struct {
-	RoomId    string
-	PlayerId  string
-	EventType PlayerEventType
-	Other     map[string]interface{}
-}
-
-type PlayerEventType string
-
-const (
-	PlayerLeft PlayerEventType = "playerLeft"
-	PlayerJoin PlayerEventType = "playerJoin"
+	"github.com/topfreegames/maestro/internal/core/entities"
 )
 
-func ConvertToPlayerEventType(value string) (PlayerEventType, error) {
-	switch value {
-	case "playerLeft":
-		return PlayerLeft, nil
-	case "playerJoin":
-		return PlayerJoin, nil
-	default:
-		return "", fmt.Errorf("invalid PlayerEventType. Should be \"playerLeft\" or \"playerJoin\"")
-	}
+type SchedulerCache interface {
+	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
+	SetScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 }

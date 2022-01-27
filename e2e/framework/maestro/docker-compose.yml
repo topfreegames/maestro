@@ -14,6 +14,7 @@ services:
         MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL: "redis://redis:6379/0"
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
+        MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
     ports:
       - "9096:8082"
     volumes:
@@ -28,6 +29,8 @@ services:
         MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL: "redis://redis:6379/0"
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
+        MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
+        MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
     ports:
       - "9097:8090"
       - "9098:8091"
@@ -64,6 +67,7 @@ services:
         MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL: "redis://redis:6379/0"
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
+        MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
     ports:
       - "9099:8083"
     volumes:

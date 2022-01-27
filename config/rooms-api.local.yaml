@@ -18,6 +18,12 @@ adapters:
   instanceStorage:
     redis:
       url: "redis://localhost:6379/0"
+  schedulerStorage:
+    postgres:
+      url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
+  schedulerCache:
+    redis:
+      url: "redis://localhost:6379/0"
   runtime:
     kubernetes:
       masterUrl: "https://127.0.0.1:6443"

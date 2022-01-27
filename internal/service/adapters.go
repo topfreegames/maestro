@@ -36,6 +36,7 @@ import (
 	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/port_allocator/random"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
+	schedulerCacheRedis "github.com/topfreegames/maestro/internal/adapters/scheduler_cache/redis"
 	schedulerStoragePg "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/pg"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -54,6 +55,8 @@ const (
 	operationLeaseStorageRedisUrlPath = "adapters.operationLeaseStorage.redis.url"
 	// Redis room storage
 	roomStorageRedisUrlPath = "adapters.roomStorage.redis.url"
+	// Redis scheduler cache
+	schedulerCacheRedisUrlPath = "adapters.schedulerCache.redis.url"
 	// Redis instance storage
 	instanceStorageRedisUrlPath      = "adapters.instanceStorage.redis.url"
 	instanceStorageRedisScanSizePath = "adapters.instanceStorage.redis.scanSize"
@@ -115,6 +118,15 @@ func NewGameRoomInstanceStorageRedis(c config.Config) (ports.GameRoomInstanceSto
 	}
 
 	return instanceStorageRedis.NewRedisInstanceStorage(client, c.GetInt(instanceStorageRedisScanSizePath)), nil
+}
+
+func NewSchedulerCacheRedis(c config.Config) (ports.SchedulerCache, error) {
+	client, err := createRedisClient(c.GetString(schedulerCacheRedisUrlPath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Redis scheduler cache: %w", err)
+	}
+
+	return schedulerCacheRedis.NewRedisSchedulerCache(client), nil
 }
 
 func NewClockTime() ports.Clock {
