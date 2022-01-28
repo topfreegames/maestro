@@ -50,6 +50,20 @@ func (mr *MockSchedulerStorageMockRecorder) CreateScheduler(ctx, scheduler inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateScheduler", reflect.TypeOf((*MockSchedulerStorage)(nil).CreateScheduler), ctx, scheduler)
 }
 
+// CreateSchedulerVersion mocks base method.
+func (m *MockSchedulerStorage) CreateSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSchedulerVersion", ctx, scheduler)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateSchedulerVersion indicates an expected call of CreateSchedulerVersion.
+func (mr *MockSchedulerStorageMockRecorder) CreateSchedulerVersion(ctx, scheduler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSchedulerVersion", reflect.TypeOf((*MockSchedulerStorage)(nil).CreateSchedulerVersion), ctx, scheduler)
+}
+
 // DeleteScheduler mocks base method.
 func (m *MockSchedulerStorage) DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
 	m.ctrl.T.Helper()

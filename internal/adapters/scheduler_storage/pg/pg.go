@@ -47,6 +47,14 @@ func NewSchedulerStorage(opts *pg.Options) *schedulerStorage {
 }
 
 const (
+	queryGetActiveScheduler = `
+SELECT
+	s.id, s.name, s.game, s.yaml, s.state, s.state_last_changed_at, last_scale_op_at, v.created_at, s.updated_at, s.version,
+	v.rolling_update_status, v.rollback_version
+FROM schedulers s left join scheduler_versions v ON s.name=v.name
+WHERE s.name = ?
+order by created_at desc limit 1
+`
 	queryGetScheduler = `
 SELECT
 	s.id, s.name, s.game, v.yaml, s.state, s.state_last_changed_at, last_scale_op_at, v.created_at, s.updated_at, v.version,
@@ -77,8 +85,7 @@ func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entit
 	client := s.db.WithContext(ctx)
 	var dbScheduler Scheduler
 
-	queryString := queryGetScheduler
-	queryString = queryString + " order by created_at desc limit 1"
+	queryString := queryGetActiveScheduler
 	_, err := client.QueryOne(&dbScheduler, queryString, name)
 	if err == pg.ErrNoRows {
 		return nil, errors.NewErrNotFound("scheduler %s not found", name)
@@ -188,10 +195,6 @@ func (s schedulerStorage) CreateScheduler(ctx context.Context, scheduler *entiti
 		}
 		return errors.NewErrUnexpected("error creating scheduler %s", dbScheduler.Name).WithError(err)
 	}
-	_, err = client.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
-	if err != nil {
-		return errors.NewErrUnexpected("error creating scheduler %s version %s", dbScheduler.Name, dbScheduler.Version).WithError(err)
-	}
 	return nil
 }
 
@@ -205,10 +208,6 @@ func (s schedulerStorage) UpdateScheduler(ctx context.Context, scheduler *entiti
 	if err != nil {
 		return errors.NewErrUnexpected("error updating scheduler %s", dbScheduler.Name).WithError(err)
 	}
-	_, err = client.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
-	if err != nil {
-		return errors.NewErrUnexpected("error creating version %s for scheduler %s", dbScheduler.Version, dbScheduler.Name).WithError(err)
-	}
 
 	return nil
 }
@@ -221,6 +220,19 @@ func (s schedulerStorage) DeleteScheduler(ctx context.Context, scheduler *entiti
 	}
 	if err != nil {
 		return errors.NewErrUnexpected("error updating scheduler %s", scheduler.Name).WithError(err)
+	}
+	return nil
+}
+
+func (s schedulerStorage) CreateSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error {
+	client := s.db.WithContext(ctx)
+	dbScheduler := NewDBScheduler(scheduler)
+	_, err := client.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+	if err != nil {
+		if strings.Contains(err.Error(), "violates foreign key constraint") {
+			return errors.NewErrUnexpected("error creating version %s for non existent scheduler \"%s\"", dbScheduler.Version, dbScheduler.Name)
+		}
+		return errors.NewErrUnexpected("error creating scheduler %s version %s", dbScheduler.Name, dbScheduler.Version).WithError(err)
 	}
 	return nil
 }
