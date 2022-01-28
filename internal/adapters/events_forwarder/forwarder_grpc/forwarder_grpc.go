@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package noop_forwarder
+package forwarder_grpc
 
 import (
 	"context"
@@ -35,19 +35,18 @@ import (
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 )
 
-type noopForwarder struct {
-	forwarderGrpc ports.ForwarderGrpcClient
-	GrpcClient    pb.GRPCForwarderClient
+type forwarderGrpc struct {
+	forwarderGrpcClient ports.ForwarderGrpcClient
 }
 
-func NewNoopForwarder(forwarderGrpc ports.ForwarderGrpcClient) *noopForwarder {
-	return &noopForwarder{
-		forwarderGrpc: forwarderGrpc,
+func NewForwarderGrpc(forwarderGrpcClient ports.ForwarderGrpcClient) *forwarderGrpc {
+	return &forwarderGrpc{
+		forwarderGrpcClient: forwarderGrpcClient,
 	}
 }
 
 // ForwardRoomEvent forwards room events. It receives the room event attributes and forwarder configuration.
-func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) error {
+func (f *forwarderGrpc) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) error {
 	if eventAttributes.EventType == events.Arbitrary {
 		event := pb.RoomEvent{
 			Room: &pb.Room{
@@ -61,7 +60,7 @@ func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes ev
 			Metadata:  *fromMapInterfaceToMapString(forwarder.Options.Metadata),
 		}
 
-		eventResponse, err := f.forwarderGrpc.SendRoomEvent(ctx, forwarder, &event)
+		eventResponse, err := f.forwarderGrpcClient.SendRoomEvent(ctx, forwarder, &event)
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	}
 
@@ -77,7 +76,7 @@ func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes ev
 			StatusType: fromRoomPingEventTypeToRoomStatusType(*eventAttributes.PingType),
 		}
 
-		eventResponse, err := f.forwarderGrpc.SendRoomReSync(ctx, forwarder, &event)
+		eventResponse, err := f.forwarderGrpcClient.SendRoomReSync(ctx, forwarder, &event)
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	}
 
@@ -85,7 +84,7 @@ func (f *noopForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes ev
 }
 
 // ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
-func (f *noopForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder entities.Forwarder) error {
+func (f *forwarderGrpc) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder entities.Forwarder) error {
 	event := pb.PlayerEvent{
 		PlayerId: eventAttributes.PlayerId,
 		Room: &pb.Room{
@@ -96,22 +95,22 @@ func (f *noopForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes 
 		Metadata:  *fromMapInterfaceToMapString(forwarder.Options.Metadata),
 	}
 
-	eventResponse, err := f.forwarderGrpc.SendPlayerEvent(ctx, forwarder, &event)
+	eventResponse, err := f.forwarderGrpcClient.SendPlayerEvent(ctx, forwarder, &event)
 	return handlerGrpcClientResponse(forwarder, eventResponse, err)
 }
 
 // ForwardRoomEventObsolete forwards room events. It receives the game room, its instance, and additional attributes.
-func (*noopForwarder) ForwardRoomEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
+func (*forwarderGrpc) ForwardRoomEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
 	return nil
 }
 
 // ForwardPlayerEventObsolete forwards a player events. It receives the game room and additional attributes.
-func (*noopForwarder) ForwardPlayerEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
+func (*forwarderGrpc) ForwardPlayerEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
 	return nil
 }
 
 // Name returns the forwarder name. This name should be unique among other events forwarders.
-func (*noopForwarder) Name() string {
+func (*forwarderGrpc) Name() string {
 	return "noop_forwarder"
 }
 

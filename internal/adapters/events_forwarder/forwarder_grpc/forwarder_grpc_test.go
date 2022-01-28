@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package noop_forwarder
+package forwarder_grpc
 
 import (
 	"context"
@@ -38,7 +38,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 )
 
-var noopForwarderAdapter *noopForwarder
+var noopForwarderAdapter *forwarderGrpc
 var forwarderGrpcMock *mock.MockForwarderGrpc
 var mockCtrl *gomock.Controller
 
@@ -167,10 +167,7 @@ func newRoomEventAttributes(eventType events.RoomEventType) events.RoomEventAttr
 		Port:      5050,
 		EventType: eventType,
 		PingType:  &pingType,
-		Other:     map[string]interface{}{
-			"roomType": "red",
-			"ping":     true,
-		},
+		Other:     map[string]interface{}{"roomType": "red", "ping": true},
 	}
 }
 
@@ -179,10 +176,7 @@ func newPlayerEventAttributes() events.PlayerEventAttributes {
 		RoomId:    "123",
 		PlayerId:  "123",
 		EventType: events.PlayerLeft,
-		Other: map[string]interface{}{
-			"roomType": "red",
-			"ping":     true,
-		},
+		Other:     map[string]interface{}{"roomType": "red", "ping": true},
 	}
 }
 
@@ -193,11 +187,8 @@ func newForwarder() forwarder.Forwarder {
 		ForwardType: forwarder.TypeGrpc,
 		Address:     "matchmaker-service:8080",
 		Options: &forwarder.ForwardOptions{
-			Timeout: time.Duration(10),
-			Metadata: map[string]interface{}{
-				"roomType": "red",
-				"ping":     true,
-			},
+			Timeout:  time.Duration(10),
+			Metadata: map[string]interface{}{"roomType": "red", "ping": true},
 		},
 	}
 }
@@ -206,5 +197,5 @@ func basicArrange(t *testing.T) {
 	mockCtrl = gomock.NewController(t)
 	defer mockCtrl.Finish()
 	forwarderGrpcMock = mock.NewMockForwarderGrpc(mockCtrl)
-	noopForwarderAdapter = NewNoopForwarder(forwarderGrpcMock)
+	noopForwarderAdapter = NewForwarderGrpc(forwarderGrpcMock)
 }
