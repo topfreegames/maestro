@@ -28,7 +28,7 @@ type RoomEventAttributes struct {
 	Game      string
 	RoomId    string
 	Host      string
-	Port      string
+	Port      int32
 	EventType RoomEventType
 	PingType  *RoomPingEventType
 	Other     map[string]interface{}
@@ -58,6 +58,17 @@ func ConvertToRoomEventType(value string) (RoomEventType, error) {
 		return Arbitrary, nil
 	default:
 		return "", fmt.Errorf("invalid RoomEventType. Should be \"resync\" or \"roomEvent\"")
+	}
+}
+
+func FromRoomEventTypeToString(eventType RoomEventType) string {
+	switch eventType {
+	case Ping:
+		return "resync"
+	case Arbitrary:
+		return "roomEvent"
+	default:
+		return ""
 	}
 }
 

@@ -26,7 +26,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
+
+	forwarder2 "github.com/topfreegames/maestro/internal/core/ports/forwarder"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -41,7 +42,7 @@ import (
 )
 
 type EventsForwarderService struct {
-	eventsForwarder  ports.EventsForwarder
+	eventsForwarder  forwarder2.EventsForwarder
 	logger           *zap.Logger
 	schedulerStorage ports.SchedulerStorage
 	instanceStorage  ports.GameRoomInstanceStorage
@@ -50,7 +51,7 @@ type EventsForwarderService struct {
 }
 
 func NewEventsForwarderService(
-	eventsForwarder ports.EventsForwarder,
+	eventsForwarder forwarder2.EventsForwarder,
 	schedulerStorage ports.SchedulerStorage,
 	instanceStorage ports.GameRoomInstanceStorage,
 	schedulerCache ports.SchedulerCache,
@@ -139,7 +140,7 @@ func (es *EventsForwarderService) forwardRoomEvent(
 		Game:      scheduler.Game,
 		RoomId:    event.RoomID,
 		Host:      instance.Address.Host,
-		Port:      strconv.Itoa(int(selectedPort)),
+		Port:      selectedPort,
 		EventType: roomEvent,
 		PingType:  &pingType,
 		Other:     event.Attributes,

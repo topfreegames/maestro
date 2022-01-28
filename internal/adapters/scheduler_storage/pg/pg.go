@@ -36,7 +36,9 @@ import (
 	"github.com/topfreegames/maestro/internal/core/filters"
 )
 
-var _ ports.SchedulerStorage = (*schedulerStorage)(nil)
+var (
+	_ ports.SchedulerStorage = (*schedulerStorage)(nil)
+)
 
 type schedulerStorage struct {
 	db *pg.DB

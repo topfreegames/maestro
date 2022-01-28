@@ -20,15 +20,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package ports
+package forwarder
 
 import (
 	"context"
 
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
-
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
 type EventsForwarder interface {
@@ -36,10 +34,6 @@ type EventsForwarder interface {
 	ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder forwarder.Forwarder) error
 	// ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
 	ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder forwarder.Forwarder) error
-	// ForwardRoomEventObsolete forwards room events. It receives the game room, its instance, and additional attributes.
-	ForwardRoomEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error
-	// ForwardPlayerEventObsolete forwards a player events. It receives the game room and additional attributes.
-	ForwardPlayerEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error
 	// Name returns the forwarder name. This name should be unique among other events forwarders.
 	Name() string
 }

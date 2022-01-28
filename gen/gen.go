@@ -33,7 +33,7 @@ package gen
 
 // Ports Mocks
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/port_allocator.go -destination=../internal/adapters/port_allocator/mock/mock.go -package=mock
-//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/events_forwarder.go -destination=../internal/adapters/events_forwarder/mock/mock.go -package=mock
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/forwarder/events_forwarder.go -destination=../internal/adapters/forwarder/events_forwarder/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/port_allocator.go -destination=../internal/adapters/port_allocator/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/runtime.go -destination=../internal/adapters/runtime/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/room_storage.go -destination=../internal/adapters/room_storage/mock/mock.go -package=mock
@@ -43,6 +43,7 @@ package gen
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/scheduler_storage.go -destination=../internal/adapters/scheduler_storage/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/scheduler_cache.go -destination=../internal/adapters/scheduler_cache/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/operation_flow.go -destination=../internal/adapters/operation_flow/mock/mock.go -package=mock
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/forwarder/forwarder_client.go -destination=../internal/adapters/forwarder/forwarder_client/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/config/config.go -destination=../internal/config/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/operations/definition.go -destination=../internal/core/operations/mock/definition.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/operations/executor.go -destination=../internal/core/operations/mock/executor.go -package=mock
