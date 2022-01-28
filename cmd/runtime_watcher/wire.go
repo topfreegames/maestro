@@ -56,6 +56,7 @@ var RoomManagerSet = wire.NewSet(
 	service.NewEventsForwarder,
 	events_forwarder.NewEventsForwarderService,
 	room_manager.NewRoomManager,
+	service.NewEventsForwarderServiceConfig,
 )
 
 func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager, error) {

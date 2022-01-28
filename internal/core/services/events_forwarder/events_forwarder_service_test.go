@@ -54,8 +54,9 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	schedulerStorage := ssMock.NewMockSchedulerStorage(mockCtrl)
 	instanceStorage := isMock.NewMockGameRoomInstanceStorage(mockCtrl)
 	schedulerCache := scMock.NewMockSchedulerCache(mockCtrl)
+	config := events_forwarder.EventsForwarderConfig{SchedulerCacheTtl: time.Minute}
 
-	eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, instanceStorage, schedulerCache)
+	eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, instanceStorage, schedulerCache, config)
 
 	fwd := &forwarder.Forwarder{
 		Name:        "fwd",
@@ -127,7 +128,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(scheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler).Return(nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, config.SchedulerCacheTtl).Return(nil)
 		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -148,7 +149,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler).Return(nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
 		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -170,7 +171,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler).Return(nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
 		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -213,7 +214,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(instance, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler).Return(nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
 		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -233,7 +234,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler).Return(nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
 		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -253,7 +254,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler).Return(nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
 		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -273,7 +274,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, errors.New("scheduler not found"))
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler).Return(nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
 		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -332,7 +333,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler).Return(nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
 		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(errors.New("error"))
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -353,7 +354,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler).Return(errors.New("error"))
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(errors.New("error"))
 		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -374,7 +375,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, errors.New("error"))
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler).Return(errors.New("error"))
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(errors.New("error"))
 		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)

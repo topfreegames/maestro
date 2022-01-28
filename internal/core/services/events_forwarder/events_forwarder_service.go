@@ -46,6 +46,7 @@ type EventsForwarderService struct {
 	schedulerStorage ports.SchedulerStorage
 	instanceStorage  ports.GameRoomInstanceStorage
 	schedulerCache   ports.SchedulerCache
+	config           EventsForwarderConfig
 }
 
 func NewEventsForwarderService(
@@ -53,6 +54,7 @@ func NewEventsForwarderService(
 	schedulerStorage ports.SchedulerStorage,
 	instanceStorage ports.GameRoomInstanceStorage,
 	schedulerCache ports.SchedulerCache,
+	config EventsForwarderConfig,
 ) interfaces.EventsService {
 	return &EventsForwarderService{
 		eventsForwarder,
@@ -60,6 +62,7 @@ func NewEventsForwarderService(
 		schedulerStorage,
 		instanceStorage,
 		schedulerCache,
+		config,
 	}
 }
 
@@ -196,7 +199,7 @@ func (es *EventsForwarderService) getScheduler(ctx context.Context, schedulerNam
 			es.logger.Error(fmt.Sprintf("Failed to get scheduler \"%v\" info", schedulerName), zap.Error(err))
 			return nil, err
 		}
-		if err = es.schedulerCache.SetScheduler(ctx, scheduler); err != nil {
+		if err = es.schedulerCache.SetScheduler(ctx, scheduler, es.config.SchedulerCacheTtl); err != nil {
 			es.logger.Error(fmt.Sprintf("Failed to set scheduler \"%v\" in cache", schedulerName), zap.Error(err))
 		}
 	}
