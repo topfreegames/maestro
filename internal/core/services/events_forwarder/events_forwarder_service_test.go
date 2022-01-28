@@ -33,7 +33,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	efmock "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
+	efmock "github.com/topfreegames/maestro/internal/adapters/forwarder/events_forwarder/mock"
 	isMock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	scMock "github.com/topfreegames/maestro/internal/adapters/scheduler_cache/mock"
 	ssMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"

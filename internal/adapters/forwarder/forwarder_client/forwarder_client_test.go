@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package grpc
+package forwarder_client
 
 import (
 	"context"
@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	forwarderGrpcAdapter *forwarderGrpcClient
+	forwarderClientAdapter *forwarderClient
 )
 
 func TestSendRoomEvent(t *testing.T) {
@@ -43,7 +43,7 @@ func TestSendRoomEvent(t *testing.T) {
 		basicArrange(t)
 		event := newRoomEvent()
 
-		response, err := forwarderGrpcAdapter.SendRoomEvent(context.Background(), newForwarder(), &event)
+		response, err := forwarderClientAdapter.SendRoomEvent(context.Background(), newForwarder(), &event)
 
 		require.Nil(t, response)
 		require.Error(t, err)
@@ -55,7 +55,7 @@ func TestSendRoomReSync(t *testing.T) {
 		basicArrange(t)
 		event := newRoomStatus()
 
-		response, err := forwarderGrpcAdapter.SendRoomReSync(context.Background(), newForwarder(), &event)
+		response, err := forwarderClientAdapter.SendRoomReSync(context.Background(), newForwarder(), &event)
 
 		require.Nil(t, response)
 		require.Error(t, err)
@@ -66,7 +66,7 @@ func TestSendPlayerEvent(t *testing.T) {
 	t.Run("failed when trying to send event", func(t *testing.T) {
 		basicArrange(t)
 		event := newPlayerEvent()
-		response, err := forwarderGrpcAdapter.SendPlayerEvent(context.Background(), newForwarder(), &event)
+		response, err := forwarderClientAdapter.SendPlayerEvent(context.Background(), newForwarder(), &event)
 
 		require.Nil(t, response)
 		require.Error(t, err)
@@ -77,7 +77,7 @@ func TestGetGrpcClient(t *testing.T) {
 	t.Run("success to get new configuration", func(t *testing.T) {
 		basicArrange(t)
 
-		grpcClient, err := forwarderGrpcAdapter.getGrpcClient("matchmaker.svc.io")
+		grpcClient, err := forwarderClientAdapter.getGrpcClient("matchmaker.svc.io")
 
 		require.NotNil(t, grpcClient)
 		require.NoError(t, err)
@@ -86,10 +86,10 @@ func TestGetGrpcClient(t *testing.T) {
 	t.Run("success returning configuration from cache", func(t *testing.T) {
 		basicArrange(t)
 		forwarderAddress := "matchmaker.svc.io"
-		_, errArrange := forwarderGrpcAdapter.getGrpcClient(Address(forwarderAddress))
+		_, errArrange := forwarderClientAdapter.getGrpcClient(Address(forwarderAddress))
 		require.NoError(t, errArrange)
 
-		grpcClient, err := forwarderGrpcAdapter.getGrpcClient(Address(forwarderAddress))
+		grpcClient, err := forwarderClientAdapter.getGrpcClient(Address(forwarderAddress))
 
 		require.NotNil(t, grpcClient)
 		require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestGetGrpcClient(t *testing.T) {
 	t.Run("failed when argument is invalid", func(t *testing.T) {
 		basicArrange(t)
 
-		grpcClient, err := forwarderGrpcAdapter.getGrpcClient("")
+		grpcClient, err := forwarderClientAdapter.getGrpcClient("")
 
 		require.Nil(t, grpcClient)
 		require.Error(t, err)
@@ -110,7 +110,7 @@ func TestConfigureGrpcClient(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		basicArrange(t)
 
-		grpcClient, err := forwarderGrpcAdapter.configureGrpcClient("matchmaker.svc.io")
+		grpcClient, err := forwarderClientAdapter.configureGrpcClient("matchmaker.svc.io")
 
 		require.NotNil(t, grpcClient)
 		require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestConfigureGrpcClient(t *testing.T) {
 	t.Run("failed when argument is invalid", func(t *testing.T) {
 		basicArrange(t)
 
-		grpcClient, err := forwarderGrpcAdapter.configureGrpcClient("")
+		grpcClient, err := forwarderClientAdapter.configureGrpcClient("")
 
 		require.Nil(t, grpcClient)
 		require.Error(t, err)
@@ -130,10 +130,10 @@ func TestCacheDelete(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		basicArrange(t)
 		forwarderAddress := "matchmaker.svc.io"
-		_, errArrange := forwarderGrpcAdapter.getGrpcClient(Address(forwarderAddress))
+		_, errArrange := forwarderClientAdapter.getGrpcClient(Address(forwarderAddress))
 		require.NoError(t, errArrange)
 
-		err := forwarderGrpcAdapter.CacheDelete(forwarderAddress)
+		err := forwarderClientAdapter.CacheDelete(forwarderAddress)
 
 		require.NoError(t, err)
 	})
@@ -141,7 +141,7 @@ func TestCacheDelete(t *testing.T) {
 	t.Run("failed when forwarder not found", func(t *testing.T) {
 		basicArrange(t)
 
-		err := forwarderGrpcAdapter.CacheDelete("matchmaker.svc.io")
+		err := forwarderClientAdapter.CacheDelete("matchmaker.svc.io")
 
 		require.Error(t, err)
 	})
@@ -149,14 +149,14 @@ func TestCacheDelete(t *testing.T) {
 	t.Run("failed when argument is invalid", func(t *testing.T) {
 		basicArrange(t)
 
-		err := forwarderGrpcAdapter.CacheDelete("matchmaker.svc.io")
+		err := forwarderClientAdapter.CacheDelete("matchmaker.svc.io")
 
 		require.Error(t, err)
 	})
 }
 
 func basicArrange(t *testing.T) {
-	forwarderGrpcAdapter = NewForwarderGrpcClient()
+	forwarderClientAdapter = NewForwarderClient()
 }
 
 func newRoomEvent() pb.RoomEvent {

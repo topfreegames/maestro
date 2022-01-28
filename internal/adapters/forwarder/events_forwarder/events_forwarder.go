@@ -20,34 +20,35 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package forwarder_grpc
+package events_forwarder
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/ports/forwarder"
+
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 	entities "github.com/topfreegames/maestro/internal/core/entities/forwarder"
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 )
 
-type forwarderGrpc struct {
-	forwarderGrpcClient ports.ForwarderGrpcClient
+type eventsForwarder struct {
+	forwarderClient forwarder.ForwarderClient
 }
 
-func NewForwarderGrpc(forwarderGrpcClient ports.ForwarderGrpcClient) *forwarderGrpc {
-	return &forwarderGrpc{
-		forwarderGrpcClient: forwarderGrpcClient,
+func NewEventsForwarder(forwarderClient forwarder.ForwarderClient) *eventsForwarder {
+	return &eventsForwarder{
+		forwarderClient: forwarderClient,
 	}
 }
 
 // ForwardRoomEvent forwards room events. It receives the room event attributes and forwarder configuration.
-func (f *forwarderGrpc) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) error {
-	if eventAttributes.EventType == events.Arbitrary {
+func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) error {
+	switch eventAttributes.EventType {
+	case events.Arbitrary:
 		event := pb.RoomEvent{
 			Room: &pb.Room{
 				Game:     eventAttributes.Game,
@@ -56,27 +57,26 @@ func (f *forwarderGrpc) ForwardRoomEvent(ctx context.Context, eventAttributes ev
 				Port:     eventAttributes.Port,
 				Metadata: *fromMapInterfaceToMapString(eventAttributes.Other),
 			},
-			EventType: entities.FromForwardTypeToString(forwarder.ForwardType),
-			Metadata:  *fromMapInterfaceToMapString(forwarder.Options.Metadata),
+			EventType: events.FromRoomEventTypeToString(eventAttributes.EventType),
+			Metadata:  f.mergeInfos(forwarder.Options.Metadata, eventAttributes.Other),
 		}
 
-		eventResponse, err := f.forwarderGrpcClient.SendRoomEvent(ctx, forwarder, &event)
+		eventResponse, err := f.forwarderClient.SendRoomEvent(ctx, forwarder, &event)
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
-	}
 
-	if eventAttributes.EventType == events.Ping {
+	case events.Ping:
 		event := pb.RoomStatus{
 			Room: &pb.Room{
 				Game:     eventAttributes.Game,
 				RoomId:   eventAttributes.RoomId,
 				Host:     eventAttributes.Host,
 				Port:     eventAttributes.Port,
-				Metadata: *fromMapInterfaceToMapString(eventAttributes.Other),
+				Metadata: f.mergeInfos(forwarder.Options.Metadata, eventAttributes.Other),
 			},
 			StatusType: fromRoomPingEventTypeToRoomStatusType(*eventAttributes.PingType),
 		}
 
-		eventResponse, err := f.forwarderGrpcClient.SendRoomReSync(ctx, forwarder, &event)
+		eventResponse, err := f.forwarderClient.SendRoomReSync(ctx, forwarder, &event)
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	}
 
@@ -84,34 +84,35 @@ func (f *forwarderGrpc) ForwardRoomEvent(ctx context.Context, eventAttributes ev
 }
 
 // ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
-func (f *forwarderGrpc) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder entities.Forwarder) error {
+func (f *eventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder entities.Forwarder) error {
 	event := pb.PlayerEvent{
 		PlayerId: eventAttributes.PlayerId,
 		Room: &pb.Room{
-			RoomId:   eventAttributes.RoomId,
-			Metadata: *fromMapInterfaceToMapString(eventAttributes.Other),
+			RoomId: eventAttributes.RoomId,
 		},
 		EventType: fromPlayerEventTypeToGrpcPlayerEventType(eventAttributes.EventType),
-		Metadata:  *fromMapInterfaceToMapString(forwarder.Options.Metadata),
+		Metadata:  f.mergeInfos(forwarder.Options.Metadata, eventAttributes.Other),
 	}
 
-	eventResponse, err := f.forwarderGrpcClient.SendPlayerEvent(ctx, forwarder, &event)
+	eventResponse, err := f.forwarderClient.SendPlayerEvent(ctx, forwarder, &event)
 	return handlerGrpcClientResponse(forwarder, eventResponse, err)
 }
 
-// ForwardRoomEventObsolete forwards room events. It receives the game room, its instance, and additional attributes.
-func (*forwarderGrpc) ForwardRoomEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, instance *game_room.Instance, attributes map[string]interface{}, options interface{}) error {
-	return nil
-}
-
-// ForwardPlayerEventObsolete forwards a player events. It receives the game room and additional attributes.
-func (*forwarderGrpc) ForwardPlayerEventObsolete(ctx context.Context, gameRoom *game_room.GameRoom, attributes map[string]interface{}, options interface{}) error {
-	return nil
-}
-
 // Name returns the forwarder name. This name should be unique among other events forwarders.
-func (*forwarderGrpc) Name() string {
+func (*eventsForwarder) Name() string {
 	return "noop_forwarder"
+}
+
+func (*eventsForwarder) mergeInfos(mapA map[string]interface{}, mapB map[string]interface{}) map[string]string {
+	mapStringA := *fromMapInterfaceToMapString(mapA)
+	mapStringB := *fromMapInterfaceToMapString(mapB)
+
+	for k, v := range mapStringB {
+		mapStringA[k] = v
+	}
+
+	metadata := mapStringA
+	return metadata
 }
 
 func fromMapInterfaceToMapString(mapInterface map[string]interface{}) *map[string]string {

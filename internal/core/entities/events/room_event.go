@@ -61,6 +61,17 @@ func ConvertToRoomEventType(value string) (RoomEventType, error) {
 	}
 }
 
+func FromRoomEventTypeToString(eventType RoomEventType) string {
+	switch eventType {
+	case Ping:
+		return "resync"
+	case Arbitrary:
+		return "roomEvent"
+	default:
+		return ""
+	}
+}
+
 func ConvertToRoomPingEventType(value string) (RoomPingEventType, error) {
 	switch value {
 	case "roomReady":

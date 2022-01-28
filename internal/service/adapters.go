@@ -25,11 +25,13 @@ package service
 import (
 	"fmt"
 
+	matchmakerEventsForwarder "github.com/topfreegames/maestro/internal/adapters/forwarder/events_forwarder"
+	"github.com/topfreegames/maestro/internal/adapters/forwarder/forwarder_client"
+	"github.com/topfreegames/maestro/internal/core/ports/forwarder"
+
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
 	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
-	matchmakerEventsForwarder "github.com/topfreegames/maestro/internal/adapters/events_forwarder/forwarder_grpc"
-	"github.com/topfreegames/maestro/internal/adapters/forwarder_grpc_client/grpc_client"
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
 	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation_flow/redis"
 	operationLeaseStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_lease/redis"
@@ -69,9 +71,9 @@ const (
 	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
 )
 
-func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
-	forwarderGrpc := grpc.NewForwarderGrpcClient()
-	return matchmakerEventsForwarder.NewForwarderGrpc(forwarderGrpc), nil
+func NewEventsForwarder(c config.Config) (forwarder.EventsForwarder, error) {
+	forwarderGrpc := forwarder_client.NewForwarderClient()
+	return matchmakerEventsForwarder.NewEventsForwarder(forwarderGrpc), nil
 }
 
 func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {

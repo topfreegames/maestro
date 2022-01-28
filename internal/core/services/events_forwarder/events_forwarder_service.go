@@ -27,6 +27,8 @@ import (
 	"errors"
 	"fmt"
 
+	forwarder2 "github.com/topfreegames/maestro/internal/core/ports/forwarder"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
@@ -40,7 +42,7 @@ import (
 )
 
 type EventsForwarderService struct {
-	eventsForwarder  ports.EventsForwarder
+	eventsForwarder  forwarder2.EventsForwarder
 	logger           *zap.Logger
 	schedulerStorage ports.SchedulerStorage
 	instanceStorage  ports.GameRoomInstanceStorage
@@ -48,7 +50,7 @@ type EventsForwarderService struct {
 }
 
 func NewEventsForwarderService(
-	eventsForwarder ports.EventsForwarder,
+	eventsForwarder forwarder2.EventsForwarder,
 	schedulerStorage ports.SchedulerStorage,
 	instanceStorage ports.GameRoomInstanceStorage,
 	schedulerCache ports.SchedulerCache,
