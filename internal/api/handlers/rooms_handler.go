@@ -74,11 +74,13 @@ func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.Forwar
 }
 
 func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.ForwardPlayerEventRequest) (*api.ForwardPlayerEventResponse, error) {
-	room := &game_room.GameRoom{ID: message.RoomName, SchedulerID: message.SchedulerName, Metadata: message.Metadata.AsMap()}
-
-	err := h.eventsService.ProduceEvent(ctx, events.NewPlayerEvent(room.SchedulerID, room.ID, map[string]interface{}{}))
+	eventMetadata := message.Metadata.AsMap()
+	if eventMetadata != nil {
+		eventMetadata["eventType"] = message.Event
+	}
+	err := h.eventsService.ProduceEvent(ctx, events.NewPlayerEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		return &api.ForwardPlayerEventResponse{Success: false, Message: ""}, nil
 	}
 	return &api.ForwardPlayerEventResponse{Success: true, Message: ""}, nil
 }

@@ -240,6 +240,9 @@ func (es *EventsForwarderService) getPlayerInfo(event *events.Event) (string, er
 		return "", fmt.Errorf("playerId not found on eventAttributes")
 	}
 
-	playerId := event.Attributes["playerId"].(string)
+	playerId, ok := event.Attributes["playerId"].(string)
+	if !ok {
+		return "", fmt.Errorf("playerId must be a string")
+	}
 	return playerId, nil
 }
