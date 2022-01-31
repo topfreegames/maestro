@@ -38,4 +38,5 @@ type SchedulerStorage interface {
 	CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error
+	CreateSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
 }

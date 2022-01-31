@@ -55,50 +55,6 @@ var dbNumber int32 = 0
 var postgresContainer *gnomock.Container
 var postgresDB *pg.DB
 
-func getPostgresDB(t *testing.T) *pg.DB {
-	number := atomic.AddInt32(&dbNumber, 1)
-	dbname := fmt.Sprintf("db%d", number)
-	_, err := postgresDB.Exec(fmt.Sprintf("CREATE DATABASE %s TEMPLATE base", dbname))
-	require.NoError(t, err)
-
-	opts := &pg.Options{
-		Addr:     postgresContainer.DefaultAddress(),
-		User:     "maestro",
-		Password: "maestro",
-		Database: dbname,
-	}
-
-	db := pg.Connect(opts)
-
-	t.Cleanup(func() {
-		_, _ = db.Exec(fmt.Sprintf("DELETE DATABASE %s", dbname))
-		_ = db.Close()
-	})
-
-	return db
-}
-
-func migrate(opts *pg.Options) error {
-	dbUrl := getDBUrl(opts)
-	m, err := golangMigrate.New("file://./migrations", dbUrl)
-	if err != nil {
-		return err
-	}
-
-	err = m.Up()
-	if err != nil {
-		return err
-	}
-
-	m.Close()
-
-	return nil
-}
-
-func getDBUrl(opts *pg.Options) string {
-	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", opts.User, opts.Password, opts.Addr, opts.Database)
-}
-
 type dbSchedulerVersion struct {
 	ID                  string      `db:"id"`
 	Name                string      `db:"name"`
@@ -109,41 +65,23 @@ type dbSchedulerVersion struct {
 	RollingUpdateStatus string      `db:"rolling_update_status"`
 }
 
-func getDBSchedulerAndVersions(t *testing.T, db *pg.DB, schedulerName string) (*Scheduler, []*dbSchedulerVersion) {
-	dbScheduler := new(Scheduler)
-	res, err := db.Query(dbScheduler, "select * from schedulers where name = ?;", schedulerName)
-	require.NoError(t, err)
-	if res.RowsReturned() == 0 {
-		return nil, nil
-	}
-
-	var versions []*dbSchedulerVersion
-	_, err = db.Query(&versions, "select * from scheduler_versions where name = ?;", schedulerName)
-	require.NoError(t, err)
-
-	return dbScheduler, versions
-}
-
-func requireCorrectScheduler(t *testing.T, expectedScheduler *entities.Scheduler, dbScheduler *Scheduler, dbVersion *dbSchedulerVersion, update bool) {
-	// postgres scheduler version is valid
-	require.Equal(t, dbScheduler.Name, dbVersion.Name)
-	require.Equal(t, dbScheduler.Yaml, dbVersion.Yaml)
-	require.Equal(t, dbScheduler.Version, dbVersion.Version)
-	require.Equal(t, expectedScheduler.RollbackVersion, dbVersion.RollbackVersion)
-
-	// postgres scheduler is valid
-	require.NotEqual(t, time.Time{}, dbScheduler.CreatedAt.Time)
-	require.Greater(t, dbScheduler.StateLastChangedAt, int64(0))
-	if update {
-		require.NotEqual(t, time.Time{}, dbScheduler.UpdatedAt.Time)
-	}
-
-	actualScheduler, err := dbScheduler.ToScheduler()
-	require.NoError(t, err)
-
-	actualScheduler.RollbackVersion = dbVersion.RollbackVersion
-
-	assertSchedulers(t, []*entities.Scheduler{expectedScheduler}, []*entities.Scheduler{actualScheduler})
+var expectedScheduler = &entities.Scheduler{
+	Name:            "scheduler",
+	Game:            "game",
+	State:           entities.StateCreating,
+	MaxSurge:        "10%",
+	RollbackVersion: "",
+	Spec: game_room.Spec{
+		Version:                "v1",
+		TerminationGracePeriod: 60,
+		Containers:             []game_room.Container{},
+		Toleration:             "toleration",
+		Affinity:               "affinity",
+	},
+	PortRange: &entities.PortRange{
+		Start: 40000,
+		End:   60000,
+	},
 }
 
 func TestMain(m *testing.M) {
@@ -180,26 +118,9 @@ func TestSchedulerStorage_GetScheduler(t *testing.T) {
 	t.Run("scheduler exists and is valid", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
 
-		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+		err := storage.CreateScheduler(context.Background(), expectedScheduler)
+		require.NoError(t, err)
 
 		actualScheduler, err := storage.GetScheduler(context.Background(), "scheduler")
 		require.NoError(t, err)
@@ -217,24 +138,6 @@ func TestSchedulerStorage_GetScheduler(t *testing.T) {
 	t.Run("invalid scheduler", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
 
@@ -246,192 +149,6 @@ func TestSchedulerStorage_GetScheduler(t *testing.T) {
 		_, err = storage.GetScheduler(context.Background(), "scheduler")
 		require.Error(t, err)
 		require.ErrorIs(t, errors.ErrEncoding, err)
-	})
-}
-
-func TestSchedulerStorage_CreateScheduler(t *testing.T) {
-	t.Run("scheduler does not exist", func(t *testing.T) {
-		db := getPostgresDB(t)
-		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
-
-		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-
-		dbScheduler, dbVersions := getDBSchedulerAndVersions(t, db, expectedScheduler.Name)
-		require.NotNil(t, dbScheduler)
-		require.Len(t, dbVersions, 1)
-		requireCorrectScheduler(t, expectedScheduler, dbScheduler, dbVersions[0], false)
-	})
-
-	t.Run("scheduler already exists", func(t *testing.T) {
-		db := getPostgresDB(t)
-		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
-
-		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-		err := storage.CreateScheduler(context.Background(), expectedScheduler)
-		require.Error(t, err)
-		require.ErrorIs(t, errors.ErrAlreadyExists, err)
-	})
-}
-
-func TestSchedulerStorage_UpdateScheduler(t *testing.T) {
-	t.Run("scheduler exists", func(t *testing.T) {
-		db := getPostgresDB(t)
-		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
-
-		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-
-		expectedScheduler.RollbackVersion = "v1"
-		expectedScheduler.Spec.Version = "v2"
-		expectedScheduler.Spec.Affinity = "whatever"
-
-		err := storage.UpdateScheduler(context.Background(), expectedScheduler)
-		require.NoError(t, err)
-
-		dbScheduler, dbVersions := getDBSchedulerAndVersions(t, db, expectedScheduler.Name)
-		require.NotNil(t, dbScheduler)
-		require.Len(t, dbVersions, 2)
-		requireCorrectScheduler(t, expectedScheduler, dbScheduler, dbVersions[1], true)
-	})
-
-	t.Run("scheduler does not exist", func(t *testing.T) {
-		db := getPostgresDB(t)
-		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
-
-		err := storage.UpdateScheduler(context.Background(), expectedScheduler)
-		require.Error(t, err)
-		require.ErrorIs(t, errors.ErrNotFound, err)
-	})
-}
-
-func TestSchedulerStorage_DeleteScheduler(t *testing.T) {
-	t.Run("scheduler exists", func(t *testing.T) {
-		db := getPostgresDB(t)
-		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
-
-		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-
-		err := storage.DeleteScheduler(context.Background(), expectedScheduler)
-		require.NoError(t, err)
-
-		dbScheduler, _ := getDBSchedulerAndVersions(t, db, expectedScheduler.Name)
-		require.Nil(t, dbScheduler)
-	})
-
-	t.Run("scheduler does not exist", func(t *testing.T) {
-		db := getPostgresDB(t)
-		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
-
-		err := storage.DeleteScheduler(context.Background(), expectedScheduler)
-		require.Error(t, err)
-		require.ErrorIs(t, errors.ErrNotFound, err)
 	})
 }
 
@@ -545,26 +262,11 @@ func TestSchedulerStorage_GetSchedulerWithFilter(t *testing.T) {
 	t.Run("scheduler exists and is valid", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
 
-		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+		err := storage.CreateScheduler(context.Background(), expectedScheduler)
+		require.NoError(t, err)
+		err = storage.CreateSchedulerVersion(context.Background(), expectedScheduler)
+		require.NoError(t, err)
 
 		actualScheduler, err := storage.GetSchedulerWithFilter(context.Background(), &filters.SchedulerFilter{
 			Name:    "scheduler",
@@ -588,26 +290,9 @@ func TestSchedulerStorage_GetSchedulerWithFilter(t *testing.T) {
 	t.Run("invalid scheduler", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), expectedScheduler))
 
 		_, err := db.Exec("UPDATE schedulers SET yaml = 'invalid yaml' WHERE name = 'scheduler' and version = 'v1' ")
 		require.NoError(t, err)
@@ -625,24 +310,6 @@ func TestSchedulerStorage_GetSchedulerWithFilter(t *testing.T) {
 	t.Run("miss scheduler name", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
 
@@ -659,26 +326,9 @@ func TestSchedulerStorage_GetSchedulerVersions(t *testing.T) {
 	t.Run("scheduler exists and is valid", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
-		expectedScheduler := &entities.Scheduler{
-			Name:            "scheduler",
-			Game:            "game",
-			State:           entities.StateCreating,
-			MaxSurge:        "10%",
-			RollbackVersion: "",
-			Spec: game_room.Spec{
-				Version:                "v1",
-				TerminationGracePeriod: 60,
-				Containers:             []game_room.Container{},
-				Toleration:             "toleration",
-				Affinity:               "affinity",
-			},
-			PortRange: &entities.PortRange{
-				Start: 40000,
-				End:   60000,
-			},
-		}
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), expectedScheduler))
 
 		versions, err := storage.GetSchedulerVersions(context.Background(), expectedScheduler.Name)
 
@@ -696,6 +346,124 @@ func TestSchedulerStorage_GetSchedulerVersions(t *testing.T) {
 	})
 }
 
+func TestSchedulerStorage_CreateScheduler(t *testing.T) {
+	t.Run("scheduler does not exist", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), expectedScheduler))
+
+		dbScheduler, dbVersions := getDBSchedulerAndVersions(t, db, expectedScheduler.Name)
+		require.NotNil(t, dbScheduler)
+		require.Len(t, dbVersions, 1)
+		requireCorrectScheduler(t, expectedScheduler, dbScheduler, dbVersions[0], false)
+	})
+
+	t.Run("scheduler already exists", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), expectedScheduler))
+		err := storage.CreateScheduler(context.Background(), expectedScheduler)
+		require.Error(t, err)
+		require.ErrorIs(t, errors.ErrAlreadyExists, err)
+	})
+}
+
+func TestSchedulerStorage_UpdateScheduler(t *testing.T) {
+	t.Run("scheduler exists", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), expectedScheduler))
+
+		expectedScheduler.RollbackVersion = "v1"
+		expectedScheduler.Spec.Version = "v2"
+		expectedScheduler.Spec.Affinity = "whatever"
+
+		err := storage.UpdateScheduler(context.Background(), expectedScheduler)
+		require.NoError(t, err)
+
+		updatedScheduler, err := storage.GetScheduler(context.Background(), expectedScheduler.Name)
+		require.NoError(t, err)
+		require.NotNil(t, updatedScheduler)
+		require.Equal(t, updatedScheduler.RollbackVersion, updatedScheduler.RollbackVersion)
+		require.Equal(t, updatedScheduler.Spec.Version, updatedScheduler.Spec.Version)
+		require.Equal(t, updatedScheduler.Spec.Affinity, updatedScheduler.Spec.Affinity)
+	})
+
+	t.Run("scheduler does not exist", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		err := storage.UpdateScheduler(context.Background(), expectedScheduler)
+		require.Error(t, err)
+		require.ErrorIs(t, errors.ErrNotFound, err)
+	})
+}
+
+func TestSchedulerStorage_DeleteScheduler(t *testing.T) {
+	t.Run("scheduler exists", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+
+		err := storage.DeleteScheduler(context.Background(), expectedScheduler)
+		require.NoError(t, err)
+
+		dbScheduler, _ := getDBSchedulerAndVersions(t, db, expectedScheduler.Name)
+		require.Nil(t, dbScheduler)
+	})
+
+	t.Run("scheduler does not exist", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		err := storage.DeleteScheduler(context.Background(), expectedScheduler)
+		require.Error(t, err)
+		require.ErrorIs(t, errors.ErrNotFound, err)
+	})
+}
+
+func TestSchedulerStorage_CreateSchedulerVersion(t *testing.T) {
+	t.Run("should succeed - scheduler version created for scheduler", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+		err := storage.CreateSchedulerVersion(context.Background(), expectedScheduler)
+		require.NoError(t, err)
+		versions, err := storage.GetSchedulerVersions(context.Background(), expectedScheduler.Name)
+		require.NoError(t, err)
+		require.Len(t, versions, 1)
+	})
+
+	t.Run("should fail - scheduler does not exist", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		err := storage.CreateSchedulerVersion(context.Background(), expectedScheduler)
+		require.Error(t, err)
+		require.Equal(t, err.Error(), fmt.Sprintf("error creating version %s for non existent scheduler \"%s\"", expectedScheduler.Spec.Version, expectedScheduler.Name))
+	})
+
+	t.Run("should fail - scheduler version invalid", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+
+		expectedScheduler.Name = ""
+
+		err := storage.CreateSchedulerVersion(context.Background(), expectedScheduler)
+		require.Error(t, err)
+	})
+}
+
 func assertSchedulers(t *testing.T, expectedSchedulers []*entities.Scheduler, actualSchedulers []*entities.Scheduler) {
 	for i, expectedScheduler := range expectedSchedulers {
 		require.Equal(t, expectedScheduler.Name, actualSchedulers[i].Name)
@@ -705,4 +473,85 @@ func assertSchedulers(t *testing.T, expectedSchedulers []*entities.Scheduler, ac
 		require.Equal(t, expectedScheduler.Spec, actualSchedulers[i].Spec)
 		require.Equal(t, expectedScheduler.PortRange, actualSchedulers[i].PortRange)
 	}
+}
+
+func getPostgresDB(t *testing.T) *pg.DB {
+	number := atomic.AddInt32(&dbNumber, 1)
+	dbname := fmt.Sprintf("db%d", number)
+	_, err := postgresDB.Exec(fmt.Sprintf("CREATE DATABASE %s TEMPLATE base", dbname))
+	require.NoError(t, err)
+
+	opts := &pg.Options{
+		Addr:     postgresContainer.DefaultAddress(),
+		User:     "maestro",
+		Password: "maestro",
+		Database: dbname,
+	}
+
+	db := pg.Connect(opts)
+
+	t.Cleanup(func() {
+		_, _ = db.Exec(fmt.Sprintf("DELETE DATABASE %s", dbname))
+		_ = db.Close()
+	})
+
+	return db
+}
+
+func migrate(opts *pg.Options) error {
+	dbUrl := getDBUrl(opts)
+	m, err := golangMigrate.New("file://./migrations", dbUrl)
+	if err != nil {
+		return err
+	}
+
+	err = m.Up()
+	if err != nil {
+		return err
+	}
+
+	m.Close()
+
+	return nil
+}
+
+func getDBUrl(opts *pg.Options) string {
+	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", opts.User, opts.Password, opts.Addr, opts.Database)
+}
+
+func getDBSchedulerAndVersions(t *testing.T, db *pg.DB, schedulerName string) (*Scheduler, []*dbSchedulerVersion) {
+	dbScheduler := new(Scheduler)
+	res, err := db.Query(dbScheduler, "select * from schedulers where name = ?;", schedulerName)
+	require.NoError(t, err)
+	if res.RowsReturned() == 0 {
+		return nil, nil
+	}
+
+	var versions []*dbSchedulerVersion
+	_, err = db.Query(&versions, "select * from scheduler_versions where name = ?;", schedulerName)
+	require.NoError(t, err)
+
+	return dbScheduler, versions
+}
+
+func requireCorrectScheduler(t *testing.T, expectedScheduler *entities.Scheduler, dbScheduler *Scheduler, dbVersion *dbSchedulerVersion, update bool) {
+	// postgres scheduler version is valid
+	require.Equal(t, dbScheduler.Name, dbVersion.Name)
+	require.Equal(t, dbScheduler.Yaml, dbVersion.Yaml)
+	require.Equal(t, dbScheduler.Version, dbVersion.Version)
+	require.Equal(t, expectedScheduler.RollbackVersion, dbVersion.RollbackVersion)
+
+	// postgres scheduler is valid
+	require.NotEqual(t, time.Time{}, dbScheduler.CreatedAt.Time)
+	require.Greater(t, dbScheduler.StateLastChangedAt, int64(0))
+	if update {
+		require.NotEqual(t, time.Time{}, dbScheduler.UpdatedAt.Time)
+	}
+
+	actualScheduler, err := dbScheduler.ToScheduler()
+	require.NoError(t, err)
+
+	actualScheduler.RollbackVersion = dbVersion.RollbackVersion
+
+	assertSchedulers(t, []*entities.Scheduler{expectedScheduler}, []*entities.Scheduler{actualScheduler})
 }
