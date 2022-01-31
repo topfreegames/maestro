@@ -360,7 +360,7 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, rawRequest := range rawRequests {
-			eventsForwarderService.EXPECT().ProduceEvent(gomock.Any(), events.NewPlayerEvent("schedulerName1", "roomName1", map[string]interface{}{})).Return(nil)
+			eventsForwarderService.EXPECT().ProduceEvent(gomock.Any(), gomock.Any()).Return(nil)
 			request, err := rawRequest.MarshalJSON()
 			require.NoError(t, err)
 
@@ -380,7 +380,7 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 		}
 	})
 
-	t.Run("when some error occur when forwarding then it return status code 500", func(t *testing.T) {
+	t.Run("when some error occur when forwarding then it return status code 200 with success = false", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		clockMock := clock_mock.NewFakeClock(time.Now())
@@ -407,12 +407,12 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 			rr := httptest.NewRecorder()
 			mux.ServeHTTP(rr, req)
 
-			require.Equal(t, 500, rr.Code)
+			require.Equal(t, 200, rr.Code)
 			bodyString := rr.Body.String()
 			var body map[string]interface{}
 			err = json.Unmarshal([]byte(bodyString), &body)
 			require.NoError(t, err)
-			require.Equal(t, "Failed to forward player events", body["message"])
+			require.Equal(t, false, body["success"])
 		}
 	})
 }
