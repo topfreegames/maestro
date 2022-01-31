@@ -993,7 +993,7 @@ type ForwarderOptions struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Timeout of a request.
+	// Timeout of a request in milliseconds.
 	Timeout int64 `protobuf:"varint,1,opt,name=timeout,proto3" json:"timeout,omitempty"`
 	// Additional information
 	Metadata *_struct.Struct `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`

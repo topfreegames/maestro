@@ -992,7 +992,7 @@
         "timeout": {
           "type": "string",
           "format": "int64",
-          "description": "Timeout of a request."
+          "description": "Timeout of a request in milliseconds."
         },
         "metadata": {
           "type": "object",

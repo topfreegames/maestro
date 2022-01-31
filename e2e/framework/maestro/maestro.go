@@ -24,6 +24,7 @@ package maestro
 
 import (
 	"fmt"
+
 	"github.com/topfreegames/maestro/e2e/framework/maestro/servermocks"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro/components"
