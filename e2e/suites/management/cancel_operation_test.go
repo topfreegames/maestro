@@ -47,7 +47,7 @@ import (
 )
 
 func TestCancelOperation(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		operationStorage := operationStorageRedis.NewRedisOperationStorage(redisClient, timeClock.NewClock())
 		operationFlow := operationFlowRedis.NewRedisOperationFlow(redisClient)
 
@@ -56,7 +56,7 @@ func TestCancelOperation(t *testing.T) {
 			schedulerName, err := createSchedulerAndWaitForIt(
 				t,
 				maestro,
-				apiClient,
+				managementApiClient,
 				kubeClient,
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
@@ -67,7 +67,7 @@ func TestCancelOperation(t *testing.T) {
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.PendingOperations) < 1 || len(listOperationsResponse.ActiveOperations) < 1 {
@@ -81,13 +81,13 @@ func TestCancelOperation(t *testing.T) {
 
 			secondOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: schedulerName, OperationId: secondSlowOp.ID}
 			secondOpCancelResponse := &maestroApiV1.CancelOperationResponse{}
-			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, secondSlowOp.ID), secondOpCancelRequest, secondOpCancelResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, secondSlowOp.ID), secondOpCancelRequest, secondOpCancelResponse)
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 2 {
@@ -101,13 +101,13 @@ func TestCancelOperation(t *testing.T) {
 
 			firstOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: schedulerName, OperationId: firstSlowOp.ID}
 			firstOpCancelResponse := &maestroApiV1.CancelOperationResponse{}
-			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, firstSlowOp.ID), firstOpCancelRequest, firstOpCancelResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, firstSlowOp.ID), firstOpCancelRequest, firstOpCancelResponse)
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 3 {

@@ -34,13 +34,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
+	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
 	maestrov1 "github.com/topfreegames/maestro/pkg/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 func TestCreateScheduler(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		schedulerName := framework.GenerateSchedulerName()
 		createRequest := &maestrov1.CreateSchedulerRequest{
 			Name:                   schedulerName,
@@ -71,17 +72,21 @@ func TestCreateScheduler(t *testing.T) {
 					},
 				},
 			},
+			PortRange: &maestroApiV1.PortRange{
+				Start: 80,
+				End:   8000,
+			},
 		}
 
 		createResponse := &maestrov1.CreateSchedulerResponse{}
-		err := apiClient.Do("POST", "/schedulers", createRequest, createResponse)
+		err := managementApiClient.Do("POST", "/schedulers", createRequest, createResponse)
 		require.NoError(t, err)
 
 		// list operations
 		require.Eventually(t, func() bool {
 			listOperationsRequest := &maestrov1.ListOperationsRequest{}
 			listOperationsResponse := &maestrov1.ListOperationsResponse{}
-			err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 			require.NoError(t, err)
 
 			if len(listOperationsResponse.FinishedOperations) == 0 {

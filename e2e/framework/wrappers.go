@@ -33,8 +33,9 @@ import (
 )
 
 // TODO: remove the old redis client version
-func WithClients(t *testing.T, testCase func(apiClient *APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance)) {
+func WithClients(t *testing.T, testCase func(roomsApiClient *APIClient, managementApiClient *APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance)) {
 	client := NewAPIClient(defaultMaestro.ManagementApiServer.Address)
+	roomsApiClient := NewAPIClient(defaultMaestro.RoomsApiServer.Address)
 
 	kubeClient, err := getKubeClient()
 	if err != nil {
@@ -45,5 +46,5 @@ func WithClients(t *testing.T, testCase func(apiClient *APIClient, kubeClient ku
 		t.Fatal(err)
 	}
 
-	testCase(client, kubeClient, redisClient, defaultMaestro)
+	testCase(roomsApiClient, client, kubeClient, redisClient, defaultMaestro)
 }
