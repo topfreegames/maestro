@@ -24,6 +24,7 @@ package maestro
 
 import (
 	"fmt"
+	"github.com/topfreegames/maestro/e2e/framework/maestro/servermocks"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro/components"
 )
@@ -31,6 +32,7 @@ import (
 type MaestroInstance struct {
 	path                 string
 	Deps                 *dependencies
+	ServerMocks          *servermocks.ServerMocks
 	WorkerServer         *components.WorkerServer
 	ManagementApiServer  *components.ManagementApiServer
 	RoomsApiServer       *components.RoomsApiServer
@@ -48,6 +50,11 @@ func ProvideMaestro() (*MaestroInstance, error) {
 	dependencies, err := provideDependencies(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start dependencies: %s", err)
+	}
+
+	serverMocks, err := servermocks.ProvideServerMocks(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start server mocks: %s", err)
 	}
 
 	roomsApiInstance, err := components.ProvideRoomsApi(path)
@@ -73,6 +80,7 @@ func ProvideMaestro() (*MaestroInstance, error) {
 	return &MaestroInstance{
 		"",
 		dependencies,
+		serverMocks,
 		workerInstance,
 		managementApiInstance,
 		roomsApiInstance,

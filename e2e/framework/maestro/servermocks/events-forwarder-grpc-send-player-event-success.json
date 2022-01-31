@@ -1,0 +1,15 @@
+{
+  "service": "GRPCForwarder",
+  "method": "SendPlayerEvent",
+  "input": {
+    "contains": {
+      "playerId": "c50acc91-4d88-46fa-aa56-48d63c5b5311"
+    }
+  },
+  "output": {
+    "data": {
+      "code": 200,
+      "message": "Event received with success"
+    }
+  }
+}

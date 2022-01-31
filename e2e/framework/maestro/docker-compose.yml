@@ -137,5 +137,15 @@ services:
       timeout: 10s
       retries: 5
 
+  grpc-mock:
+    image: tkpd/gripmock
+    command: /events.proto
+    ports: 
+    - "4770:4770"
+    - "4771:4771"
+    volumes:
+     - ../events.proto:/events.proto
+
 volumes:
   kubeconfig: {}
+  eventsproto: {}
