@@ -204,6 +204,164 @@ func TestEventsForwarding(t *testing.T) {
 			require.Equal(t, false, playerEventResponse.Success)
 			require.Contains(t, playerEventResponse.Message, "transport: Error while dialing dial tcp: lookup invalid-grpc-address")
 		})
+
+		t.Run("[Room event success] Forward room event return success true when no error occurs while forwarding events call", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
+
+			// This configuration make the grpc service return with success
+			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-room-event-success")
+			require.NoError(t, err)
+
+			roomEventRequest := &maestroApiV1.ForwardRoomEventRequest{
+				RoomName:  roomName,
+				Event:     "roomReady",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "5437c6c8-3b06-41e6-b87a-de88834503de",
+							},
+						},
+						"eventMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"eventMetadata2": {
+							Kind: &structpb.Value_BoolValue{
+								BoolValue: true,
+							},
+						},
+					},
+				},
+			}
+			roomEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
+			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/roomevent", schedulerName, roomName), roomEventRequest, roomEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, true, roomEventResponse.Success)
+		})
+
+		t.Run("[Room event success] Forward room event return success true when no forwarder is configured for the scheduler", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, roomName := createSchedulerWithRooms(t, maestro, kubeClient, managementApiClient)
+
+			roomEventRequest := &maestroApiV1.ForwardRoomEventRequest{
+				RoomName:  roomName,
+				Event:     "ready",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "c146705f-14ae-480f-8d5a-83711d44426f",
+							},
+						},
+					},
+				},
+			}
+			roomEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
+			err := roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/roomevent", schedulerName, roomName), roomEventRequest, roomEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, true, roomEventResponse.Success)
+		})
+
+		t.Run("[Room event failures] Forward room event return success false when some error occurs in GRPC call", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
+
+			// This configuration make the grpc service return with failure
+			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-room-event-failure")
+			require.NoError(t, err)
+
+			roomEventRequest := &maestroApiV1.ForwardRoomEventRequest{
+				RoomName:  roomName,
+				Event:     "roomReady",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "f942d3d9-1b47-4631-904f-a154894b54ce",
+							},
+						},
+						"eventMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"eventMetadata2": {
+							Kind: &structpb.Value_BoolValue{
+								BoolValue: true,
+							},
+						},
+					},
+				},
+			}
+			roomEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
+			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/roomevent", schedulerName, roomName), roomEventRequest, roomEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, false, roomEventResponse.Success)
+			require.Equal(t, "failed to forward event room at \"matchmaker-grpc\"", roomEventResponse.Message)
+		})
+
+		t.Run("[Room event failure] Forward player event return success false when forwarding event for an inexistent room", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, _ := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
+			roomName := "inexistent-room"
+
+			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-player-event-failure")
+
+			roomEventRequest := &maestroApiV1.ForwardRoomEventRequest{
+				RoomName:  roomName,
+				Event:     "ready",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "c50c9d8a-5a40-40ee-97ea-d477d7b0abd9",
+							},
+						},
+					},
+				},
+			}
+			roomEventResponse := &maestroApiV1.ForwardRoomEventResponse{}
+			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/roomevent", schedulerName, roomName), roomEventRequest, roomEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, false, roomEventResponse.Success)
+		})
+
+		t.Run("[Room event failure] Forward player event return success false when the forwarder connection can't be established", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, "invalid-grpc-address:9982")
+
+			roomEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
+				RoomName:  roomName,
+				Event:     "occupied",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "c50c9d8a-5a40-40ee-97ea-d477d7b0abd9",
+							},
+						},
+					},
+				},
+			}
+			roomEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
+			err := roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/roomevent", schedulerName, roomName), roomEventRequest, roomEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, false, roomEventResponse.Success)
+			require.Contains(t, roomEventResponse.Message, "transport: Error while dialing dial tcp: lookup invalid-grpc-address")
+		})
 	})
 
 }

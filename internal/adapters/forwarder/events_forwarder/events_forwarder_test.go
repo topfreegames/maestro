@@ -42,27 +42,39 @@ var mockCtrl *gomock.Controller
 
 func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 	t.Run("with success when event type is Arbitrary", func(t *testing.T) {
-		// arr
+		// arrange
 		basicArrange(t)
 		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newForwarder())
 
-		// ass
+		// assert
 		require.NoError(t, err)
 		require.Nil(t, err)
 	})
 
-	t.Run("failed when grpcClient returns error", func(t *testing.T) {
-		// arr
+	t.Run("failed when roomEvent is not provided", func(t *testing.T) {
+		// arrange
 		basicArrange(t)
 		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, map[string]interface{}{"roomType": "red", "ping": true}), newForwarder())
 
-		// ass
+		// assert
+		require.Error(t, err)
+	})
+
+	t.Run("failed when grpcClient returns error", func(t *testing.T) {
+		// arrange
+		basicArrange(t)
+		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
+
+		// act
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newForwarder())
+
+		// assert
 		require.Error(t, err)
 		require.NotNil(t, err)
 	})
@@ -71,7 +83,7 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 		basicArrange(t)
 		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newForwarder())
 
 		require.Error(t, err)
 		require.NotNil(t, err)
@@ -80,27 +92,27 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 
 func TestForwardRoomEvent_Ping(t *testing.T) {
 	t.Run("with success when event type is Ping", func(t *testing.T) {
-		// arr
+		// arrange
 		basicArrange(t)
 		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newForwarder())
 
-		// ass
+		// assert
 		require.NoError(t, err)
 		require.Nil(t, err)
 	})
 
 	t.Run("failed when grpcClient returns error", func(t *testing.T) {
-		// arr
+		// arrange
 		basicArrange(t)
 		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newForwarder())
 
-		// ass
+		// assert
 		require.Error(t, err)
 		require.NotNil(t, err)
 	})
@@ -109,7 +121,7 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 		basicArrange(t)
 		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newForwarder())
 
 		require.Error(t, err)
 		require.NotNil(t, err)
@@ -118,13 +130,13 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 
 func TestForwardRoomEvent(t *testing.T) {
 	t.Run("failed when EventType doesn't exists", func(t *testing.T) {
-		// arr
+		// arrange
 		basicArrange(t)
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.RoomEventType("Unknown")), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.RoomEventType("Unknown"), nil), newForwarder())
 
-		// ass
+		// assert
 		require.Error(t, err)
 		require.NotNil(t, err)
 	})
@@ -132,33 +144,33 @@ func TestForwardRoomEvent(t *testing.T) {
 
 func TestForwardPlayerEvent(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
-		// arr
+		// arrange
 		basicArrange(t)
 		forwarderClientMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
 		err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
 
-		// ass
+		// assert
 		require.NoError(t, err)
 		require.Nil(t, err)
 	})
 
 	t.Run("failed when grpcClient returns error", func(t *testing.T) {
-		// arr
+		// arrange
 		basicArrange(t)
 		forwarderClientMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
 		err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
 
-		// ass
+		// assert
 		require.Error(t, err)
 		require.NotNil(t, err)
 	})
 
 	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
-		// arr
+		// arrange
 		basicArrange(t)
 		forwarderClientMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
@@ -183,8 +195,13 @@ func TestMergeInfos(t *testing.T) {
 	})
 }
 
-func newRoomEventAttributes(eventType events.RoomEventType) events.RoomEventAttributes {
+func newRoomEventAttributes(eventType events.RoomEventType, eventMetadata map[string]interface{}) events.RoomEventAttributes {
 	pingType := events.RoomPingReady
+	other := map[string]interface{}{"roomType": "red", "ping": true, "roomEvent": "ready"}
+	if eventMetadata != nil {
+		other = eventMetadata
+	}
+
 	return events.RoomEventAttributes{
 		Game:      "game-test",
 		RoomId:    "123",
@@ -192,7 +209,7 @@ func newRoomEventAttributes(eventType events.RoomEventType) events.RoomEventAttr
 		Port:      5050,
 		EventType: eventType,
 		PingType:  &pingType,
-		Other:     map[string]interface{}{"roomType": "red", "ping": true},
+		Other:     other,
 	}
 }
 
@@ -213,7 +230,7 @@ func newForwarder() forwarder.Forwarder {
 		Address:     "matchmaker-service:8080",
 		Options: &forwarder.ForwardOptions{
 			Timeout:  time.Duration(10),
-			Metadata: map[string]interface{}{"roomType": "red", "ping": true},
+			Metadata: map[string]interface{}{"roomType": "red", "ping": true, "roomEvent": "ready"},
 		},
 	}
 }

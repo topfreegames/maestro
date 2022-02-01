@@ -49,20 +49,22 @@ func NewEventsForwarder(forwarderClient forwarder.ForwarderClient) *eventsForwar
 func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) error {
 	switch eventAttributes.EventType {
 	case events.Arbitrary:
-		event := pb.RoomEvent{
-			Room: &pb.Room{
-				Game:     eventAttributes.Game,
-				RoomId:   eventAttributes.RoomId,
-				Host:     eventAttributes.Host,
-				Port:     eventAttributes.Port,
-				Metadata: *fromMapInterfaceToMapString(eventAttributes.Other),
-			},
-			EventType: events.FromRoomEventTypeToString(eventAttributes.EventType),
-			Metadata:  f.mergeInfos(forwarder.Options.Metadata, eventAttributes.Other),
-		}
+		if roomEvent, ok := eventAttributes.Other["roomEvent"].(string); ok {
+			event := pb.RoomEvent{
+				Room: &pb.Room{
+					Game:     eventAttributes.Game,
+					RoomId:   eventAttributes.RoomId,
+					Host:     eventAttributes.Host,
+					Port:     eventAttributes.Port,
+					Metadata: f.mergeInfos(eventAttributes.Other, forwarder.Options.Metadata),
+				},
+				EventType: roomEvent,
+			}
 
-		eventResponse, err := f.forwarderClient.SendRoomEvent(ctx, forwarder, &event)
-		return handlerGrpcClientResponse(forwarder, eventResponse, err)
+			eventResponse, err := f.forwarderClient.SendRoomEvent(ctx, forwarder, &event)
+			return handlerGrpcClientResponse(forwarder, eventResponse, err)
+		}
+		return errors.NewErrInvalidArgument("invalid or missing eventAttributes.Other['roomEvent'] field")
 
 	case events.Ping:
 		event := pb.RoomStatus{
