@@ -44,7 +44,7 @@ import (
 )
 
 func TestAddRooms(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 		instanceStorage := instanceStorageRedis.NewRedisInstanceStorage(redisClient, 10)
 
@@ -54,19 +54,19 @@ func TestAddRooms(t *testing.T) {
 			schedulerName, err := createSchedulerAndWaitForIt(
 				t,
 				maestro,
-				apiClient,
+				managementApiClient,
 				kubeClient,
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 2 {
@@ -93,7 +93,7 @@ func TestAddRooms(t *testing.T) {
 
 			schedulerName, err := createSchedulerAndWaitForIt(t,
 				maestro,
-				apiClient,
+				managementApiClient,
 				kubeClient,
 				[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
 					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
@@ -101,12 +101,12 @@ func TestAddRooms(t *testing.T) {
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 2 {
@@ -135,7 +135,7 @@ func TestAddRooms(t *testing.T) {
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err := apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+			err := managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 			require.Error(t, err, "failed with status 404, response body: {\"code\":5, \"message\":\"no "+
 				"scheduler found to add rooms on it: scheduler NonExistent not found\", \"details\":[]}")
 		})

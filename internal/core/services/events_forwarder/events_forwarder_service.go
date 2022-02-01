@@ -114,7 +114,7 @@ func (es *EventsForwarderService) forwardRoomEvent(
 	scheduler entities.Scheduler,
 	_forwarder *forwarder.Forwarder,
 ) error {
-	selectedPort, err := es.selectPort(instance.Address.Ports)
+	selectedPort, err := es.selectPort(instance.Address)
 	if err != nil {
 		return fmt.Errorf("no room port found to forward roomEvent. Forwarder name: \"%v\", Scheduler: \"%v\"", _forwarder.Name, event.SchedulerID)
 	}
@@ -207,7 +207,11 @@ func (es *EventsForwarderService) getScheduler(ctx context.Context, schedulerNam
 	return scheduler, nil
 }
 
-func (es *EventsForwarderService) selectPort(ports []game_room.Port) (int32, error) {
+func (es *EventsForwarderService) selectPort(address *game_room.Address) (int32, error) {
+	if address == nil {
+		return 0, errors.New("port not found, address is nil")
+	}
+	ports := address.Ports
 	if len(ports) == 0 {
 		return 0, errors.New("port not found")
 	}
@@ -240,6 +244,9 @@ func (es *EventsForwarderService) getPlayerInfo(event *events.Event) (string, er
 		return "", fmt.Errorf("playerId not found on eventAttributes")
 	}
 
-	playerId := event.Attributes["playerId"].(string)
+	playerId, ok := event.Attributes["playerId"].(string)
+	if !ok {
+		return "", fmt.Errorf("playerId must be a string")
+	}
 	return playerId, nil
 }

@@ -20,31 +20,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package framework
+package servermocks
 
 import (
-	"testing"
+	"fmt"
+	"strings"
 
-	"github.com/go-redis/redis/v8"
-
-	"github.com/topfreegames/maestro/e2e/framework/maestro"
-
-	"k8s.io/client-go/kubernetes"
+	tc "github.com/testcontainers/testcontainers-go"
 )
 
-// TODO: remove the old redis client version
-func WithClients(t *testing.T, testCase func(roomsApiClient *APIClient, managementApiClient *APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance)) {
-	client := NewAPIClient(defaultMaestro.ManagementApiServer.Address)
-	roomsApiClient := NewAPIClient(defaultMaestro.RoomsApiServer.Address)
+type ServerMocks struct {
+	GrpcForwarderAddress string
+	compose              tc.DockerCompose
+}
 
-	kubeClient, err := getKubeClient()
-	if err != nil {
-		t.Fatal(err)
-	}
-	redisClient, err := getRedisConnection(defaultMaestro.Deps.RedisAddress)
-	if err != nil {
-		t.Fatal(err)
+func ProvideServerMocks(maestroPath string) (*ServerMocks, error) {
+	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
+	identifier := strings.ToLower("test-something")
+
+	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
+	composeErr := compose.WithCommand([]string{"up", "-d", "grpc-mock"}).Invoke()
+
+	if composeErr.Error != nil {
+		return nil, fmt.Errorf("failed to start server mocks: %s", composeErr.Error)
 	}
 
-	testCase(roomsApiClient, client, kubeClient, redisClient, defaultMaestro)
+	return &ServerMocks{
+		GrpcForwarderAddress: "grpc-mock:4770",
+		compose:              compose,
+	}, nil
+}
+
+func (s *ServerMocks) Teardown() {
+	s.compose.Down()
 }

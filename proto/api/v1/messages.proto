@@ -184,7 +184,7 @@ message Forwarder {
 
 // Forwarder Options definitions.
 message ForwarderOptions {
-  // Timeout of a request.
+  // Timeout of a request in milliseconds.
   int64 timeout = 1;
   // Additional information
   google.protobuf.Struct metadata = 2;

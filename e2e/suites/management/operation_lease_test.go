@@ -41,7 +41,7 @@ import (
 )
 
 func TestOperationLease(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		operationLeaseStorage := operationleasestorage.NewRedisOperationLeaseStorage(redisClient, timeClock.NewClock())
 
 		t.Run("When the operation executes with success, then the lease keeps being renewed while it executes", func(t *testing.T) {
@@ -50,21 +50,21 @@ func TestOperationLease(t *testing.T) {
 			schedulerName, err := createSchedulerAndWaitForIt(
 				t,
 				maestro,
-				apiClient,
+				managementApiClient,
 				kubeClient,
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 			require.NoError(t, err)
 			addRoomsOpID := addRoomsResponse.OperationId
 			var previousTtl = &time.Time{}
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				// Only exit the loop when the operation finishes
@@ -101,20 +101,20 @@ func TestOperationLease(t *testing.T) {
 			schedulerName, err := createSchedulerAndWaitForIt(
 				t,
 				maestro,
-				apiClient,
+				managementApiClient,
 				kubeClient,
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 			addRoomsOpID := addRoomsResponse.OperationId
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				// Don't make assertions while the operation hasn't started
@@ -132,7 +132,7 @@ func TestOperationLease(t *testing.T) {
 
 				cancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: schedulerName, OperationId: addRoomsOpID}
 				cancelResponse := &maestroApiV1.CancelOperationResponse{}
-				err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, addRoomsOpID), cancelRequest, cancelResponse)
+				err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, addRoomsOpID), cancelRequest, cancelResponse)
 				require.NoError(t, err)
 
 				return true
@@ -142,7 +142,7 @@ func TestOperationLease(t *testing.T) {
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 2 {
