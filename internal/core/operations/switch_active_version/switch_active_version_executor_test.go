@@ -25,9 +25,10 @@ package switch_active_version_test
 import (
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 	"testing"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 
 	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
@@ -58,13 +59,11 @@ func TestUpdateSchedulerExecutor_Execute_ReplaceRooms(t *testing.T) {
 	}
 
 	currentVersion := "10.0.0"
-	newVersion := "11.0.0"
-
 
 	newScheduler := newValidScheduler()
 	newScheduler.PortRange.Start = 1000
 	newScheduler.MaxSurge = "3"
-	newVersion = newScheduler.Spec.Version
+	newVersion := newScheduler.Spec.Version
 
 	definition := &switch_active_version.SwitchActiveVersionDefinition{
 		NewActiveScheduler: newScheduler,
