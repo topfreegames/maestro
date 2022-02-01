@@ -126,7 +126,7 @@ func (f *forwarderClient) getGrpcClient(address Address) (pb.GRPCForwarderClient
 
 func (f *forwarderClient) configureGrpcClient(address string) (pb.GRPCForwarderClient, error) {
 	if address == "" {
-		return nil, errors.NewErrInvalidArgument("nog rpc server address informed")
+		return nil, errors.NewErrInvalidArgument("no rpc server address informed")
 	}
 
 	zap.L().Info(fmt.Sprintf("connecting to grpc server at: %s", address))
