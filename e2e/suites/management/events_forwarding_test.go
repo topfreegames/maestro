@@ -66,6 +66,16 @@ func TestEventsForwarding(t *testing.T) {
 								StringValue: "c50acc91-4d88-46fa-aa56-48d63c5b5311",
 							},
 						},
+						"eventMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"eventMetadata2": {
+							Kind: &structpb.Value_BoolValue{
+								BoolValue: true,
+							},
+						},
 					},
 				},
 			}
@@ -114,10 +124,21 @@ func TestEventsForwarding(t *testing.T) {
 				Event:     "playerLeft",
 				Timestamp: time.Now().Unix(),
 				Metadata: &_struct.Struct{
+
 					Fields: map[string]*structpb.Value{
 						"playerId": {
 							Kind: &structpb.Value_StringValue{
 								StringValue: "446bb3d0-0334-4468-a4e7-8068a97caa53",
+							},
+						},
+						"eventMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"eventMetadata2": {
+							Kind: &structpb.Value_BoolValue{
+								BoolValue: true,
 							},
 						},
 					},
@@ -127,6 +148,7 @@ func TestEventsForwarding(t *testing.T) {
 			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", schedulerName, roomName), playerEventRequest, playerEventResponse)
 			require.NoError(t, err)
 			require.Equal(t, false, playerEventResponse.Success)
+			require.Equal(t, "failed to forward event room at \"matchmaker-grpc\"", playerEventResponse.Message)
 		})
 
 		t.Run("[Player event failure] Forward player event return success false when forwarding event for an inexistent room", func(t *testing.T) {
@@ -229,8 +251,26 @@ func createSchedulerWithForwarderAndRooms(t *testing.T, maestro *maestro.Maestro
 			Type:    "grpc",
 			Address: forwarderAddress,
 			Options: &maestroApiV1.ForwarderOptions{
-				Timeout:  5000,
-				Metadata: &_struct.Struct{},
+				Timeout: 5000,
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"roomType": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "green",
+							},
+						},
+						"forwarderMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"forwarderMetadata2": {
+							Kind: &structpb.Value_NumberValue{
+								NumberValue: 245,
+							},
+						},
+					},
+				},
 			},
 		},
 	}

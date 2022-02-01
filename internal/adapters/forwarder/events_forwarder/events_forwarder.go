@@ -91,7 +91,7 @@ func (f *eventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttribute
 			RoomId: eventAttributes.RoomId,
 		},
 		EventType: fromPlayerEventTypeToGrpcPlayerEventType(eventAttributes.EventType),
-		Metadata:  f.mergeInfos(forwarder.Options.Metadata, eventAttributes.Other),
+		Metadata:  f.mergePlayerInfos(eventAttributes.Other, forwarder.Options.Metadata),
 	}
 
 	eventResponse, err := f.forwarderClient.SendPlayerEvent(ctx, forwarder, &event)
@@ -113,6 +113,24 @@ func (*eventsForwarder) mergeInfos(mapA map[string]interface{}, mapB map[string]
 
 	metadata := mapStringA
 	return metadata
+}
+
+func (*eventsForwarder) mergePlayerInfos(eventMetadata, fwdMetadata map[string]interface{}) map[string]string {
+	if fwdMetadata != nil {
+		if roomType, ok := fwdMetadata["roomType"]; ok {
+			if eventMetadata != nil {
+				eventMetadata["roomType"] = roomType
+			} else {
+				eventMetadata = map[string]interface{}{"roomType": roomType}
+			}
+		}
+	}
+	m := make(map[string]string)
+	for key, value := range eventMetadata {
+		m[key] = fmt.Sprintf("%v", value)
+	}
+
+	return m
 }
 
 func fromMapInterfaceToMapString(mapInterface map[string]interface{}) *map[string]string {

@@ -3,7 +3,13 @@
   "method": "SendPlayerEvent",
   "input": {
     "contains": {
-      "playerId": "c50acc91-4d88-46fa-aa56-48d63c5b5311"
+      "playerId": "c50acc91-4d88-46fa-aa56-48d63c5b5311",
+      "eventType": 1,
+      "metadata": {
+        "eventMetadata1": "value1",
+        "eventMetadata2": "true",
+        "roomType": "green"
+      }
     }
   },
   "output": {
