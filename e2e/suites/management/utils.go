@@ -31,8 +31,6 @@ import (
 	"testing"
 	"time"
 
-	_struct "github.com/golang/protobuf/ptypes/struct"
-
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
@@ -129,8 +127,9 @@ func createSchedulerWithForwardersAndWaitForIt(
 	maestro *maestro.MaestroInstance,
 	managementApiClient *framework.APIClient,
 	kubeClient kubernetes.Interface,
-	forwarderAddress string,
-	gruCommand []string) (string, error) {
+	gruCommand []string,
+	forwarders []*maestroApiV1.Forwarder,
+) (string, error) {
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
 		Name:                   schedulerName,
@@ -170,19 +169,8 @@ func createSchedulerWithForwardersAndWaitForIt(
 			Start: 80,
 			End:   8000,
 		},
-		MaxSurge: "10%",
-		Forwarders: []*maestroApiV1.Forwarder{
-			{
-				Name:    "matchmaker-grpc",
-				Enable:  true,
-				Type:    "grpc",
-				Address: forwarderAddress,
-				Options: &maestroApiV1.ForwarderOptions{
-					Timeout:  5000,
-					Metadata: &_struct.Struct{},
-				},
-			},
-		},
+		MaxSurge:   "10%",
+		Forwarders: forwarders,
 	}
 
 	createResponse := &maestroApiV1.CreateSchedulerResponse{}

@@ -80,7 +80,7 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	}
 
-	return errors.NewErrUnexpected("failed to forwarder event room. event type doesn't exists \"%s\"", eventAttributes.EventType)
+	return errors.NewErrUnexpected("failed to forward event room. event type doesn't exists \"%s\"", eventAttributes.EventType)
 }
 
 // ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
@@ -158,7 +158,7 @@ func handlerGrpcClientResponse(forwarder entities.Forwarder, eventResponse *pb.R
 		return err
 	}
 	if eventResponse.Code != 200 {
-		return errors.NewErrUnexpected("failed to forwarder event room at \"%s\"", forwarder.Name)
+		return errors.NewErrUnexpected("failed to forward event room at \"%s\"", forwarder.Name)
 	}
 	return nil
 }

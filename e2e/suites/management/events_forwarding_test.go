@@ -45,13 +45,12 @@ import (
 func TestEventsForwarding(t *testing.T) {
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 
-		t.Run("Forward player event with success when no error occurs in GRPC call", func(t *testing.T) {
+		t.Run("[Player event success] Forward player event return success true when no error occurs while forwarding events call", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient)
+			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
 
-			// Forward player event
-
+			// This configuration make the grpc service return with success
 			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-player-event-success")
 			require.NoError(t, err)
 
@@ -76,13 +75,37 @@ func TestEventsForwarding(t *testing.T) {
 			require.Equal(t, true, playerEventResponse.Success)
 		})
 
-		t.Run("Forward player event without success when some error occurs in GRPC call", func(t *testing.T) {
+		t.Run("[Player event success] Forward player event return success true when no forwarder is configured for the scheduler", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient)
+			schedulerName, roomName := createSchedulerWithRooms(t, maestro, kubeClient, managementApiClient)
 
-			// Forward player event
+			playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
+				RoomName:  roomName,
+				Event:     "playerLeft",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"playerId": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "5280087d-6dff-4bbf-abc8-45cb8786ad00",
+							},
+						},
+					},
+				},
+			}
+			playerEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
+			err := roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", schedulerName, roomName), playerEventRequest, playerEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, true, playerEventResponse.Success)
+		})
 
+		t.Run("[Player event failure] Forward player event return success false when some error occurs in GRPC call", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
+
+			// This configuration make the grpc service return with error
 			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-player-event-failure")
 
 			playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
@@ -104,22 +127,123 @@ func TestEventsForwarding(t *testing.T) {
 			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", schedulerName, roomName), playerEventRequest, playerEventResponse)
 			require.NoError(t, err)
 			require.Equal(t, false, playerEventResponse.Success)
-
 		})
 
+		t.Run("[Player event failure] Forward player event return success false when forwarding event for an inexistent room", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, _ := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
+			roomName := "inexistent-room"
+
+			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-player-event-failure")
+
+			playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
+				RoomName:  roomName,
+				Event:     "playerLeft",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"playerId": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "c50c9d8a-5a40-40ee-97ea-d477d7b0abd9",
+							},
+						},
+					},
+				},
+			}
+			playerEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
+			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", schedulerName, roomName), playerEventRequest, playerEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, false, playerEventResponse.Success)
+		})
+
+		t.Run("[Player event failure] Forward player event return success false when the forwarder connection can't be established", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, "invalid-grpc-address:9982")
+
+			playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
+				RoomName:  roomName,
+				Event:     "playerLeft",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"playerId": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "c50c9d8a-5a40-40ee-97ea-d477d7b0abd9",
+							},
+						},
+					},
+				},
+			}
+			playerEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
+			err := roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", schedulerName, roomName), playerEventRequest, playerEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, false, playerEventResponse.Success)
+			require.Contains(t, playerEventResponse.Message, "transport: Error while dialing dial tcp: lookup invalid-grpc-address")
+		})
 	})
 
 }
 
-func createSchedulerWithForwarderAndRooms(t *testing.T, maestro *maestro.MaestroInstance, kubeClient kubernetes.Interface, managementApiClient *framework.APIClient) (string, string) {
-	schedulerName, err := createSchedulerWithForwardersAndWaitForIt(t,
+func createSchedulerWithRooms(t *testing.T, maestro *maestro.MaestroInstance, kubeClient kubernetes.Interface, managementApiClient *framework.APIClient) (string, string) {
+	schedulerName, err := createSchedulerAndWaitForIt(t,
 		maestro,
 		managementApiClient,
 		kubeClient,
-		maestro.ServerMocks.GrpcForwarderAddress,
 		[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
 			"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'"},
+	)
+
+	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
+	addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
+	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+
+	require.Eventually(t, func() bool {
+		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
+		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
+		err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		require.NoError(t, err)
+
+		if len(listOperationsResponse.FinishedOperations) < 2 {
+			return false
+		}
+
+		require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
+		return true
+	}, 240*time.Second, time.Second)
+
+	pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+	require.NoError(t, err)
+	require.NotEmpty(t, pods.Items)
+
+	return schedulerName, pods.Items[0].Name
+}
+
+func createSchedulerWithForwarderAndRooms(t *testing.T, maestro *maestro.MaestroInstance, kubeClient kubernetes.Interface, managementApiClient *framework.APIClient, forwarderAddress string) (string, string) {
+	forwarders := []*maestroApiV1.Forwarder{
+		{
+			Name:    "matchmaker-grpc",
+			Enable:  true,
+			Type:    "grpc",
+			Address: forwarderAddress,
+			Options: &maestroApiV1.ForwarderOptions{
+				Timeout:  5000,
+				Metadata: &_struct.Struct{},
+			},
+		},
+	}
+
+	schedulerName, err := createSchedulerWithForwardersAndWaitForIt(
+		t,
+		maestro,
+		managementApiClient,
+		kubeClient,
+		[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+			"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'"},
+		forwarders,
 	)
 
 	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
