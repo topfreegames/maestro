@@ -164,7 +164,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			RoomID:      "room",
 			Attributes: map[string]interface{}{
 				"eventType": "resync",
-				"pingType":  "roomReady",
+				"pingType":  "ready",
 			},
 		}
 
@@ -198,7 +198,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			RoomID:      "room",
 			Attributes: map[string]interface{}{
 				"eventType": "resync",
-				"pingType":  "roomReady",
+				"pingType":  "ready",
 			},
 		}
 
@@ -307,7 +307,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			RoomID:      "room",
 			Attributes: map[string]interface{}{
 				"eventType": "resync",
-				"pingType":  "roomReady",
+				"pingType":  "ready",
 			},
 		}
 
@@ -347,7 +347,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			RoomID:      "room",
 			Attributes: map[string]interface{}{
 				"eventType": "resync",
-				"pingType":  "roomReady",
+				"pingType":  "ready",
 			},
 		}
 
@@ -368,7 +368,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			RoomID:      "room",
 			Attributes: map[string]interface{}{
 				"eventType": "resync",
-				"pingType":  "roomReady",
+				"pingType":  "ready",
 			},
 		}
 

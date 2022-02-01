@@ -68,7 +68,7 @@ func NewEventsForwarderService(
 }
 
 func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *events.Event) error {
-	if _, ok := event.Attributes["eventType"]; !ok {
+	if _, ok := event.Attributes["eventType"].(string); !ok {
 		return errors.New("eventAttributes must contain key \"eventType\"")
 	}
 	eventType := event.Attributes["eventType"].(string)
