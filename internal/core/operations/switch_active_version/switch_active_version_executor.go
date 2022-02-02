@@ -129,16 +129,10 @@ func (e *SwitchActiveVersionExecutor) OnError(ctx context.Context, op *operation
 	)
 	logger.Info("starting OnError routine")
 
-	activeScheduler, err := e.schedulerManager.GetActiveScheduler(ctx, op.SchedulerName)
+	err := e.deleteNewCreatedRooms(ctx, logger)
 	if err != nil {
 		return err
 	}
-
-	err = e.deleteNewCreatedRooms(ctx, logger)
-	if err != nil {
-		return err
-	}
-	e.recreateReplacedRooms(ctx, logger, *activeScheduler)
 
 	logger.Debug("finished OnError routine")
 	return nil
@@ -188,19 +182,6 @@ func (e *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.W
 	}
 }
 
-func (e *SwitchActiveVersionExecutor) recreateReplacedRooms(ctx context.Context, logger *zap.Logger, scheduler entities.Scheduler) {
-	logger.Debug("recreating deleted rooms since switching active version had error - start")
-	for i := 0; i < len(e.newCreatedRooms); i++ {
-		gameRoom, _, err := e.roomManager.CreateRoom(ctx, scheduler)
-		if err != nil {
-			logger.Warn("failed to created room", zap.Error(err))
-			continue
-		}
-		logger.Sugar().Debugf("room (GRU) \"%s\" recreated successfully", gameRoom.ID)
-	}
-	logger.Debug("recreating deleted rooms since switching active version had error - end")
-}
-
 func (e *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger) error {
 	logger.Debug("deleting created rooms since switching active version had error - start")
 	for _, room := range e.newCreatedRooms {
@@ -209,6 +190,7 @@ func (e *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context,
 			logger.Error("failed to deleted recent created room", zap.Error(err))
 			return err
 		}
+		logger.Sugar().Debugf("deleted room \"%s\" successfully", room.ID)
 	}
 	logger.Debug("deleting created rooms since switching active version had error - end successfully")
 	return nil
