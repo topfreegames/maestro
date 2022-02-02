@@ -164,10 +164,10 @@ func (s *SchedulerManager) UpdateSchedulerConfig(ctx context.Context, scheduler 
 	return isMajorUpdate, nil
 }
 
-func (s *SchedulerManager) CreateUpdateSchedulerOperation(ctx context.Context, scheduler *entities.Scheduler) (*operation.Operation, error) {
+func (s *SchedulerManager) CreateNewSchedulerVersionOperation(ctx context.Context, scheduler *entities.Scheduler) (*operation.Operation, error) {
 	currentScheduler, err := s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
 	if err != nil || currentScheduler == nil {
-		return nil, fmt.Errorf("no scheduler found to be updated: %w", err)
+		return nil, fmt.Errorf("no scheduler found, can not create new version for inexistent scheduler: %w", err)
 	}
 
 	scheduler.Spec.Version = currentScheduler.Spec.Version
@@ -178,7 +178,7 @@ func (s *SchedulerManager) CreateUpdateSchedulerOperation(ctx context.Context, s
 
 	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &update_scheduler.UpdateSchedulerDefinition{NewScheduler: *scheduler})
 	if err != nil {
-		return nil, fmt.Errorf("failed to schedule 'update scheduler' operation: %w", err)
+		return nil, fmt.Errorf("failed to schedule 'create new scheduler version' operation: %w", err)
 	}
 
 	return op, nil
