@@ -33,8 +33,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/entities/events"
-
 	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -99,7 +97,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 				return updatedGameRoom, nil
 			})
 			roomStorageMock.EXPECT().UpdateRoomStatus(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-			eventsForwarderService.EXPECT().ProduceEvent(gomock.Any(), events.NewRoomEvent("scheduler-name-1", "room-name-1", map[string]interface{}{}))
+			eventsForwarderService.EXPECT().ProduceEvent(gomock.Any(), gomock.Any())
 
 			request, err := validRawRequest.MarshalJSON()
 			require.NoError(t, err)

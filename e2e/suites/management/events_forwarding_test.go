@@ -362,6 +362,135 @@ func TestEventsForwarding(t *testing.T) {
 			require.Equal(t, false, roomEventResponse.Success)
 			require.Contains(t, roomEventResponse.Message, "transport: Error while dialing dial tcp: lookup invalid-grpc-address")
 		})
+
+		t.Run("[Ping event success] Ping event return success when no error occurs while forwarding events call", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
+
+			// This configuration make the grpc service return with success
+			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-room-resync-success")
+			require.NoError(t, err)
+
+			pingRequest := &maestroApiV1.UpdateRoomStatusRequest{
+				RoomName:  roomName,
+				Status:    "terminating",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "65e810a0-bb81-4633-93c9-826414a0062d",
+							},
+						},
+						"eventMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"eventMetadata2": {
+							Kind: &structpb.Value_BoolValue{
+								BoolValue: true,
+							},
+						},
+					},
+				},
+			}
+
+			pingResponse := &maestroApiV1.UpdateRoomWithPingResponse{}
+			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerName, roomName), pingRequest, pingResponse)
+			require.NoError(t, err)
+			require.Equal(t, true, pingResponse.Success)
+		})
+
+		t.Run("[Ping event success] Ping event return success when no forwarder is configured for the scheduler", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, roomName := createSchedulerWithRooms(t, maestro, kubeClient, managementApiClient)
+
+			pingRequest := &maestroApiV1.UpdateRoomStatusRequest{
+				RoomName:  roomName,
+				Status:    "ready",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "8293bcb6-2c4b-4a85-8c43-0a0ea4c0d0b5",
+							},
+						},
+					},
+				},
+			}
+			pingResponse := &maestroApiV1.UpdateRoomWithPingResponse{}
+			err := roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerName, roomName), pingRequest, pingResponse)
+			require.NoError(t, err)
+			require.Equal(t, true, pingResponse.Success)
+		})
+
+		t.Run("[Ping event failures] Ping event return success when some error occurs in GRPC call", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
+
+			// This configuration make the grpc service return with failure
+			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-room-resync-failure")
+			require.NoError(t, err)
+
+			pingRequest := &maestroApiV1.UpdateRoomStatusRequest{
+				RoomName:  roomName,
+				Status:    "terminating",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "f7415c97-5c28-418b-b19b-87380e2d0113",
+							},
+						},
+						"eventMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"eventMetadata2": {
+							Kind: &structpb.Value_BoolValue{
+								BoolValue: true,
+							},
+						},
+					},
+				},
+			}
+			pingResponse := &maestroApiV1.UpdateRoomWithPingResponse{}
+			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerName, roomName), pingRequest, pingResponse)
+			require.NoError(t, err)
+			require.Equal(t, true, pingResponse.Success)
+		})
+
+		t.Run("[Ping event failure] Ping event return success when the forwarder connection can't be established", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, roomName := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, "invalid-grpc-address:9982")
+
+			pingRequest := &maestroApiV1.UpdateRoomStatusRequest{
+				RoomName:  roomName,
+				Status:    "ready",
+				Timestamp: time.Now().Unix(),
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "71dbc1fd-dd66-4b08-a0a5-7dd23288dd6a",
+							},
+						},
+					},
+				},
+			}
+			pingResponse := &maestroApiV1.UpdateRoomWithPingResponse{}
+			err := roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerName, roomName), pingRequest, pingResponse)
+			require.NoError(t, err)
+			require.Equal(t, true, pingResponse.Success)
+		})
 	})
 
 }

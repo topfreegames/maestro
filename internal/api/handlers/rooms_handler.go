@@ -57,7 +57,7 @@ func ProvideRoomsHandler(roomManager *room_manager.RoomManager, eventsService in
 
 func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.ForwardRoomEventRequest) (*api.ForwardRoomEventResponse, error) {
 	eventMetadata := message.Metadata.AsMap()
-	eventMetadata["eventType"] = events.Arbitrary
+	eventMetadata["eventType"] = events.FromRoomEventTypeToString(events.Arbitrary)
 	eventMetadata["roomEvent"] = message.Event
 
 	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))

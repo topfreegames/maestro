@@ -77,6 +77,9 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 			},
 			StatusType: fromRoomPingEventTypeToRoomStatusType(*eventAttributes.PingType),
 		}
+		if roomType, ok := forwarder.Options.Metadata["roomType"].(string); ok {
+			event.Room.RoomType = roomType
+		}
 
 		eventResponse, err := f.forwarderClient.SendRoomReSync(ctx, forwarder, &event)
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
