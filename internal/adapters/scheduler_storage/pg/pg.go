@@ -197,6 +197,10 @@ func (s schedulerStorage) CreateScheduler(ctx context.Context, scheduler *entiti
 		}
 		return errors.NewErrUnexpected("error creating scheduler %s", dbScheduler.Name).WithError(err)
 	}
+	err = s.CreateSchedulerVersion(ctx, scheduler)
+	if err != nil {
+		return errors.NewErrUnexpected("error creating first scheduler version %s", dbScheduler.Name).WithError(err)
+	}
 	return nil
 }
 

@@ -757,7 +757,7 @@ func TestRemoveRooms(t *testing.T) {
 	})
 }
 
-func TestUpdateScheduler(t *testing.T) {
+func TestNewSchedulerVersion(t *testing.T) {
 	dirPath, _ := os.Getwd()
 
 	err := validations.RegisterValidations()
@@ -791,7 +791,7 @@ func TestUpdateScheduler(t *testing.T) {
 		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-config.json")
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodPut, "/schedulers/scheduler-name-1", bytes.NewReader(request))
+		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -821,14 +821,14 @@ func TestUpdateScheduler(t *testing.T) {
 		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-config.json")
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodPut, "/schedulers/scheduler-name-1", bytes.NewReader(request))
+		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 404, rr.Code)
-		require.Contains(t, rr.Body.String(), "no scheduler found to be updated: err")
+		require.Contains(t, rr.Body.String(), "no scheduler found, can not create new version for inexistent scheduler: err")
 	})
 
 	t.Run("with failure", func(t *testing.T) {
@@ -857,14 +857,14 @@ func TestUpdateScheduler(t *testing.T) {
 		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-config.json")
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodPut, "/schedulers/scheduler-name-1", bytes.NewReader(request))
+		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 500, rr.Code)
-		require.Contains(t, rr.Body.String(), "failed to schedule 'update scheduler' operation")
+		require.Contains(t, rr.Body.String(), "failed to schedule 'create new scheduler version' operation")
 	})
 }
 

@@ -48,10 +48,10 @@ service SchedulersService {
     };
   }
 
-  // Update a scheduler.
-  rpc UpdateScheduler(UpdateSchedulerRequest) returns (UpdateSchedulerResponse) {
+  // Creates new scheduler version and switch it to active version.
+  rpc NewSchedulerVersion(NewSchedulerVersionRequest) returns (NewSchedulerVersionResponse) {
     option (google.api.http) = {
-      put: "/schedulers/{name=*}",
+      post: "/schedulers/{name=*}",
       body: "*"
     };
   }
@@ -146,7 +146,7 @@ message GetSchedulerResponse {
 }
 
 // Scheduler is the struct that defines a maestro scheduler.
-message UpdateSchedulerRequest {
+message NewSchedulerVersionRequest {
   // Unique identifier for the scheduler.
   string name = 1;
   // Game the new scheduler will be part of.
@@ -168,7 +168,7 @@ message UpdateSchedulerRequest {
 }
 
 // Update schedule operation response payload.
-message UpdateSchedulerResponse {
+message NewSchedulerVersionResponse {
   // Operation ID, further this id can be used to consult its state.
   string operation_id = 1;
 }
