@@ -25,6 +25,7 @@ package scheduler_manager
 import (
 	"context"
 	"fmt"
+
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
@@ -166,7 +167,7 @@ func (s *SchedulerManager) UpdateSchedulerConfig(ctx context.Context, scheduler 
 	return isMajorUpdate, nil
 }
 
-func (s *SchedulerManager) CreateNewSchedulerVersionOperation(ctx context.Context, scheduler *entities.Scheduler) (*operation.Operation, error) {
+func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Context, scheduler *entities.Scheduler) (*operation.Operation, error) {
 	currentScheduler, err := s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
 	if err != nil || currentScheduler == nil {
 		return nil, fmt.Errorf("no scheduler found, can not create new version for inexistent scheduler: %w", err)
@@ -178,9 +179,11 @@ func (s *SchedulerManager) CreateNewSchedulerVersionOperation(ctx context.Contex
 		return nil, err
 	}
 
-	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: *scheduler})
+	opDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: *scheduler}
+
+	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, opDef)
 	if err != nil {
-		return nil, fmt.Errorf("failed to schedule 'create new scheduler version' operation: %w", err)
+		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)
 	}
 
 	return op, nil

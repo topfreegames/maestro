@@ -405,7 +405,7 @@ func TestIsMajorVersionUpdate(t *testing.T) {
 	}
 }
 
-func TestCreateNewSchedulerVersionOperation(t *testing.T) {
+func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 	err := validations.RegisterValidations()
 	if err != nil {
 		t.Errorf("unexpected error %d'", err)
@@ -434,7 +434,7 @@ func TestCreateNewSchedulerVersionOperation(t *testing.T) {
 		operationFlow.EXPECT().InsertOperationID(ctx, scheduler.Name, gomock.Any()).Return(nil)
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(currentScheduler, nil)
 
-		op, err := schedulerManager.CreateNewSchedulerVersionOperation(ctx, scheduler)
+		op, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
 		require.NoError(t, err)
 		require.NotNil(t, op)
 		require.NotNil(t, op.ID)
@@ -462,7 +462,7 @@ func TestCreateNewSchedulerVersionOperation(t *testing.T) {
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(currentScheduler, nil)
 
-		_, err := schedulerManager.CreateNewSchedulerVersionOperation(ctx, scheduler)
+		_, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
 		require.Error(t, err)
 
 	})
@@ -478,7 +478,7 @@ func TestCreateNewSchedulerVersionOperation(t *testing.T) {
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.NewErrNotFound("err"))
 
-		op, err := schedulerManager.CreateNewSchedulerVersionOperation(ctx, scheduler)
+		op, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
 		require.Nil(t, op)
 		require.ErrorIs(t, err, errors.ErrNotFound)
 		require.Contains(t, err.Error(), "no scheduler found, can not create new version for inexistent scheduler: err")
@@ -504,10 +504,10 @@ func TestCreateNewSchedulerVersionOperation(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(currentScheduler, nil)
 		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
 
-		op, err := schedulerManager.CreateNewSchedulerVersionOperation(ctx, scheduler)
+		op, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
 		require.Nil(t, op)
 		require.ErrorIs(t, err, errors.ErrUnexpected)
-		require.Contains(t, err.Error(), "failed to schedule 'create new scheduler version' operation")
+		require.Contains(t, err.Error(), "failed to schedule create_new_scheduler_version operation")
 	})
 }
 
