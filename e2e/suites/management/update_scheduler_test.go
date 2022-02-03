@@ -52,7 +52,7 @@ func TestUpdateScheduler(t *testing.T) {
 			require.NoError(t, err)
 
 			// Update scheduler
-			updateRequest := &maestroApiV1.UpdateSchedulerRequest{
+			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
 				Name:                   schedulerName,
 				Game:                   "test",
 				MaxSurge:               "10%",
@@ -93,9 +93,9 @@ func TestUpdateScheduler(t *testing.T) {
 					End:   8000,
 				},
 			}
-			updateResponse := &maestroApiV1.UpdateSchedulerResponse{}
+			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
 
-			err = managementApiClient.Do("PUT", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
 			require.NoError(t, err)
 			require.NotNil(t, updateResponse.OperationId, schedulerName)
 
@@ -124,7 +124,7 @@ func TestUpdateScheduler(t *testing.T) {
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 
-			updateRequest := &maestroApiV1.UpdateSchedulerRequest{
+			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
 				Name:                   schedulerName,
 				Game:                   "test",
 				MaxSurge:               "10%",
@@ -165,9 +165,9 @@ func TestUpdateScheduler(t *testing.T) {
 					End:   8000,
 				},
 			}
-			updateResponse := &maestroApiV1.UpdateSchedulerResponse{}
+			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
 
-			err = managementApiClient.Do("PUT", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
 			require.NoError(t, err)
 			require.NotNil(t, updateResponse.OperationId, schedulerName)
 
@@ -207,10 +207,10 @@ func TestUpdateScheduler(t *testing.T) {
 
 			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
 
-			invalidUpdateRequest := &maestroApiV1.UpdateSchedulerRequest{}
-			updateResponse := &maestroApiV1.UpdateSchedulerResponse{}
+			invalidUpdateRequest := &maestroApiV1.NewSchedulerVersionRequest{}
+			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
 
-			err = managementApiClient.Do("PUT", fmt.Sprintf("/schedulers/%s", schedulerName), invalidUpdateRequest, updateResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), invalidUpdateRequest, updateResponse)
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "failed with status 500")
 

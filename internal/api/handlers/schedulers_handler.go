@@ -146,7 +146,7 @@ func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.Remove
 }
 
 func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *api.NewSchedulerVersionRequest) (*api.NewSchedulerVersionResponse, error) {
-	scheduler, _ := h.fromApiUpdateSchedulerRequestToEntity(request)
+	scheduler, _ := h.fromApiNewSchedulerVersionRequestToEntity(request)
 
 	operation, err := h.schedulerManager.CreateNewSchedulerVersionOperation(ctx, scheduler)
 
@@ -195,7 +195,7 @@ func (h *SchedulersHandler) fromEntitySchedulerToListResponse(entity *entities.S
 	}
 }
 
-func (h *SchedulersHandler) fromApiUpdateSchedulerRequestToEntity(request *api.NewSchedulerVersionRequest) (*entities.Scheduler, error) {
+func (h *SchedulersHandler) fromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionRequest) (*entities.Scheduler, error) {
 	return entities.NewScheduler(
 		request.GetName(),
 		request.GetGame(),
