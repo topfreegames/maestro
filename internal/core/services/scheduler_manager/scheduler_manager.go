@@ -34,8 +34,8 @@ import (
 	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
+	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
-	"github.com/topfreegames/maestro/internal/core/operations/update_scheduler"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"go.uber.org/zap"
@@ -176,7 +176,7 @@ func (s *SchedulerManager) CreateNewSchedulerVersionOperation(ctx context.Contex
 		return nil, err
 	}
 
-	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &update_scheduler.UpdateSchedulerDefinition{NewScheduler: *scheduler})
+	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: *scheduler})
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule 'create new scheduler version' operation: %w", err)
 	}
