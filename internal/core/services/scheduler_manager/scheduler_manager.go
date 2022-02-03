@@ -25,6 +25,9 @@ package scheduler_manager
 import (
 	"context"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
+
+	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-cmp/cmp"
@@ -34,7 +37,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
-	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
@@ -146,7 +148,7 @@ func (s *SchedulerManager) UpdateSchedulerConfig(ctx context.Context, scheduler 
 	}
 
 	// check if we're going to move forward a major version or not.
-	isMajorUpdate := isMajorVersionUpdate(currentScheduler, scheduler)
+	isMajorUpdate := s.IsMajorVersionUpdate(currentScheduler, scheduler)
 
 	newVersion := currentVersion.IncMinor()
 	if isMajorUpdate {
@@ -184,11 +186,26 @@ func (s *SchedulerManager) CreateNewSchedulerVersionOperation(ctx context.Contex
 	return op, nil
 }
 
-// isMajorVersionUpdate checks if the scheduler changes are major or not.
+func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler) (*operation.Operation, error) {
+	err := newScheduler.Validate()
+	if err != nil {
+		return nil, err
+	}
+	opDef := &switch_active_version.SwitchActiveVersionDefinition{NewActiveScheduler: *newScheduler}
+
+	op, err := s.operationManager.CreateOperation(ctx, newScheduler.Name, opDef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)
+	}
+
+	return op, nil
+}
+
+// IsMajorVersionUpdate checks if the scheduler changes are major or not.
 // We consider major changes if the Instances need to be recreated, in this case
 // the following fields require it: `Spec` and `PortRange`. Any other field
 // change is considered minor (we don't need to recreate instances).
-func isMajorVersionUpdate(currentScheduler, newScheduler *entities.Scheduler) bool {
+func (s *SchedulerManager) IsMajorVersionUpdate(currentScheduler, newScheduler *entities.Scheduler) bool {
 	// Compare schedulers `Spec` and `PortRange`. This means that if this
 	// returns `false` it is a major version.
 	return !cmp.Equal(
