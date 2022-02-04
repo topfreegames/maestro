@@ -26,9 +26,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/entities"
+
 	"github.com/Masterminds/semver/v3"
 
-	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -51,15 +52,17 @@ func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfa
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+
+	logger := zap.L().With(
+		zap.String("scheduler_name", op.SchedulerName),
+		zap.String("operation_definition", op.DefinitionName),
+		zap.String("operation_id", op.ID),
+	)
 	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
 	if !ok {
 		return errors.NewErrInvalidArgument(fmt.Sprintf("invalid operation definition for %s operation", ex.Name()))
 	}
-	logger := zap.L().With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", opDef.Name()),
-		zap.String("operation_id", op.ID),
-	)
+
 	newScheduler := opDef.NewScheduler
 	currentActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, opDef.NewScheduler.Name)
 	if err != nil {
@@ -67,42 +70,29 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		return fmt.Errorf("error getting active scheduler: %w", err)
 	}
 
-	currentVersion, err := semver.NewVersion(currentActiveScheduler.Spec.Version)
+	isSchedulerMajorVersion := ex.schedulerManager.IsMajorVersionUpdate(currentActiveScheduler, newScheduler)
+
+	err = ex.populateSchedulerNewVersion(newScheduler, currentActiveScheduler.Spec.Version, isSchedulerMajorVersion)
 	if err != nil {
-		return fmt.Errorf("failed to parse scheduler current version: %w", err)
+		return err
 	}
 
-	newVersion := currentVersion.IncMinor()
-
-	// Check if it is major
-	isMajor := ex.schedulerManager.IsMajorVersionUpdate(currentActiveScheduler, newScheduler)
-
-	// If it is major, validate game room
-	if isMajor {
-		newVersion = currentVersion.IncMajor()
-		err := ex.validateNewGameRoomVersion(ctx, logger, newScheduler)
+	if isSchedulerMajorVersion {
+		err = ex.roomManager.ValidateGameRoomCreation(ctx, newScheduler)
 		if err != nil {
 			logger.Error("could not validate new game room creation", zap.Error(err))
 			return err
 		}
 	}
 
-	newScheduler.Spec.Version = newVersion.Original()
-	newScheduler.RollbackVersion = currentActiveScheduler.Spec.Version
-
-	// Create new scheduler version in the DB
-	err = ex.schedulerManager.CreateNewSchedulerVersion(ctx, newScheduler)
+	err = ex.createNewSchedulerVersion(ctx, newScheduler, logger)
 	if err != nil {
-		logger.Error("error creating new scheduler version in db", zap.Error(err))
-		return fmt.Errorf("error creating new scheduler version in db: %w", err)
+		return err
 	}
 
-	// Enqueue switch active version operation
-	switchActiveVersionOp, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler)
+	switchActiveVersionOp, err := ex.enqueueSwitchActiveVersionOperation(ctx, newScheduler, logger)
 	if err != nil {
-		// TODO(guilhermbrsp): Maybe we should rollback the creation of the new scheduler version if some error happens here
-		logger.Error("error enqueuing switch active version operation", zap.Error(err))
-		return fmt.Errorf("error enqueuing switch active version operation: %w", err)
+		return err
 	}
 
 	logger.Info(fmt.Sprintf("%s operation succeded, %s operation enqueued to continue scheduler update process", opDef.Name(), switchActiveVersionOp.DefinitionName))
@@ -117,16 +107,37 @@ func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 	return OperationName
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) validateNewGameRoomVersion(ctx context.Context, logger *zap.Logger, newScheduler *entities.Scheduler) error {
-	gameRoom, _, err := ex.roomManager.CreateRoom(ctx, *newScheduler)
+func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersion(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger) error {
+	err := ex.schedulerManager.CreateNewSchedulerVersion(ctx, newScheduler)
 	if err != nil {
-		logger.Error("error creating new game room for validating new version", zap.Error(err))
-		return fmt.Errorf("error creating new game room for validating new version: %w", err)
+		logger.Error("error creating new scheduler version in db", zap.Error(err))
+		return fmt.Errorf("error creating new scheduler version in db: %w", err)
 	}
-	err = ex.roomManager.DeleteRoom(ctx, gameRoom)
+	return nil
+}
+
+func (ex *CreateNewSchedulerVersionExecutor) enqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger) (*operation.Operation, error) {
+	switchActiveVersionOp, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler)
 	if err != nil {
-		logger.Error("error deleting new game room created for validation", zap.Error(err))
-		return nil
+		// TODO(guilhermbrsp): Maybe we should rollback the creation of the new scheduler version if some error happens here
+		logger.Error("error enqueuing switch active version operation", zap.Error(err))
+		return nil, fmt.Errorf("error enqueuing switch active version operation: %w", err)
 	}
+	return switchActiveVersionOp, nil
+}
+
+func (ex *CreateNewSchedulerVersionExecutor) populateSchedulerNewVersion(newScheduler *entities.Scheduler, currentVersion string, isMajorVersion bool) error {
+	var newVersion semver.Version
+	currentVersionSemver, err := semver.NewVersion(currentVersion)
+	if err != nil {
+		return fmt.Errorf("failed to parse scheduler current version: %w", err)
+	}
+	if isMajorVersion {
+		newVersion = currentVersionSemver.IncMajor()
+	} else {
+		newVersion = currentVersionSemver.IncMinor()
+	}
+	newScheduler.SetSchedulerVersion(newVersion.Original())
+	newScheduler.SetSchedulerRollbackVersion(currentVersion)
 	return nil
 }

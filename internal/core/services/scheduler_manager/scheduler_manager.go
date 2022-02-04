@@ -56,6 +56,14 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManag
 	}
 }
 
+func (s *SchedulerManager) GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
+	activeScheduler, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
+	if err != nil {
+		return nil, err
+	}
+	return activeScheduler, nil
+}
+
 func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) (*entities.Scheduler, error) {
 	err := scheduler.Validate()
 	if err != nil {
