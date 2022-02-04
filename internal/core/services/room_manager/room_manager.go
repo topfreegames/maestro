@@ -158,7 +158,10 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
-	err = m.eventsService.ProduceEvent(ctx, events.NewRoomEvent(gameRoom.SchedulerID, gameRoom.ID, map[string]interface{}{}))
+
+	gameRoom.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Ping)
+	gameRoom.Metadata["pingType"] = gameRoom.PingStatus.String()
+	err = m.eventsService.ProduceEvent(ctx, events.NewRoomEvent(gameRoom.SchedulerID, gameRoom.ID, gameRoom.Metadata))
 	if err != nil {
 		m.logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))
 		reportPingForwardingFailed(gameRoom.SchedulerID)

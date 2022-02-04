@@ -56,29 +56,24 @@ func ProvideRoomsHandler(roomManager *room_manager.RoomManager, eventsService in
 }
 
 func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.ForwardRoomEventRequest) (*api.ForwardRoomEventResponse, error) {
-	room := &game_room.GameRoom{ID: message.RoomName, SchedulerID: message.SchedulerName, Metadata: message.Metadata.AsMap()}
+	eventMetadata := message.Metadata.AsMap()
+	eventMetadata["eventType"] = events.FromRoomEventTypeToString(events.Arbitrary)
+	eventMetadata["roomEvent"] = message.Event
 
-	if message.Metadata != nil {
-		room.Metadata["eventType"] = message.Event
-	} else {
-		room.Metadata = map[string]interface{}{
-			"eventType": message.Event,
-		}
-	}
-
-	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(room.SchedulerID, room.ID, map[string]interface{}{}))
+	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		return &api.ForwardRoomEventResponse{Success: false, Message: err.Error()}, nil
 	}
 	return &api.ForwardRoomEventResponse{Success: true, Message: ""}, nil
 }
 
 func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.ForwardPlayerEventRequest) (*api.ForwardPlayerEventResponse, error) {
-	room := &game_room.GameRoom{ID: message.RoomName, SchedulerID: message.SchedulerName, Metadata: message.Metadata.AsMap()}
+	eventMetadata := message.Metadata.AsMap()
+	eventMetadata["eventType"] = message.Event
 
-	err := h.eventsService.ProduceEvent(ctx, events.NewPlayerEvent(room.SchedulerID, room.ID, map[string]interface{}{}))
+	err := h.eventsService.ProduceEvent(ctx, events.NewPlayerEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		return &api.ForwardPlayerEventResponse{Success: false, Message: err.Error()}, nil
 	}
 	return &api.ForwardPlayerEventResponse{Success: true, Message: ""}, nil
 }

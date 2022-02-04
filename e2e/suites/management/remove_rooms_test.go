@@ -44,7 +44,7 @@ import (
 )
 
 func TestRemoveRooms(t *testing.T) {
-	framework.WithClients(t, func(apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redisV8.Client, maestro *maestro.MaestroInstance) {
+	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redisV8.Client, maestro *maestro.MaestroInstance) {
 		roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 
 		t.Run("when game rooms are previously created with success should remove rooms with success", func(t *testing.T) {
@@ -52,23 +52,23 @@ func TestRemoveRooms(t *testing.T) {
 
 			schedulerName, err := createSchedulerAndWaitForIt(t,
 				maestro,
-				apiClient,
+				managementApiClient,
 				kubeClient,
 				[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
 					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'"})
 
-			err, createdGameRoomName := addRoomsAndWaitForIt(t, schedulerName, err, apiClient, kubeClient, redisClient)
+			err, createdGameRoomName := addRoomsAndWaitForIt(t, schedulerName, err, managementApiClient, kubeClient, redisClient)
 			require.NoError(t, err)
 
 			removeRoomsRequest := &maestroApiV1.RemoveRoomsRequest{SchedulerName: schedulerName, Amount: 1}
 			removeRoomsResponse := &maestroApiV1.RemoveRoomsResponse{}
-			err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/remove-rooms", schedulerName), removeRoomsRequest, removeRoomsResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/remove-rooms", schedulerName), removeRoomsRequest, removeRoomsResponse)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 3 {
@@ -99,24 +99,24 @@ func TestRemoveRooms(t *testing.T) {
 			schedulerName := "non-existent-name"
 			removeRoomsRequest := &maestroApiV1.RemoveRoomsRequest{SchedulerName: schedulerName, Amount: 1}
 			removeRoomsResponse := &maestroApiV1.RemoveRoomsResponse{}
-			err := apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/remove-rooms", schedulerName), removeRoomsRequest, removeRoomsResponse)
+			err := managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/remove-rooms", schedulerName), removeRoomsRequest, removeRoomsResponse)
 			require.Error(t, err)
 		})
 	})
 
 }
 
-func addRoomsAndWaitForIt(t *testing.T, schedulerName string, err error, apiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redisV8.Client) (error, string) {
+func addRoomsAndWaitForIt(t *testing.T, schedulerName string, err error, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redisV8.Client) (error, string) {
 	roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 
 	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
 	addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-	err = apiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 
 	require.Eventually(t, func() bool {
 		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-		err = apiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 		require.NoError(t, err)
 
 		if len(listOperationsResponse.FinishedOperations) < 2 {

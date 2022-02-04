@@ -359,14 +359,14 @@
       }
     },
     "/schedulers/{name=*}": {
-      "put": {
-        "summary": "Update a scheduler.",
-        "operationId": "SchedulersService_UpdateScheduler",
+      "post": {
+        "summary": "Creates new scheduler version and switch it to active version.",
+        "operationId": "SchedulersService_NewSchedulerVersion",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1UpdateSchedulerResponse"
+              "$ref": "#/definitions/v1NewSchedulerVersionResponse"
             }
           },
           "default": {
@@ -992,7 +992,7 @@
         "timeout": {
           "type": "string",
           "format": "int64",
-          "description": "Timeout of a request."
+          "description": "Timeout of a request in milliseconds."
         },
         "metadata": {
           "type": "object",
@@ -1083,6 +1083,16 @@
         }
       },
       "description": "The list schedulers response message."
+    },
+    "v1NewSchedulerVersionResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Operation ID, further this id can be used to consult its state."
+        }
+      },
+      "description": "Update schedule operation response payload."
     },
     "v1PortRange": {
       "type": "object",
@@ -1255,16 +1265,6 @@
         }
       },
       "description": "The ping response."
-    },
-    "v1UpdateSchedulerResponse": {
-      "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "description": "Operation ID, further this id can be used to consult its state."
-        }
-      },
-      "description": "Update schedule operation response payload."
     }
   }
 }

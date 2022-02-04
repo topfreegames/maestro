@@ -61,7 +61,7 @@ func (f *forwarderClient) SendRoomEvent(ctx context.Context, forwarder forwarder
 		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout*time.Millisecond)
 	defer cancel()
 
 	return client.SendRoomEvent(ctx, in)
@@ -73,7 +73,7 @@ func (f *forwarderClient) SendRoomReSync(ctx context.Context, forwarder forwarde
 		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout*time.Millisecond)
 	defer cancel()
 
 	return client.SendRoomResync(ctx, in)
@@ -85,7 +85,7 @@ func (f *forwarderClient) SendPlayerEvent(ctx context.Context, forwarder forward
 		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout*time.Millisecond)
 	defer cancel()
 
 	return client.SendPlayerEvent(ctx, in)
@@ -126,7 +126,7 @@ func (f *forwarderClient) getGrpcClient(address Address) (pb.GRPCForwarderClient
 
 func (f *forwarderClient) configureGrpcClient(address string) (pb.GRPCForwarderClient, error) {
 	if address == "" {
-		return nil, errors.NewErrInvalidArgument("no grpc server address informed")
+		return nil, errors.NewErrInvalidArgument("no rpc server address informed")
 	}
 
 	zap.L().Info(fmt.Sprintf("connecting to grpc server at: %s", address))
@@ -138,7 +138,9 @@ func (f *forwarderClient) configureGrpcClient(address string) (pb.GRPCForwarderC
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
 	)
 	if err != nil {
+		zap.L().Error(fmt.Sprintf("failed to connect to grpc server at: %s", address))
 		return nil, err
 	}
+	zap.L().Info(fmt.Sprintf("connected to grpc server at: %s with success", address))
 	return pb.NewGRPCForwarderClient(conn), nil
 }

@@ -49,20 +49,22 @@ func NewEventsForwarder(forwarderClient forwarder.ForwarderClient) *eventsForwar
 func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) error {
 	switch eventAttributes.EventType {
 	case events.Arbitrary:
-		event := pb.RoomEvent{
-			Room: &pb.Room{
-				Game:     eventAttributes.Game,
-				RoomId:   eventAttributes.RoomId,
-				Host:     eventAttributes.Host,
-				Port:     eventAttributes.Port,
-				Metadata: *fromMapInterfaceToMapString(eventAttributes.Other),
-			},
-			EventType: events.FromRoomEventTypeToString(eventAttributes.EventType),
-			Metadata:  f.mergeInfos(forwarder.Options.Metadata, eventAttributes.Other),
-		}
+		if roomEvent, ok := eventAttributes.Other["roomEvent"].(string); ok {
+			event := pb.RoomEvent{
+				Room: &pb.Room{
+					Game:     eventAttributes.Game,
+					RoomId:   eventAttributes.RoomId,
+					Host:     eventAttributes.Host,
+					Port:     eventAttributes.Port,
+					Metadata: f.mergeInfos(eventAttributes.Other, forwarder.Options.Metadata),
+				},
+				EventType: roomEvent,
+			}
 
-		eventResponse, err := f.forwarderClient.SendRoomEvent(ctx, forwarder, &event)
-		return handlerGrpcClientResponse(forwarder, eventResponse, err)
+			eventResponse, err := f.forwarderClient.SendRoomEvent(ctx, forwarder, &event)
+			return handlerGrpcClientResponse(forwarder, eventResponse, err)
+		}
+		return errors.NewErrInvalidArgument("invalid or missing eventAttributes.Other['roomEvent'] field")
 
 	case events.Ping:
 		event := pb.RoomStatus{
@@ -75,12 +77,15 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 			},
 			StatusType: fromRoomPingEventTypeToRoomStatusType(*eventAttributes.PingType),
 		}
+		if roomType, ok := forwarder.Options.Metadata["roomType"].(string); ok {
+			event.Room.RoomType = roomType
+		}
 
 		eventResponse, err := f.forwarderClient.SendRoomReSync(ctx, forwarder, &event)
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	}
 
-	return errors.NewErrUnexpected("failed to forwarder event room. event type doesn't exists \"%s\"", eventAttributes.EventType)
+	return errors.NewErrUnexpected("failed to forward event room. event type doesn't exists \"%s\"", eventAttributes.EventType)
 }
 
 // ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
@@ -91,7 +96,7 @@ func (f *eventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttribute
 			RoomId: eventAttributes.RoomId,
 		},
 		EventType: fromPlayerEventTypeToGrpcPlayerEventType(eventAttributes.EventType),
-		Metadata:  f.mergeInfos(forwarder.Options.Metadata, eventAttributes.Other),
+		Metadata:  f.mergePlayerInfos(eventAttributes.Other, forwarder.Options.Metadata),
 	}
 
 	eventResponse, err := f.forwarderClient.SendPlayerEvent(ctx, forwarder, &event)
@@ -113,6 +118,24 @@ func (*eventsForwarder) mergeInfos(mapA map[string]interface{}, mapB map[string]
 
 	metadata := mapStringA
 	return metadata
+}
+
+func (*eventsForwarder) mergePlayerInfos(eventMetadata, fwdMetadata map[string]interface{}) map[string]string {
+	if fwdMetadata != nil {
+		if roomType, ok := fwdMetadata["roomType"]; ok {
+			if eventMetadata != nil {
+				eventMetadata["roomType"] = roomType
+			} else {
+				eventMetadata = map[string]interface{}{"roomType": roomType}
+			}
+		}
+	}
+	m := make(map[string]string)
+	for key, value := range eventMetadata {
+		m[key] = fmt.Sprintf("%v", value)
+	}
+
+	return m
 }
 
 func fromMapInterfaceToMapString(mapInterface map[string]interface{}) *map[string]string {
@@ -158,7 +181,7 @@ func handlerGrpcClientResponse(forwarder entities.Forwarder, eventResponse *pb.R
 		return err
 	}
 	if eventResponse.Code != 200 {
-		return errors.NewErrUnexpected("failed to forwarder event room at \"%s\"", forwarder.Name)
+		return errors.NewErrUnexpected("failed to forward event room at \"%s\"", forwarder.Name)
 	}
 	return nil
 }

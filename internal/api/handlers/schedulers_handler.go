@@ -145,10 +145,10 @@ func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.Remove
 	}, nil
 }
 
-func (h *SchedulersHandler) UpdateScheduler(ctx context.Context, request *api.UpdateSchedulerRequest) (*api.UpdateSchedulerResponse, error) {
-	scheduler, _ := h.fromApiUpdateSchedulerRequestToEntity(request)
+func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *api.NewSchedulerVersionRequest) (*api.NewSchedulerVersionResponse, error) {
+	scheduler, _ := h.fromApiNewSchedulerVersionRequestToEntity(request)
 
-	operation, err := h.schedulerManager.CreateUpdateSchedulerOperation(ctx, scheduler)
+	operation, err := h.schedulerManager.CreateNewSchedulerVersionOperation(ctx, scheduler)
 
 	if err != nil {
 		if errors.Is(err, portsErrors.ErrNotFound) {
@@ -157,7 +157,7 @@ func (h *SchedulersHandler) UpdateScheduler(ctx context.Context, request *api.Up
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	return &api.UpdateSchedulerResponse{
+	return &api.NewSchedulerVersionResponse{
 		OperationId: operation.ID,
 	}, nil
 }
@@ -195,7 +195,7 @@ func (h *SchedulersHandler) fromEntitySchedulerToListResponse(entity *entities.S
 	}
 }
 
-func (h *SchedulersHandler) fromApiUpdateSchedulerRequestToEntity(request *api.UpdateSchedulerRequest) (*entities.Scheduler, error) {
+func (h *SchedulersHandler) fromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionRequest) (*entities.Scheduler, error) {
 	return entities.NewScheduler(
 		request.GetName(),
 		request.GetGame(),

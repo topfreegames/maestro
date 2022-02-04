@@ -74,15 +74,15 @@ func FromRoomEventTypeToString(eventType RoomEventType) string {
 
 func ConvertToRoomPingEventType(value string) (RoomPingEventType, error) {
 	switch value {
-	case "roomReady":
+	case "ready":
 		return RoomPingReady, nil
-	case "roomOccupied":
+	case "occupied":
 		return RoomPingOccupied, nil
-	case "roomTerminating":
+	case "terminating":
 		return RoomPingTerminating, nil
-	case "roomTerminated":
+	case "terminated":
 		return RoomPingTerminated, nil
 	default:
-		return "", fmt.Errorf("invalid RoomPingEventType. Should be \"roomReady\", \"roomOccupied\", \"roomTerminating\" or \"roomTerminated\"")
+		return "", fmt.Errorf("invalid RoomPingEventType. Should be \"ready\", \"occupied\", \"terminating\" or \"terminated\"")
 	}
 }
