@@ -20,15 +20,48 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package interfaces
+package switch_active_version
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"go.uber.org/zap"
 )
 
-type SchedulerManager interface {
-	UpdateSchedulerConfig(ctx context.Context, scheduler *entities.Scheduler) (bool, error)
-	SwitchActiveScheduler(ctx context.Context, scheduler *entities.Scheduler) error
+const OperationName = "switch_active_version"
+
+type SwitchActiveVersionDefinition struct {
+	NewActiveScheduler entities.Scheduler `json:"scheduler"`
+}
+
+// ShouldExecute
+func (d *SwitchActiveVersionDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+	return true
+}
+
+func (d *SwitchActiveVersionDefinition) Name() string {
+	return OperationName
+}
+
+func (d *SwitchActiveVersionDefinition) Marshal() []byte {
+	bytes, err := json.Marshal(d)
+	if err != nil {
+		zap.L().With(zap.Error(err)).Error("error marshalling switch active version operation definition")
+		return nil
+	}
+
+	return bytes
+}
+
+func (d *SwitchActiveVersionDefinition) Unmarshal(raw []byte) error {
+	err := json.Unmarshal(raw, d)
+	if err != nil {
+		return fmt.Errorf("error marshalling switch active version operation definition: %w", err)
+	}
+
+	return nil
 }

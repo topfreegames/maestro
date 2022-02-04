@@ -205,3 +205,11 @@ func isMajorVersionUpdate(currentScheduler, newScheduler *entities.Scheduler) bo
 		),
 	)
 }
+
+func (s *SchedulerManager) SwitchActiveScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	err := s.schedulerStorage.UpdateScheduler(ctx, scheduler)
+	if err != nil {
+		return fmt.Errorf("error switch scheduler active version to scheduler \"%s\", version \"%s\". error: %w", scheduler.Name, scheduler.Spec.Version, err)
+	}
+	return nil
+}

@@ -30,6 +30,7 @@ package gen
 
 // Services Mocks
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/services/interfaces/events_service.go -destination=../internal/core/services/interfaces/mock/events_service/mock.go -package=mock
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/services/interfaces/room_manager.go -destination=../internal/core/services/interfaces/mock/room_manager/mock.go -package=mock
 
 // Ports Mocks
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/port_allocator.go -destination=../internal/adapters/port_allocator/mock/mock.go -package=mock

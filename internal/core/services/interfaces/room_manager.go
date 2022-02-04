@@ -24,11 +24,19 @@ package interfaces
 
 import (
 	"context"
+	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
+
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
-type SchedulerManager interface {
-	UpdateSchedulerConfig(ctx context.Context, scheduler *entities.Scheduler) (bool, error)
-	SwitchActiveScheduler(ctx context.Context, scheduler *entities.Scheduler) error
+type RoomManager interface {
+	DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
+	SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error)
+	ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error)
+	CleanRoomState(ctx context.Context, schedulerName, roomId string) error
+	UpdateRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error
+	UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
+	CreateRoom(ctx context.Context, scheduler entities.Scheduler) (*game_room.GameRoom, *game_room.Instance, error)
 }
