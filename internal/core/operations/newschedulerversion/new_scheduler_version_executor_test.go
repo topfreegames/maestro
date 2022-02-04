@@ -277,7 +277,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		require.EqualError(t, result, "error creating new scheduler version in db: some error")
 	})
 
-	t.Run("given a valid scheduler when some error occurs while enqueuing switch operation it returns error and don't create new version nor switch to it", func(t *testing.T) {
+	t.Run("given a valid scheduler when some error occurs while enqueuing switch operation it returns error but creates new version in db", func(t *testing.T) {
 		mocksForExecutor := newMockRoomAndSchedulerManager(mockCtrl)
 		currentActiveScheduler := newValidScheduler("v1.0")
 		newScheduler := *newValidScheduler("v1.0")
