@@ -120,12 +120,12 @@ func (ex *CreateNewSchedulerVersionExecutor) validateNewGameRoomVersion(ctx cont
 	gameRoom, _, err := ex.roomManager.CreateRoom(ctx, *newScheduler)
 	if err != nil {
 		logger.Error("error creating new game room for validating new version", zap.Error(err))
-		return err
+		return fmt.Errorf("error creating new game room for validating new version: %w", err)
 	}
 	err = ex.roomManager.DeleteRoom(ctx, gameRoom)
 	if err != nil {
 		logger.Error("error deleting new game room created for validation", zap.Error(err))
-		return err
+		return nil
 	}
 	return nil
 }
