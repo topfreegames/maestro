@@ -31,5 +31,4 @@ import (
 type SchedulerManager interface {
 	UpdateSchedulerConfig(ctx context.Context, scheduler *entities.Scheduler) (bool, error)
 	SwitchActiveScheduler(ctx context.Context, scheduler *entities.Scheduler) error
-	GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error)
 }

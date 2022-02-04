@@ -213,11 +213,3 @@ func (s *SchedulerManager) SwitchActiveScheduler(ctx context.Context, scheduler 
 	}
 	return nil
 }
-
-func (s *SchedulerManager) GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
-	activeScheduler, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
-	if err != nil {
-		return nil, err
-	}
-	return activeScheduler, nil
-}

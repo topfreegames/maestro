@@ -516,6 +516,51 @@ func TestGetScheduler(t *testing.T) {
 	})
 }
 
+func TestSwitchActiveScheduler(t *testing.T) {
+
+	t.Run("with success", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+
+		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerStorage.EXPECT().UpdateScheduler(ctx, scheduler).Return(nil)
+
+		err := schedulerManager.SwitchActiveScheduler(ctx, scheduler)
+		require.NoError(t, err)
+	})
+
+	t.Run("error", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+
+		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerStorage.EXPECT().UpdateScheduler(ctx, scheduler).Return(errors.NewErrUnexpected("error"))
+
+		err := schedulerManager.SwitchActiveScheduler(ctx, scheduler)
+		require.Error(t, err)
+	})
+}
+
 // newValidScheduler generates a valid scheduler with the required fields.
 func newValidScheduler() *entities.Scheduler {
 	return &entities.Scheduler{
