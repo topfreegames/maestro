@@ -37,11 +37,11 @@ import (
 )
 
 type SwitchActiveVersionExecutor struct {
-	roomManager        interfaces.RoomManager
-	schedulerManager   interfaces.SchedulerManager
-	roomsBeingReplaced *sync.Map
-	newCreatedRooms    map[string][]*game_room.GameRoom
-	locker             sync.Mutex
+	roomManager         interfaces.RoomManager
+	schedulerManager    interfaces.SchedulerManager
+	roomsBeingReplaced  *sync.Map
+	newCreatedRooms     map[string][]*game_room.GameRoom
+	newCreatedRoomsLock sync.Mutex
 }
 
 func NewExecutor(roomManager interfaces.RoomManager, schedulerManager interfaces.SchedulerManager) *SwitchActiveVersionExecutor {
@@ -49,11 +49,11 @@ func NewExecutor(roomManager interfaces.RoomManager, schedulerManager interfaces
 	newCreatedRoomsMap := make(map[string][]*game_room.GameRoom)
 
 	return &SwitchActiveVersionExecutor{
-		roomManager:        roomManager,
-		schedulerManager:   schedulerManager,
-		roomsBeingReplaced: &sync.Map{},
-		newCreatedRooms:    newCreatedRoomsMap,
-		locker:             sync.Mutex{},
+		roomManager:         roomManager,
+		schedulerManager:    schedulerManager,
+		roomsBeingReplaced:  &sync.Map{},
+		newCreatedRooms:     newCreatedRoomsMap,
+		newCreatedRoomsLock: sync.Mutex{},
 	}
 }
 
@@ -86,6 +86,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 
 	err = ex.startReplaceRoomsLoop(ctx, logger, maxSurgeNum, *scheduler)
 	if err != nil {
+		logger.Sugar().Errorf("replace rooms failed for scheduler \"%v\" with error \"%v\"", scheduler.Name, zap.Error(err))
 		return err
 	}
 
@@ -138,6 +139,7 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.
 
 		gameRoom, _, err := roomManager.CreateRoom(ctx, scheduler)
 		if err != nil {
+			logger.Error("error creating room", zap.Error(err))
 			ex.roomsBeingReplaced.Delete(room.ID)
 			return err
 		}
@@ -151,10 +153,7 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.
 
 		logger.Sugar().Debugf("replaced room \"%s\" with \"%s\"", room.ID, gameRoom.ID)
 		ex.roomsBeingReplaced.Delete(room.ID)
-
-		ex.locker.Lock()
 		ex.appendToNewCreatedRooms(scheduler.Name, gameRoom)
-		ex.locker.Unlock()
 	}
 }
 
@@ -181,11 +180,7 @@ func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context
 	maxSurgeWg.Add(maxSurgeNum)
 	for i := 0; i < maxSurgeNum; i++ {
 		errs.Go(func() error {
-			err := ex.replaceRoom(logger, &maxSurgeWg, roomsChan, ex.roomManager, scheduler)
-			if err != nil {
-				return err
-			}
-			return nil
+			return ex.replaceRoom(logger, &maxSurgeWg, roomsChan, ex.roomManager, scheduler)
 		})
 	}
 
@@ -225,7 +220,9 @@ roomsListLoop:
 }
 
 func (ex *SwitchActiveVersionExecutor) appendToNewCreatedRooms(schedulerName string, gameRoom *game_room.GameRoom) {
+	ex.newCreatedRoomsLock.Lock()
 	ex.newCreatedRooms[schedulerName] = append(ex.newCreatedRooms[schedulerName], gameRoom)
+	ex.newCreatedRoomsLock.Unlock()
 }
 
 func (ex *SwitchActiveVersionExecutor) clearNewCreatedRooms(schedulerName string) {
