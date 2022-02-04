@@ -74,6 +74,7 @@ func ProvideExecutors(
 	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager)
 	executors[test_operation.OperationName] = test_operation.NewExecutor()
 	executors[update_scheduler.OperationName] = update_scheduler.NewExecutor(roomManager, schedulerManager)
+	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager)
 
 	return executors
 

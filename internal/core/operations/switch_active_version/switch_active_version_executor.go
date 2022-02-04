@@ -32,19 +32,19 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/interfaces"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 type SwitchActiveVersionExecutor struct {
-	roomManager        *room_manager.RoomManager
+	roomManager        interfaces.RoomManager
 	schedulerManager   interfaces.SchedulerManager
 	roomsBeingReplaced *sync.Map
 	newCreatedRooms    map[string][]*game_room.GameRoom
 	locker             sync.Mutex
 }
 
-func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfaces.SchedulerManager) *SwitchActiveVersionExecutor {
+func NewExecutor(roomManager interfaces.RoomManager, schedulerManager interfaces.SchedulerManager) *SwitchActiveVersionExecutor {
 	// TODO(caio.rodrigues): change map to store a list of ids (less memory used)
 	newCreatedRoomsMap := make(map[string][]*game_room.GameRoom)
 
@@ -122,7 +122,7 @@ func (ex *SwitchActiveVersionExecutor) Name() string {
 	return OperationName
 }
 
-func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager *room_manager.RoomManager, scheduler entities.Scheduler) {
+func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager interfaces.RoomManager, scheduler entities.Scheduler) error {
 	defer wg.Done()
 
 	// we're going to use a separated context for each replaceRoom since we
@@ -133,7 +133,7 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.
 	for {
 		room, ok := <-roomsChan
 		if !ok {
-			return
+			return nil
 		}
 
 		gameRoom, _, err := roomManager.CreateRoom(ctx, scheduler)
@@ -143,7 +143,7 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.
 			// This logic could be placed in a more "safe" RoomManager
 			// CreateRoom function.
 			ex.roomsBeingReplaced.Delete(room.ID)
-			continue
+			return err
 		}
 
 		err = roomManager.DeleteRoom(ctx, room)
@@ -153,7 +153,7 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.
 			// a "force delete" or fail the update here?
 			logger.Warn("failed to delete room", zap.Error(err))
 			ex.roomsBeingReplaced.Delete(room.ID)
-			continue
+			return err
 		}
 
 		logger.Sugar().Debugf("replaced room \"%s\" with \"%s\"", room.ID, gameRoom.ID)
@@ -182,10 +182,17 @@ func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context
 	logger.Debug("replacing rooms loop - start")
 	roomsChan := make(chan *game_room.GameRoom)
 	var maxSurgeWg sync.WaitGroup
+	errs, ctx := errgroup.WithContext(ctx)
 
 	maxSurgeWg.Add(maxSurgeNum)
 	for i := 0; i < maxSurgeNum; i++ {
-		go ex.replaceRoom(logger, &maxSurgeWg, roomsChan, ex.roomManager, scheduler)
+		errs.Go(func() error {
+			err := ex.replaceRoom(logger, &maxSurgeWg, roomsChan, ex.roomManager, scheduler)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	}
 
 roomsListLoop:
@@ -212,6 +219,12 @@ roomsListLoop:
 	// close the rooms change and ensure all replace goroutines are gone
 	close(roomsChan)
 	maxSurgeWg.Wait()
+
+	// Wait for possible errors from goroutines
+	err := errs.Wait()
+	if err != nil {
+		return err
+	}
 	logger.Debug("replacing rooms loop - finish")
 
 	return nil
