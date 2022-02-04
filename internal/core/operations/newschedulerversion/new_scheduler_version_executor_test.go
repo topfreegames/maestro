@@ -28,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
+
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/topfreegames/maestro/internal/validations"
@@ -247,6 +249,133 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		require.NoError(t, result)
 	})
 
+	t.Run("given a valid scheduler when some error occurs while creating a new version in db it returns error and don't create new version nor switch to it", func(t *testing.T) {
+		mocksForExecutor := newMockRoomAndSchedulerManager(mockCtrl)
+		currentActiveScheduler := newValidScheduler("v1.0")
+		newScheduler := *newValidScheduler("v1.0")
+		operation := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newschedulerversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+
+		executor := newschedulerversion.NewExecutor(mocksForExecutor.roomManager, mocksForExecutor.schedulerManager)
+		newSchedulerWithNewVersion := newScheduler
+		newSchedulerWithNewVersion.Spec.Version = "v1.1.0"
+		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
+
+		// mocks for SchedulerManager GetActiveScheduler method
+		mocksForExecutor.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
+
+		// mocks for SchedulerManager CreateNewSchedulerVersion method
+		mocksForExecutor.schedulerStorage.EXPECT().CreateSchedulerVersion(gomock.Any(), &newSchedulerWithNewVersion).Return(errors.NewErrUnexpected("some error"))
+
+		result := executor.Execute(context.Background(), operation, operationDef)
+
+		require.EqualError(t, result, "error creating new scheduler version in db: some error")
+	})
+
+	t.Run("given a valid scheduler when some error occurs while enqueuing switch operation it returns error and don't create new version nor switch to it", func(t *testing.T) {
+		mocksForExecutor := newMockRoomAndSchedulerManager(mockCtrl)
+		currentActiveScheduler := newValidScheduler("v1.0")
+		newScheduler := *newValidScheduler("v1.0")
+		operation := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newschedulerversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+
+		executor := newschedulerversion.NewExecutor(mocksForExecutor.roomManager, mocksForExecutor.schedulerManager)
+		newSchedulerWithNewVersion := newScheduler
+		newSchedulerWithNewVersion.Spec.Version = "v1.1.0"
+		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
+
+		// mocks for SchedulerManager GetActiveScheduler method
+		mocksForExecutor.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
+
+		// mocks for SchedulerManager CreateNewSchedulerVersion method
+		mocksForExecutor.schedulerStorage.EXPECT().CreateSchedulerVersion(gomock.Any(), &newSchedulerWithNewVersion)
+
+		// mocks for SchedulerManager EnqueueSwitchActiveVersionOperation method (OperationManager CreateOperation method)
+		mocksForExecutor.operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some error"))
+
+		result := executor.Execute(context.Background(), operation, operationDef)
+
+		require.EqualError(t, result, "error enqueuing switch active version operation: failed to schedule switch_active_version operation: failed to create operation: some error")
+	})
+
+	t.Run("given a valid scheduler when some error occurs while retrieving the current active scheduler it returns error and don't create new version", func(t *testing.T) {
+		mocksForExecutor := newMockRoomAndSchedulerManager(mockCtrl)
+		newScheduler := *newValidScheduler("v1.0")
+		operation := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newschedulerversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+
+		executor := newschedulerversion.NewExecutor(mocksForExecutor.roomManager, mocksForExecutor.schedulerManager)
+		newSchedulerWithNewVersion := newScheduler
+		newSchedulerWithNewVersion.Spec.Version = "v1.1.0"
+		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
+
+		// mocks for SchedulerManager GetActiveScheduler method
+		mocksForExecutor.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), newScheduler.Name).Return(nil, errors.NewErrUnexpected("some error"))
+
+		result := executor.Execute(context.Background(), operation, operationDef)
+
+		require.EqualError(t, result, "error getting active scheduler: some error")
+	})
+
+	t.Run("given a valid scheduler when the provided operation definition is not CreateNewSchedulerVersionDefinition it returns error and don't create new version", func(t *testing.T) {
+		mocksForExecutor := newMockRoomAndSchedulerManager(mockCtrl)
+		newScheduler := *newValidScheduler("v1.0")
+		operation := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newschedulerversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &add_rooms.AddRoomsDefinition{}
+
+		executor := newschedulerversion.NewExecutor(mocksForExecutor.roomManager, mocksForExecutor.schedulerManager)
+		newSchedulerWithNewVersion := newScheduler
+		newSchedulerWithNewVersion.Spec.Version = "v1.1.0"
+		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
+
+		result := executor.Execute(context.Background(), operation, operationDef)
+
+		require.EqualError(t, result, "invalid operation definition for create_new_scheduler_version operation")
+	})
+
+	t.Run("given a invalid scheduler when the version parse fails it returns error and don't create new version", func(t *testing.T) {
+		mocksForExecutor := newMockRoomAndSchedulerManager(mockCtrl)
+		newScheduler := newInValidScheduler()
+		currentActiveScheduler := newInValidScheduler()
+
+		operation := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newschedulerversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: newScheduler}
+
+		executor := newschedulerversion.NewExecutor(mocksForExecutor.roomManager, mocksForExecutor.schedulerManager)
+
+		// mocks for SchedulerManager GetActiveScheduler method
+		mocksForExecutor.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
+
+		result := executor.Execute(context.Background(), operation, operationDef)
+
+		require.EqualError(t, result, "failed to parse scheduler current version: Invalid Semantic Version")
+	})
+
 }
 
 // mockRoomAndSchedulerManager struct that holds all the mocks necessary for the
@@ -333,4 +462,10 @@ func newValidScheduler(imageVersion string) *entities.Scheduler {
 			End:   60000,
 		},
 	}
+}
+
+func newInValidScheduler() *entities.Scheduler {
+	scheduler := newValidScheduler("v1.0.0")
+	scheduler.Spec.Version = "R1.0.0"
+	return scheduler
 }

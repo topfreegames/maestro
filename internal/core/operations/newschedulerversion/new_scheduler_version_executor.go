@@ -53,7 +53,7 @@ func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfa
 func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
 	if !ok {
-		return errors.NewErrInvalidArgument(fmt.Sprintf("invalid operation definition for %s operation: ", OperationName))
+		return errors.NewErrInvalidArgument(fmt.Sprintf("invalid operation definition for %s operation", ex.Name()))
 	}
 	logger := zap.L().With(
 		zap.String("scheduler_name", op.SchedulerName),
@@ -64,7 +64,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	currentActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, opDef.NewScheduler.Name)
 	if err != nil {
 		logger.Error("error getting active scheduler", zap.Error(err))
-		return err
+		return fmt.Errorf("error getting active scheduler: %w", err)
 	}
 
 	currentVersion, err := semver.NewVersion(currentActiveScheduler.Spec.Version)
@@ -94,14 +94,14 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	err = ex.schedulerManager.CreateNewSchedulerVersion(ctx, newScheduler)
 	if err != nil {
 		logger.Error("error creating new scheduler version in db", zap.Error(err))
-		return err
+		return fmt.Errorf("error creating new scheduler version in db: %w", err)
 	}
 
 	// Enqueue switch active version operation
 	switchActiveVersionOp, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler)
 	if err != nil {
 		logger.Error("error enqueuing switch active version operation", zap.Error(err))
-		return err
+		return fmt.Errorf("error enqueuing switch active version operation: %w", err)
 	}
 
 	logger.Info(fmt.Sprintf("%s operation succeded, %s operation enqueued to continue scheduler update process", opDef.Name(), switchActiveVersionOp.DefinitionName))
