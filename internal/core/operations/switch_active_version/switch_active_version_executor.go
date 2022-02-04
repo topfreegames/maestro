@@ -36,21 +36,24 @@ import (
 	"go.uber.org/zap"
 )
 
-var roomsSlice []*game_room.GameRoom
-
 type SwitchActiveVersionExecutor struct {
 	roomManager        *room_manager.RoomManager
 	schedulerManager   interfaces.SchedulerManager
 	roomsBeingReplaced *sync.Map
-	newCreatedRooms    []*game_room.GameRoom
+	newCreatedRooms    map[string][]*game_room.GameRoom
+	locker             sync.Mutex
 }
 
 func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfaces.SchedulerManager) *SwitchActiveVersionExecutor {
+	// TODO(caio.rodrigues): change map to store a list of ids (less memory used)
+	newCreatedRoomsMap := make(map[string][]*game_room.GameRoom)
+
 	return &SwitchActiveVersionExecutor{
 		roomManager:        roomManager,
 		schedulerManager:   schedulerManager,
 		roomsBeingReplaced: &sync.Map{},
-		newCreatedRooms:    roomsSlice,
+		newCreatedRooms:    newCreatedRoomsMap,
+		locker:             sync.Mutex{},
 	}
 }
 
@@ -62,7 +65,7 @@ func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfa
 // 3. List all game rooms that need to be replaced and produce them into the
 //    replace goroutines channel;
 // 4. Switch the active version
-func (e *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
 		zap.String("scheduler_name", op.SchedulerName),
 		zap.String("operation_definition", definition.Name()),
@@ -70,58 +73,34 @@ func (e *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operation
 	)
 	logger.Debug("start switching scheduler active version")
 
-	updateDefinition := definition.(*SwitchActiveVersionDefinition)
+	updateDefinition, ok := definition.(*SwitchActiveVersionDefinition)
+	if !ok {
+		return fmt.Errorf("the definition is invalid. Should be type SwitchActiveVersionDefinition")
+	}
 	scheduler := &updateDefinition.NewActiveScheduler
 
-	maxSurgeNum, err := e.roomManager.SchedulerMaxSurge(ctx, scheduler)
+	maxSurgeNum, err := ex.roomManager.SchedulerMaxSurge(ctx, scheduler)
 	if err != nil {
 		return fmt.Errorf("error fetching scheduler max surge: %w", err)
 	}
 
-	roomsChan := make(chan *game_room.GameRoom)
-	var maxSurgeWg sync.WaitGroup
-
-	maxSurgeWg.Add(maxSurgeNum)
-	for i := 0; i < maxSurgeNum; i++ {
-		go e.replaceRoom(logger, &maxSurgeWg, roomsChan, e.roomManager, *scheduler)
+	err = ex.startReplaceRoomsLoop(ctx, logger, maxSurgeNum, *scheduler)
+	if err != nil {
+		return err
 	}
 
-roomsListLoop:
-	for {
-		rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum, e.roomsBeingReplaced)
-		if err != nil {
-			return fmt.Errorf("failed to list rooms for deletion")
-		}
-
-		for _, room := range rooms {
-			e.roomsBeingReplaced.Store(room.ID, true)
-			select {
-			case roomsChan <- room:
-			case <-ctx.Done():
-				break roomsListLoop
-			}
-		}
-
-		if len(rooms) == 0 {
-			break
-		}
-	}
-
-	// close the rooms change and ensure all replace goroutines are gone
-	close(roomsChan)
-	maxSurgeWg.Wait()
-
-	err = e.schedulerManager.SwitchActiveScheduler(ctx, scheduler)
+	err = ex.schedulerManager.SwitchActiveScheduler(ctx, scheduler)
 	if err != nil {
 		logger.Error("Error switching active scheduler version on scheduler manager")
 		return err
 	}
 
+	ex.clearNewCreatedRooms(op.SchedulerName)
 	logger.Debug("scheduler update finishes with success")
 	return nil
 }
 
-func (e *SwitchActiveVersionExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ex *SwitchActiveVersionExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
 		zap.String("scheduler_name", op.SchedulerName),
 		zap.String("operation_definition", definition.Name()),
@@ -129,7 +108,8 @@ func (e *SwitchActiveVersionExecutor) OnError(ctx context.Context, op *operation
 	)
 	logger.Info("starting OnError routine")
 
-	err := e.deleteNewCreatedRooms(ctx, logger)
+	err := ex.deleteNewCreatedRooms(ctx, logger, op.SchedulerName)
+	ex.clearNewCreatedRooms(op.SchedulerName)
 	if err != nil {
 		return err
 	}
@@ -138,11 +118,11 @@ func (e *SwitchActiveVersionExecutor) OnError(ctx context.Context, op *operation
 	return nil
 }
 
-func (e *SwitchActiveVersionExecutor) Name() string {
+func (ex *SwitchActiveVersionExecutor) Name() string {
 	return OperationName
 }
 
-func (e *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager *room_manager.RoomManager, scheduler entities.Scheduler) {
+func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager *room_manager.RoomManager, scheduler entities.Scheduler) {
 	defer wg.Done()
 
 	// we're going to use a separated context for each replaceRoom since we
@@ -162,7 +142,7 @@ func (e *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.W
 			// to decide if we need to remove the newly created room or not.
 			// This logic could be placed in a more "safe" RoomManager
 			// CreateRoom function.
-			e.roomsBeingReplaced.Delete(room.ID)
+			ex.roomsBeingReplaced.Delete(room.ID)
 			continue
 		}
 
@@ -172,20 +152,22 @@ func (e *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.W
 			// issues since this room could be replaced again. should we perform
 			// a "force delete" or fail the update here?
 			logger.Warn("failed to delete room", zap.Error(err))
-			e.roomsBeingReplaced.Delete(room.ID)
+			ex.roomsBeingReplaced.Delete(room.ID)
 			continue
 		}
 
 		logger.Sugar().Debugf("replaced room \"%s\" with \"%s\"", room.ID, gameRoom.ID)
-		e.roomsBeingReplaced.Delete(room.ID)
-		e.newCreatedRooms = append(e.newCreatedRooms, gameRoom)
+		ex.roomsBeingReplaced.Delete(room.ID)
+		ex.locker.Lock()
+		ex.appendToNewCreatedRooms(scheduler.Name, gameRoom)
+		ex.locker.Unlock()
 	}
 }
 
-func (e *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger) error {
+func (ex *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string) error {
 	logger.Debug("deleting created rooms since switching active version had error - start")
-	for _, room := range e.newCreatedRooms {
-		err := e.roomManager.DeleteRoom(ctx, room)
+	for _, room := range ex.newCreatedRooms[schedulerName] {
+		err := ex.roomManager.DeleteRoom(ctx, room)
 		if err != nil {
 			logger.Error("failed to deleted recent created room", zap.Error(err))
 			return err
@@ -194,4 +176,51 @@ func (e *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context,
 	}
 	logger.Debug("deleting created rooms since switching active version had error - end successfully")
 	return nil
+}
+
+func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context, logger *zap.Logger, maxSurgeNum int, scheduler entities.Scheduler) error {
+	logger.Debug("replacing rooms loop - start")
+	roomsChan := make(chan *game_room.GameRoom)
+	var maxSurgeWg sync.WaitGroup
+
+	maxSurgeWg.Add(maxSurgeNum)
+	for i := 0; i < maxSurgeNum; i++ {
+		go ex.replaceRoom(logger, &maxSurgeWg, roomsChan, ex.roomManager, scheduler)
+	}
+
+roomsListLoop:
+	for {
+		rooms, err := ex.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum, ex.roomsBeingReplaced)
+		if err != nil {
+			return fmt.Errorf("failed to list rooms for deletion")
+		}
+
+		for _, room := range rooms {
+			ex.roomsBeingReplaced.Store(room.ID, true)
+			select {
+			case roomsChan <- room:
+			case <-ctx.Done():
+				break roomsListLoop
+			}
+		}
+
+		if len(rooms) == 0 {
+			break
+		}
+	}
+
+	// close the rooms change and ensure all replace goroutines are gone
+	close(roomsChan)
+	maxSurgeWg.Wait()
+	logger.Debug("replacing rooms loop - finish")
+
+	return nil
+}
+
+func (ex *SwitchActiveVersionExecutor) appendToNewCreatedRooms(schedulerName string, gameRoom *game_room.GameRoom) {
+	ex.newCreatedRooms[schedulerName] = append(ex.newCreatedRooms[schedulerName], gameRoom)
+}
+
+func (ex *SwitchActiveVersionExecutor) clearNewCreatedRooms(schedulerName string) {
+	delete(ex.newCreatedRooms, schedulerName)
 }

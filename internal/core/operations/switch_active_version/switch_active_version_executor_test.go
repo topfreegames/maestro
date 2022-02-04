@@ -93,7 +93,6 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	}
 
 	t.Run("should succeed - Execute switch active version operation", func(t *testing.T) {
-
 		mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
 
 		// list the rooms in two "cycles"
@@ -271,6 +270,87 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 	t.Run("should succeed - Execute on error if operation finishes (no created rooms)", func(t *testing.T) {
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 		err = executor.OnError(context.Background(), &operation.Operation{}, definition, nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("should succeed - Execute on error if operation finishes (created rooms)", func(t *testing.T) {
+		currentVersion := "v1"
+		newScheduler.PortRange.Start = 1000
+		newScheduler.MaxSurge = "3"
+
+		mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(errors.New("error"))
+
+		// list the rooms in two "cycles"
+		firstRoomsIds := []string{"room-0", "room-1", "room-2"}
+		secondRoomsIds := []string{"room-3", "room-4"}
+
+		mocks.roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), definition.NewActiveScheduler.Name, gomock.Any()).Return(firstRoomsIds, nil)
+		mocks.roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), definition.NewActiveScheduler.Name, gomock.Any()).Times(3).Return([]string{}, nil)
+		mocks.roomStorage.EXPECT().GetRoomIDsByLastPing(gomock.Any(), definition.NewActiveScheduler.Name, gomock.Any()).Return([]string{}, nil)
+
+		mocks.roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), definition.NewActiveScheduler.Name, gomock.Any()).Return(secondRoomsIds, nil)
+		mocks.roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), definition.NewActiveScheduler.Name, gomock.Any()).Times(3).Return([]string{}, nil)
+		mocks.roomStorage.EXPECT().GetRoomIDsByLastPing(gomock.Any(), definition.NewActiveScheduler.Name, gomock.Any()).Return([]string{}, nil)
+
+		// third time we list we want it to be empty
+		mocks.roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), definition.NewActiveScheduler.Name, gomock.Any()).Times(4).Return([]string{}, nil)
+		mocks.roomStorage.EXPECT().GetRoomIDsByLastPing(gomock.Any(), definition.NewActiveScheduler.Name, gomock.Any()).Return([]string{}, nil)
+
+		// for each room we want to mock: a new room creation and its
+		// deletion.
+		for _, roomId := range append(firstRoomsIds, secondRoomsIds...) {
+			currentGameRoom := game_room.GameRoom{
+				ID:          roomId,
+				Version:     currentVersion,
+				SchedulerID: definition.NewActiveScheduler.Name,
+				Status:      game_room.GameStatusReady,
+				LastPingAt:  time.Now(),
+			}
+
+			mocks.roomStorage.EXPECT().GetRoom(gomock.Any(), definition.NewActiveScheduler.Name, roomId).Return(&currentGameRoom, nil)
+
+			currentGameRoomInstance := game_room.Instance{
+				ID:          roomId,
+				SchedulerID: definition.NewActiveScheduler.Name,
+			}
+
+			newGameRoomInstance := game_room.Instance{
+				ID:          fmt.Sprintf("new-%s", roomId),
+				SchedulerID: definition.NewActiveScheduler.Name,
+			}
+
+			newGameRoom := game_room.GameRoom{
+				ID:          newGameRoomInstance.ID,
+				SchedulerID: definition.NewActiveScheduler.Name,
+				Status:      game_room.GameStatusPending,
+				Version:     newScheduler.Spec.Version,
+			}
+
+			mocks.portAllocator.EXPECT().Allocate(gomock.Any(), 1).Return([]int32{5000}, nil)
+			mocks.runtime.EXPECT().CreateGameRoomInstance(context.Background(), definition.NewActiveScheduler.Name, versionEq(newScheduler.Spec.Version)).Return(&newGameRoomInstance, nil)
+
+			gameRoomReady := newGameRoom
+			gameRoomReady.Status = game_room.GameStatusReady
+			gameRoomTerminating := currentGameRoom
+			gameRoomTerminating.Status = game_room.GameStatusTerminating
+			mocks.roomStorage.EXPECT().CreateRoom(gomock.Any(), gomock.All(idEq(newGameRoom.ID), versionEq(newScheduler.Spec.Version))).Return(nil)
+			mocks.roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoomReady.SchedulerID, gameRoomReady.ID).Return(&gameRoomReady, nil)
+			roomStorageStatusWatcher := room_storage_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
+			mocks.roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gomock.All(idEq(newGameRoom.ID), versionEq(newScheduler.Spec.Version))).Return(roomStorageStatusWatcher, nil)
+
+			mocks.instanceStorage.EXPECT().GetInstance(gomock.Any(), definition.NewActiveScheduler.Name, roomId).Return(&currentGameRoomInstance, nil)
+			mocks.roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gomock.All(idEq(currentGameRoom.ID), versionEq(currentVersion))).Return(roomStorageStatusWatcher, nil)
+			mocks.roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoomTerminating.SchedulerID, gameRoomTerminating.ID).Return(&gameRoomTerminating, nil)
+			mocks.runtime.EXPECT().DeleteGameRoomInstance(gomock.Any(), &currentGameRoomInstance).Return(nil)
+
+			roomStorageStatusWatcher.EXPECT().Stop().Times(2)
+		}
+
+		ctx := context.Background()
+		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+		err = executor.Execute(ctx, &operation.Operation{}, definition)
+		require.Error(t, err)
+		err = executor.OnError(ctx, &operation.Operation{}, definition, nil)
 		require.NoError(t, err)
 	})
 }
