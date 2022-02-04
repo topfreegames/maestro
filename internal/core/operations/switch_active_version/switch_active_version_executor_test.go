@@ -64,7 +64,7 @@ type mockRoomAndSchedulerManager struct {
 
 func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	mocks := newMockRoomAndSchedulerManager(mockCtrl)
+	defer mockCtrl.Finish()
 
 	err := validations.RegisterValidations()
 	if err != nil {
@@ -83,6 +83,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	maxSurge := 3
 
 	t.Run("should succeed - Execute switch active version operation", func(t *testing.T) {
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
 		mocks.roomManager.EXPECT().SchedulerMaxSurge(gomock.Any(), gomock.Any()).Return(3, nil)
 
 		var gameRoomListCycle1 []*game_room.GameRoom
@@ -130,6 +131,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	})
 
 	t.Run("should succeed - Execute switch active version operation (no running rooms)", func(t *testing.T) {
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
 		mocks.roomManager.EXPECT().SchedulerMaxSurge(gomock.Any(), gomock.Any()).Return(3, nil)
 
 		var emptyGameRoom []*game_room.GameRoom
@@ -143,6 +145,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	})
 
 	t.Run("should fail - Can't update scheduler (switch active version on database)", func(t *testing.T) {
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
 		mocks.roomManager.EXPECT().SchedulerMaxSurge(gomock.Any(), gomock.Any()).Return(3, nil)
 
 		var emptyGameRoom []*game_room.GameRoom
@@ -156,6 +159,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	})
 
 	t.Run("should fail - Can't create room", func(t *testing.T) {
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
 		mocks.roomManager.EXPECT().SchedulerMaxSurge(gomock.Any(), gomock.Any()).Return(3, nil)
 
 		var gameRoomListCycle1 []*game_room.GameRoom
@@ -169,6 +173,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 			})
 		}
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle1, nil)
+		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*game_room.GameRoom{}, nil).MaxTimes(1)
 
 		mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any()).Return(nil, nil, errors.New("error")).MaxTimes(maxSurge)
 
@@ -178,6 +183,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	})
 
 	t.Run("should fail - Can't delete room", func(t *testing.T) {
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
 		mocks.roomManager.EXPECT().SchedulerMaxSurge(gomock.Any(), gomock.Any()).Return(maxSurge, nil)
 
 		var gameRoomListCycle1 []*game_room.GameRoom
@@ -191,6 +197,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 			})
 		}
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle1, nil)
+		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*game_room.GameRoom{}, nil).MaxTimes(1)
 
 		mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any()).Return(nil, nil, nil).MaxTimes(maxSurge)
 		mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(errors.New("error")).MaxTimes(maxSurge)
@@ -201,6 +208,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	})
 
 	t.Run("should fail - Can't find max surge", func(t *testing.T) {
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
 		mocks.roomManager.EXPECT().SchedulerMaxSurge(gomock.Any(), gomock.Any()).Return(0, errors.New("error"))
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
@@ -209,6 +217,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	})
 
 	t.Run("should fail - Can't list rooms to delete", func(t *testing.T) {
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
 		mocks.roomManager.EXPECT().SchedulerMaxSurge(gomock.Any(), gomock.Any()).Return(maxSurge, nil)
 
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error"))

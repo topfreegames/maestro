@@ -123,40 +123,6 @@ func (ex *SwitchActiveVersionExecutor) Name() string {
 	return OperationName
 }
 
-func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager interfaces.RoomManager, scheduler entities.Scheduler) error {
-	defer wg.Done()
-
-	// we're going to use a separated context for each replaceRoom since we
-	// don't want to cancel the replace in the middle (like creating a room and
-	// then left the old one (without deleting it).
-	ctx := context.Background()
-
-	for {
-		room, ok := <-roomsChan
-		if !ok {
-			return nil
-		}
-
-		gameRoom, _, err := roomManager.CreateRoom(ctx, scheduler)
-		if err != nil {
-			logger.Error("error creating room", zap.Error(err))
-			ex.roomsBeingReplaced.Delete(room.ID)
-			return err
-		}
-
-		err = roomManager.DeleteRoom(ctx, room)
-		if err != nil {
-			logger.Warn("failed to delete room", zap.Error(err))
-			ex.roomsBeingReplaced.Delete(room.ID)
-			return err
-		}
-
-		logger.Sugar().Debugf("replaced room \"%s\" with \"%s\"", room.ID, gameRoom.ID)
-		ex.roomsBeingReplaced.Delete(room.ID)
-		ex.appendToNewCreatedRooms(scheduler.Name, gameRoom)
-	}
-}
-
 func (ex *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string) error {
 	logger.Debug("deleting created rooms since switching active version had error - start")
 	for _, room := range ex.newCreatedRooms[schedulerName] {
@@ -217,6 +183,40 @@ roomsListLoop:
 	logger.Debug("replacing rooms loop - finish")
 
 	return nil
+}
+
+func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager interfaces.RoomManager, scheduler entities.Scheduler) error {
+	defer wg.Done()
+
+	// we're going to use a separated context for each replaceRoom since we
+	// don't want to cancel the replace in the middle (like creating a room and
+	// then left the old one (without deleting it).
+	ctx := context.Background()
+
+	for {
+		room, ok := <-roomsChan
+		if !ok {
+			return nil
+		}
+
+		gameRoom, _, err := roomManager.CreateRoom(ctx, scheduler)
+		if err != nil {
+			logger.Error("error creating room", zap.Error(err))
+			ex.roomsBeingReplaced.Delete(room.ID)
+			return err
+		}
+
+		err = roomManager.DeleteRoom(ctx, room)
+		if err != nil {
+			logger.Warn("failed to delete room", zap.Error(err))
+			ex.roomsBeingReplaced.Delete(room.ID)
+			return err
+		}
+
+		logger.Sugar().Debugf("replaced room \"%s\" with \"%s\"", room.ID, gameRoom.ID)
+		ex.roomsBeingReplaced.Delete(room.ID)
+		ex.appendToNewCreatedRooms(scheduler.Name, gameRoom)
+	}
 }
 
 func (ex *SwitchActiveVersionExecutor) appendToNewCreatedRooms(schedulerName string, gameRoom *game_room.GameRoom) {
