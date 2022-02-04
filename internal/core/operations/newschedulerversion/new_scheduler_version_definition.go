@@ -35,7 +35,7 @@ import (
 const OperationName = "create_new_scheduler_version"
 
 type CreateNewSchedulerVersionDefinition struct {
-	NewScheduler entities.Scheduler `json:"scheduler"`
+	NewScheduler *entities.Scheduler `json:"scheduler"`
 }
 
 func (def *CreateNewSchedulerVersionDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {

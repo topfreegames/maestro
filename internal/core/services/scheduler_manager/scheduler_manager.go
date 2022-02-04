@@ -192,7 +192,7 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 		return nil, err
 	}
 
-	opDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: *scheduler}
+	opDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: scheduler}
 
 	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, opDef)
 	if err != nil {

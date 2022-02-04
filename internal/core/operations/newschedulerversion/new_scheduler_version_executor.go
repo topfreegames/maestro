@@ -24,7 +24,12 @@ package newschedulerversion
 
 import (
 	"context"
-	"sync"
+	"fmt"
+
+	"github.com/Masterminds/semver/v3"
+
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
@@ -34,48 +39,72 @@ import (
 )
 
 type CreateNewSchedulerVersionExecutor struct {
-	roomManager        *room_manager.RoomManager
-	schedulerManager   interfaces.SchedulerManager
-	roomsBeingReplaced *sync.Map
+	roomManager      *room_manager.RoomManager
+	schedulerManager interfaces.SchedulerManager
 }
 
 func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfaces.SchedulerManager) *CreateNewSchedulerVersionExecutor {
 	return &CreateNewSchedulerVersionExecutor{
-		roomManager:        roomManager,
-		schedulerManager:   schedulerManager,
-		roomsBeingReplaced: &sync.Map{},
+		roomManager:      roomManager,
+		schedulerManager: schedulerManager,
 	}
 }
 
-// Execute the process of updating a scheduler consists of the following:
-// 1. Update the scheduler configuration using the one present on the operation
-//    definition;
-// 2. If this update creates a minor version, the operation is done since there
-//    is no necessity of replacing game rooms;
-// 3. For a major version, Fetch the MaxSurge for the scheduler;
-// 4. Creates "replace" goroutines (same number as MaxSurge);
-// 5. Each goroutine will listen to a channel and create a new room using the
-//    new configuration. After the room is ready, it will then delete the room
-//    being replaced;
-// 6. List all game rooms that need to be replaced and produce them into the
-//    replace goroutines channel;
 func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
+	if !ok {
+		return errors.NewErrInvalidArgument(fmt.Sprintf("invalid operation definition for %s operation: ", OperationName))
+	}
 	logger := zap.L().With(
 		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", definition.Name()),
+		zap.String("operation_definition", opDef.Name()),
 		zap.String("operation_id", op.ID),
 	)
-	logger.Debug("start updating scheduler")
+	newScheduler := opDef.NewScheduler
+	currentActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, opDef.NewScheduler.Name)
+	if err != nil {
+		logger.Error("error getting active scheduler", zap.Error(err))
+		return err
+	}
+
+	currentVersion, err := semver.NewVersion(currentActiveScheduler.Spec.Version)
+	if err != nil {
+		return fmt.Errorf("failed to parse scheduler current version: %w", err)
+	}
+
+	newVersion := currentVersion.IncMinor()
 
 	// Check if it is major
+	isMajor := ex.schedulerManager.IsMajorVersionUpdate(currentActiveScheduler, newScheduler)
 
 	// If it is major, validate game room
+	if isMajor {
+		newVersion = currentVersion.IncMajor()
+		err := ex.validateNewGameRoomVersion(ctx, logger, newScheduler)
+		if err != nil {
+			logger.Error("could not validate new game room creation", zap.Error(err))
+			return err
+		}
+	}
+
+	newScheduler.Spec.Version = newVersion.Original()
+	newScheduler.RollbackVersion = currentActiveScheduler.Spec.Version
 
 	// Create new scheduler version in the DB
+	err = ex.schedulerManager.CreateNewSchedulerVersion(ctx, newScheduler)
+	if err != nil {
+		logger.Error("error creating new scheduler version in db", zap.Error(err))
+		return err
+	}
 
 	// Enqueue switch active version operation
+	switchActiveVersionOp, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler)
+	if err != nil {
+		logger.Error("error enqueuing switch active version operation", zap.Error(err))
+		return err
+	}
 
-	logger.Debug("scheduler update finishes with success")
+	logger.Info(fmt.Sprintf("%s operation succeded, %s operation enqueued to continue scheduler update process", opDef.Name(), switchActiveVersionOp.DefinitionName))
 	return nil
 }
 
@@ -85,4 +114,18 @@ func (ex *CreateNewSchedulerVersionExecutor) OnError(ctx context.Context, op *op
 
 func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 	return OperationName
+}
+
+func (ex *CreateNewSchedulerVersionExecutor) validateNewGameRoomVersion(ctx context.Context, logger *zap.Logger, newScheduler *entities.Scheduler) error {
+	gameRoom, _, err := ex.roomManager.CreateRoom(ctx, *newScheduler)
+	if err != nil {
+		logger.Error("error creating new game room for validating new version", zap.Error(err))
+		return err
+	}
+	err = ex.roomManager.DeleteRoom(ctx, gameRoom)
+	if err != nil {
+		logger.Error("error deleting new game room created for validation", zap.Error(err))
+		return err
+	}
+	return nil
 }
