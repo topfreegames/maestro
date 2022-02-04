@@ -138,19 +138,12 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.
 
 		gameRoom, _, err := roomManager.CreateRoom(ctx, scheduler)
 		if err != nil {
-			// TODO(gabrielcorado): we need to know why the creation failed
-			// to decide if we need to remove the newly created room or not.
-			// This logic could be placed in a more "safe" RoomManager
-			// CreateRoom function.
 			ex.roomsBeingReplaced.Delete(room.ID)
 			return err
 		}
 
 		err = roomManager.DeleteRoom(ctx, room)
 		if err != nil {
-			// TODO(gabrielcorado): failing to delete the room can cause some
-			// issues since this room could be replaced again. should we perform
-			// a "force delete" or fail the update here?
 			logger.Warn("failed to delete room", zap.Error(err))
 			ex.roomsBeingReplaced.Delete(room.ID)
 			return err
@@ -158,6 +151,7 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.
 
 		logger.Sugar().Debugf("replaced room \"%s\" with \"%s\"", room.ID, gameRoom.ID)
 		ex.roomsBeingReplaced.Delete(room.ID)
+
 		ex.locker.Lock()
 		ex.appendToNewCreatedRooms(scheduler.Name, gameRoom)
 		ex.locker.Unlock()
