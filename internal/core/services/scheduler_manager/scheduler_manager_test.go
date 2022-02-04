@@ -30,7 +30,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
@@ -274,125 +273,6 @@ func TestRemoveRooms(t *testing.T) {
 		require.Nil(t, op)
 		require.ErrorIs(t, err, errors.ErrUnexpected)
 		require.Contains(t, err.Error(), "not able to schedule the 'remove rooms' operation: failed to create operation: storage offline")
-	})
-}
-
-func TestUpdateSchedulerConfig(t *testing.T) {
-	err := validations.RegisterValidations()
-	if err != nil {
-		t.Errorf("unexpected error %d'", err)
-	}
-
-	mockSchedulerManager := func(ctrl *gomock.Controller) (*SchedulerManager, *schedulerStorageMock.MockSchedulerStorage) {
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(ctrl)
-		return NewSchedulerManager(schedulerStorage, nil), schedulerStorage
-	}
-
-	t.Run("major update with a valid scheduler and update succeeds should return no error", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		schedulerManager, schedulerStorage := mockSchedulerManager(mockCtrl)
-		ctx := context.Background()
-
-		// ensure port range has a specific value
-		currentScheduler := newValidScheduler()
-		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
-
-		// update scheduler port range
-		newScheduler := newValidScheduler()
-		newScheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
-
-		schedulerStorage.EXPECT().GetScheduler(ctx, newScheduler.Name).Return(currentScheduler, nil)
-		schedulerStorage.EXPECT().UpdateScheduler(ctx, gomock.Any()).Return(nil)
-
-		isMajor, err := schedulerManager.UpdateSchedulerConfig(ctx, newScheduler)
-		require.NoError(t, err)
-		require.True(t, isMajor)
-
-		prevVersion := semver.MustParse(currentScheduler.Spec.Version)
-		newVersion := semver.MustParse(newScheduler.Spec.Version)
-		require.Greater(t, newVersion.Major(), prevVersion.Major())
-		require.Equal(t, currentScheduler.Spec.Version, newScheduler.RollbackVersion)
-	})
-
-	t.Run("minor update with a valid scheduler and update succeeds should return no error", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		schedulerManager, schedulerStorage := mockSchedulerManager(mockCtrl)
-		ctx := context.Background()
-
-		// ensure max surge has a specific value
-		currentScheduler := newValidScheduler()
-		currentScheduler.MaxSurge = "10%"
-
-		// update scheduler max surge
-		newScheduler := newValidScheduler()
-		newScheduler.MaxSurge = "10%"
-
-		schedulerStorage.EXPECT().GetScheduler(ctx, newScheduler.Name).Return(currentScheduler, nil)
-		schedulerStorage.EXPECT().UpdateScheduler(ctx, gomock.Any()).Return(nil)
-
-		isMajor, err := schedulerManager.UpdateSchedulerConfig(ctx, newScheduler)
-		require.NoError(t, err)
-		require.False(t, isMajor)
-
-		prevVersion := semver.MustParse(currentScheduler.Spec.Version)
-		newVersion := semver.MustParse(newScheduler.Spec.Version)
-		require.Equal(t, prevVersion.Major(), newVersion.Major())
-		require.Greater(t, newVersion.Minor(), prevVersion.Minor())
-		require.Equal(t, currentScheduler.Spec.Version, newScheduler.RollbackVersion)
-	})
-
-	t.Run("major update with a valid scheduler and update fails should return error", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		schedulerManager, schedulerStorage := mockSchedulerManager(mockCtrl)
-		ctx := context.Background()
-
-		// ensure port range has a specific value
-		currentScheduler := newValidScheduler()
-		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
-
-		// update scheduler port range
-		newScheduler := newValidScheduler()
-		newScheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
-
-		schedulerStorage.EXPECT().GetScheduler(ctx, newScheduler.Name).Return(currentScheduler, nil)
-		schedulerStorage.EXPECT().UpdateScheduler(ctx, gomock.Any()).Return(errors.ErrUnexpected)
-
-		_, err := schedulerManager.UpdateSchedulerConfig(ctx, newScheduler)
-		require.Error(t, err)
-	})
-
-	t.Run("valid scheduler but not found should return error", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		schedulerManager, schedulerStorage := mockSchedulerManager(mockCtrl)
-		ctx := context.Background()
-
-		newScheduler := newValidScheduler()
-		schedulerStorage.EXPECT().GetScheduler(ctx, newScheduler.Name).Return(nil, errors.ErrNotFound)
-
-		_, err := schedulerManager.UpdateSchedulerConfig(ctx, newScheduler)
-		require.Error(t, err)
-	})
-
-	t.Run("invalid scheduler should return error", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		schedulerManager, _ := mockSchedulerManager(mockCtrl)
-		ctx := context.Background()
-
-		// update scheduler port range
-		newScheduler := &entities.Scheduler{}
-
-		_, err := schedulerManager.UpdateSchedulerConfig(ctx, newScheduler)
-		require.Error(t, err)
 	})
 }
 

@@ -30,7 +30,6 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -145,47 +144,6 @@ func (s *SchedulerManager) RemoveRooms(ctx context.Context, schedulerName string
 	}
 
 	return op, nil
-}
-
-// UpdateSchedulerConfig receives the configuration of a scheduler, generate a new
-// version and update it on the scheduler's storage. It returns if the update
-// was a major update or not.
-// Modifies the provided scheduler Spec.Version and RollbackVersion.
-//
-// TODO(gabrielcorado): should we update if no changes were made?
-func (s *SchedulerManager) UpdateSchedulerConfig(ctx context.Context, scheduler *entities.Scheduler) (bool, error) {
-	err := scheduler.Validate()
-	if err != nil {
-		return false, err
-	}
-
-	currentScheduler, err := s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
-	if err != nil {
-		return false, fmt.Errorf("error fetching scheduler: %w", err)
-	}
-
-	currentVersion, err := semver.NewVersion(currentScheduler.Spec.Version)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse scheduler current version: %w", err)
-	}
-
-	// check if we're going to move forward a major version or not.
-	isMajorUpdate := s.IsMajorVersionUpdate(currentScheduler, scheduler)
-
-	newVersion := currentVersion.IncMinor()
-	if isMajorUpdate {
-		newVersion = currentVersion.IncMajor()
-	}
-
-	scheduler.Spec.Version = newVersion.Original()
-	scheduler.RollbackVersion = currentScheduler.Spec.Version
-
-	err = s.schedulerStorage.UpdateScheduler(ctx, scheduler)
-	if err != nil {
-		return false, fmt.Errorf("failed to update scheduler: %w", err)
-	}
-
-	return isMajorUpdate, nil
 }
 
 func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Context, scheduler *entities.Scheduler) (*operation.Operation, error) {
