@@ -50,6 +50,10 @@ run/e2e-tests: deps/stop build/worker build/management-api build/rooms-api build
 ## Build and run
 ################################################################################
 
+.PHONY: build/all-components
+build/all-components: build/worker build/management-api build/rooms-api build/runtime-watcher
+	@echo 'Built all components (worker, management-api, rooms-api, runtime-watcher)! Look in the bin folder'
+
 .PHONY: build/worker
 build/worker:
 	@rm -f ./bin/worker-* || true
