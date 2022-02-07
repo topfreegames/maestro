@@ -151,6 +151,53 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 
 }
 
+func TestCreateNewSchedulerVersionInTransaction(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
+	ctx := context.Background()
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+	operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+	operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+	operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+	config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+	operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+	schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
+	transactionFunc := func(ctx context.Context) error {
+		return nil
+	}
+
+	t.Run("with valid scheduler it returns no error when creating it", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		schedulerStorage.EXPECT().CreateSchedulerVersionWithTransactionFunc(ctx, scheduler, gomock.Any()).Return(nil)
+
+		err := schedulerManager.CreateNewSchedulerVersionInTransaction(ctx, scheduler, transactionFunc)
+		require.NoError(t, err)
+	})
+
+	t.Run("with valid scheduler it returns with error if some error occurs when creating new version on storage", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		schedulerStorage.EXPECT().CreateSchedulerVersionWithTransactionFunc(ctx, scheduler, gomock.Any()).Return(errors.NewErrUnexpected("some error"))
+
+		err := schedulerManager.CreateNewSchedulerVersionInTransaction(ctx, scheduler, transactionFunc)
+		require.Error(t, err, "some error")
+	})
+
+	t.Run("with invalid scheduler it return invalid scheduler error", func(t *testing.T) {
+		scheduler := newInvalidScheduler()
+
+		err := schedulerManager.CreateNewSchedulerVersionInTransaction(ctx, scheduler, transactionFunc)
+		require.Error(t, err)
+	})
+
+}
+
 func TestAddRooms(t *testing.T) {
 	schedulerName := "scheduler-name-1"
 

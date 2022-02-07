@@ -97,6 +97,19 @@ func (s *SchedulerManager) CreateNewSchedulerVersion(ctx context.Context, schedu
 	return nil
 }
 
+func (s *SchedulerManager) CreateNewSchedulerVersionInTransaction(ctx context.Context, scheduler *entities.Scheduler, transactionFunc func(ctx context.Context) error) error {
+	err := scheduler.Validate()
+	if err != nil {
+		return fmt.Errorf("failing in creating schedule: %w", err)
+	}
+
+	err = s.schedulerStorage.CreateSchedulerVersionWithTransactionFunc(ctx, scheduler, transactionFunc)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *SchedulerManager) GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error) {
 	return s.schedulerStorage.GetAllSchedulers(ctx)
 }
