@@ -176,7 +176,7 @@ func TestCreateNewSchedulerVersionInTransaction(t *testing.T) {
 
 		schedulerStorage.EXPECT().CreateSchedulerVersionWithTransactionFunc(ctx, scheduler, gomock.Any()).Return(nil)
 
-		err := schedulerManager.CreateNewSchedulerVersionInTransaction(ctx, scheduler, transactionFunc)
+		err := schedulerManager.CreateNewSchedulerVersionWithTransaction(ctx, scheduler, transactionFunc)
 		require.NoError(t, err)
 	})
 
@@ -185,14 +185,14 @@ func TestCreateNewSchedulerVersionInTransaction(t *testing.T) {
 
 		schedulerStorage.EXPECT().CreateSchedulerVersionWithTransactionFunc(ctx, scheduler, gomock.Any()).Return(errors.NewErrUnexpected("some error"))
 
-		err := schedulerManager.CreateNewSchedulerVersionInTransaction(ctx, scheduler, transactionFunc)
+		err := schedulerManager.CreateNewSchedulerVersionWithTransaction(ctx, scheduler, transactionFunc)
 		require.Error(t, err, "some error")
 	})
 
 	t.Run("with invalid scheduler it return invalid scheduler error", func(t *testing.T) {
 		scheduler := newInvalidScheduler()
 
-		err := schedulerManager.CreateNewSchedulerVersionInTransaction(ctx, scheduler, transactionFunc)
+		err := schedulerManager.CreateNewSchedulerVersionWithTransaction(ctx, scheduler, transactionFunc)
 		require.Error(t, err)
 	})
 

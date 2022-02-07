@@ -97,7 +97,7 @@ func (s *SchedulerManager) CreateNewSchedulerVersion(ctx context.Context, schedu
 	return nil
 }
 
-func (s *SchedulerManager) CreateNewSchedulerVersionInTransaction(ctx context.Context, scheduler *entities.Scheduler, transactionFunc func(ctx context.Context) error) error {
+func (s *SchedulerManager) CreateNewSchedulerVersionWithTransaction(ctx context.Context, scheduler *entities.Scheduler, transactionFunc func(ctx context.Context) error) error {
 	err := scheduler.Validate()
 	if err != nil {
 		return fmt.Errorf("failing in creating schedule: %w", err)

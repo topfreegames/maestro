@@ -113,7 +113,7 @@ func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueue
 		}
 		return nil
 	}
-	err := ex.schedulerManager.CreateNewSchedulerVersionInTransaction(ctx, newScheduler, transactionFunc)
+	err := ex.schedulerManager.CreateNewSchedulerVersionWithTransaction(ctx, newScheduler, transactionFunc)
 	if err != nil {
 		logger.Error("error creating new scheduler version in db", zap.Error(err))
 		return fmt.Errorf("error creating new scheduler version in db: %w", err)
