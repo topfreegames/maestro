@@ -148,7 +148,7 @@ func (s *SchedulerManager) RemoveRooms(ctx context.Context, schedulerName string
 
 func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Context, scheduler *entities.Scheduler) (*operation.Operation, error) {
 	currentScheduler, err := s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
-	if err != nil || currentScheduler == nil {
+	if err != nil {
 		return nil, fmt.Errorf("no scheduler found, can not create new version for inexistent scheduler: %w", err)
 	}
 
