@@ -69,6 +69,14 @@ func NewScheduler(name string, game string, state string, maxSurge string, spec 
 	return scheduler, scheduler.Validate()
 }
 
+func (s *Scheduler) SetSchedulerVersion(version string) {
+	s.Spec.Version = version
+}
+
+func (s *Scheduler) SetSchedulerRollbackVersion(version string) {
+	s.RollbackVersion = version
+}
+
 func (s *Scheduler) Validate() error {
 	return validations.Validate.Struct(s)
 }

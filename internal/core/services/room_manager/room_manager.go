@@ -310,6 +310,19 @@ func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities
 	return int(math.Max(minSchedulerMaxSurge, absoluteNum)), nil
 }
 
+func (m *RoomManager) ValidateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler) error {
+	gameRoom, _, err := m.CreateRoom(ctx, *scheduler)
+	if err != nil {
+		m.logger.Error("error creating new game room for validating new version")
+		return fmt.Errorf("error creating new game room for validating new version: %w", err)
+	}
+	err = m.DeleteRoom(ctx, gameRoom)
+	if err != nil {
+		m.logger.Error("error deleting new game room created for validation", zap.Error(err))
+	}
+	return nil
+
+}
 func removeDuplicateValues(slice []string) []string {
 	check := make(map[string]int)
 	res := make([]string, 0)
