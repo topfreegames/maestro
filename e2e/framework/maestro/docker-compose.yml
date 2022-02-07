@@ -19,6 +19,9 @@ services:
       - "9096:8082"
     volumes:
       - ../../../kubeconfig:/kubeconfig
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   rooms-api:
     build:
