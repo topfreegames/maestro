@@ -464,6 +464,109 @@ func TestSchedulerStorage_CreateSchedulerVersion(t *testing.T) {
 	})
 }
 
+func TestSchedulerStorage_CreateSchedulerVersionWithTransactionFunc(t *testing.T) {
+	someStruct := struct {
+		Scheduler *Scheduler
+		Version   string
+	}{
+		&Scheduler{},
+		"v1",
+	}
+	var firstVersionScheduler = entities.Scheduler{
+		Name:            "scheduler",
+		Game:            "game",
+		State:           entities.StateCreating,
+		MaxSurge:        "10%",
+		RollbackVersion: "",
+		Spec: game_room.Spec{
+			Version:                "v1",
+			TerminationGracePeriod: 60,
+			Containers:             []game_room.Container{},
+			Toleration:             "toleration",
+			Affinity:               "affinity",
+		},
+		PortRange: &entities.PortRange{
+			Start: 40000,
+			End:   60000,
+		},
+	}
+
+	newVersionScheduler := firstVersionScheduler
+	newVersionScheduler.Spec.Version = "v2"
+
+	successTransactionFunc := func(ctx context.Context) error {
+		if someStruct.Version == "v1" {
+			return nil
+		}
+		return errors.NewErrUnexpected("some_error")
+	}
+
+	failTransactionFunc := func(ctx context.Context) error {
+		if someStruct.Version == "v2" {
+			return nil
+		}
+		return errors.NewErrUnexpected("some_error")
+	}
+
+	t.Run("should succeed - scheduler version created for scheduler", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), &firstVersionScheduler))
+
+		err := storage.CreateSchedulerVersionWithTransactionFunc(context.Background(), &newVersionScheduler, successTransactionFunc)
+		require.NoError(t, err)
+		versions, err := storage.GetSchedulerVersions(context.Background(), newVersionScheduler.Name)
+		require.NoError(t, err)
+		// Should be 2 versions, one for v1 and one for v2
+		require.Len(t, versions, 2)
+	})
+
+	t.Run("should fail - transactionFunc fails", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), &firstVersionScheduler))
+
+		err := storage.CreateSchedulerVersionWithTransactionFunc(context.Background(), &newVersionScheduler, failTransactionFunc)
+		require.EqualError(t, err, "failed to create scheduler version in db, transaction failed: some_error")
+
+		versions, err := storage.GetSchedulerVersions(context.Background(), newVersionScheduler.Name)
+		require.NoError(t, err)
+		require.Len(t, versions, 1)
+		// Should be 1 versions, one for v1 and none for v2
+		require.Equal(t, firstVersionScheduler.Spec.Version, versions[0].Version)
+	})
+
+	t.Run("should fail - scheduler does not exist", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		err := storage.CreateSchedulerVersionWithTransactionFunc(context.Background(), &newVersionScheduler, successTransactionFunc)
+		require.Error(t, err)
+		require.Equal(t, err.Error(), fmt.Sprintf("failed to create scheduler version in db, transaction failed: error creating version %s for non existent scheduler \"%s\"", newVersionScheduler.Spec.Version, newVersionScheduler.Name))
+	})
+
+	t.Run("should fail - scheduler version invalid", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), &firstVersionScheduler))
+
+		newVersionScheduler.Name = ""
+
+		err := storage.CreateSchedulerVersionWithTransactionFunc(context.Background(), &newVersionScheduler, successTransactionFunc)
+		require.Error(t, err)
+
+		versions, err := storage.GetSchedulerVersions(context.Background(), firstVersionScheduler.Name)
+		require.NoError(t, err)
+		require.Len(t, versions, 1)
+		// Should be 1 versions, one for v1 and none for v2
+		require.Equal(t, firstVersionScheduler.Spec.Version, versions[0].Version)
+	})
+
+}
+
 func assertSchedulers(t *testing.T, expectedSchedulers []*entities.Scheduler, actualSchedulers []*entities.Scheduler) {
 	for i, expectedScheduler := range expectedSchedulers {
 		require.Equal(t, expectedScheduler.Name, actualSchedulers[i].Name)

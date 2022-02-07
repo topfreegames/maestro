@@ -24,6 +24,7 @@ package pg
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -239,6 +240,31 @@ func (s schedulerStorage) CreateSchedulerVersion(ctx context.Context, scheduler 
 			return errors.NewErrUnexpected("error creating version %s for non existent scheduler \"%s\"", dbScheduler.Version, dbScheduler.Name)
 		}
 		return errors.NewErrUnexpected("error creating scheduler %s version %s", dbScheduler.Name, dbScheduler.Version).WithError(err)
+	}
+	return nil
+}
+
+func (s schedulerStorage) CreateSchedulerVersionWithTransactionFunc(ctx context.Context, scheduler *entities.Scheduler, transactionFunc func(ctx context.Context) error) error {
+	client := s.db.WithContext(ctx)
+	err := client.RunInTransaction(func(tx *pg.Tx) error {
+		dbScheduler := NewDBScheduler(scheduler)
+
+		_, err := tx.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+		if err != nil {
+			if strings.Contains(err.Error(), "violates foreign key constraint") {
+				return errors.NewErrUnexpected("error creating version %s for non existent scheduler \"%s\"", dbScheduler.Version, dbScheduler.Name)
+			}
+			return errors.NewErrUnexpected("error creating scheduler %s version %s", dbScheduler.Name, dbScheduler.Version).WithError(err)
+		}
+		err = transactionFunc(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create scheduler version in db, transaction failed: %w", err)
 	}
 	return nil
 }
