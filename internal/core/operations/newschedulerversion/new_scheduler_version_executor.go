@@ -26,6 +26,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 
 	"github.com/Masterminds/semver/v3"
@@ -84,17 +86,12 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		}
 	}
 
-	err = ex.createNewSchedulerVersion(ctx, newScheduler, logger)
+	err = ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger)
 	if err != nil {
 		return err
 	}
 
-	switchActiveVersionOp, err := ex.enqueueSwitchActiveVersionOperation(ctx, newScheduler, logger, isSchedulerMajorVersion)
-	if err != nil {
-		return err
-	}
-
-	logger.Info(fmt.Sprintf("%s operation succeded, %s operation enqueued to continue scheduler update process", opDef.Name(), switchActiveVersionOp.DefinitionName))
+	logger.Info(fmt.Sprintf("%s operation succeded, %s operation enqueued to continue scheduler update process", opDef.Name(), switch_active_version.OperationName))
 	return nil
 }
 
@@ -106,23 +103,22 @@ func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 	return OperationName
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersion(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger) error {
-	err := ex.schedulerManager.CreateNewSchedulerVersion(ctx, newScheduler)
+func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger) error {
+	transactionFunc := func(ctx context.Context) error {
+		_, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler)
+		if err != nil {
+			// TODO(guilhermbrsp): Maybe we should rollback the creation of the new scheduler version if some error happens here
+			logger.Error("error enqueuing switch active version operation", zap.Error(err))
+			return fmt.Errorf("error enqueuing switch active version operation: %w", err)
+		}
+		return nil
+	}
+	err := ex.schedulerManager.CreateNewSchedulerVersionInTransaction(ctx, newScheduler, transactionFunc)
 	if err != nil {
 		logger.Error("error creating new scheduler version in db", zap.Error(err))
 		return fmt.Errorf("error creating new scheduler version in db: %w", err)
 	}
 	return nil
-}
-
-func (ex *CreateNewSchedulerVersionExecutor) enqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) (*operation.Operation, error) {
-	switchActiveVersionOp, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler, replacePods)
-	if err != nil {
-		// TODO(guilhermbrsp): Maybe we should rollback the creation of the new scheduler version if some error happens here
-		logger.Error("error enqueuing switch active version operation", zap.Error(err))
-		return nil, fmt.Errorf("error enqueuing switch active version operation: %w", err)
-	}
-	return switchActiveVersionOp, nil
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) populateSchedulerNewVersion(newScheduler *entities.Scheduler, currentVersion string, isMajorVersion bool) error {
