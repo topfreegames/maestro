@@ -86,7 +86,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		}
 	}
 
-	err = ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger)
+	err = ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
 		return err
 	}
@@ -103,9 +103,9 @@ func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 	return OperationName
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger) error {
+func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) error {
 	transactionFunc := func(ctx context.Context) error {
-		_, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler)
+		_, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler, replacePods)
 		if err != nil {
 			// TODO(guilhermbrsp): Maybe we should rollback the creation of the new scheduler version if some error happens here
 			logger.Error("error enqueuing switch active version operation", zap.Error(err))
