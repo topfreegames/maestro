@@ -162,7 +162,7 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 
 	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, opDef)
 	if err != nil {
-		return nil, fmt.Errorf("failed to schedule 'create new scheduler version' operation: %w", err)
+		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)
 	}
 
 	return op, nil
