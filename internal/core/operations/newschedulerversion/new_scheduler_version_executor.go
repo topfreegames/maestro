@@ -52,7 +52,6 @@ func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfa
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
-
 	logger := zap.L().With(
 		zap.String("scheduler_name", op.SchedulerName),
 		zap.String("operation_definition", op.DefinitionName),
@@ -90,7 +89,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		return err
 	}
 
-	switchActiveVersionOp, err := ex.enqueueSwitchActiveVersionOperation(ctx, newScheduler, logger)
+	switchActiveVersionOp, err := ex.enqueueSwitchActiveVersionOperation(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
 		return err
 	}
@@ -116,8 +115,8 @@ func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersion(ctx conte
 	return nil
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) enqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger) (*operation.Operation, error) {
-	switchActiveVersionOp, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler)
+func (ex *CreateNewSchedulerVersionExecutor) enqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) (*operation.Operation, error) {
+	switchActiveVersionOp, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler, replacePods)
 	if err != nil {
 		// TODO(guilhermbrsp): Maybe we should rollback the creation of the new scheduler version if some error happens here
 		logger.Error("error enqueuing switch active version operation", zap.Error(err))

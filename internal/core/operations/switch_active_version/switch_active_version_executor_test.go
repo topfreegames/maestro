@@ -79,10 +79,11 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 
 	definition := &switch_active_version.SwitchActiveVersionDefinition{
 		NewActiveScheduler: newScheduler,
+		ReplacePods:        true,
 	}
 	maxSurge := 3
 
-	t.Run("should succeed - Execute switch active version operation", func(t *testing.T) {
+	t.Run("should succeed - Execute switch active version operation replacing pods", func(t *testing.T) {
 		mocks := newMockRoomAndSchedulerManager(mockCtrl)
 		mocks.roomManager.EXPECT().SchedulerMaxSurge(gomock.Any(), gomock.Any()).Return(3, nil)
 
@@ -127,6 +128,20 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 		err = executor.Execute(context.Background(), &operation.Operation{}, definition)
+		require.NoError(t, err)
+	})
+
+	t.Run("should succeed - Execute switch active version operation not replacing pods", func(t *testing.T) {
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
+		noReplaceDefinition := &switch_active_version.SwitchActiveVersionDefinition{
+			NewActiveScheduler: newScheduler,
+			ReplacePods:        false,
+		}
+
+		mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
+
+		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+		err = executor.Execute(context.Background(), &operation.Operation{}, noReplaceDefinition)
 		require.NoError(t, err)
 	})
 
@@ -240,6 +255,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 	newScheduler := newValidScheduler()
 	definition := &switch_active_version.SwitchActiveVersionDefinition{
 		NewActiveScheduler: newScheduler,
+		ReplacePods:        true,
 	}
 
 	t.Run("should succeed - Execute on error if operation finishes (no created rooms)", func(t *testing.T) {
