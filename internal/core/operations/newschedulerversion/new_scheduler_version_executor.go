@@ -52,7 +52,6 @@ func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfa
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
-
 	logger := zap.L().With(
 		zap.String("scheduler_name", op.SchedulerName),
 		zap.String("operation_definition", op.DefinitionName),
