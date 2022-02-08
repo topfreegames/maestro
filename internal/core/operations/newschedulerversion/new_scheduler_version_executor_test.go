@@ -102,7 +102,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
 
 		// mocks for SchedulerManager CreateNewSchedulerVersion method
-		mocksForExecutor.schedulerStorage.EXPECT().CreateSchedulerVersionWithTransactionFunc(gomock.Any(), &newSchedulerWithNewVersion, gomock.Any())
+		mocksForExecutor.schedulerStorage.EXPECT().RunWithTransaction(gomock.Any(), gomock.Any())
 
 		// mocks for RoomManager CreateRoom
 		mocksForExecutor.portAllocator.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return([]int32{8080}, nil)
@@ -178,7 +178,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		mocksForExecutor.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 
 		// mocks for SchedulerManager CreateNewSchedulerVersion method
-		mocksForExecutor.schedulerStorage.EXPECT().CreateSchedulerVersionWithTransactionFunc(gomock.Any(), &newSchedulerWithNewVersion, gomock.Any())
+		mocksForExecutor.schedulerStorage.EXPECT().RunWithTransaction(gomock.Any(), gomock.Any())
 
 		result := executor.Execute(context.Background(), operation, operationDef)
 
@@ -206,7 +206,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		mocksForExecutor.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 
 		// mocks for SchedulerManager CreateNewSchedulerVersion method
-		mocksForExecutor.schedulerStorage.EXPECT().CreateSchedulerVersionWithTransactionFunc(gomock.Any(), &newSchedulerWithNewVersion, gomock.Any()).Return(errors.NewErrUnexpected("some error"))
+		mocksForExecutor.schedulerStorage.EXPECT().RunWithTransaction(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some error"))
 
 		result := executor.Execute(context.Background(), operation, operationDef)
 

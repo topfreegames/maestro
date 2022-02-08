@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
@@ -127,7 +129,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 	t.Run("with valid scheduler it returns no error when creating it", func(t *testing.T) {
 		scheduler := newValidScheduler()
 
-		schedulerStorage.EXPECT().CreateSchedulerVersion(ctx, scheduler).Return(nil)
+		schedulerStorage.EXPECT().CreateSchedulerVersion(ctx, ports.TransactionID(""), scheduler).Return(nil)
 
 		err := schedulerManager.CreateNewSchedulerVersion(ctx, scheduler)
 		require.NoError(t, err)
@@ -136,7 +138,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 	t.Run("with valid scheduler it returns with error if some error occurs when creating new version on storage", func(t *testing.T) {
 		scheduler := newValidScheduler()
 
-		schedulerStorage.EXPECT().CreateSchedulerVersion(ctx, scheduler).Return(errors.NewErrUnexpected("some error"))
+		schedulerStorage.EXPECT().CreateSchedulerVersion(ctx, ports.TransactionID(""), scheduler).Return(errors.NewErrUnexpected("some error"))
 
 		err := schedulerManager.CreateNewSchedulerVersion(ctx, scheduler)
 		require.Error(t, err, "some error")
@@ -146,53 +148,6 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		scheduler := newInvalidScheduler()
 
 		err := schedulerManager.CreateNewSchedulerVersion(ctx, scheduler)
-		require.Error(t, err)
-	})
-
-}
-
-func TestCreateNewSchedulerVersionInTransaction(t *testing.T) {
-	err := validations.RegisterValidations()
-	if err != nil {
-		t.Errorf("unexpected error %d'", err)
-	}
-
-	ctx := context.Background()
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-	schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-	operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-	operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-	operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-	config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-	operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
-	schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
-	transactionFunc := func(ctx context.Context) error {
-		return nil
-	}
-
-	t.Run("with valid scheduler it returns no error when creating it", func(t *testing.T) {
-		scheduler := newValidScheduler()
-
-		schedulerStorage.EXPECT().CreateSchedulerVersionWithTransactionFunc(ctx, scheduler, gomock.Any()).Return(nil)
-
-		err := schedulerManager.CreateNewSchedulerVersionWithTransaction(ctx, scheduler, transactionFunc)
-		require.NoError(t, err)
-	})
-
-	t.Run("with valid scheduler it returns with error if some error occurs when creating new version on storage", func(t *testing.T) {
-		scheduler := newValidScheduler()
-
-		schedulerStorage.EXPECT().CreateSchedulerVersionWithTransactionFunc(ctx, scheduler, gomock.Any()).Return(errors.NewErrUnexpected("some error"))
-
-		err := schedulerManager.CreateNewSchedulerVersionWithTransaction(ctx, scheduler, transactionFunc)
-		require.Error(t, err, "some error")
-	})
-
-	t.Run("with invalid scheduler it return invalid scheduler error", func(t *testing.T) {
-		scheduler := newInvalidScheduler()
-
-		err := schedulerManager.CreateNewSchedulerVersionWithTransaction(ctx, scheduler, transactionFunc)
 		require.Error(t, err)
 	})
 

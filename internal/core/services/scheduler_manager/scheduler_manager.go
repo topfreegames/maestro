@@ -90,20 +90,32 @@ func (s *SchedulerManager) CreateNewSchedulerVersion(ctx context.Context, schedu
 		return fmt.Errorf("failing in creating schedule: %w", err)
 	}
 
-	err = s.schedulerStorage.CreateSchedulerVersion(ctx, scheduler)
+	err = s.schedulerStorage.CreateSchedulerVersion(ctx, "", scheduler)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *SchedulerManager) CreateNewSchedulerVersionWithTransaction(ctx context.Context, scheduler *entities.Scheduler, transactionFunc func(ctx context.Context) error) error {
+func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error {
 	err := scheduler.Validate()
 	if err != nil {
 		return fmt.Errorf("failing in creating schedule: %w", err)
 	}
 
-	err = s.schedulerStorage.CreateSchedulerVersionWithTransactionFunc(ctx, scheduler, transactionFunc)
+	err = s.schedulerStorage.RunWithTransaction(ctx, func(transactionId ports.TransactionID) error {
+		err := s.schedulerStorage.CreateSchedulerVersion(ctx, transactionId, scheduler)
+		if err != nil {
+			return err
+		}
+
+		_, err = s.EnqueueSwitchActiveVersionOperation(ctx, scheduler, replacePods)
+		if err != nil {
+			return fmt.Errorf("error enqueuing switch active version operation: %w", err)
+		}
+		return nil
+
+	})
 	if err != nil {
 		return err
 	}

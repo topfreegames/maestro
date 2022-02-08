@@ -104,15 +104,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) error {
-	transactionFunc := func(ctx context.Context) error {
-		_, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler, replacePods)
-		if err != nil {
-			logger.Error("error enqueuing switch active version operation", zap.Error(err))
-			return fmt.Errorf("error enqueuing switch active version operation: %w", err)
-		}
-		return nil
-	}
-	err := ex.schedulerManager.CreateNewSchedulerVersionWithTransaction(ctx, newScheduler, transactionFunc)
+	err := ex.schedulerManager.CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx, newScheduler, replacePods)
 	if err != nil {
 		logger.Error("error creating new scheduler version in db", zap.Error(err))
 		return fmt.Errorf("error creating new scheduler version in db: %w", err)
