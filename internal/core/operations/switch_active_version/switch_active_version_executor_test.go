@@ -255,6 +255,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 	newScheduler := newValidScheduler()
 	definition := &switch_active_version.SwitchActiveVersionDefinition{
 		NewActiveScheduler: newScheduler,
+		ReplacePods:        true,
 	}
 
 	t.Run("should succeed - Execute on error if operation finishes (no created rooms)", func(t *testing.T) {

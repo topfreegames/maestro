@@ -35,5 +35,5 @@ type SchedulerManager interface {
 	GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error)
 	IsMajorVersionUpdate(currentScheduler, newScheduler *entities.Scheduler) bool
 	CreateNewSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
-	EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler) (*operation.Operation, error)
+	EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error)
 }

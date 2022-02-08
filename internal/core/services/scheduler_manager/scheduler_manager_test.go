@@ -431,7 +431,7 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(nil)
 		operationFlow.EXPECT().InsertOperationID(ctx, scheduler.Name, gomock.Any()).Return(nil)
 
-		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler)
+		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler, true)
 		require.NoError(t, err)
 		require.NotNil(t, op)
 		require.NotNil(t, op.ID)
@@ -457,7 +457,7 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
-		_, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler)
+		_, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler, true)
 		require.Error(t, err)
 
 	})
@@ -481,7 +481,7 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 
 		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
 
-		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler)
+		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler, true)
 		require.Nil(t, op)
 		require.ErrorIs(t, err, errors.ErrUnexpected)
 		require.Contains(t, err.Error(), "failed to schedule switch_active_version operation:")

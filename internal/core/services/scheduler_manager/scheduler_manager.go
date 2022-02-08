@@ -162,12 +162,12 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 	return op, nil
 }
 
-func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler) (*operation.Operation, error) {
+func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error) {
 	err := newScheduler.Validate()
 	if err != nil {
 		return nil, err
 	}
-	opDef := &switch_active_version.SwitchActiveVersionDefinition{NewActiveScheduler: *newScheduler}
+	opDef := &switch_active_version.SwitchActiveVersionDefinition{NewActiveScheduler: *newScheduler, ReplacePods: replacePods}
 
 	op, err := s.operationManager.CreateOperation(ctx, newScheduler.Name, opDef)
 	if err != nil {
