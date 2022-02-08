@@ -107,7 +107,6 @@ func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueue
 	transactionFunc := func(ctx context.Context) error {
 		_, err := ex.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, newScheduler, replacePods)
 		if err != nil {
-			// TODO(guilhermbrsp): Maybe we should rollback the creation of the new scheduler version if some error happens here
 			logger.Error("error enqueuing switch active version operation", zap.Error(err))
 			return fmt.Errorf("error enqueuing switch active version operation: %w", err)
 		}
