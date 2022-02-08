@@ -116,6 +116,7 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 	defer cancelFunc()
 
 	if err != nil {
+		_ = m.DeleteRoom(ctx, room)
 		return nil, nil, err
 	}
 

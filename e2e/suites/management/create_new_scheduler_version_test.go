@@ -209,7 +209,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Fail - When scheduler when sending invalid request to update endpoint it fails fast", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName , err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
 
 			invalidUpdateRequest := &maestroApiV1.NewSchedulerVersionRequest{}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -224,6 +224,101 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
 			require.Equal(t, "v1.1", getSchedulerResponse.Scheduler.Version)
+		})
+
+		t.Run("Should Fail - image of GRU is invalid. Operation fails, version and pods are unchanged", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+
+			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+
+			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
+				Name:                   schedulerName,
+				Game:                   "test",
+				MaxSurge:               "10%",
+				TerminationGracePeriod: 15,
+				Containers: []*maestroApiV1.Container{
+					{
+						Name:  "example-update",
+						Image: "INVALID_IMAGE_FOR_GRU",
+						Command: []string{"/bin/sh"},
+						ImagePullPolicy: "Always",
+						Environment: []*maestroApiV1.ContainerEnvironment{
+							{
+								Name:  "ROOMS_API_ADDRESS",
+								Value: maestro.RoomsApiServer.ContainerInternalAddress,
+							},
+						},
+						Requests: &maestroApiV1.ContainerResources{
+							Memory: "20Mi",
+							Cpu:    "10m",
+						},
+						Limits: &maestroApiV1.ContainerResources{
+							Memory: "20Mi",
+							Cpu:    "10m",
+						},
+						Ports: []*maestroApiV1.ContainerPort{
+							{
+								Name:     "default",
+								Protocol: "tcp",
+								Port:     80,
+							},
+						},
+					},
+				},
+				PortRange: &maestroApiV1.PortRange{
+					Start: 80,
+					End:   8000,
+				},
+			}
+			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
+
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
+			require.NoError(t, err)
+			require.NotNil(t, updateResponse.OperationId, schedulerName)
+
+			waitForOperationToFail(t, managementApiClient, schedulerName, "create_new_scheduler_version")
+
+			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
+			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
+
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
+			require.NoError(t, err)
+
+			require.Eventually(t, func() bool {
+				podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, podsAfterUpdate.Items)
+
+				if len(podsAfterUpdate.Items) == 2 {
+					return true
+				}
+
+				return false
+			}, 2*time.Minute, time.Second)
+
+			podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+			require.NotEmpty(t, podsAfterUpdate.Items)
+
+			// Pod's haven't change
+			for i := 0; i < 2; i++ {
+				require.Equal(t, podsAfterUpdate.Items[i].Name, podsBeforeUpdate.Items[i].Name)
+			}
+			// version didn't change
+			require.Equal(t, "v1.1", getSchedulerResponse.Scheduler.Version)
+
+			getVersionsRequest := &maestroApiV1.GetSchedulerVersionsRequest{SchedulerName: schedulerName}
+			getVersionsResponse := &maestroApiV1.GetSchedulerVersionsResponse{}
+
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/versions", schedulerName), getVersionsRequest, getVersionsResponse)
+			require.NoError(t, err)
+
+			// No version was created
+			require.Len(t, getVersionsResponse.Versions, 1)
+
 		})
 
 		// TODO(guilhermecarvalho): when update failed flow is implemented, we should add extra test cases here
