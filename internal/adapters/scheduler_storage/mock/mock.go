@@ -11,6 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	entities "github.com/topfreegames/maestro/internal/core/entities"
 	filters "github.com/topfreegames/maestro/internal/core/filters"
+	ports "github.com/topfreegames/maestro/internal/core/ports"
 )
 
 // MockSchedulerStorage is a mock of SchedulerStorage interface.
@@ -51,17 +52,17 @@ func (mr *MockSchedulerStorageMockRecorder) CreateScheduler(ctx, scheduler inter
 }
 
 // CreateSchedulerVersion mocks base method.
-func (m *MockSchedulerStorage) CreateSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error {
+func (m *MockSchedulerStorage) CreateSchedulerVersion(ctx context.Context, transactionID ports.TransactionID, scheduler *entities.Scheduler) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateSchedulerVersion", ctx, scheduler)
+	ret := m.ctrl.Call(m, "CreateSchedulerVersion", ctx, transactionID, scheduler)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateSchedulerVersion indicates an expected call of CreateSchedulerVersion.
-func (mr *MockSchedulerStorageMockRecorder) CreateSchedulerVersion(ctx, scheduler interface{}) *gomock.Call {
+func (mr *MockSchedulerStorageMockRecorder) CreateSchedulerVersion(ctx, transactionID, scheduler interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSchedulerVersion", reflect.TypeOf((*MockSchedulerStorage)(nil).CreateSchedulerVersion), ctx, scheduler)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSchedulerVersion", reflect.TypeOf((*MockSchedulerStorage)(nil).CreateSchedulerVersion), ctx, transactionID, scheduler)
 }
 
 // DeleteScheduler mocks base method.
@@ -151,6 +152,20 @@ func (m *MockSchedulerStorage) GetSchedulers(ctx context.Context, names []string
 func (mr *MockSchedulerStorageMockRecorder) GetSchedulers(ctx, names interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulers", reflect.TypeOf((*MockSchedulerStorage)(nil).GetSchedulers), ctx, names)
+}
+
+// RunWithTransaction mocks base method.
+func (m *MockSchedulerStorage) RunWithTransaction(ctx context.Context, transactionFunc func(ports.TransactionID) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunWithTransaction", ctx, transactionFunc)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RunWithTransaction indicates an expected call of RunWithTransaction.
+func (mr *MockSchedulerStorageMockRecorder) RunWithTransaction(ctx, transactionFunc interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunWithTransaction", reflect.TypeOf((*MockSchedulerStorage)(nil).RunWithTransaction), ctx, transactionFunc)
 }
 
 // UpdateScheduler mocks base method.

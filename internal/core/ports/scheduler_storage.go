@@ -38,5 +38,8 @@ type SchedulerStorage interface {
 	CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error
-	CreateSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
+	CreateSchedulerVersion(ctx context.Context, transactionID TransactionID, scheduler *entities.Scheduler) error
+	RunWithTransaction(ctx context.Context, transactionFunc func(transactionId TransactionID) error) error
 }
+
+type TransactionID string

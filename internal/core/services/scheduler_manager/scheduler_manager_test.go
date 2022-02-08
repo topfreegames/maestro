@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
@@ -127,7 +129,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 	t.Run("with valid scheduler it returns no error when creating it", func(t *testing.T) {
 		scheduler := newValidScheduler()
 
-		schedulerStorage.EXPECT().CreateSchedulerVersion(ctx, scheduler).Return(nil)
+		schedulerStorage.EXPECT().CreateSchedulerVersion(ctx, ports.TransactionID(""), scheduler).Return(nil)
 
 		err := schedulerManager.CreateNewSchedulerVersion(ctx, scheduler)
 		require.NoError(t, err)
@@ -136,7 +138,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 	t.Run("with valid scheduler it returns with error if some error occurs when creating new version on storage", func(t *testing.T) {
 		scheduler := newValidScheduler()
 
-		schedulerStorage.EXPECT().CreateSchedulerVersion(ctx, scheduler).Return(errors.NewErrUnexpected("some error"))
+		schedulerStorage.EXPECT().CreateSchedulerVersion(ctx, ports.TransactionID(""), scheduler).Return(errors.NewErrUnexpected("some error"))
 
 		err := schedulerManager.CreateNewSchedulerVersion(ctx, scheduler)
 		require.Error(t, err, "some error")

@@ -26,6 +26,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/go-pg/pg"
@@ -41,11 +43,15 @@ var (
 )
 
 type schedulerStorage struct {
-	db *pg.DB
+	db              *pg.DB
+	transactionsMap map[ports.TransactionID]*pg.Tx
 }
 
 func NewSchedulerStorage(opts *pg.Options) *schedulerStorage {
-	return &schedulerStorage{db: pg.Connect(opts)}
+	return &schedulerStorage{
+		db:              pg.Connect(opts),
+		transactionsMap: map[ports.TransactionID]*pg.Tx{},
+	}
 }
 
 const (
@@ -197,7 +203,7 @@ func (s schedulerStorage) CreateScheduler(ctx context.Context, scheduler *entiti
 		}
 		return errors.NewErrUnexpected("error creating scheduler %s", dbScheduler.Name).WithError(err)
 	}
-	err = s.CreateSchedulerVersion(ctx, scheduler)
+	err = s.CreateSchedulerVersion(ctx, "", scheduler)
 	if err != nil {
 		return errors.NewErrUnexpected("error creating first scheduler version %s", dbScheduler.Name).WithError(err)
 	}
@@ -230,10 +236,21 @@ func (s schedulerStorage) DeleteScheduler(ctx context.Context, scheduler *entiti
 	return nil
 }
 
-func (s schedulerStorage) CreateSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error {
-	client := s.db.WithContext(ctx)
+func (s schedulerStorage) CreateSchedulerVersion(ctx context.Context, transactionID ports.TransactionID, scheduler *entities.Scheduler) error {
 	dbScheduler := NewDBScheduler(scheduler)
-	_, err := client.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+	var err error
+	if isInTransactionalContext(transactionID) {
+		txClient, ok := s.transactionsMap[transactionID]
+		if !ok {
+			return errors.NewErrNotFound("transaction %s not found", transactionID)
+		}
+		_, err = txClient.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+
+	} else {
+		client := s.db.WithContext(ctx)
+		_, err = client.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+	}
+
 	if err != nil {
 		if strings.Contains(err.Error(), "violates foreign key constraint") {
 			return errors.NewErrUnexpected("error creating version %s for non existent scheduler \"%s\"", dbScheduler.Version, dbScheduler.Name)
@@ -241,4 +258,43 @@ func (s schedulerStorage) CreateSchedulerVersion(ctx context.Context, scheduler 
 		return errors.NewErrUnexpected("error creating scheduler %s version %s", dbScheduler.Name, dbScheduler.Version).WithError(err)
 	}
 	return nil
+}
+
+func (s schedulerStorage) RunWithTransaction(ctx context.Context, transactionFunc func(transactionId ports.TransactionID) error) error {
+	client := s.db.WithContext(ctx)
+
+	transaction, err := client.Begin()
+	if err != nil {
+		return errors.NewErrUnexpected("error starting transaction").WithError(err)
+	}
+
+	transactionID := ports.TransactionID(uuid.New().String())
+	s.transactionsMap[transactionID] = transaction
+
+	defer func() {
+		if err := recover(); err != nil {
+			s.rollbackTransaction(transaction, transactionID)
+			panic(err)
+		}
+	}()
+
+	if err = transactionFunc(transactionID); err != nil {
+		s.rollbackTransaction(transaction, transactionID)
+		return err
+	}
+	return s.commitTransaction(transaction, transactionID)
+}
+
+func (s schedulerStorage) rollbackTransaction(transaction *pg.Tx, transactionID ports.TransactionID) {
+	delete(s.transactionsMap, transactionID)
+	_ = transaction.Rollback()
+}
+
+func (s schedulerStorage) commitTransaction(transaction *pg.Tx, transactionID ports.TransactionID) error {
+	delete(s.transactionsMap, transactionID)
+	return transaction.Commit()
+}
+
+func isInTransactionalContext(transactionID ports.TransactionID) bool {
+	return transactionID != ""
 }

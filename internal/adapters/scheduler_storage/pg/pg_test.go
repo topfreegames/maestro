@@ -33,6 +33,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	golangMigrate "github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -265,7 +267,7 @@ func TestSchedulerStorage_GetSchedulerWithFilter(t *testing.T) {
 
 		err := storage.CreateScheduler(context.Background(), expectedScheduler)
 		require.NoError(t, err)
-		err = storage.CreateSchedulerVersion(context.Background(), expectedScheduler)
+		err = storage.CreateSchedulerVersion(context.Background(), "", expectedScheduler)
 		require.NoError(t, err)
 
 		actualScheduler, err := storage.GetSchedulerWithFilter(context.Background(), &filters.SchedulerFilter{
@@ -292,7 +294,7 @@ func TestSchedulerStorage_GetSchedulerWithFilter(t *testing.T) {
 		storage := NewSchedulerStorage(db.Options())
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), "", expectedScheduler))
 
 		_, err := db.Exec("UPDATE schedulers SET yaml = 'invalid yaml' WHERE name = 'scheduler' and version = 'v1' ")
 		require.NoError(t, err)
@@ -328,7 +330,7 @@ func TestSchedulerStorage_GetSchedulerVersions(t *testing.T) {
 		storage := NewSchedulerStorage(db.Options())
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), "", expectedScheduler))
 
 		versions, err := storage.GetSchedulerVersions(context.Background(), expectedScheduler.Name)
 
@@ -352,7 +354,7 @@ func TestSchedulerStorage_CreateScheduler(t *testing.T) {
 		storage := NewSchedulerStorage(db.Options())
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), "", expectedScheduler))
 
 		dbScheduler, dbVersions := getDBSchedulerAndVersions(t, db, expectedScheduler.Name)
 		require.NotNil(t, dbScheduler)
@@ -365,7 +367,7 @@ func TestSchedulerStorage_CreateScheduler(t *testing.T) {
 		storage := NewSchedulerStorage(db.Options())
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), "", expectedScheduler))
 		err := storage.CreateScheduler(context.Background(), expectedScheduler)
 		require.Error(t, err)
 		require.ErrorIs(t, errors.ErrAlreadyExists, err)
@@ -378,7 +380,7 @@ func TestSchedulerStorage_UpdateScheduler(t *testing.T) {
 		storage := NewSchedulerStorage(db.Options())
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), "", expectedScheduler))
 
 		expectedScheduler.RollbackVersion = "v1"
 		expectedScheduler.Spec.Version = "v2"
@@ -430,14 +432,79 @@ func TestSchedulerStorage_DeleteScheduler(t *testing.T) {
 }
 
 func TestSchedulerStorage_CreateSchedulerVersion(t *testing.T) {
-	t.Run("should succeed - scheduler version created for scheduler", func(t *testing.T) {
+	var firstVersionScheduler = entities.Scheduler{
+		Name:            "scheduler",
+		Game:            "game",
+		State:           entities.StateCreating,
+		MaxSurge:        "10%",
+		RollbackVersion: "",
+		Spec: game_room.Spec{
+			Version:                "v1",
+			TerminationGracePeriod: 60,
+			Containers:             []game_room.Container{},
+			Toleration:             "toleration",
+			Affinity:               "affinity",
+		},
+		PortRange: &entities.PortRange{
+			Start: 40000,
+			End:   60000,
+		},
+	}
+	newVersionScheduler := firstVersionScheduler
+	newVersionScheduler.Spec.Version = "v2"
+
+	t.Run("should succeed - scheduler version created for scheduler without transactional context", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
 
-		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-		err := storage.CreateSchedulerVersion(context.Background(), expectedScheduler)
+		require.NoError(t, storage.CreateScheduler(context.Background(), &firstVersionScheduler))
+		err := storage.CreateSchedulerVersion(context.Background(), "", &newVersionScheduler)
 		require.NoError(t, err)
-		versions, err := storage.GetSchedulerVersions(context.Background(), expectedScheduler.Name)
+		versions, err := storage.GetSchedulerVersions(context.Background(), firstVersionScheduler.Name)
+		require.NoError(t, err)
+		require.Len(t, versions, 2)
+	})
+
+	t.Run("should succeed - scheduler version created for scheduler with transactional context", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		require.NoError(t, storage.CreateScheduler(context.Background(), &firstVersionScheduler))
+
+		err := storage.RunWithTransaction(context.Background(), func(transactionId ports.TransactionID) error {
+			err := storage.CreateSchedulerVersion(context.Background(), transactionId, &newVersionScheduler)
+			return err
+		})
+		require.NoError(t, err)
+
+		versions, err := storage.GetSchedulerVersions(context.Background(), firstVersionScheduler.Name)
+		require.NoError(t, err)
+		require.Len(t, versions, 2)
+	})
+
+	t.Run("should fail - scheduler version is not created for scheduler with transactional context if some error occurs", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		require.NoError(t, storage.CreateScheduler(context.Background(), &firstVersionScheduler))
+
+		err := storage.RunWithTransaction(context.Background(), func(transactionId ports.TransactionID) error {
+			_ = storage.CreateSchedulerVersion(context.Background(), transactionId, &newVersionScheduler)
+			return errors.NewErrUnexpected("some_error")
+		})
+		require.EqualError(t, err, "some_error")
+
+		versions, err := storage.GetSchedulerVersions(context.Background(), firstVersionScheduler.Name)
+		require.NoError(t, err)
+		require.Len(t, versions, 1)
+	})
+
+	t.Run("should fail - transaction not found when using transactional context", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		require.NoError(t, storage.CreateScheduler(context.Background(), &firstVersionScheduler))
+		err := storage.CreateSchedulerVersion(context.Background(), "id-123", &newVersionScheduler)
+		require.EqualError(t, err, "transaction id-123 not found")
+		versions, err := storage.GetSchedulerVersions(context.Background(), firstVersionScheduler.Name)
 		require.NoError(t, err)
 		require.Len(t, versions, 1)
 	})
@@ -446,22 +513,89 @@ func TestSchedulerStorage_CreateSchedulerVersion(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
 
-		err := storage.CreateSchedulerVersion(context.Background(), expectedScheduler)
+		err := storage.CreateSchedulerVersion(context.Background(), "", &firstVersionScheduler)
 		require.Error(t, err)
-		require.Equal(t, err.Error(), fmt.Sprintf("error creating version %s for non existent scheduler \"%s\"", expectedScheduler.Spec.Version, expectedScheduler.Name))
+		require.Equal(t, err.Error(), fmt.Sprintf("error creating version %s for non existent scheduler \"%s\"", firstVersionScheduler.Spec.Version, expectedScheduler.Name))
 	})
 
 	t.Run("should fail - scheduler version invalid", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
 
-		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+		require.NoError(t, storage.CreateScheduler(context.Background(), &firstVersionScheduler))
 
-		expectedScheduler.Name = ""
+		firstVersionScheduler.Name = ""
 
-		err := storage.CreateSchedulerVersion(context.Background(), expectedScheduler)
+		err := storage.CreateSchedulerVersion(context.Background(), "", &firstVersionScheduler)
 		require.Error(t, err)
 	})
+}
+
+func TestSchedulerStorage_RunWithTransaction(t *testing.T) {
+
+	var firstVersionScheduler = entities.Scheduler{
+		Name:            "scheduler",
+		Game:            "game",
+		State:           entities.StateCreating,
+		MaxSurge:        "10%",
+		RollbackVersion: "",
+		Spec: game_room.Spec{
+			Version:                "v1",
+			TerminationGracePeriod: 60,
+			Containers:             []game_room.Container{},
+			Toleration:             "toleration",
+			Affinity:               "affinity",
+		},
+		PortRange: &entities.PortRange{
+			Start: 40000,
+			End:   60000,
+		},
+	}
+	secondVersionScheduler := firstVersionScheduler
+	secondVersionScheduler.Spec.Version = "v2"
+	thirdVersionScheduler := firstVersionScheduler
+	thirdVersionScheduler.Spec.Version = "v3"
+
+	t.Run("should succeed - return nil and commit operations when no error occurs", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		require.NoError(t, storage.CreateScheduler(context.Background(), &firstVersionScheduler))
+
+		err := storage.RunWithTransaction(context.Background(), func(transactionId ports.TransactionID) error {
+			err := storage.CreateSchedulerVersion(context.Background(), transactionId, &secondVersionScheduler)
+			if err != nil {
+				return err
+			}
+			err = storage.CreateSchedulerVersion(context.Background(), transactionId, &thirdVersionScheduler)
+
+			return err
+		})
+		require.NoError(t, err)
+
+		versions, err := storage.GetSchedulerVersions(context.Background(), firstVersionScheduler.Name)
+		require.NoError(t, err)
+		require.Len(t, versions, 3)
+	})
+
+	t.Run("should fail - return error and don't commit operations when some error occurs", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+		require.NoError(t, storage.CreateScheduler(context.Background(), &firstVersionScheduler))
+
+		err := storage.RunWithTransaction(context.Background(), func(transactionId ports.TransactionID) error {
+			_ = storage.CreateSchedulerVersion(context.Background(), transactionId, &secondVersionScheduler)
+
+			_ = storage.CreateSchedulerVersion(context.Background(), transactionId, &thirdVersionScheduler)
+
+			return errors.NewErrUnexpected("some_error")
+		})
+		require.EqualError(t, err, "some_error")
+
+		versions, err := storage.GetSchedulerVersions(context.Background(), firstVersionScheduler.Name)
+		require.NoError(t, err)
+		require.Len(t, versions, 1)
+	})
+
 }
 
 func assertSchedulers(t *testing.T, expectedSchedulers []*entities.Scheduler, actualSchedulers []*entities.Scheduler) {
