@@ -36,9 +36,9 @@ const OperationName = "switch_active_version"
 
 type SwitchActiveVersionDefinition struct {
 	NewActiveScheduler entities.Scheduler `json:"scheduler"`
+	ReplacePods        bool               `json:"replacePods"`
 }
 
-// ShouldExecute
 func (d *SwitchActiveVersionDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
 }
