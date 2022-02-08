@@ -148,7 +148,7 @@ func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.Remove
 func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *api.NewSchedulerVersionRequest) (*api.NewSchedulerVersionResponse, error) {
 	scheduler, _ := h.fromApiNewSchedulerVersionRequestToEntity(request)
 
-	operation, err := h.schedulerManager.CreateNewSchedulerVersionOperation(ctx, scheduler)
+	operation, err := h.schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
 
 	if err != nil {
 		if errors.Is(err, portsErrors.ErrNotFound) {

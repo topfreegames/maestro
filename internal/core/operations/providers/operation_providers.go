@@ -26,10 +26,10 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
+	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
-	"github.com/topfreegames/maestro/internal/core/operations/update_scheduler"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
@@ -50,8 +50,8 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 	definitionConstructors[test_operation.OperationName] = func() operations.Definition {
 		return &test_operation.TestOperationDefinition{}
 	}
-	definitionConstructors[update_scheduler.OperationName] = func() operations.Definition {
-		return &update_scheduler.UpdateSchedulerDefinition{}
+	definitionConstructors[newschedulerversion.OperationName] = func() operations.Definition {
+		return &newschedulerversion.CreateNewSchedulerVersionDefinition{}
 	}
 	definitionConstructors[switch_active_version.OperationName] = func() operations.Definition {
 		return &switch_active_version.SwitchActiveVersionDefinition{}
@@ -73,8 +73,8 @@ func ProvideExecutors(
 	executors[add_rooms.OperationName] = add_rooms.NewExecutor(roomManager, schedulerStorage)
 	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager)
 	executors[test_operation.OperationName] = test_operation.NewExecutor()
-	executors[update_scheduler.OperationName] = update_scheduler.NewExecutor(roomManager, schedulerManager)
 	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager)
+	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager)
 
 	return executors
 

@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package update_scheduler
+package newschedulerversion
 
 import (
 	"context"
@@ -32,23 +32,22 @@ import (
 	"go.uber.org/zap"
 )
 
-const OperationName = "update_scheduler"
+const OperationName = "create_new_scheduler_version"
 
-type UpdateSchedulerDefinition struct {
-	NewScheduler entities.Scheduler `json:"scheduler"`
+type CreateNewSchedulerVersionDefinition struct {
+	NewScheduler *entities.Scheduler `json:"scheduler"`
 }
 
-// ShouldExecute
-func (d *UpdateSchedulerDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+func (def *CreateNewSchedulerVersionDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
 }
 
-func (d *UpdateSchedulerDefinition) Name() string {
+func (def *CreateNewSchedulerVersionDefinition) Name() string {
 	return OperationName
 }
 
-func (d *UpdateSchedulerDefinition) Marshal() []byte {
-	bytes, err := json.Marshal(d)
+func (def *CreateNewSchedulerVersionDefinition) Marshal() []byte {
+	bytes, err := json.Marshal(def)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("error marshalling update scheduler operation definition")
 		return nil
@@ -57,8 +56,8 @@ func (d *UpdateSchedulerDefinition) Marshal() []byte {
 	return bytes
 }
 
-func (d *UpdateSchedulerDefinition) Unmarshal(raw []byte) error {
-	err := json.Unmarshal(raw, d)
+func (def *CreateNewSchedulerVersionDefinition) Unmarshal(raw []byte) error {
+	err := json.Unmarshal(raw, def)
 	if err != nil {
 		return fmt.Errorf("error marshalling update scheduler operation definition: %w", err)
 	}

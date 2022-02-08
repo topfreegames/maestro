@@ -864,7 +864,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 500, rr.Code)
-		require.Contains(t, rr.Body.String(), "failed to schedule 'create new scheduler version' operation")
+		require.Contains(t, rr.Body.String(), "failed to schedule create_new_scheduler_version operation")
 	})
 }
 

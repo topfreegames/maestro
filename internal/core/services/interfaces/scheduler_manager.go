@@ -25,10 +25,15 @@ package interfaces
 import (
 	"context"
 
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 )
 
 type SchedulerManager interface {
-	UpdateSchedulerConfig(ctx context.Context, scheduler *entities.Scheduler) (bool, error)
 	SwitchActiveScheduler(ctx context.Context, scheduler *entities.Scheduler) error
+	GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error)
+	IsMajorVersionUpdate(currentScheduler, newScheduler *entities.Scheduler) bool
+	CreateNewSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
+	EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error)
 }
