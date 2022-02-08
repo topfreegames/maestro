@@ -255,10 +255,14 @@ func waitForOperationToFinish(t *testing.T, managementApiClient *framework.APICl
 		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
 		require.NoError(t, err)
 
-		if len(listOperationsResponse.FinishedOperations) > 1 && listOperationsResponse.FinishedOperations[0].DefinitionName == operation {
-			return true
+		if len(listOperationsResponse.FinishedOperations) >= 1 {
+			for _, _operation := range listOperationsResponse.FinishedOperations {
+				if _operation.DefinitionName == operation {
+					return true
+				}
+			}
 		}
 
 		return false
-	}, 2*time.Minute, time.Second)
+	}, 4*time.Minute, time.Second)
 }

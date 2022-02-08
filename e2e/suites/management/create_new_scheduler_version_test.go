@@ -25,6 +25,7 @@ package management
 import (
 	"context"
 	"fmt"
+	"time"
 
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +42,7 @@ import (
 
 func TestCreateNewSchedulerVersion(t *testing.T) {
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		t.Run("Should Succeed - When scheduler spec don't change it updates the scheduler with minor version and don't replace any pod", func(t *testing.T) {
+		t.Run("Should Succeed - create minor version, no pods replaces", func(t *testing.T) {
 			t.Parallel()
 
 			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
@@ -109,117 +110,121 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
 
+			// Don't replace pods since is a minor change
 			for i := 0; i < 2; i++ {
 				require.Equal(t, podsAfterUpdate.Items[i].Name, podsBeforeUpdate.Items[i].Name)
 			}
+
+			// Switches to version v1.2.0
 			require.Equal(t, "v1.2.0", getSchedulerResponse.Scheduler.Version)
 		})
 
-		//t.Run("Should Succeed - When scheduler spec changes it updates the scheduler with major version and replace all pods", func(t *testing.T) {
-		//	t.Parallel()
-		//
-		//	schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
-		//
-		//	podsBeforeUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
-		//	require.NoError(t, err)
-		//
-		//	updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-		//		Name:                   schedulerName,
-		//		Game:                   "test",
-		//		MaxSurge:               "10%",
-		//		TerminationGracePeriod: 15,
-		//		Containers: []*maestroApiV1.Container{
-		//			{
-		//				Name:  "example-update",
-		//				Image: "alpine",
-		//				Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
-		//					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-		//					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
-		//				ImagePullPolicy: "Always",
-		//				Environment: []*maestroApiV1.ContainerEnvironment{
-		//					{
-		//						Name:  "ROOMS_API_ADDRESS",
-		//						Value: maestro.RoomsApiServer.ContainerInternalAddress,
-		//					},
-		//				},
-		//				Requests: &maestroApiV1.ContainerResources{
-		//					Memory: "20Mi",
-		//					Cpu:    "10m",
-		//				},
-		//				Limits: &maestroApiV1.ContainerResources{
-		//					Memory: "20Mi",
-		//					Cpu:    "10m",
-		//				},
-		//				Ports: []*maestroApiV1.ContainerPort{
-		//					{
-		//						Name:     "default",
-		//						Protocol: "tcp",
-		//						Port:     80,
-		//					},
-		//				},
-		//			},
-		//		},
-		//		PortRange: &maestroApiV1.PortRange{
-		//			Start: 80,
-		//			End:   8000,
-		//		},
-		//	}
-		//	updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
-		//
-		//	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
-		//	require.NoError(t, err)
-		//	require.NotNil(t, updateResponse.OperationId, schedulerName)
-		//
-		//	waitForOperationToFinish(t, managementApiClient, schedulerName, "update_scheduler")
-		//
-		//	getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
-		//	getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
-		//
-		//	err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
-		//	require.NoError(t, err)
-		//
-		//	require.Eventually(t, func() bool {
-		//		podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
-		//		require.NoError(t, err)
-		//		require.NotEmpty(t, podsAfterUpdate.Items)
-		//
-		//		if len(podsAfterUpdate.Items) == 2 {
-		//			return true
-		//		}
-		//
-		//		return false
-		//	}, 2*time.Minute, time.Second)
-		//
-		//	podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
-		//	require.NoError(t, err)
-		//	require.NotEmpty(t, podsAfterUpdate.Items)
-		//
-		//	for i := 0; i < 2; i++ {
-		//		require.NotEqual(t, podsAfterUpdate.Items[i].Spec, podsBeforeUpdate.Items[i].Spec)
-		//		require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
-		//	}
-		//	require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Version)
-		//})
-		//
-		//t.Run("Should Fail - When scheduler when sending invalid request to update endpoint it fails fast", func(t *testing.T) {
-		//	t.Parallel()
-		//
-		//	schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
-		//
-		//	invalidUpdateRequest := &maestroApiV1.NewSchedulerVersionRequest{}
-		//	updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
-		//
-		//	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), invalidUpdateRequest, updateResponse)
-		//	require.Error(t, err)
-		//	require.Contains(t, err.Error(), "failed with status 500")
-		//
-		//	getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
-		//	getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
-		//
-		//	err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
-		//	require.NoError(t, err)
-		//	require.Equal(t, "v1.1", getSchedulerResponse.Scheduler.Version)
-		//})
+		t.Run("Should Succeed - create major change, all pods are changed", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+
+			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+
+			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
+				Name:                   schedulerName,
+				Game:                   "test",
+				MaxSurge:               "10%",
+				TerminationGracePeriod: 15,
+				Containers: []*maestroApiV1.Container{
+					{
+						Name:  "example-update",
+						Image: "alpine",
+						Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+							"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+							"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
+						ImagePullPolicy: "Always",
+						Environment: []*maestroApiV1.ContainerEnvironment{
+							{
+								Name:  "ROOMS_API_ADDRESS",
+								Value: maestro.RoomsApiServer.ContainerInternalAddress,
+							},
+						},
+						Requests: &maestroApiV1.ContainerResources{
+							Memory: "20Mi",
+							Cpu:    "10m",
+						},
+						Limits: &maestroApiV1.ContainerResources{
+							Memory: "20Mi",
+							Cpu:    "10m",
+						},
+						Ports: []*maestroApiV1.ContainerPort{
+							{
+								Name:     "default",
+								Protocol: "tcp",
+								Port:     80,
+							},
+						},
+					},
+				},
+				PortRange: &maestroApiV1.PortRange{
+					Start: 80,
+					End:   8000,
+				},
+			}
+			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
+
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
+			require.NoError(t, err)
+			require.NotNil(t, updateResponse.OperationId, schedulerName)
+
+			waitForOperationToFinish(t, managementApiClient, schedulerName, "create_new_scheduler_version")
+			waitForOperationToFinish(t, managementApiClient, schedulerName, "switch_active_version")
+
+			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
+			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
+
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
+			require.NoError(t, err)
+
+			require.Eventually(t, func() bool {
+				podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, podsAfterUpdate.Items)
+
+				if len(podsAfterUpdate.Items) == 2 {
+					return true
+				}
+
+				return false
+			}, 2*time.Minute, time.Second)
+
+			podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+			require.NotEmpty(t, podsAfterUpdate.Items)
+
+			for i := 0; i < 2; i++ {
+				require.NotEqual(t, podsAfterUpdate.Items[i].Spec, podsBeforeUpdate.Items[i].Spec)
+				require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
+			}
+			require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Version)
+		})
+
+		t.Run("Should Fail - When scheduler when sending invalid request to update endpoint it fails fast", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName , err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+
+			invalidUpdateRequest := &maestroApiV1.NewSchedulerVersionRequest{}
+			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
+
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), invalidUpdateRequest, updateResponse)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "failed with status 500")
+
+			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
+			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
+
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
+			require.NoError(t, err)
+			require.Equal(t, "v1.1", getSchedulerResponse.Scheduler.Version)
+		})
 
 		// TODO(guilhermecarvalho): when update failed flow is implemented, we should add extra test cases here
 
