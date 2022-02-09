@@ -27,9 +27,10 @@ import (
 	"fmt"
 	"time"
 
+	"testing"
+
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 
 	"github.com/go-redis/redis/v8"
 
@@ -241,9 +242,9 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 				TerminationGracePeriod: 15,
 				Containers: []*maestroApiV1.Container{
 					{
-						Name:  "example-update",
-						Image: "INVALID_IMAGE_FOR_GRU",
-						Command: []string{"/bin/sh"},
+						Name:            "example-update",
+						Image:           "INVALID_IMAGE_FOR_GRU",
+						Command:         []string{"/bin/sh"},
 						ImagePullPolicy: "Always",
 						Environment: []*maestroApiV1.ContainerEnvironment{
 							{
