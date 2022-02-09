@@ -86,7 +86,7 @@ func (ae *AddRoomsExecutor) Name() string {
 func (ae *AddRoomsExecutor) createRoom(ctx context.Context, index int32, scheduler *entities.Scheduler, logger *zap.Logger, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 
-	_, _, err := ae.roomManager.CreateRoom(ctx, *scheduler)
+	_, _, err := ae.roomManager.CreateRoomAndWaitForReadiness(ctx, *scheduler)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error while creating room number %d", index), zap.Error(err))
 		reportAddRoomOperationExecutionFailed(scheduler.Name, ae.Name())

@@ -224,3 +224,64 @@ func addStubRequestToMockedGrpcServer(stubFileName string) error {
 	}
 	return nil
 }
+
+func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.MaestroInstance, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface) (string, error) {
+	// Create scheduler
+	schedulerName, err := createSchedulerAndWaitForIt(
+		t,
+		maestro,
+		managementApiClient,
+		kubeClient,
+		[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+			"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
+	)
+
+	// Add rooms to the created scheduler
+	// TODO(guilhermecarvalho): when autoscaling is implemented, this part of the test can be deleted
+	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 2}
+	addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
+	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+	require.NoError(t, err)
+
+	waitForOperationToFinish(t, managementApiClient, schedulerName, "add_rooms")
+	return schedulerName, err
+}
+
+func waitForOperationToFinish(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operation string) {
+	require.Eventually(t, func() bool {
+		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
+		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
+		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		require.NoError(t, err)
+
+		if len(listOperationsResponse.FinishedOperations) >= 1 {
+			for _, _operation := range listOperationsResponse.FinishedOperations {
+				if _operation.DefinitionName == operation {
+					return true
+				}
+			}
+		}
+
+		return false
+	}, 4*time.Minute, time.Second)
+}
+
+func waitForOperationToFail(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operation string) {
+	require.Eventually(t, func() bool {
+		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
+		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
+		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		require.NoError(t, err)
+
+		if len(listOperationsResponse.FinishedOperations) >= 1 {
+			for _, _operation := range listOperationsResponse.FinishedOperations {
+				if _operation.DefinitionName == operation && _operation.Status == "error" {
+					return true
+				}
+			}
+		}
+
+		return false
+	}, 4*time.Minute, time.Second)
+}

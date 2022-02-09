@@ -32,11 +32,11 @@ import (
 )
 
 type RoomManager interface {
-	DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
+	DeleteRoomAndWaitForRoomTerminated(ctx context.Context, gameRoom *game_room.GameRoom) error
 	SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error)
 	ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error)
 	CleanRoomState(ctx context.Context, schedulerName, roomId string) error
 	UpdateRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error
 	UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
-	CreateRoom(ctx context.Context, scheduler entities.Scheduler) (*game_room.GameRoom, *game_room.Instance, error)
+	CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler) (*game_room.GameRoom, *game_room.Instance, error)
 }

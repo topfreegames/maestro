@@ -57,7 +57,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 	logger.Debug("start deleting rooms", zap.Int("amount", len(rooms)))
 
 	for _, room := range rooms {
-		err = e.roomManager.DeleteRoom(ctx, room)
+		err = e.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))

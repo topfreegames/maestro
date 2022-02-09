@@ -49,7 +49,7 @@ import (
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 )
 
-func TestRoomManager_CreateRoom(t *testing.T) {
+func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -113,7 +113,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 
 		roomStorageStatusWatcher.EXPECT().Stop()
 
-		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
 		require.NoError(t, err)
 		require.Equal(t, &gameRoom, room)
 		require.Equal(t, &gameRoomInstance, instance)
@@ -132,7 +132,16 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorageStatusWatcher.EXPECT().Stop()
 		roomStorageStatusWatcher.EXPECT().ResultChan()
 
-		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
+		instance := &game_room.Instance{ID: "test-instance"}
+		gameRoomTerminating := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusTerminating}
+
+		instanceStorage.EXPECT().GetInstance(context.Background(), gomock.Any(), gomock.Any()).Return(instance, nil)
+		runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(nil)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomTerminating, nil)
+		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
+		roomStorageStatusWatcher.EXPECT().Stop()
+
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -144,7 +153,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 			Containers: []game_room.Container{container1, container2},
 		}).Return(nil, porterrors.NewErrUnexpected("error create game room instance"))
 
-		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -158,7 +167,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(porterrors.NewErrUnexpected("error storing room on redis"))
 
-		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -167,7 +176,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	t.Run("when game room creation fails while allocating ports then it returns nil with proper error", func(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
 
-		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -175,7 +184,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 
 }
 
-func TestRoomManager_DeleteRoom(t *testing.T) {
+func TestRoomManager_DeleteRoomAndWaitForRoomTerminated(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -207,7 +216,7 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gameRoom).Return(roomStorageStatusWatcher, nil)
 		roomStorageStatusWatcher.EXPECT().Stop()
 
-		err := roomManager.DeleteRoom(context.Background(), gameRoom)
+		err := roomManager.DeleteRoomAndWaitForRoomTerminated(context.Background(), gameRoom)
 		require.NoError(t, err)
 	})
 
@@ -222,7 +231,7 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 		roomStorageStatusWatcher.EXPECT().ResultChan()
 		roomStorageStatusWatcher.EXPECT().Stop()
 
-		err := roomManager.DeleteRoom(context.Background(), gameRoom)
+		err := roomManager.DeleteRoomAndWaitForRoomTerminated(context.Background(), gameRoom)
 		require.Error(t, err, "got timeout while waiting game room status to be terminating: failed to wait until room has desired status: context deadline exceeded")
 	})
 
@@ -232,7 +241,7 @@ func TestRoomManager_DeleteRoom(t *testing.T) {
 		instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(instance, nil)
 		runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(porterrors.ErrUnexpected)
 
-		err := roomManager.DeleteRoom(context.Background(), gameRoom)
+		err := roomManager.DeleteRoomAndWaitForRoomTerminated(context.Background(), gameRoom)
 		require.Error(t, err)
 	})
 }
