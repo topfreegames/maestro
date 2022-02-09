@@ -129,7 +129,7 @@ func (ex *SwitchActiveVersionExecutor) Name() string {
 func (ex *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string) error {
 	logger.Debug("deleting created rooms since switching active version had error - start")
 	for _, room := range ex.newCreatedRooms[schedulerName] {
-		err := ex.roomManager.DeleteRoom(ctx, room)
+		err := ex.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
 		if err != nil {
 			logger.Error("failed to deleted recent created room", zap.Error(err))
 			return err
@@ -202,14 +202,14 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.
 			return nil
 		}
 
-		gameRoom, _, err := roomManager.CreateRoom(ctx, scheduler)
+		gameRoom, _, err := roomManager.CreateRoomAndWaitForReadiness(ctx, scheduler)
 		if err != nil {
 			logger.Error("error creating room", zap.Error(err))
 			ex.roomsBeingReplaced.Delete(room.ID)
 			return err
 		}
 
-		err = roomManager.DeleteRoom(ctx, room)
+		err = roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
 		if err != nil {
 			logger.Warn("failed to delete room", zap.Error(err))
 			ex.roomsBeingReplaced.Delete(room.ID)

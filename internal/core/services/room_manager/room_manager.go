@@ -73,7 +73,7 @@ func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomSt
 	}
 }
 
-func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Scheduler) (*game_room.GameRoom, *game_room.Instance, error) {
+func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler) (*game_room.GameRoom, *game_room.Instance, error) {
 	numberOfPorts := 0
 	for _, container := range scheduler.Spec.Containers {
 		numberOfPorts += len(container.Ports)
@@ -116,14 +116,14 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 	defer cancelFunc()
 
 	if err != nil {
-		_ = m.DeleteRoom(ctx, room)
+		_ = m.DeleteRoomAndWaitForRoomTerminated(ctx, room)
 		return nil, nil, err
 	}
 
 	return room, instance, err
 }
 
-func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
+func (m *RoomManager) DeleteRoomAndWaitForRoomTerminated(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	instance, err := m.instanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
 		// TODO(gabriel.corado): deal better with instance not found.
@@ -187,7 +187,7 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 }
 
 // CleanRoomState cleans the remaining state of a room. This function is
-// intended to be used after a `DeleteRoom`, where the room instance is
+// intended to be used after a `DeleteRoomAndWaitForRoomTerminated`, where the room instance is
 // signaled to terminate.
 //
 // It wouldn't return an error if the room was already cleaned.
@@ -312,12 +312,12 @@ func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities
 }
 
 func (m *RoomManager) ValidateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler) error {
-	gameRoom, _, err := m.CreateRoom(ctx, *scheduler)
+	gameRoom, _, err := m.CreateRoomAndWaitForReadiness(ctx, *scheduler)
 	if err != nil {
 		m.logger.Error("error creating new game room for validating new version")
 		return fmt.Errorf("error creating new game room for validating new version: %w", err)
 	}
-	err = m.DeleteRoom(ctx, gameRoom)
+	err = m.DeleteRoomAndWaitForRoomTerminated(ctx, gameRoom)
 	if err != nil {
 		m.logger.Error("error deleting new game room created for validation", zap.Error(err))
 	}

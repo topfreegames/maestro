@@ -93,7 +93,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationStorage.EXPECT().UpdateOperationStatus(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, operation.StatusFinished).Return(nil)
 		operationLeaseStorage.EXPECT().GrantLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, config.OperationLeaseTtl).Return(nil)
 		operationLeaseStorage.EXPECT().RevokeLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID).Return(nil)
-		operationLeaseStorage.EXPECT().RenewLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, config.OperationLeaseTtl).Return(nil)
+		operationLeaseStorage.EXPECT().RenewLease(gomock.Any(), expectedOperation.SchedulerName, expectedOperation.ID, config.OperationLeaseTtl).Return(nil).MinTimes(0)
 		// ends the worker by cancelling it
 		operationFlow.EXPECT().NextOperationID(gomock.Any(), expectedOperation.SchedulerName).Return("", context.Canceled)
 

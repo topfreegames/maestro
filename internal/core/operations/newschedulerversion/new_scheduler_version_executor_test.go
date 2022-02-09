@@ -104,7 +104,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		// mocks for SchedulerManager CreateNewSchedulerVersion method
 		mocksForExecutor.schedulerStorage.EXPECT().RunWithTransaction(gomock.Any(), gomock.Any())
 
-		// mocks for RoomManager CreateRoom
+		// mocks for RoomManager CreateRoomAndWaitForReadiness
 		mocksForExecutor.portAllocator.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return([]int32{8080}, nil)
 		mocksForExecutor.runtime.EXPECT().CreateGameRoomInstance(gomock.Any(), newScheduler.Name, newSchedulerWithNewVersion.Spec).Return(newGameRoomInstance, nil)
 		mocksForExecutor.roomStorage.EXPECT().CreateRoom(gomock.Any(), gomock.Any())
@@ -113,7 +113,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		watcher.EXPECT().Stop()
 		mocksForExecutor.roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, newGameRoomInstance.ID).Return(createdGameRoom, nil)
 
-		// mocks for RoomManager DeleteRoom
+		// mocks for RoomManager DeleteRoomAndWaitForRoomTerminated
 		mocksForExecutor.instanceStorage.EXPECT().GetInstance(gomock.Any(), newScheduler.Name, createdGameRoom.ID).Return(newGameRoomInstance, nil)
 		mocksForExecutor.runtime.EXPECT().DeleteGameRoomInstance(gomock.Any(), newGameRoomInstance)
 		mocksForExecutor.roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(watcher, nil)
@@ -146,7 +146,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		newSchedulerWithNewVersion.Spec.Version = "v2.0.0"
 		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
 
-		// mocks for RoomManager CreateRoom
+		// mocks for RoomManager CreateRoomAndWaitForReadiness
 		mocksForExecutor.portAllocator.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return([]int32{8080}, errors.NewErrUnexpected("some error"))
 
 		// mocks for SchedulerManager GetActiveScheduler method

@@ -318,10 +318,6 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 
 			// No version was created
 			require.Len(t, getVersionsResponse.Versions, 1)
-
 		})
-
-		// TODO(guilhermecarvalho): when update failed flow is implemented, we should add extra test cases here
-
 	})
 }
