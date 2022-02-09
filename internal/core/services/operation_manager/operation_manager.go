@@ -241,7 +241,7 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 			select {
 			case <-ticker.C:
 				if op.Status == operation.StatusFinished || op.Status == operation.StatusError {
-					zap.L().Info("finish operation lease renew go routine since operation got status finished")
+					zap.L().Sugar().Infof("finish operation lease renew go routine since operation got status %v", op.Status)
 					break renewLeaseLoop
 				}
 
