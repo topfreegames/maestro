@@ -49,7 +49,7 @@ import (
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 )
 
-func TestRoomManager_CreateRoom(t *testing.T) {
+func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -184,7 +184,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 
 }
 
-func TestRoomManager_DeleteRoom(t *testing.T) {
+func TestRoomManager_DeleteRoomAndWaitForRoomTerminated(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
