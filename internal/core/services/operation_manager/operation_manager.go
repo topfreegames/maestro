@@ -245,11 +245,6 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 					break renewLeaseLoop
 				}
 
-				if op.Status == operation.StatusError {
-					zap.L().Info("stop operation lease renew go routine since operation got status error")
-					break renewLeaseLoop
-				}
-
 				err := om.leaseStorage.RenewLease(operationCtx, op.SchedulerName, op.ID, om.config.OperationLeaseTtl)
 				if err != nil {
 					zap.L().
