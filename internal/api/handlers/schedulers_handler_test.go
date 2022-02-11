@@ -343,7 +343,6 @@ func TestGetSchedulerVersions(t *testing.T) {
 	})
 
 	t.Run("with valid request and no scheduler found", func(t *testing.T) {
-
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -865,6 +864,95 @@ func TestNewSchedulerVersion(t *testing.T) {
 
 		require.Equal(t, 500, rr.Code)
 		require.Contains(t, rr.Body.String(), "failed to schedule create_new_scheduler_version operation")
+	})
+}
+
+func TestSwitchActiveVersion(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
+	t.Run("with success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
+		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+		operationFlow.EXPECT().InsertOperationID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPut, "/schedulers/scheduler-name-1", bytes.NewReader([]byte("{\"version\": \"v2.0.0\"}")))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+		require.NoError(t, err)
+		require.NotEmpty(t, body["operationId"])
+	})
+
+	t.Run("fails when scheduler and target version does not exists", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("err"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPut, "/schedulers/scheduler-name-1", bytes.NewReader([]byte("{\"version\": \"v2.0.0\"}")))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 404, rr.Code)
+		require.Contains(t, rr.Body.String(), "no scheduler versions found to switch")
+	})
+
+	t.Run("fails when operation enqueue fails", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
+
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
+		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("internal error"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPut, "/schedulers/scheduler-name-1", bytes.NewReader([]byte("{\"version\": \"v2.0.0\"}")))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 500, rr.Code)
+		require.Contains(t, rr.Body.String(), "failed to schedule operation: failed to schedule switch_active_version operation")
 	})
 }
 

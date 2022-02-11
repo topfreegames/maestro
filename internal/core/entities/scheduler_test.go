@@ -115,3 +115,47 @@ func TestNewScheduler(t *testing.T) {
 		require.NotNil(t, err)
 	})
 }
+
+func TestIsMajorVersion(t *testing.T) {
+	tests := map[string]struct {
+		currentScheduler *entities.Scheduler
+		newScheduler     *entities.Scheduler
+		expected         bool
+	}{
+		"port range should be a major update": {
+			currentScheduler: &entities.Scheduler{PortRange: &entities.PortRange{Start: 1000, End: 2000}},
+			newScheduler:     &entities.Scheduler{PortRange: &entities.PortRange{Start: 1001, End: 2000}},
+			expected:         true,
+		},
+		"container resources should be a major update": {
+			currentScheduler: &entities.Scheduler{Spec: game_room.Spec{
+				Containers: []game_room.Container{
+					{Requests: game_room.ContainerResources{Memory: "100mi"}},
+				},
+			}},
+			newScheduler: &entities.Scheduler{Spec: game_room.Spec{
+				Containers: []game_room.Container{
+					{Requests: game_room.ContainerResources{Memory: "200mi"}},
+				},
+			}},
+			expected: true,
+		},
+		"no changes shouldn't be a major": {
+			currentScheduler: &entities.Scheduler{PortRange: &entities.PortRange{Start: 1000, End: 2000}},
+			newScheduler:     &entities.Scheduler{PortRange: &entities.PortRange{Start: 1000, End: 2000}},
+			expected:         false,
+		},
+		"max surge shouldn't be a major": {
+			currentScheduler: &entities.Scheduler{MaxSurge: "10"},
+			newScheduler:     &entities.Scheduler{MaxSurge: "100"},
+			expected:         false,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			isMajor := test.currentScheduler.IsMajorVersion(test.newScheduler)
+			require.Equal(t, test.expected, isMajor)
+		})
+	}
+}

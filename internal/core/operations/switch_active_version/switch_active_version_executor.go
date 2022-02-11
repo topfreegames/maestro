@@ -93,7 +93,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 		}
 	}
 
-	err := ex.schedulerManager.SwitchActiveScheduler(ctx, scheduler)
+	err := ex.schedulerManager.UpdateScheduler(ctx, scheduler)
 	if err != nil {
 		logger.Error("Error switching active scheduler version on scheduler manager")
 		return err

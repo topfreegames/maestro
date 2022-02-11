@@ -26,12 +26,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 
-	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
-
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/filters"
@@ -208,32 +205,31 @@ func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Conte
 	return op, nil
 }
 
-// IsMajorVersionUpdate checks if the scheduler changes are major or not.
-// We consider major changes if the Instances need to be recreated, in this case
-// the following fields require it: `Spec` and `PortRange`. Any other field
-// change is considered minor (we don't need to recreate instances).
-func (s *SchedulerManager) IsMajorVersionUpdate(currentScheduler, newScheduler *entities.Scheduler) bool {
-	// Compare schedulers `Spec` and `PortRange`. This means that if this
-	// returns `false` it is a major version.
-	return !cmp.Equal(
-		currentScheduler,
-		newScheduler,
-		cmpopts.IgnoreFields(
-			entities.Scheduler{},
-			"Name",
-			"Game",
-			"State",
-			"RollbackVersion",
-			"CreatedAt",
-			"MaxSurge",
-		),
-	)
-}
+func (s *SchedulerManager) UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	err := scheduler.Validate()
+	if err != nil {
+		return fmt.Errorf("failing in update scheduler: %w", err)
+	}
 
-func (s *SchedulerManager) SwitchActiveScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
-	err := s.schedulerStorage.UpdateScheduler(ctx, scheduler)
+	err = s.schedulerStorage.UpdateScheduler(ctx, scheduler)
 	if err != nil {
 		return fmt.Errorf("error switch scheduler active version to scheduler \"%s\", version \"%s\". error: %w", scheduler.Name, scheduler.Spec.Version, err)
 	}
 	return nil
+}
+
+func (s *SchedulerManager) SwitchActiveVersion(ctx context.Context, schedulerName string, targetVersion string) (*operation.Operation, error) {
+	currentSchedulerVersion, err := s.schedulerStorage.GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
+		Name:    schedulerName,
+		Version: targetVersion,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("no scheduler versions found to switch: %w", err)
+	}
+
+	operation, err := s.EnqueueSwitchActiveVersionOperation(ctx, currentSchedulerVersion, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to schedule operation: %w", err)
+	}
+	return operation, nil
 }

@@ -162,6 +162,20 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 	}, nil
 }
 
+func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *api.SwitchActiveVersionRequest) (*api.SwitchActiveVersionResponse, error) {
+	operation, err := h.schedulerManager.SwitchActiveVersion(ctx, request.GetSchedulerName(), request.GetVersion())
+	if errors.Is(err, portsErrors.ErrNotFound) {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.SwitchActiveVersionResponse{
+		OperationId: operation.ID,
+	}, nil
+}
+
 func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {
 	return entities.NewScheduler(
 		request.GetName(),
