@@ -93,6 +93,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 		}
 	}
 
+	logger.Sugar().Debugf("switching version to %v", scheduler.Spec.Version)
 	err := ex.schedulerManager.UpdateScheduler(ctx, scheduler)
 	if err != nil {
 		logger.Error("Error switching active scheduler version on scheduler manager")

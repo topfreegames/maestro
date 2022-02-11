@@ -39,6 +39,6 @@ workers:
   stopTimeoutDuration: 1m
 services:
   roomManager:
-    roomPingTimeoutMillis: 90000
+    roomPingTimeoutMillis: 240000
     roomInitializationTimeoutMillis: 120000
     roomDeletionTimeoutMillis: 120000

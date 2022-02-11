@@ -71,7 +71,14 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSchedulerRequest) (*api.GetSchedulerResponse, error) {
 	var scheduler *entities.Scheduler
 	var err error
-	scheduler, err = h.schedulerManager.GetScheduler(ctx, request.GetSchedulerName(), request.GetVersion())
+
+	schedulerName := request.GetSchedulerName()
+	queryVersion := request.GetVersion()
+	if queryVersion != "" {
+		scheduler, err = h.schedulerManager.GetScheduler(ctx, schedulerName, queryVersion)
+	} else {
+		scheduler, err = h.schedulerManager.GetActiveScheduler(ctx, schedulerName)
+	}
 
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {

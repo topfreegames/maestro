@@ -71,12 +71,12 @@ func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entit
 		return nil, err
 	}
 
-	operation, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &create_scheduler.CreateSchedulerDefinition{})
+	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &create_scheduler.CreateSchedulerDefinition{})
 	if err != nil {
 		return nil, fmt.Errorf("failing in creating the operation: %s: %s", create_scheduler.OperationName, err)
 	}
 
-	zap.L().Info("scheduler enqueued to be created", zap.String("scheduler", scheduler.Name), zap.String("operation", operation.ID))
+	zap.L().Info("scheduler enqueued to be created", zap.String("scheduler", scheduler.Name), zap.String("operation", op.ID))
 
 	return s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
 }
@@ -219,7 +219,7 @@ func (s *SchedulerManager) UpdateScheduler(ctx context.Context, scheduler *entit
 }
 
 func (s *SchedulerManager) SwitchActiveVersion(ctx context.Context, schedulerName string, targetVersion string) (*operation.Operation, error) {
-	currentSchedulerVersion, err := s.schedulerStorage.GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
+	schedulerTargetVersion, err := s.schedulerStorage.GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
 		Name:    schedulerName,
 		Version: targetVersion,
 	})
@@ -227,9 +227,17 @@ func (s *SchedulerManager) SwitchActiveVersion(ctx context.Context, schedulerNam
 		return nil, fmt.Errorf("no scheduler versions found to switch: %w", err)
 	}
 
-	operation, err := s.EnqueueSwitchActiveVersionOperation(ctx, currentSchedulerVersion, true)
+	currentActiveVersion, err := s.GetActiveScheduler(ctx, schedulerName)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching current active version for scheduler. err: %w", err)
+	}
+
+	isMajorChange := currentActiveVersion.IsMajorVersion(schedulerTargetVersion)
+	zap.S().Debugf("Change between version \"%v\" and \"%v\" is major: %v", currentActiveVersion.Spec.Version, schedulerTargetVersion.Spec.Version, isMajorChange)
+	op, err := s.EnqueueSwitchActiveVersionOperation(ctx, schedulerTargetVersion, isMajorChange)
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule operation: %w", err)
 	}
-	return operation, nil
+
+	return op, nil
 }

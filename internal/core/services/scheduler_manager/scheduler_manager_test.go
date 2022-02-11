@@ -701,6 +701,10 @@ func TestSwitchActiveVersion(t *testing.T) {
 		operationFlow.EXPECT().InsertOperationID(ctx, gomock.Any(), gomock.Any()).Return(nil)
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
 
+		currentScheduler := newValidScheduler()
+		currentScheduler.SetSchedulerVersion("v2.0.0")
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(currentScheduler, nil)
+
 		op, err := schedulerManager.SwitchActiveVersion(ctx, schedulerName, targetVersion)
 		require.NoError(t, err)
 		require.NotNil(t, op)
@@ -722,6 +726,21 @@ func TestSwitchActiveVersion(t *testing.T) {
 		require.Contains(t, err.Error(), "no scheduler versions found to switch")
 	})
 
+	t.Run("fails when fetching current active scheduler errors", func(t *testing.T) {
+		ctx := context.Background()
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrUnexpected("err"))
+
+		op, err := schedulerManager.SwitchActiveVersion(ctx, schedulerName, targetVersion)
+		require.Nil(t, op)
+		require.Error(t, err)
+	})
+
 	t.Run("fails when operation enqueue fails", func(t *testing.T) {
 		ctx := context.Background()
 		mockCtrl := gomock.NewController(t)
@@ -734,6 +753,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
 		operationStorage.EXPECT().CreateOperation(ctx, gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
 
 		op, err := schedulerManager.SwitchActiveVersion(ctx, schedulerName, targetVersion)
