@@ -49,7 +49,6 @@ import (
 
 func TestAddRoomsExecutor_Execute(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	clockMock := clock_mock.NewFakeClock(time.Now())
 	portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)

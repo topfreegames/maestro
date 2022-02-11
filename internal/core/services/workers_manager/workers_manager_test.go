@@ -57,7 +57,7 @@ func BeforeTest(t *testing.T) {
 	recorded = observer
 
 	mockCtrl = gomock.NewController(t)
-	defer mockCtrl.Finish()
+
 }
 
 func TestStart(t *testing.T) {

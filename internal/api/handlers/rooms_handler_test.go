@@ -68,7 +68,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 
 	t.Run("with valid request and existent game room it should return status code 200 with success = true", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		clockMock := clock_mock.NewFakeClock(time.Now())
 		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
@@ -120,7 +120,6 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		t.Skip()
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		clockMock := clock_mock.NewFakeClock(time.Now())
 		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
@@ -150,7 +149,6 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 
 	t.Run("with valid request when have error while updating game room then it should return with status code 500", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		clockMock := clock_mock.NewFakeClock(time.Now())
 		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
@@ -180,7 +178,6 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 
 	t.Run("with valid request when the new game room state transition is invalid then it should return with status code 500", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		clockMock := clock_mock.NewFakeClock(time.Now())
 		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
@@ -224,7 +221,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 
 	t.Run("with invalid request then it should return with status code 400", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		clockMock := clock_mock.NewFakeClock(time.Now())
 		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
@@ -260,7 +257,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 
 	t.Run("when no error occur when forwarding then it return status code 200 with success = true", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		clockMock := clock_mock.NewFakeClock(time.Now())
 		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
@@ -298,7 +295,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 
 	t.Run("when some error occur when forwarding then it return status code 200 with success = false", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		clockMock := clock_mock.NewFakeClock(time.Now())
 		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
@@ -343,7 +340,7 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 
 	t.Run("when no error occur when forwarding then it return status code 200 with success = true", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		clockMock := clock_mock.NewFakeClock(time.Now())
 		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
@@ -380,7 +377,7 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 
 	t.Run("when some error occur when forwarding then it return status code 200 with success = false", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		clockMock := clock_mock.NewFakeClock(time.Now())
 		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
@@ -419,7 +416,7 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 
 	t.Run("it does nothing and returns 200 ok with success equal true for all requests", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		clockMock := clock_mock.NewFakeClock(time.Now())
 		portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)

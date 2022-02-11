@@ -68,8 +68,7 @@ func workerOptions(t *testing.T) (*gomock.Controller, *instancemock.MockGameRoom
 
 func TestRuntimeWatcher_Start(t *testing.T) {
 	t.Run("fails to start watcher", func(t *testing.T) {
-		mockCtrl, _, _, runtime, workerOptions := workerOptions(t)
-		defer mockCtrl.Finish()
+		_, _, _, runtime, workerOptions := workerOptions(t)
 
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -101,7 +100,6 @@ func TestRuntimeWatcher_UpdateInstance(t *testing.T) {
 	for _, event := range events {
 		t.Run(fmt.Sprintf("when %s happens, updates instance", event.String()), func(t *testing.T) {
 			mockCtrl, instanceStorage, roomStorage, runtime, workerOptions := workerOptions(t)
-			defer mockCtrl.Finish()
 
 			scheduler := &entities.Scheduler{Name: "test"}
 			watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -161,7 +159,6 @@ func TestRuntimeWatcher_UpdateInstance(t *testing.T) {
 
 		t.Run(fmt.Sprintf("when %s happens, and update instance fails, does nothgin", event.String()), func(t *testing.T) {
 			mockCtrl, instanceStorage, _, runtime, workerOptions := workerOptions(t)
-			defer mockCtrl.Finish()
 
 			scheduler := &entities.Scheduler{Name: "test"}
 			watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -220,7 +217,6 @@ func TestRuntimeWatcher_UpdateInstance(t *testing.T) {
 func TestRuntimeWatcher_CleanRoomState(t *testing.T) {
 	t.Run("clean room state on delete event", func(t *testing.T) {
 		mockCtrl, instanceStorage, roomStorage, runtime, workerOptions := workerOptions(t)
-		defer mockCtrl.Finish()
 
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -279,7 +275,6 @@ func TestRuntimeWatcher_CleanRoomState(t *testing.T) {
 
 	t.Run("when clean room state fails, does nothing", func(t *testing.T) {
 		mockCtrl, _, roomStorage, runtime, workerOptions := workerOptions(t)
-		defer mockCtrl.Finish()
 
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)

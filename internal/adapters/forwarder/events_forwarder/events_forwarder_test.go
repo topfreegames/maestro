@@ -36,14 +36,12 @@ import (
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 )
 
-var eventsForwarderAdapter *eventsForwarder
-var forwarderClientMock *mock.MockForwarderClient
-var mockCtrl *gomock.Controller
-
 func TestForwardRoomEvent_Arbitrary(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
 	t.Run("with success when event type is Arbitrary", func(t *testing.T) {
 		// arrange
-		basicArrange(t)
+		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
@@ -56,8 +54,7 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 
 	t.Run("failed when roomEvent is not provided", func(t *testing.T) {
 		// arrange
-		basicArrange(t)
-		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
+		_, eventsForwarderAdapter := basicArrange(mockCtrl)
 
 		// act
 		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, map[string]interface{}{"roomType": "red", "ping": true}), newForwarder())
@@ -68,7 +65,7 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 
 	t.Run("failed when grpcClient returns error", func(t *testing.T) {
 		// arrange
-		basicArrange(t)
+		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
@@ -80,7 +77,7 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 	})
 
 	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
-		basicArrange(t)
+		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
 		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newForwarder())
@@ -91,9 +88,11 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 }
 
 func TestForwardRoomEvent_Ping(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
 	t.Run("with success when event type is Ping", func(t *testing.T) {
 		// arrange
-		basicArrange(t)
+		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
@@ -106,7 +105,7 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 
 	t.Run("failed when grpcClient returns error", func(t *testing.T) {
 		// arrange
-		basicArrange(t)
+		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
@@ -118,7 +117,7 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 	})
 
 	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
-		basicArrange(t)
+		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
 		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newForwarder())
@@ -129,9 +128,11 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 }
 
 func TestForwardRoomEvent(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
 	t.Run("failed when EventType doesn't exists", func(t *testing.T) {
 		// arrange
-		basicArrange(t)
+		_, eventsForwarderAdapter := basicArrange(mockCtrl)
 
 		// act
 		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.RoomEventType("Unknown"), nil), newForwarder())
@@ -143,9 +144,11 @@ func TestForwardRoomEvent(t *testing.T) {
 }
 
 func TestForwardPlayerEvent(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
 	t.Run("with success", func(t *testing.T) {
 		// arrange
-		basicArrange(t)
+		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
@@ -158,7 +161,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 
 	t.Run("failed when grpcClient returns error", func(t *testing.T) {
 		// arrange
-		basicArrange(t)
+		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
@@ -171,7 +174,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 
 	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
 		// arrange
-		basicArrange(t)
+		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
 		// act
@@ -183,8 +186,10 @@ func TestForwardPlayerEvent(t *testing.T) {
 }
 
 func TestMergeInfos(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
 	t.Run("with success", func(t *testing.T) {
-		basicArrange(t)
+		_, eventsForwarderAdapter := basicArrange(mockCtrl)
 		infoA := map[string]interface{}{"roomType": "red", "ping": true}
 		infoB := map[string]interface{}{"gameId": "3123", "roomId": "3123"}
 		totalInfos := len(infoA) + len(infoB)
@@ -235,9 +240,8 @@ func newForwarder() forwarder.Forwarder {
 	}
 }
 
-func basicArrange(t *testing.T) {
-	mockCtrl = gomock.NewController(t)
-	defer mockCtrl.Finish()
-	forwarderClientMock = mock.NewMockForwarderClient(mockCtrl)
+func basicArrange(controller *gomock.Controller) (forwarderClientMock *mock.MockForwarderClient, eventsForwarderAdapter *eventsForwarder) {
+	forwarderClientMock = mock.NewMockForwarderClient(controller)
 	eventsForwarderAdapter = NewEventsForwarder(forwarderClientMock)
+	return forwarderClientMock, eventsForwarderAdapter
 }

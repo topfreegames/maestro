@@ -49,7 +49,6 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	t.Run("successfully runs a single operation", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -107,7 +106,6 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	t.Run("execute OnError when a Execute fails", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -167,7 +165,6 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	t.Run("evict operation if there is no executor", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -210,7 +207,6 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	t.Run("evict operation if ShouldExecute returns false", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -259,7 +255,6 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	t.Run("error granting lease should stop execution of operation", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -308,7 +303,6 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 	t.Run("error getting next operation should stop execution of operation", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)

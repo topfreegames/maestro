@@ -44,7 +44,7 @@ func TestPingHandler(t *testing.T) {
 	t.Run("with valid request", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
@@ -76,7 +76,7 @@ func TestPingHandler(t *testing.T) {
 	t.Run("with invalid request method", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
@@ -108,7 +108,7 @@ func TestPingHandler(t *testing.T) {
 	t.Run("with invalid request path", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()

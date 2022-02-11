@@ -56,7 +56,7 @@ func TestOperationStorageRedis(t *testing.T) {
 	t.Run("with valid redis", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisUrlPath).Return(getRedisUrl(t))
@@ -70,7 +70,7 @@ func TestOperationStorageRedis(t *testing.T) {
 	t.Run("with invalid redis", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisUrlPath).Return("redis://somewhere-in-the-world:6379")
@@ -84,7 +84,7 @@ func TestOperationStorageRedis(t *testing.T) {
 	t.Run("with invalid configuration", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisUrlPath).Return("")
@@ -99,7 +99,7 @@ func TestRoomStorageRedis(t *testing.T) {
 	t.Run("with valid redis", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(roomStorageRedisUrlPath).Return(getRedisUrl(t))
@@ -113,7 +113,7 @@ func TestRoomStorageRedis(t *testing.T) {
 	t.Run("with invalid redis", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(roomStorageRedisUrlPath).Return("redis://somewhere-in-the-world:6379")
@@ -127,7 +127,7 @@ func TestRoomStorageRedis(t *testing.T) {
 	t.Run("with invalid configuration", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(roomStorageRedisUrlPath).Return("")
@@ -142,7 +142,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 	t.Run("with valid redis", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(instanceStorageRedisUrlPath).Return(getRedisUrl(t))
@@ -157,7 +157,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 	t.Run("with invalid redis", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(instanceStorageRedisUrlPath).Return("redis://somewhere-in-the-world:6379")
@@ -172,7 +172,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 	t.Run("with invalid configuration", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(instanceStorageRedisUrlPath).Return("")
@@ -187,7 +187,7 @@ func TestPortAllocatorRandom(t *testing.T) {
 	t.Run("with valid range", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(portAllocatorRandomRangePath).Return("1000-2000")
@@ -201,7 +201,7 @@ func TestPortAllocatorRandom(t *testing.T) {
 	t.Run("with invalid range", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(portAllocatorRandomRangePath).Return("abc")
@@ -217,7 +217,7 @@ func TestSchedulerStoragePostgres(t *testing.T) {
 	t.Run("with valid configuration", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(schedulerStoragePostgresUrlPath).Return("postgres://somewhere:5432/db")
@@ -228,7 +228,7 @@ func TestSchedulerStoragePostgres(t *testing.T) {
 	t.Run("with invalid configuration", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(schedulerStoragePostgresUrlPath).Return("")
@@ -243,7 +243,7 @@ func TestOperationFlowRedis(t *testing.T) {
 	t.Run("with valid redis", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationFlowRedisUrlPath).Return(getRedisUrl(t))
@@ -257,7 +257,7 @@ func TestOperationFlowRedis(t *testing.T) {
 	t.Run("with invalid redis", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationFlowRedisUrlPath).Return("redis://somewhere-in-the-world:6379")
@@ -271,7 +271,7 @@ func TestOperationFlowRedis(t *testing.T) {
 	t.Run("with invalid configuration", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationFlowRedisUrlPath).Return("")

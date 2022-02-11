@@ -94,7 +94,6 @@ func TestCreateOperation(t *testing.T) {
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
-			defer mockCtrl.Finish()
 
 			schedulerName := "scheduler_name"
 			operationFlow := opflow.NewMockOperationFlow(mockCtrl)
@@ -135,7 +134,6 @@ func TestCreateOperation(t *testing.T) {
 func TestGetOperation(t *testing.T) {
 	t.Run("find operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -166,7 +164,6 @@ func TestGetOperation(t *testing.T) {
 
 	t.Run("definition not found", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -192,7 +189,6 @@ func TestGetOperation(t *testing.T) {
 
 	t.Run("operation not found", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -218,7 +214,6 @@ func TestGetOperation(t *testing.T) {
 
 	t.Run("unmarshal error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{unmarshalResult: errors.New("invalid")} }
 
@@ -246,7 +241,6 @@ func TestGetOperation(t *testing.T) {
 func TestNextSchedulerOperation(t *testing.T) {
 	t.Run("fetch operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		definitionConstructors := operations.NewDefinitionConstructors()
@@ -279,7 +273,6 @@ func TestNextSchedulerOperation(t *testing.T) {
 
 	t.Run("no next operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		definitionConstructors := operations.NewDefinitionConstructors()
@@ -301,7 +294,6 @@ func TestNextSchedulerOperation(t *testing.T) {
 
 	t.Run("operation not found", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		definitionConstructors := operations.NewDefinitionConstructors()
@@ -332,7 +324,6 @@ func TestNextSchedulerOperation(t *testing.T) {
 func TestStartOperation(t *testing.T) {
 	t.Run("starts operation with success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -353,7 +344,6 @@ func TestStartOperation(t *testing.T) {
 func TestFinishOperation(t *testing.T) {
 	t.Run("finishes operation with success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -384,7 +374,6 @@ func TestFinishOperation(t *testing.T) {
 func TestListSchedulerActiveOperations(t *testing.T) {
 	t.Run("it returns an operation list with pending status", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -417,7 +406,6 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 	})
 	t.Run("it returns an empty list when there is no operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -438,7 +426,6 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 
 	t.Run("it returns error when some error occurs in operation storage", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -457,7 +444,6 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 
 	t.Run("it returns error when some error occurs in operation lease storage", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -484,7 +470,6 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 func TestListSchedulerFinishedOperations(t *testing.T) {
 	t.Run("it returns an operation list with finished status", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -511,7 +496,6 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 func TestListSchedulerPendingOperations(t *testing.T) {
 	t.Run("it returns an operation list with pending status", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -545,7 +529,6 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 
 	t.Run("cancels a operation successfully", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
@@ -592,7 +575,6 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 func TestGrantLease(t *testing.T) {
 	t.Run("Grant Lease success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -620,7 +602,6 @@ func TestGrantLease(t *testing.T) {
 
 	t.Run("Grant Lease error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -650,7 +631,6 @@ func TestGrantLease(t *testing.T) {
 func TestRevokeLease(t *testing.T) {
 	t.Run("Revoke Lease success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -677,7 +657,6 @@ func TestRevokeLease(t *testing.T) {
 
 	t.Run("Revoke Lease error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -708,7 +687,6 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 	t.Run("Renews lease not executed since op.status = finished", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -736,7 +714,6 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 	t.Run("changed op.status = finished after starting renew lease go routine", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -767,7 +744,6 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 	t.Run("Renews lease error does not panic", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -796,7 +772,6 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 	t.Run("Renews lease being called correct number of times", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
@@ -825,7 +800,6 @@ func TestStartLeaseRenewGoRoutine(t *testing.T) {
 	t.Run("Context canceled breaks StartLeaseRenewGoRoutine execution", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
