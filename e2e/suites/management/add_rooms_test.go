@@ -48,7 +48,7 @@ func TestAddRooms(t *testing.T) {
 		roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 		instanceStorage := instanceStorageRedis.NewRedisInstanceStorage(redisClient, 10)
 
-		t.Run("when created rooms does not reply its state back then it finishes the operation successfully", func(t *testing.T) {
+		t.Run("when created rooms does not reply its state back then they're finished", func(t *testing.T) {
 			t.Parallel()
 
 			schedulerName, err := createSchedulerAndWaitForIt(
@@ -82,10 +82,10 @@ func TestAddRooms(t *testing.T) {
 			require.NotEmpty(t, pods.Items)
 
 			require.Eventually(t, func() bool {
-				instance, err := instanceStorage.GetInstance(context.Background(), schedulerName, pods.Items[0].ObjectMeta.Name)
+				_, err := instanceStorage.GetInstance(context.Background(), schedulerName, pods.Items[0].ObjectMeta.Name)
 
-				return err == nil && instance.Status.Type == game_room.InstanceReady
-			}, time.Minute, time.Second)
+				return err != nil
+			}, 4*time.Minute, time.Second)
 		})
 
 		t.Run("when created rooms replies its state back then it finishes the operation successfully", func(t *testing.T) {
