@@ -71,7 +71,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		return fmt.Errorf("error getting active scheduler: %w", err)
 	}
 
-	isSchedulerMajorVersion := ex.schedulerManager.IsMajorVersionUpdate(currentActiveScheduler, newScheduler)
+	isSchedulerMajorVersion := currentActiveScheduler.IsMajorVersion(newScheduler)
 
 	err = ex.populateSchedulerNewVersion(newScheduler, currentActiveScheduler.Spec.Version, isSchedulerMajorVersion)
 	if err != nil {

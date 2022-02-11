@@ -62,6 +62,14 @@ service SchedulersService {
       get: "/schedulers/{scheduler_name=*}/versions"
     };
   }
+
+  // Switch Active Version to Scheduler
+  rpc SwitchActiveVersion(SwitchActiveVersionRequest) returns (SwitchActiveVersionResponse) {
+    option (google.api.http) = {
+      put: "/schedulers/{scheduler_name=*}",
+      body: "*"
+    };
+  }
 }
 
 // List scheduler request options.
@@ -183,4 +191,18 @@ message GetSchedulerVersionsRequest {
 message GetSchedulerVersionsResponse {
   // List of versions for an scheduler
   repeated SchedulerVersion versions = 1;
+}
+
+// Switch Active Version Request
+message SwitchActiveVersionRequest {
+  // Scheduler Name
+  string scheduler_name = 1;
+  // Version that will be activate in Scheduler
+  string version = 2;
+}
+
+// Switch Active Version Response
+message SwitchActiveVersionResponse {
+  // Operation Id generated
+  string operation_id = 1;
 }

@@ -477,6 +477,51 @@
         "tags": [
           "SchedulersService"
         ]
+      },
+      "put": {
+        "summary": "Switch Active Version to Scheduler",
+        "operationId": "SchedulersService_SwitchActiveVersion",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SwitchActiveVersionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler Name",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "title": "Version that will be activate in Scheduler"
+                }
+              },
+              "title": "Switch Active Version Request"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
       }
     },
     "/schedulers/{schedulerName}/add-rooms": {
@@ -1245,6 +1290,16 @@
         }
       },
       "title": "Spec is the specifications of the scheduler, with relevant info about what is being used"
+    },
+    "v1SwitchActiveVersionResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "title": "Operation Id generated"
+        }
+      },
+      "title": "Switch Active Version Response"
     },
     "v1UpdateRoomStatusResponse": {
       "type": "object",

@@ -23,6 +23,9 @@
 package entities
 
 import (
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -79,4 +82,26 @@ func (s *Scheduler) SetSchedulerRollbackVersion(version string) {
 
 func (s *Scheduler) Validate() error {
 	return validations.Validate.Struct(s)
+}
+
+// IsMajorVersion checks if the scheduler changes are major or not.
+// We consider major changes if the Instances need to be recreated, in this case
+// the following fields require it: `Spec` and `PortRange`. Any other field
+// change is considered minor (we don't need to recreate instances).
+func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
+	// Compare schedulers `Spec` and `PortRange`. This means that if this
+	// returns `false` it is a major version.
+	return !cmp.Equal(
+		s,
+		newScheduler,
+		cmpopts.IgnoreFields(
+			Scheduler{},
+			"Name",
+			"Game",
+			"State",
+			"RollbackVersion",
+			"CreatedAt",
+			"MaxSurge",
+		),
+	)
 }
