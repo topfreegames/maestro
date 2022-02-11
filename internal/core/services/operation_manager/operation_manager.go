@@ -28,10 +28,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/google/uuid"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
 )

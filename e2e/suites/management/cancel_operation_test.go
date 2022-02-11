@@ -28,16 +28,16 @@ import (
 	"testing"
 	"time"
 
+	operation2 "github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation_flow/redis"
 	operationStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
-	"github.com/topfreegames/maestro/internal/core/ports"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
@@ -122,7 +122,7 @@ func TestCancelOperation(t *testing.T) {
 	})
 }
 
-func createTestOperation(ctx context.Context, t *testing.T, operationStorage ports.OperationStorage, operationFlow ports.OperationFlow, schedulerName string, sleepSeconds int) *operation.Operation {
+func createTestOperation(ctx context.Context, t *testing.T, operationStorage operation2.OperationStorage, operationFlow operation2.OperationFlow, schedulerName string, sleepSeconds int) *operation.Operation {
 
 	definition := test_operation.TestOperationDefinition{
 		SleepSeconds: sleepSeconds,

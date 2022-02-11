@@ -27,8 +27,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/ports"
+
+	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
 )

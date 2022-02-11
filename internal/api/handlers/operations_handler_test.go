@@ -37,6 +37,8 @@ import (
 	"testing"
 	"time"
 
+	operation2 "github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -46,7 +48,6 @@ import (
 	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
@@ -385,7 +386,7 @@ func TestCancelOperation(t *testing.T) {
 		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
 		operationManager := operation_manager.New(operationFlow, nil, nil, nil, config)
 
-		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Eq(ports.OperationCancellationRequest{
+		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Eq(operation2.OperationCancellationRequest{
 			SchedulerName: schedulerName,
 			OperationID:   operationID,
 		})).Return(nil)
@@ -413,7 +414,7 @@ func TestCancelOperation(t *testing.T) {
 		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
 		operationManager := operation_manager.New(operationFlow, nil, nil, nil, config)
 
-		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Eq(ports.OperationCancellationRequest{
+		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Eq(operation2.OperationCancellationRequest{
 			SchedulerName: schedulerName,
 			OperationID:   operationID,
 		})).Return(errors.NewErrUnexpected("failed to persist request"))
