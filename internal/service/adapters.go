@@ -25,6 +25,9 @@ package service
 import (
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
+
 	matchmakerEventsForwarder "github.com/topfreegames/maestro/internal/adapters/forwarder/events_forwarder"
 	"github.com/topfreegames/maestro/internal/adapters/forwarder/forwarder_client"
 	"github.com/topfreegames/maestro/internal/core/ports/forwarder"
@@ -70,6 +73,17 @@ const (
 	// Redis operation flow
 	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
 )
+
+func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig) *operation_manager.OperationManager {
+	return &operation_manager.OperationManager{
+		Flow:                            flow,
+		Storage:                         storage,
+		OperationDefinitionConstructors: operationDefinitionConstructors,
+		OperationCancelFunctions:        operation_manager.NewOperationCancelFunctions(),
+		LeaseStorage:                    leaseStorage,
+		Config:                          config,
+	}
+}
 
 func NewEventsForwarder(c config.Config) (forwarder.EventsForwarder, error) {
 	forwarderGrpc := forwarder_client.NewForwarderClient()

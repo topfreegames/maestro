@@ -38,22 +38,22 @@ import (
 )
 
 type OperationManager struct {
-	operationCancelFunctions        *OperationCancelFunctions
-	flow                            ports.OperationFlow
-	storage                         ports.OperationStorage
-	leaseStorage                    ports.OperationLeaseStorage
-	config                          OperationManagerConfig
-	operationDefinitionConstructors map[string]operations.DefinitionConstructor
+	OperationCancelFunctions        *OperationCancelFunctions
+	Flow                            ports.OperationFlow
+	Storage                         ports.OperationStorage
+	LeaseStorage                    ports.OperationLeaseStorage
+	Config                          OperationManagerConfig
+	OperationDefinitionConstructors map[string]operations.DefinitionConstructor
 }
 
 func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config OperationManagerConfig) *OperationManager {
 	return &OperationManager{
-		flow:                            flow,
-		storage:                         storage,
-		operationDefinitionConstructors: operationDefinitionConstructors,
-		operationCancelFunctions:        NewOperationCancelFunctions(),
-		leaseStorage:                    leaseStorage,
-		config:                          config,
+		Flow:                            flow,
+		Storage:                         storage,
+		OperationDefinitionConstructors: operationDefinitionConstructors,
+		OperationCancelFunctions:        NewOperationCancelFunctions(),
+		LeaseStorage:                    leaseStorage,
+		Config:                          config,
 	}
 }
 
@@ -66,12 +66,12 @@ func (om *OperationManager) CreateOperation(ctx context.Context, schedulerName s
 		CreatedAt:      time.Now(),
 	}
 
-	err := om.storage.CreateOperation(ctx, op, definition.Marshal())
+	err := om.Storage.CreateOperation(ctx, op, definition.Marshal())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create operation: %w", err)
 	}
 
-	err = om.flow.InsertOperationID(ctx, op.SchedulerName, op.ID)
+	err = om.Flow.InsertOperationID(ctx, op.SchedulerName, op.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert operation on flow: %w", err)
 	}
@@ -80,12 +80,12 @@ func (om *OperationManager) CreateOperation(ctx context.Context, schedulerName s
 }
 
 func (om *OperationManager) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, operations.Definition, error) {
-	op, definitionContents, err := om.storage.GetOperation(ctx, schedulerName, operationID)
+	op, definitionContents, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	definitionConstructor := om.operationDefinitionConstructors[op.DefinitionName]
+	definitionConstructor := om.OperationDefinitionConstructors[op.DefinitionName]
 	if definitionConstructor == nil {
 		return nil, nil, fmt.Errorf("no definition constructor implemented for %s: %s", op.DefinitionName, err)
 	}
@@ -101,7 +101,7 @@ func (om *OperationManager) GetOperation(ctx context.Context, schedulerName, ope
 
 // NextSchedulerOperation returns the next scheduler operation to be processed.
 func (om *OperationManager) NextSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, operations.Definition, error) {
-	operationID, err := om.flow.NextOperationID(ctx, schedulerName)
+	operationID, err := om.Flow.NextOperationID(ctx, schedulerName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to retrieve the next operation: %w", err)
 	}
@@ -111,26 +111,26 @@ func (om *OperationManager) NextSchedulerOperation(ctx context.Context, schedule
 
 // StartOperation used when an operation will start executing.
 func (om *OperationManager) StartOperation(ctx context.Context, op *operation.Operation, cancelFunction context.CancelFunc) error {
-	err := om.storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, operation.StatusInProgress)
+	err := om.Storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, operation.StatusInProgress)
 	if err != nil {
 		return fmt.Errorf("failed to start operation: %w", err)
 	}
 
 	op.Status = operation.StatusInProgress
 
-	om.operationCancelFunctions.putFunction(op.SchedulerName, op.ID, cancelFunction)
+	om.OperationCancelFunctions.putFunction(op.SchedulerName, op.ID, cancelFunction)
 	return nil
 }
 
 func (om *OperationManager) ListSchedulerPendingOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
 
-	pendingOperationIDs, err := om.flow.ListSchedulerPendingOperationIDs(ctx, schedulerName)
+	pendingOperationIDs, err := om.Flow.ListSchedulerPendingOperationIDs(ctx, schedulerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list all pending operations: %w", err)
 	}
 	pendingOperations := make([]*operation.Operation, len(pendingOperationIDs))
 	for i, operationID := range pendingOperationIDs {
-		op, _, err := om.storage.GetOperation(ctx, schedulerName, operationID)
+		op, _, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +141,7 @@ func (om *OperationManager) ListSchedulerPendingOperations(ctx context.Context, 
 }
 
 func (om *OperationManager) ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
-	ops, err := om.storage.ListSchedulerActiveOperations(ctx, schedulerName)
+	ops, err := om.Storage.ListSchedulerActiveOperations(ctx, schedulerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed get active operations list fort scheduler %s : %w", schedulerName, err)
 	}
@@ -157,22 +157,22 @@ func (om *OperationManager) ListSchedulerActiveOperations(ctx context.Context, s
 
 func (om *OperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
 
-	return om.storage.ListSchedulerFinishedOperations(ctx, schedulerName)
+	return om.Storage.ListSchedulerFinishedOperations(ctx, schedulerName)
 }
 
 func (om *OperationManager) FinishOperation(ctx context.Context, op *operation.Operation) error {
-	err := om.storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, op.Status)
+	err := om.Storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, op.Status)
 	if err != nil {
 		return fmt.Errorf("failed to finish operation: %w", err)
 	}
 
-	om.operationCancelFunctions.removeFunction(op.SchedulerName, op.ID)
+	om.OperationCancelFunctions.removeFunction(op.SchedulerName, op.ID)
 
 	return nil
 }
 
 func (om *OperationManager) EnqueueOperationCancellationRequest(ctx context.Context, schedulerName, operationID string) error {
-	err := om.flow.EnqueueOperationCancellationRequest(ctx, ports.OperationCancellationRequest{
+	err := om.Flow.EnqueueOperationCancellationRequest(ctx, ports.OperationCancellationRequest{
 		SchedulerName: schedulerName,
 		OperationID:   operationID,
 	})
@@ -184,7 +184,7 @@ func (om *OperationManager) EnqueueOperationCancellationRequest(ctx context.Cont
 }
 
 func (om *OperationManager) WatchOperationCancellationRequests(ctx context.Context) error {
-	requestChannel := om.flow.WatchOperationCancellationRequests(ctx)
+	requestChannel := om.Flow.WatchOperationCancellationRequests(ctx)
 
 	for {
 		select {
@@ -213,7 +213,7 @@ func (om *OperationManager) WatchOperationCancellationRequests(ctx context.Conte
 }
 
 func (om *OperationManager) GrantLease(ctx context.Context, operation *operation.Operation) error {
-	err := om.leaseStorage.GrantLease(ctx, operation.SchedulerName, operation.ID, om.config.OperationLeaseTtl)
+	err := om.LeaseStorage.GrantLease(ctx, operation.SchedulerName, operation.ID, om.Config.OperationLeaseTtl)
 	if err != nil {
 		return fmt.Errorf("failed to grant lease to operation: %w", err)
 	}
@@ -222,7 +222,7 @@ func (om *OperationManager) GrantLease(ctx context.Context, operation *operation
 }
 
 func (om *OperationManager) RevokeLease(ctx context.Context, operation *operation.Operation) error {
-	err := om.leaseStorage.RevokeLease(ctx, operation.SchedulerName, operation.ID)
+	err := om.LeaseStorage.RevokeLease(ctx, operation.SchedulerName, operation.ID)
 	if err != nil {
 		return fmt.Errorf("failed to revoke lease to operation: %w", err)
 	}
@@ -234,7 +234,7 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 	go func() {
 		zap.L().Info("starting operation lease renew go routine")
 
-		ticker := time.NewTicker(om.config.OperationLeaseTtl)
+		ticker := time.NewTicker(om.Config.OperationLeaseTtl)
 		defer ticker.Stop()
 
 	renewLeaseLoop:
@@ -247,7 +247,7 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 					break renewLeaseLoop
 				}
 
-				err := om.leaseStorage.RenewLease(operationCtx, op.SchedulerName, op.ID, om.config.OperationLeaseTtl)
+				err := om.LeaseStorage.RenewLease(operationCtx, op.SchedulerName, op.ID, om.Config.OperationLeaseTtl)
 				if err != nil {
 					zap.L().
 						With(zap.String("schedulerName", op.SchedulerName)).
@@ -279,7 +279,7 @@ func (om *OperationManager) addOperationsLeaseData(ctx context.Context, schedule
 		opIds = append(opIds, op.ID)
 	}
 
-	leases, err := om.leaseStorage.FetchOperationsLease(ctx, schedulerName, opIds...)
+	leases, err := om.LeaseStorage.FetchOperationsLease(ctx, schedulerName, opIds...)
 	if err != nil {
 		return fmt.Errorf("failed to fetch operations lease for scheduler %s: %w", schedulerName, err)
 	}
@@ -293,18 +293,18 @@ func (om *OperationManager) addOperationsLeaseData(ctx context.Context, schedule
 
 func (om OperationManager) cancelOperation(ctx context.Context, schedulerName, operationID string) error {
 
-	op, _, err := om.storage.GetOperation(ctx, schedulerName, operationID)
+	op, _, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch operation from storage: %w", err)
 	}
 
 	if op.Status == operation.StatusPending {
-		err = om.storage.UpdateOperationStatus(ctx, schedulerName, operationID, operation.StatusCanceled)
+		err = om.Storage.UpdateOperationStatus(ctx, schedulerName, operationID, operation.StatusCanceled)
 		if err != nil {
 			return fmt.Errorf("failed update operation as canceled: %w", err)
 		}
 	} else {
-		cancelFn, err := om.operationCancelFunctions.getFunction(schedulerName, operationID)
+		cancelFn, err := om.OperationCancelFunctions.getFunction(schedulerName, operationID)
 		if err != nil {
 			return fmt.Errorf("failed to fetch cancel function from operation: %w", err)
 		}

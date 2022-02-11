@@ -36,16 +36,15 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"go.uber.org/zap"
 )
 
 type SchedulerManager struct {
 	schedulerStorage ports.SchedulerStorage
-	operationManager *operation_manager.OperationManager
+	operationManager ports.OperationManager
 }
 
-func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManager *operation_manager.OperationManager) *SchedulerManager {
+func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager) *SchedulerManager {
 	return &SchedulerManager{
 		schedulerStorage: schedulerStorage,
 		operationManager: operationManager,

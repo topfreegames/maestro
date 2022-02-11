@@ -554,7 +554,7 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 		opManager := New(operationFlow, operationStorage, nil, operationLeaseStorage, config)
 
 		cancelableContext, cancelFunction := context.WithCancel(context.Background())
-		opManager.operationCancelFunctions.putFunction(schedulerName, operationID, cancelFunction)
+		opManager.OperationCancelFunctions.putFunction(schedulerName, operationID, cancelFunction)
 
 		requestChannel := make(chan operation2.OperationCancellationRequest, 1000)
 		operationFlow.EXPECT().WatchOperationCancellationRequests(gomock.Any()).Return(requestChannel)

@@ -28,22 +28,20 @@ package gen
 // Wire
 //go:generate go run github.com/google/wire/cmd/wire ./../...
 
-// Services Mocks
+// Input ports Mocks
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/services/interfaces/events_service.go -destination=../internal/core/services/interfaces/mock/events_service/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/services/interfaces/room_manager.go -destination=../internal/core/services/interfaces/mock/room_manager/mock.go -package=mock
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/operation_ports.go -destination=../internal/core/ports/mock/operation_ports_mock.go -package=mock
 
-// Ports Mocks
+// Output ports Mocks
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/port_allocator.go -destination=../internal/adapters/port_allocator/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/forwarder/events_forwarder.go -destination=../internal/adapters/forwarder/events_forwarder/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/port_allocator.go -destination=../internal/adapters/port_allocator/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/runtime.go -destination=../internal/adapters/runtime/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/room_storage.go -destination=../internal/adapters/room_storage/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/instance_storage.go -destination=../internal/adapters/instance_storage/mock/mock.go -package=mock
-//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/operation_storage.go -destination=../internal/adapters/operation_storage/mock/mock.go -package=mock
-//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/operation_lease_storage.go -destination=../internal/adapters/operation_lease/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/scheduler_storage.go -destination=../internal/adapters/scheduler_storage/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/scheduler_cache.go -destination=../internal/adapters/scheduler_cache/mock/mock.go -package=mock
-//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/operation_flow.go -destination=../internal/adapters/operation_flow/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/forwarder/forwarder_client.go -destination=../internal/adapters/forwarder/forwarder_client/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/config/config.go -destination=../internal/config/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/operations/definition.go -destination=../internal/core/operations/mock/definition.go -package=mock
