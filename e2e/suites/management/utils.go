@@ -267,6 +267,25 @@ func waitForOperationToFinish(t *testing.T, managementApiClient *framework.APICl
 	}, 4*time.Minute, time.Second)
 }
 
+func waitForOperationToFinishByOperationId(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operationId string) {
+	require.Eventually(t, func() bool {
+		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
+		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
+		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		require.NoError(t, err)
+
+		if len(listOperationsResponse.FinishedOperations) >= 1 {
+			for _, _operation := range listOperationsResponse.FinishedOperations {
+				if _operation.Id == operationId {
+					return true
+				}
+			}
+		}
+
+		return false
+	}, 4*time.Minute, time.Second)
+}
+
 func waitForOperationToFail(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operation string) {
 	require.Eventually(t, func() bool {
 		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
