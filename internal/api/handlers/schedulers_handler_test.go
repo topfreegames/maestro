@@ -56,9 +56,9 @@ import (
 )
 
 func TestGetAllSchedulers(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
 
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
@@ -102,6 +102,7 @@ func TestGetAllSchedulers(t *testing.T) {
 	})
 
 	t.Run("with valid request and no scheduler found", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
@@ -157,9 +158,9 @@ func TestGetAllSchedulers(t *testing.T) {
 }
 
 func TestGetScheduler(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
 
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
@@ -231,6 +232,7 @@ func TestGetScheduler(t *testing.T) {
 	})
 
 	t.Run("with valid request and no scheduler found", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
@@ -261,6 +263,7 @@ func TestGetScheduler(t *testing.T) {
 	})
 
 	t.Run("with invalid request", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
@@ -293,9 +296,9 @@ func TestGetScheduler(t *testing.T) {
 }
 
 func TestGetSchedulerVersions(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
 
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
@@ -332,6 +335,7 @@ func TestGetSchedulerVersions(t *testing.T) {
 	})
 
 	t.Run("with valid request and no scheduler found", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
@@ -362,6 +366,7 @@ func TestGetSchedulerVersions(t *testing.T) {
 	})
 
 	t.Run("with invalid request", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
@@ -394,7 +399,6 @@ func TestGetSchedulerVersions(t *testing.T) {
 }
 
 func TestCreateScheduler(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
 
 	dirPath, _ := os.Getwd()
 
@@ -404,6 +408,7 @@ func TestCreateScheduler(t *testing.T) {
 	}
 
 	t.Run("with success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
@@ -491,7 +496,6 @@ func TestCreateScheduler(t *testing.T) {
 	})
 
 	t.Run("with failure", func(t *testing.T) {
-
 		schedulerManager := scheduler_manager.NewSchedulerManager(nil, nil)
 
 		mux := runtime.NewServeMux()
@@ -531,7 +535,7 @@ func TestCreateScheduler(t *testing.T) {
 	})
 
 	t.Run("fails when scheduler already exists", func(t *testing.T) {
-
+		mockCtrl := gomock.NewController(t)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
@@ -563,9 +567,9 @@ func TestCreateScheduler(t *testing.T) {
 }
 
 func TestAddRooms(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
 
 	t.Run("with success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
@@ -599,6 +603,7 @@ func TestAddRooms(t *testing.T) {
 	})
 
 	t.Run("fails when scheduler does not exists", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
@@ -619,6 +624,7 @@ func TestAddRooms(t *testing.T) {
 	})
 
 	t.Run("fails when operation enqueue fails", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
@@ -645,9 +651,9 @@ func TestAddRooms(t *testing.T) {
 }
 
 func TestRemoveRooms(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
 
 	t.Run("with success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
@@ -681,6 +687,7 @@ func TestRemoveRooms(t *testing.T) {
 	})
 
 	t.Run("fails when scheduler does not exists", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
@@ -701,6 +708,7 @@ func TestRemoveRooms(t *testing.T) {
 	})
 
 	t.Run("fails when operation enqueue fails", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
 		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
@@ -727,8 +735,6 @@ func TestRemoveRooms(t *testing.T) {
 }
 
 func TestNewSchedulerVersion(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
 	dirPath, _ := os.Getwd()
 
 	err := validations.RegisterValidations()
@@ -737,6 +743,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 	}
 
 	t.Run("with success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
 		currentScheduler := newValidScheduler()
 		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
@@ -776,6 +783,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 	})
 
 	t.Run("fails when scheduler does not exists", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
@@ -799,6 +807,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 	})
 
 	t.Run("with failure", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		currentScheduler := newValidScheduler()
 		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
 

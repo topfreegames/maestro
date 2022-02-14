@@ -49,7 +49,6 @@ import (
 )
 
 func TestListOperations(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
 	schedulerName := "zooba"
 
 	dates := []time.Time{
@@ -131,6 +130,7 @@ func TestListOperations(t *testing.T) {
 	}
 
 	t.Run("with success and default sorting", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
 		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
@@ -154,6 +154,7 @@ func TestListOperations(t *testing.T) {
 	})
 
 	t.Run("with success and ascending sorting", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
 		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
@@ -178,6 +179,7 @@ func TestListOperations(t *testing.T) {
 	})
 
 	t.Run("with success and descending sorting", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
 		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
@@ -203,6 +205,7 @@ func TestListOperations(t *testing.T) {
 	})
 
 	t.Run("with invalid sorting field", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -226,6 +229,7 @@ func TestListOperations(t *testing.T) {
 	})
 
 	t.Run("with invalid sorting order", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
 		mux := runtime.NewServeMux()
@@ -250,6 +254,7 @@ func TestListOperations(t *testing.T) {
 	})
 
 	t.Run("with error when listing pending operations", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
 		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("error listing pending operations"))
@@ -271,6 +276,7 @@ func TestListOperations(t *testing.T) {
 	})
 
 	t.Run("with error when listing active operations", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
 		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
@@ -293,6 +299,7 @@ func TestListOperations(t *testing.T) {
 	})
 
 	t.Run("with error when listing finished operations", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
 		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
@@ -317,11 +324,11 @@ func TestListOperations(t *testing.T) {
 }
 
 func TestCancelOperation(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
 	schedulerName := uuid.New().String()
 	operationID := uuid.New().String()
 
 	t.Run("enqueues operation cancellation request with success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
 		operationManager.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), schedulerName, operationID)
@@ -342,6 +349,7 @@ func TestCancelOperation(t *testing.T) {
 	})
 
 	t.Run("fails to enqueues operation cancellation request when operation_flow fails", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
 		operationManager.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), schedulerName, operationID).Return(errors.NewErrUnexpected("failed to persist request"))
