@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	operation2 "github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
@@ -122,7 +122,7 @@ func TestCancelOperation(t *testing.T) {
 	})
 }
 
-func createTestOperation(ctx context.Context, t *testing.T, operationStorage operation2.OperationStorage, operationFlow operation2.OperationFlow, schedulerName string, sleepSeconds int) *operation.Operation {
+func createTestOperation(ctx context.Context, t *testing.T, operationStorage ports.OperationStorage, operationFlow ports.OperationFlow, schedulerName string, sleepSeconds int) *operation.Operation {
 
 	definition := test_operation.TestOperationDefinition{
 		SleepSeconds: sleepSeconds,

@@ -29,10 +29,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	"testing"
 	"time"
-
-	operation2 "github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -539,7 +538,7 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 		cancelableContext, cancelFunction := context.WithCancel(context.Background())
 		opManager.OperationCancelFunctions.putFunction(schedulerName, operationID, cancelFunction)
 
-		requestChannel := make(chan operation2.OperationCancellationRequest, 1000)
+		requestChannel := make(chan ports.OperationCancellationRequest, 1000)
 		operationFlow.EXPECT().WatchOperationCancellationRequests(gomock.Any()).Return(requestChannel)
 
 		ctx, ctxCancelFunction := context.WithCancel(context.Background())
@@ -554,7 +553,7 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
-		requestChannel <- operation2.OperationCancellationRequest{
+		requestChannel <- ports.OperationCancellationRequest{
 			SchedulerName: schedulerName,
 			OperationID:   operationID,
 		}
