@@ -36,20 +36,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
+
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 
 	"github.com/golang/mock/gomock"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
-	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
-	oplstorage "github.com/topfreegames/maestro/internal/adapters/operation_lease/mock"
-	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/validations"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
@@ -410,11 +408,7 @@ func TestCreateScheduler(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		scheduler := &entities.Scheduler{
@@ -459,8 +453,7 @@ func TestCreateScheduler(t *testing.T) {
 		}
 
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Eq(scheduler)).Return(nil)
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-		operationFlow.EXPECT().InsertOperationID(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(scheduler, nil)
 
 		mux := runtime.NewServeMux()
@@ -572,15 +565,11 @@ func TestAddRooms(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
+
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-		operationFlow.EXPECT().InsertOperationID(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
 
 		mux := runtime.NewServeMux()
@@ -626,14 +615,11 @@ func TestAddRooms(t *testing.T) {
 	t.Run("fails when operation enqueue fails", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
+		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -646,7 +632,7 @@ func TestAddRooms(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 500, rr.Code)
-		require.Contains(t, rr.Body.String(), "not able to schedule the 'add rooms' operation: failed to create operation: storage offline")
+		require.Contains(t, rr.Body.String(), "not able to schedule the 'add rooms' operation: storage offline")
 	})
 }
 
@@ -656,16 +642,11 @@ func TestRemoveRooms(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-		operationFlow.EXPECT().InsertOperationID(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -710,14 +691,11 @@ func TestRemoveRooms(t *testing.T) {
 	t.Run("fails when operation enqueue fails", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
+		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -730,7 +708,7 @@ func TestRemoveRooms(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 500, rr.Code)
-		require.Contains(t, rr.Body.String(), "not able to schedule the 'remove rooms' operation: failed to create operation: storage offline")
+		require.Contains(t, rr.Body.String(), "not able to schedule the 'remove rooms' operation: storage offline")
 	})
 }
 
@@ -749,15 +727,10 @@ func TestNewSchedulerVersion(t *testing.T) {
 		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-		operationFlow.EXPECT().InsertOperationID(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(currentScheduler, nil)
 
 		mux := runtime.NewServeMux()
@@ -815,13 +788,10 @@ func TestNewSchedulerVersion(t *testing.T) {
 		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("storage offline"))
+		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(currentScheduler, nil)
 
 		mux := runtime.NewServeMux()
@@ -852,17 +822,12 @@ func TestSwitchActiveVersion(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-		operationFlow.EXPECT().InsertOperationID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -908,15 +873,12 @@ func TestSwitchActiveVersion(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(nil, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
 
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
-		operationStorage.EXPECT().CreateOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("internal error"))
+		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil, errors.NewErrUnexpected("internal error"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
