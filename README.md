@@ -6,6 +6,11 @@ Maestro: Kubernetes Game Room Scheduler
 [![Docs](https://readthedocs.org/projects/maestro/badge/?version=latest
 )](http://maestro.readthedocs.io/en/latest/)
 
+## Deprecation notice
+The version 9 of Maestro is deprecated.
+
+We strongly recommend using the most recent version, but feel free to use at your own risk.
+
 ## Goal:
 
 Have an unified system that automatically scales game rooms regardless of the protocol (TCP, UDP). This system is related to a matchmaker but does not handle the specificities of a match such as how many players fit in a room. It only deals with high level room occupation, i.e. is the room occupied or available. The rooms communicate directly with the matchmaker in order to register and unregister themselves from the matchmaking.
