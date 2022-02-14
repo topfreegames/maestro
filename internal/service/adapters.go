@@ -74,7 +74,7 @@ const (
 	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
 )
 
-func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig) *operation_manager.OperationManager {
+func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig) ports.OperationManager {
 	return &operation_manager.OperationManager{
 		Flow:                            flow,
 		Storage:                         storage,

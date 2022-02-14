@@ -46,12 +46,12 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 		service.NewOperationStorageRedis,
 		service.NewOperationLeaseStorageRedis,
 		service.NewSchedulerStoragePg,
+		service.NewOperationManager,
 
 		// scheduler operations
 		providers.ProvideDefinitionConstructors,
 
 		// services
-		service.NewOperationManager,
 		scheduler_manager.NewSchedulerManager,
 
 		// api handlers

@@ -10,7 +10,6 @@ import (
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
 	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
@@ -43,7 +42,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	if err != nil {
 		return nil, err
 	}
-	operationManager := operation_manager.New(operationFlow, operationStorage, v, operationLeaseStorage, operationManagerConfig)
+	operationManager := service.NewOperationManager(operationFlow, operationStorage, v, operationLeaseStorage, operationManagerConfig)
 	runtime, err := service.NewRuntimeKubernetes(c)
 	if err != nil {
 		return nil, err

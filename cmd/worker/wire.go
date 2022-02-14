@@ -45,6 +45,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		service.NewOperationFlowRedis,
 		service.NewClockTime,
 		service.NewOperationStorageRedis,
+		service.NewOperationManager,
 		service.NewSchedulerCacheRedis,
 		service.NewOperationLeaseStorageRedis,
 		service.NewPortAllocatorRandom,
@@ -62,7 +63,6 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		// services
 		events_forwarder.NewEventsForwarderService,
 		room_manager.NewRoomManager,
-		service.NewOperationManager,
 		workers.ProvideWorkerOptions,
 		workers_manager.NewWorkersManager,
 		scheduler_manager.NewSchedulerManager,

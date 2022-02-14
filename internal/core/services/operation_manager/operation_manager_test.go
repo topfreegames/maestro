@@ -29,9 +29,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/ports"
 	"testing"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
