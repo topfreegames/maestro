@@ -31,7 +31,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 )
 
-// Input ports (driving ports)
+// Primary ports (input, driving ports)
 
 type OperationManager interface {
 	// CreateOperation creates a new operation for the given scheduler and includes it in the execution process.
@@ -62,7 +62,7 @@ type OperationManager interface {
 	StartLeaseRenewGoRoutine(operationCtx context.Context, op *operation.Operation)
 }
 
-// Output ports (driven ports)
+// Secondary ports (output, driven ports)
 
 type OperationFlow interface {
 	InsertOperationID(ctx context.Context, schedulerName, operationID string) error
