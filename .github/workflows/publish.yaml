@@ -26,7 +26,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: ./docker/management-api/
-          file: ./Dockerfile
+          file: ./docker/management-api/Dockerfile
           push: true
           tags: quay.io/tfgco/maestro-management-api:${{ env.IMAGE_VERSION }}
       - name: Build and push - Rooms API
@@ -34,7 +34,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: ./docker/rooms-api/
-          file: ./Dockerfile
+          file: ./docker/rooms-api/Dockerfile
           push: true
           tags: quay.io/tfgco/maestro-rooms-api:${{ env.IMAGE_VERSION }}
       - name: Build and push - Runtime Watcher
@@ -42,7 +42,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: ./docker/runtime-watcher/
-          file: ./Dockerfile
+          file: ./docker/runtime-watcher/Dockerfile
           push: true
           tags: quay.io/tfgco/maestro-runtime-watcher:${{ env.IMAGE_VERSION }}
       - name: Build and push - Worker
@@ -50,6 +50,6 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: ./docker/worker/
-          file: ./Dockerfile
+          file: ./docker/worker/Dockerfile
           push: true
           tags: quay.io/tfgco/maestro-worker:${{ env.IMAGE_VERSION }}
