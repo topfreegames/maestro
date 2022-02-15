@@ -1,14 +1,16 @@
 name: Publish
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
 jobs:
   build-and-push:
     name: Build and Publish
     runs-on: ubuntu-latest
     steps:
-      - name: Get the version
-        run: |
-          ref=${GITHUB_REF#refs/*/}
-          echo IMAGE_VERSION=${ref/\//-} >> $GITHUB_ENV
+      - name: Get the version (release tag)
+        run: echo "IMAGE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Login to DockerHub
@@ -17,9 +19,35 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_TOKEN }}
-      - name: Build and push
-        if: ${{ env.IMAGE_VERSION != 'master' }}
+      - name: Build and push - Management API
+        if: ${{ env.IMAGE_VERSION != 'main' }}
         uses: docker/build-push-action@v2
         with:
+          context: .
+          file: ./docker/management-api/Dockerfile
           push: true
-          tags: quay.io/tfgco/maestro:${{ env.IMAGE_VERSION }}
+          tags: quay.io/tfgco/maestro-management-api:${{ env.IMAGE_VERSION }}
+      - name: Build and push - Rooms API
+        if: ${{ env.IMAGE_VERSION != 'main' }}
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./docker/rooms-api/Dockerfile
+          push: true
+          tags: quay.io/tfgco/maestro-rooms-api:${{ env.IMAGE_VERSION }}
+      - name: Build and push - Runtime Watcher
+        if: ${{ env.IMAGE_VERSION != 'main' }}
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./docker/runtime-watcher/Dockerfile
+          push: true
+          tags: quay.io/tfgco/maestro-runtime-watcher:${{ env.IMAGE_VERSION }}
+      - name: Build and push - Worker
+        if: ${{ env.IMAGE_VERSION != 'main' }}
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./docker/worker/Dockerfile
+          push: true
+          tags: quay.io/tfgco/maestro-worker:${{ env.IMAGE_VERSION }}
