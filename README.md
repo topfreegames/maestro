@@ -6,10 +6,47 @@ Maestro: Kubernetes Game Room Scheduler
 [![Docs](https://readthedocs.org/projects/maestro/badge/?version=latest
 )](http://maestro.readthedocs.io/en/latest/)
 
-## Deprecation notice
-The version 9 of Maestro is deprecated.
+# Deprecation notice
+The version 9 of Maestro is under deprecation.
 
-We strongly recommend using the most recent version, but feel free to use at your own risk.
+We will keep the support for this version after the v10 is released (more details below). However, after that period, the version will no longer receive any updates.
+
+Here is the complete timeline of the v9 next steps:
+
+<table>
+  <tr>
+   <td>Date
+   </td>
+   <td>Status
+   </td>
+   <td>Comments
+   </td>
+  </tr>
+  <tr>
+   <td>2022-02-14
+   </td>
+   <td>Deprecated
+   </td>
+   <td>Only security and performance fixes will be accepted. The package will be marked as “deprecated”, and V10 will be recommended.
+   </td>
+  </tr>
+  <tr>
+   <td>2022-12-14
+   </td>
+   <td>Inactive
+   </td>
+   <td>Only critical security fixes will be accepted.
+   </td>
+  </tr>
+  <tr>
+   <td>2023-06-14
+   </td>
+   <td>Read-only
+   </td>
+   <td>No more code changes will be accepted, and the “v9” branch will become read-only.
+   </td>
+  </tr>
+</table>
 
 ## Goal:
 
