@@ -10,8 +10,6 @@ Maestro: Kubernetes Game Room Scheduler
 ## Docs
 All documentation regarding this version (v10.x, AKA NEXT) can be accessed at https://topfreegames.github.io/maestro/.
 
-The .MD files can be found on the branch "gh-pages" in this repository.
-
 ## Dependencies
 
 ### Grpc gateway
