@@ -3,7 +3,7 @@ name: Documentation
 on:
   push:
     branches:
-      - next
+      - main
     paths:
       - "docs/*"
       - "**.md"
