@@ -51,7 +51,6 @@ import (
 
 func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	now := time.Now()
 	portAllocator := pamock.NewMockPortAllocator(mockCtrl)
@@ -186,7 +185,6 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 
 func TestRoomManager_DeleteRoomAndWaitForRoomTerminated(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
@@ -248,7 +246,6 @@ func TestRoomManager_DeleteRoomAndWaitForRoomTerminated(t *testing.T) {
 
 func TestRoomManager_UpdateRoom(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
@@ -328,7 +325,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 
 func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
+
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsService := mockeventsservice.NewMockEventsService(mockCtrl)
@@ -522,7 +519,6 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 
 func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
@@ -562,7 +558,6 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 
 func TestRoomManager_CleanRoomState(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
@@ -622,7 +617,6 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 
 func TestRoomManager_ValidateGameRoomCreation(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	now := time.Now()
 	portAllocator := pamock.NewMockPortAllocator(mockCtrl)

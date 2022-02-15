@@ -6,10 +6,10 @@ package mock
 
 import (
 	context "context"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	ports "github.com/topfreegames/maestro/internal/core/ports"
 )
 
 // MockOperationFlow is a mock of OperationFlow interface.

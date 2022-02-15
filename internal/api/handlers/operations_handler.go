@@ -29,8 +29,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,11 +39,11 @@ import (
 )
 
 type OperationsHandler struct {
-	operationManager *operation_manager.OperationManager
+	operationManager ports.OperationManager
 	api.UnimplementedOperationsServiceServer
 }
 
-func ProvideOperationsHandler(operationManager *operation_manager.OperationManager) *OperationsHandler {
+func ProvideOperationsHandler(operationManager ports.OperationManager) *OperationsHandler {
 	return &OperationsHandler{
 		operationManager: operationManager,
 	}

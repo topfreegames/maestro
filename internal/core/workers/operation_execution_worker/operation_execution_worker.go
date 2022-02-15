@@ -28,10 +28,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"go.uber.org/zap"
 )
@@ -42,7 +43,7 @@ var _ workers.Worker = (*OperationExecutionWorker)(nil)
 // responsibilities.
 type OperationExecutionWorker struct {
 	schedulerName    string
-	operationManager *operation_manager.OperationManager
+	operationManager ports.OperationManager
 	// TODO(gabrielcorado): check if we this is the right place to have all
 	// executors.
 	executorsByName     map[string]operations.Executor

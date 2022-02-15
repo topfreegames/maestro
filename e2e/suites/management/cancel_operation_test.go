@@ -28,16 +28,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation_flow/redis"
 	operationStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
-	"github.com/topfreegames/maestro/internal/core/ports"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 

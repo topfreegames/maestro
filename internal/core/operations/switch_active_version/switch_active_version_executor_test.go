@@ -64,7 +64,6 @@ type mockRoomAndSchedulerManager struct {
 
 func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	err := validations.RegisterValidations()
 	if err != nil {

@@ -37,18 +37,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
+
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
-	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
-	oplstorage "github.com/topfreegames/maestro/internal/adapters/operation_lease/mock"
-	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
@@ -113,6 +109,7 @@ func TestListOperations(t *testing.T) {
 			CreatedAt:      dates[0],
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
+			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306511, 0)},
 		},
 		&operation.Operation{
 			ID:             "59e58c61-1758-4f02-b6ea-a87a64172902",
@@ -120,6 +117,7 @@ func TestListOperations(t *testing.T) {
 			CreatedAt:      dates[1],
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
+			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306521, 0)},
 		},
 		&operation.Operation{
 			ID:             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
@@ -127,38 +125,17 @@ func TestListOperations(t *testing.T) {
 			CreatedAt:      dates[2],
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
+			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306531, 0)},
 		},
 	}
 
 	t.Run("with success and default sorting", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
-
-		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{"1", "2", "3"}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "1").Return(pendingOperations[0], []byte{}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "2").Return(pendingOperations[1], []byte{}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "3").Return(pendingOperations[2], []byte{}, nil)
-		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
-		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationLeaseStorage.EXPECT().FetchOperationsLease(gomock.Any(), schedulerName, activeOperations[0].ID, activeOperations[1].ID, activeOperations[2].ID).Return([]*operation.OperationLease{
-			{
-				OperationID: activeOperations[0].ID,
-				Ttl:         time.Unix(1641306511, 0),
-			},
-			{
-				OperationID: activeOperations[1].ID,
-				Ttl:         time.Unix(1641306521, 0),
-			}, {
-				OperationID: activeOperations[2].ID,
-				Ttl:         time.Unix(1641306531, 0),
-			},
-		}, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -172,39 +149,17 @@ func TestListOperations(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 200, rr.Code)
-		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "list_operations_default_sorting.json")
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_default_sorting.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with success and ascending sorting", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
-
-		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{"1", "2", "3"}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "1").Return(pendingOperations[0], []byte{}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "2").Return(pendingOperations[1], []byte{}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "3").Return(pendingOperations[2], []byte{}, nil)
-		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
-		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationLeaseStorage.EXPECT().FetchOperationsLease(gomock.Any(), schedulerName, activeOperations[0].ID, activeOperations[1].ID, activeOperations[2].ID).Return([]*operation.OperationLease{
-			{
-				OperationID: activeOperations[0].ID,
-				Ttl:         time.Unix(1641306511, 0),
-			},
-			{
-				OperationID: activeOperations[1].ID,
-				Ttl:         time.Unix(1641306521, 0),
-			}, {
-				OperationID: activeOperations[2].ID,
-				Ttl:         time.Unix(1641306531, 0),
-			},
-		}, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -219,39 +174,17 @@ func TestListOperations(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 200, rr.Code)
-		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "list_operations_ascending_sorting.json")
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_ascending_sorting.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with success and descending sorting", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
-
-		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{"1", "2", "3"}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "1").Return(pendingOperations[0], []byte{}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "2").Return(pendingOperations[1], []byte{}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, "3").Return(pendingOperations[2], []byte{}, nil)
-		operationStorage.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
-		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationLeaseStorage.EXPECT().FetchOperationsLease(gomock.Any(), schedulerName, activeOperations[0].ID, activeOperations[1].ID, activeOperations[2].ID).Return([]*operation.OperationLease{
-			{
-				OperationID: activeOperations[0].ID,
-				Ttl:         time.Unix(1641306511, 0),
-			},
-			{
-				OperationID: activeOperations[1].ID,
-				Ttl:         time.Unix(1641306521, 0),
-			}, {
-				OperationID: activeOperations[2].ID,
-				Ttl:         time.Unix(1641306531, 0),
-			},
-		}, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -267,20 +200,13 @@ func TestListOperations(t *testing.T) {
 
 		require.Equal(t, 200, rr.Code)
 
-		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "list_operations_descending_sorting.json")
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_descending_sorting.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with invalid sorting field", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
-
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
@@ -304,13 +230,7 @@ func TestListOperations(t *testing.T) {
 
 	t.Run("with invalid sorting order", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -333,21 +253,11 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, "invalid sorting order: invalidOrder", body["message"])
 	})
 
-	t.Run("fails when operation is listed but does not exists", func(t *testing.T) {
+	t.Run("with error when listing pending operations", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, config)
-
-		operationID := "operation-1"
-		schedulerName := "zooba"
-
-		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(gomock.Any(), schedulerName).Return([]string{operationID}, nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(nil, nil, errors.NewErrNotFound("operation %s not found in scheduler %s", operationID, schedulerName))
+		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("error listing pending operations"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -360,16 +270,56 @@ func TestListOperations(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
-
 		require.Equal(t, 500, rr.Code)
-		bodyString := rr.Body.String()
-		var body map[string]interface{}
-		err = json.Unmarshal([]byte(bodyString), &body)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_pending_operations.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
 
+	t.Run("with error when listing active operations", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("error listing active operations"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
-		require.Equal(t,
-			"operation operation-1 not found in scheduler zooba",
-			body["message"])
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 500, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_active_operations.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with error when listing finished operations", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("error listing finished operations"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 500, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_finished_operations.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 }
 
@@ -379,16 +329,9 @@ func TestCancelOperation(t *testing.T) {
 
 	t.Run("enqueues operation cancellation request with success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, nil, nil, nil, config)
-
-		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Eq(ports.OperationCancellationRequest{
-			SchedulerName: schedulerName,
-			OperationID:   operationID,
-		})).Return(nil)
+		operationManager.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), schedulerName, operationID)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -407,16 +350,9 @@ func TestCancelOperation(t *testing.T) {
 
 	t.Run("fails to enqueues operation cancellation request when operation_flow fails", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		config := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		operationManager := operation_manager.New(operationFlow, nil, nil, nil, config)
-
-		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Eq(ports.OperationCancellationRequest{
-			SchedulerName: schedulerName,
-			OperationID:   operationID,
-		})).Return(errors.NewErrUnexpected("failed to persist request"))
+		operationManager.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), schedulerName, operationID).Return(errors.NewErrUnexpected("failed to persist request"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))

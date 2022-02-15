@@ -32,9 +32,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/test"
 )
