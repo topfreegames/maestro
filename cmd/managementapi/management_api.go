@@ -26,16 +26,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/cmd/commom"
+
 	"github.com/spf13/cobra"
 
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/topfreegames/maestro/internal/config/viper"
-
-	"github.com/topfreegames/maestro/internal/service"
 	"go.uber.org/zap"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -44,7 +40,6 @@ import (
 	"github.com/slok/go-http-metrics/middleware/std"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
-	"github.com/topfreegames/maestro/internal/validations"
 )
 
 var (
@@ -69,34 +64,12 @@ func init() {
 }
 
 func runManagementApi() {
-	err := service.ConfigureLogging(logConfig)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
-	}
-
-	err = validations.RegisterValidations()
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal(err.Error())
-	}
-
 	ctx, cancelFn := context.WithCancel(context.Background())
 
-	config, err := viper.NewViperConfig(configPath)
+	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load config")
+		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
 	}
-
-	go func() {
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-		<-sigs
-		zap.L().Info("received termination")
-
-		cancelFn()
-	}()
-
-	shutdownInternalServerFn := service.RunInternalServer(ctx, config)
 
 	mux, err := initializeManagementMux(ctx, config)
 	if err != nil {

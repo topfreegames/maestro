@@ -24,15 +24,11 @@ package runtimewatcher
 
 import (
 	"context"
-	"os"
-	"os/signal"
-	"syscall"
+
+	"github.com/topfreegames/maestro/cmd/commom"
 
 	"github.com/spf13/cobra"
 
-	"github.com/topfreegames/maestro/internal/config/viper"
-	"github.com/topfreegames/maestro/internal/service"
-	"github.com/topfreegames/maestro/internal/validations"
 	"go.uber.org/zap"
 )
 
@@ -58,34 +54,12 @@ func init() {
 }
 
 func runRuntimeWatcher() {
-	err := service.ConfigureLogging(logConfig)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
-	}
-
-	err = validations.RegisterValidations()
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal(err.Error())
-	}
-
 	ctx, cancelFn := context.WithCancel(context.Background())
 
-	config, err := viper.NewViperConfig(configPath)
+	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load config")
+		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
 	}
-
-	go func() {
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-		<-sigs
-		zap.L().Info("received termination")
-
-		cancelFn()
-	}()
-
-	shutdownInternalServerFn := service.RunInternalServer(ctx, config)
 
 	operationExecutionWorkerManager, err := initializeRuntimeWatcher(config)
 	if err != nil {
