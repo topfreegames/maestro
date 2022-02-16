@@ -24,7 +24,6 @@ package worker
 
 import (
 	"context"
-	"flag"
 	"os"
 	"os/signal"
 	"syscall"
@@ -44,10 +43,11 @@ var (
 )
 
 var WorkerCmd = &cobra.Command{
-	Use:     "worker",
-	Short:   "",
-	Example: "",
-	Long:    "",
+	Use:   "worker",
+	Short: "Starts maestro worker service component",
+	Long: "Starts maestro worker service component, a service that manages workers that executes operations for a " +
+		"set of schedulers. This component does not expose any means of external communication",
+	Example: "maestro start worker -c config.yaml -l production",
 	Run: func(cmd *cobra.Command, args []string) {
 		runWorker()
 	},
@@ -59,7 +59,6 @@ func init() {
 }
 
 func runWorker() {
-	flag.Parse()
 	err := service.ConfigureLogging(logConfig)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")

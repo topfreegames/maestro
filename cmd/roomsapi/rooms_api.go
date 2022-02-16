@@ -24,7 +24,6 @@ package roomsapi
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -52,10 +51,11 @@ var (
 )
 
 var RoomsAPICmd = &cobra.Command{
-	Use:     "rooms-api",
-	Short:   "",
-	Example: "",
-	Long:    "",
+	Use:   "rooms-api",
+	Short: "Starts maestro rooms-api service component",
+	Long: "Starts maestro rooms-api service component, a component that provides a REST API and a GRPC service for" +
+		"sending rooms messages",
+	Example: "maestro start rooms-api -c config.yaml -l production",
 	Run: func(cmd *cobra.Command, args []string) {
 		runRoomsAPI()
 	},
@@ -67,7 +67,6 @@ func init() {
 }
 
 func runRoomsAPI() {
-	flag.Parse()
 	err := service.ConfigureLogging(logConfig)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")

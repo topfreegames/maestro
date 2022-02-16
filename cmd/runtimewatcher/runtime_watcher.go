@@ -24,7 +24,6 @@ package runtimewatcher
 
 import (
 	"context"
-	"flag"
 	"os"
 	"os/signal"
 	"syscall"
@@ -43,10 +42,11 @@ var (
 )
 
 var RuntimeWatcherCmd = &cobra.Command{
-	Use:     "runtime-watcher",
-	Short:   "",
-	Example: "",
-	Long:    "",
+	Use:   "runtime-watcher",
+	Short: "Starts maestro runtime-watcher service component",
+	Long: "Starts maestro runtime-watcher service component, a service that monitors the runtime of the cluster," +
+		"this component does not expose any means of external communication",
+	Example: "maestro start runtime-watcher -c config.yaml -l production",
 	Run: func(cmd *cobra.Command, args []string) {
 		runRuntimeWatcher()
 	},
@@ -58,7 +58,6 @@ func init() {
 }
 
 func runRuntimeWatcher() {
-	flag.Parse()
 	err := service.ConfigureLogging(logConfig)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")

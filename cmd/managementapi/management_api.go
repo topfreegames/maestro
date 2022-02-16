@@ -24,7 +24,6 @@ package managementapi
 
 import (
 	"context"
-	"flag"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -55,9 +54,10 @@ var (
 
 var ManagementApiCmd = &cobra.Command{
 	Use:     "management-api",
-	Short:   "",
-	Example: "",
-	Long:    "",
+	Short:   "Starts maestro management-api service component",
+	Example: "maestro start management-api -c config.yaml -l production",
+	Long: "Starts maestro management-api service component, a component that provides a REST API and a GRPC service for" +
+		"managing schedulers, rooms, and operations",
 	Run: func(cmd *cobra.Command, args []string) {
 		runManagementApi()
 	},
@@ -69,7 +69,6 @@ func init() {
 }
 
 func runManagementApi() {
-	flag.Parse()
 	err := service.ConfigureLogging(logConfig)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
