@@ -32,7 +32,7 @@ import (
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Starts the provided maestro component services",
+	Short: "Starts the provided maestro component service",
 }
 
 func init() {
