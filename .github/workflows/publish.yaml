@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Build components (binaries)
+        uses: make build/all-components
       - name: Get the version (release tag)
         run: echo "IMAGE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
