@@ -4,9 +4,6 @@ on:
   release:
     types:
       - published
-  push:
-    branches:
-      - feat/publish-workflow
 jobs:
   build-and-push:
     name: Build and Publish
