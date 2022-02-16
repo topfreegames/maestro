@@ -24,8 +24,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -45,4 +46,5 @@ func Execute() {
 
 func init() {
 	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(migrateCmd)
 }

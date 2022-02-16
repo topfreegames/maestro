@@ -25,10 +25,11 @@ package worker
 import (
 	"context"
 	"flag"
-	"github.com/spf13/cobra"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/spf13/cobra"
 
 	"github.com/topfreegames/maestro/internal/config/viper"
 	"github.com/topfreegames/maestro/internal/core/workers/operation_execution_worker"
@@ -38,8 +39,8 @@ import (
 )
 
 var (
-	logConfig  = flag.String("log-config", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	configPath = flag.String("config-path", "config/worker.local.yaml", "path of the configuration YAML file")
+	logConfig  string
+	configPath string
 )
 
 var WorkerCmd = &cobra.Command{
@@ -52,9 +53,14 @@ var WorkerCmd = &cobra.Command{
 	},
 }
 
+func init() {
+	WorkerCmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	WorkerCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/worker.local.yaml", "path of the configuration YAML file")
+}
+
 func runWorker() {
 	flag.Parse()
-	err := service.ConfigureLogging(*logConfig)
+	err := service.ConfigureLogging(logConfig)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
 	}
@@ -66,7 +72,7 @@ func runWorker() {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 
-	config, err := viper.NewViperConfig(*configPath)
+	config, err := viper.NewViperConfig(configPath)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to load config")
 	}

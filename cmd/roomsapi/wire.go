@@ -23,7 +23,7 @@
 //go:build wireinject
 // +build wireinject
 
-package main
+package roomsapi
 
 import (
 	"context"

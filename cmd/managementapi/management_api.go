@@ -20,12 +20,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package main
+package managementapi
 
 import (
 	"context"
 	"flag"
 	"fmt"
+
+	"github.com/spf13/cobra"
 
 	"net/http"
 	"os"
@@ -47,13 +49,28 @@ import (
 )
 
 var (
-	logConfig  = flag.String("log-config", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	configPath = flag.String("config-path", "config/management-api.local.yaml", "path of the configuration YAML file")
+	logConfig  string
+	configPath string
 )
 
-func main() {
+var ManagementApiCmd = &cobra.Command{
+	Use:     "management-api",
+	Short:   "",
+	Example: "",
+	Long:    "",
+	Run: func(cmd *cobra.Command, args []string) {
+		runManagementApi()
+	},
+}
+
+func init() {
+	ManagementApiCmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	ManagementApiCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/management-api.local.yaml", "path of the configuration YAML file")
+}
+
+func runManagementApi() {
 	flag.Parse()
-	err := service.ConfigureLogging(*logConfig)
+	err := service.ConfigureLogging(logConfig)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
 	}
@@ -65,7 +82,7 @@ func main() {
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 
-	config, err := viper.NewViperConfig(*configPath)
+	config, err := viper.NewViperConfig(configPath)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to load config")
 	}

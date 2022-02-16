@@ -33,14 +33,26 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	logConfig  string
+	configPath string
+)
+
 func init() {
-	rootCmd.AddCommand(migrateCmd)
+	migrateCmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	migrateCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/utils.local.yaml", "path of the configuration YAML file")
 }
 
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
 	Short: "migrates database",
 	Run: func(cmd *cobra.Command, args []string) {
+		err := service.ConfigureLogging(logConfig)
+		if err != nil {
+			zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
+		}
+
+		viper.SetConfigFile(configPath)
 
 		config, err := viperConfig.NewViperConfig(viper.ConfigFileUsed())
 		if err != nil {
