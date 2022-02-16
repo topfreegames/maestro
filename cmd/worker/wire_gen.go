@@ -4,7 +4,7 @@
 //go:build !wireinject
 // +build !wireinject
 
-package main
+package worker
 
 import (
 	"github.com/topfreegames/maestro/internal/config"

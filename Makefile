@@ -20,14 +20,14 @@ deps: ## Download the dependencies to the project.
 #-------------------------------------------------------------------------------
 
 .PHONY: goimports
-goimports: ## Execute goimports to standardize modules declaration and code. 
+goimports: ## Execute goimports to standardize modules declaration and code.
 	@go run golang.org/x/tools/cmd/goimports -w $(SOURCES)
 
 .PHONY: lint
 lint: lint/go lint/protobuf ## Execute linters.
 
 .PHONY: lint/go
-lint/go: ## Execute golangci-lint. 
+lint/go: ## Execute golangci-lint.
 	@go run github.com/golangci/golangci-lint/cmd/golangci-lint run
 
 .PHONY: lint/protobuf
@@ -58,48 +58,44 @@ run/e2e-tests: deps/stop build/worker build/management-api build/rooms-api build
 #  Build and run
 #-------------------------------------------------------------------------------
 
-.PHONY: build/all-components 
-build/all-components: build/worker build/management-api build/rooms-api build/runtime-watcher ## Build all maestro components binaries (management-api, worker, rooms-api and runtime-watcher).
-	@echo 'Built all components (worker, management-api, rooms-api, runtime-watcher)! Look in the bin folder'
-
-.PHONY: build/worker
-build/worker: ## Build worker binary.
-	@rm -f ./bin/worker-* || true
-	@go build -o ./bin/worker ./cmd/worker
+.PHONY: build
+build:
+	@rm -f ./bin/maestro-* || true
+	@go build -o ./bin/maestro ./
 	@env GOOS=linux GOARCH=amd64 go build -o ./bin/worker-linux-x86_64 ./cmd/worker
 
 .PHONY: run/worker
-run/worker: build/worker
-	./bin/worker
+run/worker: build
+	./bin/maestro start worker
 
 .PHONY: build/management-api
-build/management-api: ## Build management-api binary.
+build/management-api:
 	@rm -f ./bin/management-api-* || true
 	@go build -o ./bin/management-api ./cmd/management_api
 	@env GOOS=linux GOARCH=amd64 go build -o ./bin/management-api-linux-x86_64 ./cmd/management_api
 
+.PHONY: run/management-api
+run/management-api: build/management-api
+	./bin/management-api
+
 .PHONY: build/rooms-api
-build/rooms-api: ## Build rooms-api binary.
+build/rooms-api:
 	@rm -f ./bin/rooms-api-* || true
 	@go build -o ./bin/rooms-api ./cmd/rooms_api
 	@env GOOS=linux GOARCH=amd64 go build -o ./bin/rooms-api-linux-x86_64 ./cmd/rooms_api
 
+.PHONY: run/rooms-api
+run/rooms-api: build/rooms-api
+	./bin/rooms-api
+
 .PHONY: build/runtime-watcher
-build/runtime-watcher: ## Build runtime-watcher binary.
+build/runtime-watcher:
 	@rm -f ./bin/runtime-watcher-* || true
 	@go build -o ./bin/runtime-watcher ./cmd/runtime_watcher
 	@env GOOS=linux GOARCH=amd64 go build -o ./bin/runtime-watcher-linux-x86_64 ./cmd/runtime_watcher
 
-.PHONY: run/management-api
-run/management-api: build/management-api  ## Run management-api.
-	./bin/management-api
-
-.PHONY: run/rooms-api
-run/rooms-api: build/rooms-api ## Run rooms-api.
-	./bin/rooms-api
-
 .PHONY: run/runtime-watcher
-run/runtime-watcher: build/runtime-watcher ## Run runtime-watcher.
+run/runtime-watcher: build/runtime-watcher
 	./bin/runtime-watcher
 
 #-------------------------------------------------------------------------------

@@ -20,11 +20,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package main
+package worker
 
 import (
 	"context"
 	"flag"
+	"github.com/spf13/cobra"
 	"os"
 	"os/signal"
 	"syscall"
@@ -41,7 +42,17 @@ var (
 	configPath = flag.String("config-path", "config/worker.local.yaml", "path of the configuration YAML file")
 )
 
-func main() {
+var WorkerCmd = &cobra.Command{
+	Use:     "worker",
+	Short:   "",
+	Example: "",
+	Long:    "",
+	Run: func(cmd *cobra.Command, args []string) {
+		runWorker()
+	},
+}
+
+func runWorker() {
 	flag.Parse()
 	err := service.ConfigureLogging(*logConfig)
 	if err != nil {
