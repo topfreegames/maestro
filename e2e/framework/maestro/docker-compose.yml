@@ -17,7 +17,7 @@ services:
         MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
         maestroComponent: "worker"
     ports:
-      - "9096:8080"
+      - "9096:8081"
     volumes:
       - ../../../kubeconfig:/kubeconfig
     depends_on:
@@ -38,7 +38,7 @@ services:
         maestroComponent: "rooms-api"
     ports:
       - "9097:8080"
-      - "9098:8091"
+      - "9098:8081"
 
     volumes:
       - ../../../kubeconfig:/kubeconfig
@@ -49,7 +49,7 @@ services:
   management-api:
     build:
       context: ../../..
-      dockerfile: ./Dockerfile
+      dockerfile: ./e2e/framework/maestro/Dockerfile
       args:
         MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
         MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL: "redis://redis:6379/0"
@@ -76,7 +76,7 @@ services:
         MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
         maestroComponent: "runtime-watcher"
     ports:
-      - "9099:8080"
+      - "9099:8081"
     volumes:
       - ../../../kubeconfig:/kubeconfig
 
