@@ -21,6 +21,11 @@
 
 FROM golang:1.17.3-alpine AS build-env
 
+WORKDIR /build
+
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY . /src/maestro
 
 RUN mkdir -p /app
@@ -28,8 +33,8 @@ RUN mkdir -p /app
 RUN apk add --update make
 
 RUN cd /src/maestro && \
-    make build && \
-    mv ./bin/maestro-x86_64 /app/maestro && \
+    make build-linux-x86_64 && \
+    mv ./bin/maestro-linux-x86_64 /app/maestro && \
     mv config /app/config
 
 

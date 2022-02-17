@@ -59,10 +59,16 @@ run/e2e-tests: deps/stop build ## Execute end-to-end tests.
 #-------------------------------------------------------------------------------
 
 .PHONY: build
-build: ## Build the project and generates a binary.
-	@rm -f ./bin/maestro-* || true
+build: build-linux-x86_64 ## Build the project and generates a binary.
+	@rm -f ./bin/maestro || true
 	@go build -o ./bin/maestro ./
-	@env GOOS=linux GOARCH=amd64 go build -o ./bin/maestro-x86_64 ./
+	@env GOOS=linux GOARCH=amd64 go build -o ./bin/maestro-linux-x86_64 ./
+
+.PHONY: build-linux-x86_64
+build-linux-x86_64: ## Build the project and generates a binary for x86_64 architecture.
+	@rm -f ./bin/maestro-linux-x86_64 || true
+	@env GOOS=linux GOARCH=amd64 go build -o ./bin/maestro-linux-x86_64 ./
+
 
 .PHONY: run/worker
 run/worker: ## Runs maestro worker.

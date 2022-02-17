@@ -46,7 +46,7 @@ ENV MAESTRO_COMPONENT=$maestroComponent
 
 WORKDIR /app
 
-COPY ./bin/maestro-x86_64 /app/maestro
+COPY ./bin/maestro-linux-x86_64 /app/maestro
 COPY ./config /app/config
 
 EXPOSE 8080 8081
