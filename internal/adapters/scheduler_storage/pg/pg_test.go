@@ -303,28 +303,28 @@ func TestSchedulerStorage_GetSchedulersWithFilter(t *testing.T) {
 	require.NoError(t, storage.CreateScheduler(context.Background(), scheduler1))
 	require.NoError(t, storage.CreateScheduler(context.Background(), scheduler2))
 
-	t.Run("when filter is nil should return all schedulers", func(t *testing.T){
+	t.Run("when filter is nil should return all schedulers", func(t *testing.T) {
 		actualSchedulers, err := storage.GetSchedulersWithFilter(context.Background(), nil)
 		require.NoError(t, err)
 
 		assertSchedulers(t, []*entities.Scheduler{scheduler1, scheduler2}, actualSchedulers)
 	})
 
-	t.Run("when filter is empty should return all schedulers", func(t *testing.T){
+	t.Run("when filter is empty should return all schedulers", func(t *testing.T) {
 		actualSchedulers, err := storage.GetSchedulersWithFilter(context.Background(), &filters.SchedulerFilter{})
 		require.NoError(t, err)
 
 		assertSchedulers(t, []*entities.Scheduler{scheduler1, scheduler2}, actualSchedulers)
 	})
 
-	t.Run("where there is a filter should filter schedulers", func(t *testing.T){
+	t.Run("where there is a filter should filter schedulers", func(t *testing.T) {
 		actualSchedulers, err := storage.GetSchedulersWithFilter(context.Background(), &filters.SchedulerFilter{Game: "game"})
 		require.NoError(t, err)
 
 		assertSchedulers(t, []*entities.Scheduler{scheduler1}, actualSchedulers)
 	})
 
-	t.Run("where there is a filter and there is no record should return empty array", func(t *testing.T){
+	t.Run("where there is a filter and there is no record should return empty array", func(t *testing.T) {
 		actualSchedulers, err := storage.GetSchedulersWithFilter(context.Background(), &filters.SchedulerFilter{Game: "NON_EXISTENT_GAME"})
 		require.NoError(t, err)
 		require.Empty(t, actualSchedulers)
@@ -677,89 +677,89 @@ func TestSchedulerStorage_createWhereClauses(t *testing.T) {
 	})
 
 	t.Run("should return the where clause and your values", func(t *testing.T) {
-		testCases := []struct{
-			title string
-			schedulerFilter *filters.SchedulerFilter
+		testCases := []struct {
+			title               string
+			schedulerFilter     *filters.SchedulerFilter
 			expectedWhereClause string
-			expectedValues []interface{}
+			expectedValues      []interface{}
 		}{
 			{
 				title: "when none present",
 				schedulerFilter: &filters.SchedulerFilter{
-					Game: "",
-					Name: "",
+					Game:    "",
+					Name:    "",
 					Version: "",
 				},
 				expectedWhereClause: "",
-				expectedValues: []interface{}{},
-			},{
+				expectedValues:      []interface{}{},
+			}, {
 				title: "when present: name, version",
 				schedulerFilter: &filters.SchedulerFilter{
-					Game: "",
-					Name: "Test Name",
+					Game:    "",
+					Name:    "Test Name",
 					Version: "Test Version",
 				},
 				expectedWhereClause: " WHERE name = ? and version = ?",
-				expectedValues: []interface{}{"Test Name", "Test Version"},
-			},{
+				expectedValues:      []interface{}{"Test Name", "Test Version"},
+			}, {
 				title: "when present: game, version",
 				schedulerFilter: &filters.SchedulerFilter{
-					Game: "Test Game",
-					Name: "",
+					Game:    "Test Game",
+					Name:    "",
 					Version: "Test Version",
 				},
 				expectedWhereClause: " WHERE game = ? and version = ?",
-				expectedValues: []interface{}{"Test Game", "Test Version"},
-			},{
+				expectedValues:      []interface{}{"Test Game", "Test Version"},
+			}, {
 				title: "when present: game, name",
 				schedulerFilter: &filters.SchedulerFilter{
-					Game: "Test Game",
-					Name: "Test Name",
+					Game:    "Test Game",
+					Name:    "Test Name",
 					Version: "",
 				},
 				expectedWhereClause: " WHERE game = ? and name = ?",
-				expectedValues: []interface{}{"Test Game", "Test Name"},
-			},{
+				expectedValues:      []interface{}{"Test Game", "Test Name"},
+			}, {
 				title: "when present: version",
 				schedulerFilter: &filters.SchedulerFilter{
-					Game: "",
-					Name: "",
+					Game:    "",
+					Name:    "",
 					Version: "Test Version",
 				},
 				expectedWhereClause: " WHERE version = ?",
-				expectedValues: []interface{}{"Test Version"},
-			},{
+				expectedValues:      []interface{}{"Test Version"},
+			}, {
 				title: "when present: game",
 				schedulerFilter: &filters.SchedulerFilter{
-					Game: "Test Game",
-					Name: "",
+					Game:    "Test Game",
+					Name:    "",
 					Version: "",
 				},
 				expectedWhereClause: " WHERE game = ?",
-				expectedValues: []interface{}{"Test Game"},
-			},{
+				expectedValues:      []interface{}{"Test Game"},
+			}, {
 				title: "when present: name",
 				schedulerFilter: &filters.SchedulerFilter{
-					Game: "",
-					Name: "Test Name",
+					Game:    "",
+					Name:    "Test Name",
 					Version: "",
 				},
 				expectedWhereClause: " WHERE name = ?",
-				expectedValues: []interface{}{"Test Name"},
-			},{
+				expectedValues:      []interface{}{"Test Name"},
+			}, {
 				title: "when present: game, name, version",
 				schedulerFilter: &filters.SchedulerFilter{
-					Game: "Test Game",
-					Name: "Test Name",
+					Game:    "Test Game",
+					Name:    "Test Name",
 					Version: "Test Version",
 				},
 				expectedWhereClause: " WHERE game = ? and name = ? and version = ?",
-				expectedValues: []interface{}{"Test Game", "Test Name", "Test Version"},
+				expectedValues:      []interface{}{"Test Game", "Test Name", "Test Version"},
 			},
 		}
 
-		for _, testCase := range(testCases) {
-			t.Run(testCase.title, func(t *testing.T){
+		for _, testCase := range testCases {
+			t.Run(testCase.title, func(t *testing.T) {
 				whereClause, arrayValues := createWhereClauses(testCase.schedulerFilter)
 				require.Equal(t, testCase.expectedWhereClause, whereClause)
 				require.Equal(t, testCase.expectedValues, arrayValues)

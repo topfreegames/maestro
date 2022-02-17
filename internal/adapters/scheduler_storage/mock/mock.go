@@ -154,6 +154,21 @@ func (mr *MockSchedulerStorageMockRecorder) GetSchedulers(ctx, names interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulers", reflect.TypeOf((*MockSchedulerStorage)(nil).GetSchedulers), ctx, names)
 }
 
+// GetSchedulersWithFilter mocks base method.
+func (m *MockSchedulerStorage) GetSchedulersWithFilter(ctx context.Context, schedulerFilter *filters.SchedulerFilter) ([]*entities.Scheduler, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSchedulersWithFilter", ctx, schedulerFilter)
+	ret0, _ := ret[0].([]*entities.Scheduler)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSchedulersWithFilter indicates an expected call of GetSchedulersWithFilter.
+func (mr *MockSchedulerStorageMockRecorder) GetSchedulersWithFilter(ctx, schedulerFilter interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulersWithFilter", reflect.TypeOf((*MockSchedulerStorage)(nil).GetSchedulersWithFilter), ctx, schedulerFilter)
+}
+
 // RunWithTransaction mocks base method.
 func (m *MockSchedulerStorage) RunWithTransaction(ctx context.Context, transactionFunc func(ports.TransactionID) error) error {
 	m.ctrl.T.Helper()

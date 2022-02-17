@@ -70,10 +70,10 @@ SELECT
 FROM schedulers s join scheduler_versions v
 	ON s.name=v.name
 WHERE s.name = ?`
-	queryGetSchedulers    = `SELECT * FROM schedulers WHERE name IN (?)`
+	queryGetSchedulers       = `SELECT * FROM schedulers WHERE name IN (?)`
 	querySimpleGetSchedulers = `SELECT * FROM schedulers`
-	queryGetAllSchedulers = `SELECT * FROM schedulers`
-	queryInsertScheduler  = `
+	queryGetAllSchedulers    = `SELECT * FROM schedulers`
+	queryInsertScheduler     = `
 INSERT INTO schedulers (name, game, yaml, state, version, state_last_changed_at)
 	VALUES (?name, ?game, ?yaml, ?state, ?version, extract(epoch from now()))
 	RETURNING id`
@@ -212,8 +212,8 @@ func createWhereClauses(schedulerFilter *filters.SchedulerFilter) (string, []int
 		}
 
 		if schedulerFilter.Name != "" {
-			if thereIsOne == true {
-				clauses = clauses  + " and"
+			if thereIsOne {
+				clauses = clauses + " and"
 			}
 
 			clauses = clauses + " name = ?"
@@ -222,8 +222,8 @@ func createWhereClauses(schedulerFilter *filters.SchedulerFilter) (string, []int
 		}
 
 		if schedulerFilter.Version != "" {
-			if thereIsOne == true {
-				clauses = clauses  + " and"
+			if thereIsOne {
+				clauses = clauses + " and"
 			}
 
 			clauses = clauses + " version = ?"
