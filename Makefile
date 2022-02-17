@@ -51,7 +51,7 @@ license-check: ## Execute license check.
 	@go run github.com/google/addlicense -skip yaml -skip yml -skip proto -check .
 
 .PHONY: run/e2e-tests
-run/e2e-tests: deps/stop build/worker build/management-api build/rooms-api build/runtime-watcher ## Execute end-to-end tests.
+run/e2e-tests: deps/stop build ## Execute end-to-end tests.
 	cd e2e; go mod download; go test -count=1 ./suites/...
 
 #-------------------------------------------------------------------------------
@@ -59,44 +59,26 @@ run/e2e-tests: deps/stop build/worker build/management-api build/rooms-api build
 #-------------------------------------------------------------------------------
 
 .PHONY: build
-build:
+build: ## Build the project and generates a binary.
 	@rm -f ./bin/maestro-* || true
 	@go build -o ./bin/maestro ./
 	@env GOOS=linux GOARCH=amd64 go build -o ./bin/worker-linux-x86_64 ./cmd/worker
 
 .PHONY: run/worker
-run/worker: build
-	./bin/maestro start worker
-
-.PHONY: build/management-api
-build/management-api:
-	@rm -f ./bin/management-api-* || true
-	@go build -o ./bin/management-api ./cmd/management_api
-	@env GOOS=linux GOARCH=amd64 go build -o ./bin/management-api-linux-x86_64 ./cmd/management_api
+run/worker: ## Runs maestro worker.
+	go run main.go start worker
 
 .PHONY: run/management-api
-run/management-api: build/management-api
-	./bin/management-api
-
-.PHONY: build/rooms-api
-build/rooms-api:
-	@rm -f ./bin/rooms-api-* || true
-	@go build -o ./bin/rooms-api ./cmd/rooms_api
-	@env GOOS=linux GOARCH=amd64 go build -o ./bin/rooms-api-linux-x86_64 ./cmd/rooms_api
+run/management-api: build ## Runs maestro management-api.
+	go run main.go start management-api
 
 .PHONY: run/rooms-api
-run/rooms-api: build/rooms-api
-	./bin/rooms-api
-
-.PHONY: build/runtime-watcher
-build/runtime-watcher:
-	@rm -f ./bin/runtime-watcher-* || true
-	@go build -o ./bin/runtime-watcher ./cmd/runtime_watcher
-	@env GOOS=linux GOARCH=amd64 go build -o ./bin/runtime-watcher-linux-x86_64 ./cmd/runtime_watcher
+run/rooms-api: build ## Runs maestro rooms-api.
+	go run main.go start rooms-api
 
 .PHONY: run/runtime-watcher
-run/runtime-watcher: build/runtime-watcher
-	./bin/runtime-watcher
+run/runtime-watcher: build ## Runs maestro runtime-watcher.
+	go run main.go start runtime-watcher
 
 #-------------------------------------------------------------------------------
 #  Code generation
@@ -112,7 +94,7 @@ generate: ## Execute code generation.
 
 .PHONY: migrate
 migrate: ## Execute migration.
-	@go run cmd/utils/utils.go migrate
+	@go run main.go migrate
 
 #-------------------------------------------------------------------------------
 #  Local dependencies
