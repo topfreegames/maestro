@@ -472,35 +472,36 @@ func TestGetScheduler(t *testing.T) {
 	})
 }
 
-func TestGetAllSchedulers(t *testing.T) {
+func TestGetSchedulersWithFilter(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
-	t.Run("returns a list of schedulers when no error occurs", func(t *testing.T) {
+	t.Run("when no error occurs returns a list of schedulers", func(t *testing.T) {
 		scheduler := newValidScheduler()
 
 		ctx := context.Background()
+		schedulerFilter := &filters.SchedulerFilter{}
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		schedulers := []*entities.Scheduler{scheduler}
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
-		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Return(schedulers, nil)
+		schedulerStorage.EXPECT().GetSchedulersWithFilter(ctx, gomock.Any()).Return(schedulers, nil)
 
-		retScheduler, err := schedulerManager.GetAllSchedulers(ctx)
+		retScheduler, err := schedulerManager.GetSchedulersWithFilter(ctx, schedulerFilter)
 		require.NoError(t, err)
 		require.NotNil(t, retScheduler)
 		require.Equal(t, retScheduler, schedulers)
 	})
 
-	t.Run("returns error when some error occurs", func(t *testing.T) {
+	t.Run("when some error occurs returns error", func(t *testing.T) {
 		ctx := context.Background()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager)
 
-		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Return([]*entities.Scheduler{}, errors.NewErrUnexpected("some error"))
+		schedulerStorage.EXPECT().GetSchedulersWithFilter(ctx, gomock.Any()).Return(nil, errors.NewErrUnexpected("some error"))
 
-		retScheduler, err := schedulerManager.GetAllSchedulers(ctx)
+		retScheduler, err := schedulerManager.GetSchedulersWithFilter(ctx)
 		require.Error(t, err, "some error")
 		require.Empty(t, retScheduler)
 	})

@@ -34,6 +34,7 @@ type SchedulerStorage interface {
 	GetSchedulerWithFilter(ctx context.Context, schedulerFilter *filters.SchedulerFilter) (*entities.Scheduler, error)
 	GetSchedulerVersions(ctx context.Context, name string) ([]*entities.SchedulerVersion, error)
 	GetSchedulers(ctx context.Context, names []string) ([]*entities.Scheduler, error)
+	GetSchedulersWithFilter(ctx context.Context, schedulerFilter *filters.SchedulerFilter) ([]*entities.Scheduler, error)
 	GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error)
 	CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
