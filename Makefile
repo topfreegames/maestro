@@ -122,20 +122,26 @@ migrate: ## Execute migration.
 #  Local dependencies
 #-------------------------------------------------------------------------------
 
+.PHONY: deps/up
+deps/up: ## Create containers dependencies.
+	@echo "Creating dependencies "
+	@docker-compose --project-name maestro up -d
+	@echo "Dependencies created successfully."
+
 .PHONY: deps/start
 deps/start: ## Start containers dependencies.
 	@echo "Starting dependencies "
-	@docker-compose --project-name maestro up -d
+	@docker-compose --project-name maestro start
 	@echo "Dependencies started successfully."
 
 .PHONY: deps/stop
 deps/stop: ## Stop containers dependencies.
 	@echo "Stopping dependencies "
-	@docker-compose --project-name maestro down
+	@docker-compose --project-name maestro stop
 	@echo "Dependencies stopped successfully."
 
 .PHONY: deps/down
 deps/down: ## Delete containers dependencies.
-	@echo "Stopping dependencies "
+	@echo "Deleting dependencies "
 	@docker-compose --project-name maestro down
-	@echo "Dependencies stopped successfully."
+	@echo "Dependencies deleted successfully."

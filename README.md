@@ -31,7 +31,7 @@ The project requires golang version 1.16 or higher.
 ## Building and running locally
 1. Run `make deps` to get all required modules
 2. Run `make generate` to generate mocks, protos and wire (dependency injection)
-3. Run `make deps/start` to startup service dependencies
+3. Run `make deps/up` to startup service dependencies
 4. Run `make migrate` to migrate database with the most updated schema
 
 ### Management API Flavor
