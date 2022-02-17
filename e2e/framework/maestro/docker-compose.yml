@@ -4,7 +4,7 @@ services:
   worker:
     build:
       context: ../../..
-      dockerfile: ./docker/worker/Dockerfile
+      dockerfile: ./Dockerfile
       args:
         MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
         MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL: "redis://redis:6379/0"
@@ -15,8 +15,9 @@ services:
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
         MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
+        maestroComponent: "worker"
     ports:
-      - "9096:8082"
+      - "9096:8080"
     volumes:
       - ../../../kubeconfig:/kubeconfig
     depends_on:
@@ -26,7 +27,7 @@ services:
   rooms-api:
     build:
       context: ../../..
-      dockerfile: ./docker/rooms-api/Dockerfile
+      dockerfile: ./Dockerfile
       args:
         MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL: "redis://redis:6379/0"
         MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL: "redis://redis:6379/0"
@@ -34,8 +35,9 @@ services:
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
         MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
         MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
+        maestroComponent: "rooms-api"
     ports:
-      - "9097:8090"
+      - "9097:8080"
       - "9098:8091"
 
     volumes:
@@ -47,12 +49,13 @@ services:
   management-api:
     build:
       context: ../../..
-      dockerfile: ./docker/management-api/Dockerfile
+      dockerfile: ./Dockerfile
       args:
         MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
         MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL: "redis://redis:6379/0"
         MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL: "redis://redis:6379/0"
         MAESTRO_ADAPTERS_OPERATIONLEASESTORAGE_REDIS_URL: "redis://redis:6379/0"
+        maestroComponent: "management-api"
     ports:
       - "9095:8081"
       - "9094:8080"
@@ -63,7 +66,7 @@ services:
   runtime-watcher:
     build:
       context: ../../..
-      dockerfile: ./docker/runtime-watcher/Dockerfile
+      dockerfile: ./Dockerfile
       args:
         MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
         MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL: "redis://redis:6379/0"
@@ -71,8 +74,9 @@ services:
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
         MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
+        maestroComponent: "runtime-watcher"
     ports:
-      - "9099:8083"
+      - "9099:8080"
     volumes:
       - ../../../kubeconfig:/kubeconfig
 
