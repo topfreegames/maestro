@@ -23,6 +23,7 @@
 package filters
 
 type SchedulerFilter struct {
+	Game    string
 	Name    string
 	Version string
 }

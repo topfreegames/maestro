@@ -53,7 +53,7 @@ import (
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
-func TestGetAllSchedulers(t *testing.T) {
+func TestListSchedulers(t *testing.T) {
 
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
@@ -61,7 +61,7 @@ func TestGetAllSchedulers(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
-		schedulerStorage.EXPECT().GetAllSchedulers(gomock.Any()).Return([]*entities.Scheduler{
+		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), gomock.Any()).Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
 				Game:            "zooba",
@@ -105,7 +105,7 @@ func TestGetAllSchedulers(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
-		schedulerStorage.EXPECT().GetAllSchedulers(gomock.Any()).Return([]*entities.Scheduler{}, nil)
+		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), gomock.Any()).Return([]*entities.Scheduler{}, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))

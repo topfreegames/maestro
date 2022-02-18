@@ -70,9 +70,10 @@ SELECT
 FROM schedulers s join scheduler_versions v
 	ON s.name=v.name
 WHERE s.name = ?`
-	queryGetSchedulers    = `SELECT * FROM schedulers WHERE name IN (?)`
-	queryGetAllSchedulers = `SELECT * FROM schedulers`
-	queryInsertScheduler  = `
+	queryGetSchedulers       = `SELECT * FROM schedulers WHERE name IN (?)`
+	querySimpleGetSchedulers = `SELECT * FROM schedulers`
+	queryGetAllSchedulers    = `SELECT * FROM schedulers`
+	queryInsertScheduler     = `
 INSERT INTO schedulers (name, game, yaml, state, version, state_last_changed_at)
 	VALUES (?name, ?game, ?yaml, ?state, ?version, extract(epoch from now()))
 	RETURNING id`
@@ -173,6 +174,69 @@ func (s schedulerStorage) GetSchedulers(ctx context.Context, names []string) ([]
 		schedulers[i] = scheduler
 	}
 	return schedulers, nil
+}
+
+func (s schedulerStorage) GetSchedulersWithFilter(ctx context.Context, schedulerFilter *filters.SchedulerFilter) ([]*entities.Scheduler, error) {
+	client := s.db.WithContext(ctx)
+	var dbSchedulers []Scheduler
+	queryString := querySimpleGetSchedulers
+
+	whereClauses, arrayValues := createWhereClauses(schedulerFilter)
+
+	queryString = queryString + whereClauses
+	_, err := client.Query(&dbSchedulers, queryString, arrayValues...)
+	if err != nil {
+		return nil, errors.NewErrUnexpected("error getting schedulers").WithError(err)
+	}
+	schedulers := make([]*entities.Scheduler, len(dbSchedulers))
+	for i := range dbSchedulers {
+		scheduler, err := dbSchedulers[i].ToScheduler()
+		if err != nil {
+			return nil, errors.NewErrEncoding("error decoding scheduler %s", dbSchedulers[i].Name).WithError(err)
+		}
+		schedulers[i] = scheduler
+	}
+	return schedulers, nil
+}
+
+func createWhereClauses(schedulerFilter *filters.SchedulerFilter) (string, []interface{}) {
+	clauses := ""
+	values := make([]interface{}, 0, 3)
+
+	if schedulerFilter != nil {
+		thereIsOne := false
+		if schedulerFilter.Game != "" {
+			clauses = clauses + " game = ?"
+			values = append(values, schedulerFilter.Game)
+			thereIsOne = true
+		}
+
+		if schedulerFilter.Name != "" {
+			if thereIsOne {
+				clauses = clauses + " and"
+			}
+
+			clauses = clauses + " name = ?"
+			values = append(values, schedulerFilter.Name)
+			thereIsOne = true
+		}
+
+		if schedulerFilter.Version != "" {
+			if thereIsOne {
+				clauses = clauses + " and"
+			}
+
+			clauses = clauses + " version = ?"
+			values = append(values, schedulerFilter.Version)
+			thereIsOne = true
+		}
+
+		if thereIsOne {
+			clauses = " WHERE" + clauses
+		}
+	}
+
+	return clauses, values
 }
 
 func (s schedulerStorage) GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error) {

@@ -118,8 +118,8 @@ func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx 
 	return nil
 }
 
-func (s *SchedulerManager) GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error) {
-	return s.schedulerStorage.GetAllSchedulers(ctx)
+func (s *SchedulerManager) GetSchedulersWithFilter(ctx context.Context, schedulerFilter *filters.SchedulerFilter) ([]*entities.Scheduler, error) {
+	return s.schedulerStorage.GetSchedulersWithFilter(ctx, schedulerFilter)
 }
 
 func (s *SchedulerManager) GetScheduler(ctx context.Context, schedulerName, version string) (*entities.Scheduler, error) {

@@ -53,7 +53,7 @@ func ProvideSchedulersHandler(schedulerManager *scheduler_manager.SchedulerManag
 }
 
 func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
-	schedulerEntities, err := h.schedulerManager.GetAllSchedulers(ctx)
+	schedulerEntities, err := h.schedulerManager.GetSchedulersWithFilter(ctx, nil)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
