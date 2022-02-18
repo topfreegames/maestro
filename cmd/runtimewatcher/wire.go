@@ -23,7 +23,7 @@
 //go:build wireinject
 // +build wireinject
 
-package main
+package runtimewatcher
 
 import (
 	"github.com/google/wire"

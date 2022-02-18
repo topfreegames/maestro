@@ -22,9 +22,7 @@
 
 package main
 
-import (
-	"github.com/topfreegames/maestro/cmd/utils/cmd"
-)
+import "github.com/topfreegames/maestro/cmd"
 
 func main() {
 	cmd.Execute()
