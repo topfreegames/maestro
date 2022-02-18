@@ -26,27 +26,26 @@ WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . /src/maestro
+COPY . /build
 
 RUN mkdir -p /app
 
 RUN apk add --update make
 
-RUN cd /src/maestro && \
+RUN cd /build && \
     make build-linux-x86_64 && \
     mv ./bin/maestro-linux-x86_64 /app/maestro && \
-    mv config /app/config
+    mv config /app/config && \
+    mv internal/adapters/scheduler_storage/pg/migrations /app/migrations
 
 
 FROM alpine
-
-ARG maestroComponent
-ENV MAESTRO_COMPONENT=$maestroComponent
 
 WORKDIR /app
 
 COPY --from=build-env /app/maestro /app/maestro
 COPY --from=build-env /app/config /app/config
+COPY --from=build-env /app/migrations /app/migrations
 
 EXPOSE 8080 8081
 
