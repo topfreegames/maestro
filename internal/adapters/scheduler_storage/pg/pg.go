@@ -181,9 +181,9 @@ func (s schedulerStorage) GetSchedulersWithFilter(ctx context.Context, scheduler
 	var dbSchedulers []Scheduler
 	queryString := querySimpleGetSchedulers
 
-	where_clauses, arrayValues := createWhereClauses(schedulerFilter)
+	whereClauses, arrayValues := createWhereClauses(schedulerFilter)
 
-	queryString = queryString + where_clauses
+	queryString = queryString + whereClauses
 	_, err := client.Query(&dbSchedulers, queryString, arrayValues...)
 	if err != nil {
 		return nil, errors.NewErrUnexpected("error getting schedulers").WithError(err)
