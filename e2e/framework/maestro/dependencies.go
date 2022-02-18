@@ -56,7 +56,7 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 		_, err := exec.ExecGoCmd(
 			maestroPath,
 			[]string{},
-			"cmd/utils/utils.go", "migrate",
+			"main.go", "migrate",
 		)
 
 		return err
