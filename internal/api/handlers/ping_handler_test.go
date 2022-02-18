@@ -47,9 +47,9 @@ func TestPingHandler(t *testing.T) {
 
 		config := configmock.NewMockConfig(mockCtrl)
 
-		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
-		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
-		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
+		config.EXPECT().GetBool("managementApi.enable").Return(true).AnyTimes()
+		config.EXPECT().GetString("managementApi.port").Return("8081").AnyTimes()
+		config.EXPECT().GetString("managementApi.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterPingServiceHandlerServer(context.Background(), mux, ProvidePingHandler())
@@ -79,9 +79,9 @@ func TestPingHandler(t *testing.T) {
 
 		config := configmock.NewMockConfig(mockCtrl)
 
-		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
-		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
-		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
+		config.EXPECT().GetBool("managementApi.enable").Return(true).AnyTimes()
+		config.EXPECT().GetString("managementApi.port").Return("8081").AnyTimes()
+		config.EXPECT().GetString("managementApi.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterPingServiceHandlerServer(context.Background(), mux, ProvidePingHandler())
@@ -111,9 +111,9 @@ func TestPingHandler(t *testing.T) {
 
 		config := configmock.NewMockConfig(mockCtrl)
 
-		config.EXPECT().GetBool("management_api.enable").Return(true).AnyTimes()
-		config.EXPECT().GetString("management_api.port").Return("8081").AnyTimes()
-		config.EXPECT().GetString("management_api.gracefulShutdownTimeout").Return("10000").AnyTimes()
+		config.EXPECT().GetBool("managementApi.enable").Return(true).AnyTimes()
+		config.EXPECT().GetString("managementApi.port").Return("8081").AnyTimes()
+		config.EXPECT().GetString("managementApi.gracefulShutdownTimeout").Return("10000").AnyTimes()
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterPingServiceHandlerServer(context.Background(), mux, ProvidePingHandler())

@@ -1,4 +1,4 @@
-internal_api:
+internalApi:
   port: 8081
   gracefulShutdownTimeout: 10s
   metrics:

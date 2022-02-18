@@ -1,11 +1,11 @@
-internal_api:
+internalApi:
   port: 8081
   gracefulShutdownTimeout: 10s
   metrics:
     enabled: true
   healthcheck:
     enabled: true
-management_api:
+managementApi:
   port: 8080
   gracefulShutdownTimeout: 10s
 adapters:
