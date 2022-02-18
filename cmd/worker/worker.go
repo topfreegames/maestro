@@ -20,57 +20,46 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package main
+package worker
 
 import (
 	"context"
-	"flag"
-	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/topfreegames/maestro/internal/config/viper"
+	"github.com/topfreegames/maestro/cmd/commom"
+
+	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/internal/core/workers/operation_execution_worker"
-	"github.com/topfreegames/maestro/internal/service"
-	"github.com/topfreegames/maestro/internal/validations"
 	"go.uber.org/zap"
 )
 
 var (
-	logConfig  = flag.String("log-config", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	configPath = flag.String("config-path", "config/worker.local.yaml", "path of the configuration YAML file")
+	logConfig  string
+	configPath string
 )
 
-func main() {
-	flag.Parse()
-	err := service.ConfigureLogging(*logConfig)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
-	}
+var WorkerCmd = &cobra.Command{
+	Use:   "worker",
+	Short: "Starts maestro worker service component",
+	Long: "Starts maestro worker service component, a service that manages workers that executes operations for a " +
+		"set of schedulers. This component does not expose any means of external communication",
+	Example: "maestro start worker -c config.yaml -l production",
+	Run: func(cmd *cobra.Command, args []string) {
+		runWorker()
+	},
+}
 
-	err = validations.RegisterValidations()
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal(err.Error())
-	}
+func init() {
+	WorkerCmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	WorkerCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/worker.local.yaml", "path of the configuration YAML file")
+}
 
+func runWorker() {
 	ctx, cancelFn := context.WithCancel(context.Background())
 
-	config, err := viper.NewViperConfig(*configPath)
+	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load config")
+		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
 	}
-
-	go func() {
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-		<-sigs
-		zap.L().Info("received termination")
-
-		cancelFn()
-	}()
-
-	shutdownInternalServerFn := service.RunInternalServer(ctx, config)
 
 	// TODO(gabrielcorado): support multiple workers.
 	operationExecutionWorkerManager, err := initializeWorker(config, operation_execution_worker.NewOperationExecutionWorker)

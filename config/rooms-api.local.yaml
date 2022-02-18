@@ -1,12 +1,12 @@
 internal_api:
-  port: 8091
+  port: 8081
   gracefulShutdownTimeout: 10s
   metrics:
     enabled: true
   healthcheck:
     enabled: true
 rooms_api:
-  port: 8090
+  port: 8080
   gracefulShutdownTimeout: 10s
 adapters:
   portAllocator:

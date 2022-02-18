@@ -138,7 +138,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 
 			podsAfterRollback, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
-			require.NotEmpty(t,  podsAfterRollback.Items)
+			require.NotEmpty(t, podsAfterRollback.Items)
 
 			// Pods don't change since it's a minor rollback
 			for i := 0; i < 2; i++ {
@@ -253,7 +253,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 
 			podsAfterRollback, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
-			require.NotEmpty(t,  podsAfterRollback.Items)
+			require.NotEmpty(t, podsAfterRollback.Items)
 
 			// Pods change since it's a major rollback
 			for i := 0; i < 2; i++ {

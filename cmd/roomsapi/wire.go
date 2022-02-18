@@ -23,56 +23,50 @@
 //go:build wireinject
 // +build wireinject
 
-package main
+package roomsapi
 
 import (
 	"context"
+
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
 
 	"github.com/google/wire"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/operations/providers"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/service"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
-func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.ServeMux, error) {
+func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.ServeMux, error) {
 	wire.Build(
 		// ports + adapters
 		service.NewClockTime,
-		service.NewOperationFlowRedis,
-		service.NewOperationStorageRedis,
-		service.NewOperationLeaseStorageRedis,
+		service.NewPortAllocatorRandom,
+		service.NewRoomStorageRedis,
+		service.NewGameRoomInstanceStorageRedis,
+		service.NewSchedulerCacheRedis,
+		service.NewRuntimeKubernetes,
+		service.NewRoomManagerConfig,
+		service.NewEventsForwarder,
 		service.NewSchedulerStoragePg,
-
-		// scheduler operations
-		providers.ProvideDefinitionConstructors,
+		service.NewEventsForwarderServiceConfig,
 
 		// services
-		operation_manager.New,
-		scheduler_manager.NewSchedulerManager,
+		events_forwarder.NewEventsForwarderService,
+		room_manager.NewRoomManager,
 
 		// api handlers
-		handlers.ProvideSchedulersHandler,
-		handlers.ProvideOperationsHandler,
-		handlers.ProvidePingHandler,
-		provideManagementMux,
-
-		// config
-		service.NewOperationManagerConfig,
+		handlers.ProvideRoomsHandler,
+		provideRoomsMux,
 	)
 
 	return &runtime.ServeMux{}, nil
 }
 
-func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler, schedulersHandler *handlers.SchedulersHandler, operationsHandler *handlers.OperationsHandler) *runtime.ServeMux {
+func provideRoomsMux(ctx context.Context, roomsHandler *handlers.RoomsHandler) *runtime.ServeMux {
 	mux := runtime.NewServeMux()
-	_ = api.RegisterPingServiceHandlerServer(ctx, mux, pingHandler)
-	_ = api.RegisterSchedulersServiceHandlerServer(ctx, mux, schedulersHandler)
-	_ = api.RegisterOperationsServiceHandlerServer(ctx, mux, operationsHandler)
-
+	_ = api.RegisterRoomsServiceHandlerServer(ctx, mux, roomsHandler)
 	return mux
 }

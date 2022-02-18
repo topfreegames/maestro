@@ -20,65 +20,54 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package main
+package roomsapi
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
+
+	"github.com/topfreegames/maestro/cmd/commom"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
+	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
 
-	"github.com/topfreegames/maestro/internal/config/viper"
-	"github.com/topfreegames/maestro/internal/service"
-	"github.com/topfreegames/maestro/internal/validations"
 	"go.uber.org/zap"
 )
 
 var (
-	logConfig  = flag.String("log-config", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	configPath = flag.String("config-path", "config/rooms-api.local.yaml", "path of the configuration YAML file")
+	logConfig  string
+	configPath string
 )
 
-func main() {
-	flag.Parse()
-	err := service.ConfigureLogging(*logConfig)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
-	}
+var RoomsAPICmd = &cobra.Command{
+	Use:   "rooms-api",
+	Short: "Starts maestro rooms-api service component",
+	Long: "Starts maestro rooms-api service component, a component that provides a REST API and a GRPC service for" +
+		"sending rooms messages",
+	Example: "maestro start rooms-api -c config.yaml -l production",
+	Run: func(cmd *cobra.Command, args []string) {
+		runRoomsAPI()
+	},
+}
 
-	err = validations.RegisterValidations()
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal(err.Error())
-	}
+func init() {
+	RoomsAPICmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	RoomsAPICmd.Flags().StringVarP(&configPath, "config-path", "c", "config/rooms-api.local.yaml", "path of the configuration YAML file")
+}
 
+func runRoomsAPI() {
 	ctx, cancelFn := context.WithCancel(context.Background())
 
-	config, err := viper.NewViperConfig(*configPath)
+	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load config")
+		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
 	}
-
-	go func() {
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-		<-sigs
-		zap.L().Info("received termination")
-
-		cancelFn()
-	}()
-
-	shutdownInternalServerFn := service.RunInternalServer(ctx, config)
 
 	mux, err := initializeRoomsMux(ctx, config)
 	if err != nil {

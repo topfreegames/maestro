@@ -44,7 +44,7 @@ func TestExecute(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 
@@ -65,7 +65,7 @@ func TestExecute(t *testing.T) {
 	t.Run("fails with runtime request fails", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 
@@ -89,7 +89,7 @@ func TestOnError(t *testing.T) {
 	t.Run("changes scheduler status in case of execution error", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 
@@ -125,7 +125,7 @@ func TestOnError(t *testing.T) {
 	t.Run("fails when no scheduler found in storage", func(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+
 		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 

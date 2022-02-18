@@ -48,7 +48,6 @@ import (
 
 func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	eventsForwarder := efmock.NewMockEventsForwarder(mockCtrl)
 	schedulerStorage := ssMock.NewMockSchedulerStorage(mockCtrl)

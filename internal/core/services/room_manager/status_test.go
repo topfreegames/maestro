@@ -90,7 +90,6 @@ func TestValidateRoomStatusTransition_InvalidTransition(t *testing.T) {
 
 func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	watcher := rsmock.NewMockRoomStorageStatusWatcher(mockCtrl)
@@ -133,7 +132,6 @@ func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
 
 func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
 	watcher := rsmock.NewMockRoomStorageStatusWatcher(mockCtrl)
@@ -192,7 +190,6 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 	t.Run("when game room exists and changes states, it should return no error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		schedulerName := "schedulerName"
 		roomId := "room-id"
@@ -212,7 +209,6 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 	t.Run("when game room exists and there is not state transition, it should not update the room status and return no error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		schedulerName := "schedulerName"
 		roomId := "room-id"
@@ -230,7 +226,6 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 	t.Run("when game room doesn't exists, it should return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		schedulerName := "schedulerName"
 		roomId := "room-id"
@@ -244,7 +239,6 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 	t.Run("when game room instance doesn't exists, it should return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		schedulerName := "schedulerName"
 		roomId := "room-id"
@@ -261,7 +255,6 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 	t.Run("when game room exists and state transition is invalid, it should return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		schedulerName := "schedulerName"
 		roomId := "room-id"

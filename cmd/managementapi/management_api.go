@@ -20,21 +20,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package main
+package managementapi
 
 import (
 	"context"
-	"flag"
 	"fmt"
 
+	"github.com/topfreegames/maestro/cmd/commom"
+
+	"github.com/spf13/cobra"
+
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/topfreegames/maestro/internal/config/viper"
-
-	"github.com/topfreegames/maestro/internal/service"
 	"go.uber.org/zap"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -43,44 +40,36 @@ import (
 	"github.com/slok/go-http-metrics/middleware/std"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
-	"github.com/topfreegames/maestro/internal/validations"
 )
 
 var (
-	logConfig  = flag.String("log-config", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	configPath = flag.String("config-path", "config/management-api.local.yaml", "path of the configuration YAML file")
+	logConfig  string
+	configPath string
 )
 
-func main() {
-	flag.Parse()
-	err := service.ConfigureLogging(*logConfig)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
-	}
+var ManagementApiCmd = &cobra.Command{
+	Use:     "management-api",
+	Short:   "Starts maestro management-api service component",
+	Example: "maestro start management-api -c config.yaml -l production",
+	Long: "Starts maestro management-api service component, a component that provides a REST API and a GRPC service for" +
+		"managing schedulers, rooms, and operations",
+	Run: func(cmd *cobra.Command, args []string) {
+		runManagementApi()
+	},
+}
 
-	err = validations.RegisterValidations()
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal(err.Error())
-	}
+func init() {
+	ManagementApiCmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	ManagementApiCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/management-api.local.yaml", "path of the configuration YAML file")
+}
 
+func runManagementApi() {
 	ctx, cancelFn := context.WithCancel(context.Background())
 
-	config, err := viper.NewViperConfig(*configPath)
+	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load config")
+		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
 	}
-
-	go func() {
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-		<-sigs
-		zap.L().Info("received termination")
-
-		cancelFn()
-	}()
-
-	shutdownInternalServerFn := service.RunInternalServer(ctx, config)
 
 	mux, err := initializeManagementMux(ctx, config)
 	if err != nil {

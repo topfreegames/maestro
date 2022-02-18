@@ -52,7 +52,6 @@ import (
 
 func TestExecute(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	clockMock := clockmock.NewFakeClock(time.Now())
 	portAllocatorMock := portallocatormock.NewMockPortAllocator(mockCtrl)

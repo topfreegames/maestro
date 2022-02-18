@@ -20,26 +20,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package ports
+package cmd
 
 import (
-	"context"
+	"github.com/spf13/cobra"
+	"github.com/topfreegames/maestro/cmd/managementapi"
+	"github.com/topfreegames/maestro/cmd/roomsapi"
+	"github.com/topfreegames/maestro/cmd/runtimewatcher"
+	"github.com/topfreegames/maestro/cmd/worker"
 )
 
-type OperationCancellationRequest struct {
-	SchedulerName string `json:"schedulerName"`
-	OperationID   string `json:"operationID"`
+var startCmd = &cobra.Command{
+	Use:   "start",
+	Short: "Starts the provided maestro component service",
 }
 
-type OperationFlow interface {
-	InsertOperationID(ctx context.Context, schedulerName, operationID string) error
-	// NextOperationID fetches the next scheduler operation to be
-	// processed and return its ID.
-	NextOperationID(ctx context.Context, schedulerName string) (string, error)
-	// ListSchedulerPendingOperationIDs list scheduler pending operation IDs.
-	ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) ([]string, error)
-	// EnqueueOperationCancellationRequest enqueue a operation cancellation request
-	EnqueueOperationCancellationRequest(ctx context.Context, request OperationCancellationRequest) error
-	// WatchOperationCancellationRequests watches for operation cancellation requests
-	WatchOperationCancellationRequests(ctx context.Context) chan OperationCancellationRequest
+func init() {
+	startCmd.AddCommand(worker.WorkerCmd)
+	startCmd.AddCommand(runtimewatcher.RuntimeWatcherCmd)
+	startCmd.AddCommand(roomsapi.RoomsAPICmd)
+	startCmd.AddCommand(managementapi.ManagementApiCmd)
 }

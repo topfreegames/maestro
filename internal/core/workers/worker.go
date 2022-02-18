@@ -28,7 +28,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 )
 
@@ -46,14 +45,14 @@ type Worker interface {
 // its construction. This struct is going to be used to inject the worker
 // dependencies like ports.
 type WorkerOptions struct {
-	OperationManager   *operation_manager.OperationManager
+	OperationManager   ports.OperationManager
 	OperationExecutors map[string]operations.Executor
 	RoomManager        *room_manager.RoomManager
 	Runtime            ports.Runtime
 }
 
 func ProvideWorkerOptions(
-	operationManager *operation_manager.OperationManager,
+	operationManager ports.OperationManager,
 	operationExecutors map[string]operations.Executor,
 	roomManager *room_manager.RoomManager,
 	runtime ports.Runtime,

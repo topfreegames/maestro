@@ -20,56 +20,46 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package main
+package runtimewatcher
 
 import (
 	"context"
-	"flag"
-	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/topfreegames/maestro/internal/config/viper"
-	"github.com/topfreegames/maestro/internal/service"
-	"github.com/topfreegames/maestro/internal/validations"
+	"github.com/topfreegames/maestro/cmd/commom"
+
+	"github.com/spf13/cobra"
+
 	"go.uber.org/zap"
 )
 
 var (
-	logConfig  = flag.String("log-config", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	configPath = flag.String("config-path", "config/runtime-watcher.local.yaml", "path of the configuration YAML file")
+	logConfig  string
+	configPath string
 )
 
-func main() {
-	flag.Parse()
-	err := service.ConfigureLogging(*logConfig)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load logging configuration")
-	}
+var RuntimeWatcherCmd = &cobra.Command{
+	Use:   "runtime-watcher",
+	Short: "Starts maestro runtime-watcher service component",
+	Long: "Starts maestro runtime-watcher service component, a service that monitors the runtime of the cluster," +
+		"this component does not expose any means of external communication",
+	Example: "maestro start runtime-watcher -c config.yaml -l production",
+	Run: func(cmd *cobra.Command, args []string) {
+		runRuntimeWatcher()
+	},
+}
 
-	err = validations.RegisterValidations()
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal(err.Error())
-	}
+func init() {
+	RuntimeWatcherCmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	RuntimeWatcherCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/runtime-watcher.local.yaml", "path of the configuration YAML file")
+}
 
+func runRuntimeWatcher() {
 	ctx, cancelFn := context.WithCancel(context.Background())
 
-	config, err := viper.NewViperConfig(*configPath)
+	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("unable to load config")
+		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
 	}
-
-	go func() {
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-		<-sigs
-		zap.L().Info("received termination")
-
-		cancelFn()
-	}()
-
-	shutdownInternalServerFn := service.RunInternalServer(ctx, config)
 
 	operationExecutionWorkerManager, err := initializeRuntimeWatcher(config)
 	if err != nil {

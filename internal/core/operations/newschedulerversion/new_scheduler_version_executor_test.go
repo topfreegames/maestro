@@ -60,7 +60,7 @@ import (
 
 func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
+
 	err := validations.RegisterValidations()
 	if err != nil {
 		t.Errorf("unexpected error %d'", err)
