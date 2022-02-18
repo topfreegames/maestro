@@ -102,19 +102,19 @@ func runManagementServer(ctx context.Context, configs config.Config, mux *runtim
 	muxWithMetrics := std.Handler("", mdlw, mux)
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%s", configs.GetString("management_api.port")),
+		Addr:    fmt.Sprintf(":%s", configs.GetString("managementApi.port")),
 		Handler: muxWithMetrics,
 	}
 
 	go func() {
-		zap.L().Info(fmt.Sprintf("started HTTP management server at :%s", configs.GetString("management_api.port")))
+		zap.L().Info(fmt.Sprintf("started HTTP management server at :%s", configs.GetString("managementApi.port")))
 		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			zap.L().With(zap.Error(err)).Fatal("failed to start HTTP management server")
 		}
 	}()
 
 	return func() error {
-		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("management_api.gracefulShutdownTimeout"))
+		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("managementApi.gracefulShutdownTimeout"))
 		defer cancelShutdownFn()
 
 		zap.L().Info("stopping HTTP management server")
