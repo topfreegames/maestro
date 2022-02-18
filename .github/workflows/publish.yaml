@@ -21,8 +21,7 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAYIO_USERNAME }}
           password: ${{ secrets.QUAYIO_TOKEN }}
-      - name: Build and push - Management API
-        if: ${{ env.IMAGE_VERSION != 'main' }}
+      - name: Build and push
         uses: docker/build-push-action@v2
         with:
           context: ./
