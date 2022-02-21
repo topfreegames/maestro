@@ -35,7 +35,8 @@ RUN apk add --update make
 RUN cd /build && \
     make build-linux-x86_64 && \
     mv ./bin/maestro-linux-x86_64 /app/maestro && \
-    mv internal/adapters/scheduler_storage/pg/migrations /app/migrations
+    mv internal/adapters/scheduler_storage/pg/migrations /app/migrations && \
+    mv ./config /app/config
 
 
 FROM alpine
@@ -44,6 +45,7 @@ WORKDIR /app
 
 COPY --from=build-env /app/maestro /app/maestro
 COPY --from=build-env /app/migrations /app/migrations
+COPY --from=build-env /app/config /app/config
 
 EXPOSE 8080 8081
 
