@@ -44,6 +44,7 @@ WORKDIR /app
 
 COPY --from=build-env /app/maestro /app/maestro
 COPY --from=build-env /app/migrations /app/migrations
+COPY --from=build-env /app/config /app/config
 
 EXPOSE 8080 8081
 
