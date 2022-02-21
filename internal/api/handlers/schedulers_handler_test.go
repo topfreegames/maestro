@@ -56,7 +56,6 @@ import (
 )
 
 func TestListSchedulers(t *testing.T) {
-
 	t.Run("with valid request with parameters and persisted scheduler", func(t *testing.T) {
 		schedulerName := "zooba-us"
 		game := "zooba"
@@ -128,6 +127,37 @@ func TestListSchedulers(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 200, rr.Code)
+
+		bodyString := rr.Body.String()
+		var response api.ListSchedulersResponse
+		err = json.Unmarshal([]byte(bodyString), &response)
+		require.NoError(t, err)
+
+		require.Empty(t, response.Schedulers)
+	})
+
+	t.Run("when GetSchedulersWithFilter return in error should respond with internal server error status code", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+
+		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("GetSchedulersWithFilter error"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("GET", "/schedulers", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
 
 		bodyString := rr.Body.String()
 		var response api.ListSchedulersResponse

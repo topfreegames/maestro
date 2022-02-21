@@ -55,9 +55,9 @@ func ProvideSchedulersHandler(schedulerManager *scheduler_manager.SchedulerManag
 
 func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
 	schedulerFilter := &filters.SchedulerFilter{
-		Name:    message.Name,
-		Game:    message.Game,
-		Version: message.Version,
+		Name:    message.GetName(),
+		Game:    message.GetGame(),
+		Version: message.GetVersion(),
 	}
 	schedulerEntities, err := h.schedulerManager.GetSchedulersWithFilter(ctx, schedulerFilter)
 	if err != nil {
