@@ -73,7 +73,14 @@ service SchedulersService {
 }
 
 // List scheduler request options.
-message ListSchedulersRequest {}
+message ListSchedulersRequest {
+  // Unique identifier for the scheduler.
+  string name = 1;
+  // Game the new scheduler will be part of.
+  string game = 2;
+  // Version to for the scheduler.
+  string version = 3;
+}
 
 // The list schedulers response message.
 message ListSchedulersResponse {
