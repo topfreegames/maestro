@@ -322,6 +322,29 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Unique identifier for the scheduler.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "game",
+            "description": "Game the new scheduler will be part of.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "version",
+            "description": "Version to for the scheduler.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
         "tags": [
           "SchedulersService"
         ]

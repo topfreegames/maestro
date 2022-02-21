@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/internal/core/filters"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -53,7 +54,12 @@ func ProvideSchedulersHandler(schedulerManager *scheduler_manager.SchedulerManag
 }
 
 func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
-	schedulerEntities, err := h.schedulerManager.GetSchedulersWithFilter(ctx, nil)
+	schedulerFilter := &filters.SchedulerFilter{
+		Name:    message.Name,
+		Game:    message.Game,
+		Version: message.Version,
+	}
+	schedulerEntities, err := h.schedulerManager.GetSchedulersWithFilter(ctx, schedulerFilter)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}

@@ -29,6 +29,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -37,6 +38,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -55,16 +57,20 @@ import (
 
 func TestListSchedulers(t *testing.T) {
 
-	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
+	t.Run("with valid request with parameters and persisted scheduler", func(t *testing.T) {
+		schedulerName := "zooba-us"
+		game := "zooba"
+		version := "1.0.0-any.version"
+
 		mockCtrl := gomock.NewController(t)
 
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
 
-		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), gomock.Any()).Return([]*entities.Scheduler{
+		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), &filters.SchedulerFilter{Name: schedulerName, Game: game, Version: version}).Return([]*entities.Scheduler{
 			{
-				Name:            "zooba-us",
-				Game:            "zooba",
+				Name:            schedulerName,
+				Game:            game,
 				State:           entities.StateInSync,
 				MaxSurge:        "10%",
 				RollbackVersion: "1.0.0",
@@ -80,7 +86,8 @@ func TestListSchedulers(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest("GET", "/schedulers", nil)
+		url := fmt.Sprintf("/schedulers?name=%s&game=%s&version=%s", schedulerName, game, version)
+		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
