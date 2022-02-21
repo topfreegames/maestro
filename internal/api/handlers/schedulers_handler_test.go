@@ -182,7 +182,7 @@ func TestListSchedulers(t *testing.T) {
 
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 501, rr.Code)
+		require.Equal(t, http.StatusNotImplemented, rr.Code)
 		bodyString := rr.Body.String()
 		var body map[string]interface{}
 		err = json.Unmarshal([]byte(bodyString), &body)
@@ -256,7 +256,7 @@ func TestGetScheduler(t *testing.T) {
 
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 200, rr.Code)
+		require.Equal(t, http.StatusOK, rr.Code)
 
 		bodyString := rr.Body.String()
 		var response api.GetSchedulerResponse
@@ -287,7 +287,7 @@ func TestGetScheduler(t *testing.T) {
 
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 404, rr.Code)
+		require.Equal(t, http.StatusNotFound, rr.Code)
 
 		bodyString := rr.Body.String()
 		var response api.GetSchedulerResponse
@@ -318,7 +318,7 @@ func TestGetScheduler(t *testing.T) {
 
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 500, rr.Code)
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
 
 		bodyString := rr.Body.String()
 		var response api.GetSchedulerResponse
@@ -359,7 +359,7 @@ func TestGetSchedulerVersions(t *testing.T) {
 
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 200, rr.Code)
+		require.Equal(t, http.StatusOK, rr.Code)
 
 		bodyString := rr.Body.String()
 		var response api.GetSchedulerVersionsResponse
@@ -390,7 +390,7 @@ func TestGetSchedulerVersions(t *testing.T) {
 
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 404, rr.Code)
+		require.Equal(t, http.StatusNotFound, rr.Code)
 
 		bodyString := rr.Body.String()
 		var response api.GetSchedulerVersionsResponse
@@ -421,7 +421,7 @@ func TestGetSchedulerVersions(t *testing.T) {
 
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 500, rr.Code)
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
 
 		bodyString := rr.Body.String()
 		var response api.GetSchedulerVersionsResponse
@@ -506,7 +506,7 @@ func TestCreateScheduler(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 200, rr.Code)
+		require.Equal(t, http.StatusOK, rr.Code)
 		bodyString := rr.Body.String()
 		var body map[string]interface{}
 		err = json.Unmarshal([]byte(bodyString), &body)
@@ -541,7 +541,7 @@ func TestCreateScheduler(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 400, rr.Code)
+		require.Equal(t, http.StatusBadRequest, rr.Code)
 		bodyString := rr.Body.String()
 		var body map[string]interface{}
 		err = json.Unmarshal([]byte(bodyString), &body)
@@ -586,7 +586,7 @@ func TestCreateScheduler(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 409, rr.Code)
+		require.Equal(t, http.StatusConflict, rr.Code)
 		bodyString := rr.Body.String()
 		var body map[string]interface{}
 		err = json.Unmarshal([]byte(bodyString), &body)
@@ -619,7 +619,7 @@ func TestAddRooms(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 200, rr.Code)
+		require.Equal(t, http.StatusOK, rr.Code)
 		bodyString := rr.Body.String()
 		var body map[string]interface{}
 		err = json.Unmarshal([]byte(bodyString), &body)
@@ -645,7 +645,7 @@ func TestAddRooms(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 404, rr.Code)
+		require.Equal(t, http.StatusNotFound, rr.Code)
 		require.Contains(t, rr.Body.String(), "no scheduler found to add rooms on it: err")
 	})
 
@@ -668,7 +668,7 @@ func TestAddRooms(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 500, rr.Code)
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
 		require.Contains(t, rr.Body.String(), "not able to schedule the 'add rooms' operation: storage offline")
 	})
 }
