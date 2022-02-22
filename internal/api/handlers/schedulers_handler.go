@@ -189,13 +189,14 @@ func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *ap
 	}, nil
 }
 
-func (h *SchedulersHandler) ListSchedulersInfo(ctx context.Context, request *api.ListSchedulersInfoRequest) (*api.ListSchedulersInfoResponse, error) {
-	schedulers, err := h.schedulerManager.GetSchedulersInfoByGame(ctx, request.GetGame())
+func (h *SchedulersHandler) GetSchedulersInfo(ctx context.Context, request *api.GetSchedulersInfoRequest) (*api.GetSchedulersInfoResponse, error) {
+	filter := filters.SchedulerFilter{Game: request.GetGame()}
+	schedulers, err := h.schedulerManager.GetSchedulersInfo(ctx, &filter)
 
+	if errors.Is(err, portsErrors.ErrNotFound) {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return nil, status.Error(codes.NotFound, err.Error())
-		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
@@ -204,7 +205,7 @@ func (h *SchedulersHandler) ListSchedulersInfo(ctx context.Context, request *api
 		schedulersResponse[i] = fromEntitySchedulerInfoToListResponse(scheduler)
 	}
 
-	return &api.ListSchedulersInfoResponse{
+	return &api.GetSchedulersInfoResponse{
 		Schedulers: schedulersResponse,
 	}, nil
 }

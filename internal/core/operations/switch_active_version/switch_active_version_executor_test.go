@@ -395,7 +395,7 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 	schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
 
 	roomManager := mockroommanager.NewMockRoomManager(mockCtrl)
-	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil)
+	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil)
 
 	return &mockRoomAndSchedulerManager{
 		roomManager,

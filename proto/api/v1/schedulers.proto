@@ -72,7 +72,7 @@ service SchedulersService {
   }
 
   // List Scheduler and Game Rooms info by Game
-  rpc ListSchedulersInfo(ListSchedulersInfoRequest) returns (ListSchedulersInfoResponse) {
+  rpc GetSchedulersInfo(GetSchedulersInfoRequest) returns (GetSchedulersInfoResponse) {
     option (google.api.http) = {
       get: "/schedulers/info"
     };
@@ -222,13 +222,13 @@ message SwitchActiveVersionResponse {
 }
 
 // List Scheduler and Game Rooms Info Request
-message ListSchedulersInfoRequest {
+message GetSchedulersInfoRequest {
   // Game name to filter schedulers
   string game = 1;  // Mapped to URL query parameter `game`.
 }
 
 // List Scheduler and Game Rooms Info Response
-message ListSchedulersInfoResponse {
+message GetSchedulersInfoResponse {
   // List of schedulers fetched.
   repeated SchedulerInfo schedulers = 1;
 }

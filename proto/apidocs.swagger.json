@@ -384,12 +384,12 @@
     "/schedulers/info": {
       "get": {
         "summary": "List Scheduler and Game Rooms info by Game",
-        "operationId": "SchedulersService_ListSchedulersInfo",
+        "operationId": "SchedulersService_GetSchedulersInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1ListSchedulersInfoResponse"
+              "$ref": "#/definitions/v1GetSchedulersInfoResponse"
             }
           },
           "default": {
@@ -1134,6 +1134,19 @@
       },
       "title": "Get Scheduler Versions payload"
     },
+    "v1GetSchedulersInfoResponse": {
+      "type": "object",
+      "properties": {
+        "schedulers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1SchedulerInfo"
+          },
+          "description": "List of schedulers fetched."
+        }
+      },
+      "title": "List Scheduler and Game Rooms Info Response"
+    },
     "v1Lease": {
       "type": "object",
       "properties": {
@@ -1170,19 +1183,6 @@
         }
       },
       "title": "The list operation route response/reply\nThere's a list for each operation major status"
-    },
-    "v1ListSchedulersInfoResponse": {
-      "type": "object",
-      "properties": {
-        "schedulers": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1SchedulerInfo"
-          },
-          "description": "List of schedulers fetched."
-        }
-      },
-      "title": "List Scheduler and Game Rooms Info Response"
     },
     "v1ListSchedulersResponse": {
       "type": "object",

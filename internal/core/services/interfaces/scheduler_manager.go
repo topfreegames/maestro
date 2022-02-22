@@ -25,6 +25,8 @@ package interfaces
 import (
 	"context"
 
+	"github.com/topfreegames/maestro/internal/core/filters"
+
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -37,5 +39,5 @@ type SchedulerManager interface {
 	CreateNewSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
 	EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error)
 	SwitchActiveVersion(ctx context.Context, schedulerName string, targetVersion string) (*operation.Operation, error)
-	GetSchedulersInfoByGame(ctx context.Context, game string) ([]*entities.SchedulerInfo, error)
+	GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error)
 }

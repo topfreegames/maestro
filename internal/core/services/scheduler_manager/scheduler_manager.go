@@ -24,8 +24,10 @@ package scheduler_manager
 
 import (
 	"context"
+
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 
@@ -42,12 +44,14 @@ import (
 type SchedulerManager struct {
 	schedulerStorage ports.SchedulerStorage
 	operationManager ports.OperationManager
+	roomStorage      ports.RoomStorage
 }
 
-func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager) *SchedulerManager {
+func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *SchedulerManager {
 	return &SchedulerManager{
 		schedulerStorage: schedulerStorage,
 		operationManager: operationManager,
+		roomStorage:      roomStorage,
 	}
 }
 
@@ -241,25 +245,29 @@ func (s *SchedulerManager) SwitchActiveVersion(ctx context.Context, schedulerNam
 	return op, nil
 }
 
-func (s *SchedulerManager) GetSchedulersInfoByGame(ctx context.Context, game string) ([]*entities.SchedulerInfo, error) {
-	schedulerFilter := filters.SchedulerFilter{Game: game}
-	schedulers, err := s.schedulerStorage.GetSchedulersWithFilter(ctx, &schedulerFilter)
+func (s *SchedulerManager) GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error) {
+	schedulers, err := s.schedulerStorage.GetSchedulersWithFilter(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("no schedulers found: %w", err)
 	}
 
 	schedulersInfo := make([]*entities.SchedulerInfo, len(schedulers))
 	for i, scheduler := range schedulers {
+		ready, _ := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusReady)
+		creating, _ := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusPending)
+		occupied, _ := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusOccupied)
+		terminating, _ := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusTerminating)
+
 		schedulersInfo[i] = &entities.SchedulerInfo{
 			Name:             scheduler.Name,
 			Game:             scheduler.Game,
 			State:            scheduler.State,
-			RoomsReady:       0,
-			RoomsCreating:    0,
-			RoomsOccupied:    0,
-			RoomsTerminating: 0,
+			RoomsReady:       int64(ready),
+			RoomsCreating:    int64(creating),
+			RoomsOccupied:    int64(occupied),
+			RoomsTerminating: int64(terminating),
 		}
 	}
 
-	return nil, nil
+	return schedulersInfo, nil
 }
