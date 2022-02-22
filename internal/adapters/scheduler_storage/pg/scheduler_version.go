@@ -29,12 +29,14 @@ import (
 
 type SchedulerVersion struct {
 	Version   string      `db:"version"`
+	IsActive  bool        `db:"is_active"`
 	CreatedAt pg.NullTime `db:"created_at"`
 }
 
 func (s *SchedulerVersion) ToSchedulerVersion() *entities.SchedulerVersion {
 	return &entities.SchedulerVersion{
 		Version:   s.Version,
+		IsActive:  s.IsActive,
 		CreatedAt: s.CreatedAt.Time,
 	}
 }
