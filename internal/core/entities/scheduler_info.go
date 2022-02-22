@@ -31,3 +31,7 @@ type SchedulerInfo struct {
 	RoomsCreating    int64
 	RoomsTerminating int64
 }
+
+func NewSchedulerInfo(name string, game string, state string, roomsReady int64, roomsOccupied int64, roomsCreating int64, roomsTerminating int64) *SchedulerInfo {
+	return &SchedulerInfo{Name: name, Game: game, State: state, RoomsReady: roomsReady, RoomsOccupied: roomsOccupied, RoomsCreating: roomsCreating, RoomsTerminating: roomsTerminating}
+}

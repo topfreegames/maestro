@@ -657,7 +657,6 @@ func TestSwitchActiveVersion(t *testing.T) {
 
 func TestGetSchedulersInfo(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-
 	t.Run("with valid request it returns a list of scheduler and game rooms information", func(t *testing.T) {
 		ctx := context.Background()
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
@@ -692,6 +691,100 @@ func TestGetSchedulersInfo(t *testing.T) {
 		require.Nil(t, schedulersInfo)
 		require.ErrorIs(t, err, errors.ErrNotFound)
 		require.Contains(t, err.Error(), "no schedulers found: err")
+	})
+
+	t.Run("it returns with error when couldn't get game rooms information", func(t *testing.T) {
+		ctx := context.Background()
+		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		roomStorage := roomStorageMock.NewMockRoomStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, roomStorage)
+		schedulerFilter := filters.SchedulerFilter{Game: "Tennis-Clash"}
+		scheduler := newValidScheduler()
+		schedulers := []*entities.Scheduler{scheduler}
+		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), gomock.Any()).Return(schedulers, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
+
+		schedulersInfo, err := schedulerManager.GetSchedulersInfo(ctx, &schedulerFilter)
+
+		require.Error(t, err)
+		require.Nil(t, schedulersInfo)
+	})
+}
+
+func TestNewSchedulerInfo(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Run("with valid request it returns a scheduler and game rooms information", func(t *testing.T) {
+		ctx := context.Background()
+		roomStorage := roomStorageMock.NewMockRoomStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(nil, nil, roomStorage)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(10, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(15, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(20, nil)
+		scheduler := newValidScheduler()
+
+		schedulersInfo, err := schedulerManager.newSchedulerInfo(ctx, scheduler)
+
+		require.NoError(t, err)
+		require.NotNil(t, schedulersInfo)
+	})
+
+	t.Run("it returns with error when couldn't get game rooms information in ready state", func(t *testing.T) {
+		ctx := context.Background()
+		roomStorage := roomStorageMock.NewMockRoomStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(nil, nil, roomStorage)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
+		scheduler := newValidScheduler()
+
+		schedulersInfo, err := schedulerManager.newSchedulerInfo(ctx, scheduler)
+
+		require.Error(t, err)
+		require.Nil(t, schedulersInfo)
+	})
+
+	t.Run("it returns with error when couldn't get game rooms information in pending state", func(t *testing.T) {
+		ctx := context.Background()
+		roomStorage := roomStorageMock.NewMockRoomStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(nil, nil, roomStorage)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
+		scheduler := newValidScheduler()
+
+		schedulersInfo, err := schedulerManager.newSchedulerInfo(ctx, scheduler)
+
+		require.Error(t, err)
+		require.Nil(t, schedulersInfo)
+	})
+
+	t.Run("it returns with error when couldn't get game rooms information in occupied state", func(t *testing.T) {
+		ctx := context.Background()
+		roomStorage := roomStorageMock.NewMockRoomStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(nil, nil, roomStorage)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
+		scheduler := newValidScheduler()
+
+		schedulersInfo, err := schedulerManager.newSchedulerInfo(ctx, scheduler)
+
+		require.Error(t, err)
+		require.Nil(t, schedulersInfo)
+	})
+
+	t.Run("it returns with error when couldn't get game rooms information in terminating state", func(t *testing.T) {
+		ctx := context.Background()
+		roomStorage := roomStorageMock.NewMockRoomStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(nil, nil, roomStorage)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
+		scheduler := newValidScheduler()
+
+		schedulersInfo, err := schedulerManager.newSchedulerInfo(ctx, scheduler)
+
+		require.Error(t, err)
+		require.Nil(t, schedulersInfo)
 	})
 }
 
