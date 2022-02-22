@@ -56,6 +56,7 @@ const (
 	// Kubernetes runtime
 	runtimeKubernetesMasterUrlPath  = "adapters.runtime.kubernetes.masterUrl"
 	runtimeKubernetesKubeconfigPath = "adapters.runtime.kubernetes.kubeconfig"
+	runtimeKubernetesInCluster      = "adapters.runtime.kubernetes.inCluster"
 	// Redis operation storage
 	operationStorageRedisUrlPath      = "adapters.operationStorage.redis.url"
 	operationLeaseStorageRedisUrlPath = "adapters.operationLeaseStorage.redis.url"
@@ -91,10 +92,16 @@ func NewEventsForwarder(c config.Config) (forwarder.EventsForwarder, error) {
 }
 
 func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
-	clientSet, err := createKubernetesClient(
-		c.GetString(runtimeKubernetesMasterUrlPath),
-		c.GetString(runtimeKubernetesKubeconfigPath),
-	)
+	var masterUrl string
+	var kubeConfigPath string
+
+	inCluster := c.GetBool(runtimeKubernetesInCluster)
+	if !inCluster {
+		masterUrl = c.GetString(runtimeKubernetesMasterUrlPath)
+		kubeConfigPath = c.GetString(runtimeKubernetesKubeconfigPath)
+	}
+
+	clientSet, err := createKubernetesClient(masterUrl, kubeConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Kubernetes runtime: %w", err)
 	}
