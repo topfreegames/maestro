@@ -189,3 +189,21 @@ message ForwarderOptions {
   // Additional information
   google.protobuf.Struct metadata = 2;
 }
+
+// Scheduler Info
+message SchedulerInfo {
+  // Name
+  string name = 1;
+  // Game
+  string game = 2;
+  // State
+  string state = 3;
+  // Rooms ready
+  int64 rooms_ready = 4;
+  // Rooms Occupied
+  int64 rooms_occupied = 5;
+  // Rooms Creating
+  int64 rooms_creating = 6;
+  // Rooms Terminating
+  int64 rooms_terminating = 7;
+}

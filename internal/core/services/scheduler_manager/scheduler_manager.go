@@ -240,3 +240,26 @@ func (s *SchedulerManager) SwitchActiveVersion(ctx context.Context, schedulerNam
 
 	return op, nil
 }
+
+func (s *SchedulerManager) GetSchedulersInfoByGame(ctx context.Context, game string) ([]*entities.SchedulerInfo, error) {
+	schedulerFilter := filters.SchedulerFilter{Game: game}
+	schedulers, err := s.schedulerStorage.GetSchedulersWithFilter(ctx, &schedulerFilter)
+	if err != nil {
+		return nil, fmt.Errorf("no schedulers found: %w", err)
+	}
+
+	schedulersInfo := make([]*entities.SchedulerInfo, len(schedulers))
+	for i, scheduler := range schedulers {
+		schedulersInfo[i] = &entities.SchedulerInfo{
+			Name:             scheduler.Name,
+			Game:             scheduler.Game,
+			State:            scheduler.State,
+			RoomsReady:       0,
+			RoomsCreating:    0,
+			RoomsOccupied:    0,
+			RoomsTerminating: 0,
+		}
+	}
+
+	return nil, nil
+}

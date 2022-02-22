@@ -20,22 +20,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package interfaces
+package entities
 
-import (
-	"context"
-
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
-
-	"github.com/topfreegames/maestro/internal/core/entities"
-)
-
-type SchedulerManager interface {
-	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
-	GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error)
-	CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error
-	CreateNewSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
-	EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error)
-	SwitchActiveVersion(ctx context.Context, schedulerName string, targetVersion string) (*operation.Operation, error)
-	GetSchedulersInfoByGame(ctx context.Context, game string) ([]*entities.SchedulerInfo, error)
+type SchedulerInfo struct {
+	Name             string
+	Game             string
+	State            string
+	RoomsReady       int64
+	RoomsOccupied    int64
+	RoomsCreating    int64
+	RoomsTerminating int64
 }
