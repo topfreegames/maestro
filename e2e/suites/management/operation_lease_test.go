@@ -47,7 +47,7 @@ func TestOperationLease(t *testing.T) {
 		t.Run("When the operation executes with success, then the lease keeps being renewed while it executes", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerAndWaitForIt(
+			scheduler, err := createSchedulerAndWaitForIt(
 				t,
 				maestro,
 				managementApiClient,
@@ -55,16 +55,16 @@ func TestOperationLease(t *testing.T) {
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
-			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
+			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
 			require.NoError(t, err)
 			addRoomsOpID := addRoomsResponse.OperationId
 			var previousTtl = &time.Time{}
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				// Only exit the loop when the operation finishes
@@ -91,14 +91,14 @@ func TestOperationLease(t *testing.T) {
 			}, 240*time.Second, 5*time.Second)
 
 			// Asserting that the lease is deleted after the operation finishes
-			_, err = operationLeaseStorage.FetchLeaseTTL(context.Background(), schedulerName, addRoomsOpID)
-			require.Error(t, err, fmt.Sprintf("lease of scheduler \"%s\" and operationId \"%s\" does not exist", schedulerName, addRoomsOpID))
+			_, err = operationLeaseStorage.FetchLeaseTTL(context.Background(), scheduler.Name, addRoomsOpID)
+			require.Error(t, err, fmt.Sprintf("lease of scheduler \"%s\" and operationId \"%s\" does not exist", scheduler.Name, addRoomsOpID))
 		})
 
 		t.Run("When the operation is canceled, then the lease keeps being renewed while it executes", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerAndWaitForIt(
+			scheduler, err := createSchedulerAndWaitForIt(
 				t,
 				maestro,
 				managementApiClient,
@@ -106,15 +106,15 @@ func TestOperationLease(t *testing.T) {
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
-			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
+			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
 			addRoomsOpID := addRoomsResponse.OperationId
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				// Don't make assertions while the operation hasn't started
@@ -130,9 +130,9 @@ func TestOperationLease(t *testing.T) {
 				// Assert that the lease is not expired
 				require.True(t, renewedTtl.After(time.Now()))
 
-				cancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: schedulerName, OperationId: addRoomsOpID}
+				cancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: addRoomsOpID}
 				cancelResponse := &maestroApiV1.CancelOperationResponse{}
-				err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, addRoomsOpID), cancelRequest, cancelResponse)
+				err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, addRoomsOpID), cancelRequest, cancelResponse)
 				require.NoError(t, err)
 
 				return true
@@ -142,16 +142,16 @@ func TestOperationLease(t *testing.T) {
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 2 {
 					return false
 				}
 
-				lease, err := operationLeaseStorage.FetchLeaseTTL(context.Background(), schedulerName, addRoomsOpID)
+				lease, err := operationLeaseStorage.FetchLeaseTTL(context.Background(), scheduler.Name, addRoomsOpID)
 				print(lease.String())
-				require.Error(t, err, fmt.Sprintf("lease of scheduler \"%s\" and operationId \"%s\" does not exist", schedulerName, addRoomsOpID))
+				require.Error(t, err, fmt.Sprintf("lease of scheduler \"%s\" and operationId \"%s\" does not exist", scheduler.Name, addRoomsOpID))
 
 				return true
 			}, 10*time.Second, 1*time.Second)

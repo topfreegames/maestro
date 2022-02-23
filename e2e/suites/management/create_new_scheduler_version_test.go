@@ -46,14 +46,14 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Succeed - create minor version, no pods replaces", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
 
-			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 
 			// Update scheduler
 			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-				Name:                   schedulerName,
+				Name:                   scheduler.Name,
 				Game:                   "test",
 				MaxSurge:               "10%",
 				TerminationGracePeriod: 15,
@@ -95,20 +95,20 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
 
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), updateRequest, updateResponse)
 			require.NoError(t, err)
-			require.NotNil(t, updateResponse.OperationId, schedulerName)
+			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
 
-			waitForOperationToFinish(t, managementApiClient, schedulerName, "create_new_scheduler_version")
-			waitForOperationToFinish(t, managementApiClient, schedulerName, "switch_active_version")
+			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "create_new_scheduler_version")
+			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
 
-			podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, podsAfterUpdate.Items)
 
-			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
+			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
 
 			// Don't replace pods since is a minor change
@@ -123,13 +123,13 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Succeed - create major change, all pods are changed", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
 
-			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 
 			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-				Name:                   schedulerName,
+				Name:                   scheduler.Name,
 				Game:                   "test",
 				MaxSurge:               "10%",
 				TerminationGracePeriod: 15,
@@ -171,21 +171,21 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
 
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), updateRequest, updateResponse)
 			require.NoError(t, err)
-			require.NotNil(t, updateResponse.OperationId, schedulerName)
+			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
 
-			waitForOperationToFinish(t, managementApiClient, schedulerName, "create_new_scheduler_version")
-			waitForOperationToFinish(t, managementApiClient, schedulerName, "switch_active_version")
+			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "create_new_scheduler_version")
+			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
 
-			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
+			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
 
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
-				podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+				podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 				require.NoError(t, err)
 				require.NotEmpty(t, podsAfterUpdate.Items)
 
@@ -196,7 +196,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 				return false
 			}, 2*time.Minute, time.Second)
 
-			podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, podsAfterUpdate.Items)
 
@@ -210,19 +210,19 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Fail - When scheduler when sending invalid request to update endpoint it fails fast", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
 
 			invalidUpdateRequest := &maestroApiV1.NewSchedulerVersionRequest{}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
 
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), invalidUpdateRequest, updateResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), invalidUpdateRequest, updateResponse)
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "failed with status 500")
 
-			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
+			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
 
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
 			require.Equal(t, "v1.1", getSchedulerResponse.Scheduler.Version)
 		})
@@ -230,13 +230,13 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Fail - image of GRU is invalid. Operation fails, version and pods are unchanged", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
 
-			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 
 			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-				Name:                   schedulerName,
+				Name:                   scheduler.Name,
 				Game:                   "test",
 				MaxSurge:               "10%",
 				TerminationGracePeriod: 15,
@@ -276,20 +276,20 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
 
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), updateRequest, updateResponse)
 			require.NoError(t, err)
-			require.NotNil(t, updateResponse.OperationId, schedulerName)
+			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
 
-			waitForOperationToFail(t, managementApiClient, schedulerName, "create_new_scheduler_version")
+			waitForOperationToFail(t, managementApiClient, scheduler.Name, "create_new_scheduler_version")
 
-			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
+			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
 
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
-				podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+				podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 				require.NoError(t, err)
 				require.NotEmpty(t, podsAfterUpdate.Items)
 
@@ -300,7 +300,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 				return false
 			}, 2*time.Minute, time.Second)
 
-			podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, podsAfterUpdate.Items)
 
@@ -311,10 +311,10 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			// version didn't change
 			require.Equal(t, "v1.1", getSchedulerResponse.Scheduler.Version)
 
-			getVersionsRequest := &maestroApiV1.GetSchedulerVersionsRequest{SchedulerName: schedulerName}
+			getVersionsRequest := &maestroApiV1.GetSchedulerVersionsRequest{SchedulerName: scheduler.Name}
 			getVersionsResponse := &maestroApiV1.GetSchedulerVersionsResponse{}
 
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/versions", schedulerName), getVersionsRequest, getVersionsResponse)
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/versions", scheduler.Name), getVersionsRequest, getVersionsResponse)
 			require.NoError(t, err)
 
 			// No version was created
