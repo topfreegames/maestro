@@ -53,7 +53,7 @@ func TestCancelOperation(t *testing.T) {
 
 		t.Run("cancel pending and in-progress operations successfully", func(t *testing.T) {
 			ctx := context.Background()
-			schedulerName, err := createSchedulerAndWaitForIt(
+			scheduler, err := createSchedulerAndWaitForIt(
 				t,
 				maestro,
 				managementApiClient,
@@ -61,13 +61,13 @@ func TestCancelOperation(t *testing.T) {
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
-			firstSlowOp := createTestOperation(ctx, t, operationStorage, operationFlow, schedulerName, 100000)
-			secondSlowOp := createTestOperation(ctx, t, operationStorage, operationFlow, schedulerName, 100000)
+			firstSlowOp := createTestOperation(ctx, t, operationStorage, operationFlow, scheduler.Name, 100000)
+			secondSlowOp := createTestOperation(ctx, t, operationStorage, operationFlow, scheduler.Name, 100000)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.PendingOperations) < 1 || len(listOperationsResponse.ActiveOperations) < 1 {
@@ -79,15 +79,15 @@ func TestCancelOperation(t *testing.T) {
 				return true
 			}, 240*time.Second, time.Second)
 
-			secondOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: schedulerName, OperationId: secondSlowOp.ID}
+			secondOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: secondSlowOp.ID}
 			secondOpCancelResponse := &maestroApiV1.CancelOperationResponse{}
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, secondSlowOp.ID), secondOpCancelRequest, secondOpCancelResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, secondSlowOp.ID), secondOpCancelRequest, secondOpCancelResponse)
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 2 {
@@ -99,15 +99,15 @@ func TestCancelOperation(t *testing.T) {
 				return true
 			}, 240*time.Second, time.Second)
 
-			firstOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: schedulerName, OperationId: firstSlowOp.ID}
+			firstOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: firstSlowOp.ID}
 			firstOpCancelResponse := &maestroApiV1.CancelOperationResponse{}
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, firstSlowOp.ID), firstOpCancelRequest, firstOpCancelResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, firstSlowOp.ID), firstOpCancelRequest, firstOpCancelResponse)
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 3 {

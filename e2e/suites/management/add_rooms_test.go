@@ -51,7 +51,7 @@ func TestAddRooms(t *testing.T) {
 		t.Run("when created rooms does not reply its state back then they're finished", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerAndWaitForIt(
+			scheduler, err := createSchedulerAndWaitForIt(
 				t,
 				maestro,
 				managementApiClient,
@@ -59,7 +59,7 @@ func TestAddRooms(t *testing.T) {
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
-			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
+			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 
@@ -91,7 +91,7 @@ func TestAddRooms(t *testing.T) {
 		t.Run("when created rooms replies its state back then it finishes the operation successfully", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerAndWaitForIt(t,
+			scheduler, err := createSchedulerAndWaitForIt(t,
 				maestro,
 				managementApiClient,
 				kubeClient,
@@ -99,7 +99,7 @@ func TestAddRooms(t *testing.T) {
 					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'"})
 
-			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 1}
+			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
 

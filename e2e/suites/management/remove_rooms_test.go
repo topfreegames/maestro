@@ -50,7 +50,7 @@ func TestRemoveRooms(t *testing.T) {
 		t.Run("when game rooms are previously created with success should remove rooms with success", func(t *testing.T) {
 			t.Parallel()
 
-			schedulerName, err := createSchedulerAndWaitForIt(t,
+			scheduler, err := createSchedulerAndWaitForIt(t,
 				maestro,
 				managementApiClient,
 				kubeClient,
@@ -58,17 +58,17 @@ func TestRemoveRooms(t *testing.T) {
 					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'"})
 
-			err, createdGameRoomName := addRoomsAndWaitForIt(t, schedulerName, err, managementApiClient, kubeClient, redisClient)
+			err, createdGameRoomName := addRoomsAndWaitForIt(t, scheduler.Name, err, managementApiClient, kubeClient, redisClient)
 			require.NoError(t, err)
 
-			removeRoomsRequest := &maestroApiV1.RemoveRoomsRequest{SchedulerName: schedulerName, Amount: 1}
+			removeRoomsRequest := &maestroApiV1.RemoveRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
 			removeRoomsResponse := &maestroApiV1.RemoveRoomsResponse{}
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/remove-rooms", schedulerName), removeRoomsRequest, removeRoomsResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/remove-rooms", scheduler.Name), removeRoomsRequest, removeRoomsResponse)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 3 {
@@ -80,13 +80,13 @@ func TestRemoveRooms(t *testing.T) {
 			}, 240*time.Second, time.Second)
 
 			require.Eventually(t, func() bool {
-				pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+				pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 				require.NoError(t, err)
 				if len(pods.Items) > 0 {
 					return false
 				}
 
-				_, err = roomsStorage.GetRoom(context.Background(), schedulerName, createdGameRoomName)
+				_, err = roomsStorage.GetRoom(context.Background(), scheduler.Name, createdGameRoomName)
 				require.Error(t, err)
 				require.ErrorIs(t, err, porterrors.ErrNotFound)
 				return true

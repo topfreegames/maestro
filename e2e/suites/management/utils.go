@@ -227,7 +227,7 @@ func addStubRequestToMockedGrpcServer(stubFileName string) error {
 
 func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.MaestroInstance, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface) (string, error) {
 	// Create scheduler
-	schedulerName, err := createSchedulerAndWaitForIt(
+	scheduler, err := createSchedulerAndWaitForIt(
 		t,
 		maestro,
 		managementApiClient,
@@ -239,13 +239,13 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 
 	// Add rooms to the created scheduler
 	// TODO(guilhermecarvalho): when autoscaling is implemented, this part of the test can be deleted
-	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: schedulerName, Amount: 2}
+	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 2}
 	addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
 	require.NoError(t, err)
 
-	waitForOperationToFinish(t, managementApiClient, schedulerName, "add_rooms")
-	return schedulerName, err
+	waitForOperationToFinish(t, managementApiClient, scheduler.Name, "add_rooms")
+	return scheduler.Name, err
 }
 
 func waitForOperationToFinish(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operation string) {
