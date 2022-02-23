@@ -61,12 +61,12 @@ func TestAddRooms(t *testing.T) {
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 2 {
@@ -77,12 +77,12 @@ func TestAddRooms(t *testing.T) {
 				return true
 			}, 240*time.Second, time.Second)
 
-			pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, pods.Items)
 
 			require.Eventually(t, func() bool {
-				_, err := instanceStorage.GetInstance(context.Background(), schedulerName, pods.Items[0].ObjectMeta.Name)
+				_, err := instanceStorage.GetInstance(context.Background(), scheduler.Name, pods.Items[0].ObjectMeta.Name)
 
 				return err != nil
 			}, 4*time.Minute, time.Second)
@@ -101,12 +101,12 @@ func TestAddRooms(t *testing.T) {
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", schedulerName), addRoomsRequest, addRoomsResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) < 2 {
@@ -117,12 +117,12 @@ func TestAddRooms(t *testing.T) {
 				return true
 			}, 240*time.Second, time.Second)
 
-			pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, pods.Items)
 
 			require.Eventually(t, func() bool {
-				room, err := roomsStorage.GetRoom(context.Background(), schedulerName, pods.Items[0].ObjectMeta.Name)
+				room, err := roomsStorage.GetRoom(context.Background(), scheduler.Name, pods.Items[0].ObjectMeta.Name)
 
 				return err == nil && room.Status == game_room.GameStatusReady
 			}, time.Minute, time.Second)

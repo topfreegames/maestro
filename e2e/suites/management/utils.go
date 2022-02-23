@@ -129,7 +129,7 @@ func createSchedulerWithForwardersAndWaitForIt(
 	kubeClient kubernetes.Interface,
 	gruCommand []string,
 	forwarders []*maestroApiV1.Forwarder,
-) (string, error) {
+) (*maestroApiV1.Scheduler, error) {
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
 		Name:                   schedulerName,
@@ -201,7 +201,7 @@ func createSchedulerWithForwardersAndWaitForIt(
 
 		return len(svcAccs.Items) > 0
 	}, 5*time.Second, time.Second)
-	return schedulerName, err
+	return createResponse.Scheduler, err
 }
 
 func addStubRequestToMockedGrpcServer(stubFileName string) error {
@@ -225,7 +225,7 @@ func addStubRequestToMockedGrpcServer(stubFileName string) error {
 	return nil
 }
 
-func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.MaestroInstance, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface) (string, error) {
+func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.MaestroInstance, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface) (*maestroApiV1.Scheduler, error) {
 	// Create scheduler
 	scheduler, err := createSchedulerAndWaitForIt(
 		t,
@@ -245,7 +245,7 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 	require.NoError(t, err)
 
 	waitForOperationToFinish(t, managementApiClient, scheduler.Name, "add_rooms")
-	return scheduler.Name, err
+	return scheduler, err
 }
 
 func waitForOperationToFinish(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operation string) {
