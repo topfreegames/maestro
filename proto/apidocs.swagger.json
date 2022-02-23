@@ -1295,23 +1295,23 @@
           "title": "State"
         },
         "roomsReady": {
-          "type": "string",
-          "format": "int64",
+          "type": "integer",
+          "format": "int32",
           "title": "Rooms ready"
         },
         "roomsOccupied": {
-          "type": "string",
-          "format": "int64",
+          "type": "integer",
+          "format": "int32",
           "title": "Rooms Occupied"
         },
         "roomsCreating": {
-          "type": "string",
-          "format": "int64",
+          "type": "integer",
+          "format": "int32",
           "title": "Rooms Creating"
         },
         "roomsTerminating": {
-          "type": "string",
-          "format": "int64",
+          "type": "integer",
+          "format": "int32",
           "title": "Rooms Terminating"
         }
       },

@@ -199,11 +199,11 @@ message SchedulerInfo {
   // State
   string state = 3;
   // Rooms ready
-  int64 rooms_ready = 4;
+  int32 rooms_ready = 4;
   // Rooms Occupied
-  int64 rooms_occupied = 5;
+  int32 rooms_occupied = 5;
   // Rooms Creating
-  int64 rooms_creating = 6;
+  int32 rooms_creating = 6;
   // Rooms Terminating
-  int64 rooms_terminating = 7;
+  int32 rooms_terminating = 7;
 }
