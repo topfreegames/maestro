@@ -45,8 +45,8 @@ import (
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	ismock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
 func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {

@@ -38,11 +38,11 @@ import (
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	instancemock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 )

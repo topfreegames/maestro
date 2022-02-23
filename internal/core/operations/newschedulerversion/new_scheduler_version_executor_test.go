@@ -25,9 +25,10 @@ package newschedulerversion_test
 import (
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"testing"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 

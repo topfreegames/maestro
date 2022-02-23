@@ -24,10 +24,11 @@ package ports
 
 import (
 	"context"
-	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"sync"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
 type RoomManager interface {
@@ -76,5 +77,3 @@ type RoomStorageStatusWatcher interface {
 	// Stop stops the watcher.
 	Stop()
 }
-
-

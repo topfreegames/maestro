@@ -25,8 +25,9 @@ package switch_active_version
 import (
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/ports"
 	"sync"
+
+	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
