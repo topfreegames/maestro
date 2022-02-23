@@ -37,9 +37,6 @@ import (
 	"github.com/topfreegames/maestro/internal/validations"
 
 	"github.com/stretchr/testify/require"
-	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
-	oplstorage "github.com/topfreegames/maestro/internal/adapters/operation_lease/mock"
-	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
@@ -289,8 +286,8 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 type mockRoomAndSchedulerManager struct {
 	roomManager      *room_manager.RoomManager
 	schedulerManager *scheduler_manager.SchedulerManager
-	operationFlow    *opflow.MockOperationFlow
-	operationStorage *opstorage.MockOperationStorage
+	operationFlow    *mockports.MockOperationFlow
+	operationStorage *mockports.MockOperationStorage
 	portAllocator    *portallocatormock.MockPortAllocator
 	roomStorage      *mockports.MockRoomStorage
 	instanceStorage  *instancestoragemock.MockGameRoomInstanceStorage
@@ -310,9 +307,9 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 
 	config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Second * 2}
 	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsForwarderService, config)
-	operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-	operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-	operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
+	operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+	operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+	operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
 	opConfig := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
 	operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, opConfig)
 	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
