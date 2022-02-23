@@ -44,7 +44,11 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 		return nil, err
 	}
 	operationManager := service.NewOperationManager(operationFlow, operationStorage, v, operationLeaseStorage, operationManagerConfig)
-	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
+	roomStorage, err := service.NewRoomStorageRedis(conf)
+	if err != nil {
+		return nil, err
+	}
+	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
 	schedulersHandler := handlers.ProvideSchedulersHandler(schedulerManager)
 	operationsHandler := handlers.ProvideOperationsHandler(operationManager)
 	serveMux := provideManagementMux(ctx, pingHandler, schedulersHandler, operationsHandler)

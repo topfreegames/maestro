@@ -314,7 +314,7 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 	operationLeaseStorage := oplstorage.NewMockOperationLeaseStorage(mockCtrl)
 	opConfig := operation_manager.OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
 	operationManager := operation_manager.New(operationFlow, operationStorage, operations.NewDefinitionConstructors(), operationLeaseStorage, opConfig)
-	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager)
+	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
 
 	return &mockRoomAndSchedulerManager{
 		roomManager,

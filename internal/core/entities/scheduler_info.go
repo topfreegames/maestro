@@ -20,24 +20,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package interfaces
+package entities
 
-import (
-	"context"
+type SchedulerInfo struct {
+	Name             string
+	Game             string
+	State            string
+	RoomsReady       int
+	RoomsOccupied    int
+	RoomsCreating    int
+	RoomsTerminating int
+}
 
-	"github.com/topfreegames/maestro/internal/core/filters"
-
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
-
-	"github.com/topfreegames/maestro/internal/core/entities"
-)
-
-type SchedulerManager interface {
-	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
-	GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error)
-	CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error
-	CreateNewSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
-	EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error)
-	SwitchActiveVersion(ctx context.Context, schedulerName string, targetVersion string) (*operation.Operation, error)
-	GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error)
+func NewSchedulerInfo(name string, game string, state string, roomsReady int, roomsOccupied int, roomsCreating int, roomsTerminating int) *SchedulerInfo {
+	return &SchedulerInfo{Name: name, Game: game, State: state, RoomsReady: roomsReady, RoomsOccupied: roomsOccupied, RoomsCreating: roomsCreating, RoomsTerminating: roomsTerminating}
 }

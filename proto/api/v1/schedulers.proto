@@ -70,6 +70,13 @@ service SchedulersService {
       body: "*"
     };
   }
+
+  // List Scheduler and Game Rooms info by Game
+  rpc GetSchedulersInfo(GetSchedulersInfoRequest) returns (GetSchedulersInfoResponse) {
+    option (google.api.http) = {
+      get: "/schedulers/info"
+    };
+  }
 }
 
 // List scheduler request options.
@@ -212,4 +219,16 @@ message SwitchActiveVersionRequest {
 message SwitchActiveVersionResponse {
   // Operation Id generated
   string operation_id = 1;
+}
+
+// List Scheduler and Game Rooms Info Request
+message GetSchedulersInfoRequest {
+  // Game name to filter schedulers
+  string game = 1;  // Mapped to URL query parameter `game`.
+}
+
+// List Scheduler and Game Rooms Info Response
+message GetSchedulersInfoResponse {
+  // List of schedulers fetched.
+  repeated SchedulerInfo schedulers = 1;
 }

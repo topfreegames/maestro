@@ -189,6 +189,27 @@ func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *ap
 	}, nil
 }
 
+func (h *SchedulersHandler) GetSchedulersInfo(ctx context.Context, request *api.GetSchedulersInfoRequest) (*api.GetSchedulersInfoResponse, error) {
+	filter := filters.SchedulerFilter{Game: request.GetGame()}
+	schedulers, err := h.schedulerManager.GetSchedulersInfo(ctx, &filter)
+
+	if errors.Is(err, portsErrors.ErrNotFound) {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	schedulersResponse := make([]*api.SchedulerInfo, len(schedulers))
+	for i, scheduler := range schedulers {
+		schedulersResponse[i] = fromEntitySchedulerInfoToListResponse(scheduler)
+	}
+
+	return &api.GetSchedulersInfoResponse{
+		Schedulers: schedulersResponse,
+	}, nil
+}
+
 func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {
 	return entities.NewScheduler(
 		request.GetName(),
@@ -410,4 +431,16 @@ func (h *SchedulersHandler) fromApiForwarders(apiForwarders []*api.Forwarder) []
 		forwarders = append(forwarders, &forwarder)
 	}
 	return forwarders
+}
+
+func fromEntitySchedulerInfoToListResponse(entity *entities.SchedulerInfo) *api.SchedulerInfo {
+	return &api.SchedulerInfo{
+		Name:             entity.Name,
+		Game:             entity.Game,
+		State:            entity.State,
+		RoomsReady:       int32(entity.RoomsReady),
+		RoomsOccupied:    int32(entity.RoomsOccupied),
+		RoomsCreating:    int32(entity.RoomsCreating),
+		RoomsTerminating: int32(entity.RoomsTerminating),
+	}
 }

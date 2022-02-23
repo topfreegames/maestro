@@ -26,6 +26,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 
@@ -42,12 +43,14 @@ import (
 type SchedulerManager struct {
 	schedulerStorage ports.SchedulerStorage
 	operationManager ports.OperationManager
+	roomStorage      ports.RoomStorage
 }
 
-func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager) *SchedulerManager {
+func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *SchedulerManager {
 	return &SchedulerManager{
 		schedulerStorage: schedulerStorage,
 		operationManager: operationManager,
+		roomStorage:      roomStorage,
 	}
 }
 
@@ -239,4 +242,44 @@ func (s *SchedulerManager) SwitchActiveVersion(ctx context.Context, schedulerNam
 	}
 
 	return op, nil
+}
+
+func (s *SchedulerManager) GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error) {
+	schedulers, err := s.schedulerStorage.GetSchedulersWithFilter(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("no schedulers found: %w", err)
+	}
+
+	schedulersInfo := make([]*entities.SchedulerInfo, len(schedulers))
+	for i, scheduler := range schedulers {
+		schedulerInfo, err := s.newSchedulerInfo(ctx, scheduler)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get scheduler and game rooms information: %w", err)
+		}
+		schedulersInfo[i] = schedulerInfo
+	}
+
+	return schedulersInfo, nil
+}
+
+func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *entities.Scheduler) (*entities.SchedulerInfo, error) {
+	ready, err := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusReady)
+	if err != nil {
+		return nil, fmt.Errorf("failing in couting game rooms in %s state: %s", game_room.GameStatusReady, err)
+	}
+	creating, err := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusPending)
+	if err != nil {
+		return nil, fmt.Errorf("failing in couting game rooms in %s state: %s", game_room.GameStatusPending, err)
+	}
+
+	occupied, err := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusOccupied)
+	if err != nil {
+		return nil, fmt.Errorf("failing in couting game rooms in %s state: %s", game_room.GameStatusOccupied, err)
+	}
+
+	terminating, err := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusTerminating)
+	if err != nil {
+		return nil, fmt.Errorf("failing in couting game rooms in %s state: %s", game_room.GameStatusTerminating, err)
+	}
+	return entities.NewSchedulerInfo(scheduler.Name, scheduler.Game, scheduler.State, ready, occupied, creating, terminating), nil
 }
