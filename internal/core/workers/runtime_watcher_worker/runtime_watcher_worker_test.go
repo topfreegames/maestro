@@ -38,7 +38,7 @@ import (
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	instancemock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-	roomstoragemock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -47,12 +47,12 @@ import (
 	"github.com/topfreegames/maestro/internal/core/workers"
 )
 
-func workerOptions(t *testing.T) (*gomock.Controller, *instancemock.MockGameRoomInstanceStorage, *roomstoragemock.MockRoomStorage, *runtimemock.MockRuntime, *workers.WorkerOptions) {
+func workerOptions(t *testing.T) (*gomock.Controller, *instancemock.MockGameRoomInstanceStorage, *mockports.MockRoomStorage, *runtimemock.MockRuntime, *workers.WorkerOptions) {
 	mockCtrl := gomock.NewController(t)
 
 	now := time.Now()
 	portAllocator := pamock.NewMockPortAllocator(mockCtrl)
-	roomStorage := roomstoragemock.NewMockRoomStorage(mockCtrl)
+	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	instanceStorage := instancemock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)

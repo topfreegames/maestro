@@ -45,8 +45,8 @@ import (
 	"github.com/stretchr/testify/require"
 	instance_storage_mock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	port_allocator_mock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-	"github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtime_mock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )

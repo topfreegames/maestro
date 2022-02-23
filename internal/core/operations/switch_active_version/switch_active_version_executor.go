@@ -25,6 +25,7 @@ package switch_active_version
 import (
 	"context"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -37,14 +38,14 @@ import (
 )
 
 type SwitchActiveVersionExecutor struct {
-	roomManager         interfaces.RoomManager
+	roomManager         ports.RoomManager
 	schedulerManager    interfaces.SchedulerManager
 	roomsBeingReplaced  *sync.Map
 	newCreatedRooms     map[string][]*game_room.GameRoom
 	newCreatedRoomsLock sync.Mutex
 }
 
-func NewExecutor(roomManager interfaces.RoomManager, schedulerManager interfaces.SchedulerManager) *SwitchActiveVersionExecutor {
+func NewExecutor(roomManager ports.RoomManager, schedulerManager interfaces.SchedulerManager) *SwitchActiveVersionExecutor {
 	// TODO(caio.rodrigues): change map to store a list of ids (less memory used)
 	newCreatedRoomsMap := make(map[string][]*game_room.GameRoom)
 
@@ -189,7 +190,7 @@ roomsListLoop:
 	return nil
 }
 
-func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager interfaces.RoomManager, scheduler entities.Scheduler) error {
+func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager ports.RoomManager, scheduler entities.Scheduler) error {
 	defer wg.Done()
 
 	// we're going to use a separated context for each replaceRoom since we

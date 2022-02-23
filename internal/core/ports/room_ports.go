@@ -24,10 +24,21 @@ package ports
 
 import (
 	"context"
-	"time"
-
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"sync"
+	"time"
 )
+
+type RoomManager interface {
+	DeleteRoomAndWaitForRoomTerminated(ctx context.Context, gameRoom *game_room.GameRoom) error
+	SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error)
+	ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error)
+	CleanRoomState(ctx context.Context, schedulerName, roomId string) error
+	UpdateRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error
+	UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
+	CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler) (*game_room.GameRoom, *game_room.Instance, error)
+}
 
 // RoomStorage is an interface for retrieving and updating room status and ping information
 type RoomStorage interface {
@@ -65,3 +76,5 @@ type RoomStorageStatusWatcher interface {
 	// Stop stops the watcher.
 	Stop()
 }
+
+

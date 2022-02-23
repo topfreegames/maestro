@@ -25,6 +25,7 @@ package newschedulerversion_test
 import (
 	"context"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"testing"
 	"time"
 
@@ -47,14 +48,13 @@ import (
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	instancestoragemock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	portallocatormock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-	roomstoragemock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	schedulerstoragemock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 )
 
@@ -108,7 +108,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		mocksForExecutor.portAllocator.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return([]int32{8080}, nil)
 		mocksForExecutor.runtime.EXPECT().CreateGameRoomInstance(gomock.Any(), newScheduler.Name, newSchedulerWithNewVersion.Spec).Return(newGameRoomInstance, nil)
 		mocksForExecutor.roomStorage.EXPECT().CreateRoom(gomock.Any(), gomock.Any())
-		watcher := roomstoragemock.NewMockRoomStorageStatusWatcher(mockCtrl)
+		watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
 		mocksForExecutor.roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(watcher, nil)
 		watcher.EXPECT().Stop()
 		mocksForExecutor.roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, newGameRoomInstance.ID).Return(createdGameRoom, nil)
@@ -291,7 +291,7 @@ type mockRoomAndSchedulerManager struct {
 	operationFlow    *opflow.MockOperationFlow
 	operationStorage *opstorage.MockOperationStorage
 	portAllocator    *portallocatormock.MockPortAllocator
-	roomStorage      *roomstoragemock.MockRoomStorage
+	roomStorage      *mockports.MockRoomStorage
 	instanceStorage  *instancestoragemock.MockGameRoomInstanceStorage
 	runtime          *runtimemock.MockRuntime
 	eventsService    interfaces.EventsService
@@ -301,7 +301,7 @@ type mockRoomAndSchedulerManager struct {
 func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSchedulerManager {
 	clock := clockmock.NewFakeClock(time.Now())
 	portAllocator := portallocatormock.NewMockPortAllocator(mockCtrl)
-	roomStorage := roomstoragemock.NewMockRoomStorage(mockCtrl)
+	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 	instanceStorage := instancestoragemock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)

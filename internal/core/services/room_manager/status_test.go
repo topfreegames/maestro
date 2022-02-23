@@ -38,7 +38,7 @@ import (
 	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	ismock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-	rsmock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -91,8 +91,8 @@ func TestValidateRoomStatusTransition_InvalidTransition(t *testing.T) {
 func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
-	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
-	watcher := rsmock.NewMockRoomStorageStatusWatcher(mockCtrl)
+	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+	watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
 	roomManager := NewRoomManager(
 		clockmock.NewFakeClock(time.Now()),
 		pamock.NewMockPortAllocator(mockCtrl),
@@ -133,8 +133,8 @@ func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
 func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
-	roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
-	watcher := rsmock.NewMockRoomStorageStatusWatcher(mockCtrl)
+	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+	watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
 	roomManager := NewRoomManager(
 		clockmock.NewFakeClock(time.Now()),
 		pamock.NewMockPortAllocator(mockCtrl),
@@ -172,8 +172,8 @@ func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 }
 
 func TestUpdateGameRoomStatus(t *testing.T) {
-	setup := func(mockCtrl *gomock.Controller) (*rsmock.MockRoomStorage, *ismock.MockGameRoomInstanceStorage, *RoomManager) {
-		roomStorage := rsmock.NewMockRoomStorage(mockCtrl)
+	setup := func(mockCtrl *gomock.Controller) (*mockports.MockRoomStorage, *ismock.MockGameRoomInstanceStorage, *RoomManager) {
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 		roomManager := NewRoomManager(
 			clockmock.NewFakeClock(time.Now()),

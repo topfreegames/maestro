@@ -30,15 +30,14 @@ package gen
 
 // Primary "input" ports Mocks
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/services/interfaces/events_service.go -destination=../internal/core/services/interfaces/mock/events_service/mock.go -package=mock
-//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/services/interfaces/room_manager.go -destination=../internal/core/services/interfaces/mock/room_manager/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/operation_ports.go -destination=../internal/core/ports/mock/operation_ports_mock.go -package=mock
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/room_ports.go -destination=../internal/core/ports/mock/rooms_ports_mock.go -package=mock
 
 // Secondary "output" ports Mocks
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/port_allocator.go -destination=../internal/adapters/port_allocator/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/forwarder/events_forwarder.go -destination=../internal/adapters/forwarder/events_forwarder/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/port_allocator.go -destination=../internal/adapters/port_allocator/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/runtime.go -destination=../internal/adapters/runtime/mock/mock.go -package=mock
-//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/room_storage.go -destination=../internal/adapters/room_storage/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/instance_storage.go -destination=../internal/adapters/instance_storage/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/scheduler_storage.go -destination=../internal/adapters/scheduler_storage/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/scheduler_cache.go -destination=../internal/adapters/scheduler_cache/mock/mock.go -package=mock

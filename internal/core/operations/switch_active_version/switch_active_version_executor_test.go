@@ -33,18 +33,17 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
-	mockroommanager "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/room_manager"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	instancestoragemock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	portallocatormock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-	roomstoragemock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	schedulerstoragemock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/validations"
 )
@@ -52,10 +51,10 @@ import (
 // mockRoomAndSchedulerManager struct that holds all the mocks necessary for the
 // operation executor.
 type mockRoomAndSchedulerManager struct {
-	roomManager      *mockroommanager.MockRoomManager
+	roomManager      *mockports.MockRoomManager
 	schedulerManager *scheduler_manager.SchedulerManager
 	portAllocator    *portallocatormock.MockPortAllocator
-	roomStorage      *roomstoragemock.MockRoomStorage
+	roomStorage      *mockports.MockRoomStorage
 	instanceStorage  *instancestoragemock.MockGameRoomInstanceStorage
 	runtime          *runtimemock.MockRuntime
 	eventsService    interfaces.EventsService
@@ -388,13 +387,13 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 
 func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSchedulerManager {
 	portAllocator := portallocatormock.NewMockPortAllocator(mockCtrl)
-	roomStorage := roomstoragemock.NewMockRoomStorage(mockCtrl)
+	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 	instanceStorage := instancestoragemock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
 	schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
 
-	roomManager := mockroommanager.NewMockRoomManager(mockCtrl)
+	roomManager := mockports.NewMockRoomManager(mockCtrl)
 	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil)
 
 	return &mockRoomAndSchedulerManager{

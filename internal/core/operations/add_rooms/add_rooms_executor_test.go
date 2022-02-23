@@ -33,17 +33,16 @@ import (
 	instance_storage_mock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	port_allocator_mock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 
-	rs_mock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtime_mock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 
 	"context"
-	"github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	"testing"
 )
 
@@ -52,13 +51,13 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 
 	clockMock := clock_mock.NewFakeClock(time.Now())
 	portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
-	roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
+	roomStorageMock := mockports.NewMockRoomStorage(mockCtrl)
 	instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
 	eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
 	schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 	config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
-	roomStorageStatusWatcher := rs_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
+	roomStorageStatusWatcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	definition := AddRoomsDefinition{Amount: 10}
 
