@@ -44,7 +44,7 @@ func createSchedulerAndWaitForIt(
 	maestro *maestro.MaestroInstance,
 	managementApiClient *framework.APIClient,
 	kubeClient kubernetes.Interface,
-	gruCommand []string) (string, error) {
+	gruCommand []string) (*maestroApiV1.Scheduler, error) {
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
 		Name:                   schedulerName,
@@ -119,7 +119,7 @@ func createSchedulerAndWaitForIt(
 
 		return len(svcAccs.Items) > 0
 	}, 5*time.Second, time.Second)
-	return schedulerName, err
+	return createResponse.Scheduler, err
 }
 
 func createSchedulerWithForwardersAndWaitForIt(
