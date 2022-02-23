@@ -87,7 +87,12 @@ UPDATE schedulers
 INSERT INTO scheduler_versions (name, version, yaml, rollback_version)
 	VALUES (?, ?, ?, ?)
 	ON CONFLICT DO NOTHING`
-	queryGetSchedulerVersions = ` SELECT version, created_at FROM scheduler_versions WHERE name = ? ORDER BY created_at DESC`
+	queryGetSchedulerVersions = `
+SELECT v.version, v.version = s.version as is_active, v.created_at 
+	FROM scheduler_versions v 
+	INNER JOIN schedulers s 
+	ON v.name = s.name 
+	WHERE v.name = ? ORDER BY created_at DESC`
 )
 
 func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error) {

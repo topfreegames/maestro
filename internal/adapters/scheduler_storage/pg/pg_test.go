@@ -399,15 +399,27 @@ func TestSchedulerStorage_GetSchedulerVersions(t *testing.T) {
 	t.Run("scheduler exists and is valid", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
+		version1 := *expectedScheduler
+		version2 := *expectedScheduler
+		version2.Spec.Version = "v2"
+		version3 := *expectedScheduler
+		version3.Spec.Version = "v3"
 
 		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
-		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), "", expectedScheduler))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), "", &version1))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), "", &version2))
+		require.NoError(t, storage.CreateSchedulerVersion(context.Background(), "", &version3))
 
 		versions, err := storage.GetSchedulerVersions(context.Background(), expectedScheduler.Name)
 
 		require.NoError(t, err)
-		require.Equal(t, expectedScheduler.Spec.Version, versions[0].Version)
-		require.NotEqual(t, versions[0].Version, nil)
+		require.Len(t, versions, 3)
+		require.Equal(t, "v3", versions[0].Version)
+		require.Equal(t, false, versions[0].IsActive)
+		require.Equal(t, "v2", versions[1].Version)
+		require.Equal(t, false, versions[1].IsActive)
+		require.Equal(t, "v1", versions[2].Version)
+		require.Equal(t, true, versions[2].IsActive)
 	})
 
 	t.Run("scheduler does not exists", func(t *testing.T) {
