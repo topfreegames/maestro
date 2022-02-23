@@ -967,35 +967,25 @@ func TestGetSchedulersInfo(t *testing.T) {
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
-
 		game := "tennis-clash"
+
 		url := fmt.Sprintf("/schedulers/info?game=%s", game)
 		req, err := http.NewRequest("GET", url, nil)
-
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		rr := httptest.NewRecorder()
-
 		mux.ServeHTTP(rr, req)
-
 		require.Equal(t, http.StatusOK, rr.Code)
-
-		bodyString := rr.Body.String()
-		var response api.GetSchedulersInfoResponse
-		err = json.Unmarshal([]byte(bodyString), &response)
-		require.NoError(t, err)
-
-		require.NotEmpty(t, response.Schedulers)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/get_schedulers_info.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with valid request and no scheduler and game rooms found", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil)
-
 		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("err"))
 
 		mux := runtime.NewServeMux()
@@ -1010,31 +1000,21 @@ func TestGetSchedulersInfo(t *testing.T) {
 		}
 
 		rr := httptest.NewRecorder()
-
 		mux.ServeHTTP(rr, req)
-
 		require.Equal(t, http.StatusNotFound, rr.Code)
-
-		bodyString := rr.Body.String()
-		var response api.GetSchedulersInfoResponse
-		err = json.Unmarshal([]byte(bodyString), &response)
-		require.NoError(t, err)
-
-		require.Empty(t, response.Schedulers)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/get_schedulers_info_not_found.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with unknown error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil)
-
 		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrUnexpected("exception"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
-
 		game := "tennis-clash"
 		url := fmt.Sprintf("/schedulers/info?game=%s", game)
 		req, err := http.NewRequest("GET", url, nil)
@@ -1043,17 +1023,10 @@ func TestGetSchedulersInfo(t *testing.T) {
 		}
 
 		rr := httptest.NewRecorder()
-
 		mux.ServeHTTP(rr, req)
-
 		require.Equal(t, http.StatusInternalServerError, rr.Code)
-
-		bodyString := rr.Body.String()
-		var response api.GetSchedulersInfoResponse
-		err = json.Unmarshal([]byte(bodyString), &response)
-		require.NoError(t, err)
-
-		require.Empty(t, response.Schedulers)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/get_schedulers_info_internal_error.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 }
 
