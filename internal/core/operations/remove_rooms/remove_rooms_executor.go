@@ -62,6 +62,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
+			return fmt.Errorf("failed to remove room: %w", err)
 		}
 	}
 
@@ -69,7 +70,6 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 	return nil
 }
 
-// OnError will do nothing.
 func (e *RemoveRoomsExecutor) OnError(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
 	return nil
 }
