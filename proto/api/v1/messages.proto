@@ -164,8 +164,10 @@ message Lease {
 message SchedulerVersion {
   // Specific version
   string version = 1;
+  // Flag indicating if the version is active or not
+  bool is_active = 2;
   // Specifies when the version has been created
-  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp created_at = 3;
 }
 
 // Forwarder definitions.

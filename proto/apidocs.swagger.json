@@ -1324,6 +1324,10 @@
           "type": "string",
           "title": "Specific version"
         },
+        "isActive": {
+          "type": "boolean",
+          "title": "Flag indicating if the version is active or not"
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",

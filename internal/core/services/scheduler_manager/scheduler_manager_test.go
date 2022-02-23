@@ -873,10 +873,12 @@ func newValidSchedulerVersionList() []*entities.SchedulerVersion {
 	listSchedulerVersions := make([]*entities.SchedulerVersion, 2)
 	listSchedulerVersions[0] = &entities.SchedulerVersion{
 		Version:   "v2.0",
+		IsActive:  false,
 		CreatedAt: time.Now(),
 	}
 	listSchedulerVersions[1] = &entities.SchedulerVersion{
 		Version:   "v1.0",
+		IsActive:  true,
 		CreatedAt: time.Now(),
 	}
 	return listSchedulerVersions

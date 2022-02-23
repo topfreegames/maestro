@@ -26,5 +26,6 @@ import "time"
 
 type SchedulerVersion struct {
 	Version   string `validate:"min=1"`
+	IsActive  bool
 	CreatedAt time.Time
 }

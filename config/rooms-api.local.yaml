@@ -26,5 +26,6 @@ adapters:
       url: "redis://localhost:6379/0"
   runtime:
     kubernetes:
+      inCluster: false
       masterUrl: "https://127.0.0.1:6443"
       kubeconfig: "./kubeconfig.yaml"

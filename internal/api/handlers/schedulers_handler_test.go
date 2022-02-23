@@ -339,10 +339,19 @@ func TestGetSchedulerVersions(t *testing.T) {
 		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil)
 
-		versions := make([]*entities.SchedulerVersion, 1)
-		versions[0] = &entities.SchedulerVersion{
-			Version:   "v1.1",
-			CreatedAt: time.Now(),
+		createdAtV1, _ := time.Parse(time.RFC3339Nano, "2020-01-01T00:00:00.001Z")
+		createdAtV2, _ := time.Parse(time.RFC3339Nano, "2020-01-01T00:00:00.001Z")
+		versions := []*entities.SchedulerVersion{
+			{
+				Version:   "v1.1",
+				IsActive:  true,
+				CreatedAt: createdAtV1,
+			},
+			{
+				Version:   "v2.0",
+				IsActive:  false,
+				CreatedAt: createdAtV2,
+			},
 		}
 
 		schedulerStorage.EXPECT().GetSchedulerVersions(gomock.Any(), gomock.Any()).Return(versions, nil)
@@ -361,13 +370,8 @@ func TestGetSchedulerVersions(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, http.StatusOK, rr.Code)
-
-		bodyString := rr.Body.String()
-		var response api.GetSchedulerVersionsResponse
-		err = json.Unmarshal([]byte(bodyString), &response)
-		require.NoError(t, err)
-
-		require.NotEmpty(t, response.Versions)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/list_versions_success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with valid request and no scheduler found", func(t *testing.T) {
@@ -392,13 +396,8 @@ func TestGetSchedulerVersions(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, http.StatusNotFound, rr.Code)
-
-		bodyString := rr.Body.String()
-		var response api.GetSchedulerVersionsResponse
-		err = json.Unmarshal([]byte(bodyString), &response)
-		require.NoError(t, err)
-
-		require.Empty(t, response.Versions)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/list_versions_not_found.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with invalid request", func(t *testing.T) {
@@ -423,13 +422,8 @@ func TestGetSchedulerVersions(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, http.StatusInternalServerError, rr.Code)
-
-		bodyString := rr.Body.String()
-		var response api.GetSchedulerVersionsResponse
-		err = json.Unmarshal([]byte(bodyString), &response)
-		require.NoError(t, err)
-
-		require.Empty(t, response.Versions)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/list_versions_invalid_request.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 }

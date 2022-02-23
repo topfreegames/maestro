@@ -282,6 +282,7 @@ func (h *SchedulersHandler) fromEntitySchedulerVersionListToResponse(entity []*e
 	for i, version := range entity {
 		versions[i] = &api.SchedulerVersion{
 			Version:   version.Version,
+			IsActive:  version.IsActive,
 			CreatedAt: timestamppb.New(version.CreatedAt),
 		}
 	}
