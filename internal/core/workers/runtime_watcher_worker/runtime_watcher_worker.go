@@ -43,10 +43,8 @@ type runtimeWatcherWorker struct {
 	roomManager ports.RoomManager
 	// TODO(gabrielcorado): should we access the port directly? do we need to
 	// provide the same `Watcher` interface but on the RoomManager?
-	runtime ports.Runtime
-
-	logger *zap.Logger
-
+	runtime    ports.Runtime
+	logger     *zap.Logger
 	ctx        context.Context
 	cancelFunc context.CancelFunc
 }
