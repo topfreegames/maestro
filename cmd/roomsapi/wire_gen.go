@@ -12,7 +12,6 @@ import (
 	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/service"
 	"github.com/topfreegames/maestro/pkg/api/v1"
 )
@@ -58,7 +57,7 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 	if err != nil {
 		return nil, err
 	}
-	roomManager := room_manager.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, portsRuntime, eventsService, roomManagerConfig)
+	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, portsRuntime, eventsService, roomManagerConfig)
 	roomsHandler := handlers.ProvideRoomsHandler(roomManager, eventsService)
 	serveMux := provideRoomsMux(ctx, roomsHandler)
 	return serveMux, nil

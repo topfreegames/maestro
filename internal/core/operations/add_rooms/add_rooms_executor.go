@@ -31,20 +31,18 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/ports"
 )
 
 type AddRoomsExecutor struct {
-	roomManager *room_manager.RoomManager
+	roomManager ports.RoomManager
 	storage     ports.SchedulerStorage
 	logger      *zap.Logger
 }
 
-func NewExecutor(roomManager *room_manager.RoomManager, storage ports.SchedulerStorage) *AddRoomsExecutor {
+func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) *AddRoomsExecutor {
 	return &AddRoomsExecutor{
 		roomManager: roomManager,
 		storage:     storage,

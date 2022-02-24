@@ -31,7 +31,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 )
 
@@ -64,7 +63,7 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 func ProvideExecutors(
 	runtime ports.Runtime,
 	schedulerStorage ports.SchedulerStorage,
-	roomManager *room_manager.RoomManager,
+	roomManager ports.RoomManager,
 	schedulerManager *scheduler_manager.SchedulerManager,
 ) map[string]operations.Executor {
 

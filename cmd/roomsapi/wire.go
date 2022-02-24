@@ -34,7 +34,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/service"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
@@ -49,13 +48,13 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 		service.NewSchedulerCacheRedis,
 		service.NewRuntimeKubernetes,
 		service.NewRoomManagerConfig,
+		service.NewRoomManager,
 		service.NewEventsForwarder,
 		service.NewSchedulerStoragePg,
 		service.NewEventsForwarderServiceConfig,
 
 		// services
 		events_forwarder.NewEventsForwarderService,
-		room_manager.NewRoomManager,
 
 		// api handlers
 		handlers.ProvideRoomsHandler,

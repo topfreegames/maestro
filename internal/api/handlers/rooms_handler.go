@@ -27,6 +27,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 
 	"github.com/topfreegames/maestro/internal/core/entities/events"
@@ -37,18 +39,17 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
 type RoomsHandler struct {
-	roomManager   *room_manager.RoomManager
+	roomManager   ports.RoomManager
 	eventsService interfaces.EventsService
 	api.UnimplementedRoomsServiceServer
 }
 
-func ProvideRoomsHandler(roomManager *room_manager.RoomManager, eventsService interfaces.EventsService) *RoomsHandler {
+func ProvideRoomsHandler(roomManager ports.RoomManager, eventsService interfaces.EventsService) *RoomsHandler {
 	return &RoomsHandler{
 		roomManager:   roomManager,
 		eventsService: eventsService,
