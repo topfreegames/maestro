@@ -206,28 +206,28 @@ var roomStatusComposition = []struct {
 }
 
 // RoomComposedStatus returns a game room status formed by a game room ping status and an instance status
-func RoomComposedStatus(pingStatus GameRoomPingStatus, instanceStatusType InstanceStatusType) (GameRoomStatus, error) {
+func (g *GameRoom) RoomComposedStatus(instanceStatusType InstanceStatusType) (GameRoomStatus, error) {
 	for _, composition := range roomStatusComposition {
-		if composition.pingStatus == pingStatus && composition.instanceStatusType == instanceStatusType {
+		if composition.pingStatus == g.PingStatus && composition.instanceStatusType == instanceStatusType {
 			return composition.status, nil
 		}
 	}
 
 	return GameStatusPending, fmt.Errorf(
 		"ping status \"%s\" and instance status \"%s\" doesn't have a match",
-		pingStatus.String(), instanceStatusType.String(),
+		g.PingStatus.String(), instanceStatusType.String(),
 	)
 }
 
 // ValidateRoomStatusTransition validates that a transition from currentStatus to newStatus can happen.
-func ValidateRoomStatusTransition(currentStatus GameRoomStatus, newStatus GameRoomStatus) error {
-	transitions, ok := validStatusTransitions[currentStatus]
+func (g *GameRoom) ValidateRoomStatusTransition(newStatus GameRoomStatus) error {
+	transitions, ok := validStatusTransitions[g.Status]
 	if !ok {
-		return fmt.Errorf("game rooms has an invalid status %s", currentStatus.String())
+		return fmt.Errorf("game rooms has an invalid status %s", g.Status.String())
 	}
 
 	if _, valid := transitions[newStatus]; !valid {
-		return fmt.Errorf("cannot change game room status from %s to %s", currentStatus.String(), newStatus.String())
+		return fmt.Errorf("cannot change game room status from %s to %s", g.Status.String(), newStatus.String())
 	}
 
 	return nil

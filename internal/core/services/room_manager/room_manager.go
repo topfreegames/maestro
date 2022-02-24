@@ -316,7 +316,7 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 		return fmt.Errorf("failed to get game room instance: %w", err)
 	}
 
-	newStatus, err := game_room.RoomComposedStatus(gameRoom.PingStatus, instance.Status.Type)
+	newStatus, err := gameRoom.RoomComposedStatus(instance.Status.Type)
 	if err != nil {
 		return fmt.Errorf("failed to generate new game room status: %w", err)
 	}
@@ -326,7 +326,7 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 		return nil
 	}
 
-	if err := game_room.ValidateRoomStatusTransition(gameRoom.Status, newStatus); err != nil {
+	if err := gameRoom.ValidateRoomStatusTransition(newStatus); err != nil {
 		return fmt.Errorf("state transition is invalid: %w", err)
 	}
 
