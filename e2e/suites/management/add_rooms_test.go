@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
@@ -46,9 +45,8 @@ import (
 func TestAddRooms(t *testing.T) {
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
-		instanceStorage := instanceStorageRedis.NewRedisInstanceStorage(redisClient, 10)
 
-		t.Run("when created rooms does not reply its state back then they're finished", func(t *testing.T) {
+		t.Run("when created rooms does not reply its state back then it finishes the operation with error and delete created pods", func(t *testing.T) {
 			t.Parallel()
 
 			scheduler, err := createSchedulerAndWaitForIt(
@@ -74,18 +72,19 @@ func TestAddRooms(t *testing.T) {
 				}
 
 				require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
+				require.Equal(t, "error", listOperationsResponse.FinishedOperations[0].Status)
 				return true
 			}, 240*time.Second, time.Second)
 
-			pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
-			require.NoError(t, err)
-			require.NotEmpty(t, pods.Items)
-
 			require.Eventually(t, func() bool {
-				_, err := instanceStorage.GetInstance(context.Background(), scheduler.Name, pods.Items[0].ObjectMeta.Name)
+				pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+				require.NoError(t, err)
+				if len(pods.Items) == 0 {
+					return false
+				}
+				return true
+			}, 30*time.Second, time.Second)
 
-				return err != nil
-			}, 4*time.Minute, time.Second)
 		})
 
 		t.Run("when created rooms replies its state back then it finishes the operation successfully", func(t *testing.T) {
