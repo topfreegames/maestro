@@ -19,7 +19,7 @@ services:
       - "9096:8081"
     volumes:
       - ../../../kubeconfig:/kubeconfig
-    command: [/app/maestro, start, worker]
+    command: [start, worker]
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,7 +40,7 @@ services:
       - "9098:8081"
     volumes:
       - ../../../kubeconfig:/kubeconfig
-    command: [/app/maestro, start, rooms-api]
+    command: [start, rooms-api]
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,7 +57,7 @@ services:
     ports:
       - "9095:8081"
       - "9094:8080"
-    command: [/app/maestro, start, management-api]
+    command: [start, management-api]
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,7 +77,7 @@ services:
       - "9099:8081"
     volumes:
       - ../../../kubeconfig:/kubeconfig
-    command: [/app/maestro, start, runtime-watcher]
+    command: [start, runtime-watcher]
 
   k3s_server:
     image: "rancher/k3s:v1.19.11-k3s1"

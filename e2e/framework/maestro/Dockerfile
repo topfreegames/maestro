@@ -49,4 +49,5 @@ COPY ./config /app/config
 
 EXPOSE 8080 8081
 
-CMD /app/maestro start
+ENTRYPOINT ["/app/maestro"]
+CMD ["--help"]
