@@ -146,13 +146,11 @@ func (ex *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context
 func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context, logger *zap.Logger, maxSurgeNum int, scheduler entities.Scheduler) error {
 	logger.Debug("replacing rooms loop - start")
 	roomsChan := make(chan *game_room.GameRoom)
-	var maxSurgeWg sync.WaitGroup
 	errs, ctx := errgroup.WithContext(ctx)
 
-	maxSurgeWg.Add(maxSurgeNum)
 	for i := 0; i < maxSurgeNum; i++ {
 		errs.Go(func() error {
-			return ex.replaceRoom(logger, &maxSurgeWg, roomsChan, ex.roomManager, scheduler)
+			return ex.replaceRoom(logger, roomsChan, ex.roomManager, scheduler)
 		})
 	}
 
@@ -179,23 +177,19 @@ roomsListLoop:
 
 	// close the rooms change and ensure all replace goroutines are gone
 	close(roomsChan)
-	maxSurgeWg.Wait()
 
 	// Wait for possible errors from goroutines
-	err := errs.Wait()
-	if err != nil {
+	if err := errs.Wait(); err != nil {
 		return err
 	}
 	logger.Debug("replacing rooms loop - finish")
-
 	return nil
 }
 
-func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, wg *sync.WaitGroup, roomsChan chan *game_room.GameRoom, roomManager ports.RoomManager, scheduler entities.Scheduler) error {
-	defer wg.Done()
+func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, roomsChan chan *game_room.GameRoom, roomManager ports.RoomManager, scheduler entities.Scheduler) error {
 
 	// we're going to use a separated context for each replaceRoom since we
-	// don't want to cancel the replace in the middle (like creating a room and
+	// don't want to cancel the replacement in the middle (like creating a room and
 	// then left the old one (without deleting it).
 	ctx := context.Background()
 
