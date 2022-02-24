@@ -15,11 +15,11 @@ services:
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
         MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
-        maestroComponent: "worker"
     ports:
       - "9096:8081"
     volumes:
       - ../../../kubeconfig:/kubeconfig
+    command: [/app/maestro, start, worker]
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,13 +35,12 @@ services:
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
         MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
         MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL: "postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable"
-        maestroComponent: "rooms-api"
     ports:
       - "9097:8080"
       - "9098:8081"
-
     volumes:
       - ../../../kubeconfig:/kubeconfig
+    command: [/app/maestro, start, rooms-api]
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,10 +54,10 @@ services:
         MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL: "redis://redis:6379/0"
         MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL: "redis://redis:6379/0"
         MAESTRO_ADAPTERS_OPERATIONLEASESTORAGE_REDIS_URL: "redis://redis:6379/0"
-        maestroComponent: "management-api"
     ports:
       - "9095:8081"
       - "9094:8080"
+    command: [/app/maestro, start, management-api]
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,11 +73,11 @@ services:
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG: "/kubeconfig/kubeconfig.yaml"
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
         MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
-        maestroComponent: "runtime-watcher"
     ports:
       - "9099:8081"
     volumes:
       - ../../../kubeconfig:/kubeconfig
+    command: [/app/maestro, start, runtime-watcher]
 
   k3s_server:
     image: "rancher/k3s:v1.19.11-k3s1"
