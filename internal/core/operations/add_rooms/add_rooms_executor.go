@@ -25,6 +25,7 @@ package add_rooms
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -37,18 +38,20 @@ import (
 )
 
 type AddRoomsExecutor struct {
-	roomManager     ports.RoomManager
-	storage         ports.SchedulerStorage
-	logger          *zap.Logger
-	newCreatedRooms map[string][]*game_room.GameRoom
+	roomManager         ports.RoomManager
+	storage             ports.SchedulerStorage
+	logger              *zap.Logger
+	newCreatedRooms     map[string][]*game_room.GameRoom
+	newCreatedRoomsLock sync.Mutex
 }
 
 func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) *AddRoomsExecutor {
 	return &AddRoomsExecutor{
-		roomManager:     roomManager,
-		storage:         storage,
-		logger:          zap.L().With(zap.String("service", "worker")),
-		newCreatedRooms: map[string][]*game_room.GameRoom{},
+		roomManager:         roomManager,
+		storage:             storage,
+		logger:              zap.L().With(zap.String("service", "worker")),
+		newCreatedRooms:     map[string][]*game_room.GameRoom{},
+		newCreatedRoomsLock: sync.Mutex{},
 	}
 }
 
@@ -130,7 +133,9 @@ func (ex *AddRoomsExecutor) deleteNewCreatedRooms(ctx context.Context, logger *z
 }
 
 func (ex *AddRoomsExecutor) appendToNewCreatedRooms(schedulerName string, gameRoom *game_room.GameRoom) {
+	ex.newCreatedRoomsLock.Lock()
 	ex.newCreatedRooms[schedulerName] = append(ex.newCreatedRooms[schedulerName], gameRoom)
+	ex.newCreatedRoomsLock.Unlock()
 }
 
 func (ex *AddRoomsExecutor) clearNewCreatedRooms(schedulerName string) {
