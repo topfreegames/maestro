@@ -26,12 +26,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
 
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
