@@ -25,68 +25,114 @@ package add_rooms
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/ports"
 )
 
 type AddRoomsExecutor struct {
-	roomManager ports.RoomManager
-	storage     ports.SchedulerStorage
-	logger      *zap.Logger
+	roomManager     ports.RoomManager
+	storage         ports.SchedulerStorage
+	logger          *zap.Logger
+	newCreatedRooms map[string][]*game_room.GameRoom
 }
 
 func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) *AddRoomsExecutor {
 	return &AddRoomsExecutor{
-		roomManager: roomManager,
-		storage:     storage,
-		logger:      zap.L().With(zap.String("service", "worker")),
+		roomManager:     roomManager,
+		storage:         storage,
+		logger:          zap.L().With(zap.String("service", "worker")),
+		newCreatedRooms: map[string][]*game_room.GameRoom{},
 	}
 }
 
-func (ae *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
-	executionLogger := ae.logger.With(
+func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+	executionLogger := ex.logger.With(
 		zap.String("scheduler_name", op.SchedulerName),
 		zap.String("operation_definition", definition.Name()),
 		zap.String("operation_id", op.ID),
 	)
 	amount := definition.(*AddRoomsDefinition).Amount
-	scheduler, err := ae.storage.GetScheduler(ctx, op.SchedulerName)
+	scheduler, err := ex.storage.GetScheduler(ctx, op.SchedulerName)
 	if err != nil {
 		executionLogger.Error(fmt.Sprintf("Could not find scheduler with name %s, can not create rooms", op.SchedulerName), zap.Error(err))
 		return err
 	}
-	var waitGroup sync.WaitGroup
 
-	for i := int32(0); i < amount; i++ {
-		waitGroup.Add(1)
-		go ae.createRoom(ctx, i, scheduler, executionLogger, &waitGroup)
+	errGroup, errContext := errgroup.WithContext(ctx)
+	for i := int32(1); i <= amount; i++ {
+		errGroup.Go(func() error {
+			err := ex.createRoom(errContext, scheduler, executionLogger)
+			return err
+		})
 	}
-	// TODO: we can not block here, we should be listening ctx.Done() somehow
-	waitGroup.Wait()
+
+	if executionErr := errGroup.Wait(); executionErr != nil {
+		executionLogger.Error("Error creating rooms", zap.Error(executionErr))
+		return executionErr
+	}
+	ex.clearNewCreatedRooms(op.SchedulerName)
+
 	return nil
 }
 
-func (ae *AddRoomsExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ex *AddRoomsExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+	executionLogger := ex.logger.With(
+		zap.String("scheduler_name", op.SchedulerName),
+		zap.String("operation_definition", definition.Name()),
+		zap.String("operation_id", op.ID),
+	)
+	executionLogger.Info("starting OnError routine")
+
+	err := ex.deleteNewCreatedRooms(ctx, executionLogger, op.SchedulerName)
+	ex.clearNewCreatedRooms(op.SchedulerName)
+	if err != nil {
+		return err
+	}
+	executionLogger.Debug("finished OnError routine")
 	return nil
 }
 
-func (ae *AddRoomsExecutor) Name() string {
+func (ex *AddRoomsExecutor) Name() string {
 	return OperationName
 }
 
-func (ae *AddRoomsExecutor) createRoom(ctx context.Context, index int32, scheduler *entities.Scheduler, logger *zap.Logger, waitGroup *sync.WaitGroup) {
-	defer waitGroup.Done()
-
-	_, _, err := ae.roomManager.CreateRoomAndWaitForReadiness(ctx, *scheduler)
+func (ex *AddRoomsExecutor) createRoom(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
+	gameRoom, _, err := ex.roomManager.CreateRoomAndWaitForReadiness(ctx, *scheduler)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Error while creating room number %d", index), zap.Error(err))
-		reportAddRoomOperationExecutionFailed(scheduler.Name, ae.Name())
+		logger.Error("Error while creating room", zap.Error(err))
+		reportAddRoomOperationExecutionFailed(scheduler.Name, ex.Name())
+		return fmt.Errorf("error while creating room: %w", err)
 	}
+	ex.appendToNewCreatedRooms(scheduler.Name, gameRoom)
+
+	return nil
+}
+
+func (ex *AddRoomsExecutor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string) error {
+	logger.Debug("deleting created rooms since add rooms operation had error - start")
+	for _, room := range ex.newCreatedRooms[schedulerName] {
+		err := ex.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
+		if err != nil {
+			logger.Error("failed to deleted recent created room", zap.Error(err))
+			return err
+		}
+		logger.Sugar().Debugf("deleted room \"%s\" successfully", room.ID)
+	}
+	logger.Debug("deleting created rooms since add rooms operation had error - end successfully")
+	return nil
+}
+
+func (ex *AddRoomsExecutor) appendToNewCreatedRooms(schedulerName string, gameRoom *game_room.GameRoom) {
+	ex.newCreatedRooms[schedulerName] = append(ex.newCreatedRooms[schedulerName], gameRoom)
+}
+
+func (ex *AddRoomsExecutor) clearNewCreatedRooms(schedulerName string) {
+	delete(ex.newCreatedRooms, schedulerName)
 }
