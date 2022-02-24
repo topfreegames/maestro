@@ -31,15 +31,58 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
+// Primary ports (input, driving ports)
+
+// RoomManager is an interface for working with rooms in a high level way
 type RoomManager interface {
+	// DeleteRoomAndWaitForRoomTerminated receives a room to be deleted, and only finish execution when the
+	// room is successfully terminated. If the room cannot be terminated by any means, it will return an error
+	// specifying why
 	DeleteRoomAndWaitForRoomTerminated(ctx context.Context, gameRoom *game_room.GameRoom) error
+	// SchedulerMaxSurge calculates the current scheduler max surge based on
+	// the number of rooms the scheduler has.
 	SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error)
+	// ListRoomsWithDeletionPriority returns a specified number of rooms, following
+	// the priority of it being deleted and filtering the ignored version,
+	// the function will return rooms discarding such filter option.
+	//
+	// The priority is:
+	//
+	// - On error rooms;
+	// - No ping received for x time rooms;
+	// - Pending rooms;
+	// - Ready rooms;
+	// - Occupied rooms;
+	//
+	// This function can return less rooms than the `amount` since it might not have
+	// enough rooms on the scheduler.
 	ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error)
+	// CleanRoomState cleans the remaining state of a room. This function is
+	// intended to be used after a `DeleteRoomAndWaitForRoomTerminated`, where the room instance is
+	// signaled to terminate.
+	//
+	// It wouldn't return an error if the room was already cleaned.
 	CleanRoomState(ctx context.Context, schedulerName, roomId string) error
+	// UpdateRoomInstance updates the instance information.
 	UpdateRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error
+	// UpdateRoom updates the game room information.
 	UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
+	// CreateRoomAndWaitForReadiness creates a room and only returns it when the room is ready (sent a ping to maestro).
+	// If the room is created and don't succeed on sending a ping to maestro, it will try to delete the room, and return
+	// an error.
 	CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler) (*game_room.GameRoom, *game_room.Instance, error)
+	// ValidateGameRoomCreation simply validates if it's safe to create rooms of a scheduler.
+	// It uses two methods: CreateRoomAndWaitForReadiness and DeleteRoomAndWaitForRoomTerminated. If any errors
+	// are encountered during this process, it'll bring and error specifying where and why
+	ValidateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler) error
+	// UpdateGameRoomStatus updates the game based on the ping and runtime status.
+	UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error
+	// WaitRoomStatus blocks the caller until the context is canceled, an error
+	// happens in the process or the game room has the desired status.
+	WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status game_room.GameRoomStatus) error
 }
+
+// Secondary Ports (output, driven ports)
 
 // RoomStorage is an interface for retrieving and updating room status and ping information
 type RoomStorage interface {
@@ -69,7 +112,7 @@ type RoomStorage interface {
 	WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (RoomStorageStatusWatcher, error)
 }
 
-// RoomStorageStatusWatcher  defines a process of watcher, it will have a chan
+// RoomStorageStatusWatcher defines a process of watcher, it will have a chan
 // with the game rooms status changes.
 type RoomStorageStatusWatcher interface {
 	// ResultChan returns the channel where the changes will be forwarded.

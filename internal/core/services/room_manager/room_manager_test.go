@@ -33,6 +33,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/stretchr/testify/require"
@@ -60,7 +62,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
+	roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
 	roomStorageStatusWatcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	container1 := game_room.Container{
@@ -193,7 +195,7 @@ func TestRoomManager_DeleteRoomAndWaitForRoomTerminated(t *testing.T) {
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
 	roomStorageStatusWatcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
 
-	roomManager := NewRoomManager(
+	roomManager := New(
 		clockmock.NewFakeClock(time.Now()),
 		pamock.NewMockPortAllocator(mockCtrl),
 		roomStorage,
@@ -254,7 +256,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
 
-	roomManager := NewRoomManager(
+	roomManager := New(
 		clock,
 		pamock.NewMockPortAllocator(mockCtrl),
 		roomStorage,
@@ -330,7 +332,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsService := mockeventsservice.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
-	roomManager := NewRoomManager(
+	roomManager := New(
 		clock,
 		nil,
 		roomStorage,
@@ -526,7 +528,7 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 	eventsService := mockeventsservice.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-	roomManager := NewRoomManager(
+	roomManager := New(
 		clock,
 		pamock.NewMockPortAllocator(mockCtrl),
 		roomStorage,
@@ -565,7 +567,7 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 	eventsService := mockeventsservice.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-	roomManager := NewRoomManager(
+	roomManager := New(
 		clock,
 		pamock.NewMockPortAllocator(mockCtrl),
 		roomStorage,
@@ -626,7 +628,7 @@ func TestRoomManager_ValidateGameRoomCreation(t *testing.T) {
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
 	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-	roomManager := NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
+	roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
 	roomStorageStatusWatcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	container1 := game_room.Container{
@@ -726,9 +728,9 @@ func TestRoomManager_ValidateGameRoomCreation(t *testing.T) {
 }
 
 func TestSchedulerMaxSurge(t *testing.T) {
-	setupRoomStorage := func(mockCtrl *gomock.Controller) (*mockports.MockRoomStorage, *RoomManager) {
+	setupRoomStorage := func(mockCtrl *gomock.Controller) (*mockports.MockRoomStorage, ports.RoomManager) {
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		roomManager := NewRoomManager(
+		roomManager := New(
 			clockmock.NewFakeClock(time.Now()),
 			pamock.NewMockPortAllocator(mockCtrl),
 			roomStorage,

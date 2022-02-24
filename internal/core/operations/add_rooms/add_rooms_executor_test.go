@@ -105,7 +105,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	}
 
 	t.Run("when all room creations succeed then it returns nil without error", func(t *testing.T) {
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, config)
+		roomsManager := room_manager.New(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, config)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), operation.SchedulerName).Return(&scheduler, nil)
 
@@ -134,7 +134,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("when some room creation fail and others succeed then it returns nil without error", func(t *testing.T) {
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, config)
+		roomsManager := room_manager.New(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, config)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), operation.SchedulerName).Return(&scheduler, nil)
 
@@ -170,7 +170,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("when no scheduler is found then it returns the proper error", func(t *testing.T) {
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, config)
+		roomsManager := room_manager.New(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, config)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), operation.SchedulerName).Return(nil, errors.NewErrNotFound("scheduler not found"))
 

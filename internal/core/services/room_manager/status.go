@@ -23,7 +23,6 @@
 package room_manager
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -130,81 +129,6 @@ func validateRoomStatusTransition(currentStatus game_room.GameRoomStatus, newSta
 
 	if _, valid := transitions[newStatus]; !valid {
 		return fmt.Errorf("cannot change game room status from %s to %s", currentStatus.String(), newStatus.String())
-	}
-
-	return nil
-}
-
-// updateGameRoomStatus updates the game based on the ping and runtime status.
-func (m *RoomManager) updateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error {
-	gameRoom, err := m.roomStorage.GetRoom(ctx, schedulerId, gameRoomId)
-	if err != nil {
-		return fmt.Errorf("failed to get game room: %w", err)
-	}
-
-	instance, err := m.instanceStorage.GetInstance(ctx, schedulerId, gameRoomId)
-	if err != nil {
-		return fmt.Errorf("failed to get game room instance: %w", err)
-	}
-
-	newStatus, err := roomComposedStatus(gameRoom.PingStatus, instance.Status.Type)
-	if err != nil {
-		return fmt.Errorf("failed to generate new game room status: %w", err)
-	}
-
-	// nothing changed
-	if newStatus == gameRoom.Status {
-		return nil
-	}
-
-	if err := validateRoomStatusTransition(gameRoom.Status, newStatus); err != nil {
-		return fmt.Errorf("state transition is invalid: %w", err)
-	}
-
-	err = m.roomStorage.UpdateRoomStatus(ctx, schedulerId, gameRoomId, newStatus)
-	if err != nil {
-		return fmt.Errorf("failed to update game room status: %w", err)
-	}
-
-	return nil
-}
-
-// WaitRoomStatus blocks the caller until the context is canceled, an error
-// happens in the process or the game room has the desired status.
-func (m *RoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status game_room.GameRoomStatus) error {
-	var err error
-	watcher, err := m.roomStorage.WatchRoomStatus(ctx, gameRoom)
-	if err != nil {
-		return fmt.Errorf("failed to start room status watcher: %w", err)
-	}
-
-	defer watcher.Stop()
-
-	fromStorage, err := m.roomStorage.GetRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
-	if err != nil {
-		return fmt.Errorf("error while retrieving current game room status: %w", err)
-	}
-
-	// the room has the desired state already
-	if fromStorage.Status == status {
-		return nil
-	}
-
-watchLoop:
-	for {
-		select {
-		case <-ctx.Done():
-			err = ctx.Err()
-			break watchLoop
-		case gameRoomEvent := <-watcher.ResultChan():
-			if gameRoomEvent.Status == status {
-				break watchLoop
-			}
-		}
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to wait until room has desired status: %w", err)
 	}
 
 	return nil

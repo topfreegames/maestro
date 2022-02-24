@@ -29,7 +29,6 @@ import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"github.com/topfreegames/maestro/internal/core/workers/runtime_watcher_worker"
@@ -53,9 +52,9 @@ var RoomManagerSet = wire.NewSet(
 	service.NewGameRoomInstanceStorageRedis,
 	service.NewSchedulerCacheRedis,
 	service.NewRoomManagerConfig,
+	service.NewRoomManager,
 	service.NewEventsForwarder,
 	events_forwarder.NewEventsForwarderService,
-	room_manager.NewRoomManager,
 	service.NewEventsForwarderServiceConfig,
 )
 

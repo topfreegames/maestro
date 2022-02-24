@@ -25,6 +25,10 @@ package service
 import (
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/services/interfaces"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
+	"go.uber.org/zap"
+
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 
@@ -83,6 +87,19 @@ func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorag
 		OperationCancelFunctions:        operation_manager.NewOperationCancelFunctions(),
 		LeaseStorage:                    leaseStorage,
 		Config:                          config,
+	}
+}
+
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService interfaces.EventsService, config room_manager.RoomManagerConfig) ports.RoomManager {
+	return &room_manager.RoomManager{
+		Clock:           clock,
+		PortAllocator:   portAllocator,
+		RoomStorage:     roomStorage,
+		InstanceStorage: instanceStorage,
+		Runtime:         runtime,
+		EventsService:   eventsService,
+		Config:          config,
+		Logger:          zap.L().With(zap.String("service", "rooms_api")),
 	}
 }
 

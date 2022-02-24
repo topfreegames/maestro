@@ -26,6 +26,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -37,16 +39,15 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/interfaces"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"go.uber.org/zap"
 )
 
 type CreateNewSchedulerVersionExecutor struct {
-	roomManager      *room_manager.RoomManager
+	roomManager      ports.RoomManager
 	schedulerManager interfaces.SchedulerManager
 }
 
-func NewExecutor(roomManager *room_manager.RoomManager, schedulerManager interfaces.SchedulerManager) *CreateNewSchedulerVersionExecutor {
+func NewExecutor(roomManager ports.RoomManager, schedulerManager interfaces.SchedulerManager) *CreateNewSchedulerVersionExecutor {
 	return &CreateNewSchedulerVersionExecutor{
 		roomManager:      roomManager,
 		schedulerManager: schedulerManager,

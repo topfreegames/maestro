@@ -29,7 +29,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"go.uber.org/zap"
 )
@@ -41,7 +40,7 @@ var _ workers.Worker = (*runtimeWatcherWorker)(nil)
 // any action over the game rooms or the scheduler.
 type runtimeWatcherWorker struct {
 	scheduler   *entities.Scheduler
-	roomManager *room_manager.RoomManager
+	roomManager ports.RoomManager
 	// TODO(gabrielcorado): should we access the port directly? do we need to
 	// provide the same `Watcher` interface but on the RoomManager?
 	runtime ports.Runtime

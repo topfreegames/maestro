@@ -31,6 +31,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
 
 	"github.com/golang/mock/gomock"
@@ -93,7 +95,7 @@ func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
 
 	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 	watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
-	roomManager := NewRoomManager(
+	roomManager := New(
 		clockmock.NewFakeClock(time.Now()),
 		pamock.NewMockPortAllocator(mockCtrl),
 		roomStorage,
@@ -135,7 +137,7 @@ func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 
 	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 	watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
-	roomManager := NewRoomManager(
+	roomManager := New(
 		clockmock.NewFakeClock(time.Now()),
 		pamock.NewMockPortAllocator(mockCtrl),
 		roomStorage,
@@ -172,10 +174,10 @@ func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 }
 
 func TestUpdateGameRoomStatus(t *testing.T) {
-	setup := func(mockCtrl *gomock.Controller) (*mockports.MockRoomStorage, *ismock.MockGameRoomInstanceStorage, *RoomManager) {
+	setup := func(mockCtrl *gomock.Controller) (*mockports.MockRoomStorage, *ismock.MockGameRoomInstanceStorage, ports.RoomManager) {
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
-		roomManager := NewRoomManager(
+		roomManager := New(
 			clockmock.NewFakeClock(time.Now()),
 			pamock.NewMockPortAllocator(mockCtrl),
 			roomStorage,
@@ -203,7 +205,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), schedulerName, roomId, game_room.GameStatusReady)
 
-		err := roomManager.updateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
 		require.NoError(t, err)
 	})
 
@@ -220,7 +222,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
 		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
 
-		err := roomManager.updateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
 		require.NoError(t, err)
 	})
 
@@ -233,7 +235,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(nil, porterrors.ErrNotFound)
 
-		err := roomManager.updateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
 		require.Error(t, err)
 	})
 
@@ -249,7 +251,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(nil, porterrors.ErrNotFound)
 
-		err := roomManager.updateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
 		require.Error(t, err)
 	})
 
@@ -266,7 +268,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
 		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
 
-		err := roomManager.updateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
 		require.Error(t, err)
 	})
 }

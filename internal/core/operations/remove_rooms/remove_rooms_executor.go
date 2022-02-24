@@ -27,17 +27,18 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"go.uber.org/zap"
 )
 
 type RemoveRoomsExecutor struct {
-	roomManager *room_manager.RoomManager
+	roomManager ports.RoomManager
 }
 
-func NewExecutor(roomManager *room_manager.RoomManager) *RemoveRoomsExecutor {
+func NewExecutor(roomManager ports.RoomManager) *RemoveRoomsExecutor {
 	return &RemoveRoomsExecutor{roomManager}
 }
 

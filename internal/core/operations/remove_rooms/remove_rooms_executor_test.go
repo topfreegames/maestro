@@ -60,7 +60,7 @@ func TestExecute(t *testing.T) {
 	t.Run("when there are no rooms to be deleted it returns without error", func(t *testing.T) {
 
 		roomStorageMock := mockports.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, room_manager.RoomManagerConfig{})
+		roomsManager := room_manager.New(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, room_manager.RoomManagerConfig{})
 		executor := NewExecutor(roomsManager)
 
 		schedulerName := uuid.NewString()
@@ -79,7 +79,7 @@ func TestExecute(t *testing.T) {
 	t.Run("when rooms are successfully deleted it returns without error", func(t *testing.T) {
 
 		roomStorageMock := mockports.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, room_manager.RoomManagerConfig{})
+		roomsManager := room_manager.New(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, room_manager.RoomManagerConfig{})
 		executor := NewExecutor(roomsManager)
 
 		schedulerName := uuid.NewString()
@@ -112,7 +112,7 @@ func TestExecute(t *testing.T) {
 
 	t.Run("when any room failed to delete it returns without error", func(t *testing.T) {
 		roomStorageMock := mockports.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, room_manager.RoomManagerConfig{})
+		roomsManager := room_manager.New(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, room_manager.RoomManagerConfig{})
 		executor := NewExecutor(roomsManager)
 
 		schedulerName := uuid.NewString()
@@ -152,7 +152,7 @@ func TestExecute(t *testing.T) {
 	t.Run("when list rooms has error returns with error", func(t *testing.T) {
 
 		roomStorageMock := mockports.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, room_manager.RoomManagerConfig{})
+		roomsManager := room_manager.New(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, room_manager.RoomManagerConfig{})
 		executor := NewExecutor(roomsManager)
 
 		definition := &RemoveRoomsDefinition{Amount: 2}
