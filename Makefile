@@ -10,10 +10,13 @@ help: Makefile ## Show list of commands.
 
 # hidden targets (that will not be shown in help)
 
-.PHONY: deps
-deps: ## Download the dependencies to the project.
+.PHONY: setup
+setup: ## Download the dependencies to the project.
 	@go get ./...
 	@go mod download
+
+.PHONY: setup/e2e
+setup/e2e: ## Download e2e dependencies to local environment.
 	@cd e2e; go mod download
 
 #-------------------------------------------------------------------------------
@@ -52,8 +55,8 @@ license-check: ## Execute license check.
 	@go run github.com/google/addlicense -skip yaml -skip yml -skip proto -check .
 
 .PHONY: run/e2e-tests
-run/e2e-tests: build-linux-x86_64 deps/stop ## Execute end-to-end tests.
-	cd e2e; go test -count=1 $(OPTS) ./suites/...
+run/e2e-tests: build-linux-x86_64 setup/e2e deps/stop ## Execute end-to-end tests.
+	@cd e2e; go test -count=1 $(OPTS) ./suites/...
 
 #-------------------------------------------------------------------------------
 #  Build and run
@@ -72,19 +75,19 @@ build-linux-x86_64: ## Build the project and generates a binary for x86_64 archi
 
 .PHONY: run/worker
 run/worker: ## Runs maestro worker.
-	go run main.go start worker
+	@go run main.go start worker
 
 .PHONY: run/management-api
 run/management-api: build ## Runs maestro management-api.
-	go run main.go start management-api
+	@go run main.go start management-api
 
 .PHONY: run/rooms-api
 run/rooms-api: build ## Runs maestro rooms-api.
-	go run main.go start rooms-api
+	@go run main.go start rooms-api
 
 .PHONY: run/runtime-watcher
 run/runtime-watcher: build ## Runs maestro runtime-watcher.
-	go run main.go start runtime-watcher
+	@go run main.go start runtime-watcher
 
 #-------------------------------------------------------------------------------
 #  Code generation
