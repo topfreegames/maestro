@@ -66,7 +66,13 @@ func TestGetSchedulersInfo(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Len(t, getSchedulersResponse.Schedulers, 1)
-			require.Equal(t, getSchedulersResponse.Schedulers[0].Name, firstScheduler.Name)
+			require.Equal(t, firstScheduler.Name, getSchedulersResponse.Schedulers[0].Name)
+			require.Equal(t, firstScheduler.Game, getSchedulersResponse.Schedulers[0].Game)
+			require.Equal(t, firstScheduler.State, getSchedulersResponse.Schedulers[0].State)
+			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsReady)
+			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsPending)
+			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsOccupied)
+			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsTerminating)
 		})
 
 		t.Run("Should Succeed - Get schedulers returning schedulers and rooms info", func(t *testing.T) {
