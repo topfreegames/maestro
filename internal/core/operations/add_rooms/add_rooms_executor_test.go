@@ -105,28 +105,11 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	}
 
 	t.Run("when all room creations succeed then it returns nil without error", func(t *testing.T) {
-		roomsManager := room_manager.New(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, config)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), operation.SchedulerName).Return(&scheduler, nil)
 
-		portAllocatorMock.EXPECT().Allocate(nil, 2).
-			Return([]int32{5000, 6000}, nil).
-			Times(10)
-		runtimeMock.EXPECT().CreateGameRoomInstance(gomock.Any(), scheduler.Name, game_room.Spec{
-			Version:    "1.0.0",
-			Containers: []game_room.Container{container1, container2},
-		}).
-			Return(&gameRoomInstance, nil).
-			Times(10)
-
-		gameRoomReady := gameRoom
-		gameRoomReady.Status = game_room.GameStatusReady
-
-		roomStorageMock.EXPECT().CreateRoom(gomock.Any(), &gameRoom).Times(10)
-		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoomReady, nil).Times(10)
-		roomStorageMock.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil).Times(10)
-
-		roomStorageStatusWatcher.EXPECT().Stop().Times(10)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any()).Return(gameRoom, gameRoomInstance, nil).MinTimes(0)
 
 		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &operation, &definition)
 
