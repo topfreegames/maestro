@@ -675,6 +675,11 @@ func TestGetSchedulersInfo(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, schedulersInfo)
+
+		require.Equal(t, 5, schedulersInfo[0].RoomsReady)
+		require.Equal(t, 10, schedulersInfo[0].RoomsCreating)
+		require.Equal(t, 15, schedulersInfo[0].RoomsOccupied)
+		require.Equal(t, 20, schedulersInfo[0].RoomsTerminating)
 	})
 
 	t.Run("it returns with error when no scheduler and game rooms info was founded", func(t *testing.T) {

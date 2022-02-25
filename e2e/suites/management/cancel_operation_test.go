@@ -58,6 +58,7 @@ func TestCancelOperation(t *testing.T) {
 				maestro,
 				managementApiClient,
 				kubeClient,
+				"test",
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 

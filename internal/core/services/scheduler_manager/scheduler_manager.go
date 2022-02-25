@@ -246,6 +246,7 @@ func (s *SchedulerManager) SwitchActiveVersion(ctx context.Context, schedulerNam
 
 func (s *SchedulerManager) GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error) {
 	schedulers, err := s.schedulerStorage.GetSchedulersWithFilter(ctx, filter)
+	fmt.Printf("\nService: %++v\n", schedulers)
 	if err != nil {
 		return nil, fmt.Errorf("no schedulers found: %w", err)
 	}

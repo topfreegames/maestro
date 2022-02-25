@@ -14,6 +14,7 @@ help: Makefile ## Show list of commands.
 deps: ## Download the dependencies to the project.
 	@go get ./...
 	@go mod download
+	@cd e2e; go mod download
 
 #-------------------------------------------------------------------------------
 #   Lint and tests
@@ -51,8 +52,8 @@ license-check: ## Execute license check.
 	@go run github.com/google/addlicense -skip yaml -skip yml -skip proto -check .
 
 .PHONY: run/e2e-tests
-run/e2e-tests: deps/stop build ## Execute end-to-end tests.
-	cd e2e; go mod download; go test -count=1 ./suites/...
+run/e2e-tests: build-linux-x86_64 deps/stop ## Execute end-to-end tests.
+	cd e2e; go test -count=1 $(OPTS) ./suites/...
 
 #-------------------------------------------------------------------------------
 #  Build and run
@@ -62,7 +63,6 @@ run/e2e-tests: deps/stop build ## Execute end-to-end tests.
 build: build-linux-x86_64 ## Build the project and generates a binary.
 	@rm -f ./bin/maestro || true
 	@go build -o ./bin/maestro ./
-	@env GOOS=linux GOARCH=amd64 go build -o ./bin/maestro-linux-x86_64 ./
 
 .PHONY: build-linux-x86_64
 build-linux-x86_64: ## Build the project and generates a binary for x86_64 architecture.
