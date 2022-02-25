@@ -46,6 +46,8 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 	identifier := strings.ToLower("test-something")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
+	_ = compose.Down()
+
 	composeErr := compose.WithCommand([]string{"up", "-d", "postgres", "redis", "k3s_agent", "k3s_server"}).Invoke()
 
 	if composeErr.Error != nil {

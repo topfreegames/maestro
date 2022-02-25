@@ -54,6 +54,7 @@ func TestRemoveRooms(t *testing.T) {
 				maestro,
 				managementApiClient,
 				kubeClient,
+				"test",
 				[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
 					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'"})

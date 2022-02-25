@@ -47,6 +47,7 @@ func TestGetScheduler(t *testing.T) {
 				maestro,
 				managementApiClient,
 				kubeClient,
+				"test",
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
@@ -67,6 +68,7 @@ func TestGetScheduler(t *testing.T) {
 				maestro,
 				managementApiClient,
 				kubeClient,
+				"test",
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
@@ -97,6 +99,7 @@ func TestGetScheduler(t *testing.T) {
 				maestro,
 				managementApiClient,
 				kubeClient,
+				"test",
 				[]string{"sh", "-c", "tail -f /dev/null"},
 			)
 
