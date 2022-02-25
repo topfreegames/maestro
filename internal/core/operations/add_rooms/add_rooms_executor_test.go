@@ -134,7 +134,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("when some room creation fail and others succeed then it returns error", func(t *testing.T) {
-		roomsManager := room_manager.New(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderService, config)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), operation.SchedulerName).Return(&scheduler, nil)
 
@@ -145,14 +145,12 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		runtimeMock.EXPECT().CreateGameRoomInstance(gomock.Any(), scheduler.Name, game_room.Spec{
 			Version:    "1.0.0",
 			Containers: []game_room.Container{container1, container2},
-		}).
-			Return(&gameRoomInstance, nil).
+		}).Return(&gameRoomInstance, nil).
 			Times(5)
 		runtimeMock.EXPECT().CreateGameRoomInstance(gomock.Any(), scheduler.Name, game_room.Spec{
 			Version:    "1.0.0",
 			Containers: []game_room.Container{container1, container2},
-		}).
-			Return(nil, errors.NewErrUnexpected("error create game room instance")).
+		}).Return(nil, errors.NewErrUnexpected("error create game room instance")).
 			Times(5)
 
 		gameRoomReady := gameRoom
