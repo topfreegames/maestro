@@ -82,10 +82,10 @@ func TestGetSchedulersInfo(t *testing.T) {
 			require.Equal(t, secondScheduler.Name, getSchedulersResponse.Schedulers[0].Name)
 			require.Equal(t, secondScheduler.Game, getSchedulersResponse.Schedulers[0].Game)
 			require.Equal(t, secondScheduler.State, getSchedulersResponse.Schedulers[0].State)
-			require.Equal(t, 1, getSchedulersResponse.Schedulers[0].RoomsReady)
-			require.Equal(t, 0, getSchedulersResponse.Schedulers[0].RoomsCreating)
-			require.Equal(t, 0, getSchedulersResponse.Schedulers[0].RoomsOccupied)
-			require.Equal(t, 0, getSchedulersResponse.Schedulers[0].RoomsTerminating)
+			require.EqualValues(t, 2, getSchedulersResponse.Schedulers[0].RoomsReady)
+			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsCreating)
+			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsOccupied)
+			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsTerminating)
 		})
 
 		t.Run("Should Succeed - Get schedulers game without scheduler should return empty array", func(t *testing.T) {
