@@ -28,10 +28,10 @@ type SchedulerInfo struct {
 	State            string
 	RoomsReady       int
 	RoomsOccupied    int
-	RoomsCreating    int
+	RoomsPending     int
 	RoomsTerminating int
 }
 
-func NewSchedulerInfo(name string, game string, state string, roomsReady int, roomsOccupied int, roomsCreating int, roomsTerminating int) *SchedulerInfo {
-	return &SchedulerInfo{Name: name, Game: game, State: state, RoomsReady: roomsReady, RoomsOccupied: roomsOccupied, RoomsCreating: roomsCreating, RoomsTerminating: roomsTerminating}
+func NewSchedulerInfo(name string, game string, state string, roomsReady int, roomsOccupied int, roomsPending int, roomsTerminating int) *SchedulerInfo {
+	return &SchedulerInfo{Name: name, Game: game, State: state, RoomsReady: roomsReady, RoomsOccupied: roomsOccupied, RoomsPending: roomsPending, RoomsTerminating: roomsTerminating}
 }

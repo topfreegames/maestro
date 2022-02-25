@@ -267,7 +267,7 @@ func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *enti
 	if err != nil {
 		return nil, fmt.Errorf("failing in couting game rooms in %s state: %s", game_room.GameStatusReady, err)
 	}
-	creating, err := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusPending)
+	pending, err := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusPending)
 	if err != nil {
 		return nil, fmt.Errorf("failing in couting game rooms in %s state: %s", game_room.GameStatusPending, err)
 	}
@@ -281,5 +281,5 @@ func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *enti
 	if err != nil {
 		return nil, fmt.Errorf("failing in couting game rooms in %s state: %s", game_room.GameStatusTerminating, err)
 	}
-	return entities.NewSchedulerInfo(scheduler.Name, scheduler.Game, scheduler.State, ready, occupied, creating, terminating), nil
+	return entities.NewSchedulerInfo(scheduler.Name, scheduler.Game, scheduler.State, ready, occupied, pending, terminating), nil
 }

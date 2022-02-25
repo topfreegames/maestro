@@ -440,7 +440,7 @@ func fromEntitySchedulerInfoToListResponse(entity *entities.SchedulerInfo) *api.
 		State:            entity.State,
 		RoomsReady:       int32(entity.RoomsReady),
 		RoomsOccupied:    int32(entity.RoomsOccupied),
-		RoomsCreating:    int32(entity.RoomsCreating),
+		RoomsPending:     int32(entity.RoomsPending),
 		RoomsTerminating: int32(entity.RoomsTerminating),
 	}
 }

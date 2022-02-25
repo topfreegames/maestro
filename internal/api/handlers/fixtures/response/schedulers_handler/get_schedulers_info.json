@@ -5,7 +5,7 @@
     "state": "creating",
     "roomsReady": 5,
     "roomsOccupied": 15,
-    "roomsCreating": 10,
+    "roomsPending": 10,
     "roomsTerminating": 20
   }]
 }

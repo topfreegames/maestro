@@ -731,7 +731,10 @@ func TestNewSchedulerInfo(t *testing.T) {
 		schedulersInfo, err := schedulerManager.newSchedulerInfo(ctx, scheduler)
 
 		require.NoError(t, err)
-		require.NotNil(t, schedulersInfo)
+		require.Equal(t, 5, schedulersInfo.RoomsReady)
+		require.Equal(t, 10, schedulersInfo.RoomsCreating)
+		require.Equal(t, 15, schedulersInfo.RoomsOccupied)
+		require.Equal(t, 20, schedulersInfo.RoomsTerminating)
 	})
 
 	t.Run("it returns with error when couldn't get game rooms information in ready state", func(t *testing.T) {

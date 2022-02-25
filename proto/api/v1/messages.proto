@@ -204,8 +204,8 @@ message SchedulerInfo {
   int32 rooms_ready = 4;
   // Rooms Occupied
   int32 rooms_occupied = 5;
-  // Rooms Creating
-  int32 rooms_creating = 6;
+  // Rooms Pending
+  int32 rooms_pending = 6;
   // Rooms Terminating
   int32 rooms_terminating = 7;
 }
