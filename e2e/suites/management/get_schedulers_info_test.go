@@ -23,9 +23,7 @@
 package management
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/go-redis/redis/v8"
@@ -61,16 +59,6 @@ func TestGetSchedulersInfo(t *testing.T) {
 		t.Run("Should Succeed - Get schedulers without rooms", func(t *testing.T) {
 			t.Parallel()
 
-			listSchedulersRequest := &maestroApiV1.ListSchedulersRequest{}
-			listSchedulersResponse := &maestroApiV1.ListSchedulersResponse{}
-
-			err = managementApiClient.Do("GET", "/schedulers", listSchedulersRequest, listSchedulersResponse)
-
-			reader := bufio.NewReader(os.Stdin)
-			_, _, _ = reader.ReadRune()
-
-			fmt.Printf("\n%++v\n", listSchedulersResponse)
-
 			getSchedulersRequest := &maestroApiV1.GetSchedulersInfoRequest{Game: firstScheduler.Game}
 			getSchedulersResponse := &maestroApiV1.GetSchedulersInfoResponse{}
 
@@ -103,14 +91,14 @@ func TestGetSchedulersInfo(t *testing.T) {
 		t.Run("Should Succeed - Get schedulers game without scheduler should return empty array", func(t *testing.T) {
 			t.Parallel()
 
-			inexistentGame := "INEXISTENT-GAME"
+			inexistentGame := "NON-EXISTENT-GAME"
 
 			getSchedulersRequest := &maestroApiV1.GetSchedulersInfoRequest{Game: inexistentGame}
 			getSchedulersResponse := &maestroApiV1.GetSchedulersInfoResponse{}
 
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/info?game=%s", inexistentGame), getSchedulersRequest, getSchedulersResponse)
 
-			require.Error(t, err, "failed with status 404, response body: {\"code\":5,\"message\":\"scheduler info not found", "details\":[]}")
+			require.NoError(t, err)
 			require.Len(t, getSchedulersResponse.Schedulers, 0)
 		})
 	})
