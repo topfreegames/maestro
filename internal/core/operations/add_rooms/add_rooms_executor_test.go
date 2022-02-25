@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"context"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	clock_mock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
@@ -35,7 +37,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
-	"testing"
 )
 
 func TestAddRoomsExecutor_Execute(t *testing.T) {
