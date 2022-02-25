@@ -83,7 +83,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 			require.Equal(t, secondScheduler.Game, getSchedulersResponse.Schedulers[0].Game)
 			require.Equal(t, secondScheduler.State, getSchedulersResponse.Schedulers[0].State)
 			require.EqualValues(t, 2, getSchedulersResponse.Schedulers[0].RoomsReady)
-			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsCreating)
+			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsPending)
 			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsOccupied)
 			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsTerminating)
 		})
