@@ -31,9 +31,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
+
 	"github.com/stretchr/testify/require"
 
-	efmock "github.com/topfreegames/maestro/internal/adapters/forwarder/events_forwarder/mock"
+	"github.com/golang/mock/gomock"
 	isMock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	scMock "github.com/topfreegames/maestro/internal/adapters/scheduler_cache/mock"
 	ssMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
@@ -41,15 +43,13 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
-
-	"github.com/golang/mock/gomock"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
 func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
-	eventsForwarder := efmock.NewMockEventsForwarder(mockCtrl)
+	eventsForwarder := mockports.NewMockEventsForwarder(mockCtrl)
 	schedulerStorage := ssMock.NewMockSchedulerStorage(mockCtrl)
 	instanceStorage := isMock.NewMockGameRoomInstanceStorage(mockCtrl)
 	schedulerCache := scMock.NewMockSchedulerCache(mockCtrl)

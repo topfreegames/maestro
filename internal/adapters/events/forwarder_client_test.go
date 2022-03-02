@@ -20,17 +20,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package forwarder_client
+package events
 
 import (
 	"context"
 
-	"time"
-
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 )
 
@@ -40,7 +37,7 @@ var (
 
 func TestSendRoomEvent(t *testing.T) {
 	t.Run("failed when trying to send event", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 		event := newRoomEvent()
 
 		response, err := forwarderClientAdapter.SendRoomEvent(context.Background(), newForwarder(), &event)
@@ -52,7 +49,7 @@ func TestSendRoomEvent(t *testing.T) {
 
 func TestSendRoomReSync(t *testing.T) {
 	t.Run("failed when trying to send event", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 		event := newRoomStatus()
 
 		response, err := forwarderClientAdapter.SendRoomReSync(context.Background(), newForwarder(), &event)
@@ -64,7 +61,7 @@ func TestSendRoomReSync(t *testing.T) {
 
 func TestSendPlayerEvent(t *testing.T) {
 	t.Run("failed when trying to send event", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 		event := newPlayerEvent()
 		response, err := forwarderClientAdapter.SendPlayerEvent(context.Background(), newForwarder(), &event)
 
@@ -75,7 +72,7 @@ func TestSendPlayerEvent(t *testing.T) {
 
 func TestGetGrpcClient(t *testing.T) {
 	t.Run("success to get new configuration", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 
 		grpcClient, err := forwarderClientAdapter.getGrpcClient("matchmaker.svc.io")
 
@@ -84,7 +81,7 @@ func TestGetGrpcClient(t *testing.T) {
 	})
 
 	t.Run("success returning configuration from cache", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 		forwarderAddress := "matchmaker.svc.io"
 		_, errArrange := forwarderClientAdapter.getGrpcClient(Address(forwarderAddress))
 		require.NoError(t, errArrange)
@@ -96,7 +93,7 @@ func TestGetGrpcClient(t *testing.T) {
 	})
 
 	t.Run("failed when argument is invalid", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 
 		grpcClient, err := forwarderClientAdapter.getGrpcClient("")
 
@@ -108,7 +105,7 @@ func TestGetGrpcClient(t *testing.T) {
 func TestConfigureGrpcClient(t *testing.T) {
 
 	t.Run("with success", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 
 		grpcClient, err := forwarderClientAdapter.configureGrpcClient("matchmaker.svc.io")
 
@@ -117,7 +114,7 @@ func TestConfigureGrpcClient(t *testing.T) {
 	})
 
 	t.Run("failed when argument is invalid", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 
 		grpcClient, err := forwarderClientAdapter.configureGrpcClient("")
 
@@ -128,7 +125,7 @@ func TestConfigureGrpcClient(t *testing.T) {
 
 func TestCacheDelete(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 		forwarderAddress := "matchmaker.svc.io"
 		_, errArrange := forwarderClientAdapter.getGrpcClient(Address(forwarderAddress))
 		require.NoError(t, errArrange)
@@ -139,7 +136,7 @@ func TestCacheDelete(t *testing.T) {
 	})
 
 	t.Run("failed when forwarder not found", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 
 		err := forwarderClientAdapter.CacheDelete("matchmaker.svc.io")
 
@@ -147,7 +144,7 @@ func TestCacheDelete(t *testing.T) {
 	})
 
 	t.Run("failed when argument is invalid", func(t *testing.T) {
-		basicArrange(t)
+		basicArrangeForwarderClient(t)
 
 		err := forwarderClientAdapter.CacheDelete("matchmaker.svc.io")
 
@@ -155,7 +152,7 @@ func TestCacheDelete(t *testing.T) {
 	})
 }
 
-func basicArrange(t *testing.T) {
+func basicArrangeForwarderClient(t *testing.T) {
 	forwarderClientAdapter = NewForwarderClient()
 }
 
@@ -195,21 +192,5 @@ func newPlayerEvent() pb.PlayerEvent {
 		},
 		EventType: pb.PlayerEvent_PLAYER_JOINED,
 		Metadata:  map[string]string{"roomType": "red", "ping": "true"},
-	}
-}
-
-func newForwarder() forwarder.Forwarder {
-	return forwarder.Forwarder{
-		Name:        "matchmaking",
-		Enabled:     true,
-		ForwardType: forwarder.TypeGrpc,
-		Address:     "matchmaker-service:8080",
-		Options: &forwarder.ForwardOptions{
-			Timeout: time.Duration(10),
-			Metadata: map[string]interface{}{
-				"roomType": "red",
-				"ping":     true,
-			},
-		},
 	}
 }

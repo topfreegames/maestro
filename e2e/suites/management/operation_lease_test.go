@@ -28,12 +28,12 @@ import (
 	"testing"
 	"time"
 
-	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
-	operationleasestorage "github.com/topfreegames/maestro/internal/adapters/operation_lease/redis"
+	operationleasestorage "github.com/topfreegames/maestro/internal/adapters/operation"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
+	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
 
 	"github.com/topfreegames/maestro/e2e/framework"
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"

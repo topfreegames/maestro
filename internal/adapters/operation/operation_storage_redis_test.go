@@ -23,11 +23,10 @@
 //go:build integration
 // +build integration
 
-package redis
+package operation
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -40,17 +39,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/test"
 )
-
-var redisAddress string
-
-func TestMain(m *testing.M) {
-	var code int
-	test.WithRedisContainer(func(redisContainerAddress string) {
-		redisAddress = redisContainerAddress
-		code = m.Run()
-	})
-	os.Exit(code)
-}
 
 func TestCreateOperation(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {

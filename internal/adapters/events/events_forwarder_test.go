@@ -20,16 +20,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package events_forwarder
+package events
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/adapters/forwarder/forwarder_client/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
