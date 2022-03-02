@@ -29,10 +29,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
+	"github.com/topfreegames/maestro/internal/core/ports"
 
-	"github.com/topfreegames/maestro/internal/core/services/interfaces"
-	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
+	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -57,7 +56,7 @@ type mockRoomAndSchedulerManager struct {
 	roomStorage      *mockports.MockRoomStorage
 	instanceStorage  *instancestoragemock.MockGameRoomInstanceStorage
 	runtime          *runtimemock.MockRuntime
-	eventsService    interfaces.EventsService
+	eventsService    ports.EventsService
 	schedulerStorage *schedulerstoragemock.MockSchedulerStorage
 }
 
@@ -390,7 +389,7 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 	instanceStorage := instancestoragemock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
+	eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 	schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
 
 	roomManager := mockports.NewMockRoomManager(mockCtrl)

@@ -25,7 +25,6 @@ package service
 import (
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"go.uber.org/zap"
 
@@ -90,7 +89,7 @@ func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorag
 	}
 }
 
-func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService interfaces.EventsService, config room_manager.RoomManagerConfig) ports.RoomManager {
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config room_manager.RoomManagerConfig) ports.RoomManager {
 	return &room_manager.RoomManager{
 		Clock:           clock,
 		PortAllocator:   portAllocator,

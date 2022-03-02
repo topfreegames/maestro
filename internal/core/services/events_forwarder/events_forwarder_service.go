@@ -37,8 +37,11 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	"go.uber.org/zap"
+)
+
+var (
+	_ ports.EventsService = (*EventsForwarderService)(nil)
 )
 
 type EventsForwarderService struct {
@@ -56,7 +59,7 @@ func NewEventsForwarderService(
 	instanceStorage ports.GameRoomInstanceStorage,
 	schedulerCache ports.SchedulerCache,
 	config EventsForwarderConfig,
-) interfaces.EventsService {
+) ports.EventsService {
 	return &EventsForwarderService{
 		eventsForwarder,
 		zap.L().With(zap.String("service", "rooms_api")),

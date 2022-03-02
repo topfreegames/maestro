@@ -20,13 +20,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package interfaces
+package ports
 
 import (
 	"context"
 
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 )
+
+// Primary ports (input, driving ports)
 
 type EventsService interface {
 	// ProduceEvent forwards an events. Internally it resolves the scheduler to fetch the forwarders configuration and calls the proper events forwarders.

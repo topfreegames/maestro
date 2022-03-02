@@ -34,8 +34,6 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 
-	"github.com/topfreegames/maestro/internal/core/services/interfaces"
-
 	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -55,14 +53,14 @@ type RoomManager struct {
 	RoomStorage     ports.RoomStorage
 	InstanceStorage ports.GameRoomInstanceStorage
 	Runtime         ports.Runtime
-	EventsService   interfaces.EventsService
+	EventsService   ports.EventsService
 	Config          RoomManagerConfig
 	Logger          *zap.Logger
 }
 
 var _ ports.RoomManager = (*RoomManager)(nil)
 
-func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService interfaces.EventsService, config RoomManagerConfig) ports.RoomManager {
+func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config RoomManagerConfig) ports.RoomManager {
 	return &RoomManager{
 		Clock:           clock,
 		PortAllocator:   portAllocator,

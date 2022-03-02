@@ -32,8 +32,6 @@ import (
 	"os"
 	"testing"
 
-	mockeventsservice "github.com/topfreegames/maestro/internal/core/services/interfaces/mock/events_service"
-
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/golang/mock/gomock"
@@ -59,7 +57,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 	t.Run("should succeed - valid request, existent game room => return status code 200", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		mux := runtime.NewServeMux()
@@ -88,7 +86,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 
-		eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		mux := runtime.NewServeMux()
@@ -112,7 +110,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 	t.Run("should fail - valid request, error while updating game room => return status code 500", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		mux := runtime.NewServeMux()
@@ -136,7 +134,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 	t.Run("should fail - invalid request => return status code 400", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		mux := runtime.NewServeMux()
@@ -167,7 +165,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 	t.Run("should succeed - no error occur when forwarding => returns status code 200", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		mux := runtime.NewServeMux()
@@ -199,7 +197,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 	t.Run("when some error occur when forwarding then it return status code 200 with success = false", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		mux := runtime.NewServeMux()
@@ -238,7 +236,7 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 	t.Run("when no error occur when forwarding then it return status code 200 with success = true", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		mux := runtime.NewServeMux()
@@ -269,7 +267,7 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 	t.Run("when some error occur when forwarding then it return status code 200 with success = false", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		mux := runtime.NewServeMux()
@@ -302,7 +300,7 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 	t.Run("it does nothing and returns 200 ok with success equal true for all requests", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		eventsForwarderService := mockeventsservice.NewMockEventsService(mockCtrl)
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		mux := runtime.NewServeMux()

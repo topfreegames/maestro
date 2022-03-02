@@ -29,7 +29,7 @@ package gen
 //go:generate go run github.com/google/wire/cmd/wire ./../...
 
 // Primary "input" ports Mocks
-//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/services/interfaces/events_service.go -destination=../internal/core/services/interfaces/mock/events_service/mock.go -package=mock
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/events_ports.go -destination=../internal/core/ports/mock/events_ports_mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/operation_ports.go -destination=../internal/core/ports/mock/operation_ports_mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/room_ports.go -destination=../internal/core/ports/mock/rooms_ports_mock.go -package=mock
 
