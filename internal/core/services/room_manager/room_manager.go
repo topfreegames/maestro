@@ -135,7 +135,7 @@ func (m *RoomManager) DeleteRoomAndWaitForRoomTerminated(ctx context.Context, ga
 	err = m.Runtime.DeleteGameRoomInstance(ctx, instance)
 	if err != nil {
 		// TODO(gabriel.corado): deal better with instance not found.
-		return fmt.Errorf("failed to delete instance on the Runtime: %w", err)
+		return fmt.Errorf("failed to delete instance on the runtime: %w", err)
 	}
 
 	duration := m.Config.RoomDeletionTimeout

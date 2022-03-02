@@ -80,7 +80,7 @@ func TestExecute(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("when any room failed to delete it returns without error", func(t *testing.T) {
+	t.Run("when any room failed to delete it returns with error", func(t *testing.T) {
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		executor := NewExecutor(roomsManager)
 
@@ -94,11 +94,10 @@ func TestExecute(t *testing.T) {
 		}
 
 		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
-		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.New("error"))
-		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.New("failed to delete instance on the runtime: some error"))
 
 		err := executor.Execute(context.Background(), operation, definition)
-		require.NoError(t, err)
+		require.EqualError(t, err, "failed to remove room: failed to delete instance on the runtime: some error")
 	})
 
 	t.Run("when list rooms has error returns with error", func(t *testing.T) {

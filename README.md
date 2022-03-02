@@ -1,9 +1,12 @@
+<img align="right" width="300" height="260" src="docs/images/gopher-maestro.png">
+
+
 *WARNING*: The [version v9.x](https://github.com/topfreegames/maestro/tree/v9) of Maestro is under deprecation, complete guide of the new version v10.x can be found [here](https://github.com/topfreegames/maestro/issues/283).
 
 ---
-
-Maestro: Kubernetes Game Room Scheduler
+Maestro: Kubernetes Game Room Scheduler 
 =======================================
+
 [![Build Status](https://github.com/topfreegames/maestro/actions/workflows/test.yaml/badge.svg?branch=next)](https://github.com/topfreegames/maestro/actions/workflows/test.yaml)
 [![Codecov Status](https://codecov.io/gh/topfreegames/maestro/branch/next/graph/badge.svg?token=KCN2SZDRJF)](https://codecov.io/gh/topfreegames/maestro)
 
