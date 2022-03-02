@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation"
+	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
@@ -48,8 +48,8 @@ import (
 
 func TestCancelOperation(t *testing.T) {
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		operationStorage := operationFlowRedis.NewRedisOperationStorage(redisClient, timeClock.NewClock())
-		operationFlow := operationFlowRedis.NewRedisOperationFlow(redisClient)
+		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock())
+		operationFlow := operationadapters.NewRedisOperationFlow(redisClient)
 
 		t.Run("cancel pending and in-progress operations successfully", func(t *testing.T) {
 			ctx := context.Background()

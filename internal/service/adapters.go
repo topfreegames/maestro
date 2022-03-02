@@ -25,9 +25,9 @@ package service
 import (
 	"fmt"
 
-	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation"
+	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 
-	matchmakerEventsForwarder "github.com/topfreegames/maestro/internal/adapters/events"
+	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
 
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"go.uber.org/zap"
@@ -100,8 +100,8 @@ func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomSt
 }
 
 func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
-	forwarderGrpc := matchmakerEventsForwarder.NewForwarderClient()
-	return matchmakerEventsForwarder.NewEventsForwarder(forwarderGrpc), nil
+	forwarderGrpc := eventsadapters.NewForwarderClient()
+	return eventsadapters.NewEventsForwarder(forwarderGrpc), nil
 }
 
 func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
@@ -128,7 +128,7 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	return operationFlowRedis.NewRedisOperationStorage(client, clock), nil
+	return operationadapters.NewRedisOperationStorage(client, clock), nil
 }
 
 func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.OperationLeaseStorage, error) {
@@ -137,7 +137,7 @@ func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.Op
 		return nil, fmt.Errorf("failed to initialize Redis operation lease storage: %w", err)
 	}
 
-	return operationFlowRedis.NewRedisOperationLeaseStorage(client, clock), nil
+	return operationadapters.NewRedisOperationLeaseStorage(client, clock), nil
 }
 
 func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
@@ -208,7 +208,7 @@ func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	return operationFlowRedis.NewRedisOperationFlow(client), nil
+	return operationadapters.NewRedisOperationFlow(client), nil
 }
 
 func connectToPostgres(url string) (*pg.Options, error) {

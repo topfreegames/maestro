@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	operationleasestorage "github.com/topfreegames/maestro/internal/adapters/operation"
+	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
@@ -42,7 +42,7 @@ import (
 
 func TestOperationLease(t *testing.T) {
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		operationLeaseStorage := operationleasestorage.NewRedisOperationLeaseStorage(redisClient, timeClock.NewClock())
+		operationLeaseStorage := operationadapters.NewRedisOperationLeaseStorage(redisClient, timeClock.NewClock())
 
 		t.Run("When the operation executes with success, then the lease keeps being renewed while it executes", func(t *testing.T) {
 			t.Parallel()
