@@ -33,7 +33,6 @@ import (
 
 	matchmakerEventsForwarder "github.com/topfreegames/maestro/internal/adapters/forwarder/events_forwarder"
 	"github.com/topfreegames/maestro/internal/adapters/forwarder/forwarder_client"
-	"github.com/topfreegames/maestro/internal/core/ports/forwarder"
 
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
@@ -102,7 +101,7 @@ func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomSt
 	}
 }
 
-func NewEventsForwarder(c config.Config) (forwarder.EventsForwarder, error) {
+func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
 	forwarderGrpc := forwarder_client.NewForwarderClient()
 	return matchmakerEventsForwarder.NewEventsForwarder(forwarderGrpc), nil
 }

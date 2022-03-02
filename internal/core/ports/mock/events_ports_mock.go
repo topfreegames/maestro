@@ -10,6 +10,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	events "github.com/topfreegames/maestro/internal/core/entities/events"
+	forwarder "github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	eventforwarder "github.com/topfreegames/protos/maestro/grpc/generated"
 )
 
 // MockEventsService is a mock of EventsService interface.
@@ -47,4 +49,163 @@ func (m *MockEventsService) ProduceEvent(ctx context.Context, event *events.Even
 func (mr *MockEventsServiceMockRecorder) ProduceEvent(ctx, event interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProduceEvent", reflect.TypeOf((*MockEventsService)(nil).ProduceEvent), ctx, event)
+}
+
+// MockEventsForwarder is a mock of EventsForwarder interface.
+type MockEventsForwarder struct {
+	ctrl     *gomock.Controller
+	recorder *MockEventsForwarderMockRecorder
+}
+
+// MockEventsForwarderMockRecorder is the mock recorder for MockEventsForwarder.
+type MockEventsForwarderMockRecorder struct {
+	mock *MockEventsForwarder
+}
+
+// NewMockEventsForwarder creates a new mock instance.
+func NewMockEventsForwarder(ctrl *gomock.Controller) *MockEventsForwarder {
+	mock := &MockEventsForwarder{ctrl: ctrl}
+	mock.recorder = &MockEventsForwarderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockEventsForwarder) EXPECT() *MockEventsForwarderMockRecorder {
+	return m.recorder
+}
+
+// ForwardPlayerEvent mocks base method.
+func (m *MockEventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder forwarder.Forwarder) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ForwardPlayerEvent", ctx, eventAttributes, forwarder)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ForwardPlayerEvent indicates an expected call of ForwardPlayerEvent.
+func (mr *MockEventsForwarderMockRecorder) ForwardPlayerEvent(ctx, eventAttributes, forwarder interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardPlayerEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardPlayerEvent), ctx, eventAttributes, forwarder)
+}
+
+// ForwardRoomEvent mocks base method.
+func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder forwarder.Forwarder) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ForwardRoomEvent", ctx, eventAttributes, forwarder)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ForwardRoomEvent indicates an expected call of ForwardRoomEvent.
+func (mr *MockEventsForwarderMockRecorder) ForwardRoomEvent(ctx, eventAttributes, forwarder interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForwardRoomEvent", reflect.TypeOf((*MockEventsForwarder)(nil).ForwardRoomEvent), ctx, eventAttributes, forwarder)
+}
+
+// Name mocks base method.
+func (m *MockEventsForwarder) Name() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Name indicates an expected call of Name.
+func (mr *MockEventsForwarderMockRecorder) Name() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockEventsForwarder)(nil).Name))
+}
+
+// MockForwarderClient is a mock of ForwarderClient interface.
+type MockForwarderClient struct {
+	ctrl     *gomock.Controller
+	recorder *MockForwarderClientMockRecorder
+}
+
+// MockForwarderClientMockRecorder is the mock recorder for MockForwarderClient.
+type MockForwarderClientMockRecorder struct {
+	mock *MockForwarderClient
+}
+
+// NewMockForwarderClient creates a new mock instance.
+func NewMockForwarderClient(ctrl *gomock.Controller) *MockForwarderClient {
+	mock := &MockForwarderClient{ctrl: ctrl}
+	mock.recorder = &MockForwarderClientMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockForwarderClient) EXPECT() *MockForwarderClientMockRecorder {
+	return m.recorder
+}
+
+// CacheDelete mocks base method.
+func (m *MockForwarderClient) CacheDelete(forwarderAddress string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CacheDelete", forwarderAddress)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CacheDelete indicates an expected call of CacheDelete.
+func (mr *MockForwarderClientMockRecorder) CacheDelete(forwarderAddress interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CacheDelete", reflect.TypeOf((*MockForwarderClient)(nil).CacheDelete), forwarderAddress)
+}
+
+// CacheFlush mocks base method.
+func (m *MockForwarderClient) CacheFlush() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "CacheFlush")
+}
+
+// CacheFlush indicates an expected call of CacheFlush.
+func (mr *MockForwarderClientMockRecorder) CacheFlush() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CacheFlush", reflect.TypeOf((*MockForwarderClient)(nil).CacheFlush))
+}
+
+// SendPlayerEvent mocks base method.
+func (m *MockForwarderClient) SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *eventforwarder.PlayerEvent) (*eventforwarder.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendPlayerEvent", ctx, forwarder, in)
+	ret0, _ := ret[0].(*eventforwarder.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendPlayerEvent indicates an expected call of SendPlayerEvent.
+func (mr *MockForwarderClientMockRecorder) SendPlayerEvent(ctx, forwarder, in interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendPlayerEvent", reflect.TypeOf((*MockForwarderClient)(nil).SendPlayerEvent), ctx, forwarder, in)
+}
+
+// SendRoomEvent mocks base method.
+func (m *MockForwarderClient) SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *eventforwarder.RoomEvent) (*eventforwarder.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendRoomEvent", ctx, forwarder, in)
+	ret0, _ := ret[0].(*eventforwarder.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendRoomEvent indicates an expected call of SendRoomEvent.
+func (mr *MockForwarderClientMockRecorder) SendRoomEvent(ctx, forwarder, in interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRoomEvent", reflect.TypeOf((*MockForwarderClient)(nil).SendRoomEvent), ctx, forwarder, in)
+}
+
+// SendRoomReSync mocks base method.
+func (m *MockForwarderClient) SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *eventforwarder.RoomStatus) (*eventforwarder.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendRoomReSync", ctx, forwarder, in)
+	ret0, _ := ret[0].(*eventforwarder.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendRoomReSync indicates an expected call of SendRoomReSync.
+func (mr *MockForwarderClientMockRecorder) SendRoomReSync(ctx, forwarder, in interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRoomReSync", reflect.TypeOf((*MockForwarderClient)(nil).SendRoomReSync), ctx, forwarder, in)
 }

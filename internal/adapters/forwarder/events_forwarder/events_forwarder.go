@@ -26,7 +26,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/core/ports/forwarder"
+	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 	entities "github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -36,10 +36,10 @@ import (
 )
 
 type eventsForwarder struct {
-	forwarderClient forwarder.ForwarderClient
+	forwarderClient ports.ForwarderClient
 }
 
-func NewEventsForwarder(forwarderClient forwarder.ForwarderClient) *eventsForwarder {
+func NewEventsForwarder(forwarderClient ports.ForwarderClient) *eventsForwarder {
 	return &eventsForwarder{
 		forwarderClient: forwarderClient,
 	}

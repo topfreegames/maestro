@@ -25,6 +25,9 @@ package ports
 import (
 	"context"
 
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	pb "github.com/topfreegames/protos/maestro/grpc/generated"
+
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 )
 
@@ -33,4 +36,23 @@ import (
 type EventsService interface {
 	// ProduceEvent forwards an events. Internally it resolves the scheduler to fetch the forwarders configuration and calls the proper events forwarders.
 	ProduceEvent(ctx context.Context, event *events.Event) error
+}
+
+// Secondary ports (output, driven ports)
+
+type EventsForwarder interface {
+	// ForwardRoomEvent forwards room events. It receives the room event attributes and forwarder configuration.
+	ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder forwarder.Forwarder) error
+	// ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
+	ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder forwarder.Forwarder) error
+	// Name returns the forwarder name. This name should be unique among other events forwarders.
+	Name() string
+}
+
+type ForwarderClient interface {
+	SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent) (*pb.Response, error)
+	SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus) (*pb.Response, error)
+	SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent) (*pb.Response, error)
+	CacheFlush()
+	CacheDelete(forwarderAddress string) error
 }

@@ -26,6 +26,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
@@ -33,7 +35,6 @@ import (
 	"github.com/patrickmn/go-cache"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
-	port "github.com/topfreegames/maestro/internal/core/ports/forwarder"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -42,7 +43,7 @@ import (
 type Address string
 
 var (
-	_ port.ForwarderClient = (*forwarderClient)(nil)
+	_ ports.ForwarderClient = (*forwarderClient)(nil)
 )
 
 type forwarderClient struct {
