@@ -62,31 +62,38 @@ func assertInstanceRedis(t *testing.T, client *redis.Client, expectedInstance *g
 func TestRedisInstanceStorage_UpsertInstance(t *testing.T) {
 	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisInstanceStorage(client, 0)
-	instance := &game_room.Instance{
-		ID:          "1",
-		SchedulerID: "game",
-		Status: game_room.InstanceStatus{
-			Type: game_room.InstancePending,
-		},
-	}
-
-	require.NoError(t, storage.UpsertInstance(context.Background(), instance))
-	assertInstanceRedis(t, client, instance)
-
-	instance.Status.Type = game_room.InstanceReady
-	instance.Address = &game_room.Address{
-		Host: "host",
-		Ports: []game_room.Port{
-			{
-				Name:     "game",
-				Port:     7000,
-				Protocol: "udp",
+	t.Run("should succeed", func(t *testing.T) {
+		instance := &game_room.Instance{
+			ID:          "1",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstancePending,
 			},
-		},
-	}
+		}
 
-	require.NoError(t, storage.UpsertInstance(context.Background(), instance))
-	assertInstanceRedis(t, client, instance)
+		require.NoError(t, storage.UpsertInstance(context.Background(), instance))
+		assertInstanceRedis(t, client, instance)
+
+		instance.Status.Type = game_room.InstanceReady
+		instance.Address = &game_room.Address{
+			Host: "host",
+			Ports: []game_room.Port{
+				{
+					Name:     "game",
+					Port:     7000,
+					Protocol: "udp",
+				},
+			},
+		}
+
+		require.NoError(t, storage.UpsertInstance(context.Background(), instance))
+		assertInstanceRedis(t, client, instance)
+	})
+
+	t.Run("should fail - instance is nil", func(t *testing.T) {
+		err := storage.UpsertInstance(context.Background(), nil)
+		require.Error(t, err)
+	})
 }
 
 func TestRedisInstanceStorage_GetInstance(t *testing.T) {

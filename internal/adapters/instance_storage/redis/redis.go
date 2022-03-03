@@ -60,6 +60,9 @@ func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string,
 }
 
 func (r redisInstanceStorage) UpsertInstance(ctx context.Context, instance *game_room.Instance) error {
+	if instance == nil {
+		return errors.NewErrUnexpected("Cannot upsert nil instance")
+	}
 	instanceJson, err := json.Marshal(instance)
 	if err != nil {
 		return errors.NewErrUnexpected("error marshalling room %s json", instance.ID).WithError(err)

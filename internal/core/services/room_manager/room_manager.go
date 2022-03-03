@@ -172,6 +172,10 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 }
 
 func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error {
+	if gameRoomInstance == nil {
+		return fmt.Errorf("cannot update room instance since it is nil")
+	}
+	m.Logger.Sugar().Infof("Updating room instance. ID: %v", gameRoomInstance.ID)
 	err := m.InstanceStorage.UpsertInstance(ctx, gameRoomInstance)
 	if err != nil {
 		return fmt.Errorf("failed when updating the game room instance on storage: %w", err)
@@ -182,10 +186,12 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
 
+	m.Logger.Info("Updating room success")
 	return nil
 }
 
 func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId string) error {
+	m.Logger.Sugar().Infof("Cleaning room \"%v\", scheduler \"%v\"", roomId, schedulerName)
 	err := m.RoomStorage.DeleteRoom(ctx, schedulerName, roomId)
 	if err != nil && !errors.Is(porterrors.ErrNotFound, err) {
 		return fmt.Errorf("failed to delete room state: %w", err)
@@ -196,6 +202,7 @@ func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId 
 		return fmt.Errorf("failed to delete room state: %w", err)
 	}
 
+	m.Logger.Info("cleaning room success")
 	return nil
 }
 
