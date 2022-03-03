@@ -106,6 +106,9 @@ func (w *runtimeWatcherWorker) processEvent(ctx context.Context, event game_room
 		}
 	case game_room.InstanceEventTypeDeleted:
 		w.logger.Info("processing event. Cleaning Room state")
+		if event.Instance == nil {
+			return fmt.Errorf("cannot process event since instance is nil")
+		}
 		err := w.roomManager.CleanRoomState(ctx, event.Instance.SchedulerID, event.Instance.ID)
 		if err != nil {
 			return fmt.Errorf("failed to clean room %s state: %w", event.Instance.ID, err)
