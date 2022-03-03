@@ -29,8 +29,6 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
-	"github.com/topfreegames/maestro/internal/core/services/interfaces"
-
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -45,11 +43,11 @@ import (
 
 type RoomsHandler struct {
 	roomManager   ports.RoomManager
-	eventsService interfaces.EventsService
+	eventsService ports.EventsService
 	api.UnimplementedRoomsServiceServer
 }
 
-func ProvideRoomsHandler(roomManager ports.RoomManager, eventsService interfaces.EventsService) *RoomsHandler {
+func ProvideRoomsHandler(roomManager ports.RoomManager, eventsService ports.EventsService) *RoomsHandler {
 	return &RoomsHandler{
 		roomManager:   roomManager,
 		eventsService: eventsService,

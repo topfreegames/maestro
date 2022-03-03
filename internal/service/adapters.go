@@ -25,24 +25,20 @@ package service
 import (
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/core/services/interfaces"
+	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
+
+	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
+
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 
-	matchmakerEventsForwarder "github.com/topfreegames/maestro/internal/adapters/forwarder/events_forwarder"
-	"github.com/topfreegames/maestro/internal/adapters/forwarder/forwarder_client"
-	"github.com/topfreegames/maestro/internal/core/ports/forwarder"
-
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
 	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
-	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation_flow/redis"
-	operationLeaseStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_lease/redis"
-	operationStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
 	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/port_allocator/random"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
@@ -90,7 +86,7 @@ func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorag
 	}
 }
 
-func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService interfaces.EventsService, config room_manager.RoomManagerConfig) ports.RoomManager {
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config room_manager.RoomManagerConfig) ports.RoomManager {
 	return &room_manager.RoomManager{
 		Clock:           clock,
 		PortAllocator:   portAllocator,
@@ -103,9 +99,9 @@ func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomSt
 	}
 }
 
-func NewEventsForwarder(c config.Config) (forwarder.EventsForwarder, error) {
-	forwarderGrpc := forwarder_client.NewForwarderClient()
-	return matchmakerEventsForwarder.NewEventsForwarder(forwarderGrpc), nil
+func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
+	forwarderGrpc := eventsadapters.NewForwarderClient()
+	return eventsadapters.NewEventsForwarder(forwarderGrpc), nil
 }
 
 func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
@@ -132,7 +128,7 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	return operationStorageRedis.NewRedisOperationStorage(client, clock), nil
+	return operationadapters.NewRedisOperationStorage(client, clock), nil
 }
 
 func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.OperationLeaseStorage, error) {
@@ -141,7 +137,7 @@ func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.Op
 		return nil, fmt.Errorf("failed to initialize Redis operation lease storage: %w", err)
 	}
 
-	return operationLeaseStorageRedis.NewRedisOperationLeaseStorage(client, clock), nil
+	return operationadapters.NewRedisOperationLeaseStorage(client, clock), nil
 }
 
 func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
@@ -212,7 +208,7 @@ func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	return operationFlowRedis.NewRedisOperationFlow(client), nil
+	return operationadapters.NewRedisOperationFlow(client), nil
 }
 
 func connectToPostgres(url string) (*pg.Options, error) {

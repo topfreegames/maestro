@@ -20,11 +20,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package forwarder_client
+package events
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"time"
 
@@ -33,7 +35,6 @@ import (
 	"github.com/patrickmn/go-cache"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
-	port "github.com/topfreegames/maestro/internal/core/ports/forwarder"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -42,7 +43,7 @@ import (
 type Address string
 
 var (
-	_ port.ForwarderClient = (*forwarderClient)(nil)
+	_ ports.ForwarderClient = (*forwarderClient)(nil)
 )
 
 type forwarderClient struct {

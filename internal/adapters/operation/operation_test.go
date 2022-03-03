@@ -20,20 +20,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package forwarder
+package operation
 
 import (
-	"context"
+	"os"
+	"testing"
 
-	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
-
-	pb "github.com/topfreegames/protos/maestro/grpc/generated"
+	"github.com/topfreegames/maestro/test"
 )
 
-type ForwarderClient interface {
-	SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent) (*pb.Response, error)
-	SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus) (*pb.Response, error)
-	SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent) (*pb.Response, error)
-	CacheFlush()
-	CacheDelete(forwarderAddress string) error
+var redisAddress string
+
+func TestMain(m *testing.M) {
+	var code int
+	test.WithRedisContainer(func(redisContainerAddress string) {
+		redisAddress = redisContainerAddress
+		code = m.Run()
+	})
+	os.Exit(code)
 }
