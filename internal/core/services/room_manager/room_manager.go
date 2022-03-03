@@ -289,20 +289,6 @@ func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities
 	return int(math.Max(minSchedulerMaxSurge, absoluteNum)), nil
 }
 
-func (m *RoomManager) ValidateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler) error {
-	gameRoom, _, err := m.CreateRoomAndWaitForReadiness(ctx, *scheduler)
-	if err != nil {
-		m.Logger.Error("error creating new game room for validating new version")
-		return fmt.Errorf("error creating new game room for validating new version: %w", err)
-	}
-	err = m.DeleteRoomAndWaitForRoomTerminated(ctx, gameRoom)
-	if err != nil {
-		m.Logger.Error("error deleting new game room created for validation", zap.Error(err))
-	}
-	return nil
-
-}
-
 func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error {
 	gameRoom, err := m.RoomStorage.GetRoom(ctx, schedulerId, gameRoomId)
 	if err != nil {

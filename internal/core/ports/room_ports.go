@@ -71,10 +71,6 @@ type RoomManager interface {
 	// If the room is created and don't succeed on sending a ping to maestro, it will try to delete the room, and return
 	// an error.
 	CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler) (*game_room.GameRoom, *game_room.Instance, error)
-	// ValidateGameRoomCreation simply validates if it's safe to create rooms of a scheduler.
-	// It uses two methods: CreateRoomAndWaitForReadiness and DeleteRoomAndWaitForRoomTerminated. If any errors
-	// are encountered during this process, it'll bring and error specifying where and why
-	ValidateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler) error
 	// UpdateGameRoomStatus updates the game based on the ping and runtime status.
 	UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error
 	// WaitRoomStatus blocks the caller until the context is canceled, an error
