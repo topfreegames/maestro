@@ -557,6 +557,11 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 		err := roomManager.UpdateRoomInstance(context.Background(), newGameRoomInstance)
 		require.Error(t, err)
 	})
+
+	t.Run("should fail - room instance is nil => returns error", func(t *testing.T) {
+		err := roomManager.UpdateRoomInstance(context.Background(), nil)
+		require.Error(t, err)
+	})
 }
 
 func TestRoomManager_CleanRoomState(t *testing.T) {

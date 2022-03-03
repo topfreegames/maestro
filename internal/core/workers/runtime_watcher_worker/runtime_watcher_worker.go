@@ -93,13 +93,16 @@ func (w *runtimeWatcherWorker) IsRunning() bool {
 }
 
 func (w *runtimeWatcherWorker) processEvent(ctx context.Context, event game_room.InstanceEvent) error {
+	w.logger.Sugar().Infof("processing event: %++v", event)
 	switch event.Type {
 	case game_room.InstanceEventTypeAdded, game_room.InstanceEventTypeUpdated:
+		w.logger.Info("processing event. Updating rooms instance")
 		err := w.roomManager.UpdateRoomInstance(ctx, event.Instance)
 		if err != nil {
 			return fmt.Errorf("failed to update room instance %s: %w", event.Instance.ID, err)
 		}
 	case game_room.InstanceEventTypeDeleted:
+		w.logger.Info("processing event. Cleaning Room state")
 		err := w.roomManager.CleanRoomState(ctx, event.Instance.SchedulerID, event.Instance.ID)
 		if err != nil {
 			return fmt.Errorf("failed to clean room %s state: %w", event.Instance.ID, err)
