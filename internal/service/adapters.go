@@ -30,6 +30,7 @@ import (
 	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
 
 	schedulerCacheRedis "github.com/topfreegames/maestro/internal/adapters/scheduler"
+	scheduleradapters "github.com/topfreegames/maestro/internal/adapters/scheduler"
 
 	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
@@ -160,12 +161,12 @@ func NewGameRoomInstanceStorageRedis(c config.Config) (ports.GameRoomInstanceSto
 }
 
 func NewSchedulerCacheRedis(c config.Config) (ports.SchedulerCache, error) {
-	client, err := createRedisClient(c.GetString(schedulerCacheRedisUrlPath))
+	client, err := createRedisClient(c.GetString(scheduleradaptersUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis scheduler cache: %w", err)
 	}
 
-	return schedulerCacheRedis.NewRedisSchedulerCache(client), nil
+	return scheduleradapters.NewRedisSchedulerCache(client), nil
 }
 
 func NewClockTime() ports.Clock {
@@ -191,7 +192,7 @@ func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
 
-	return schedulerCacheRedis.NewSchedulerStorage(opts), nil
+	return scheduleradapters.NewSchedulerStorage(opts), nil
 }
 
 func createRedisClient(url string) (*redis.Client, error) {
