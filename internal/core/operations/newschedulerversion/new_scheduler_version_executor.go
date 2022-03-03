@@ -26,6 +26,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
@@ -43,14 +45,16 @@ import (
 )
 
 type CreateNewSchedulerVersionExecutor struct {
-	roomManager      ports.RoomManager
-	schedulerManager interfaces.SchedulerManager
+	roomManager          ports.RoomManager
+	schedulerManager     interfaces.SchedulerManager
+	validationRoomIdsMap map[string]*game_room.GameRoom
 }
 
 func NewExecutor(roomManager ports.RoomManager, schedulerManager interfaces.SchedulerManager) *CreateNewSchedulerVersionExecutor {
 	return &CreateNewSchedulerVersionExecutor{
-		roomManager:      roomManager,
-		schedulerManager: schedulerManager,
+		roomManager:          roomManager,
+		schedulerManager:     schedulerManager,
+		validationRoomIdsMap: map[string]*game_room.GameRoom{},
 	}
 }
 
@@ -58,6 +62,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	logger := zap.L().With(
 		zap.String("scheduler_name", op.SchedulerName),
 		zap.String("operation_definition", op.DefinitionName),
+		zap.String("operation_phase", "Execute"),
 		zap.String("operation_id", op.ID),
 	)
 	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
@@ -80,7 +85,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	}
 
 	if isSchedulerMajorVersion {
-		err = ex.roomManager.ValidateGameRoomCreation(ctx, newScheduler)
+		err = ex.validateGameRoomCreation(ctx, newScheduler, logger)
 		if err != nil {
 			logger.Error("could not validate new game room creation", zap.Error(err))
 			return err
@@ -97,11 +102,48 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+	logger := zap.L().With(
+		zap.String("scheduler_name", op.SchedulerName),
+		zap.String("operation_definition", op.DefinitionName),
+		zap.String("operation_phase", "OnError"),
+		zap.String("operation_id", op.ID),
+	)
+	if gameRoom, ok := ex.validationRoomIdsMap[op.SchedulerName]; ok {
+		err := ex.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, gameRoom)
+		if err != nil {
+			logger.Error("error deleting new game room created for validation", zap.Error(err))
+			return fmt.Errorf("error in OnError function execution: %w", err)
+		}
+		ex.RemoveValidationRoomId(op.SchedulerName)
+	}
 	return nil
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 	return OperationName
+}
+
+func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
+	gameRoom, _, err := ex.roomManager.CreateRoomAndWaitForReadiness(ctx, *scheduler)
+	if err != nil {
+		logger.Error("error creating new game room for validating new version")
+		return fmt.Errorf("error creating new game room for validating new version: %w", err)
+	}
+	ex.AddValidationRoomId(scheduler.Name, gameRoom)
+	err = ex.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, gameRoom)
+	if err != nil {
+		logger.Error("error deleting new game room created for validation", zap.Error(err))
+	}
+	ex.RemoveValidationRoomId(scheduler.Name)
+	return nil
+}
+
+func (ex *CreateNewSchedulerVersionExecutor) AddValidationRoomId(schedulerName string, gameRoom *game_room.GameRoom) {
+	ex.validationRoomIdsMap[schedulerName] = gameRoom
+}
+
+func (ex *CreateNewSchedulerVersionExecutor) RemoveValidationRoomId(schedulerName string) {
+	delete(ex.validationRoomIdsMap, schedulerName)
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) error {

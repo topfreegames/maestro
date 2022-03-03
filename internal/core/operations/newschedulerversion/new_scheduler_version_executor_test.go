@@ -79,7 +79,8 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		newSchedulerWithNewVersion.Spec.Version = "v2.0.0"
 		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
 
-		mocksForExecutor.roomManager.EXPECT().ValidateGameRoomCreation(gomock.Any(), gomock.Any()).Return(nil)
+		mocksForExecutor.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any()).Return(&game_room.GameRoom{ID: "id-1"}, nil, nil)
+		mocksForExecutor.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
 
 		// mocks for SchedulerManager CreateNewSchedulerVersion method
 		mocksForExecutor.schedulerStorage.EXPECT().RunWithTransaction(gomock.Any(), gomock.Any())
@@ -110,7 +111,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		newSchedulerWithNewVersion.Spec.Version = "v2.0.0"
 		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
 
-		mocksForExecutor.roomManager.EXPECT().ValidateGameRoomCreation(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("error creating new game room for validating new version: some error"))
+		mocksForExecutor.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any()).Return(nil, nil, errors.NewErrUnexpected("some error"))
 
 		// mocks for SchedulerManager GetActiveScheduler method
 		mocksForExecutor.schedulerStorage.EXPECT().GetScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
@@ -242,6 +243,72 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.EqualError(t, result, "failed to parse scheduler current version: Invalid Semantic Version")
+	})
+
+}
+
+func TestCreateNewSchedulerVersionExecutor_OnError(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
+	t.Run("when some game room were created during execution, it deletes the room and return no error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		mocksForExecutor := newMockRoomAndSchedulerManager(mockCtrl)
+		newScheduler := *newValidScheduler("v1.2")
+		op := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newschedulerversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+
+		executor := newschedulerversion.NewExecutor(mocksForExecutor.roomManager, mocksForExecutor.schedulerManager)
+		executor.AddValidationRoomId(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
+		mocksForExecutor.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
+		result := executor.OnError(context.Background(), op, operationDef, nil)
+
+		require.NoError(t, result)
+	})
+
+	t.Run("when some game room were created during execution, it returns error if some error occur in deleting the game room", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		mocksForExecutor := newMockRoomAndSchedulerManager(mockCtrl)
+		newScheduler := *newValidScheduler("v1.2")
+		op := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newschedulerversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+
+		executor := newschedulerversion.NewExecutor(mocksForExecutor.roomManager, mocksForExecutor.schedulerManager)
+		executor.AddValidationRoomId(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
+		mocksForExecutor.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some error"))
+		result := executor.OnError(context.Background(), op, operationDef, nil)
+
+		require.EqualError(t, result, "error in OnError function execution: some error")
+	})
+
+	t.Run("when no game room were created during execution, it does nothing", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		mocksForExecutor := newMockRoomAndSchedulerManager(mockCtrl)
+		newScheduler := *newValidScheduler("v1.2")
+		op := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newschedulerversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+
+		executor := newschedulerversion.NewExecutor(mocksForExecutor.roomManager, mocksForExecutor.schedulerManager)
+		result := executor.OnError(context.Background(), op, operationDef, nil)
+
+		require.NoError(t, result)
 	})
 
 }
