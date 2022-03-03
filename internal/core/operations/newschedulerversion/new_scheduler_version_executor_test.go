@@ -46,7 +46,6 @@ import (
 	instancestoragemock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	portallocatormock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
-	schedulerstoragemock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
@@ -325,7 +324,7 @@ type mockRoomAndSchedulerManager struct {
 	instanceStorage  *instancestoragemock.MockGameRoomInstanceStorage
 	runtime          *runtimemock.MockRuntime
 	eventsService    ports.EventsService
-	schedulerStorage *schedulerstoragemock.MockSchedulerStorage
+	schedulerStorage *mockports.MockSchedulerStorage
 }
 
 func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSchedulerManager {
@@ -334,7 +333,7 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 	instanceStorage := instancestoragemock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
-	schedulerStorage := schedulerstoragemock.NewMockSchedulerStorage(mockCtrl)
+	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 	roomManager := mockports.NewMockRoomManager(mockCtrl)
 	operationFlow := mockports.NewMockOperationFlow(mockCtrl)

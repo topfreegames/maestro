@@ -23,55 +23,16 @@
 //go:build integration
 // +build integration
 
-package redis
+package scheduler
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
-
-	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/test"
 )
-
-var redisAddress string
-
-var fwd = &forwarder.Forwarder{
-	Name:        "fwd",
-	Enabled:     true,
-	ForwardType: forwarder.TypeGrpc,
-	Address:     "address",
-	Options: &forwarder.ForwardOptions{
-		Timeout:  time.Second * 5,
-		Metadata: nil,
-	},
-}
-var forwarders = []*forwarder.Forwarder{fwd}
-var expectedScheduler = &entities.Scheduler{
-	Name:            "scheduler",
-	Game:            "game",
-	State:           "",
-	RollbackVersion: "",
-	Spec:            game_room.Spec{},
-	PortRange:       nil,
-	CreatedAt:       time.Time{},
-	MaxSurge:        "",
-	Forwarders:      forwarders,
-}
-
-func TestMain(m *testing.M) {
-	var code int
-	test.WithRedisContainer(func(redisContainerAddress string) {
-		redisAddress = redisContainerAddress
-		code = m.Run()
-	})
-	os.Exit(code)
-}
 
 func TestSetScheduler(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {

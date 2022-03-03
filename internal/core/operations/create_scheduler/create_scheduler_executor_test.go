@@ -36,7 +36,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	runtimeMock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
-	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
 func TestExecute(t *testing.T) {
@@ -45,7 +45,7 @@ func TestExecute(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 
-		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		storage := mockports.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 
 		definition := CreateSchedulerDefinition{}
@@ -66,7 +66,7 @@ func TestExecute(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 
-		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		storage := mockports.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 
 		definition := CreateSchedulerDefinition{}
@@ -90,7 +90,7 @@ func TestOnError(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 
-		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		storage := mockports.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 
 		definition := &CreateSchedulerDefinition{}
@@ -126,7 +126,7 @@ func TestOnError(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 
-		storage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		storage := mockports.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
 
 		definition := CreateSchedulerDefinition{}

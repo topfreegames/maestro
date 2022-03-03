@@ -31,7 +31,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	clock_mock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
-	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -43,7 +42,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	clockMock := clock_mock.NewFakeClock(time.Now())
-	schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 	definition := AddRoomsDefinition{Amount: 10}
 
@@ -133,7 +132,7 @@ func TestAddRoomsExecutor_OnError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	clockMock := clock_mock.NewFakeClock(time.Now())
-	schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 	definition := AddRoomsDefinition{Amount: 10}
 

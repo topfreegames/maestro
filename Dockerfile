@@ -35,7 +35,7 @@ RUN apk add --update make
 RUN cd /build && \
     make build-linux-x86_64 && \
     mv ./bin/maestro-linux-x86_64 /app/maestro && \
-    mv internal/adapters/scheduler_storage/pg/migrations /app/migrations && \
+    mv internal/service/migrations /app/migrations && \
     mv ./config /app/config
 
 
