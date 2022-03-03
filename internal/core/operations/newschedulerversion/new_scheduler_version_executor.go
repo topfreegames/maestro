@@ -62,6 +62,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	logger := zap.L().With(
 		zap.String("scheduler_name", op.SchedulerName),
 		zap.String("operation_definition", op.DefinitionName),
+		zap.String("operation_phase", "Execute"),
 		zap.String("operation_id", op.ID),
 	)
 	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
@@ -104,6 +105,7 @@ func (ex *CreateNewSchedulerVersionExecutor) OnError(ctx context.Context, op *op
 	logger := zap.L().With(
 		zap.String("scheduler_name", op.SchedulerName),
 		zap.String("operation_definition", op.DefinitionName),
+		zap.String("operation_phase", "OnError"),
 		zap.String("operation_id", op.ID),
 	)
 	if gameRoom, ok := ex.validationRoomIdsMap[op.SchedulerName]; ok {
