@@ -31,8 +31,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/golang/mock/gomock"
@@ -42,10 +40,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
-	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
-
-	"github.com/golang/mock/gomock"
 )
 
 func TestEventsForwarderService_ProduceEvent(t *testing.T) {

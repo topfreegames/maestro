@@ -29,10 +29,8 @@ import (
 
 	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
 
-	schedulerCacheRedis "github.com/topfreegames/maestro/internal/adapters/scheduler"
 	scheduleradapters "github.com/topfreegames/maestro/internal/adapters/scheduler"
 
-	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"go.uber.org/zap"
 
@@ -161,7 +159,7 @@ func NewGameRoomInstanceStorageRedis(c config.Config) (ports.GameRoomInstanceSto
 }
 
 func NewSchedulerCacheRedis(c config.Config) (ports.SchedulerCache, error) {
-	client, err := createRedisClient(c.GetString(scheduleradaptersUrlPath))
+	client, err := createRedisClient(c.GetString(schedulerCacheRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis scheduler cache: %w", err)
 	}

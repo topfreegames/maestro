@@ -26,10 +26,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/ports"
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 
