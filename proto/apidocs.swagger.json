@@ -9,9 +9,6 @@
       "name": "OperationsService"
     },
     {
-      "name": "PingService"
-    },
-    {
       "name": "RoomsService"
     },
     {
@@ -29,29 +26,6 @@
     "application/json"
   ],
   "paths": {
-    "/ping": {
-      "get": {
-        "summary": "To check the service is up.",
-        "operationId": "PingService_GetPing",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1GetPingResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "tags": [
-          "PingService"
-        ]
-      }
-    },
     "/scheduler/{schedulerName}/rooms/{roomName}/ping": {
       "post": {
         "summary": "Updates a game room with ping data.",
@@ -1100,16 +1074,6 @@
         }
       },
       "description": "Forwarder Options definitions."
-    },
-    "v1GetPingResponse": {
-      "type": "object",
-      "properties": {
-        "message": {
-          "type": "string",
-          "description": "Pong is the ping response."
-        }
-      },
-      "description": "The ping response."
     },
     "v1GetSchedulerResponse": {
       "type": "object",

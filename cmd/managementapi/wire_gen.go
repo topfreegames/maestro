@@ -20,7 +20,6 @@ import (
 // Injectors from wire.go:
 
 func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.ServeMux, error) {
-	pingHandler := handlers.ProvidePingHandler()
 	schedulerStorage, err := service.NewSchedulerStoragePg(conf)
 	if err != nil {
 		return nil, err
@@ -51,15 +50,14 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
 	schedulersHandler := handlers.ProvideSchedulersHandler(schedulerManager)
 	operationsHandler := handlers.ProvideOperationsHandler(operationManager)
-	serveMux := provideManagementMux(ctx, pingHandler, schedulersHandler, operationsHandler)
+	serveMux := provideManagementMux(ctx, schedulersHandler, operationsHandler)
 	return serveMux, nil
 }
 
 // wire.go:
 
-func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler, schedulersHandler *handlers.SchedulersHandler, operationsHandler *handlers.OperationsHandler) *runtime.ServeMux {
+func provideManagementMux(ctx context.Context, schedulersHandler *handlers.SchedulersHandler, operationsHandler *handlers.OperationsHandler) *runtime.ServeMux {
 	mux := runtime.NewServeMux()
-	_ = v1.RegisterPingServiceHandlerServer(ctx, mux, pingHandler)
 	_ = v1.RegisterSchedulersServiceHandlerServer(ctx, mux, schedulersHandler)
 	_ = v1.RegisterOperationsServiceHandlerServer(ctx, mux, operationsHandler)
 
