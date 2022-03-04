@@ -48,7 +48,7 @@ const (
 )
 
 type Scheduler struct {
-	Name            string `validate:"required"`
+	Name            string `validate:"required,kube_resource_name"`
 	Game            string `validate:"required"`
 	State           string `validate:"required"`
 	RollbackVersion string
