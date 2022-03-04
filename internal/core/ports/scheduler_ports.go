@@ -41,6 +41,7 @@ type SchedulerManager interface {
 	EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error)
 	SwitchActiveVersion(ctx context.Context, schedulerName string, targetVersion string) (*operation.Operation, error)
 	GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error)
+	DeleteScheduler(ctx context.Context, schedulerName string) error
 }
 
 // Secondary ports (output, driven ports)
