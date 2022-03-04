@@ -40,17 +40,16 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	"go.uber.org/zap"
 )
 
 type CreateNewSchedulerVersionExecutor struct {
 	roomManager          ports.RoomManager
-	schedulerManager     interfaces.SchedulerManager
+	schedulerManager     ports.SchedulerManager
 	validationRoomIdsMap map[string]*game_room.GameRoom
 }
 
-func NewExecutor(roomManager ports.RoomManager, schedulerManager interfaces.SchedulerManager) *CreateNewSchedulerVersionExecutor {
+func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager) *CreateNewSchedulerVersionExecutor {
 	return &CreateNewSchedulerVersionExecutor{
 		roomManager:          roomManager,
 		schedulerManager:     schedulerManager,

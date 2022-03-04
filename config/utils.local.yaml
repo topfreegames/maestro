@@ -3,4 +3,4 @@ adapters:
     postgres:
       url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
 migration:
-  path: "file://internal/adapters/scheduler_storage/pg/migrations"
+  path: "file://internal/service/migrations"

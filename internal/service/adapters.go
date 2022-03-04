@@ -29,6 +29,8 @@ import (
 
 	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
 
+	scheduleradapters "github.com/topfreegames/maestro/internal/adapters/scheduler"
+
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"go.uber.org/zap"
 
@@ -42,8 +44,6 @@ import (
 	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/port_allocator/random"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
-	schedulerCacheRedis "github.com/topfreegames/maestro/internal/adapters/scheduler_cache/redis"
-	schedulerStoragePg "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/pg"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -164,7 +164,7 @@ func NewSchedulerCacheRedis(c config.Config) (ports.SchedulerCache, error) {
 		return nil, fmt.Errorf("failed to initialize Redis scheduler cache: %w", err)
 	}
 
-	return schedulerCacheRedis.NewRedisSchedulerCache(client), nil
+	return scheduleradapters.NewRedisSchedulerCache(client), nil
 }
 
 func NewClockTime() ports.Clock {
@@ -190,7 +190,7 @@ func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
 
-	return schedulerStoragePg.NewSchedulerStorage(opts), nil
+	return scheduleradapters.NewSchedulerStorage(opts), nil
 }
 
 func createRedisClient(url string) (*redis.Client, error) {

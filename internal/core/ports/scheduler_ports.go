@@ -24,10 +24,26 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/filters"
 )
+
+// Primary ports (input, driving ports)
+
+type SchedulerManager interface {
+	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
+	GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error)
+	CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error
+	CreateNewSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
+	EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error)
+	SwitchActiveVersion(ctx context.Context, schedulerName string, targetVersion string) (*operation.Operation, error)
+	GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error)
+}
+
+// Secondary ports (output, driven ports)
 
 type SchedulerStorage interface {
 	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
@@ -41,6 +57,11 @@ type SchedulerStorage interface {
 	DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	CreateSchedulerVersion(ctx context.Context, transactionID TransactionID, scheduler *entities.Scheduler) error
 	RunWithTransaction(ctx context.Context, transactionFunc func(transactionId TransactionID) error) error
+}
+
+type SchedulerCache interface {
+	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
+	SetScheduler(ctx context.Context, scheduler *entities.Scheduler, ttl time.Duration) error
 }
 
 type TransactionID string

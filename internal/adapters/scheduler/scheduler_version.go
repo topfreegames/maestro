@@ -20,16 +20,23 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package ports
+package scheduler
 
 import (
-	"context"
-	"time"
-
+	"github.com/go-pg/pg"
 	"github.com/topfreegames/maestro/internal/core/entities"
 )
 
-type SchedulerCache interface {
-	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
-	SetScheduler(ctx context.Context, scheduler *entities.Scheduler, ttl time.Duration) error
+type SchedulerVersion struct {
+	Version   string      `db:"version"`
+	IsActive  bool        `db:"is_active"`
+	CreatedAt pg.NullTime `db:"created_at"`
+}
+
+func (s *SchedulerVersion) ToSchedulerVersion() *entities.SchedulerVersion {
+	return &entities.SchedulerVersion{
+		Version:   s.Version,
+		IsActive:  s.IsActive,
+		CreatedAt: s.CreatedAt.Time,
+	}
 }

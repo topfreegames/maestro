@@ -33,20 +33,19 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/services/interfaces"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
 type SwitchActiveVersionExecutor struct {
 	roomManager         ports.RoomManager
-	schedulerManager    interfaces.SchedulerManager
+	schedulerManager    ports.SchedulerManager
 	roomsBeingReplaced  *sync.Map
 	newCreatedRooms     map[string][]*game_room.GameRoom
 	newCreatedRoomsLock sync.Mutex
 }
 
-func NewExecutor(roomManager ports.RoomManager, schedulerManager interfaces.SchedulerManager) *SwitchActiveVersionExecutor {
+func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager) *SwitchActiveVersionExecutor {
 	// TODO(caio.rodrigues): change map to store a list of ids (less memory used)
 	newCreatedRoomsMap := make(map[string][]*game_room.GameRoom)
 

@@ -23,7 +23,7 @@
 //go:build unit
 // +build unit
 
-package pg
+package scheduler
 
 import (
 	"testing"

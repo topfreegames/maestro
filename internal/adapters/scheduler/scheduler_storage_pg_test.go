@@ -23,19 +23,17 @@
 //go:build integration
 // +build integration
 
-package pg
+package scheduler
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
-	golangMigrate "github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
@@ -48,14 +46,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-pg/pg"
-
-	"github.com/orlangure/gnomock"
-	ppg "github.com/orlangure/gnomock/preset/postgres"
 )
-
-var dbNumber int32 = 0
-var postgresContainer *gnomock.Container
-var postgresDB *pg.DB
 
 type dbSchedulerVersion struct {
 	ID                  string      `db:"id"`
@@ -84,36 +75,6 @@ var expectedScheduler = &entities.Scheduler{
 		Start: 40000,
 		End:   60000,
 	},
-}
-
-func TestMain(m *testing.M) {
-	var err error
-
-	postgresContainer, err = gnomock.Start(
-		ppg.Preset(
-			ppg.WithDatabase("base"),
-			ppg.WithUser("maestro", "maestro"),
-		))
-
-	if err != nil {
-		panic(fmt.Sprintf("error creating postgres docker instance: %s\n", err))
-	}
-
-	opts := &pg.Options{
-		Addr:     postgresContainer.DefaultAddress(),
-		User:     "postgres",
-		Password: "password",
-		Database: "base",
-	}
-	if err := migrate(opts); err != nil {
-		panic(fmt.Sprintf("error preparing postgres database: %s\n", err))
-	}
-
-	postgresDB = pg.Connect(opts)
-
-	code := m.Run()
-	_ = gnomock.Stop(postgresContainer)
-	os.Exit(code)
 }
 
 func TestSchedulerStorage_GetScheduler(t *testing.T) {
@@ -812,27 +773,6 @@ func getPostgresDB(t *testing.T) *pg.DB {
 	})
 
 	return db
-}
-
-func migrate(opts *pg.Options) error {
-	dbUrl := getDBUrl(opts)
-	m, err := golangMigrate.New("file://./migrations", dbUrl)
-	if err != nil {
-		return err
-	}
-
-	err = m.Up()
-	if err != nil {
-		return err
-	}
-
-	m.Close()
-
-	return nil
-}
-
-func getDBUrl(opts *pg.Options) string {
-	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", opts.User, opts.Password, opts.Addr, opts.Database)
 }
 
 func getDBSchedulerAndVersions(t *testing.T, db *pg.DB, schedulerName string) (*Scheduler, []*dbSchedulerVersion) {
