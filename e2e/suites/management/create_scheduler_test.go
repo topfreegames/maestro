@@ -46,7 +46,6 @@ func TestCreateScheduler(t *testing.T) {
 		createRequest := &maestrov1.CreateSchedulerRequest{
 			Name:                   schedulerName,
 			Game:                   "test",
-			Version:                "v1.1",
 			TerminationGracePeriod: 15,
 			MaxSurge:               "10%",
 			Containers: []*maestrov1.Container{

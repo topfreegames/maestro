@@ -57,4 +57,32 @@ func TestNewSpec(t *testing.T) {
 			"10")
 		require.NotNil(t, spec)
 	})
+
+	t.Run("with success when create a new spec without version", func(t *testing.T) {
+		containers := []game_room.Container{
+			game_room.Container{
+				Name:            "default",
+				Image:           "some-image",
+				ImagePullPolicy: "Always",
+				Command:         []string{"hello"},
+				Ports: []game_room.ContainerPort{
+					{Name: "tcp", Protocol: "tcp", Port: 80},
+				},
+				Requests: game_room.ContainerResources{
+					CPU:    "10m",
+					Memory: "100Mi",
+				},
+				Limits: game_room.ContainerResources{
+					CPU:    "10m",
+					Memory: "100Mi",
+				},
+			}}
+		spec := game_room.NewSpec(
+			"",
+			10,
+			containers,
+			"10",
+			"10")
+		require.NotNil(t, spec)
+	})
 }

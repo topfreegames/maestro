@@ -217,7 +217,7 @@ func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.C
 		entities.StateCreating,
 		request.GetMaxSurge(),
 		*game_room.NewSpec(
-			request.GetVersion(),
+			"",
 			time.Duration(request.GetTerminationGracePeriod()),
 			h.fromApiContainers(request.GetContainers()),
 			request.GetToleration(),
