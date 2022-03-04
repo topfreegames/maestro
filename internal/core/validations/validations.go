@@ -23,6 +23,7 @@
 package validations
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -77,4 +78,32 @@ func IsProtocolSupported(protocol string) bool {
 func IsVersionValid(version string) bool {
 	_, err := semver.NewVersion(version)
 	return err == nil
+}
+
+// IsNameValidOnKube check if name is valid for kubernetes resources (RFC 1123)
+// Since regexp does not support lookbehind, we test directly the last character before
+// matching the string name.
+func IsNameValidOnKube(name string) bool {
+	const (
+		minNameLength           = 1
+		maxNameLength           = 63
+		regexCanOnlyStartWith   = "^[a-z0-9]"
+		regexAcceptedCharacters = "[a-z0-9-]*$"
+		cannotEndWith           = "-"
+		regexValidMatch         = regexCanOnlyStartWith + regexAcceptedCharacters
+	)
+
+	if len(name) < minNameLength || len(name) > maxNameLength {
+		return false
+	}
+
+	if name[len(name)-1:] == cannotEndWith {
+		return false
+	}
+
+	matched, err := regexp.MatchString(regexValidMatch, name)
+	if err != nil || !matched {
+		return false
+	}
+	return true
 }

@@ -57,6 +57,11 @@ func RegisterValidations() error {
 		return errors.New("could not register maxSurgeValidate")
 	}
 
+	err = Validate.RegisterValidation("kube_resource_name", kubeResourceNameValidate)
+	if err != nil {
+		return errors.New("could not register kubeResourceNameValidate")
+	}
+
 	if Validate == nil {
 		return errors.New("it was not possible to register validations")
 	}
@@ -77,4 +82,8 @@ func maxSurgeValidate(fl validator.FieldLevel) bool {
 
 func semanticValidate(fl validator.FieldLevel) bool {
 	return validations.IsVersionValid(fl.Field().String())
+}
+
+func kubeResourceNameValidate(fl validator.FieldLevel) bool {
+	return validations.IsNameValidOnKube(fl.Field().String())
 }

@@ -23,6 +23,7 @@
 package validations
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -85,5 +86,45 @@ func TestIsVersionValid(t *testing.T) {
 	t.Run("fails when policy is not supported by maestro", func(t *testing.T) {
 		invalid := IsVersionValid("0x0x0")
 		require.False(t, invalid)
+	})
+}
+
+func TestIsNameValidOnKube(t *testing.T) {
+	t.Run("should succeed - name is valid", func(t *testing.T) {
+		nameMinLength := "a"
+		usualName := "pod-sdf123-g1"
+		nameMaxLength := "pod-bgvaoifdbgalsidubalisdfgalisdfbgaidsfgyubalosidbyasolfugyba"
+
+		require.True(t, IsNameValidOnKube(nameMinLength))
+		require.True(t, IsNameValidOnKube(usualName))
+		require.True(t, IsNameValidOnKube(nameMaxLength))
+	})
+
+	invalidCharactersBorders := "-$*_./#%()&^'\"\\Ωœ∑ø˚¬≤µ˜∫≈çå"
+	invalidCharactersMiddle := "$*_./#%()&^'\"\\Ωœ∑ø˚¬≤µ˜∫≈çå"
+	t.Run("should fail - name starts with invalid characters", func(t *testing.T) {
+		for _, char := range invalidCharactersBorders {
+			name := fmt.Sprintf("%cpod", char)
+			require.False(t, IsNameValidOnKube(name))
+		}
+	})
+
+	t.Run("should fail - name have invalid characters", func(t *testing.T) {
+		for _, char := range invalidCharactersMiddle {
+			name := fmt.Sprintf("pod%cpod", char)
+			require.False(t, IsNameValidOnKube(name))
+		}
+	})
+
+	t.Run("should fail - name ends with invalid characters", func(t *testing.T) {
+		for _, char := range invalidCharactersBorders {
+			name := fmt.Sprintf("pod%c", char)
+			require.False(t, IsNameValidOnKube(name))
+		}
+	})
+
+	t.Run("should fail - name is too long", func(t *testing.T) {
+		nameMaxLengthPlusOne := "pod-bgvaoifdbgalsidubalisdfgalisdfbgaidsfgyubalosidbyasolfugyba1"
+		require.False(t, IsNameValidOnKube(nameMaxLengthPlusOne))
 	})
 }
