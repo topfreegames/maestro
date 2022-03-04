@@ -112,22 +112,14 @@ message CreateSchedulerRequest {
   string name = 1;
   // Game the new scheduler will be part of.
   string game = 2;
-  // ?.
-  string version = 3;
-  // The game room termination grace period.
-  int64 termination_grace_period = 4;
-  // The container object array defines all the game room container configurations.
-  repeated Container containers = 5;
+  // The spec object defines all the game room container configurations and spec of the scheduler.
+  Spec spec = 3;
   // The port range object describes what is the port range used to allocate game rooms.
-  PortRange port_range = 6;
-  // Runtime game room toleration configuration.
-  string toleration = 7;
-  // Runtime game room affinity configuration.
-  string affinity = 8;
+  PortRange port_range = 4;
   // The max surge of new rooms, used to scale and update
-  string max_surge = 9;
+  string max_surge = 5;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 10;
+  repeated Forwarder forwarders = 6;
 }
 
 // Add rooms operation request payload + path parameters.
@@ -178,20 +170,14 @@ message NewSchedulerVersionRequest {
   string name = 1;
   // Game the new scheduler will be part of.
   string game = 2;
-  // The game room termination grace period.
-  int64 termination_grace_period = 3;
-  // The container object array defines all the game room container configurations.
-  repeated Container containers = 4;
+  // The spec object defines all the game room container configurations and spec.
+  Spec spec = 3;
   // The port range object describes what is the port range used to allocate game rooms.
-  PortRange port_range = 5;
-  // Runtime game room toleration configuration.
-  string toleration = 6;
-  // Runtime game room affinity configuration.
-  string affinity = 7;
+  PortRange port_range = 4;
   // The max surge of new rooms, used to scale and update
-  string max_surge = 8;
+  string max_surge = 5;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 9;
+  repeated Forwarder forwarders = 6;
 }
 
 // Update schedule operation response payload.

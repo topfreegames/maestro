@@ -450,29 +450,13 @@
                   "type": "string",
                   "description": "Game the new scheduler will be part of."
                 },
-                "terminationGracePeriod": {
-                  "type": "string",
-                  "format": "int64",
-                  "description": "The game room termination grace period."
-                },
-                "containers": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/v1Container"
-                  },
-                  "description": "The container object array defines all the game room container configurations."
+                "spec": {
+                  "$ref": "#/definitions/v1Spec",
+                  "description": "The spec object defines all the game room container configurations and spec."
                 },
                 "portRange": {
                   "$ref": "#/definitions/v1PortRange",
                   "description": "The port range object describes what is the port range used to allocate game rooms."
-                },
-                "toleration": {
-                  "type": "string",
-                  "description": "Runtime game room toleration configuration."
-                },
-                "affinity": {
-                  "type": "string",
-                  "description": "Runtime game room affinity configuration."
                 },
                 "maxSurge": {
                   "type": "string",
@@ -980,33 +964,13 @@
           "type": "string",
           "description": "Game the new scheduler will be part of."
         },
-        "version": {
-          "type": "string",
-          "description": "?."
-        },
-        "terminationGracePeriod": {
-          "type": "string",
-          "format": "int64",
-          "description": "The game room termination grace period."
-        },
-        "containers": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1Container"
-          },
-          "description": "The container object array defines all the game room container configurations."
+        "spec": {
+          "$ref": "#/definitions/v1Spec",
+          "description": "The spec object defines all the game room container configurations and spec of the scheduler."
         },
         "portRange": {
           "$ref": "#/definitions/v1PortRange",
           "description": "The port range object describes what is the port range used to allocate game rooms."
-        },
-        "toleration": {
-          "type": "string",
-          "description": "Runtime game room toleration configuration."
-        },
-        "affinity": {
-          "type": "string",
-          "description": "Runtime game room affinity configuration."
         },
         "maxSurge": {
           "type": "string",
@@ -1247,10 +1211,6 @@
         "state": {
           "type": "string",
           "description": "Current state of the scheduler."
-        },
-        "version": {
-          "type": "string",
-          "description": "Scheduler current version."
         },
         "portRange": {
           "$ref": "#/definitions/v1PortRange",
