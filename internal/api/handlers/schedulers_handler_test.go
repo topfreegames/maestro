@@ -519,6 +519,7 @@ func TestCreateScheduler(t *testing.T) {
 
 		specContent, ok := schedulerContent["spec"].(map[string]interface{})
 		require.NotNil(t, schedulerContent)
+		require.True(t, ok)
 
 		assert.Equal(t, "v1.0.0", specContent["version"])
 		assert.Equal(t, "10%", schedulerContent["maxSurge"])
