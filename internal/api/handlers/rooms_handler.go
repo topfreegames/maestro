@@ -25,8 +25,9 @@ package handlers
 import (
 	"context"
 	"errors"
-	"go.uber.org/zap"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
@@ -53,7 +54,8 @@ func ProvideRoomsHandler(roomManager ports.RoomManager, eventsService ports.Even
 	return &RoomsHandler{
 		roomManager:   roomManager,
 		eventsService: eventsService,
-		logger:        zap.L().With(zap.String("handler", "rooms_handler")),
+		logger: zap.L().
+			With(zap.String("component", "handler"), zap.String("handler", "rooms_handler")),
 	}
 }
 

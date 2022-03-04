@@ -25,6 +25,7 @@ package scheduler_manager
 import (
 	"context"
 	"fmt"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
@@ -51,7 +52,7 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManag
 		schedulerStorage: schedulerStorage,
 		operationManager: operationManager,
 		roomStorage:      roomStorage,
-		logger:           zap.L().With(zap.String("service", "scheduler_manager")),
+		logger:           zap.L().With(zap.String("component", "service"), zap.String("service", "scheduler_manager")),
 	}
 }
 

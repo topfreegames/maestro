@@ -53,7 +53,8 @@ type SchedulersHandler struct {
 func ProvideSchedulersHandler(schedulerManager *scheduler_manager.SchedulerManager) *SchedulersHandler {
 	return &SchedulersHandler{
 		schedulerManager: schedulerManager,
-		logger:           zap.L().With(zap.String("handler", "schedulers_handler")),
+		logger: zap.L().
+			With(zap.String("component", "handler"), zap.String("handler", "schedulers_handler")),
 	}
 }
 

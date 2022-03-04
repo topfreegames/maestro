@@ -49,7 +49,8 @@ type OperationsHandler struct {
 func ProvideOperationsHandler(operationManager ports.OperationManager) *OperationsHandler {
 	return &OperationsHandler{
 		operationManager: operationManager,
-		logger:           zap.L().With(zap.String("handler", "operations_handler")),
+		logger: zap.L().
+			With(zap.String("component", "handler"), zap.String("handler", "operations_handler")),
 	}
 }
 

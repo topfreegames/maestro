@@ -55,7 +55,7 @@ func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefi
 		OperationCancelFunctions:        NewOperationCancelFunctions(),
 		LeaseStorage:                    leaseStorage,
 		Config:                          config,
-		Logger:                          zap.L().With(zap.String("service", "operation_manager")),
+		Logger:                          zap.L().With(zap.String("component", "service"), zap.String("service", "operation_manager")),
 	}
 }
 

@@ -70,7 +70,7 @@ func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, sch
 		syncWorkersInterval:        configs.GetDuration(syncWorkersIntervalPath),
 		WorkerOptions:              workerOptions,
 		workersStopTimeoutDuration: configs.GetDuration(workersStopTimeoutDurationPath),
-		logger:                     zap.L().With(zap.String("service", "workers_manager")),
+		logger:                     zap.L().With(zap.String("component", "service"), zap.String("service", "workers_manager")),
 	}
 }
 
