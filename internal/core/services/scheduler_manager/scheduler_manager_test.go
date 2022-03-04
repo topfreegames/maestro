@@ -35,6 +35,8 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -792,6 +794,53 @@ func TestNewSchedulerInfo(t *testing.T) {
 
 		require.Error(t, err)
 		require.Nil(t, schedulersInfo)
+	})
+}
+
+func TestDeleteScheduler(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Run("it returns with success when scheduler are found in database", func(t *testing.T) {
+		schedulerName := "scheduler-name"
+		scheduler := newValidScheduler()
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(scheduler, nil)
+		schedulerStorage.EXPECT().DeleteScheduler(gomock.Any(), scheduler).Return(nil)
+
+		err := schedulerManager.DeleteScheduler(ctx, schedulerName)
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("it returns with error when couldn't found scheduler in database", func(t *testing.T) {
+		schedulerName := "scheduler-name"
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(nil, errors.NewErrNotFound("err"))
+
+		err := schedulerManager.DeleteScheduler(ctx, schedulerName)
+
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, errors.ErrNotFound)
+		assert.Contains(t, err.Error(), "no scheduler found to delete")
+	})
+
+	t.Run("it returns with error when couldn't delete scheduler from database", func(t *testing.T) {
+		schedulerName := "scheduler-name"
+		scheduler := newValidScheduler()
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(scheduler, nil)
+		schedulerStorage.EXPECT().DeleteScheduler(gomock.Any(), scheduler).Return(errors.NewErrUnexpected("err"))
+
+		err := schedulerManager.DeleteScheduler(ctx, schedulerName)
+
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, errors.ErrUnexpected)
+		assert.Contains(t, err.Error(), "not able to delete scheduler")
 	})
 }
 

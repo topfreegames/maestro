@@ -67,6 +67,20 @@ func (mr *MockSchedulerManagerMockRecorder) CreateNewSchedulerVersionAndEnqueueS
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNewSchedulerVersionAndEnqueueSwitchVersion", reflect.TypeOf((*MockSchedulerManager)(nil).CreateNewSchedulerVersionAndEnqueueSwitchVersion), ctx, scheduler, replacePods)
 }
 
+// DeleteScheduler mocks base method.
+func (m *MockSchedulerManager) DeleteScheduler(ctx context.Context, schedulerName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteScheduler", ctx, schedulerName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteScheduler indicates an expected call of DeleteScheduler.
+func (mr *MockSchedulerManagerMockRecorder) DeleteScheduler(ctx, schedulerName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScheduler", reflect.TypeOf((*MockSchedulerManager)(nil).DeleteScheduler), ctx, schedulerName)
+}
+
 // EnqueueSwitchActiveVersionOperation mocks base method.
 func (m *MockSchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error) {
 	m.ctrl.T.Helper()

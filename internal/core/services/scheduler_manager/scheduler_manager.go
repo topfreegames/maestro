@@ -262,6 +262,20 @@ func (s *SchedulerManager) GetSchedulersInfo(ctx context.Context, filter *filter
 	return schedulersInfo, nil
 }
 
+func (s *SchedulerManager) DeleteScheduler(ctx context.Context, schedulerName string) error {
+	scheduler, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
+	if err != nil {
+		return fmt.Errorf("no scheduler found to delete: %w", err)
+	}
+
+	err = s.schedulerStorage.DeleteScheduler(ctx, scheduler)
+	if err != nil {
+		return fmt.Errorf("not able to delete scheduler %s: %w", schedulerName, err)
+	}
+
+	return nil
+}
+
 func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *entities.Scheduler) (*entities.SchedulerInfo, error) {
 	ready, err := s.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusReady)
 	if err != nil {

@@ -30,6 +30,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -45,8 +46,8 @@ func TestExecute(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 
-		storage := mockports.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 
 		definition := CreateSchedulerDefinition{}
 		op := operation.Operation{
@@ -58,7 +59,7 @@ func TestExecute(t *testing.T) {
 
 		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(nil)
 
-		err := NewExecutor(runtime, storage).Execute(context.Background(), &op, &definition)
+		err := NewExecutor(runtime, schedulerManager).Execute(context.Background(), &op, &definition)
 		require.NoError(t, err)
 	})
 
@@ -66,8 +67,8 @@ func TestExecute(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 
-		storage := mockports.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 
 		definition := CreateSchedulerDefinition{}
 		op := operation.Operation{
@@ -79,20 +80,16 @@ func TestExecute(t *testing.T) {
 
 		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(errors.ErrUnexpected)
 
-		err := NewExecutor(runtime, storage).Execute(context.Background(), &op, &definition)
+		err := NewExecutor(runtime, schedulerManager).Execute(context.Background(), &op, &definition)
 		require.ErrorIs(t, err, errors.ErrUnexpected)
 	})
 }
 
 func TestOnError(t *testing.T) {
-
-	t.Run("changes scheduler status in case of execution error", func(t *testing.T) {
-
+	t.Run("it returns nil when delete scheduler on execution error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-
-		storage := mockports.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
-
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		definition := &CreateSchedulerDefinition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
@@ -100,46 +97,30 @@ func TestOnError(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: "zooba_blue:1.0.0",
 		}
+		schedulerManager.EXPECT().DeleteScheduler(gomock.Any(), op.SchedulerName).Return(nil)
 
-		scheduler := entities.Scheduler{
-			Name:            op.SchedulerName,
-			State:           entities.StateInSync,
-			Game:            "Zooba",
-			RollbackVersion: "1.0.0",
-			PortRange: &entities.PortRange{
-				Start: 1,
-				End:   1000,
-			},
-		}
+		err := NewExecutor(runtime, schedulerManager).OnError(context.Background(), &op, definition, errors.ErrUnexpected)
 
-		updatedScheduler := scheduler
-		updatedScheduler.State = entities.StateOnError
-
-		storage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
-		storage.EXPECT().UpdateScheduler(context.Background(), &updatedScheduler).Return(nil)
-
-		err := NewExecutor(runtime, storage).OnError(context.Background(), &op, definition, errors.ErrUnexpected)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
-	t.Run("fails when no scheduler found in storage", func(t *testing.T) {
-
+	t.Run("it returns error when couldn't delete scheduler on execution error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-
-		storage := mockports.NewMockSchedulerStorage(mockCtrl)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
-
-		definition := CreateSchedulerDefinition{}
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		definition := &CreateSchedulerDefinition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "zooba_blue:1.0.0",
 			Status:         operation.StatusPending,
 			DefinitionName: "zooba_blue:1.0.0",
 		}
+		schedulerManager.EXPECT().DeleteScheduler(gomock.Any(), op.SchedulerName).Return(errors.NewErrUnexpected("err"))
 
-		storage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(nil, errors.ErrNotFound)
+		err := NewExecutor(runtime, schedulerManager).OnError(context.Background(), &op, definition, errors.ErrUnexpected)
 
-		err := NewExecutor(runtime, storage).OnError(context.Background(), &op, &definition, errors.ErrUnexpected)
-		require.ErrorIs(t, err, errors.ErrNotFound)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, errors.ErrUnexpected)
+		assert.Contains(t, err.Error(), "error in OnError function execution")
 	})
 }

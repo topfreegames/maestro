@@ -30,39 +30,53 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"go.uber.org/zap"
 )
 
 type CreateSchedulerExecutor struct {
-	runtime ports.Runtime
-	storage ports.SchedulerStorage
+	runtime          ports.Runtime
+	schedulerManager ports.SchedulerManager
 }
 
-func NewExecutor(runtime ports.Runtime, storage ports.SchedulerStorage) *CreateSchedulerExecutor {
+func NewExecutor(runtime ports.Runtime, schedulerManager ports.SchedulerManager) *CreateSchedulerExecutor {
 	return &CreateSchedulerExecutor{
-		runtime: runtime,
-		storage: storage,
+		runtime:          runtime,
+		schedulerManager: schedulerManager,
 	}
 }
 
 func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+	logger := zap.L().With(
+		zap.String("scheduler_name", op.SchedulerName),
+		zap.String("operation_definition", op.DefinitionName),
+		zap.String("operation_phase", "Execute"),
+		zap.String("operation_id", op.ID),
+	)
 
 	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName})
 	if err != nil {
-		return fmt.Errorf("failed to create scheduler in runtime: %w", err)
+		logger.Error(fmt.Sprintf("failed to create scheduler %s in runtime", op.SchedulerName), zap.Error(err))
+		return err
 	}
 
+	logger.Info(fmt.Sprintf("%s operation succeded, %s scheduler was created", definition.Name(), op.SchedulerName))
 	return nil
 }
 
 func (e *CreateSchedulerExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
-	scheduler, err := e.storage.GetScheduler(ctx, op.SchedulerName)
+	logger := zap.L().With(
+		zap.String("scheduler_name", op.SchedulerName),
+		zap.String("operation_definition", op.DefinitionName),
+		zap.String("operation_phase", "OnError"),
+		zap.String("operation_id", op.ID),
+	)
+
+	err := e.schedulerManager.DeleteScheduler(ctx, op.SchedulerName)
 	if err != nil {
-		return fmt.Errorf("failed to find scheduler by id: %w", err)
+		logger.Error(fmt.Sprintf("error deleting scheduler %s", op.SchedulerName), zap.Error(err))
+		return fmt.Errorf("error in OnError function execution: %w", err)
 	}
-
-	scheduler.State = entities.StateOnError
-
-	return e.storage.UpdateScheduler(ctx, scheduler)
+	return nil
 }
 
 func (e *CreateSchedulerExecutor) Name() string {
