@@ -44,6 +44,7 @@ type OperationManager struct {
 	LeaseStorage                    ports.OperationLeaseStorage
 	Config                          OperationManagerConfig
 	OperationDefinitionConstructors map[string]operations.DefinitionConstructor
+	Logger                          *zap.Logger
 }
 
 func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config OperationManagerConfig) *OperationManager {
@@ -54,6 +55,7 @@ func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefi
 		OperationCancelFunctions:        NewOperationCancelFunctions(),
 		LeaseStorage:                    leaseStorage,
 		Config:                          config,
+		Logger:                          zap.L().With(zap.String("service", "operation_manager")),
 	}
 }
 
@@ -195,7 +197,7 @@ func (om *OperationManager) WatchOperationCancellationRequests(ctx context.Conte
 
 			err := om.cancelOperation(ctx, request.SchedulerName, request.OperationID)
 			if err != nil {
-				zap.L().
+				om.Logger.
 					With(zap.String("schedulerName", request.SchedulerName)).
 					With(zap.String("operationID", request.OperationID)).
 					With(zap.Error(err)).
@@ -232,7 +234,7 @@ func (om *OperationManager) RevokeLease(ctx context.Context, operation *operatio
 
 func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Context, op *operation.Operation) {
 	go func() {
-		zap.L().Info("starting operation lease renew go routine")
+		om.Logger.Info("starting operation lease renew go routine")
 
 		ticker := time.NewTicker(om.Config.OperationLeaseTtl)
 		defer ticker.Stop()
@@ -243,13 +245,13 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 			case <-ticker.C:
 				if op.Status == operation.StatusFinished || op.Status == operation.StatusError {
 					status, _ := op.Status.String()
-					zap.L().Sugar().Infof("finish operation lease renew go routine since operation got status %v", status)
+					om.Logger.Sugar().Infof("finish operation lease renew go routine since operation got status %v", status)
 					break renewLeaseLoop
 				}
 
 				err := om.LeaseStorage.RenewLease(operationCtx, op.SchedulerName, op.ID, om.Config.OperationLeaseTtl)
 				if err != nil {
-					zap.L().
+					om.Logger.
 						With(zap.String("schedulerName", op.SchedulerName)).
 						With(zap.String("operationID", op.ID)).
 						With(zap.Error(err)).
@@ -257,9 +259,9 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 				}
 			case <-operationCtx.Done():
 				if goerrors.Is(operationCtx.Err(), context.Canceled) {
-					zap.L().Info("finish operation lease renew go routine since operation is canceled")
+					om.Logger.Info("finish operation lease renew go routine since operation is canceled")
 				} else {
-					zap.L().
+					om.Logger.
 						With(zap.String("schedulerName", op.SchedulerName)).
 						With(zap.String("operationID", op.ID)).
 						With(zap.Error(operationCtx.Err())).

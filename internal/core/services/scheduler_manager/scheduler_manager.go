@@ -25,7 +25,6 @@ package scheduler_manager
 import (
 	"context"
 	"fmt"
-
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
@@ -44,6 +43,7 @@ type SchedulerManager struct {
 	schedulerStorage ports.SchedulerStorage
 	operationManager ports.OperationManager
 	roomStorage      ports.RoomStorage
+	logger           *zap.Logger
 }
 
 func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *SchedulerManager {
@@ -51,6 +51,7 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManag
 		schedulerStorage: schedulerStorage,
 		operationManager: operationManager,
 		roomStorage:      roomStorage,
+		logger:           zap.L().With(zap.String("service", "scheduler_manager")),
 	}
 }
 
@@ -78,7 +79,7 @@ func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entit
 		return nil, fmt.Errorf("failing in creating the operation: %s: %s", create_scheduler.OperationName, err)
 	}
 
-	zap.L().Info("scheduler enqueued to be created", zap.String("scheduler", scheduler.Name), zap.String("operation", op.ID))
+	s.logger.Info("scheduler enqueued to be created", zap.String("scheduler", scheduler.Name), zap.String("operation", op.ID))
 
 	return s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
 }
