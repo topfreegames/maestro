@@ -85,5 +85,5 @@ func semanticValidate(fl validator.FieldLevel) bool {
 }
 
 func kubeResourceNameValidate(fl validator.FieldLevel) bool {
-	return validations.IsNameValidOnKube(fl.Field().String())
+	return validations.IsKubeResourceNameValid(fl.Field().String())
 }

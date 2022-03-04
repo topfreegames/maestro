@@ -26,78 +26,78 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsMaxSurgeValid(t *testing.T) {
 	t.Run("with success when max surge is a number greater than zero", func(t *testing.T) {
 		maxSurgeValid := IsMaxSurgeValid("5")
-		require.True(t, maxSurgeValid)
+		assert.True(t, maxSurgeValid)
 	})
 
 	t.Run("with success when maxSurge is a number greater than zero with suffix '%'", func(t *testing.T) {
 		maxSurgeValid := IsMaxSurgeValid("5%")
-		require.True(t, maxSurgeValid)
+		assert.True(t, maxSurgeValid)
 	})
 
 	t.Run("fails when maxSurge is empty", func(t *testing.T) {
 		maxSurgeValid := IsMaxSurgeValid("")
-		require.False(t, maxSurgeValid)
+		assert.False(t, maxSurgeValid)
 	})
 
 	t.Run("fails when maxSurge is less or equal zero", func(t *testing.T) {
 		maxSurgeValid := IsMaxSurgeValid("0")
-		require.False(t, maxSurgeValid)
+		assert.False(t, maxSurgeValid)
 	})
 }
 
 func TestIsImagePullPolicySupported(t *testing.T) {
 	t.Run("with success when policy is supported by maestro", func(t *testing.T) {
 		supported := IsImagePullPolicySupported("Always")
-		require.True(t, supported)
+		assert.True(t, supported)
 	})
 
 	t.Run("fails when policy is not supported by maestro", func(t *testing.T) {
 		wrongPolicy := "unsupported"
 		supported := IsImagePullPolicySupported(wrongPolicy)
-		require.False(t, supported)
+		assert.False(t, supported)
 	})
 }
 
 func TestIsProtocolSupported(t *testing.T) {
 	t.Run("with success when port protocol is supported by maestro", func(t *testing.T) {
 		supported := IsProtocolSupported("tcp")
-		require.True(t, supported)
+		assert.True(t, supported)
 	})
 
 	t.Run("fails when port protocol is not supported by maestro", func(t *testing.T) {
 		wrongProtocol := "unsupported"
 		supported := IsProtocolSupported(wrongProtocol)
-		require.False(t, supported)
+		assert.False(t, supported)
 	})
 }
 
 func TestIsVersionValid(t *testing.T) {
 	t.Run("with success when semantic version is valid", func(t *testing.T) {
 		valid := IsVersionValid("1.0.0-rc")
-		require.True(t, valid)
+		assert.True(t, valid)
 	})
 
 	t.Run("fails when policy is not supported by maestro", func(t *testing.T) {
 		invalid := IsVersionValid("0x0x0")
-		require.False(t, invalid)
+		assert.False(t, invalid)
 	})
 }
 
-func TestIsNameValidOnKube(t *testing.T) {
+func TestIsKubeResourceNameValid(t *testing.T) {
 	t.Run("should succeed - name is valid", func(t *testing.T) {
 		nameMinLength := "a"
 		usualName := "pod-sdf123-g1"
 		nameMaxLength := "pod-bgvaoifdbgalsidubalisdfgalisdfbgaidsfgyubalosidbyasolfugyba"
 
-		require.True(t, IsNameValidOnKube(nameMinLength))
-		require.True(t, IsNameValidOnKube(usualName))
-		require.True(t, IsNameValidOnKube(nameMaxLength))
+		assert.True(t, IsKubeResourceNameValid(nameMinLength))
+		assert.True(t, IsKubeResourceNameValid(usualName))
+		assert.True(t, IsKubeResourceNameValid(nameMaxLength))
 	})
 
 	invalidCharactersBorders := "-$*_./#%()&^'\"\\Ωœ∑ø˚¬≤µ˜∫≈çå"
@@ -105,26 +105,26 @@ func TestIsNameValidOnKube(t *testing.T) {
 	t.Run("should fail - name starts with invalid characters", func(t *testing.T) {
 		for _, char := range invalidCharactersBorders {
 			name := fmt.Sprintf("%cpod", char)
-			require.False(t, IsNameValidOnKube(name))
+			assert.False(t, IsKubeResourceNameValid(name))
 		}
 	})
 
 	t.Run("should fail - name have invalid characters", func(t *testing.T) {
 		for _, char := range invalidCharactersMiddle {
 			name := fmt.Sprintf("pod%cpod", char)
-			require.False(t, IsNameValidOnKube(name))
+			assert.False(t, IsKubeResourceNameValid(name))
 		}
 	})
 
 	t.Run("should fail - name ends with invalid characters", func(t *testing.T) {
 		for _, char := range invalidCharactersBorders {
 			name := fmt.Sprintf("pod%c", char)
-			require.False(t, IsNameValidOnKube(name))
+			assert.False(t, IsKubeResourceNameValid(name))
 		}
 	})
 
 	t.Run("should fail - name is too long", func(t *testing.T) {
 		nameMaxLengthPlusOne := "pod-bgvaoifdbgalsidubalisdfgalisdfbgaidsfgyubalosidbyasolfugyba1"
-		require.False(t, IsNameValidOnKube(nameMaxLengthPlusOne))
+		assert.False(t, IsKubeResourceNameValid(nameMaxLengthPlusOne))
 	})
 }

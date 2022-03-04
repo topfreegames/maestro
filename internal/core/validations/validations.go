@@ -80,10 +80,10 @@ func IsVersionValid(version string) bool {
 	return err == nil
 }
 
-// IsNameValidOnKube check if name is valid for kubernetes resources (RFC 1123)
+// IsKubeResourceNameValid check if name is valid for kubernetes resources (RFC 1123)
 // Since regexp does not support lookbehind, we test directly the last character before
 // matching the string name.
-func IsNameValidOnKube(name string) bool {
+func IsKubeResourceNameValid(name string) bool {
 	const (
 		minNameLength           = 1
 		maxNameLength           = 63
