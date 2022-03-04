@@ -75,7 +75,7 @@ const (
 	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
 )
 
-func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig) ports.OperationManager {
+func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig, schedulerStorage ports.SchedulerStorage) ports.OperationManager {
 	return &operation_manager.OperationManager{
 		Flow:                            flow,
 		Storage:                         storage,
@@ -83,6 +83,7 @@ func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorag
 		OperationCancelFunctions:        operation_manager.NewOperationCancelFunctions(),
 		LeaseStorage:                    leaseStorage,
 		Config:                          config,
+		SchedulerStorage:                schedulerStorage,
 	}
 }
 
