@@ -43,11 +43,12 @@ import (
 )
 
 func TestCreateNewSchedulerVersion(t *testing.T) {
+	game := "create-new-scheduler-version-game"
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("Should Succeed - create minor version, no pods replaces", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -126,7 +127,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Succeed - create major change, all pods are changed", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -215,7 +216,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Fail - When scheduler when sending invalid request to update endpoint it fails fast", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			invalidUpdateRequest := &maestroApiV1.NewSchedulerVersionRequest{}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -235,7 +236,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Fail - image of GRU is invalid. Operation fails, version and pods are unchanged", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)

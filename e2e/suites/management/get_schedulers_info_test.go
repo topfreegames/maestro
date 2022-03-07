@@ -45,7 +45,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 			maestro,
 			managementApiClient,
 			kubeClient,
-			"getschedulerinfo-game",
+			"get-schedulerinfo-game",
 			[]string{"sh", "-c", "tail -f /dev/null"},
 		)
 
@@ -53,6 +53,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 			t,
 			maestro,
 			managementApiClient,
+			"get-schedulers-info-game",
 			kubeClient,
 		)
 
@@ -65,7 +66,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/info?game=%s", firstScheduler.Game), getSchedulersRequest, getSchedulersResponse)
 
 			require.NoError(t, err)
-			require.Len(t, getSchedulersResponse.Schedulers, 1)
+			require.NotEmpty(t, getSchedulersResponse.Schedulers, 1)
 			require.Equal(t, firstScheduler.Name, getSchedulersResponse.Schedulers[0].Name)
 			require.Equal(t, firstScheduler.Game, getSchedulersResponse.Schedulers[0].Game)
 			require.Equal(t, firstScheduler.State, getSchedulersResponse.Schedulers[0].State)

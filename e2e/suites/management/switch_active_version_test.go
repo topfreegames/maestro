@@ -41,11 +41,12 @@ import (
 )
 
 func TestSwitchActiveVersion(t *testing.T) {
+	game := "switch-active-version-game"
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("Should Succeed - create minor version, rollback version", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -151,7 +152,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 		t.Run("Should Succeed - create major change, rollback version", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -280,7 +281,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 		t.Run("Should fail - version does not exist", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)

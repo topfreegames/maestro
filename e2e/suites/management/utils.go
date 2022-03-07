@@ -228,15 +228,15 @@ func addStubRequestToMockedGrpcServer(stubFileName string) error {
 	return nil
 }
 
-func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.MaestroInstance, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface) (*maestroApiV1.Scheduler, error) {
+func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.MaestroInstance, managementApiClient *framework.APIClient, game string, kubeClient kubernetes.Interface) (*maestroApiV1.Scheduler, error) {
 	// Create scheduler
 	scheduler, err := createSchedulerAndWaitForIt(
 		t,
 		maestro,
 		managementApiClient,
 		kubeClient,
-		"test",
-		[]string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
+		game,
+		[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
 			"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 	)
