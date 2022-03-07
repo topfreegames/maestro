@@ -69,7 +69,7 @@ func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports
 		Runtime:         runtime,
 		EventsService:   eventsService,
 		Config:          config,
-		Logger:          zap.L().With(zap.String("service", "rooms_api")),
+		Logger:          zap.L().With(zap.String("component", "service"), zap.String("service", "room_manager")),
 	}
 }
 

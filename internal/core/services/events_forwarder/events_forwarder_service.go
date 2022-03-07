@@ -60,7 +60,7 @@ func NewEventsForwarderService(
 ) ports.EventsService {
 	return &EventsForwarderService{
 		eventsForwarder,
-		zap.L().With(zap.String("service", "rooms_api")),
+		zap.L().With(zap.String("component", "service"), zap.String("service", "events_forwarder")),
 		schedulerStorage,
 		instanceStorage,
 		schedulerCache,

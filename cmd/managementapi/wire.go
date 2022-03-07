@@ -58,7 +58,6 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 		// api handlers
 		handlers.ProvideSchedulersHandler,
 		handlers.ProvideOperationsHandler,
-		handlers.ProvidePingHandler,
 		provideManagementMux,
 
 		// config
@@ -68,9 +67,8 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 	return &runtime.ServeMux{}, nil
 }
 
-func provideManagementMux(ctx context.Context, pingHandler *handlers.PingHandler, schedulersHandler *handlers.SchedulersHandler, operationsHandler *handlers.OperationsHandler) *runtime.ServeMux {
+func provideManagementMux(ctx context.Context, schedulersHandler *handlers.SchedulersHandler, operationsHandler *handlers.OperationsHandler) *runtime.ServeMux {
 	mux := runtime.NewServeMux()
-	_ = api.RegisterPingServiceHandlerServer(ctx, mux, pingHandler)
 	_ = api.RegisterSchedulersServiceHandlerServer(ctx, mux, schedulersHandler)
 	_ = api.RegisterOperationsServiceHandlerServer(ctx, mux, operationsHandler)
 
