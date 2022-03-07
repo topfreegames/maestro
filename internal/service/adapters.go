@@ -31,11 +31,9 @@ import (
 
 	scheduleradapters "github.com/topfreegames/maestro/internal/adapters/scheduler"
 
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-	"go.uber.org/zap"
-
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
@@ -76,28 +74,11 @@ const (
 )
 
 func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig, schedulerStorage ports.SchedulerStorage) ports.OperationManager {
-	return &operation_manager.OperationManager{
-		Flow:                            flow,
-		Storage:                         storage,
-		OperationDefinitionConstructors: operationDefinitionConstructors,
-		OperationCancelFunctions:        operation_manager.NewOperationCancelFunctions(),
-		LeaseStorage:                    leaseStorage,
-		Config:                          config,
-		SchedulerStorage:                schedulerStorage,
-	}
+	return operation_manager.New(flow, storage, operationDefinitionConstructors, leaseStorage, config, schedulerStorage)
 }
 
 func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config room_manager.RoomManagerConfig) ports.RoomManager {
-	return &room_manager.RoomManager{
-		Clock:           clock,
-		PortAllocator:   portAllocator,
-		RoomStorage:     roomStorage,
-		InstanceStorage: instanceStorage,
-		Runtime:         runtime,
-		EventsService:   eventsService,
-		Config:          config,
-		Logger:          zap.L().With(zap.String("service", "rooms_api")),
-	}
+	return room_manager.New(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
 }
 
 func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
