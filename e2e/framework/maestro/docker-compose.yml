@@ -52,7 +52,7 @@ services:
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
         MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
     ports:
-      - "8060:8060"
+      - "8061:8061"
     volumes:
       - ../../../kubeconfig:/kubeconfig
     command: [start, runtime-watcher]
@@ -72,7 +72,7 @@ services:
         MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL: "https://k3s_server:6443"
         MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL: "redis://redis:6379/0"
     ports:
-      - "8050:8050"
+      - "8051:8051"
     volumes:
       - ../../../kubeconfig:/kubeconfig
     command: [start, worker]

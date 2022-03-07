@@ -62,7 +62,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 							Name:  "example",
 							Image: "alpine:3.15.0",
 							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
-								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
@@ -167,7 +167,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 							Name:  "example-update",
 							Image: "alpine:3.15.0",
 							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
-								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
@@ -296,7 +296,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 							Name:  "example-update",
 							Image: "alpine:3.15.0",
 							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
-								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{

@@ -97,7 +97,7 @@ func TestAddRooms(t *testing.T) {
 				kubeClient,
 				"test",
 				[]string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
-					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+					"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"})
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
@@ -117,7 +117,7 @@ func TestAddRooms(t *testing.T) {
 				require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
 				require.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
 				return true
-			}, 240*time.Second, time.Second)
+			}, 240*time.Second, 100*time.Millisecond)
 
 			pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -127,7 +127,7 @@ func TestAddRooms(t *testing.T) {
 				room, err := roomsStorage.GetRoom(context.Background(), scheduler.Name, pods.Items[0].ObjectMeta.Name)
 
 				return err == nil && room.Status == game_room.GameStatusReady
-			}, time.Minute, time.Second)
+			}, time.Minute, 100*time.Millisecond)
 		})
 
 		t.Run("when trying to add rooms to a nonexistent scheduler then the operation fails", func(t *testing.T) {
