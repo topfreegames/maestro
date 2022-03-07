@@ -27,10 +27,11 @@ package operation_manager
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"testing"
 	"time"
+
+	"errors"
+	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -41,10 +42,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
-
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
+
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
+
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 )
 
