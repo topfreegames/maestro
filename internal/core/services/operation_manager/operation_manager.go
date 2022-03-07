@@ -44,10 +44,11 @@ type OperationManager struct {
 	LeaseStorage                    ports.OperationLeaseStorage
 	Config                          OperationManagerConfig
 	OperationDefinitionConstructors map[string]operations.DefinitionConstructor
+	SchedulerStorage                ports.SchedulerStorage
 	Logger                          *zap.Logger
 }
 
-func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config OperationManagerConfig) *OperationManager {
+func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config OperationManagerConfig, schedulerStorage ports.SchedulerStorage) *OperationManager {
 	return &OperationManager{
 		Flow:                            flow,
 		Storage:                         storage,
@@ -55,6 +56,7 @@ func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefi
 		OperationCancelFunctions:        NewOperationCancelFunctions(),
 		LeaseStorage:                    leaseStorage,
 		Config:                          config,
+		SchedulerStorage:                schedulerStorage,
 		Logger:                          zap.L().With(zap.String("component", "service"), zap.String("service", "operation_manager")),
 	}
 }
@@ -174,7 +176,17 @@ func (om *OperationManager) FinishOperation(ctx context.Context, op *operation.O
 }
 
 func (om *OperationManager) EnqueueOperationCancellationRequest(ctx context.Context, schedulerName, operationID string) error {
-	err := om.Flow.EnqueueOperationCancellationRequest(ctx, ports.OperationCancellationRequest{
+	_, err := om.SchedulerStorage.GetScheduler(ctx, schedulerName)
+	if err != nil {
+		return fmt.Errorf("failed to fetch scheduler from storage: %w", err)
+	}
+
+	_, _, err = om.Storage.GetOperation(ctx, schedulerName, operationID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch operation from storage: %w", err)
+	}
+
+	err = om.Flow.EnqueueOperationCancellationRequest(ctx, ports.OperationCancellationRequest{
 		SchedulerName: schedulerName,
 		OperationID:   operationID,
 	})

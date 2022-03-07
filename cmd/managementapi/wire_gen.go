@@ -42,7 +42,7 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 	if err != nil {
 		return nil, err
 	}
-	operationManager := service.NewOperationManager(operationFlow, operationStorage, v, operationLeaseStorage, operationManagerConfig)
+	operationManager := service.NewOperationManager(operationFlow, operationStorage, v, operationLeaseStorage, operationManagerConfig, schedulerStorage)
 	roomStorage, err := service.NewRoomStorageRedis(conf)
 	if err != nil {
 		return nil, err
