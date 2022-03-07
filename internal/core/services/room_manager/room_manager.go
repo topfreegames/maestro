@@ -94,6 +94,11 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 		return nil, nil, err
 	}
 
+	err = m.InstanceStorage.UpsertInstance(ctx, instance)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	room := &game_room.GameRoom{
 		ID:          instance.ID,
 		SchedulerID: scheduler.Name,
@@ -101,7 +106,6 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 		Status:      game_room.GameStatusPending,
 		LastPingAt:  m.Clock.Now(),
 	}
-
 	err = m.RoomStorage.CreateRoom(ctx, room)
 	if err != nil {
 		return nil, nil, err
