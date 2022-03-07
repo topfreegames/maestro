@@ -282,13 +282,13 @@ func (h *SchedulersHandler) fromEntitySchedulerVersionListToResponse(entity []*e
 }
 
 func (h *SchedulersHandler) fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
-	return &game_room.Spec{
-		Version:                apiSpec.GetVersion(),
-		TerminationGracePeriod: time.Duration(apiSpec.GetTerminationGracePeriod()),
-		Containers:             h.fromApiContainers(apiSpec.GetContainers()),
-		Toleration:             apiSpec.GetToleration(),
-		Affinity:               apiSpec.GetAffinity(),
-	}
+	return game_room.NewSpec(
+		"",
+		time.Duration(apiSpec.GetTerminationGracePeriod()),
+		h.fromApiContainers(apiSpec.GetContainers()),
+		apiSpec.GetToleration(),
+		apiSpec.GetAffinity(),
+	)
 }
 
 func (h *SchedulersHandler) fromApiContainers(apiContainers []*api.Container) []game_room.Container {

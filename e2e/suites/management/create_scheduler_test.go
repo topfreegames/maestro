@@ -48,7 +48,6 @@ func TestCreateScheduler(t *testing.T) {
 			Game:     "test",
 			MaxSurge: "10%",
 			Spec: &maestrov1.Spec{
-				Version:                "v1.1",
 				TerminationGracePeriod: 15,
 				Containers: []*maestrov1.Container{
 					{
