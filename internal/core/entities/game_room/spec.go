@@ -38,6 +38,9 @@ type Spec struct {
 }
 
 func NewSpec(version string, terminationGracePeriod time.Duration, containers []Container, toleration string, affinity string) *Spec {
+	if version == "" {
+		version = "v1.0.0"
+	}
 	return &Spec{
 		Version:                version,
 		TerminationGracePeriod: terminationGracePeriod,

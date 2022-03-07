@@ -556,7 +556,6 @@ func TestCreateScheduler(t *testing.T) {
 		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].ImagePullPolicy' Error:Field validation for 'ImagePullPolicy' failed on the 'image_pull_policy' tag")
 		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Requests.Memory' Error:Field validation for 'Memory' failed on the 'required' tag")
 		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.TerminationGracePeriod' Error:Field validation for 'TerminationGracePeriod' failed on the 'gt' tag")
-		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Version' Error:Field validation for 'Version' failed on the 'required' tag")
 		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Command' Error:Field validation for 'Command' failed on the 'required' tag")
 		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Game' Error:Field validation for 'Game' failed on the 'required' tag")
 		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Requests.CPU' Error:Field validation for 'CPU' failed on the 'required' tag")

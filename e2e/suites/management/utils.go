@@ -52,7 +52,6 @@ func createSchedulerAndWaitForIt(
 		Game:     game,
 		MaxSurge: "10%",
 		Spec: &maestroApiV1.Spec{
-			Version:                "v1.1",
 			TerminationGracePeriod: 15,
 			Containers: []*maestroApiV1.Container{
 				{
@@ -138,7 +137,6 @@ func createSchedulerWithForwardersAndWaitForIt(
 		Name: schedulerName,
 		Game: "test",
 		Spec: &maestroApiV1.Spec{
-			Version:                "v1.1",
 			TerminationGracePeriod: 15,
 			Containers: []*maestroApiV1.Container{
 				{
