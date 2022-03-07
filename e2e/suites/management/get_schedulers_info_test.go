@@ -84,7 +84,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/info?game=%s", secondScheduler.Game), getSchedulersRequest, getSchedulersResponse)
 
 			require.NoError(t, err)
-			require.Len(t, getSchedulersResponse.Schedulers, 1)
+			require.NotEmpty(t, getSchedulersResponse.Schedulers)
 			require.Equal(t, secondScheduler.Name, getSchedulersResponse.Schedulers[0].Name)
 			require.Equal(t, secondScheduler.Game, getSchedulersResponse.Schedulers[0].Game)
 			require.Equal(t, secondScheduler.State, getSchedulersResponse.Schedulers[0].State)
