@@ -471,7 +471,7 @@ func TestCreateScheduler(t *testing.T) {
 							CPU:    "200m",
 						},
 						Ports: []game_room.ContainerPort{{
-							Name:     "container-port-name",
+							Name:     "port-name",
 							Protocol: "tcp",
 							Port:     12345,
 							HostPort: 54321,
