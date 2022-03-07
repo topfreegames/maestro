@@ -112,6 +112,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 		roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoomReady, nil)
 		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil)
+		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
 
 		roomStorageStatusWatcher.EXPECT().Stop()
 
@@ -130,6 +131,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 		roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoom, nil)
 		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil)
+		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
 
 		roomStorageStatusWatcher.EXPECT().Stop()
 		roomStorageStatusWatcher.EXPECT().ResultChan()
@@ -166,6 +168,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
 			Containers: []game_room.Container{container1, container2},
 		}).Return(&gameRoomInstance, nil)
+		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
 
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(porterrors.NewErrUnexpected("error storing room on redis"))
 
@@ -177,6 +180,19 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 
 	t.Run("when game room creation fails while allocating ports then it returns nil with proper error", func(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
+
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		require.Error(t, err)
+		require.Nil(t, room)
+		require.Nil(t, instance)
+	})
+
+	t.Run("when upsert instance fails then it returns nil with proper error", func(t *testing.T) {
+		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
+			Containers: []game_room.Container{container1, container2},
+		}).Return(&gameRoomInstance, nil)
+		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(errors.New("error"))
 
 		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
 		require.Error(t, err)

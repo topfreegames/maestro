@@ -102,6 +102,11 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 		LastPingAt:  m.Clock.Now(),
 	}
 
+	err = m.InstanceStorage.UpsertInstance(ctx, instance)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	err = m.RoomStorage.CreateRoom(ctx, room)
 	if err != nil {
 		return nil, nil, err
