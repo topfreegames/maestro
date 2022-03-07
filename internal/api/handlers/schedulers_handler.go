@@ -25,6 +25,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"github.com/go-playground/validator/v10"
 	"strings"
 	"time"
 
@@ -120,8 +121,9 @@ func (h *SchedulersHandler) GetSchedulerVersions(ctx context.Context, request *a
 func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
 	scheduler, err := h.fromApiCreateSchedulerRequestToEntity(request)
 	if err != nil {
-		h.logger.Error("error parsing scheduler", zap.Any("schedulerName", request.GetName()), zap.Error(err))
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		apiValidationError := parseValidationError(err.(validator.ValidationErrors))
+		h.logger.Error("error parsing scheduler", zap.Any("schedulerName", request.GetName()), zap.Error(apiValidationError))
+		return nil, status.Error(codes.InvalidArgument, apiValidationError.Error())
 	}
 
 	scheduler, err = h.schedulerManager.CreateScheduler(ctx, scheduler)
@@ -165,7 +167,13 @@ func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.Remove
 }
 
 func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *api.NewSchedulerVersionRequest) (*api.NewSchedulerVersionResponse, error) {
-	scheduler, _ := h.fromApiNewSchedulerVersionRequestToEntity(request)
+	scheduler, err := h.fromApiNewSchedulerVersionRequestToEntity(request)
+	if err != nil {
+		apiValidationError := parseValidationError(err.(validator.ValidationErrors))
+		h.logger.Error("error parsing scheduler version", zap.Any("schedulerName", request.GetName()), zap.Error(apiValidationError))
+		return nil, status.Error(codes.InvalidArgument, apiValidationError.Error())
+	}
+
 	operation, err := h.schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
 
 	if err != nil {

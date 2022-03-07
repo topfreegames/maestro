@@ -44,7 +44,7 @@ type ContainerResources struct {
 }
 
 type ContainerPort struct {
-	Name     string `validate:"required"`
+	Name     string `validate:"required,max=15"`
 	Protocol string `validate:"required,ports_protocol"`
 	Port     int    `validate:"required"`
 	HostPort int
