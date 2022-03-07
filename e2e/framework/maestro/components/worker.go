@@ -51,7 +51,7 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 	}
 
 	err := helpers.TimedRetry(func() error {
-		res, err := client.Get("http://127.0.0.1:9096/healthz")
+		res, err := client.Get("http://127.0.0.1:8050/healthz")
 		if err != nil {
 			return err
 		}

@@ -42,7 +42,7 @@ type RoomsApiServer struct {
 }
 
 func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
-	address := "http://localhost:9097"
+	address := "http://localhost:8070"
 	client := &http.Client{}
 
 	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
@@ -56,7 +56,7 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 	}
 
 	err := helpers.TimedRetry(func() error {
-		res, err := client.Get("http://localhost:9098/healthz")
+		res, err := client.Get("http://localhost:8071/healthz")
 		if err != nil {
 			return err
 		}

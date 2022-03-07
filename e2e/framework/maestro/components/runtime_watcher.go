@@ -51,7 +51,7 @@ func ProvideRuntimeWatcher(maestroPath string) (*RuntimeWatcherServer, error) {
 	}
 
 	err := helpers.TimedRetry(func() error {
-		res, err := client.Get("http://localhost:9099/healthz")
+		res, err := client.Get("http://localhost:8060/healthz")
 		if err != nil {
 			return err
 		}
