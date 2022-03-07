@@ -47,6 +47,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -429,7 +430,6 @@ func TestGetSchedulerVersions(t *testing.T) {
 }
 
 func TestCreateScheduler(t *testing.T) {
-
 	dirPath, _ := os.Getwd()
 
 	err := validations.RegisterValidations()
@@ -512,13 +512,18 @@ func TestCreateScheduler(t *testing.T) {
 		require.NotNil(t, schedulerContent)
 		require.True(t, ok)
 
-		require.Equal(t, "game-name", schedulerContent["game"])
-		require.Equal(t, "scheduler-name-1", schedulerContent["name"])
-		require.NotNil(t, schedulerContent["portRange"])
-		require.Equal(t, "creating", schedulerContent["state"])
-		require.Equal(t, "v1.0.0", schedulerContent["version"])
-		require.Equal(t, "10%", schedulerContent["maxSurge"])
-		require.NotNil(t, schedulerContent["createdAt"])
+		assert.Equal(t, "game-name", schedulerContent["game"])
+		assert.Equal(t, "scheduler-name-1", schedulerContent["name"])
+		assert.NotNil(t, schedulerContent["portRange"])
+		assert.Equal(t, "creating", schedulerContent["state"])
+
+		specContent, ok := schedulerContent["spec"].(map[string]interface{})
+		require.NotNil(t, schedulerContent)
+		require.True(t, ok)
+
+		assert.Equal(t, "v1.0.0", specContent["version"])
+		assert.Equal(t, "10%", schedulerContent["maxSurge"])
+		assert.NotNil(t, schedulerContent["createdAt"])
 	})
 
 	t.Run("with failure", func(t *testing.T) {
@@ -544,20 +549,20 @@ func TestCreateScheduler(t *testing.T) {
 		require.NoError(t, err)
 
 		schedulerMessage, ok := body["message"]
-		require.True(t, ok)
-		require.NotNil(t, schedulerMessage)
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Name' Error:Field validation for 'Name' failed on the 'required' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Environment[0].Name' Error:Field validation for 'Name' failed on the 'required' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].ImagePullPolicy' Error:Field validation for 'ImagePullPolicy' failed on the 'image_pull_policy' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Requests.Memory' Error:Field validation for 'Memory' failed on the 'required' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.TerminationGracePeriod' Error:Field validation for 'TerminationGracePeriod' failed on the 'gt' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Version' Error:Field validation for 'Version' failed on the 'required' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Command' Error:Field validation for 'Command' failed on the 'required' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Game' Error:Field validation for 'Game' failed on the 'required' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Requests.CPU' Error:Field validation for 'CPU' failed on the 'required' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Name' Error:Field validation for 'Name' failed on the 'required' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.MaxSurge' Error:Field validation for 'MaxSurge' failed on the 'required' tag")
-		require.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Image' Error:Field validation for 'Image' failed on the 'required' tag")
+		assert.True(t, ok)
+		assert.NotNil(t, schedulerMessage)
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Name' Error:Field validation for 'Name' failed on the 'required' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Environment[0].Name' Error:Field validation for 'Name' failed on the 'required' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].ImagePullPolicy' Error:Field validation for 'ImagePullPolicy' failed on the 'image_pull_policy' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Requests.Memory' Error:Field validation for 'Memory' failed on the 'required' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.TerminationGracePeriod' Error:Field validation for 'TerminationGracePeriod' failed on the 'gt' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Version' Error:Field validation for 'Version' failed on the 'required' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Command' Error:Field validation for 'Command' failed on the 'required' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Game' Error:Field validation for 'Game' failed on the 'required' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Requests.CPU' Error:Field validation for 'CPU' failed on the 'required' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Name' Error:Field validation for 'Name' failed on the 'required' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.MaxSurge' Error:Field validation for 'MaxSurge' failed on the 'required' tag")
+		assert.Contains(t, schedulerMessage, "Key: 'Scheduler.Spec.Containers[0].Image' Error:Field validation for 'Image' failed on the 'required' tag")
 	})
 
 	t.Run("fails when scheduler already exists", func(t *testing.T) {

@@ -110,7 +110,7 @@ func TestGetScheduler(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, getSchedulerResponse.Scheduler.Name, scheduler.Name)
-			require.Equal(t, getSchedulerResponse.Scheduler.GetVersion(), "v1.1")
+			require.Equal(t, getSchedulerResponse.Scheduler.GetSpec().GetVersion(), "v1.1")
 		})
 
 	})

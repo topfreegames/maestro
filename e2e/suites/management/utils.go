@@ -48,36 +48,38 @@ func createSchedulerAndWaitForIt(
 	gruCommand []string) (*maestroApiV1.Scheduler, error) {
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
-		Name:                   schedulerName,
-		Game:                   game,
-		Version:                "v1.1",
-		MaxSurge:               "10%",
-		TerminationGracePeriod: 15,
-		Containers: []*maestroApiV1.Container{
-			{
-				Name:            "example",
-				Image:           "alpine",
-				Command:         gruCommand,
-				ImagePullPolicy: "Always",
-				Environment: []*maestroApiV1.ContainerEnvironment{
-					{
-						Name:  "ROOMS_API_ADDRESS",
-						Value: maestro.RoomsApiServer.ContainerInternalAddress,
+		Name:     schedulerName,
+		Game:     game,
+		MaxSurge: "10%",
+		Spec: &maestroApiV1.Spec{
+			Version:                "v1.1",
+			TerminationGracePeriod: 15,
+			Containers: []*maestroApiV1.Container{
+				{
+					Name:            "example",
+					Image:           "alpine",
+					Command:         gruCommand,
+					ImagePullPolicy: "Always",
+					Environment: []*maestroApiV1.ContainerEnvironment{
+						{
+							Name:  "ROOMS_API_ADDRESS",
+							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+						},
 					},
-				},
-				Requests: &maestroApiV1.ContainerResources{
-					Memory: "20Mi",
-					Cpu:    "10m",
-				},
-				Limits: &maestroApiV1.ContainerResources{
-					Memory: "20Mi",
-					Cpu:    "10m",
-				},
-				Ports: []*maestroApiV1.ContainerPort{
-					{
-						Name:     "default",
-						Protocol: "tcp",
-						Port:     80,
+					Requests: &maestroApiV1.ContainerResources{
+						Memory: "20Mi",
+						Cpu:    "10m",
+					},
+					Limits: &maestroApiV1.ContainerResources{
+						Memory: "20Mi",
+						Cpu:    "10m",
+					},
+					Ports: []*maestroApiV1.ContainerPort{
+						{
+							Name:     "default",
+							Protocol: "tcp",
+							Port:     80,
+						},
 					},
 				},
 			},
@@ -133,35 +135,37 @@ func createSchedulerWithForwardersAndWaitForIt(
 ) (*maestroApiV1.Scheduler, error) {
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
-		Name:                   schedulerName,
-		Game:                   "test",
-		Version:                "v1.1",
-		TerminationGracePeriod: 15,
-		Containers: []*maestroApiV1.Container{
-			{
-				Name:            "example",
-				Image:           "alpine",
-				Command:         gruCommand,
-				ImagePullPolicy: "Always",
-				Environment: []*maestroApiV1.ContainerEnvironment{
-					{
-						Name:  "ROOMS_API_ADDRESS",
-						Value: maestro.RoomsApiServer.ContainerInternalAddress,
+		Name: schedulerName,
+		Game: "test",
+		Spec: &maestroApiV1.Spec{
+			Version:                "v1.1",
+			TerminationGracePeriod: 15,
+			Containers: []*maestroApiV1.Container{
+				{
+					Name:            "example",
+					Image:           "alpine",
+					Command:         gruCommand,
+					ImagePullPolicy: "Always",
+					Environment: []*maestroApiV1.ContainerEnvironment{
+						{
+							Name:  "ROOMS_API_ADDRESS",
+							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+						},
 					},
-				},
-				Requests: &maestroApiV1.ContainerResources{
-					Memory: "20Mi",
-					Cpu:    "10m",
-				},
-				Limits: &maestroApiV1.ContainerResources{
-					Memory: "20Mi",
-					Cpu:    "10m",
-				},
-				Ports: []*maestroApiV1.ContainerPort{
-					{
-						Name:     "default",
-						Protocol: "tcp",
-						Port:     80,
+					Requests: &maestroApiV1.ContainerResources{
+						Memory: "20Mi",
+						Cpu:    "10m",
+					},
+					Limits: &maestroApiV1.ContainerResources{
+						Memory: "20Mi",
+						Cpu:    "10m",
+					},
+					Ports: []*maestroApiV1.ContainerPort{
+						{
+							Name:     "default",
+							Protocol: "tcp",
+							Port:     80,
+						},
 					},
 				},
 			},

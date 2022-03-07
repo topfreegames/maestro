@@ -86,12 +86,12 @@ func TestListSchedulers(t *testing.T) {
 			require.Equal(t, listSchedulersResponse.Schedulers[0].Game, firstScheduler.Game)
 			require.Len(t, listSchedulersResponse.Schedulers, 2)
 
-			listSchedulersRequest = &maestroApiV1.ListSchedulersRequest{Version: firstScheduler.Version}
+			listSchedulersRequest = &maestroApiV1.ListSchedulersRequest{Version: firstScheduler.Spec.Version}
 			listSchedulersResponse = &maestroApiV1.ListSchedulersResponse{}
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers?version=%s", firstScheduler.Version), listSchedulersRequest, listSchedulersResponse)
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers?version=%s", firstScheduler.Spec.Version), listSchedulersRequest, listSchedulersResponse)
 
 			require.NoError(t, err)
-			require.Equal(t, listSchedulersResponse.Schedulers[0].Version, firstScheduler.Version)
+			require.Equal(t, listSchedulersResponse.Schedulers[0].Version, firstScheduler.Spec.Version)
 			require.Len(t, listSchedulersResponse.Schedulers, 2)
 		})
 
@@ -114,7 +114,7 @@ func TestListSchedulers(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, listSchedulersResponse.Schedulers)
 
-			invalidSchedulerVersion := fmt.Sprintf("%s-invalid-version", firstScheduler.Version)
+			invalidSchedulerVersion := fmt.Sprintf("%s-invalid-version", firstScheduler.Spec.Version)
 			listSchedulersRequest = &maestroApiV1.ListSchedulersRequest{Version: invalidSchedulerVersion}
 			listSchedulersResponse = &maestroApiV1.ListSchedulersResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers?version=%s", invalidSchedulerVersion), listSchedulersRequest, listSchedulersResponse)

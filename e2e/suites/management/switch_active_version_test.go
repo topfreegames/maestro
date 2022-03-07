@@ -52,37 +52,39 @@ func TestSwitchActiveVersion(t *testing.T) {
 
 			// Update scheduler
 			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-				Name:                   scheduler.Name,
-				Game:                   "test",
-				MaxSurge:               "10%",
-				TerminationGracePeriod: 15,
-				Containers: []*maestroApiV1.Container{
-					{
-						Name:  "example",
-						Image: "alpine",
-						Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
-							"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-							"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
-						ImagePullPolicy: "Always",
-						Environment: []*maestroApiV1.ContainerEnvironment{
-							{
-								Name:  "ROOMS_API_ADDRESS",
-								Value: maestro.RoomsApiServer.ContainerInternalAddress,
+				Name:     scheduler.Name,
+				Game:     "test",
+				MaxSurge: "10%",
+				Spec: &maestroApiV1.Spec{
+					TerminationGracePeriod: 15,
+					Containers: []*maestroApiV1.Container{
+						{
+							Name:  "example",
+							Image: "alpine",
+							Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
+							ImagePullPolicy: "Always",
+							Environment: []*maestroApiV1.ContainerEnvironment{
+								{
+									Name:  "ROOMS_API_ADDRESS",
+									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+								},
 							},
-						},
-						Requests: &maestroApiV1.ContainerResources{
-							Memory: "20Mi",
-							Cpu:    "10m",
-						},
-						Limits: &maestroApiV1.ContainerResources{
-							Memory: "20Mi",
-							Cpu:    "10m",
-						},
-						Ports: []*maestroApiV1.ContainerPort{
-							{
-								Name:     "default",
-								Protocol: "tcp",
-								Port:     80,
+							Requests: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Limits: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Ports: []*maestroApiV1.ContainerPort{
+								{
+									Name:     "default",
+									Protocol: "tcp",
+									Port:     80,
+								},
 							},
 						},
 					},
@@ -116,7 +118,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 			}
 
 			// Switches to version v1.2.0
-			require.Equal(t, "v1.2.0", getSchedulerResponse.Scheduler.Version)
+			require.Equal(t, "v1.2.0", getSchedulerResponse.Scheduler.Spec.Version)
 
 			// Update scheduler
 			switchActiveVersionRequest := &maestroApiV1.SwitchActiveVersionRequest{
@@ -134,7 +136,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 			getSchedulerAfterSwitchResponse := &maestroApiV1.GetSchedulerResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerAfterSwitchResponse)
 			require.NoError(t, err)
-			require.NotEqual(t, getSchedulerAfterSwitchResponse.Scheduler.Version, getSchedulerResponse.Scheduler.Version)
+			require.NotEqual(t, getSchedulerAfterSwitchResponse.Scheduler.Spec.Version, getSchedulerResponse.Scheduler.Spec.Version)
 
 			podsAfterRollback, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -155,37 +157,39 @@ func TestSwitchActiveVersion(t *testing.T) {
 			require.NoError(t, err)
 
 			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-				Name:                   scheduler.Name,
-				Game:                   "test",
-				MaxSurge:               "10%",
-				TerminationGracePeriod: 15,
-				Containers: []*maestroApiV1.Container{
-					{
-						Name:  "example-update",
-						Image: "alpine",
-						Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
-							"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-							"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
-						ImagePullPolicy: "Always",
-						Environment: []*maestroApiV1.ContainerEnvironment{
-							{
-								Name:  "ROOMS_API_ADDRESS",
-								Value: maestro.RoomsApiServer.ContainerInternalAddress,
+				Name:     scheduler.Name,
+				Game:     "test",
+				MaxSurge: "10%",
+				Spec: &maestroApiV1.Spec{
+					TerminationGracePeriod: 15,
+					Containers: []*maestroApiV1.Container{
+						{
+							Name:  "example-update",
+							Image: "alpine",
+							Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
+							ImagePullPolicy: "Always",
+							Environment: []*maestroApiV1.ContainerEnvironment{
+								{
+									Name:  "ROOMS_API_ADDRESS",
+									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+								},
 							},
-						},
-						Requests: &maestroApiV1.ContainerResources{
-							Memory: "20Mi",
-							Cpu:    "10m",
-						},
-						Limits: &maestroApiV1.ContainerResources{
-							Memory: "20Mi",
-							Cpu:    "10m",
-						},
-						Ports: []*maestroApiV1.ContainerPort{
-							{
-								Name:     "default",
-								Protocol: "tcp",
-								Port:     80,
+							Requests: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Limits: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Ports: []*maestroApiV1.ContainerPort{
+								{
+									Name:     "default",
+									Protocol: "tcp",
+									Port:     80,
+								},
 							},
 						},
 					},
@@ -231,7 +235,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
 			}
 
-			require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Version)
+			require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Spec.Version)
 
 			// Rollback scheduler version
 			switchActiveVersionRequest := &maestroApiV1.SwitchActiveVersionRequest{
@@ -249,7 +253,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 			getSchedulerAfterSwitchResponse := &maestroApiV1.GetSchedulerResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerAfterSwitchResponse)
 			require.NoError(t, err)
-			require.NotEqual(t, getSchedulerAfterSwitchResponse.Scheduler.Version, getSchedulerResponse.Scheduler.Version)
+			require.NotEqual(t, getSchedulerAfterSwitchResponse.Scheduler.Spec.Version, getSchedulerResponse.Scheduler.Spec.Version)
 
 			podsAfterRollback, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -270,37 +274,39 @@ func TestSwitchActiveVersion(t *testing.T) {
 			require.NoError(t, err)
 
 			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-				Name:                   scheduler.Name,
-				Game:                   "test",
-				MaxSurge:               "10%",
-				TerminationGracePeriod: 15,
-				Containers: []*maestroApiV1.Container{
-					{
-						Name:  "example-update",
-						Image: "alpine",
-						Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
-							"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-							"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
-						ImagePullPolicy: "Always",
-						Environment: []*maestroApiV1.ContainerEnvironment{
-							{
-								Name:  "ROOMS_API_ADDRESS",
-								Value: maestro.RoomsApiServer.ContainerInternalAddress,
+				Name:     scheduler.Name,
+				Game:     "test",
+				MaxSurge: "10%",
+				Spec: &maestroApiV1.Spec{
+					TerminationGracePeriod: 15,
+					Containers: []*maestroApiV1.Container{
+						{
+							Name:  "example-update",
+							Image: "alpine",
+							Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
+							ImagePullPolicy: "Always",
+							Environment: []*maestroApiV1.ContainerEnvironment{
+								{
+									Name:  "ROOMS_API_ADDRESS",
+									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+								},
 							},
-						},
-						Requests: &maestroApiV1.ContainerResources{
-							Memory: "20Mi",
-							Cpu:    "10m",
-						},
-						Limits: &maestroApiV1.ContainerResources{
-							Memory: "20Mi",
-							Cpu:    "10m",
-						},
-						Ports: []*maestroApiV1.ContainerPort{
-							{
-								Name:     "default",
-								Protocol: "tcp",
-								Port:     80,
+							Requests: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Limits: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Ports: []*maestroApiV1.ContainerPort{
+								{
+									Name:     "default",
+									Protocol: "tcp",
+									Port:     80,
+								},
 							},
 						},
 					},
@@ -346,7 +352,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
 			}
 
-			require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Version)
+			require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Spec.Version)
 
 			// Rollback scheduler version
 			switchActiveVersionRequest := &maestroApiV1.SwitchActiveVersionRequest{

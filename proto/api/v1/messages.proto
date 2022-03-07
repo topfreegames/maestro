@@ -102,18 +102,16 @@ message Scheduler {
   string game = 2;
   // Current state of the scheduler.
   string state = 3;
-  // Scheduler current version.
-  string version = 4;
   // Port range for the scheduler rooms.
-  PortRange port_range = 5;
+  PortRange port_range = 4;
   // Time the scheduler was created.
-  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp created_at = 5;
   // Max surge of rooms 
-  string max_surge = 7;
+  string max_surge = 6;
   // GameRoom spec
-  Spec spec = 8;
+  Spec spec = 7;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 9;
+  repeated Forwarder forwarders = 8;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented

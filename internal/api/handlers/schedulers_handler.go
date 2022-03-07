@@ -216,13 +216,7 @@ func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.C
 		request.GetGame(),
 		entities.StateCreating,
 		request.GetMaxSurge(),
-		*game_room.NewSpec(
-			request.GetVersion(),
-			time.Duration(request.GetTerminationGracePeriod()),
-			h.fromApiContainers(request.GetContainers()),
-			request.GetToleration(),
-			request.GetAffinity(),
-		),
+		*h.fromApiSpec(request.GetSpec()),
 		entities.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
@@ -249,13 +243,7 @@ func (h *SchedulersHandler) fromApiNewSchedulerVersionRequestToEntity(request *a
 		request.GetGame(),
 		entities.StateCreating,
 		request.GetMaxSurge(),
-		*game_room.NewSpec(
-			"",
-			time.Duration(request.GetTerminationGracePeriod()),
-			h.fromApiContainers(request.GetContainers()),
-			request.GetToleration(),
-			request.GetAffinity(),
-		),
+		*h.fromApiSpec(request.GetSpec()),
 		entities.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
@@ -269,7 +257,6 @@ func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Sched
 		Name:      entity.Name,
 		Game:      entity.Game,
 		State:     entity.State,
-		Version:   entity.Spec.Version,
 		PortRange: getPortRange(entity.PortRange),
 		CreatedAt: timestamppb.New(entity.CreatedAt),
 		MaxSurge:  entity.MaxSurge,
@@ -287,6 +274,16 @@ func (h *SchedulersHandler) fromEntitySchedulerVersionListToResponse(entity []*e
 		}
 	}
 	return versions
+}
+
+func (h *SchedulersHandler) fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
+	return &game_room.Spec{
+		Version:                apiSpec.GetVersion(),
+		TerminationGracePeriod: time.Duration(apiSpec.GetTerminationGracePeriod()),
+		Containers:             h.fromApiContainers(apiSpec.GetContainers()),
+		Toleration:             apiSpec.GetToleration(),
+		Affinity:               apiSpec.GetAffinity(),
+	}
 }
 
 func (h *SchedulersHandler) fromApiContainers(apiContainers []*api.Container) []game_room.Container {

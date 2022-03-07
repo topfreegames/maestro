@@ -44,30 +44,32 @@ func TestCreateScheduler(t *testing.T) {
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		schedulerName := framework.GenerateSchedulerName()
 		createRequest := &maestrov1.CreateSchedulerRequest{
-			Name:                   schedulerName,
-			Game:                   "test",
-			Version:                "v1.1",
-			TerminationGracePeriod: 15,
-			MaxSurge:               "10%",
-			Containers: []*maestrov1.Container{
-				{
-					Name:            "example",
-					Image:           "nginx",
-					Command:         []string{"echo", "hello"},
-					ImagePullPolicy: "Always",
-					Requests: &maestrov1.ContainerResources{
-						Memory: "1",
-						Cpu:    "1",
-					},
-					Limits: &maestrov1.ContainerResources{
-						Memory: "1",
-						Cpu:    "1",
-					},
-					Ports: []*maestrov1.ContainerPort{
-						{
-							Name:     "default",
-							Protocol: "tcp",
-							Port:     80,
+			Name:     schedulerName,
+			Game:     "test",
+			MaxSurge: "10%",
+			Spec: &maestrov1.Spec{
+				Version:                "v1.1",
+				TerminationGracePeriod: 15,
+				Containers: []*maestrov1.Container{
+					{
+						Name:            "example",
+						Image:           "nginx",
+						Command:         []string{"echo", "hello"},
+						ImagePullPolicy: "Always",
+						Requests: &maestrov1.ContainerResources{
+							Memory: "1",
+							Cpu:    "1",
+						},
+						Limits: &maestrov1.ContainerResources{
+							Memory: "1",
+							Cpu:    "1",
+						},
+						Ports: []*maestrov1.ContainerPort{
+							{
+								Name:     "default",
+								Protocol: "tcp",
+								Port:     80,
+							},
 						},
 					},
 				},
