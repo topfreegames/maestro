@@ -200,7 +200,6 @@ func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Conte
 		return nil, err
 	}
 	opDef := &switch_active_version.SwitchActiveVersionDefinition{NewActiveScheduler: *newScheduler, ReplacePods: replacePods}
-
 	op, err := s.operationManager.CreateOperation(ctx, newScheduler.Name, opDef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)
@@ -237,7 +236,7 @@ func (s *SchedulerManager) SwitchActiveVersion(ctx context.Context, schedulerNam
 	}
 
 	isMajorChange := currentActiveVersion.IsMajorVersion(schedulerTargetVersion)
-	zap.S().Debugf("Change between version \"%v\" and \"%v\" is major: %v", currentActiveVersion.Spec.Version, schedulerTargetVersion.Spec.Version, isMajorChange)
+	s.logger.Sugar().Infof("Change between version \"%v\" and \"%v\" is major: %v", currentActiveVersion.Spec.Version, schedulerTargetVersion.Spec.Version, isMajorChange)
 	op, err := s.EnqueueSwitchActiveVersionOperation(ctx, schedulerTargetVersion, isMajorChange)
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule operation: %w", err)
