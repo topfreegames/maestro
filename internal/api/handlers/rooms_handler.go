@@ -86,6 +86,7 @@ func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.Forw
 
 func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.UpdateRoomWithPingRequest) (*api.UpdateRoomWithPingResponse, error) {
 	gameRoom, err := h.fromApiUpdateRoomRequestToEntity(message)
+	h.logger.Info("Receiving ping request", zap.Any("message", message), zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName))
 	if err != nil {
 		h.logger.Error("error parsing ping request", zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName), zap.Any("ping", message), zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -101,6 +102,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
+	h.logger.Info("Room updated with ping successfully", zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName))
 	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 

@@ -96,9 +96,9 @@ func TestAddRooms(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+				[]string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
 					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'"})
+					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"})
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
 			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
@@ -115,6 +115,7 @@ func TestAddRooms(t *testing.T) {
 				}
 
 				require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
+				require.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
 				return true
 			}, 240*time.Second, time.Second)
 

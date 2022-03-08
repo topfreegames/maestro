@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -43,15 +45,13 @@ var (
 )
 
 type kubernetesWatcher struct {
-	mu sync.Mutex
-
+	mu          sync.Mutex
 	clientSet   kube.Interface
 	ctx         context.Context
 	resultsChan chan game_room.InstanceEvent
 	err         error
-
-	stopped  bool
-	stopChan chan struct{}
+	stopped     bool
+	stopChan    chan struct{}
 }
 
 func (kw *kubernetesWatcher) ResultChan() chan game_room.InstanceEvent {
@@ -117,7 +117,7 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		kw.stopWithError(err)
 		return
 	}
-
+	zap.L().Info("Received kubernetes event on runtime watcher", zap.Any("convertedPod", pod), zap.Any("convertedInstance", instance), zap.Any("obj", obj))
 	kw.resultsChan <- game_room.InstanceEvent{
 		Type:     eventType,
 		Instance: instance,
