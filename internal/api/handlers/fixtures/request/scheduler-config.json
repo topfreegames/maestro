@@ -27,7 +27,7 @@
         "cpu": "200m"
       },
       "ports": [{
-        "name": "container-port-name",
+        "name": "port-name",
         "protocol": "tcp",
         "port": 12345,
         "hostPort": 54321
