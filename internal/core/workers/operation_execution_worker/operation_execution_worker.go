@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
+
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -58,7 +60,7 @@ func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *workers.Wo
 		operationManager: opts.OperationManager,
 		executorsByName:  opts.OperationExecutors,
 		schedulerName:    scheduler.Name,
-		logger:           zap.L().With(zap.String("service", "worker"), zap.String("scheduler_name", scheduler.Name)),
+		logger:           zap.L().With(zap.String(logs.LogFieldServiceName, "worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
 
@@ -81,8 +83,8 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		}
 
 		loopLogger := w.logger.With(
-			zap.String("operation_id", op.ID),
-			zap.String("operation_definition", def.Name()),
+			zap.String(logs.LogFieldOperationID, op.ID),
+			zap.String(logs.LogFieldOperationDefinition, def.Name()),
 		)
 
 		if op.Status != operation.StatusPending {

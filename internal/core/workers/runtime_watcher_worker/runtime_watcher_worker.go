@@ -26,6 +26,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -54,7 +56,7 @@ func NewRuntimeWatcherWorker(scheduler *entities.Scheduler, opts *workers.Worker
 		scheduler:   scheduler,
 		roomManager: opts.RoomManager,
 		runtime:     opts.Runtime,
-		logger:      zap.L().With(zap.String("service", "runtime_watcher"), zap.String("scheduler_name", scheduler.Name)),
+		logger:      zap.L().With(zap.String(logs.LogFieldServiceName, "runtime_watcher"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
 

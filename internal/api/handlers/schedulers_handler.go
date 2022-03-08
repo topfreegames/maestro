@@ -30,6 +30,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
+
 	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -56,12 +58,12 @@ func ProvideSchedulersHandler(schedulerManager *scheduler_manager.SchedulerManag
 	return &SchedulersHandler{
 		schedulerManager: schedulerManager,
 		logger: zap.L().
-			With(zap.String("component", "handler"), zap.String("handler", "schedulers_handler")),
+			With(zap.String(logs.LogFieldComponent, "handler"), zap.String(logs.LogFieldHandlerName, "schedulers_handler")),
 	}
 }
 
 func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
-	h.logger.Info("handling list schedulers request", zap.String("game", message.GetGame()), zap.String("scheduler_name", message.GetName()))
+	h.logger.Info("handling list schedulers request", zap.String(logs.LogFieldGame, message.GetGame()), zap.String(logs.LogFieldSchedulerName, message.GetName()))
 	schedulerFilter := &filters.SchedulerFilter{
 		Name:    message.GetName(),
 		Game:    message.GetGame(),
@@ -78,13 +80,13 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 		schedulers[i] = h.fromEntitySchedulerToListResponse(entity)
 	}
 
-	h.logger.Info("finish handling list schedulers request", zap.String("game", message.GetGame()), zap.String("scheduler_name", message.GetName()))
+	h.logger.Info("finish handling list schedulers request", zap.String(logs.LogFieldGame, message.GetGame()), zap.String(logs.LogFieldSchedulerName, message.GetName()))
 
 	return &api.ListSchedulersResponse{Schedulers: schedulers}, nil
 }
 
 func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSchedulerRequest) (*api.GetSchedulerResponse, error) {
-	h.logger.Info("handling get scheduler request", zap.String("version", request.GetVersion()), zap.String("scheduler_name", request.GetSchedulerName()))
+	h.logger.Info("handling get scheduler request", zap.String("version", request.GetVersion()), zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	var scheduler *entities.Scheduler
 	var err error
 
@@ -97,39 +99,39 @@ func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSc
 	}
 
 	if err != nil {
-		h.logger.Error("error getting scheduler", zap.String("scheduler_name", schedulerName), zap.String("version", queryVersion), zap.Error(err))
+		h.logger.Error("error getting scheduler", zap.String(logs.LogFieldSchedulerName, schedulerName), zap.String("version", queryVersion), zap.Error(err))
 		if strings.Contains(err.Error(), "not found") {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	h.logger.Info("finish handling get scheduler request", zap.String("version", request.GetVersion()), zap.String("scheduler_name", request.GetSchedulerName()))
+	h.logger.Info("finish handling get scheduler request", zap.String("version", request.GetVersion()), zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 
 	return &api.GetSchedulerResponse{Scheduler: h.fromEntitySchedulerToResponse(scheduler)}, nil
 }
 
 func (h *SchedulersHandler) GetSchedulerVersions(ctx context.Context, request *api.GetSchedulerVersionsRequest) (*api.GetSchedulerVersionsResponse, error) {
-	h.logger.Info("handling get scheduler versions request", zap.String("scheduler_name", request.GetSchedulerName()))
+	h.logger.Info("handling get scheduler versions request", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	versions, err := h.schedulerManager.GetSchedulerVersions(ctx, request.GetSchedulerName())
 
 	if err != nil {
-		h.logger.Error("error getting scheduler versions", zap.String("scheduler_name", request.GetSchedulerName()), zap.Error(err))
+		h.logger.Error("error getting scheduler versions", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.Error(err))
 		if strings.Contains(err.Error(), "not found") {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	h.logger.Info("finish handling get scheduler versions request", zap.String("scheduler_name", request.GetSchedulerName()))
+	h.logger.Info("finish handling get scheduler versions request", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 
 	return &api.GetSchedulerVersionsResponse{Versions: h.fromEntitySchedulerVersionListToResponse(versions)}, nil
 }
 
 func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
-	h.logger.Info("handling create scheduler request", zap.String("scheduler_name", request.GetName()), zap.String("game", request.GetGame()))
+	h.logger.Info("handling create scheduler request", zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
 	scheduler, err := h.fromApiCreateSchedulerRequestToEntity(request)
 	if err != nil {
 		apiValidationError := parseValidationError(err.(validator.ValidationErrors))
-		h.logger.Error("error parsing scheduler", zap.Any("schedulerName", request.GetName()), zap.Error(apiValidationError))
+		h.logger.Error("error parsing scheduler", zap.Any(logs.LogFieldSchedulerName, request.GetName()), zap.Error(apiValidationError))
 		return nil, status.Error(codes.InvalidArgument, apiValidationError.Error())
 	}
 
@@ -141,46 +143,45 @@ func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.Cr
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	h.logger.Info("finish handling create scheduler request", zap.String("scheduler_name", request.GetName()), zap.String("game", request.GetGame()))
+	h.logger.Info("finish handling create scheduler request", zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
 
 	return &api.CreateSchedulerResponse{Scheduler: h.fromEntitySchedulerToResponse(scheduler)}, nil
 }
 
 func (h *SchedulersHandler) AddRooms(ctx context.Context, request *api.AddRoomsRequest) (*api.AddRoomsResponse, error) {
-	h.logger.Info("handling add rooms request", zap.String("scheduler_name", request.GetSchedulerName()))
+	h.logger.Info("handling add rooms request", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	operation, err := h.schedulerManager.AddRooms(ctx, request.GetSchedulerName(), request.GetAmount())
 
 	if err != nil {
-		h.logger.Error("error adding rooms to scheduler", zap.String("scheduler_name", request.GetSchedulerName()), zap.Int32("amount", request.GetAmount()), zap.Error(err))
+		h.logger.Error("error adding rooms to scheduler", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.Int32("amount", request.GetAmount()), zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	h.logger.Info("finish handling add rooms request", zap.String("scheduler_name", request.GetSchedulerName()))
+	h.logger.Info("finish handling add rooms request", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 
 	return &api.AddRoomsResponse{OperationId: operation.ID}, nil
 }
 
 func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.RemoveRoomsRequest) (*api.RemoveRoomsResponse, error) {
-	h.logger.Info("handling remove rooms request", zap.String("scheduler_name", request.GetSchedulerName()))
+	h.logger.Info("handling remove rooms request", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	operation, err := h.schedulerManager.RemoveRooms(ctx, request.GetSchedulerName(), int(request.GetAmount()))
 
 	if err != nil {
-		h.logger.Error("error removing rooms from scheduler", zap.String("scheduler_name", request.GetSchedulerName()), zap.Int32("amount", request.GetAmount()), zap.Error(err))
+		h.logger.Error("error removing rooms from scheduler", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.Int32("amount", request.GetAmount()), zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	h.logger.Info("finish handling remove rooms request", zap.String("scheduler_name", request.GetSchedulerName()))
+	h.logger.Info("finish handling remove rooms request", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	return &api.RemoveRoomsResponse{OperationId: operation.ID}, nil
 }
 
 func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *api.NewSchedulerVersionRequest) (*api.NewSchedulerVersionResponse, error) {
-	h.logger.Info("handling new scheduler version request", zap.String("scheduler_name", request.GetName()), zap.String("game", request.GetGame()))
-	scheduler, _ := h.fromApiNewSchedulerVersionRequestToEntity(request)
+	h.logger.Info("handling new scheduler version request", zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
 	scheduler, err := h.fromApiNewSchedulerVersionRequestToEntity(request)
 	if err != nil {
 		apiValidationError := parseValidationError(err.(validator.ValidationErrors))
@@ -191,40 +192,40 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 	operation, err := h.schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
 
 	if err != nil {
-		h.logger.Error("error creating new scheduler version", zap.String("scheduler_name", scheduler.Name), zap.Error(err))
+		h.logger.Error("error creating new scheduler version", zap.String(logs.LogFieldSchedulerName, scheduler.Name), zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	h.logger.Info("finish handling new scheduler version request", zap.String("scheduler_name", request.GetName()), zap.String("game", request.GetGame()))
+	h.logger.Info("finish handling new scheduler version request", zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
 
 	return &api.NewSchedulerVersionResponse{OperationId: operation.ID}, nil
 }
 
 func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *api.SwitchActiveVersionRequest) (*api.SwitchActiveVersionResponse, error) {
-	h.logger.Info("handling switch active version request", zap.String("scheduler_name", request.GetSchedulerName()))
+	h.logger.Info("handling switch active version request", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	operation, err := h.schedulerManager.SwitchActiveVersion(ctx, request.GetSchedulerName(), request.GetVersion())
 
 	if err != nil {
-		h.logger.Error("error switching active version", zap.String("scheduler_name", request.GetSchedulerName()), zap.String("version", request.GetVersion()), zap.Error(err))
+		h.logger.Error("error switching active version", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String("version", request.GetVersion()), zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	h.logger.Info("finish handling switch active version request", zap.String("scheduler_name", request.GetSchedulerName()))
+	h.logger.Info("finish handling switch active version request", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	return &api.SwitchActiveVersionResponse{OperationId: operation.ID}, nil
 }
 
 func (h *SchedulersHandler) GetSchedulersInfo(ctx context.Context, request *api.GetSchedulersInfoRequest) (*api.GetSchedulersInfoResponse, error) {
-	h.logger.Info("handling get schedulers info request", zap.String("game", request.GetGame()))
+	h.logger.Info("handling get schedulers info request", zap.String(logs.LogFieldGame, request.GetGame()))
 	filter := filters.SchedulerFilter{Game: request.GetGame()}
 	schedulers, err := h.schedulerManager.GetSchedulersInfo(ctx, &filter)
 
 	if err != nil {
-		h.logger.Error("error getting schedulers info", zap.String("game", request.GetGame()), zap.Error(err))
+		h.logger.Error("error getting schedulers info", zap.String(logs.LogFieldGame, request.GetGame()), zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
@@ -235,7 +236,7 @@ func (h *SchedulersHandler) GetSchedulersInfo(ctx context.Context, request *api.
 	for i, scheduler := range schedulers {
 		schedulersResponse[i] = fromEntitySchedulerInfoToListResponse(scheduler)
 	}
-	h.logger.Info("finish handling get schedulers info request", zap.String("game", request.GetGame()))
+	h.logger.Info("finish handling get schedulers info request", zap.String(logs.LogFieldGame, request.GetGame()))
 
 	return &api.GetSchedulersInfoResponse{
 		Schedulers: schedulersResponse,

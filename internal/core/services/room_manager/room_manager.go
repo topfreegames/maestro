@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/events"
+	"github.com/topfreegames/maestro/internal/core/logs"
 
 	"go.uber.org/zap"
 
@@ -69,7 +70,7 @@ func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports
 		Runtime:         runtime,
 		EventsService:   eventsService,
 		Config:          config,
-		Logger:          zap.L().With(zap.String("component", "service"), zap.String("service", "room_manager")),
+		Logger:          zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "room_manager")),
 	}
 }
 

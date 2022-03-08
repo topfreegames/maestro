@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/logs"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
@@ -59,10 +60,10 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 
 func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", op.DefinitionName),
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
 		zap.String("operation_phase", "Execute"),
-		zap.String("operation_id", op.ID),
+		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
 	if !ok {
@@ -102,10 +103,10 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 
 func (ex *CreateNewSchedulerVersionExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", op.DefinitionName),
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
 		zap.String("operation_phase", "OnError"),
-		zap.String("operation_id", op.ID),
+		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	if gameRoom, ok := ex.validationRoomIdsMap[op.SchedulerName]; ok {
 		err := ex.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, gameRoom)

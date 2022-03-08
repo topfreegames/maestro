@@ -27,6 +27,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
@@ -60,7 +62,7 @@ func NewEventsForwarderService(
 ) ports.EventsService {
 	return &EventsForwarderService{
 		eventsForwarder,
-		zap.L().With(zap.String("component", "service"), zap.String("service", "events_forwarder")),
+		zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "events_forwarder")),
 		schedulerStorage,
 		instanceStorage,
 		schedulerCache,

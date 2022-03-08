@@ -31,6 +31,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"go.uber.org/zap"
@@ -70,7 +71,7 @@ func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, sch
 		syncWorkersInterval:        configs.GetDuration(syncWorkersIntervalPath),
 		WorkerOptions:              workerOptions,
 		workersStopTimeoutDuration: configs.GetDuration(workersStopTimeoutDurationPath),
-		logger:                     zap.L().With(zap.String("component", "service"), zap.String("service", "workers_manager")),
+		logger:                     zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "workers_manager")),
 	}
 }
 

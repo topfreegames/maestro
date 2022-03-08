@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -50,9 +51,9 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 	}
 
 	logger := zap.L().With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", definition.Name()),
-		zap.String("operation_id", op.ID),
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
+		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 
 	logger.Debug("start deleting rooms", zap.Int("amount", len(rooms)))
