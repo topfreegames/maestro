@@ -309,7 +309,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 
 			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
-			require.Len(t, podsAfterUpdate, 2)
+			require.Len(t, podsAfterUpdate.Items, 2)
 
 			// Pod's haven't change
 			for i := 0; i < 2; i++ {
