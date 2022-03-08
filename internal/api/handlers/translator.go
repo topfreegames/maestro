@@ -20,32 +20,30 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package game_room
+package handlers
 
-type Container struct {
-	Name            string                 `validate:"required,kube_resource_name"`
-	Image           string                 `validate:"required"`
-	ImagePullPolicy string                 `validate:"required,image_pull_policy"`
-	Command         []string               `validate:"required"`
-	Environment     []ContainerEnvironment `validate:"dive"`
-	Requests        ContainerResources
-	Limits          ContainerResources
-	Ports           []ContainerPort `validate:"required,dive"`
-}
+import (
+	"errors"
+	"fmt"
+	"strings"
 
-type ContainerEnvironment struct {
-	Name  string `validate:"required"`
-	Value string
-}
+	"github.com/go-playground/validator/v10"
+	"github.com/topfreegames/maestro/internal/validations"
+)
 
-type ContainerResources struct {
-	Memory string `validate:"required"`
-	CPU    string `validate:"required"`
-}
+func parseValidationError(unparsedError error) error {
+	parsedError := unparsedError
+	switch unparsedErr := unparsedError.(type) {
+	case validator.ValidationErrors:
+		var errorMsg []string
+		errorMsg = append(errorMsg, "Validation Error:")
+		for _, err := range unparsedErr {
+			translator := validations.GetDefaultTranslator()
+			translatedMessage := fmt.Sprintf("%s: %s", err.Namespace(), err.Translate(translator))
+			errorMsg = append(errorMsg, translatedMessage)
+		}
+		parsedError = errors.New(strings.Join(errorMsg, "\n"))
+	}
 
-type ContainerPort struct {
-	Name     string `validate:"required,max=15"`
-	Protocol string `validate:"required,ports_protocol"`
-	Port     int    `validate:"required"`
-	HostPort int
+	return parsedError
 }

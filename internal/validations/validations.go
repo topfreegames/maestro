@@ -25,6 +25,9 @@ package validations
 import (
 	"errors"
 
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
+	enTranslations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/topfreegames/maestro/internal/core/validations"
 
 	"github.com/go-playground/validator/v10"
@@ -32,40 +35,55 @@ import (
 
 var (
 	Validate *validator.Validate
+	uni      *ut.UniversalTranslator
 )
 
 func RegisterValidations() error {
 	Validate = validator.New()
+	english := en.New()
+	uni = ut.New(english, english)
+	translator := GetDefaultTranslator()
+	_ = enTranslations.RegisterDefaultTranslations(Validate, translator)
 
 	err := Validate.RegisterValidation("semantic_version", semanticValidate)
 	if err != nil {
 		return errors.New("could not register semanticValidate")
 	}
+	addTranslation(Validate, "semantic_version", "{0} must follow the semantic version pattern")
 
 	err = Validate.RegisterValidation("image_pull_policy", imagePullPolicyValidate)
 	if err != nil {
 		return errors.New("could not register imagePullPolicyValidate")
 	}
+	addTranslation(Validate, "image_pull_policy", "{0} must be one of the following options: Always, Never, IfNotPresent")
 
 	err = Validate.RegisterValidation("ports_protocol", portsProtocolValidate)
 	if err != nil {
 		return errors.New("could not register portsProtocolValidate")
 	}
+	addTranslation(Validate, "ports_protocol", "{0} must be one of the following options: tcp, udp, sctp")
 
 	err = Validate.RegisterValidation("max_surge", maxSurgeValidate)
 	if err != nil {
 		return errors.New("could not register maxSurgeValidate")
 	}
+	addTranslation(Validate, "max_surge", "{0} must be a number greater than zero or a number greater than zero with suffix '%'")
 
 	err = Validate.RegisterValidation("kube_resource_name", kubeResourceNameValidate)
 	if err != nil {
 		return errors.New("could not register kubeResourceNameValidate")
 	}
+	addTranslation(Validate, "kube_resource_name", "{0} must follow the public RFC 1123 about naming conventions")
 
 	if Validate == nil {
 		return errors.New("it was not possible to register validations")
 	}
 	return nil
+}
+
+func GetDefaultTranslator() ut.Translator {
+	translator, _ := uni.GetTranslator("en")
+	return translator
 }
 
 func imagePullPolicyValidate(fl validator.FieldLevel) bool {
@@ -86,4 +104,23 @@ func semanticValidate(fl validator.FieldLevel) bool {
 
 func kubeResourceNameValidate(fl validator.FieldLevel) bool {
 	return validations.IsKubeResourceNameValid(fl.Field().String())
+}
+
+func addTranslation(validate *validator.Validate, tag string, errMessage string) {
+	registerFn := func(ut ut.Translator) error {
+		return ut.Add(tag, errMessage, false)
+	}
+
+	transFn := func(ut ut.Translator, fieldError validator.FieldError) string {
+		param := fieldError.Param()
+		tag := fieldError.Tag()
+
+		t, err := ut.T(tag, fieldError.Field(), param)
+		if err != nil {
+			return fieldError.(error).Error()
+		}
+		return t
+	}
+
+	_ = validate.RegisterTranslation(tag, GetDefaultTranslator(), registerFn, transFn)
 }
