@@ -235,6 +235,21 @@ func (mr *MockRoomStorageMockRecorder) GetAllRoomIDs(ctx, scheduler interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllRoomIDs", reflect.TypeOf((*MockRoomStorage)(nil).GetAllRoomIDs), ctx, scheduler)
 }
 
+// GetIsValidationRoom mocks base method.
+func (m *MockRoomStorage) GetIsValidationRoom(ctx context.Context, room *game_room.GameRoom) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIsValidationRoom", ctx, room)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIsValidationRoom indicates an expected call of GetIsValidationRoom.
+func (mr *MockRoomStorageMockRecorder) GetIsValidationRoom(ctx, room interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIsValidationRoom", reflect.TypeOf((*MockRoomStorage)(nil).GetIsValidationRoom), ctx, room)
+}
+
 // GetRoom mocks base method.
 func (m *MockRoomStorage) GetRoom(ctx context.Context, scheduler, roomID string) (*game_room.GameRoom, error) {
 	m.ctrl.T.Helper()

@@ -116,11 +116,12 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 
 	t.Run("game room without metadata", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-1",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:               "room-1",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusReady,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 		}
 		require.NoError(t, storage.CreateRoom(ctx, room))
 		assertRedisState(t, client, room)
@@ -128,11 +129,12 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 
 	t.Run("game room with metadata", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-2",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:               "room-2",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusReady,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
@@ -144,11 +146,12 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 
 	t.Run("error when creating existing room", func(t *testing.T) {
 		firstRoom := &game_room.GameRoom{
-			ID:          "room-3",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:               "room-3",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusReady,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
@@ -158,11 +161,12 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 		assertRedisState(t, client, firstRoom)
 
 		secondRoom := &game_room.GameRoom{
-			ID:          "room-3",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusOccupied,
-			LastPingAt:  lastPing,
+			ID:               "room-3",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusOccupied,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
@@ -180,11 +184,12 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 
 	t.Run("game room without metadata", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-1",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:               "room-1",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusReady,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -195,11 +200,12 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 
 	t.Run("game room with metadata", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-2",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:               "room-2",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusReady,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
@@ -643,4 +649,46 @@ func TestRedisStateStorage_GetRoomIDsByStatus(t *testing.T) {
 	terminatingRooms, err := storage.GetRoomIDsByStatus(ctx, "game", game_room.GameStatusTerminating)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{"room-5"}, terminatingRooms)
+}
+
+func TestRedisStateStorage_GetIsValidationRoom(t *testing.T) {
+	ctx := context.Background()
+	client := test.GetRedisConnection(t, redisAddress)
+	storage := NewRedisStateStorage(client)
+
+	t.Run("should succeed - game room is validation (false) info retrieved correctly", func(t *testing.T) {
+		room := &game_room.GameRoom{
+			ID:          "room-1",
+			SchedulerID: "game",
+		}
+		require.NoError(t, storage.CreateRoom(ctx, room))
+
+		boolIsValidationRoom, err := storage.GetIsValidationRoom(ctx, room)
+		require.NoError(t, err)
+		require.Equal(t, boolIsValidationRoom, false)
+	})
+
+	t.Run("should succeed - game room is validation (true) info retrieved correctly", func(t *testing.T) {
+		room := &game_room.GameRoom{
+			ID:               "room-2",
+			SchedulerID:      "game",
+			IsValidationRoom: true,
+		}
+		require.NoError(t, storage.CreateRoom(ctx, room))
+
+		boolIsValidationRoom, err := storage.GetIsValidationRoom(ctx, room)
+		require.NoError(t, err)
+		require.Equal(t, boolIsValidationRoom, true)
+	})
+
+	t.Run("should fail - room not found", func(t *testing.T) {
+		room := &game_room.GameRoom{
+			ID:          "room-not-found",
+			SchedulerID: "game",
+		}
+		_, err := storage.GetIsValidationRoom(ctx, room)
+		require.Error(t, err)
+		require.IsType(t, err, errors.ErrNotFound)
+	})
+
 }

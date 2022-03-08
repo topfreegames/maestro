@@ -106,6 +106,8 @@ type RoomStorage interface {
 	UpdateRoomStatus(ctx context.Context, scheduler, roomId string, status game_room.GameRoomStatus) error
 	// WatchRoomStatus watch for status changes on the storage.
 	WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (RoomStorageStatusWatcher, error)
+	// GetIsValidationRoom return info about the room being of type validation (used to guarantee room deploy quality)
+	GetIsValidationRoom(ctx context.Context, room *game_room.GameRoom) (bool, error)
 }
 
 // RoomStorageStatusWatcher defines a process of watcher, it will have a chan
