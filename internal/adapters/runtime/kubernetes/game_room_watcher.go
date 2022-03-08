@@ -45,7 +45,8 @@ var (
 )
 
 type kubernetesWatcher struct {
-	mu          sync.Mutex
+	mu sync.Mutex
+
 	clientSet   kube.Interface
 	ctx         context.Context
 	resultsChan chan game_room.InstanceEvent
