@@ -8,7 +8,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v1
       with:
-        go-version: '1.16.3'
+        go-version: '1.17.3'
     - name: Checkout
       uses: actions/checkout@v2
     - name: Restore cache
@@ -28,7 +28,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v1
       with:
-        go-version: '1.16.3'
+        go-version: '1.17.3'
     - name: Checkout
       uses: actions/checkout@v2
     - name: Restore cache
@@ -48,14 +48,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k3s-version: [v1.19.11, v1.20.7, v1.21.1]
+        k3s-version: [v1.19.11, v1.20.7, v1.21.1, v1.22.7]
     env:
       K3S_VERSION:  ${{ matrix.k3s-version }}
     steps:
     - name: Set up Go
       uses: actions/setup-go@v1
       with:
-        go-version: '1.16.3'
+        go-version: '1.17.3'
     - name: Checkout
       uses: actions/checkout@v2
     - name: Restore cache
