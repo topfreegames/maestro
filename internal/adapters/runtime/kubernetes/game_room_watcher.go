@@ -127,6 +127,7 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 
 	instance, err := kw.convertInstance(pod)
 	if err != nil {
+		kw.logger.Error("Error converting pod to game room instance", zap.Error(err))
 		kw.stopWithError(err)
 		return
 	}
