@@ -73,7 +73,11 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 		case <-w.ctx.Done():
 			watcher.Stop()
 			return nil
-		case event := <-resultChan:
+		case event, ok := <-resultChan:
+			if !ok {
+				watcher.Stop()
+				return nil
+			}
 			err := w.processEvent(w.ctx, event)
 			if err != nil {
 				w.logger.Warn("failed to process event", zap.Error(err))

@@ -90,6 +90,7 @@ func (kw *kubernetesWatcher) stopWithError(err error) {
 	if kw.stopped {
 		return
 	}
+	kw.logger.Error("Watcher stopped with error", zap.Error(err))
 
 	kw.stopped = true
 	kw.err = err
@@ -117,6 +118,7 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 	if kw.stopped {
 		return
 	}
+	kw.logger.Info("Received event from runtime watcher", zap.Any("obj", obj))
 
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
@@ -125,14 +127,19 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 
 	instance, err := kw.convertInstance(pod)
 	if err != nil {
+		kw.logger.Error("Error converting pod to game room instance", zap.Error(err))
 		kw.stopWithError(err)
 		return
 	}
-	kw.logger.Info("Received kubernetes event on runtime watcher", zap.Any("convertedPod", pod), zap.Any("convertedInstance", instance), zap.Any("obj", obj))
-	kw.resultsChan <- game_room.InstanceEvent{
-		Type:     eventType,
+
+	kw.logger.Info("Converted pod to instance", zap.Any("convertedInstance", instance))
+	instanceEvent := game_room.InstanceEvent{
 		Instance: instance,
+		Type:     eventType,
 	}
+
+	kw.logger.Info("Sending instance event to resultsChan", zap.Any("instanceEvent", instanceEvent))
+	kw.resultsChan <- instanceEvent
 }
 
 func (kw *kubernetesWatcher) addFunc(obj interface{}) {
