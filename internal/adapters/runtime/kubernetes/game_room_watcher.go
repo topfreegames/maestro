@@ -90,6 +90,7 @@ func (kw *kubernetesWatcher) stopWithError(err error) {
 	if kw.stopped {
 		return
 	}
+	kw.logger.Error("Watcher stopped with error", zap.Error(err))
 
 	kw.stopped = true
 	kw.err = err
