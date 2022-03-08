@@ -52,6 +52,17 @@ type kubernetesWatcher struct {
 	err         error
 	stopped     bool
 	stopChan    chan struct{}
+	logger      *zap.Logger
+}
+
+func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface) *kubernetesWatcher {
+	return &kubernetesWatcher{
+		clientSet:   clientSet,
+		ctx:         ctx,
+		resultsChan: make(chan game_room.InstanceEvent, eventsChanSize),
+		stopChan:    make(chan struct{}),
+		logger:      zap.L(),
+	}
 }
 
 func (kw *kubernetesWatcher) ResultChan() chan game_room.InstanceEvent {
@@ -117,7 +128,7 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		kw.stopWithError(err)
 		return
 	}
-	zap.L().Info("Received kubernetes event on runtime watcher", zap.Any("convertedPod", pod), zap.Any("convertedInstance", instance), zap.Any("obj", obj))
+	kw.logger.Info("Received kubernetes event on runtime watcher", zap.Any("convertedPod", pod), zap.Any("convertedInstance", instance), zap.Any("obj", obj))
 	kw.resultsChan <- game_room.InstanceEvent{
 		Type:     eventType,
 		Instance: instance,
@@ -137,12 +148,7 @@ func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
 }
 
 func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
-	watcher := &kubernetesWatcher{
-		clientSet:   k.clientSet,
-		ctx:         ctx,
-		resultsChan: make(chan game_room.InstanceEvent, eventsChanSize),
-		stopChan:    make(chan struct{}),
-	}
+	watcher := NewKubernetesWatcher(ctx, k.clientSet)
 
 	podsInformer := informers.NewSharedInformerFactoryWithOptions(
 		k.clientSet,
