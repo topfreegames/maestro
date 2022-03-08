@@ -61,9 +61,9 @@ func TestSwitchActiveVersion(t *testing.T) {
 						{
 							Name:  "example",
 							Image: "alpine",
-							Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
 								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
@@ -117,13 +117,13 @@ func TestSwitchActiveVersion(t *testing.T) {
 				require.Equal(t, podsAfterUpdate.Items[i].Name, podsBeforeUpdate.Items[i].Name)
 			}
 
-			// Switches to version v1.2.0
-			require.Equal(t, "v1.2.0", getSchedulerResponse.Scheduler.Spec.Version)
+			// Switches to version v1.1.0
+			require.Equal(t, "v1.1.0", getSchedulerResponse.Scheduler.Spec.Version)
 
 			// Update scheduler
 			switchActiveVersionRequest := &maestroApiV1.SwitchActiveVersionRequest{
 				SchedulerName: scheduler.Name,
-				Version:       "v1.1",
+				Version:       "v1.0.0",
 			}
 			switchActiveVersionResponse := &maestroApiV1.SwitchActiveVersionResponse{}
 
@@ -166,9 +166,9 @@ func TestSwitchActiveVersion(t *testing.T) {
 						{
 							Name:  "example-update",
 							Image: "alpine",
-							Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
 								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
@@ -224,7 +224,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				}
 
 				return false
-			}, 2*time.Minute, time.Second)
+			}, 1*time.Minute, 100*time.Millisecond)
 
 			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -240,7 +240,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 			// Rollback scheduler version
 			switchActiveVersionRequest := &maestroApiV1.SwitchActiveVersionRequest{
 				SchedulerName: scheduler.Name,
-				Version:       "v1.1",
+				Version:       "v1.0.0",
 			}
 			switchActiveVersionResponse := &maestroApiV1.SwitchActiveVersionResponse{}
 
@@ -254,6 +254,18 @@ func TestSwitchActiveVersion(t *testing.T) {
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerAfterSwitchResponse)
 			require.NoError(t, err)
 			require.NotEqual(t, getSchedulerAfterSwitchResponse.Scheduler.Spec.Version, getSchedulerResponse.Scheduler.Spec.Version)
+
+			require.Eventually(t, func() bool {
+				podsAfterRollback, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, podsAfterUpdate.Items)
+
+				if len(podsAfterRollback.Items) == 2 {
+					return true
+				}
+
+				return false
+			}, 1*time.Minute, 100*time.Millisecond)
 
 			podsAfterRollback, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -283,9 +295,9 @@ func TestSwitchActiveVersion(t *testing.T) {
 						{
 							Name:  "example-update",
 							Image: "alpine",
-							Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
 								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{

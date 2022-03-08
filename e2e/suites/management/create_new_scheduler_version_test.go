@@ -63,9 +63,9 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 						{
 							Name:  "example",
 							Image: "alpine",
-							Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
 								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
@@ -119,8 +119,8 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 				require.Equal(t, podsAfterUpdate.Items[i].Name, podsBeforeUpdate.Items[i].Name)
 			}
 
-			// Switches to version v1.2.0
-			require.Equal(t, "v1.2.0", getSchedulerResponse.Scheduler.Spec.Version)
+			// Switches to version v1.1.0
+			require.Equal(t, "v1.1.0", getSchedulerResponse.Scheduler.Spec.Version)
 		})
 
 		t.Run("Should Succeed - create major change, all pods are changed", func(t *testing.T) {
@@ -141,9 +141,9 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 						{
 							Name:  "example-update",
 							Image: "alpine",
-							Command: []string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
 								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && tail -f /dev/null"},
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
@@ -229,7 +229,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
-			require.Equal(t, "v1.1", getSchedulerResponse.Scheduler.Spec.Version)
+			require.Equal(t, "v1.0.0", getSchedulerResponse.Scheduler.Spec.Version)
 		})
 
 		t.Run("Should Fail - image of GRU is invalid. Operation fails, version and pods are unchanged", func(t *testing.T) {
@@ -249,8 +249,8 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:            "example-update",
-							Image:           "INVALID_IMAGE_FOR_GRU",
-							Command:         []string{"/bin/sh"},
+							Image:           "alpine",
+							Command:         []string{"tail -f /dev/null"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
@@ -309,14 +309,14 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 
 			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
-			require.NotEmpty(t, podsAfterUpdate.Items)
+			require.Len(t, podsAfterUpdate.Items, 2)
 
 			// Pod's haven't change
 			for i := 0; i < 2; i++ {
 				require.Equal(t, podsAfterUpdate.Items[i].Name, podsBeforeUpdate.Items[i].Name)
 			}
 			// version didn't change
-			require.Equal(t, "v1.1", getSchedulerResponse.Scheduler.Spec.Version)
+			require.Equal(t, "v1.0.0", getSchedulerResponse.Scheduler.Spec.Version)
 
 			getVersionsRequest := &maestroApiV1.GetSchedulerVersionsRequest{SchedulerName: scheduler.Name}
 			getVersionsResponse := &maestroApiV1.GetSchedulerVersionsResponse{}

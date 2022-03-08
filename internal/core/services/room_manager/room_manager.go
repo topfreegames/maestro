@@ -153,7 +153,6 @@ func (m *RoomManager) DeleteRoomAndWaitForRoomTerminated(ctx context.Context, ga
 
 func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	gameRoom.LastPingAt = m.Clock.Now()
-
 	err := m.RoomStorage.UpdateRoom(ctx, gameRoom)
 	if err != nil {
 		return fmt.Errorf("failed when updating game room in storage with incoming ping data: %w", err)

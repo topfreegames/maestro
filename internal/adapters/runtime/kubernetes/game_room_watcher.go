@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -43,15 +45,24 @@ var (
 )
 
 type kubernetesWatcher struct {
-	mu sync.Mutex
-
+	mu          sync.Mutex
 	clientSet   kube.Interface
 	ctx         context.Context
 	resultsChan chan game_room.InstanceEvent
 	err         error
+	stopped     bool
+	stopChan    chan struct{}
+	logger      *zap.Logger
+}
 
-	stopped  bool
-	stopChan chan struct{}
+func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface) *kubernetesWatcher {
+	return &kubernetesWatcher{
+		clientSet:   clientSet,
+		ctx:         ctx,
+		resultsChan: make(chan game_room.InstanceEvent, eventsChanSize),
+		stopChan:    make(chan struct{}),
+		logger:      zap.L(),
+	}
 }
 
 func (kw *kubernetesWatcher) ResultChan() chan game_room.InstanceEvent {
@@ -117,7 +128,7 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		kw.stopWithError(err)
 		return
 	}
-
+	kw.logger.Info("Received kubernetes event on runtime watcher", zap.Any("convertedPod", pod), zap.Any("convertedInstance", instance), zap.Any("obj", obj))
 	kw.resultsChan <- game_room.InstanceEvent{
 		Type:     eventType,
 		Instance: instance,
@@ -137,12 +148,7 @@ func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
 }
 
 func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
-	watcher := &kubernetesWatcher{
-		clientSet:   k.clientSet,
-		ctx:         ctx,
-		resultsChan: make(chan game_room.InstanceEvent, eventsChanSize),
-		stopChan:    make(chan struct{}),
-	}
+	watcher := NewKubernetesWatcher(ctx, k.clientSet)
 
 	podsInformer := informers.NewSharedInformerFactoryWithOptions(
 		k.clientSet,
