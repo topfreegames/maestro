@@ -24,6 +24,7 @@ package validations
 
 import (
 	"errors"
+
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	enTranslations "github.com/go-playground/validator/v10/translations/en"

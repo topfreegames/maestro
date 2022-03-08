@@ -3,20 +3,21 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/topfreegames/maestro/internal/validations"
-	"strings"
 )
 
 func parseValidationError(unparsedError error) error {
 	parsedError := unparsedError
-	switch unparsedError.(type) {
+	switch unparsedErr := unparsedError.(type) {
 	case validator.ValidationErrors:
 		var errorMsg []string
 		errorMsg = append(errorMsg, "Validation Error:")
-		for _, error := range unparsedError.(validator.ValidationErrors) {
+		for _, err := range unparsedErr {
 			translator := validations.GetDefaultTranslator()
-			translatedMessage := fmt.Sprintf("%s: %s", error.Namespace(), error.Translate(translator))
+			translatedMessage := fmt.Sprintf("%s: %s", err.Namespace(), err.Translate(translator))
 			errorMsg = append(errorMsg, translatedMessage)
 		}
 		parsedError = errors.New(strings.Join(errorMsg, "\n"))
@@ -24,5 +25,3 @@ func parseValidationError(unparsedError error) error {
 
 	return parsedError
 }
-
-

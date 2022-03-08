@@ -25,9 +25,10 @@ package handlers
 import (
 	"context"
 	"errors"
-	"github.com/go-playground/validator/v10"
 	"strings"
 	"time"
+
+	"github.com/go-playground/validator/v10"
 
 	"go.uber.org/zap"
 
