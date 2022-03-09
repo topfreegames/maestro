@@ -79,7 +79,7 @@ func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *event
 	}
 
 	if gameRoom.IsValidationRoom {
-		es.logger.Info(fmt.Sprintf("not producing events for room \"%s\", scheduler \"%s\" since room it's a validation room", gameRoom.ID, gameRoom.SchedulerID))
+		es.logger.Info(fmt.Sprintf("not producing events for room \"%s\", scheduler \"%s\" since it's a validation room", gameRoom.ID, gameRoom.SchedulerID))
 		return nil
 	}
 	if _, ok := event.Attributes["eventType"].(string); !ok {
