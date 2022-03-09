@@ -25,6 +25,8 @@ package management
 import (
 	"context"
 	"fmt"
+	_struct "github.com/golang/protobuf/ptypes/struct"
+	"google.golang.org/protobuf/types/known/structpb"
 	"time"
 
 	"testing"
@@ -180,6 +182,53 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), updateRequest, updateResponse)
 			require.NoError(t, err)
 			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
+
+			// Wait till we have 3 pods (the third one is the validation one). Then, try to forward event.
+			// Since we don't forward event from validation room, it should return true even though we're not
+			// mocking the gRPC call.
+			require.Eventually(t, func() bool {
+				pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, pods.Items)
+
+				if len(pods.Items) == 3 {
+					validationRoom := pods.Items[2].ObjectMeta.Name
+
+					playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
+						RoomName: validationRoom,
+
+						Event:     "playerLeft",
+						Timestamp: time.Now().Unix(),
+						Metadata: &_struct.Struct{
+							Fields: map[string]*structpb.Value{
+								"playerId": {
+									Kind: &structpb.Value_StringValue{
+										StringValue: "c50acc91-4d88-46fa-aa56-48d63c5b5311",
+									},
+								},
+								"eventMetadata1": {
+									Kind: &structpb.Value_StringValue{
+										StringValue: "value1",
+									},
+								},
+								"eventMetadata2": {
+									Kind: &structpb.Value_BoolValue{
+										BoolValue: true,
+									},
+								},
+							},
+						},
+					}
+					playerEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
+					err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", scheduler.Name, validationRoom), playerEventRequest, playerEventResponse)
+					require.NoError(t, err)
+					require.Equal(t, true, playerEventResponse.Success)
+
+					return true
+				}
+
+				return false
+			}, 2*time.Minute, time.Second)
 
 			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "create_new_scheduler_version")
 			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
