@@ -251,7 +251,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 						{
 							Name:            "example-update",
 							Image:           "alpine:3.15.0",
-							Command:         []string{"tail -f /dev/null"},
+							Command:         []string{"while true; do; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{

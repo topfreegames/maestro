@@ -46,7 +46,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 			managementApiClient,
 			kubeClient,
 			"get-schedulerinfo-game",
-			[]string{"sh", "-c", "tail -f /dev/null"},
+			[]string{"sh", "-c", "while true; do; done"},
 		)
 
 		secondScheduler, err := createSchedulerWithRoomsAndWaitForIt(

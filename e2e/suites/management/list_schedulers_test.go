@@ -46,7 +46,7 @@ func TestListSchedulers(t *testing.T) {
 			managementApiClient,
 			kubeClient,
 			"test-list-scheduler-game",
-			[]string{"sh", "-c", "tail -f /dev/null"},
+			[]string{"sh", "-c"},
 		)
 
 		_, err = createSchedulerAndWaitForIt(
@@ -55,7 +55,7 @@ func TestListSchedulers(t *testing.T) {
 			managementApiClient,
 			kubeClient,
 			"test-list-scheduler-game",
-			[]string{"sh", "-c", "tail -f /dev/null"},
+			[]string{"sh", "-c", "while true; do; done"},
 		)
 
 		t.Run("Should Succeed - List schedulers", func(t *testing.T) {

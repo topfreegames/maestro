@@ -48,7 +48,7 @@ func TestGetScheduler(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"sh", "-c", "tail -f /dev/null"},
+				[]string{"sh", "-c", "while true; do; done"},
 			)
 
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{}
@@ -69,7 +69,7 @@ func TestGetScheduler(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"sh", "-c", "tail -f /dev/null"},
+				[]string{"sh", "-c", "while true; do; done"},
 			)
 
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
@@ -100,17 +100,17 @@ func TestGetScheduler(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"sh", "-c", "tail -f /dev/null"},
+				[]string{"sh", "-c", "while true; do; done"},
 			)
 
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
 
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s?version=v1.1", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s?version=v1.0.0", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 
 			require.NoError(t, err)
 			require.Equal(t, getSchedulerResponse.Scheduler.Name, scheduler.Name)
-			require.Equal(t, getSchedulerResponse.Scheduler.GetSpec().GetVersion(), "v1.1")
+			require.Equal(t, getSchedulerResponse.Scheduler.GetSpec().GetVersion(), "v1.0.0")
 		})
 
 	})

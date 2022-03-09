@@ -59,7 +59,7 @@ func TestCancelOperation(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"sh", "-c", "tail -f /dev/null"},
+				[]string{"sh", "-c", "while true; do; done"},
 			)
 
 			firstSlowOp := createTestOperation(ctx, t, operationStorage, operationFlow, scheduler.Name, 100000)

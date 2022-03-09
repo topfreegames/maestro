@@ -236,7 +236,7 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 		managementApiClient,
 		kubeClient,
 		game,
-		[]string{"/bin/sh", "-c", "apk add curl && curl --request POST " +
+		[]string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
 			"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 	)
