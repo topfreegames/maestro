@@ -33,5 +33,17 @@
         "hostPort": 54321
       }]
     }]
-  }
+  },
+  "forwarders": [
+    {
+	  "name": "forwarder-1",
+	  "enable": true,
+	  "type": "gRPC",
+	  "address": "127.0.0.1:9090",
+	  "options": {
+	    "timeout": 1000,
+        "metadata": {}
+	  }
+    }
+  ]
 }
