@@ -89,7 +89,7 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 
 func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSchedulerRequest) (*api.GetSchedulerResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
-	handlerLogger.Info("handling get scheduler request", zap.String("version", request.GetVersion()))
+	handlerLogger.Info(fmt.Sprintf("handling get scheduler request, scheduler version: %s", request.GetVersion()))
 	var scheduler *entities.Scheduler
 	var err error
 
@@ -217,7 +217,7 @@ func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *ap
 	operation, err := h.schedulerManager.SwitchActiveVersion(ctx, request.GetSchedulerName(), request.GetVersion())
 
 	if err != nil {
-		handlerLogger.Error("error switching active version", zap.String("version", request.GetVersion()), zap.Error(err))
+		handlerLogger.Error(fmt.Sprintf("error switching active version %s", request.GetVersion()), zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}

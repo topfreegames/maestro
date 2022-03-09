@@ -59,7 +59,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	sortingOrder, err := extractSortingParameters(request.OrderBy)
 	if err != nil {
-		handlerLogger.Error("error parsing sorting parameters", zap.String("orderBy", request.OrderBy), zap.Error(err))
+		handlerLogger.Error(fmt.Sprintf("error parsing sorting parameters, orderBy: %+v", request.OrderBy), zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
