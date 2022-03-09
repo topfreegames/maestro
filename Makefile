@@ -38,6 +38,9 @@ lint/go: ## Execute golangci-lint.
 lint/protobuf: ## Execute buf linter.
 	@go run github.com/bufbuild/buf/cmd/buf lint --config buf.yaml
 
+.PHONY: run/tests
+run/tests: run/unit-tests run/integration-tests ## Execute all unit and integration tests
+
 .PHONY: run/unit-tests
 run/unit-tests: ## Execute unit tests.
 	@go test -count=1 -tags=unit -coverprofile=coverage.out -covermode=atomic ./...

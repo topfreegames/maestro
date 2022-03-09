@@ -47,7 +47,5 @@ WORKDIR /app
 COPY ./bin/maestro-linux-x86_64 /app/maestro
 COPY ./config /app/config
 
-EXPOSE 8080 8081
-
 ENTRYPOINT ["/app/maestro"]
 CMD ["--help"]

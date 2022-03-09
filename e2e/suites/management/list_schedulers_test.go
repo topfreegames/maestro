@@ -45,8 +45,8 @@ func TestListSchedulers(t *testing.T) {
 			maestro,
 			managementApiClient,
 			kubeClient,
-			"test",
-			[]string{"sh", "-c", "tail -f /dev/null"},
+			"test-list-scheduler-game",
+			[]string{"sh", "-c"},
 		)
 
 		_, err = createSchedulerAndWaitForIt(
@@ -54,8 +54,8 @@ func TestListSchedulers(t *testing.T) {
 			maestro,
 			managementApiClient,
 			kubeClient,
-			"test",
-			[]string{"sh", "-c", "tail -f /dev/null"},
+			"test-list-scheduler-game",
+			[]string{"sh", "-c", "while true; do sleep 1; done"},
 		)
 
 		t.Run("Should Succeed - List schedulers", func(t *testing.T) {
@@ -67,7 +67,7 @@ func TestListSchedulers(t *testing.T) {
 			err = managementApiClient.Do("GET", "/schedulers", listSchedulersRequest, listSchedulersResponse)
 
 			require.NoError(t, err)
-			require.Len(t, listSchedulersResponse.Schedulers, 2)
+			require.NotEmpty(t, listSchedulersResponse.Schedulers)
 
 			listSchedulersRequest = &maestroApiV1.ListSchedulersRequest{Name: firstScheduler.Name}
 			listSchedulersResponse = &maestroApiV1.ListSchedulersResponse{}
@@ -92,7 +92,7 @@ func TestListSchedulers(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, listSchedulersResponse.Schedulers[0].Version, firstScheduler.Spec.Version)
-			require.Len(t, listSchedulersResponse.Schedulers, 2)
+			require.NotEmpty(t, listSchedulersResponse.Schedulers)
 		})
 
 		t.Run("Should Succeed - List schedulers returning empty array, when filter is not equals to a scheduler", func(t *testing.T) {
