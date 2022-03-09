@@ -97,6 +97,7 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 		cmpopts.IgnoreFields(
 			Scheduler{},
 			"Name",
+			"Spec.Version",
 			"Game",
 			"State",
 			"RollbackVersion",

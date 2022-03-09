@@ -111,6 +111,21 @@ func (mr *MockSchedulerManagerMockRecorder) GetActiveScheduler(ctx, schedulerNam
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveScheduler", reflect.TypeOf((*MockSchedulerManager)(nil).GetActiveScheduler), ctx, schedulerName)
 }
 
+// GetSchedulerVersions mocks base method.
+func (m *MockSchedulerManager) GetSchedulerVersions(ctx context.Context, schedulerName string) ([]*entities.SchedulerVersion, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSchedulerVersions", ctx, schedulerName)
+	ret0, _ := ret[0].([]*entities.SchedulerVersion)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSchedulerVersions indicates an expected call of GetSchedulerVersions.
+func (mr *MockSchedulerManagerMockRecorder) GetSchedulerVersions(ctx, schedulerName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulerVersions", reflect.TypeOf((*MockSchedulerManager)(nil).GetSchedulerVersions), ctx, schedulerName)
+}
+
 // GetSchedulersInfo mocks base method.
 func (m *MockSchedulerManager) GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error) {
 	m.ctrl.T.Helper()
