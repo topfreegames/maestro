@@ -43,11 +43,12 @@ import (
 )
 
 func TestCreateNewSchedulerVersion(t *testing.T) {
+	game := "create-new-scheduler-version-game"
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("Should Succeed - create minor version, no pods replaces", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -62,9 +63,9 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:  "example",
-							Image: "alpine",
+							Image: "alpine:3.15.0",
 							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
-								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
@@ -126,7 +127,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Succeed - create major change, all pods are changed", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -140,9 +141,9 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:  "example-update",
-							Image: "alpine",
+							Image: "alpine:3.15.0",
 							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
-								"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
@@ -215,14 +216,14 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Fail - When scheduler when sending invalid request to update endpoint it fails fast", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			invalidUpdateRequest := &maestroApiV1.NewSchedulerVersionRequest{}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
 
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), invalidUpdateRequest, updateResponse)
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "failed with status 500")
+			require.Contains(t, err.Error(), "failed with status 400")
 
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
@@ -235,7 +236,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Fail - image of GRU is invalid. Operation fails, version and pods are unchanged", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, kubeClient)
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -249,8 +250,8 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:            "example-update",
-							Image:           "alpine",
-							Command:         []string{"tail -f /dev/null"},
+							Image:           "alpine:3.15.0",
+							Command:         []string{"while true; do sleep 1; done"},
 							ImagePullPolicy: "Always",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{

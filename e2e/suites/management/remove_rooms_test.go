@@ -56,7 +56,7 @@ func TestRemoveRooms(t *testing.T) {
 				kubeClient,
 				"test",
 				[]string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
-					"$ROOMS_API_ADDRESS:9097/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+					"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"})
 
 			err, createdGameRoomName := addRoomsAndWaitForIt(t, scheduler.Name, err, managementApiClient, kubeClient, redisClient)

@@ -55,7 +55,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 		zap.String("operation_id", op.ID),
 	)
 
-	logger.Debug("start deleting rooms", zap.Int("amount", len(rooms)))
+	logger.Info("start deleting rooms", zap.Int("amount", len(rooms)))
 
 	for _, room := range rooms {
 		err = e.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
@@ -66,7 +66,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 		}
 	}
 
-	logger.Debug("finished deleting rooms")
+	logger.Info("finished deleting rooms")
 	return nil
 }
 

@@ -1,5 +1,5 @@
 internalApi:
-  port: 8082
+  port: 8051
   gracefulShutdownTimeout: 10s
   metrics:
     enabled: true

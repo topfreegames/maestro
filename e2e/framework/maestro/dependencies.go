@@ -79,4 +79,9 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 
 func (d *dependencies) Teardown() {
 	d.compose.Down()
+	exec.ExecSysCmd(
+		maestroPath,
+		"docker",
+		"volume ", "rm", "test-something_eventsproto", "test-something_kubeconfig",
+	)
 }

@@ -56,9 +56,9 @@ curl --location --request POST 'http://localhost:8080/schedulers' \
     "containers": [
         {
             "name": "example",
-            "image": "alpine",
+            "image": "alpine:3.15.0",
             "imagePullPolicy": "Always",
-            "command": ["sh", "-c", "tail -f /dev/null"],
+            "command": ["sh", "-c", "while true; do sleep 1; done"],
             "environment": [],
             "requests": {
                 "memory": "20Mi",

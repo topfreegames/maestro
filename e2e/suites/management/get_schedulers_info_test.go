@@ -45,14 +45,15 @@ func TestGetSchedulersInfo(t *testing.T) {
 			maestro,
 			managementApiClient,
 			kubeClient,
-			"getschedulerinfo-game",
-			[]string{"sh", "-c", "tail -f /dev/null"},
+			"get-schedulerinfo-game",
+			[]string{"sh", "-c", "while true; do sleep 1; done"},
 		)
 
 		secondScheduler, err := createSchedulerWithRoomsAndWaitForIt(
 			t,
 			maestro,
 			managementApiClient,
+			"get-schedulers-info-game",
 			kubeClient,
 		)
 
@@ -65,7 +66,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/info?game=%s", firstScheduler.Game), getSchedulersRequest, getSchedulersResponse)
 
 			require.NoError(t, err)
-			require.Len(t, getSchedulersResponse.Schedulers, 1)
+			require.NotEmpty(t, getSchedulersResponse.Schedulers, 1)
 			require.Equal(t, firstScheduler.Name, getSchedulersResponse.Schedulers[0].Name)
 			require.Equal(t, firstScheduler.Game, getSchedulersResponse.Schedulers[0].Game)
 			require.Equal(t, firstScheduler.State, getSchedulersResponse.Schedulers[0].State)
@@ -84,7 +85,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/info?game=%s", secondScheduler.Game), getSchedulersRequest, getSchedulersResponse)
 
 			require.NoError(t, err)
-			require.Len(t, getSchedulersResponse.Schedulers, 1)
+			require.NotEmpty(t, getSchedulersResponse.Schedulers)
 			require.Equal(t, secondScheduler.Name, getSchedulersResponse.Schedulers[0].Name)
 			require.Equal(t, secondScheduler.Game, getSchedulersResponse.Schedulers[0].Game)
 			require.Equal(t, secondScheduler.State, getSchedulersResponse.Schedulers[0].State)
