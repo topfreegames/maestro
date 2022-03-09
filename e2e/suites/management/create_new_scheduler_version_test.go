@@ -222,7 +222,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), invalidUpdateRequest, updateResponse)
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "failed with status 500")
+			require.Contains(t, err.Error(), "failed with status 400")
 
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
