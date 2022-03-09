@@ -88,8 +88,8 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 		return nil, fmt.Errorf("unable to get rooms api container internal address: %s", err)
 	}
 
-	rooms_api_ip := strings.Trim(strings.TrimSuffix(string(output), "\n"), "'")
-	internalAddress := fmt.Sprintf("%s:8070", rooms_api_ip)
+	roomsApiIP := strings.Trim(strings.TrimSuffix(string(output), "\n"), "'")
+	internalAddress := fmt.Sprintf("%s:8070", roomsApiIP)
 
 	return &RoomsApiServer{compose: compose, Address: address, ContainerInternalAddress: internalAddress}, nil
 }
