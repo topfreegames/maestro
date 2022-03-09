@@ -25,6 +25,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -158,7 +159,7 @@ func (h *SchedulersHandler) AddRooms(ctx context.Context, request *api.AddRoomsR
 	operation, err := h.schedulerManager.AddRooms(ctx, request.GetSchedulerName(), request.GetAmount())
 
 	if err != nil {
-		handlerLogger.Error(fmt.Sp, zap.Int32("amount", request.GetAmount()), zap.Error(err))
+		handlerLogger.Error(fmt.Sprintf("error adding rooms to scheduler, amount: %d", request.GetAmount()), zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
@@ -199,7 +200,7 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 	operation, err := h.schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
 
 	if err != nil {
-		handlerLogger.Error("error creating new scheduler version"zap.Error(err))
+		handlerLogger.Error("error creating new scheduler version", zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
