@@ -56,7 +56,7 @@ func createSchedulerAndWaitForIt(
 			Containers: []*maestroApiV1.Container{
 				{
 					Name:            "example",
-					Image:           "alpine",
+					Image:           "alpine:3.15.0",
 					Command:         gruCommand,
 					ImagePullPolicy: "Always",
 					Environment: []*maestroApiV1.ContainerEnvironment{
@@ -141,7 +141,7 @@ func createSchedulerWithForwardersAndWaitForIt(
 			Containers: []*maestroApiV1.Container{
 				{
 					Name:            "example",
-					Image:           "alpine",
+					Image:           "alpine:3.15.0",
 					Command:         gruCommand,
 					ImagePullPolicy: "Always",
 					Environment: []*maestroApiV1.ContainerEnvironment{
