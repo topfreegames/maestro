@@ -71,6 +71,7 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 	}
 
 	errGroup, errContext := errgroup.WithContext(ctx)
+	executionLogger.Info("start adding rooms", zap.Int32("amount", amount))
 	for i := int32(1); i <= amount; i++ {
 		errGroup.Go(func() error {
 			err := ex.createRoom(errContext, scheduler, executionLogger)
@@ -84,6 +85,7 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 	}
 	ex.clearNewCreatedRooms(op.SchedulerName)
 
+	executionLogger.Info("finished adding rooms")
 	return nil
 }
 
