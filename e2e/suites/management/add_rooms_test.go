@@ -55,7 +55,7 @@ func TestAddRooms(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"sh", "-c", "while true; do; done"},
+				[]string{"sh", "-c", "while true; do sleep 1; done"},
 			)
 
 			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}

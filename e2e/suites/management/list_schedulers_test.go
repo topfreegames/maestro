@@ -55,7 +55,7 @@ func TestListSchedulers(t *testing.T) {
 			managementApiClient,
 			kubeClient,
 			"test-list-scheduler-game",
-			[]string{"sh", "-c", "while true; do; done"},
+			[]string{"sh", "-c", "while true; do sleep 1; done"},
 		)
 
 		t.Run("Should Succeed - List schedulers", func(t *testing.T) {

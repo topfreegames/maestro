@@ -48,7 +48,7 @@ func TestGetScheduler(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"sh", "-c", "while true; do; done"},
+				[]string{"sh", "-c", "while true; do sleep 1; done"},
 			)
 
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{}
@@ -69,7 +69,7 @@ func TestGetScheduler(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"sh", "-c", "while true; do; done"},
+				[]string{"sh", "-c", "while true; do sleep 1; done"},
 			)
 
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
@@ -100,7 +100,7 @@ func TestGetScheduler(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"sh", "-c", "while true; do; done"},
+				[]string{"sh", "-c", "while true; do sleep 1; done"},
 			)
 
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
