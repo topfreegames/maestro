@@ -91,6 +91,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 		h.logger.Error("error parsing ping request", zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName), zap.Any("ping", message), zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	// TODO(caio.rodrigues): receive only scheduler, room and metadata. Fetch room from storage on manager before producing event
 	err = h.roomManager.UpdateRoom(ctx, gameRoom)
 	if err != nil {
 		h.logger.Error("error updating room with ping", zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName), zap.Any("ping", message), zap.Error(err))
