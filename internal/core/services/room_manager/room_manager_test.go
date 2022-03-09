@@ -116,7 +116,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 
 		roomStorageStatusWatcher.EXPECT().Stop()
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.NoError(t, err)
 		require.Equal(t, &gameRoom, room)
 		require.Equal(t, &gameRoomInstance, instance)
@@ -145,7 +145,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
 		roomStorageStatusWatcher.EXPECT().Stop()
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -157,7 +157,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 			Containers: []game_room.Container{container1, container2},
 		}).Return(nil, porterrors.NewErrUnexpected("error create game room instance"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -172,7 +172,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(porterrors.NewErrUnexpected("error storing room on redis"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -181,7 +181,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	t.Run("when game room creation fails while allocating ports then it returns nil with proper error", func(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -194,7 +194,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		}).Return(&gameRoomInstance, nil)
 		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(errors.New("error"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -290,6 +290,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
+		roomStorage.EXPECT().GetIsValidationRoom(context.Background(), newGameRoom).Return(false, nil)
 		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any())
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
@@ -335,6 +336,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
+		roomStorage.EXPECT().GetIsValidationRoom(context.Background(), newGameRoom).Return(false, nil)
 		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any())
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
@@ -636,6 +638,54 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 
 		err = roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
 		require.Error(t, err)
+	})
+}
+
+func TestRoomManager_IsValidationRoom(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	eventsService := mockports.NewMockEventsService(mockCtrl)
+	clock := clockmock.NewFakeClock(time.Now())
+	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
+	roomManager := New(
+		clock,
+		pamock.NewMockPortAllocator(mockCtrl),
+		roomStorage,
+		instanceStorage,
+		runtime,
+		eventsService,
+		config,
+	)
+	gameRoom := &game_room.GameRoom{
+		ID:          "test-room",
+		SchedulerID: "test-scheduler",
+		Status:      game_room.GameStatusReady,
+		PingStatus:  game_room.GameRoomPingStatusReady,
+		LastPingAt:  clock.Now(),
+	}
+
+	t.Run("should succeed - find \"is validation room\" info - return false", func(t *testing.T) {
+		roomStorage.EXPECT().GetIsValidationRoom(context.Background(), gomock.Any()).Return(false, nil)
+
+		isValidationRoom := roomManager.IsValidationRoom(context.Background(), gameRoom)
+		require.Equal(t, isValidationRoom, false)
+	})
+
+	t.Run("should succeed - find \"is validation room\" info - return true", func(t *testing.T) {
+		roomStorage.EXPECT().GetIsValidationRoom(context.Background(), gomock.Any()).Return(true, nil)
+
+		isValidationRoom := roomManager.IsValidationRoom(context.Background(), gameRoom)
+		require.Equal(t, isValidationRoom, true)
+	})
+
+	t.Run("should fail - don't find \"is validation room\" info - return false", func(t *testing.T) {
+		roomStorage.EXPECT().GetIsValidationRoom(context.Background(), gomock.Any()).Return(false, errors.New("error"))
+
+		isValidationRoom := roomManager.IsValidationRoom(context.Background(), gameRoom)
+		require.Equal(t, isValidationRoom, false)
 	})
 }
 

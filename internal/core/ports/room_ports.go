@@ -69,13 +69,15 @@ type RoomManager interface {
 	UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
 	// CreateRoomAndWaitForReadiness creates a room and only returns it when the room is ready (sent a ping to maestro).
 	// If the room is created and don't succeed on sending a ping to maestro, it will try to delete the room, and return
-	// an error.
-	CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler) (*game_room.GameRoom, *game_room.Instance, error)
+	// an error. The "isValidationRoom" parameter must be passed "true" if we want to create a room that won't be forwarded
+	CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error)
 	// UpdateGameRoomStatus updates the game based on the ping and runtime status.
 	UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error
 	// WaitRoomStatus blocks the caller until the context is canceled, an error
 	// happens in the process or the game room has the desired status.
 	WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status game_room.GameRoomStatus) error
+	// IsValidationRoom return info about the room being of type validation (room being used to validate new GRU image)
+	IsValidationRoom(ctx context.Context, gameRoom *game_room.GameRoom) bool
 }
 
 // Secondary Ports (output, driven ports)

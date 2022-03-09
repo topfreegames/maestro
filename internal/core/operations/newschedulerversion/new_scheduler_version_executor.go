@@ -123,7 +123,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
-	gameRoom, _, err := ex.roomManager.CreateRoomAndWaitForReadiness(ctx, *scheduler)
+	gameRoom, _, err := ex.roomManager.CreateRoomAndWaitForReadiness(ctx, *scheduler, true)
 	if err != nil {
 		logger.Error("error creating new game room for validating new version")
 		return fmt.Errorf("error creating new game room for validating new version: %w", err)
