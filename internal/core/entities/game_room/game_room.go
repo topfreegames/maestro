@@ -127,10 +127,6 @@ type GameRoom struct {
 	IsValidationRoom bool
 }
 
-func (g *GameRoom) SetRoomValidation() {
-	g.IsValidationRoom = true
-}
-
 // validStatusTransitions this map has all possible status changes for a game
 // room.
 var validStatusTransitions = map[GameRoomStatus]map[GameRoomStatus]struct{}{

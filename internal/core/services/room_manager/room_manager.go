@@ -167,11 +167,6 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 	gameRoom.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Ping)
 	gameRoom.Metadata["pingType"] = gameRoom.PingStatus.String()
 
-	if isValidationRoom := m.IsValidationRoom(ctx, gameRoom); isValidationRoom {
-		m.Logger.Info(fmt.Sprintf("not producing events for room \"%s\", scheduler \"%s\" since room it's a validation room", gameRoom.ID, gameRoom.SchedulerID))
-		return nil
-	}
-
 	err = m.EventsService.ProduceEvent(ctx, events.NewRoomEvent(gameRoom.SchedulerID, gameRoom.ID, gameRoom.Metadata))
 	if err != nil {
 		m.Logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))
@@ -376,14 +371,6 @@ watchLoop:
 	}
 
 	return nil
-}
-
-func (m *RoomManager) IsValidationRoom(ctx context.Context, gameRoom *game_room.GameRoom) bool {
-	isValidationRoom, err := m.RoomStorage.GetIsValidationRoom(ctx, gameRoom)
-	if err != nil {
-		m.Logger.Warn("Failed to get info about room being type validation", zap.Error(err))
-	}
-	return isValidationRoom
 }
 
 func removeDuplicateValues(slice []string) []string {

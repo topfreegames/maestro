@@ -76,8 +76,6 @@ type RoomManager interface {
 	// WaitRoomStatus blocks the caller until the context is canceled, an error
 	// happens in the process or the game room has the desired status.
 	WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status game_room.GameRoomStatus) error
-	// IsValidationRoom return info about the room being of type validation (room being used to validate new GRU image)
-	IsValidationRoom(ctx context.Context, gameRoom *game_room.GameRoom) bool
 }
 
 // Secondary Ports (output, driven ports)
@@ -108,8 +106,6 @@ type RoomStorage interface {
 	UpdateRoomStatus(ctx context.Context, scheduler, roomId string, status game_room.GameRoomStatus) error
 	// WatchRoomStatus watch for status changes on the storage.
 	WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (RoomStorageStatusWatcher, error)
-	// GetIsValidationRoom return info about the room being of type validation (used to guarantee room deploy quality)
-	GetIsValidationRoom(ctx context.Context, room *game_room.GameRoom) (bool, error)
 }
 
 // RoomStorageStatusWatcher defines a process of watcher, it will have a chan

@@ -263,7 +263,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 		require.Equal(t, expectedRoom, actualRoom)
 	})
 
-	t.Run("game room with metadata", func(t *testing.T) {
+	t.Run("game room with metadata and validation flag true", func(t *testing.T) {
 		expectedRoom := &game_room.GameRoom{
 			ID:          "room-2",
 			SchedulerID: "game",
@@ -273,6 +273,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
+			IsValidationRoom: true,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, expectedRoom))
@@ -649,46 +650,4 @@ func TestRedisStateStorage_GetRoomIDsByStatus(t *testing.T) {
 	terminatingRooms, err := storage.GetRoomIDsByStatus(ctx, "game", game_room.GameStatusTerminating)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{"room-5"}, terminatingRooms)
-}
-
-func TestRedisStateStorage_GetIsValidationRoom(t *testing.T) {
-	ctx := context.Background()
-	client := test.GetRedisConnection(t, redisAddress)
-	storage := NewRedisStateStorage(client)
-
-	t.Run("should succeed - game room is validation (false) info retrieved correctly", func(t *testing.T) {
-		room := &game_room.GameRoom{
-			ID:          "room-1",
-			SchedulerID: "game",
-		}
-		require.NoError(t, storage.CreateRoom(ctx, room))
-
-		boolIsValidationRoom, err := storage.GetIsValidationRoom(ctx, room)
-		require.NoError(t, err)
-		require.Equal(t, boolIsValidationRoom, false)
-	})
-
-	t.Run("should succeed - game room is validation (true) info retrieved correctly", func(t *testing.T) {
-		room := &game_room.GameRoom{
-			ID:               "room-2",
-			SchedulerID:      "game",
-			IsValidationRoom: true,
-		}
-		require.NoError(t, storage.CreateRoom(ctx, room))
-
-		boolIsValidationRoom, err := storage.GetIsValidationRoom(ctx, room)
-		require.NoError(t, err)
-		require.Equal(t, boolIsValidationRoom, true)
-	})
-
-	t.Run("should fail - room not found", func(t *testing.T) {
-		room := &game_room.GameRoom{
-			ID:          "room-not-found",
-			SchedulerID: "game",
-		}
-		_, err := storage.GetIsValidationRoom(ctx, room)
-		require.Error(t, err)
-		require.IsType(t, err, errors.ErrNotFound)
-	})
-
 }

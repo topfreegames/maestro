@@ -83,20 +83,6 @@ func (mr *MockRoomManagerMockRecorder) DeleteRoomAndWaitForRoomTerminated(ctx, g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRoomAndWaitForRoomTerminated", reflect.TypeOf((*MockRoomManager)(nil).DeleteRoomAndWaitForRoomTerminated), ctx, gameRoom)
 }
 
-// IsValidationRoom mocks base method.
-func (m *MockRoomManager) IsValidationRoom(ctx context.Context, gameRoom *game_room.GameRoom) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsValidationRoom", ctx, gameRoom)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsValidationRoom indicates an expected call of IsValidationRoom.
-func (mr *MockRoomManagerMockRecorder) IsValidationRoom(ctx, gameRoom interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsValidationRoom", reflect.TypeOf((*MockRoomManager)(nil).IsValidationRoom), ctx, gameRoom)
-}
-
 // ListRoomsWithDeletionPriority mocks base method.
 func (m *MockRoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error) {
 	m.ctrl.T.Helper()
@@ -247,21 +233,6 @@ func (m *MockRoomStorage) GetAllRoomIDs(ctx context.Context, scheduler string) (
 func (mr *MockRoomStorageMockRecorder) GetAllRoomIDs(ctx, scheduler interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllRoomIDs", reflect.TypeOf((*MockRoomStorage)(nil).GetAllRoomIDs), ctx, scheduler)
-}
-
-// GetIsValidationRoom mocks base method.
-func (m *MockRoomStorage) GetIsValidationRoom(ctx context.Context, room *game_room.GameRoom) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIsValidationRoom", ctx, room)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetIsValidationRoom indicates an expected call of GetIsValidationRoom.
-func (mr *MockRoomStorageMockRecorder) GetIsValidationRoom(ctx, room interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIsValidationRoom", reflect.TypeOf((*MockRoomStorage)(nil).GetIsValidationRoom), ctx, room)
 }
 
 // GetRoom mocks base method.

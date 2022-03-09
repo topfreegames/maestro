@@ -59,16 +59,6 @@ func NewRedisStateStorage(client *redis.Client) *redisStateStorage {
 	return &redisStateStorage{client: client}
 }
 
-func (r redisStateStorage) GetIsValidationRoom(ctx context.Context, room *game_room.GameRoom) (bool, error) {
-	roomHashCmd := r.client.HGetAll(ctx, getRoomRedisKey(room.SchedulerID, room.ID))
-	boolIsValidationRoom, err := strconv.ParseBool(roomHashCmd.Val()[isValidationRoom])
-	if err != nil {
-		return false, errors.NewErrNotFound("error retrieving \"is_validation_room\" value from room %s", room.ID).WithError(err)
-	}
-
-	return boolIsValidationRoom, nil
-}
-
 func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string) (*game_room.GameRoom, error) {
 	room := &game_room.GameRoom{
 		ID:          roomID,
@@ -98,6 +88,9 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 	if err != nil {
 		return nil, errors.NewErrEncoding("failed to parse operation status").WithError(err)
 	}
+
+	boolIsValidationRoom, _ := strconv.ParseBool(roomHashCmd.Val()[isValidationRoom])
+	room.IsValidationRoom = boolIsValidationRoom
 
 	room.PingStatus = game_room.GameRoomPingStatus(pingStatusInt)
 	room.Version = roomHashCmd.Val()[versionKey]
