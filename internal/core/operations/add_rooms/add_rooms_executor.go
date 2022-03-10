@@ -104,7 +104,7 @@ func (ex *AddRoomsExecutor) OnError(ctx context.Context, op *operation.Operation
 	if err != nil {
 		return err
 	}
-	executionLogger.Debug("finished OnError routine")
+	executionLogger.Info("finished OnError routine")
 	return nil
 }
 
@@ -125,7 +125,7 @@ func (ex *AddRoomsExecutor) createRoom(ctx context.Context, scheduler *entities.
 }
 
 func (ex *AddRoomsExecutor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string) error {
-	logger.Debug("deleting created rooms since add rooms operation had error - start")
+	logger.Info("deleting created rooms since add rooms operation had error - start")
 	for _, room := range ex.newCreatedRooms[schedulerName] {
 		err := ex.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
 		if err != nil {
@@ -134,7 +134,7 @@ func (ex *AddRoomsExecutor) deleteNewCreatedRooms(ctx context.Context, logger *z
 		}
 		logger.Sugar().Debugf("deleted room \"%s\" successfully", room.ID)
 	}
-	logger.Debug("deleting created rooms since add rooms operation had error - end successfully")
+	logger.Info("deleting created rooms since add rooms operation had error - end successfully")
 	return nil
 }
 
