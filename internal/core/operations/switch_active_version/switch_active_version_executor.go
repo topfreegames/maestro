@@ -148,8 +148,6 @@ func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context
 	roomsChan := make(chan *game_room.GameRoom)
 	errs, ctx := errgroup.WithContext(ctx)
 
-	logger.Sugar().Debugf("maxSurgeNum %d", maxSurgeNum)
-
 	for i := 0; i < maxSurgeNum; i++ {
 		errs.Go(func() error {
 			return ex.replaceRoom(logger, roomsChan, ex.roomManager, scheduler)
@@ -158,13 +156,10 @@ func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context
 
 roomsListLoop:
 	for {
-		logger.Sugar().Debug("listing schedulers to replace ", zap.String("version", scheduler.Spec.Version))
 		rooms, err := ex.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum, ex.roomsBeingReplaced)
-		logger.Sugar().Debug("rooms to replace:", zap.Any("rooms", rooms))
 		if err != nil {
 			return fmt.Errorf("failed to list rooms for deletion")
 		}
-
 		for _, room := range rooms {
 			ex.roomsBeingReplaced.Store(room.ID, true)
 			select {
