@@ -73,7 +73,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
-	logger.Debug("start switching scheduler active version")
+	logger.Info("start switching scheduler active version")
 
 	updateDefinition, ok := definition.(*SwitchActiveVersionDefinition)
 	if !ok {
@@ -103,7 +103,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 	}
 
 	ex.clearNewCreatedRooms(op.SchedulerName)
-	logger.Debug("scheduler update finishes with success")
+	logger.Info("scheduler update finishes with success")
 	return nil
 }
 
@@ -121,7 +121,7 @@ func (ex *SwitchActiveVersionExecutor) OnError(ctx context.Context, op *operatio
 		return err
 	}
 
-	logger.Debug("finished OnError routine")
+	logger.Info("finished OnError routine")
 	return nil
 }
 
@@ -130,7 +130,7 @@ func (ex *SwitchActiveVersionExecutor) Name() string {
 }
 
 func (ex *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string) error {
-	logger.Debug("deleting created rooms since switching active version had error - start")
+	logger.Info("deleting created rooms since switching active version had error - start")
 	for _, room := range ex.newCreatedRooms[schedulerName] {
 		err := ex.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
 		if err != nil {
@@ -139,12 +139,12 @@ func (ex *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context
 		}
 		logger.Sugar().Debugf("deleted room \"%s\" successfully", room.ID)
 	}
-	logger.Debug("deleting created rooms since switching active version had error - end successfully")
+	logger.Info("deleting created rooms since switching active version had error - end successfully")
 	return nil
 }
 
 func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context, logger *zap.Logger, maxSurgeNum int, scheduler entities.Scheduler) error {
-	logger.Debug("replacing rooms loop - start")
+	logger.Info("replacing rooms loop - start")
 	roomsChan := make(chan *game_room.GameRoom)
 	errs, ctx := errgroup.WithContext(ctx)
 
@@ -182,7 +182,7 @@ roomsListLoop:
 	if err := errs.Wait(); err != nil {
 		return err
 	}
-	logger.Debug("replacing rooms loop - finish")
+	logger.Info("replacing rooms loop - finish")
 	return nil
 }
 

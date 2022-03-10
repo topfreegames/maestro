@@ -178,7 +178,7 @@ func (w *OperationExecutionWorker) IsRunning() bool {
 
 // TODO(gabrielcorado): consider handling the finish operation error.
 func (w *OperationExecutionWorker) evictOperation(ctx context.Context, logger *zap.Logger, op *operation.Operation) {
-	logger.Debug("operation evicted")
+	logger.Info("operation evicted")
 	op.Status = operation.StatusEvicted
 	_ = w.operationManager.FinishOperation(ctx, op)
 }
