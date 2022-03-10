@@ -74,7 +74,7 @@ func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports
 	}
 }
 
-func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler) (*game_room.GameRoom, *game_room.Instance, error) {
+func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
 	numberOfPorts := 0
 	for _, container := range scheduler.Spec.Containers {
 		numberOfPorts += len(container.Ports)
@@ -101,11 +101,12 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 	}
 
 	room := &game_room.GameRoom{
-		ID:          instance.ID,
-		SchedulerID: scheduler.Name,
-		Version:     scheduler.Spec.Version,
-		Status:      game_room.GameStatusPending,
-		LastPingAt:  m.Clock.Now(),
+		ID:               instance.ID,
+		SchedulerID:      scheduler.Name,
+		Version:          scheduler.Spec.Version,
+		Status:           game_room.GameStatusPending,
+		LastPingAt:       m.Clock.Now(),
+		IsValidationRoom: isValidationRoom,
 	}
 	err = m.RoomStorage.CreateRoom(ctx, room)
 	if err != nil {
@@ -166,6 +167,7 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 
 	gameRoom.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Ping)
 	gameRoom.Metadata["pingType"] = gameRoom.PingStatus.String()
+
 	err = m.EventsService.ProduceEvent(ctx, events.NewRoomEvent(gameRoom.SchedulerID, gameRoom.ID, gameRoom.Metadata))
 	if err != nil {
 		m.Logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))

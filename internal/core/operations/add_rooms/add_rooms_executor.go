@@ -113,7 +113,7 @@ func (ex *AddRoomsExecutor) Name() string {
 }
 
 func (ex *AddRoomsExecutor) createRoom(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
-	gameRoom, _, err := ex.roomManager.CreateRoomAndWaitForReadiness(ctx, *scheduler)
+	gameRoom, _, err := ex.roomManager.CreateRoomAndWaitForReadiness(ctx, *scheduler, false)
 	if err != nil {
 		logger.Error("Error while creating room", zap.Error(err))
 		reportAddRoomOperationExecutionFailed(scheduler.Name, ex.Name())

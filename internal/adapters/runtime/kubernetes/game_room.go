@@ -60,7 +60,7 @@ func (k *kubernetes) DeleteGameRoomInstance(ctx context.Context, gameRoomInstanc
 	err := k.clientSet.CoreV1().Pods(gameRoomInstance.SchedulerID).Delete(ctx, gameRoomInstance.ID, metav1.DeleteOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			return errors.NewErrNotFound("game room '%s' already exists", gameRoomInstance.ID)
+			return errors.NewErrNotFound("game room '%s' not found", gameRoomInstance.ID)
 		}
 
 		return errors.NewErrUnexpected("error deleting game room instance: %s", err)

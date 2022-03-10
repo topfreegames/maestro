@@ -70,7 +70,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	if err != nil {
 		return nil, err
 	}
-	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, gameRoomInstanceStorage, schedulerCache, eventsForwarderConfig)
+	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, gameRoomInstanceStorage, roomStorage, schedulerCache, eventsForwarderConfig)
 	roomManagerConfig, err := service.NewRoomManagerConfig(c)
 	if err != nil {
 		return nil, err

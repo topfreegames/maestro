@@ -43,9 +43,10 @@ const (
 	maxRoomStatusEvents = 100
 
 	// Room hash keys.
-	metadataKey   = "metadata"
-	pingStatusKey = "ping_status"
-	versionKey    = "version"
+	metadataKey      = "metadata"
+	pingStatusKey    = "ping_status"
+	versionKey       = "version"
+	isValidationRoom = "is_validation_room"
 )
 
 type redisStateStorage struct {
@@ -88,6 +89,9 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 		return nil, errors.NewErrEncoding("failed to parse operation status").WithError(err)
 	}
 
+	boolIsValidationRoom, _ := strconv.ParseBool(roomHashCmd.Val()[isValidationRoom])
+	room.IsValidationRoom = boolIsValidationRoom
+
 	room.PingStatus = game_room.GameRoomPingStatus(pingStatusInt)
 	room.Version = roomHashCmd.Val()[versionKey]
 	return room, nil
@@ -101,9 +105,10 @@ func (r *redisStateStorage) CreateRoom(ctx context.Context, room *game_room.Game
 
 	p := r.client.TxPipeline()
 	p.HSet(ctx, getRoomRedisKey(room.SchedulerID, room.ID), map[string]interface{}{
-		versionKey:    room.Version,
-		metadataKey:   metadataJson,
-		pingStatusKey: strconv.Itoa(int(room.PingStatus)),
+		versionKey:       room.Version,
+		metadataKey:      metadataJson,
+		pingStatusKey:    strconv.Itoa(int(room.PingStatus)),
+		isValidationRoom: room.IsValidationRoom,
 	})
 
 	statusCmd := p.ZAddNX(ctx, getRoomStatusSetRedisKey(room.SchedulerID), &redis.Z{

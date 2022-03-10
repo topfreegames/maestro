@@ -116,7 +116,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 
 		roomStorageStatusWatcher.EXPECT().Stop()
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.NoError(t, err)
 		require.Equal(t, &gameRoom, room)
 		require.Equal(t, &gameRoomInstance, instance)
@@ -145,7 +145,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
 		roomStorageStatusWatcher.EXPECT().Stop()
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -157,7 +157,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 			Containers: []game_room.Container{container1, container2},
 		}).Return(nil, porterrors.NewErrUnexpected("error create game room instance"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -172,7 +172,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(porterrors.NewErrUnexpected("error storing room on redis"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -181,7 +181,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	t.Run("when game room creation fails while allocating ports then it returns nil with proper error", func(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
@@ -194,7 +194,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		}).Return(&gameRoomInstance, nil)
 		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(errors.New("error"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler)
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)

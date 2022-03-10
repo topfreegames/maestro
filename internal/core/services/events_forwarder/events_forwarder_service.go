@@ -49,6 +49,7 @@ type EventsForwarderService struct {
 	logger           *zap.Logger
 	schedulerStorage ports.SchedulerStorage
 	instanceStorage  ports.GameRoomInstanceStorage
+	roomStorage      ports.RoomStorage
 	schedulerCache   ports.SchedulerCache
 	config           EventsForwarderConfig
 }
@@ -57,6 +58,7 @@ func NewEventsForwarderService(
 	eventsForwarder ports.EventsForwarder,
 	schedulerStorage ports.SchedulerStorage,
 	instanceStorage ports.GameRoomInstanceStorage,
+	roomStorage ports.RoomStorage,
 	schedulerCache ports.SchedulerCache,
 	config EventsForwarderConfig,
 ) ports.EventsService {
@@ -65,12 +67,23 @@ func NewEventsForwarderService(
 		zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "events_forwarder")),
 		schedulerStorage,
 		instanceStorage,
+		roomStorage,
 		schedulerCache,
 		config,
 	}
 }
 
 func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *events.Event) error {
+	gameRoom, err := es.roomStorage.GetRoom(ctx, event.SchedulerID, event.RoomID)
+	if err != nil {
+		es.logger.Error(fmt.Sprintf("cannot produce event since room \"%s\" is not registered on storage for scheduler \"%s\"", event.RoomID, event.SchedulerID))
+		return err
+	}
+
+	if gameRoom.IsValidationRoom {
+		es.logger.Info(fmt.Sprintf("not producing events for room \"%s\", scheduler \"%s\" since it's a validation room", gameRoom.ID, gameRoom.SchedulerID))
+		return nil
+	}
 	if _, ok := event.Attributes["eventType"].(string); !ok {
 		return errors.New("eventAttributes must contain key \"eventType\"")
 	}
