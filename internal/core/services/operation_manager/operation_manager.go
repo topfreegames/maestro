@@ -231,13 +231,13 @@ func (om *OperationManager) WatchOperationCancellationRequests(ctx context.Conte
 
 func (om *OperationManager) GrantLease(ctx context.Context, operation *operation.Operation) error {
 	managerLogger := om.Logger.With(zap.String(logs.LogFieldOperationID, operation.ID), zap.String(logs.LogFieldSchedulerName, operation.SchedulerName))
-	managerLogger.Info("Granting lease - start")
+	managerLogger.Info("granting lease - start")
 	err := om.LeaseStorage.GrantLease(ctx, operation.SchedulerName, operation.ID, om.Config.OperationLeaseTtl)
 	if err != nil {
 		return fmt.Errorf("failed to grant lease to operation: %w", err)
 	}
 
-	managerLogger.Info("Granting lease - succeed")
+	managerLogger.Info("granting lease - succeed")
 	return nil
 }
 
