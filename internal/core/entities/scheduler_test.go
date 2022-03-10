@@ -150,6 +150,74 @@ func TestIsMajorVersion(t *testing.T) {
 			newScheduler:     &entities.Scheduler{MaxSurge: "100"},
 			expected:         false,
 		},
+		"spec version shouldn't be a major": {
+			currentScheduler: &entities.Scheduler{Spec: game_room.Spec{Version: "v1.1.0"}},
+			newScheduler:     &entities.Scheduler{Spec: game_room.Spec{Version: "v1.2.0"}},
+			expected:         false,
+		},
+		"host port shouldn't be a major": {
+			currentScheduler: &entities.Scheduler{Spec: game_room.Spec{Containers: []game_room.Container{
+				{
+					Name: "Name1",
+					Ports: []game_room.ContainerPort{
+						{
+							Name:     "port1",
+							Protocol: "http",
+							HostPort: 10,
+						},
+						{
+							Name:     "port2",
+							Protocol: "http",
+							HostPort: 20,
+						},
+					}},
+				{
+					Name: "Name2",
+					Ports: []game_room.ContainerPort{
+						{
+							Name:     "port1",
+							Protocol: "http",
+							HostPort: 30,
+						},
+						{
+							Name:     "port2",
+							Protocol: "http",
+							HostPort: 40,
+						},
+					}},
+			}}},
+			newScheduler: &entities.Scheduler{Spec: game_room.Spec{Containers: []game_room.Container{
+				{
+					Name: "Name1",
+					Ports: []game_room.ContainerPort{
+						{
+							Name:     "port1",
+							Protocol: "http",
+							HostPort: 91,
+						},
+						{
+							Name:     "port2",
+							Protocol: "http",
+							HostPort: 92,
+						},
+					}},
+				{
+					Name: "Name2",
+					Ports: []game_room.ContainerPort{
+						{
+							Name:     "port1",
+							Protocol: "http",
+							HostPort: 93,
+						},
+						{
+							Name:     "port2",
+							Protocol: "http",
+							HostPort: 94,
+						},
+					}},
+			}}},
+			expected: false,
+		},
 	}
 
 	for name, test := range tests {

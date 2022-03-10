@@ -160,7 +160,6 @@ roomsListLoop:
 		if err != nil {
 			return fmt.Errorf("failed to list rooms for deletion")
 		}
-
 		for _, room := range rooms {
 			ex.roomsBeingReplaced.Store(room.ID, true)
 			select {

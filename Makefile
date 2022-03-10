@@ -59,7 +59,7 @@ license-check: ## Execute license check.
 
 .PHONY: run/e2e-tests
 run/e2e-tests: build-linux-x86_64 setup/e2e deps/stop ## Execute end-to-end tests.
-	@cd e2e; go test -count=1 $(OPTS) ./suites/...
+	@cd e2e; go test -count=1 -v $(OPTS) ./suites/...
 
 #-------------------------------------------------------------------------------
 #  Build and run

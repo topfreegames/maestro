@@ -79,7 +79,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 
 	isSchedulerMajorVersion := currentActiveScheduler.IsMajorVersion(newScheduler)
 
-	err = ex.populateSchedulerNewVersion(newScheduler, currentActiveScheduler.Spec.Version, isSchedulerMajorVersion)
+	err = ex.populateSchedulerNewVersion(ctx, newScheduler, currentActiveScheduler.Spec.Version, isSchedulerMajorVersion)
 	if err != nil {
 		return err
 	}
@@ -91,13 +91,12 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 			return err
 		}
 	}
-
 	err = ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
 		return err
 	}
-
-	logger.Info(fmt.Sprintf("%s operation succeded, %s operation enqueued to continue scheduler update process", opDef.Name(), switch_active_version.OperationName))
+	logger.Sugar().Infof("new scheduler version created: %s, is major: %t", newScheduler.Spec.Version, isSchedulerMajorVersion)
+	logger.Sugar().Infof("%s operation succeded, %s operation enqueued to continue scheduler update process, switching to version %s", opDef.Name(), switch_active_version.OperationName, newScheduler.Spec.Version)
 	return nil
 }
 
@@ -155,18 +154,67 @@ func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueue
 	return nil
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) populateSchedulerNewVersion(newScheduler *entities.Scheduler, currentVersion string, isMajorVersion bool) error {
+func (ex *CreateNewSchedulerVersionExecutor) populateSchedulerNewVersion(ctx context.Context, newScheduler *entities.Scheduler, currentVersion string, isMajorVersion bool) error {
 	var newVersion semver.Version
 	currentVersionSemver, err := semver.NewVersion(currentVersion)
 	if err != nil {
 		return fmt.Errorf("failed to parse scheduler current version: %w", err)
 	}
 	if isMajorVersion {
-		newVersion = currentVersionSemver.IncMajor()
+		newVersion, err = ex.calculateNewMajorVersion(ctx, newScheduler.Name, currentVersionSemver)
+		if err != nil {
+			return fmt.Errorf("failed to calculate new major version: %w", err)
+		}
 	} else {
-		newVersion = currentVersionSemver.IncMinor()
+		newVersion, err = ex.calculateNewMinorVersion(ctx, newScheduler.Name, currentVersionSemver)
+		if err != nil {
+			return fmt.Errorf("failed to calculate new minor version: %w", err)
+		}
 	}
 	newScheduler.SetSchedulerVersion(newVersion.Original())
 	newScheduler.SetSchedulerRollbackVersion(currentVersion)
 	return nil
+}
+
+func (ex *CreateNewSchedulerVersionExecutor) calculateNewMajorVersion(ctx context.Context, schedulerName string, currentActiveVersionSemver *semver.Version) (semver.Version, error) {
+	var newVersion semver.Version
+	var greatestMajorVersion = currentActiveVersionSemver
+	schedulerVersions, err := ex.schedulerManager.GetSchedulerVersions(ctx, schedulerName)
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to load scheduler versions: %w", err)
+	}
+	for _, schedulerVersion := range schedulerVersions {
+		version, vErr := semver.NewVersion(schedulerVersion.Version)
+		if vErr != nil {
+			return newVersion, fmt.Errorf("failed to parse scheduler version %s: %w", schedulerVersion.Version, vErr)
+		}
+		if version.Major() > greatestMajorVersion.Major() {
+			greatestMajorVersion = version
+		}
+	}
+
+	newVersion = greatestMajorVersion.IncMajor()
+	return newVersion, nil
+}
+
+func (ex *CreateNewSchedulerVersionExecutor) calculateNewMinorVersion(ctx context.Context, schedulerName string, currentActiveVersionSemver *semver.Version) (semver.Version, error) {
+	var newVersion semver.Version
+	var greatestMinorVersion = currentActiveVersionSemver
+	schedulerVersions, err := ex.schedulerManager.GetSchedulerVersions(ctx, schedulerName)
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to load scheduler versions: %w", err)
+	}
+
+	for _, schedulerVersion := range schedulerVersions {
+		version, vErr := semver.NewVersion(schedulerVersion.Version)
+		if vErr != nil {
+			return newVersion, fmt.Errorf("failed to parse scheduler version %s: %w", schedulerVersion.Version, vErr)
+		}
+		if version.Major() == currentActiveVersionSemver.Major() && version.Minor() > greatestMinorVersion.Minor() {
+			greatestMinorVersion = version
+		}
+	}
+
+	newVersion = greatestMinorVersion.IncMinor()
+	return newVersion, nil
 }

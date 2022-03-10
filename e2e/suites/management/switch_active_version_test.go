@@ -48,9 +48,6 @@ func TestSwitchActiveVersion(t *testing.T) {
 
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
-			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
-			require.NoError(t, err)
-
 			// Update scheduler
 			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
 				Name:     scheduler.Name,
@@ -112,22 +109,18 @@ func TestSwitchActiveVersion(t *testing.T) {
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
-
-			// Don't replace pods since is a minor change
-			for i := 0; i < 2; i++ {
-				require.Equal(t, podsAfterUpdate.Items[i].Name, podsBeforeUpdate.Items[i].Name)
-			}
-
-			// Switches to version v1.1.0
 			require.Equal(t, "v1.1.0", getSchedulerResponse.Scheduler.Spec.Version)
 
-			// Update scheduler
+			podsBeforeSwitch, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+			require.Len(t, podsBeforeSwitch.Items, 2)
+
 			switchActiveVersionRequest := &maestroApiV1.SwitchActiveVersionRequest{
 				SchedulerName: scheduler.Name,
 				Version:       "v1.0.0",
 			}
 			switchActiveVersionResponse := &maestroApiV1.SwitchActiveVersionResponse{}
-
+			// Switch to v1.0.0
 			err = managementApiClient.Do("PUT", fmt.Sprintf("/schedulers/%s", scheduler.Name), switchActiveVersionRequest, switchActiveVersionResponse)
 			require.NoError(t, err)
 
@@ -139,13 +132,46 @@ func TestSwitchActiveVersion(t *testing.T) {
 			require.NoError(t, err)
 			require.NotEqual(t, getSchedulerAfterSwitchResponse.Scheduler.Spec.Version, getSchedulerResponse.Scheduler.Spec.Version)
 
-			podsAfterRollback, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			podsAfterSwitch, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
-			require.NotEmpty(t, podsAfterRollback.Items)
-
+			require.NotEmpty(t, podsAfterSwitch.Items)
+			require.Len(t, podsAfterSwitch.Items, 2)
 			// Pods don't change since it's a minor rollback
 			for i := 0; i < 2; i++ {
-				require.Equal(t, podsAfterUpdate.Items[i].Name, podsAfterRollback.Items[i].Name)
+				require.Equal(t, podsBeforeSwitch.Items[i].Name, podsAfterSwitch.Items[i].Name)
+			}
+
+			podsBeforeSwitch, err = kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+			require.Len(t, podsBeforeSwitch.Items, 2)
+
+			switchActiveVersionRequest = &maestroApiV1.SwitchActiveVersionRequest{
+				SchedulerName: scheduler.Name,
+				Version:       "v1.1.0",
+			}
+			switchActiveVersionResponse = &maestroApiV1.SwitchActiveVersionResponse{}
+
+			// Switch to v1.1.0
+			err = managementApiClient.Do("PUT", fmt.Sprintf("/schedulers/%s", scheduler.Name), switchActiveVersionRequest, switchActiveVersionResponse)
+			require.NoError(t, err)
+
+			// New Switch Active Version
+			waitForOperationToFinishByOperationId(t, managementApiClient, scheduler.Name, switchActiveVersionResponse.OperationId)
+
+			getSchedulerResponsePreviousVersion := getSchedulerAfterSwitchResponse
+			getSchedulerAfterSwitchResponse = &maestroApiV1.GetSchedulerResponse{}
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerAfterSwitchResponse)
+			require.NoError(t, err)
+			require.NotEqual(t, getSchedulerAfterSwitchResponse.Scheduler.Spec.Version, getSchedulerResponsePreviousVersion.Scheduler.Spec.Version)
+
+			podsAfterSwitch, err = kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+
+			require.NoError(t, err)
+			require.NotEmpty(t, podsAfterSwitch.Items)
+			require.Len(t, podsAfterSwitch.Items, 2)
+			// Pods don't change since it's a minor rollback
+			for i := 0; i < 2; i++ {
+				require.Equal(t, podsBeforeSwitch.Items[i].Name, podsAfterSwitch.Items[i].Name)
 			}
 		})
 
