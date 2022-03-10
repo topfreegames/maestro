@@ -25,8 +25,6 @@ package management
 import (
 	"context"
 	"fmt"
-	_struct "github.com/golang/protobuf/ptypes/struct"
-	"google.golang.org/protobuf/types/known/structpb"
 	"time"
 
 	"testing"
@@ -47,10 +45,12 @@ import (
 func TestCreateNewSchedulerVersion(t *testing.T) {
 	game := "create-new-scheduler-version-game"
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		t.Run("Should Succeed - create minor version, no pods replaces", func(t *testing.T) {
+		t.Run("Should Succeed - create minor version, no pods replaces, create major version, all pods are changed", func(t *testing.T) {
 			t.Parallel()
 
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
+
+			// ----------- Create new Minor version v1.1.0 and assert pods are not replace
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -105,7 +105,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
 
-			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "create_new_scheduler_version")
+			waitForOperationToFinishByOperationId(t, managementApiClient, scheduler.Name, updateResponse.OperationId)
 			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
 
 			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
@@ -122,17 +122,14 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 				require.Equal(t, podsAfterUpdate.Items[i].Name, podsBeforeUpdate.Items[i].Name)
 			}
 
-			// Switches to version v1.1.0
 			require.Equal(t, "v1.1.0", getSchedulerResponse.Scheduler.Spec.Version)
-		})
 
-		t.Run("Should Succeed - create major change, all pods are changed", func(t *testing.T) {
-			t.Parallel()
+			//  ----------- Create new Major version v2.0.0 and assert pods are replaced
+			podsBeforeUpdate, err = kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
 
-			schedulerName, roomNameBeforeUpdate := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
-
-			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-				Name:     schedulerName,
+			updateRequest = &maestroApiV1.NewSchedulerVersionRequest{
+				Name:     scheduler.Name,
 				Game:     "test",
 				MaxSurge: "10%",
 				Spec: &maestrov1.Spec{
@@ -174,94 +171,225 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 					End:   8000,
 				},
 			}
-			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
+			updateResponse = &maestroApiV1.NewSchedulerVersionResponse{}
 
-			err := managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), updateRequest, updateResponse)
 			require.NoError(t, err)
-			require.NotNil(t, updateResponse.OperationId, schedulerName)
+			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
 
-			// Wait till we have 3 pods (the third one is the validation one). Then, try to forward event.
-			// Since we don't forward event from validation room, it should return true even though we're not
-			// mocking the gRPC call.
+			waitForOperationToFinishByOperationId(t, managementApiClient, scheduler.Name, updateResponse.OperationId)
+			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
+
 			require.Eventually(t, func() bool {
-				pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
-				require.NoError(t, err)
-				require.NotEmpty(t, pods.Items)
-
-				if len(pods.Items) == 2 {
-					var validationRoomName string
-					for _, room := range pods.Items {
-						if room.ObjectMeta.Name != roomNameBeforeUpdate {
-							validationRoomName = room.ObjectMeta.Name
-							break
-						}
-					}
-
-					playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
-						RoomName: validationRoomName,
-						Event:     "playerLeft",
-						Timestamp: time.Now().Unix(),
-						Metadata: &_struct.Struct{
-							Fields: map[string]*structpb.Value{
-								"playerId": {
-									Kind: &structpb.Value_StringValue{
-										StringValue: "c50acc91-4d88-46fa-aa56-48d63c5b5311",
-									},
-								},
-								"eventMetadata1": {
-									Kind: &structpb.Value_StringValue{
-										StringValue: "value1",
-									},
-								},
-								"eventMetadata2": {
-									Kind: &structpb.Value_BoolValue{
-										BoolValue: true,
-									},
-								},
-							},
-						},
-					}
-					playerEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
-					err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", schedulerName, validationRoomName), playerEventRequest, playerEventResponse)
-					require.NoError(t, err)
-					require.Equal(t, true, playerEventResponse.Success)
-
+				getSchedulerRequest = &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
+				getSchedulerResponse = &maestroApiV1.GetSchedulerResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
+				if getSchedulerResponse.Scheduler.Spec.Version == "v2.0.0" {
 					return true
 				}
-
 				return false
-			}, 2*time.Minute, time.Second)
+			}, 1*time.Minute, time.Second)
 
-			waitForOperationToFinish(t, managementApiClient, schedulerName, "create_new_scheduler_version")
-			waitForOperationToFinish(t, managementApiClient, schedulerName, "switch_active_version")
-
-			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
-			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
-
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
 
-			// Wait till we have only 1 room again
 			require.Eventually(t, func() bool {
-				podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+				podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 				require.NoError(t, err)
 				require.NotEmpty(t, podsAfterUpdate.Items)
 
-				if len(podsAfterUpdate.Items) == 1 {
+				if len(podsAfterUpdate.Items) == 2 {
 					return true
 				}
 
 				return false
-			}, 2*time.Minute, time.Second)
+			}, 1*time.Minute, time.Second)
 
-			podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+			podsAfterUpdate, err = kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, podsAfterUpdate.Items)
 
+			// Replace pods since is a minor change
+			for i := 0; i < 2; i++ {
+				require.NotEqual(t, podsAfterUpdate.Items[i].Spec, podsBeforeUpdate.Items[i].Spec)
+				require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
+			}
 
-			require.NotEqual(t, podsAfterUpdate.Items[0].ObjectMeta.Name, roomNameBeforeUpdate)
+			// ----------- Switch back to v1.0.0
+			switchActiveVersionRequest := &maestroApiV1.SwitchActiveVersionRequest{
+				SchedulerName: scheduler.Name,
+				Version:       "v1.0.0",
+			}
+			switchActiveVersionResponse := &maestroApiV1.SwitchActiveVersionResponse{}
+			err = managementApiClient.Do("PUT", fmt.Sprintf("/schedulers/%s", scheduler.Name), switchActiveVersionRequest, switchActiveVersionResponse)
+			require.NoError(t, err)
 
-			require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Spec.Version)
+			waitForOperationToFinishByOperationId(t, managementApiClient, scheduler.Name, switchActiveVersionResponse.OperationId)
+
+			// ----------- Create new Minor version v1.2.0 (since v1.1.0 already exists) and assert pods are not replace
+
+			podsBeforeUpdate, err = kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+
+			// Update scheduler
+			updateRequest = &maestroApiV1.NewSchedulerVersionRequest{
+				Name:     scheduler.Name,
+				Game:     "test",
+				MaxSurge: "10%",
+				Spec: &maestrov1.Spec{
+					TerminationGracePeriod: 15,
+					Containers: []*maestroApiV1.Container{
+						{
+							Name:  "example",
+							Image: "alpine:3.15.0",
+							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
+								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
+							ImagePullPolicy: "Always",
+							Environment: []*maestroApiV1.ContainerEnvironment{
+								{
+									Name:  "ROOMS_API_ADDRESS",
+									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+								},
+							},
+							Requests: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Limits: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Ports: []*maestroApiV1.ContainerPort{
+								{
+									Name:     "default",
+									Protocol: "tcp",
+									Port:     80,
+								},
+							},
+						},
+					},
+				},
+				PortRange: &maestroApiV1.PortRange{
+					Start: 80,
+					End:   8000,
+				},
+			}
+			updateResponse = &maestroApiV1.NewSchedulerVersionResponse{}
+
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), updateRequest, updateResponse)
+			require.NoError(t, err)
+			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
+
+			waitForOperationToFinishByOperationId(t, managementApiClient, scheduler.Name, updateResponse.OperationId)
+			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
+
+			podsAfterUpdate, err = kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+			require.NotEmpty(t, podsAfterUpdate.Items)
+
+			require.Eventually(t, func() bool {
+				getSchedulerRequest = &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
+				getSchedulerResponse = &maestroApiV1.GetSchedulerResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
+				if getSchedulerResponse.Scheduler.Spec.Version == "v1.2.0" {
+					return true
+				}
+				return false
+			}, 1*time.Minute, time.Second)
+
+			// Don't replace pods since is a minor change
+			for i := 0; i < 2; i++ {
+				require.Equal(t, podsAfterUpdate.Items[i].Name, podsBeforeUpdate.Items[i].Name)
+			}
+
+			//  ----------- Create new Major version v3.0.0 (since v2.0.0 already exists) and assert pods are replaced
+			podsBeforeUpdate, err = kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+
+			updateRequest = &maestroApiV1.NewSchedulerVersionRequest{
+				Name:     scheduler.Name,
+				Game:     "test",
+				MaxSurge: "10%",
+				Spec: &maestrov1.Spec{
+					TerminationGracePeriod: 15,
+					Containers: []*maestroApiV1.Container{
+						{
+							Name:  "example-update",
+							Image: "alpine:3.15.0",
+							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
+								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
+							ImagePullPolicy: "Always",
+							Environment: []*maestroApiV1.ContainerEnvironment{
+								{
+									Name:  "ROOMS_API_ADDRESS",
+									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+								},
+							},
+							Requests: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Limits: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Ports: []*maestroApiV1.ContainerPort{
+								{
+									Name:     "default",
+									Protocol: "tcp",
+									Port:     80,
+								},
+							},
+						},
+					},
+				},
+				PortRange: &maestroApiV1.PortRange{
+					Start: 80,
+					End:   8000,
+				},
+			}
+			updateResponse = &maestroApiV1.NewSchedulerVersionResponse{}
+
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), updateRequest, updateResponse)
+			require.NoError(t, err)
+			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
+
+			waitForOperationToFinishByOperationId(t, managementApiClient, scheduler.Name, updateResponse.OperationId)
+			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
+
+			require.Eventually(t, func() bool {
+				getSchedulerRequest = &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
+				getSchedulerResponse = &maestroApiV1.GetSchedulerResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
+				if getSchedulerResponse.Scheduler.Spec.Version == "v3.0.0" {
+					return true
+				}
+				return false
+			}, 1*time.Minute, time.Second)
+
+			require.Eventually(t, func() bool {
+				podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, podsAfterUpdate.Items)
+
+				if len(podsAfterUpdate.Items) == 2 {
+					return true
+				}
+
+				return false
+			}, 1*time.Minute, time.Second)
+
+			podsAfterUpdate, err = kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+			require.NotEmpty(t, podsAfterUpdate.Items)
+
+			// Replace pods since is a minor change
+			for i := 0; i < 2; i++ {
+				require.NotEqual(t, podsAfterUpdate.Items[i].Spec, podsBeforeUpdate.Items[i].Spec)
+				require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
+			}
+
 		})
 
 		t.Run("Should Fail - When scheduler when sending invalid request to update endpoint it fails fast", func(t *testing.T) {

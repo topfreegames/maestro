@@ -23,10 +23,10 @@
 package entities
 
 import (
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-
-	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -89,11 +89,20 @@ func (s *Scheduler) Validate() error {
 // the following fields require it: `Spec` and `PortRange`. Any other field
 // change is considered minor (we don't need to recreate instances).
 func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
-	// Compare schedulers `Spec` and `PortRange`. This means that if this
-	// returns `false` it is a major version.
+	schedulerContainerPorts := map[string]game_room.ContainerPort{}
+
+	for _, container := range s.Spec.Containers {
+		for _, port := range container.Ports {
+			schedulerContainerPorts[port.Name] = port
+		}
+	}
+
 	return !cmp.Equal(
 		s,
 		newScheduler,
+		cmpopts.IgnoreSliceElements(func(container game_room.ContainerPort) bool {
+			return cmp.Equal(container, schedulerContainerPorts[container.Name], cmpopts.IgnoreFields(container, "HostPort"))
+		}),
 		cmpopts.IgnoreFields(
 			Scheduler{},
 			"Name",
