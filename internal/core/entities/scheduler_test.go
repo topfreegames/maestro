@@ -150,6 +150,11 @@ func TestIsMajorVersion(t *testing.T) {
 			newScheduler:     &entities.Scheduler{MaxSurge: "100"},
 			expected:         false,
 		},
+		"spec version shouldn't be a major": {
+			currentScheduler: &entities.Scheduler{Spec: game_room.Spec{Version: "v1.1.0"}},
+			newScheduler:     &entities.Scheduler{Spec: game_room.Spec{Version: "v1.2.0"}},
+			expected:         false,
+		},
 	}
 
 	for name, test := range tests {
