@@ -28,6 +28,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"go.uber.org/zap"
@@ -47,10 +48,10 @@ func NewExecutor(runtime ports.Runtime, schedulerManager ports.SchedulerManager)
 
 func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", op.DefinitionName),
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
 		zap.String("operation_phase", "Execute"),
-		zap.String("operation_id", op.ID),
+		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 
 	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName})
@@ -65,10 +66,10 @@ func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 
 func (e *CreateSchedulerExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", op.DefinitionName),
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
 		zap.String("operation_phase", "OnError"),
-		zap.String("operation_id", op.ID),
+		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 
 	err := e.schedulerManager.DeleteScheduler(ctx, op.SchedulerName)

@@ -31,6 +31,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -50,53 +51,54 @@ func ProvideOperationsHandler(operationManager ports.OperationManager) *Operatio
 	return &OperationsHandler{
 		operationManager: operationManager,
 		logger: zap.L().
-			With(zap.String("component", "handler"), zap.String("handler", "operations_handler")),
+			With(zap.String(logs.LogFieldComponent, "handler"), zap.String(logs.LogFieldHandlerName, "operations_handler")),
 	}
 }
 
 func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.ListOperationsRequest) (*api.ListOperationsResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	sortingOrder, err := extractSortingParameters(request.OrderBy)
 	if err != nil {
-		h.logger.Error("error parsing sorting parameters", zap.String("schedulerName", request.GetSchedulerName()), zap.String("orderBy", request.OrderBy), zap.Error(err))
+		handlerLogger.Error(fmt.Sprintf("error parsing sorting parameters, orderBy: %+v", request.OrderBy), zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, request.GetSchedulerName())
 	if err != nil {
-		h.logger.Error("error listing pending operations", zap.String("schedulerName", request.GetSchedulerName()), zap.Error(err))
+		handlerLogger.Error("error listing pending operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	sortOperationsByCreatedAt(pendingOperationEntities, sortingOrder)
 
 	pendingOperationResponse, err := h.fromOperationsToResponses(pendingOperationEntities)
 	if err != nil {
-		h.logger.Error("error converting pending operations", zap.String("schedulerName", request.GetSchedulerName()), zap.Error(err))
+		handlerLogger.Error("error converting pending operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	activeOperationEntities, err := h.operationManager.ListSchedulerActiveOperations(ctx, request.GetSchedulerName())
 	if err != nil {
-		h.logger.Error("error listing pending operations", zap.String("schedulerName", request.GetSchedulerName()), zap.Error(err))
+		handlerLogger.Error("error listing pending operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	sortOperationsByCreatedAt(activeOperationEntities, sortingOrder)
 
 	activeOperationResponses, err := h.fromOperationsToResponses(activeOperationEntities)
 	if err != nil {
-		h.logger.Error("error converting active operations", zap.String("schedulerName", request.GetSchedulerName()), zap.Error(err))
+		handlerLogger.Error("error converting active operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	finishedOperationEntities, err := h.operationManager.ListSchedulerFinishedOperations(ctx, request.GetSchedulerName())
 	if err != nil {
-		h.logger.Error("error listing finished operations", zap.String("schedulerName", request.GetSchedulerName()), zap.Error(err))
+		handlerLogger.Error("error listing finished operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	sortOperationsByCreatedAt(finishedOperationEntities, sortingOrder)
 
 	finishedOperationResponse, err := h.fromOperationsToResponses(finishedOperationEntities)
 	if err != nil {
-		h.logger.Error("error converting finished operations", zap.String("schedulerName", request.GetSchedulerName()), zap.Error(err))
+		handlerLogger.Error("error converting finished operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
@@ -108,9 +110,10 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 }
 
 func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.CancelOperationRequest) (*api.CancelOperationResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()))
 	err := h.operationManager.EnqueueOperationCancellationRequest(ctx, request.SchedulerName, request.OperationId)
 	if err != nil {
-		h.logger.Error("error cancelling operation", zap.String("schedulerName", request.GetSchedulerName()), zap.String("operationId", request.GetOperationId()), zap.Error(err))
+		handlerLogger.Error("error cancelling operation", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()), zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 

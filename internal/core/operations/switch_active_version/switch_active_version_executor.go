@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -68,9 +69,9 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 // 4. Switch the active version
 func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", definition.Name()),
-		zap.String("operation_id", op.ID),
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
+		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	logger.Debug("start switching scheduler active version")
 
@@ -108,9 +109,9 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 
 func (ex *SwitchActiveVersionExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", definition.Name()),
-		zap.String("operation_id", op.ID),
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
+		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	logger.Info("starting OnError routine")
 

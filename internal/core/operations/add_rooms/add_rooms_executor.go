@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
+
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -51,7 +53,7 @@ func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) 
 	return &AddRoomsExecutor{
 		roomManager:         roomManager,
 		storage:             storage,
-		logger:              zap.L().With(zap.String("service", "worker")),
+		logger:              zap.L().With(zap.String(logs.LogFieldServiceName, "worker")),
 		newCreatedRooms:     map[string][]*game_room.GameRoom{},
 		newCreatedRoomsLock: sync.Mutex{},
 	}
@@ -59,9 +61,9 @@ func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) 
 
 func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	executionLogger := ex.logger.With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", definition.Name()),
-		zap.String("operation_id", op.ID),
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
+		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	amount := definition.(*AddRoomsDefinition).Amount
 	scheduler, err := ex.storage.GetScheduler(ctx, op.SchedulerName)
@@ -91,9 +93,9 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 
 func (ex *AddRoomsExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	executionLogger := ex.logger.With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", definition.Name()),
-		zap.String("operation_id", op.ID),
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
+		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	executionLogger.Info("starting OnError routine")
 

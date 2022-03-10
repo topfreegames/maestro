@@ -27,6 +27,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
+
 	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -55,45 +57,48 @@ func ProvideRoomsHandler(roomManager ports.RoomManager, eventsService ports.Even
 		roomManager:   roomManager,
 		eventsService: eventsService,
 		logger: zap.L().
-			With(zap.String("component", "handler"), zap.String("handler", "rooms_handler")),
+			With(zap.String(logs.LogFieldComponent, "handler"), zap.String(logs.LogFieldHandlerName, "rooms_handler")),
 	}
 }
 
 func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.ForwardRoomEventRequest) (*api.ForwardRoomEventResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
 	eventMetadata := message.Metadata.AsMap()
 	eventMetadata["eventType"] = events.FromRoomEventTypeToString(events.Arbitrary)
 	eventMetadata["roomEvent"] = message.Event
 
 	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
-		h.logger.Error("error forwarding room event", zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName), zap.Any("eventMessage", message), zap.Error(err))
+		handlerLogger.Error("error forwarding room event", zap.Any("event_message", message), zap.Error(err))
 		return &api.ForwardRoomEventResponse{Success: false, Message: err.Error()}, nil
 	}
 	return &api.ForwardRoomEventResponse{Success: true, Message: ""}, nil
 }
 
 func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.ForwardPlayerEventRequest) (*api.ForwardPlayerEventResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
 	eventMetadata := message.Metadata.AsMap()
 	eventMetadata["eventType"] = message.Event
 
 	err := h.eventsService.ProduceEvent(ctx, events.NewPlayerEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
-		h.logger.Error("error forwarding player event", zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName), zap.Any("eventMessage", message), zap.Error(err))
+		handlerLogger.Error("error forwarding player event", zap.Any("event_message", message), zap.Error(err))
 		return &api.ForwardPlayerEventResponse{Success: false, Message: err.Error()}, nil
 	}
 	return &api.ForwardPlayerEventResponse{Success: true, Message: ""}, nil
 }
 
 func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.UpdateRoomWithPingRequest) (*api.UpdateRoomWithPingResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
 	gameRoom, err := h.fromApiUpdateRoomRequestToEntity(message)
-	h.logger.Info("Receiving ping request", zap.Any("message", message), zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName))
+	handlerLogger.Info("handling room ping request", zap.Any("message", message))
 	if err != nil {
-		h.logger.Error("error parsing ping request", zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName), zap.Any("ping", message), zap.Error(err))
+		handlerLogger.Error("error parsing ping request", zap.Any("ping", message), zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	err = h.roomManager.UpdateRoom(ctx, gameRoom)
 	if err != nil {
-		h.logger.Error("error updating room with ping", zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName), zap.Any("ping", message), zap.Error(err))
+		handlerLogger.Error("error updating room with ping", zap.Any("ping", message), zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
@@ -102,7 +107,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	h.logger.Info("Room updated with ping successfully", zap.String("schedulerName", message.SchedulerName), zap.String("roomName", message.RoomName))
+	handlerLogger.Info("Room updated with ping successfully")
 	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 

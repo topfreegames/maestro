@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
+
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/google/uuid"
@@ -57,7 +59,7 @@ func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefi
 		LeaseStorage:                    leaseStorage,
 		Config:                          config,
 		SchedulerStorage:                schedulerStorage,
-		Logger:                          zap.L().With(zap.String("component", "service"), zap.String("service", "operation_manager")),
+		Logger:                          zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "operation_manager")),
 	}
 }
 
@@ -77,9 +79,10 @@ func (om *OperationManager) CreateOperation(ctx context.Context, schedulerName s
 
 	err = om.Flow.InsertOperationID(ctx, op.SchedulerName, op.ID)
 	if err != nil {
+		om.Logger.Error(fmt.Sprintf("failed to enqueue %s operation to be executed", op.DefinitionName), zap.Error(err), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
 		return nil, fmt.Errorf("failed to insert operation on flow: %w", err)
 	}
-
+	om.Logger.Info(fmt.Sprintf("operation %s created and enqueued to be executed", op.DefinitionName), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
 	return op, nil
 }
 
@@ -210,8 +213,8 @@ func (om *OperationManager) WatchOperationCancellationRequests(ctx context.Conte
 			err := om.cancelOperation(ctx, request.SchedulerName, request.OperationID)
 			if err != nil {
 				om.Logger.
-					With(zap.String("schedulerName", request.SchedulerName)).
-					With(zap.String("operationID", request.OperationID)).
+					With(zap.String(logs.LogFieldSchedulerName, request.SchedulerName)).
+					With(zap.String(logs.LogFieldOperationID, request.OperationID)).
 					With(zap.Error(err)).
 					Error("failed to cancel operation")
 			}
@@ -264,8 +267,8 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 				err := om.LeaseStorage.RenewLease(operationCtx, op.SchedulerName, op.ID, om.Config.OperationLeaseTtl)
 				if err != nil {
 					om.Logger.
-						With(zap.String("schedulerName", op.SchedulerName)).
-						With(zap.String("operationID", op.ID)).
+						With(zap.String(logs.LogFieldSchedulerName, op.SchedulerName)).
+						With(zap.String(logs.LogFieldOperationID, op.ID)).
 						With(zap.Error(err)).
 						Error("failed to renew operation lease")
 				}
@@ -274,8 +277,8 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 					om.Logger.Info("finish operation lease renew go routine since operation is canceled")
 				} else {
 					om.Logger.
-						With(zap.String("schedulerName", op.SchedulerName)).
-						With(zap.String("operationID", op.ID)).
+						With(zap.String(logs.LogFieldSchedulerName, op.SchedulerName)).
+						With(zap.String(logs.LogFieldOperationID, op.ID)).
 						With(zap.Error(operationCtx.Err())).
 						Error("loop to renew operation lease received an error context event")
 				}
