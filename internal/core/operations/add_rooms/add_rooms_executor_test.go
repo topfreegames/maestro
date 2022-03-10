@@ -93,7 +93,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
-		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(&gameRoom, &gameRoomInstance, nil).Times(10)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(10)
 
 		executor := NewExecutor(roomsManager, schedulerStorage)
 		err := executor.Execute(context.Background(), &op, &definition)
@@ -109,8 +109,8 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		gameRoomReady := gameRoom
 		gameRoomReady.Status = game_room.GameStatusReady
 
-		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
-		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.NewErrUnexpected("error"))
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, errors.NewErrUnexpected("error"))
 
 		executor := NewExecutor(roomsManager, schedulerStorage)
 		err := executor.Execute(context.Background(), &op, &definition)
@@ -184,8 +184,8 @@ func TestAddRoomsExecutor_OnError(t *testing.T) {
 
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
 
-		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
-		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.NewErrUnexpected("error"))
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, errors.NewErrUnexpected("error"))
 
 		executor := NewExecutor(roomsManager, schedulerStorage)
 		err := executor.Execute(context.Background(), &op, &definition)
@@ -202,8 +202,8 @@ func TestAddRoomsExecutor_OnError(t *testing.T) {
 
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
 
-		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
-		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.NewErrUnexpected("error"))
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, errors.NewErrUnexpected("error"))
 
 		executor := NewExecutor(roomsManager, schedulerStorage)
 		err := executor.Execute(context.Background(), &op, &definition)
