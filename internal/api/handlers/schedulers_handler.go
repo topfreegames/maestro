@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	_struct "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 
@@ -110,7 +111,13 @@ func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSc
 	}
 	handlerLogger.Info("finish handling get scheduler request")
 
-	return &api.GetSchedulerResponse{Scheduler: h.fromEntitySchedulerToResponse(scheduler)}, nil
+	returnScheduler, err := h.fromEntitySchedulerToResponse(scheduler)
+	if err != nil {
+		h.logger.Error("error parsing scheduler to response", zap.Any("schedulerName", schedulerName), zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.GetSchedulerResponse{Scheduler: returnScheduler}, nil
 }
 
 func (h *SchedulersHandler) GetSchedulerVersions(ctx context.Context, request *api.GetSchedulerVersionsRequest) (*api.GetSchedulerVersionsResponse, error) {
@@ -150,7 +157,12 @@ func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.Cr
 	}
 	handlerLogger.Info("finish handling create scheduler request")
 
-	return &api.CreateSchedulerResponse{Scheduler: h.fromEntitySchedulerToResponse(scheduler)}, nil
+	returnScheduler, err := h.fromEntitySchedulerToResponse(scheduler)
+	if err != nil {
+		h.logger.Error("error parsing scheduler to response", zap.Any("schedulerName", request.GetName()), zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	return &api.CreateSchedulerResponse{Scheduler: returnScheduler}, nil
 }
 
 func (h *SchedulersHandler) AddRooms(ctx context.Context, request *api.AddRoomsRequest) (*api.AddRoomsResponse, error) {
@@ -295,16 +307,21 @@ func (h *SchedulersHandler) fromApiNewSchedulerVersionRequestToEntity(request *a
 	)
 }
 
-func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Scheduler) *api.Scheduler {
-	return &api.Scheduler{
-		Name:      entity.Name,
-		Game:      entity.Game,
-		State:     entity.State,
-		PortRange: getPortRange(entity.PortRange),
-		CreatedAt: timestamppb.New(entity.CreatedAt),
-		MaxSurge:  entity.MaxSurge,
-		Spec:      getSpec(entity.Spec),
+func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, error) {
+	forwarders, err := h.fromEntityForwardersToResponse(entity.Forwarders)
+	if err != nil {
+		return nil, err
 	}
+	return &api.Scheduler{
+		Name:       entity.Name,
+		Game:       entity.Game,
+		State:      entity.State,
+		PortRange:  getPortRange(entity.PortRange),
+		CreatedAt:  timestamppb.New(entity.CreatedAt),
+		MaxSurge:   entity.MaxSurge,
+		Spec:       getSpec(entity.Spec),
+		Forwarders: forwarders,
+	}, nil
 }
 
 func (h *SchedulersHandler) fromEntitySchedulerVersionListToResponse(entity []*entities.SchedulerVersion) []*api.SchedulerVersion {
@@ -317,6 +334,37 @@ func (h *SchedulersHandler) fromEntitySchedulerVersionListToResponse(entity []*e
 		}
 	}
 	return versions
+}
+
+func (h *SchedulersHandler) fromEntityForwardersToResponse(entities []*forwarder.Forwarder) ([]*api.Forwarder, error) {
+	forwarders := make([]*api.Forwarder, len(entities))
+	for i, entity := range entities {
+		opts, err := h.fromEntityForwardOptions(entity.Options)
+		if err != nil {
+			return nil, err
+		}
+
+		forwarders[i] = &api.Forwarder{
+			Name:    entity.Name,
+			Enable:  entity.Enabled,
+			Type:    fmt.Sprint(entity.ForwardType),
+			Address: entity.Address,
+			Options: opts,
+		}
+	}
+	return forwarders, nil
+}
+
+func (h *SchedulersHandler) fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderOptions, error) {
+	protoStruct, err := _struct.NewStruct(entity.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.ForwarderOptions{
+		Timeout:  int64(entity.Timeout),
+		Metadata: protoStruct,
+	}, nil
 }
 
 func (h *SchedulersHandler) fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
