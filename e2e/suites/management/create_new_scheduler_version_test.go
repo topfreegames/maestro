@@ -27,6 +27,9 @@ import (
 	"fmt"
 	"time"
 
+	_struct "github.com/golang/protobuf/ptypes/struct"
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"testing"
 
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
@@ -48,9 +51,9 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Succeed - create minor version, no pods replaces, create major version, all pods are changed", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
+			scheduler, roomsBeforeUpdate := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
 
-			// ----------- Create new Minor version v1.1.0 and assert pods are not replace
+			// ----------- Create new Minor version v1.1.0 and assert pods are not replaced
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -97,6 +100,36 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 				PortRange: &maestroApiV1.PortRange{
 					Start: 80,
 					End:   8000,
+				},
+				Forwarders: []*maestroApiV1.Forwarder{
+					{
+						Name:    "matchmaker-grpc",
+						Enable:  true,
+						Type:    "grpc",
+						Address: maestro.ServerMocks.GrpcForwarderAddress,
+						Options: &maestroApiV1.ForwarderOptions{
+							Timeout: 5000,
+							Metadata: &_struct.Struct{
+								Fields: map[string]*structpb.Value{
+									"roomType": {
+										Kind: &structpb.Value_StringValue{
+											StringValue: "green",
+										},
+									},
+									"forwarderMetadata1": {
+										Kind: &structpb.Value_StringValue{
+											StringValue: "value1",
+										},
+									},
+									"forwarderMetadata2": {
+										Kind: &structpb.Value_NumberValue{
+											NumberValue: 245,
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -170,12 +203,94 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 					Start: 80,
 					End:   8000,
 				},
+				Forwarders: []*maestroApiV1.Forwarder{
+					{
+						Name:    "matchmaker-grpc",
+						Enable:  true,
+						Type:    "grpc",
+						Address: maestro.ServerMocks.GrpcForwarderAddress,
+						Options: &maestroApiV1.ForwarderOptions{
+							Timeout: 5000,
+							Metadata: &_struct.Struct{
+								Fields: map[string]*structpb.Value{
+									"roomType": {
+										Kind: &structpb.Value_StringValue{
+											StringValue: "green",
+										},
+									},
+									"forwarderMetadata1": {
+										Kind: &structpb.Value_StringValue{
+											StringValue: "value1",
+										},
+									},
+									"forwarderMetadata2": {
+										Kind: &structpb.Value_NumberValue{
+											NumberValue: 245,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 			}
 			updateResponse = &maestroApiV1.NewSchedulerVersionResponse{}
 
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), updateRequest, updateResponse)
 			require.NoError(t, err)
 			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
+
+			// Wait till we have 3 pods (the third one is the validation one). Then, try to forward event.
+			// Since we don't forward event from validation room, it should return true even though we're not
+			// mocking the gRPC call.
+			require.Eventually(t, func() bool {
+				pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, pods.Items)
+
+				if len(pods.Items) == 3 {
+					var validationRoomName string
+					for _, room := range pods.Items {
+						if room.ObjectMeta.Name != roomsBeforeUpdate[0] && room.ObjectMeta.Name != roomsBeforeUpdate[1] {
+							validationRoomName = room.ObjectMeta.Name
+							break
+						}
+					}
+
+					playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
+						RoomName:  validationRoomName,
+						Event:     "playerLeft",
+						Timestamp: time.Now().Unix(),
+						Metadata: &_struct.Struct{
+							Fields: map[string]*structpb.Value{
+								"playerId": {
+									Kind: &structpb.Value_StringValue{
+										StringValue: "c50acc91-4d88-46fa-aa56-48d63c5b5311",
+									},
+								},
+								"eventMetadata1": {
+									Kind: &structpb.Value_StringValue{
+										StringValue: "value1",
+									},
+								},
+								"eventMetadata2": {
+									Kind: &structpb.Value_BoolValue{
+										BoolValue: true,
+									},
+								},
+							},
+						},
+					}
+					playerEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
+					err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", scheduler.Name, validationRoomName), playerEventRequest, playerEventResponse)
+					require.NoError(t, err)
+					require.Equal(t, true, playerEventResponse.Success)
+
+					return true
+				}
+
+				return false
+			}, 2*time.Minute, 50*time.Millisecond)
 
 			waitForOperationToFinishByOperationId(t, managementApiClient, scheduler.Name, updateResponse.OperationId)
 			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
@@ -273,6 +388,36 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 					Start: 80,
 					End:   8000,
 				},
+				Forwarders: []*maestroApiV1.Forwarder{
+					{
+						Name:    "matchmaker-grpc",
+						Enable:  true,
+						Type:    "grpc",
+						Address: maestro.ServerMocks.GrpcForwarderAddress,
+						Options: &maestroApiV1.ForwarderOptions{
+							Timeout: 5000,
+							Metadata: &_struct.Struct{
+								Fields: map[string]*structpb.Value{
+									"roomType": {
+										Kind: &structpb.Value_StringValue{
+											StringValue: "green",
+										},
+									},
+									"forwarderMetadata1": {
+										Kind: &structpb.Value_StringValue{
+											StringValue: "value1",
+										},
+									},
+									"forwarderMetadata2": {
+										Kind: &structpb.Value_NumberValue{
+											NumberValue: 245,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 			}
 			updateResponse = &maestroApiV1.NewSchedulerVersionResponse{}
 
@@ -347,6 +492,36 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 				PortRange: &maestroApiV1.PortRange{
 					Start: 80,
 					End:   8000,
+				},
+				Forwarders: []*maestroApiV1.Forwarder{
+					{
+						Name:    "matchmaker-grpc",
+						Enable:  true,
+						Type:    "grpc",
+						Address: maestro.ServerMocks.GrpcForwarderAddress,
+						Options: &maestroApiV1.ForwarderOptions{
+							Timeout: 5000,
+							Metadata: &_struct.Struct{
+								Fields: map[string]*structpb.Value{
+									"roomType": {
+										Kind: &structpb.Value_StringValue{
+											StringValue: "green",
+										},
+									},
+									"forwarderMetadata1": {
+										Kind: &structpb.Value_StringValue{
+											StringValue: "value1",
+										},
+									},
+									"forwarderMetadata2": {
+										Kind: &structpb.Value_NumberValue{
+											NumberValue: 245,
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			}
 			updateResponse = &maestroApiV1.NewSchedulerVersionResponse{}
