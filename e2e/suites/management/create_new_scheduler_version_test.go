@@ -129,13 +129,10 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Succeed - create major change, all pods are changed", func(t *testing.T) {
 			t.Parallel()
 
-			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
-
-			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
-			require.NoError(t, err)
+			schedulerName, roomNameBeforeUpdate := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
 
 			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-				Name:     scheduler.Name,
+				Name:     schedulerName,
 				Game:     "test",
 				MaxSurge: "10%",
 				Spec: &maestrov1.Spec{
@@ -179,24 +176,29 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
 
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), updateRequest, updateResponse)
+			err := managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", schedulerName), updateRequest, updateResponse)
 			require.NoError(t, err)
-			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
+			require.NotNil(t, updateResponse.OperationId, schedulerName)
 
 			// Wait till we have 3 pods (the third one is the validation one). Then, try to forward event.
 			// Since we don't forward event from validation room, it should return true even though we're not
 			// mocking the gRPC call.
 			require.Eventually(t, func() bool {
-				pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+				pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 				require.NoError(t, err)
 				require.NotEmpty(t, pods.Items)
 
-				if len(pods.Items) == 3 {
-					validationRoom := pods.Items[2].ObjectMeta.Name
+				if len(pods.Items) == 2 {
+					var validationRoomName string
+					for _, room := range pods.Items {
+						if room.ObjectMeta.Name != roomNameBeforeUpdate {
+							validationRoomName = room.ObjectMeta.Name
+							break
+						}
+					}
 
 					playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
-						RoomName: validationRoom,
-
+						RoomName: validationRoomName,
 						Event:     "playerLeft",
 						Timestamp: time.Now().Unix(),
 						Metadata: &_struct.Struct{
@@ -220,7 +222,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 						},
 					}
 					playerEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
-					err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", scheduler.Name, validationRoom), playerEventRequest, playerEventResponse)
+					err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", schedulerName, validationRoomName), playerEventRequest, playerEventResponse)
 					require.NoError(t, err)
 					require.Equal(t, true, playerEventResponse.Success)
 
@@ -230,35 +232,35 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 				return false
 			}, 2*time.Minute, time.Second)
 
-			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "create_new_scheduler_version")
-			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
+			waitForOperationToFinish(t, managementApiClient, schedulerName, "create_new_scheduler_version")
+			waitForOperationToFinish(t, managementApiClient, schedulerName, "switch_active_version")
 
-			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
+			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: schedulerName}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
 
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
 
+			// Wait till we have only 1 room again
 			require.Eventually(t, func() bool {
-				podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+				podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 				require.NoError(t, err)
 				require.NotEmpty(t, podsAfterUpdate.Items)
 
-				if len(podsAfterUpdate.Items) == 2 {
+				if len(podsAfterUpdate.Items) == 1 {
 					return true
 				}
 
 				return false
 			}, 2*time.Minute, time.Second)
 
-			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			podsAfterUpdate, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			require.NotEmpty(t, podsAfterUpdate.Items)
 
-			for i := 0; i < 2; i++ {
-				require.NotEqual(t, podsAfterUpdate.Items[i].Spec, podsBeforeUpdate.Items[i].Spec)
-				require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
-			}
+
+			require.NotEqual(t, podsAfterUpdate.Items[0].ObjectMeta.Name, roomNameBeforeUpdate)
+
 			require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Spec.Version)
 		})
 
