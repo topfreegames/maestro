@@ -230,26 +230,33 @@ func (om *OperationManager) WatchOperationCancellationRequests(ctx context.Conte
 }
 
 func (om *OperationManager) GrantLease(ctx context.Context, operation *operation.Operation) error {
+	managerLogger := om.Logger.With(zap.String(logs.LogFieldOperationID, operation.ID), zap.String(logs.LogFieldSchedulerName, operation.SchedulerName))
+	managerLogger.Info("Granting lease - start")
 	err := om.LeaseStorage.GrantLease(ctx, operation.SchedulerName, operation.ID, om.Config.OperationLeaseTtl)
 	if err != nil {
 		return fmt.Errorf("failed to grant lease to operation: %w", err)
 	}
 
+	managerLogger.Info("Granting lease - succeed")
 	return nil
 }
 
 func (om *OperationManager) RevokeLease(ctx context.Context, operation *operation.Operation) error {
+	managerLogger := om.Logger.With(zap.String(logs.LogFieldOperationID, operation.ID), zap.String(logs.LogFieldSchedulerName, operation.SchedulerName))
+	managerLogger.Info("revoking lease - start")
 	err := om.LeaseStorage.RevokeLease(ctx, operation.SchedulerName, operation.ID)
 	if err != nil {
 		return fmt.Errorf("failed to revoke lease to operation: %w", err)
 	}
 
+	managerLogger.Info("revoking lease - succeed")
 	return nil
 }
 
 func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Context, op *operation.Operation) {
 	go func() {
-		om.Logger.Info("starting operation lease renew go routine")
+		managerLogger := om.Logger.With(zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
+		managerLogger.Info("starting operation lease renew go routine")
 
 		ticker := time.NewTicker(om.Config.OperationLeaseTtl)
 		defer ticker.Stop()
@@ -260,27 +267,19 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 			case <-ticker.C:
 				if op.Status == operation.StatusFinished || op.Status == operation.StatusError {
 					status, _ := op.Status.String()
-					om.Logger.Sugar().Infof("finish operation lease renew go routine since operation got status %v", status)
+					managerLogger.Sugar().Infof("finish operation lease renew go routine since operation got status %v", status)
 					break renewLeaseLoop
 				}
 
 				err := om.LeaseStorage.RenewLease(operationCtx, op.SchedulerName, op.ID, om.Config.OperationLeaseTtl)
 				if err != nil {
-					om.Logger.
-						With(zap.String(logs.LogFieldSchedulerName, op.SchedulerName)).
-						With(zap.String(logs.LogFieldOperationID, op.ID)).
-						With(zap.Error(err)).
-						Error("failed to renew operation lease")
+					managerLogger.With(zap.Error(err)).Error("failed to renew operation lease")
 				}
 			case <-operationCtx.Done():
 				if goerrors.Is(operationCtx.Err(), context.Canceled) {
-					om.Logger.Info("finish operation lease renew go routine since operation is canceled")
+					managerLogger.Info("finish operation lease renew go routine since operation is canceled")
 				} else {
-					om.Logger.
-						With(zap.String(logs.LogFieldSchedulerName, op.SchedulerName)).
-						With(zap.String(logs.LogFieldOperationID, op.ID)).
-						With(zap.Error(operationCtx.Err())).
-						Error("loop to renew operation lease received an error context event")
+					managerLogger.With(zap.Error(operationCtx.Err())).Error("loop to renew operation lease received an error context event")
 				}
 				break renewLeaseLoop
 			}
