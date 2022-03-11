@@ -78,19 +78,19 @@ build-linux-x86_64: ## Build the project and generates a binary for x86_64 archi
 
 .PHONY: run/worker
 run/worker: ## Runs maestro worker.
-	@go run main.go start worker
+	@go run main.go start worker -l development
 
 .PHONY: run/management-api
 run/management-api: build ## Runs maestro management-api.
-	@go run main.go start management-api
+	@go run main.go start management-api -l development
 
 .PHONY: run/rooms-api
 run/rooms-api: build ## Runs maestro rooms-api.
-	@go run main.go start rooms-api
+	@go run main.go start rooms-api -l development
 
 .PHONY: run/runtime-watcher
 run/runtime-watcher: build ## Runs maestro runtime-watcher.
-	@go run main.go start runtime-watcher
+	@go run main.go start runtime-watcher -l development
 
 #-------------------------------------------------------------------------------
 #  Code generation

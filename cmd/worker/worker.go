@@ -49,7 +49,7 @@ var WorkerCmd = &cobra.Command{
 }
 
 func init() {
-	WorkerCmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	WorkerCmd.Flags().StringVarP(&logConfig, "log-config", "l", "production", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
 	WorkerCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/worker.local.yaml", "path of the configuration YAML file")
 }
 
