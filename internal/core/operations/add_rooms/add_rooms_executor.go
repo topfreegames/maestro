@@ -140,8 +140,8 @@ func (ex *AddRoomsExecutor) deleteNewCreatedRooms(ctx context.Context, logger *z
 
 func (ex *AddRoomsExecutor) appendToNewCreatedRooms(schedulerName string, gameRoom *game_room.GameRoom) {
 	ex.newCreatedRoomsLock.Lock()
+	defer ex.newCreatedRoomsLock.Unlock()
 	ex.newCreatedRooms[schedulerName] = append(ex.newCreatedRooms[schedulerName], gameRoom)
-	ex.newCreatedRoomsLock.Unlock()
 }
 
 func (ex *AddRoomsExecutor) clearNewCreatedRooms(schedulerName string) {

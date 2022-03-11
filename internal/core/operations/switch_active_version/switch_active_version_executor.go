@@ -220,8 +220,8 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, roomsChan
 
 func (ex *SwitchActiveVersionExecutor) appendToNewCreatedRooms(schedulerName string, gameRoom *game_room.GameRoom) {
 	ex.newCreatedRoomsLock.Lock()
+	defer ex.newCreatedRoomsLock.Unlock()
 	ex.newCreatedRooms[schedulerName] = append(ex.newCreatedRooms[schedulerName], gameRoom)
-	ex.newCreatedRoomsLock.Unlock()
 }
 
 func (ex *SwitchActiveVersionExecutor) clearNewCreatedRooms(schedulerName string) {

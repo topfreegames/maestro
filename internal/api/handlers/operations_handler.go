@@ -78,7 +78,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 
 	activeOperationEntities, err := h.operationManager.ListSchedulerActiveOperations(ctx, request.GetSchedulerName())
 	if err != nil {
-		handlerLogger.Error("error listing pending operations", zap.Error(err))
+		handlerLogger.Error("error listing active operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	sortOperationsByCreatedAt(activeOperationEntities, sortingOrder)
