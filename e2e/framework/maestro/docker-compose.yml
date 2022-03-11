@@ -14,7 +14,7 @@ services:
     ports:
       - "8080:8080"
       - "8081:8081"
-    command: [start, management-api, -l development]
+    command: [start, management-api, -l, development]
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,7 +35,7 @@ services:
       - "8071:8071"
     volumes:
       - ../../../kubeconfig:/kubeconfig
-    command: [start, rooms-api, -l development]
+    command: [start, rooms-api, -l, development]
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,7 +55,7 @@ services:
       - "8061:8061"
     volumes:
       - ../../../kubeconfig:/kubeconfig
-    command: [start, runtime-watcher, -l development]
+    command: [start, runtime-watcher, -l, development]
 
   worker:
     build:
@@ -75,7 +75,7 @@ services:
       - "8051:8051"
     volumes:
       - ../../../kubeconfig:/kubeconfig
-    command: [start, worker, -l development]
+    command: [start, worker, -l, development]
     depends_on:
       postgres:
         condition: service_healthy
