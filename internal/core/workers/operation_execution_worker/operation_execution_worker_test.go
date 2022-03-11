@@ -72,8 +72,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
 
 		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
-		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
 		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
@@ -129,8 +129,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			}).Return(nil)
 
 		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
-		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
 		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
