@@ -25,15 +25,15 @@ package management
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/go-redis/redis/v8"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
-	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
 	maestrov1 "github.com/topfreegames/maestro/pkg/api/v1"
@@ -84,28 +84,28 @@ func TestCreateScheduler(t *testing.T) {
 
 			createResponse := &maestrov1.CreateSchedulerResponse{}
 			err := managementApiClient.Do("POST", "/schedulers", createRequest, createResponse)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			// list operations
-			require.Eventually(t, func() bool {
+			assert.Eventually(t, func() bool {
 				listOperationsRequest := &maestrov1.ListOperationsRequest{}
 				listOperationsResponse := &maestrov1.ListOperationsResponse{}
 				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) == 0 {
 					return false
 				}
 
 				// TODO(gabrielcorado): we can use the operations constants here.
-				require.Equal(t, "create_scheduler", listOperationsResponse.FinishedOperations[0].DefinitionName)
-				require.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
+				assert.Equal(t, "create_scheduler", listOperationsResponse.FinishedOperations[0].DefinitionName)
+				assert.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
 				return true
 			}, 30*time.Second, time.Second)
 
 			// Check on kubernetes that the namespace was created.
 			_, err = kubeClient.CoreV1().Namespaces().Get(context.Background(), schedulerName, metav1.GetOptions{})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 
 		t.Run("should fail - operations finish with error (namespace already exists) - scheduler not found", func(t *testing.T) {
@@ -153,21 +153,21 @@ func TestCreateScheduler(t *testing.T) {
 
 			createResponse := &maestrov1.CreateSchedulerResponse{}
 			err = managementApiClient.Do("POST", "/schedulers", createRequest, createResponse)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			// list operations
-			require.Eventually(t, func() bool {
+			assert.Eventually(t, func() bool {
 				listOperationsRequest := &maestrov1.ListOperationsRequest{}
 				listOperationsResponse := &maestrov1.ListOperationsResponse{}
 				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				if len(listOperationsResponse.FinishedOperations) == 0 {
 					return false
 				}
 
-				require.Equal(t, "create_scheduler", listOperationsResponse.FinishedOperations[0].DefinitionName)
-				require.Equal(t, "error", listOperationsResponse.FinishedOperations[0].Status)
+				assert.Equal(t, "create_scheduler", listOperationsResponse.FinishedOperations[0].DefinitionName)
+				assert.Equal(t, "error", listOperationsResponse.FinishedOperations[0].Status)
 				return true
 			}, 30*time.Second, time.Second)
 
@@ -175,7 +175,7 @@ func TestCreateScheduler(t *testing.T) {
 			getSchedulerRequest := &maestrov1.GetSchedulerRequest{}
 			getSchedulerResponse := &maestrov1.GetSchedulerResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
-			require.Error(t, err)
+			assert.Error(t, err)
 		})
 	})
 }
