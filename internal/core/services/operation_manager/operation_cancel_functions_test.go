@@ -24,7 +24,6 @@ package operation_manager
 
 import (
 	"context"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -89,10 +88,8 @@ func TestOperationCancelFunctions_putFunction(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			of := &OperationCancelFunctions{
-				mutex:     sync.RWMutex{},
-				functions: tt.fields.functions,
-			}
+			of := NewOperationCancelFunctions()
+			populateFunctionsMap(tt.fields.functions, of)
 			of.putFunction(tt.args.schedulerName, tt.args.operationID, tt.args.cancelFunc)
 			got, err := of.getFunction(tt.args.schedulerName, tt.args.operationID)
 			assert.NoError(t, err)
@@ -133,7 +130,9 @@ func TestOperationCancelFunctions_removeFunction(t *testing.T) {
 			name: "when no entry exists for the operation id in the functions map it does nothing",
 			fields: fields{
 				functions: map[string]map[string]context.CancelFunc{
-					"scheduler-1": {},
+					"scheduler-1": {
+						"operation-2": cancelFunc,
+					},
 				},
 			},
 			args: args{
@@ -162,10 +161,8 @@ func TestOperationCancelFunctions_removeFunction(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			of := &OperationCancelFunctions{
-				mutex:     sync.RWMutex{},
-				functions: tt.fields.functions,
-			}
+			of := NewOperationCancelFunctions()
+			populateFunctionsMap(tt.fields.functions, of)
 			got, _ := of.getFunction(tt.args.schedulerName, tt.args.operationID)
 			if tt.wantFuncBeforeRemoval != nil {
 				assert.NotNil(t, got)
@@ -225,7 +222,9 @@ func TestOperationCancelFunctions_getFunction(t *testing.T) {
 			name: "when no function is found in functions map for scheduler it returns error",
 			fields: fields{
 				functions: map[string]map[string]context.CancelFunc{
-					"scheduler-1": {},
+					"scheduler-1": {
+						"operation-2": cancelFunc,
+					},
 				},
 			},
 			args: args{
@@ -238,10 +237,8 @@ func TestOperationCancelFunctions_getFunction(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			of := &OperationCancelFunctions{
-				mutex:     sync.RWMutex{},
-				functions: tt.fields.functions,
-			}
+			of := NewOperationCancelFunctions()
+			populateFunctionsMap(tt.fields.functions, of)
 			got, err := of.getFunction(tt.args.schedulerName, tt.args.operationID)
 			if tt.wantErr != nil {
 				assert.Equal(t, tt.wantErr, err)
@@ -249,5 +246,13 @@ func TestOperationCancelFunctions_getFunction(t *testing.T) {
 				assert.IsType(t, tt.want, got)
 			}
 		})
+	}
+}
+
+func populateFunctionsMap(schedulersFunctionsMap map[string]map[string]context.CancelFunc, of *OperationCancelFunctions) {
+	for scheduler, functionsMap := range schedulersFunctionsMap {
+		for opId, cancelFunc := range functionsMap {
+			of.putFunction(scheduler, opId, cancelFunc)
+		}
 	}
 }
