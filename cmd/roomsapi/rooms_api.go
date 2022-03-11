@@ -57,7 +57,7 @@ var RoomsAPICmd = &cobra.Command{
 }
 
 func init() {
-	RoomsAPICmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	RoomsAPICmd.Flags().StringVarP(&logConfig, "log-config", "l", "production", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
 	RoomsAPICmd.Flags().StringVarP(&configPath, "config-path", "c", "config/rooms-api.local.yaml", "path of the configuration YAML file")
 }
 

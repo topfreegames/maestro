@@ -49,7 +49,7 @@ var RuntimeWatcherCmd = &cobra.Command{
 }
 
 func init() {
-	RuntimeWatcherCmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	RuntimeWatcherCmd.Flags().StringVarP(&logConfig, "log-config", "l", "production", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
 	RuntimeWatcherCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/runtime-watcher.local.yaml", "path of the configuration YAML file")
 }
 
