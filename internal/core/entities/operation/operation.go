@@ -30,17 +30,17 @@ import (
 type Status int
 
 const (
-	// Operation was created but no worker has started it yet.
+	// StatusPending operation was created but no worker has started it yet.
 	StatusPending Status = iota
-	// Operation is being executed by a worker.
+	// StatusInProgress operation is being executed by a worker.
 	StatusInProgress
-	// Operation was canceled, usually by an external action or a timeout.
+	// StatusCanceled operation was canceled, usually by an external action or a timeout.
 	StatusCanceled
-	// Operation finished with success.
+	// StatusFinished operation finished with success.
 	StatusFinished
-	// Operation could not execute because it didn't meet the requirements.
+	// StatusEvicted operation could not execute because it didn't meet the requirements.
 	StatusEvicted
-	// Operation finished with error.
+	// StatusError operation finished with error.
 	StatusError
 )
 
