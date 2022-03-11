@@ -43,11 +43,11 @@ run/tests: run/unit-tests run/integration-tests ## Execute all unit and integrat
 
 .PHONY: run/unit-tests
 run/unit-tests: ## Execute unit tests.
-	@go test -count=1 -tags=unit -coverprofile=coverage.out -covermode=atomic ./...
+	@go test -count=1 -tags=unit -coverprofile=coverage.out -covermode=atomic $(OPTS) ./...
 
 .PHONY: run/integration-tests
 run/integration-tests: ## Execute integration tests.
-	@go test -tags=integration -count=1 -timeout 20m -coverprofile=coverage.out -covermode=atomic ./...
+	@go test -tags=integration -count=1 -timeout 20m -coverprofile=coverage.out -covermode=atomic $(OPTS) ./...
 
 .PHONY: run/runtime-integration-tests
 run/runtime-integration-tests: ## Execute runtime integration tests.
