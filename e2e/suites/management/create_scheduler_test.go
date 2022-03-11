@@ -171,7 +171,7 @@ func TestCreateScheduler(t *testing.T) {
 				return true
 			}, 30*time.Second, time.Second)
 
-			// Check that scheduler does not exist since operation as finished with error
+			// Check that scheduler does not exist since operation finished with error
 			getSchedulerRequest := &maestrov1.GetSchedulerRequest{}
 			getSchedulerResponse := &maestrov1.GetSchedulerResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
