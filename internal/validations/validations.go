@@ -75,6 +75,12 @@ func RegisterValidations() error {
 	}
 	addTranslation(Validate, "kube_resource_name", "{0} must follow the public RFC 1123 about naming conventions")
 
+	err = Validate.RegisterValidation("forwarder_type", forwarderTypeValidate)
+	if err != nil {
+		return errors.New("could not register kubeResourceNameValidate")
+	}
+	addTranslation(Validate, "forwarder_type", "{0} must be one of the following options: gRPC")
+
 	if Validate == nil {
 		return errors.New("it was not possible to register validations")
 	}
@@ -104,6 +110,10 @@ func semanticValidate(fl validator.FieldLevel) bool {
 
 func kubeResourceNameValidate(fl validator.FieldLevel) bool {
 	return validations.IsKubeResourceNameValid(fl.Field().String())
+}
+
+func forwarderTypeValidate(fl validator.FieldLevel) bool {
+	return validations.IsForwarderTypeSupported(fl.Field().String())
 }
 
 func addTranslation(validate *validator.Validate, tag string, errMessage string) {

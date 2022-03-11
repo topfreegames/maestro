@@ -128,3 +128,16 @@ func TestIsKubeResourceNameValid(t *testing.T) {
 		assert.False(t, IsKubeResourceNameValid(nameMaxLengthPlusOne))
 	})
 }
+
+func TestIsForwarderTypeSupported(t *testing.T) {
+	t.Run("with success when type is grpc", func(t *testing.T) {
+		supported := IsForwarderTypeSupported("gRPC")
+		assert.True(t, supported)
+	})
+
+	t.Run("fails when type is not supported by maestro", func(t *testing.T) {
+		wrongType := "unsupported"
+		supported := IsForwarderTypeSupported(wrongType)
+		assert.False(t, supported)
+	})
+}

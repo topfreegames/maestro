@@ -762,6 +762,9 @@ func TestCreateScheduler(t *testing.T) {
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Requests.Memory: Memory is a required field")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Ports[0].Protocol: Protocol must be one of the following options: tcp, udp, sctp")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].ImagePullPolicy: ImagePullPolicy must be one of the following options: Always, Never, IfNotPresent")
+		assert.Contains(t, schedulerMessage, "Scheduler.Forwarders[0].Name: Name is a required field")
+		assert.Contains(t, schedulerMessage, "Scheduler.Forwarders[0].ForwardType: ForwardType must be one of the following options: gRPC")
+		assert.Contains(t, schedulerMessage, "Scheduler.Forwarders[0].Address: Address is a required field")
 	})
 
 	t.Run("fails when scheduler already exists", func(t *testing.T) {

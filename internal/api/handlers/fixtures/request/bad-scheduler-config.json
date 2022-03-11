@@ -29,5 +29,15 @@
         "hostPort": 54321
       }]
     }]
-  }
+  },
+  "forwarders": [
+    {
+      "enable": true,
+      "type": "wrong-value",
+      "options": {
+        "timeout": "10",
+        "metadata": {}
+      }
+    }
+  ]
 }
