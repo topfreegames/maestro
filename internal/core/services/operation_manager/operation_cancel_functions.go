@@ -42,16 +42,17 @@ func NewOperationCancelFunctions() *OperationCancelFunctions {
 
 func (of *OperationCancelFunctions) putFunction(schedulerName, operationID string, cancelFunc context.CancelFunc) {
 	of.mutex.Lock()
+	defer of.mutex.Unlock()
 	schedulerCancelFunctions := of.functions[schedulerName]
 	if schedulerCancelFunctions == nil {
 		of.functions[schedulerName] = map[string]context.CancelFunc{}
 	}
 	of.functions[schedulerName][operationID] = cancelFunc
-	of.mutex.Unlock()
 }
 
 func (of *OperationCancelFunctions) removeFunction(schedulerName, operationID string) {
 	of.mutex.Lock()
+	defer of.mutex.Unlock()
 
 	schedulerOperationCancellationFunctions := of.functions[schedulerName]
 	if schedulerOperationCancellationFunctions == nil {
@@ -59,12 +60,11 @@ func (of *OperationCancelFunctions) removeFunction(schedulerName, operationID st
 	}
 
 	delete(schedulerOperationCancellationFunctions, operationID)
-
-	of.mutex.Unlock()
 }
 
 func (of *OperationCancelFunctions) getFunction(schedulerName, operationID string) (context.CancelFunc, error) {
 	of.mutex.RLock()
+	defer of.mutex.RUnlock()
 	schedulerOperationCancellationFunctions := of.functions[schedulerName]
 	if schedulerOperationCancellationFunctions == nil {
 		return nil, errors.NewErrNotFound("no cancel scheduler found for scheduler name: %s", schedulerName)
@@ -75,7 +75,6 @@ func (of *OperationCancelFunctions) getFunction(schedulerName, operationID strin
 	}
 
 	function := schedulerOperationCancellationFunctions[operationID]
-	of.mutex.RUnlock()
 
 	return function, nil
 }
