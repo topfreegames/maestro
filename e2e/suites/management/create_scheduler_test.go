@@ -25,6 +25,8 @@ package management
 import (
 	"context"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"testing"
 	"time"
 
@@ -97,9 +99,11 @@ func TestCreateScheduler(t *testing.T) {
 					return false
 				}
 
-				// TODO(gabrielcorado): we can use the operations constants here.
-				assert.Equal(t, "create_scheduler", listOperationsResponse.FinishedOperations[0].DefinitionName)
-				assert.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
+				assert.Equal(t, create_scheduler.OperationName, listOperationsResponse.FinishedOperations[0].DefinitionName)
+
+				statusFinished, _ := operation.StatusFinished.String()
+				assert.Equal(t, statusFinished, listOperationsResponse.FinishedOperations[0].Status)
+
 				return true
 			}, 30*time.Second, time.Second)
 
@@ -166,8 +170,10 @@ func TestCreateScheduler(t *testing.T) {
 					return false
 				}
 
-				assert.Equal(t, "create_scheduler", listOperationsResponse.FinishedOperations[0].DefinitionName)
-				assert.Equal(t, "error", listOperationsResponse.FinishedOperations[0].Status)
+				assert.Equal(t, create_scheduler.OperationName, listOperationsResponse.FinishedOperations[0].DefinitionName)
+
+				statusError, _ := operation.StatusError.String()
+				assert.Equal(t, statusError, listOperationsResponse.FinishedOperations[0].Status)
 				return true
 			}, 30*time.Second, time.Second)
 
@@ -176,6 +182,8 @@ func TestCreateScheduler(t *testing.T) {
 			getSchedulerResponse := &maestrov1.GetSchedulerResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
 			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "status 404")
+			assert.Nil(t, getSchedulerResponse.Scheduler)
 		})
 	})
 }
