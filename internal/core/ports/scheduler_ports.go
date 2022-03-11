@@ -64,6 +64,7 @@ type SchedulerStorage interface {
 type SchedulerCache interface {
 	GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error)
 	SetScheduler(ctx context.Context, scheduler *entities.Scheduler, ttl time.Duration) error
+	DeleteScheduler(ctx context.Context, schedulerName string) error
 }
 
 type TransactionID string

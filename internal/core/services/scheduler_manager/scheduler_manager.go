@@ -43,15 +43,17 @@ import (
 
 type SchedulerManager struct {
 	schedulerStorage ports.SchedulerStorage
+	schedulerCache   ports.SchedulerCache
 	operationManager ports.OperationManager
 	roomStorage      ports.RoomStorage
 	logger           *zap.Logger
 }
 
-func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *SchedulerManager {
+func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache ports.SchedulerCache, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *SchedulerManager {
 	return &SchedulerManager{
 		schedulerStorage: schedulerStorage,
 		operationManager: operationManager,
+		schedulerCache:   schedulerCache,
 		roomStorage:      roomStorage,
 		logger:           zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "scheduler_manager")),
 	}
@@ -218,6 +220,11 @@ func (s *SchedulerManager) UpdateScheduler(ctx context.Context, scheduler *entit
 	err = s.schedulerStorage.UpdateScheduler(ctx, scheduler)
 	if err != nil {
 		return fmt.Errorf("error switch scheduler active version to scheduler \"%s\", version \"%s\". error: %w", scheduler.Name, scheduler.Spec.Version, err)
+	}
+
+	err = s.schedulerCache.DeleteScheduler(ctx, scheduler.Name)
+	if err != nil {
+		s.logger.Error("error deleting scheduler from cache", zap.String("scheduler", scheduler.Name), zap.Error(err))
 	}
 	return nil
 }
