@@ -32,10 +32,8 @@ func ConfigureLogging(configPreset string) error {
 	var cfg zap.Config
 	switch configPreset {
 	case "development":
-		fmt.Println("running in development")
 		cfg = zap.NewDevelopmentConfig()
 	case "production":
-		fmt.Println("running in production")
 		cfg = zap.NewProductionConfig()
 	default:
 		return fmt.Errorf("unexpected log_config: %v", configPreset)
