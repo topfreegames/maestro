@@ -348,6 +348,27 @@ func TestCancelOperation(t *testing.T) {
 		require.Equal(t, 200, rr.Code)
 	})
 
+	t.Run("fails to enqueues operation cancellation request when operation is already on final status", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), schedulerName, operationID).Return(errors.NewErrConflict("operation on final status"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/schedulers/%s/operations/%s/cancel", schedulerName, operationID), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 409, rr.Code)
+	})
+
 	t.Run("fails to enqueues operation cancellation request when operation_flow fails", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)

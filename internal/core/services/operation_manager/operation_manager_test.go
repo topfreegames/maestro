@@ -862,9 +862,9 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 	schedulerName := "scheduler-name"
 	operationID := "123"
 	defFunc := func() operations.Definition { return &testOperationDefinition{} }
-	operation := &operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()}
+	op := &operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()}
 
-	t.Run("it returns nil when cancelled operation with success", func(t *testing.T) {
+	t.Run("it returns nil when cancelled op with success", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
@@ -877,7 +877,7 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
-			operation,
+			op,
 			[]byte{},
 			nil,
 		)
@@ -886,6 +886,55 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 		err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
 
 		assert.NoError(t, err)
+	})
+
+	t.Run("it returns error type conflict when op have final state", func(t *testing.T) {
+		t.Parallel()
+		operationFinished := &operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name(), Status: operation.StatusFinished}
+		mockCtrl := gomock.NewController(t)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
+			operationFinished,
+			[]byte{},
+			nil,
+		)
+
+		err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
+
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, porterrors.ErrConflict)
+	})
+
+	t.Run("it returns error when op have invalid state", func(t *testing.T) {
+		t.Parallel()
+		operationInvalid := &operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name(), Status: 9999}
+		mockCtrl := gomock.NewController(t)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
+			operationInvalid,
+			[]byte{},
+			nil,
+		)
+
+		err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
+
+		assert.Error(t, err)
 	})
 
 	t.Run("it returns error when scheduler was not found", func(t *testing.T) {
@@ -908,7 +957,7 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to fetch scheduler from storage")
 	})
 
-	t.Run("it returns error when operation was not found", func(t *testing.T) {
+	t.Run("it returns error when op was not found", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
@@ -933,7 +982,7 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to fetch operation from storage")
 	})
 
-	t.Run("it returns error when operation couldn't enqueued", func(t *testing.T) {
+	t.Run("it returns error when op couldn't enqueued", func(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
@@ -946,7 +995,7 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
-			operation,
+			op,
 			[]byte{},
 			nil,
 		)
