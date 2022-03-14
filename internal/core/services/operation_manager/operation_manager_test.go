@@ -890,27 +890,31 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 
 	t.Run("it returns error type conflict when op have final state", func(t *testing.T) {
 		t.Parallel()
-		operationFinished := &operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name(), Status: operation.StatusFinished}
-		mockCtrl := gomock.NewController(t)
-		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
-		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
-		definitionConstructors := operations.NewDefinitionConstructors()
-		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
-		definitionConstructors[defFunc().Name()] = defFunc
-		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
-		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
-		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
-			operationFinished,
-			[]byte{},
-			nil,
-		)
+		finalStatuses := []operation.Status{operation.StatusFinished, operation.StatusCanceled, operation.StatusEvicted, operation.StatusError}
+		for _, status := range finalStatuses {
 
-		err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
+			operationFinished := &operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name(), Status: status}
+			mockCtrl := gomock.NewController(t)
+			operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+			operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+			definitionConstructors := operations.NewDefinitionConstructors()
+			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+			operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+			definitionConstructors[defFunc().Name()] = defFunc
+			config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+			opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+			schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
+			operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
+				operationFinished,
+				[]byte{},
+				nil,
+			)
 
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, porterrors.ErrConflict)
+			err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
+
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, porterrors.ErrConflict)
+		}
 	})
 
 	t.Run("it returns error when op have invalid state", func(t *testing.T) {
