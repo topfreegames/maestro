@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
+	"gotest.tools/assert"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -71,8 +72,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
 
 		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
-		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
 		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
@@ -128,8 +129,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			}).Return(nil)
 
 		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
-		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
 		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
@@ -217,7 +218,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.False(t, workerService.IsRunning())
 	})
 
-	t.Run("error granting lease should stop execution of operation", func(t *testing.T) {
+	t.Run("error starting operation should stop execution of operation and set status as error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationManager := mock.NewMockOperationManager(mockCtrl)
@@ -247,12 +248,58 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 
 		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
-		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
-		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation).Return(errors.New("error"))
+		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation).Return(nil)
+		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any()).Return(errors.New("error"))
+		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		// Ends the worker by cancelling it
 
 		err := workerService.Start(context.Background())
 		require.Error(t, err)
+
+		assert.Equal(t, expectedOperation.Status, operation.StatusError)
+
+		workerService.Stop(context.Background())
+		require.False(t, workerService.IsRunning())
+	})
+
+	t.Run("error granting lease should stop execution of operation and set status as error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationName := "test_operation"
+		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
+		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
+		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
+
+		defFunc := func() operations.Definition { return operationDefinition }
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
+
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
+		expectedOperation := &operation.Operation{
+			ID:             "random-operation-id",
+			SchedulerName:  scheduler.Name,
+			Status:         operation.StatusPending,
+			DefinitionName: operationName,
+		}
+
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+
+		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
+
+		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
+		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation).Return(errors.New("error"))
+		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
+		// Ends the worker by cancelling it
+
+		err := workerService.Start(context.Background())
+		require.Error(t, err)
+
+		assert.Equal(t, expectedOperation.Status, operation.StatusError)
 
 		workerService.Stop(context.Background())
 		require.False(t, workerService.IsRunning())

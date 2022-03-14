@@ -109,21 +109,34 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		loopLogger.Info("Starting operation")
 
 		operationContext, operationCancellationFunction := context.WithCancel(ctx)
-		err = w.operationManager.StartOperation(operationContext, op, operationCancellationFunction)
-		if err != nil {
-			w.Stop(ctx)
-
-			// NOTE: currently, we're not treating if the operation exists or
-			// not. In this case, when there is error it will be an unexpected
-			// error.
-			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
-			return fmt.Errorf("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
-		}
 		err = w.operationManager.GrantLease(operationContext, op)
 		if err != nil {
 			w.Stop(ctx)
 			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
+			operationCancellationFunction()
+
+			op.Status = operation.StatusError
+			err = w.operationManager.FinishOperation(ctx, op)
+			if err != nil {
+				loopLogger.Error("failed to finish operation", zap.Error(err))
+			}
+
 			return fmt.Errorf("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
+		}
+
+		err = w.operationManager.StartOperation(operationContext, op, operationCancellationFunction)
+		if err != nil {
+			w.Stop(ctx)
+			operationCancellationFunction()
+
+			op.Status = operation.StatusError
+			err = w.operationManager.FinishOperation(ctx, op)
+			if err != nil {
+				loopLogger.Error("failed to finish operation", zap.Error(err))
+			}
+
+			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
+			return fmt.Errorf("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 		}
 		w.operationManager.StartLeaseRenewGoRoutine(operationContext, op)
 
