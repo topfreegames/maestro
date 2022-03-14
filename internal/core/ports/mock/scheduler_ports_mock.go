@@ -376,6 +376,20 @@ func (m *MockSchedulerCache) EXPECT() *MockSchedulerCacheMockRecorder {
 	return m.recorder
 }
 
+// DeleteScheduler mocks base method.
+func (m *MockSchedulerCache) DeleteScheduler(ctx context.Context, schedulerName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteScheduler", ctx, schedulerName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteScheduler indicates an expected call of DeleteScheduler.
+func (mr *MockSchedulerCacheMockRecorder) DeleteScheduler(ctx, schedulerName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScheduler", reflect.TypeOf((*MockSchedulerCache)(nil).DeleteScheduler), ctx, schedulerName)
+}
+
 // GetScheduler mocks base method.
 func (m *MockSchedulerCache) GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error) {
 	m.ctrl.T.Helper()

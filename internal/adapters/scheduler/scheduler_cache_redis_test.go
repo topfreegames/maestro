@@ -30,19 +30,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/test"
 )
 
 func TestSetScheduler(t *testing.T) {
+
+	newScheduler := generateScheduler()
+
 	t.Run("with success", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		storage := NewRedisSchedulerCache(client)
 
-		err := storage.SetScheduler(context.Background(), expectedScheduler, time.Minute)
+		err := storage.SetScheduler(context.Background(), newScheduler, time.Minute)
 		require.NoError(t, err)
 
-		schedulerJson, err := client.Get(context.Background(), storage.buildSchedulerKey(expectedScheduler.Name)).Result()
+		schedulerJson, err := client.Get(context.Background(), storage.buildSchedulerKey(newScheduler.Name)).Result()
 		require.NoError(t, err)
 		require.NotEmpty(t, schedulerJson)
 	})
@@ -53,12 +60,14 @@ func TestSetScheduler(t *testing.T) {
 
 		client.Close()
 
-		err := storage.SetScheduler(context.Background(), expectedScheduler, time.Minute)
+		err := storage.SetScheduler(context.Background(), newScheduler, time.Minute)
 		require.Error(t, err)
 	})
 }
 
 func TestGetScheduler(t *testing.T) {
+
+	newScheduler := generateScheduler()
 
 	t.Run("with success - Scheduler not found, but no error", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
@@ -74,10 +83,10 @@ func TestGetScheduler(t *testing.T) {
 		storage := NewRedisSchedulerCache(client)
 
 		ctx := context.Background()
-		err := storage.SetScheduler(ctx, expectedScheduler, time.Minute)
+		err := storage.SetScheduler(ctx, newScheduler, time.Minute)
 		require.NoError(t, err)
 
-		scheduler, err := storage.GetScheduler(ctx, expectedScheduler.Name)
+		scheduler, err := storage.GetScheduler(ctx, newScheduler.Name)
 		require.NoError(t, err)
 		require.NotEmpty(t, scheduler)
 	})
@@ -87,13 +96,88 @@ func TestGetScheduler(t *testing.T) {
 		storage := NewRedisSchedulerCache(client)
 
 		ctx := context.Background()
-		err := storage.SetScheduler(ctx, expectedScheduler, time.Minute)
+		err := storage.SetScheduler(ctx, newScheduler, time.Minute)
 		require.NoError(t, err)
 
 		client.Close()
 
-		_, err = storage.GetScheduler(ctx, expectedScheduler.Name)
+		_, err = storage.GetScheduler(ctx, newScheduler.Name)
 		require.Error(t, err)
 	})
 
+}
+
+func TestDeleteScheduler(t *testing.T) {
+
+	newScheduler := generateScheduler()
+
+	t.Run("with success - Scheduler not found, but no error", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		storage := NewRedisSchedulerCache(client)
+
+		err := storage.DeleteScheduler(context.Background(), "schedulerName")
+		require.NoError(t, err)
+	})
+
+	t.Run("with success - Scheduler found, no error", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		storage := NewRedisSchedulerCache(client)
+
+		ctx := context.Background()
+
+		err := storage.SetScheduler(ctx, newScheduler, time.Minute)
+		require.NoError(t, err)
+
+		err = storage.DeleteScheduler(ctx, newScheduler.Name)
+		require.NoError(t, err)
+
+		scheduler, err := storage.GetScheduler(ctx, newScheduler.Name)
+		require.NoError(t, err)
+		require.Nil(t, scheduler)
+	})
+
+	t.Run("with error - redis connection closed, returns error", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		storage := NewRedisSchedulerCache(client)
+
+		client.Close()
+
+		err := storage.DeleteScheduler(context.Background(), "schedulerName")
+		require.Error(t, err)
+	})
+
+}
+
+func generateScheduler() *entities.Scheduler {
+	fwd := &forwarder.Forwarder{
+		Name:        "fwd",
+		Enabled:     true,
+		ForwardType: forwarder.TypeGrpc,
+		Address:     "address",
+		Options: &forwarder.ForwardOptions{
+			Timeout:  time.Second * 5,
+			Metadata: nil,
+		},
+	}
+	forwarders := []*forwarder.Forwarder{fwd}
+
+	return &entities.Scheduler{
+		Name:            "scheduler",
+		Game:            "game",
+		State:           entities.StateCreating,
+		MaxSurge:        "10%",
+		RollbackVersion: "",
+		Spec: game_room.Spec{
+			Version:                "v1",
+			TerminationGracePeriod: 60,
+			Containers:             []game_room.Container{},
+			Toleration:             "toleration",
+			Affinity:               "affinity",
+		},
+		PortRange: &entities.PortRange{
+			Start: 40000,
+			End:   60000,
+		},
+		Forwarders: forwarders,
+	}
 }

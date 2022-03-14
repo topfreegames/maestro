@@ -24,3 +24,6 @@ adapters:
   roomStorage:
     redis:
       url: "redis://localhost:6379/0"
+  schedulerCache:
+    redis:
+      url: "redis://localhost:6379/0"

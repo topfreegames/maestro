@@ -75,6 +75,11 @@ func (r redisSchedulerCache) SetScheduler(ctx context.Context, scheduler *entiti
 	return nil
 }
 
+func (r redisSchedulerCache) DeleteScheduler(ctx context.Context, schedulerName string) error {
+	err := r.client.Del(ctx, r.buildSchedulerKey(schedulerName)).Err()
+	return err
+}
+
 func (r redisSchedulerCache) buildSchedulerKey(schedulerName string) string {
 	return fmt.Sprintf("scheduler:%s", schedulerName)
 }

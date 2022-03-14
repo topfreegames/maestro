@@ -57,6 +57,7 @@ type mockRoomAndSchedulerManager struct {
 	runtime          *runtimemock.MockRuntime
 	eventsService    ports.EventsService
 	schedulerStorage *mockports.MockSchedulerStorage
+	schedulerCache   *mockports.MockSchedulerCache
 }
 
 func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
@@ -121,6 +122,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).MaxTimes(len(append(gameRoomListCycle1, gameRoomListCycle2...)))
 
 		mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
+		mocks.schedulerCache.EXPECT().DeleteScheduler(gomock.Any(), definition.NewActiveScheduler.Name).Return(nil)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 		err = executor.Execute(context.Background(), &operation.Operation{}, definition)
@@ -135,6 +137,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		}
 
 		mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
+		mocks.schedulerCache.EXPECT().DeleteScheduler(gomock.Any(), noReplaceDefinition.NewActiveScheduler.Name).Return(nil)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 		err = executor.Execute(context.Background(), &operation.Operation{}, noReplaceDefinition)
@@ -149,6 +152,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(emptyGameRoom, nil)
 
 		mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
+		mocks.schedulerCache.EXPECT().DeleteScheduler(gomock.Any(), gomock.Any()).Return(nil)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 		err = executor.Execute(context.Background(), &operation.Operation{}, definition)
@@ -390,9 +394,10 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 
 	roomManager := mockports.NewMockRoomManager(mockCtrl)
-	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil)
+	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, nil, nil)
 
 	return &mockRoomAndSchedulerManager{
 		roomManager,
@@ -403,6 +408,7 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 		runtime,
 		eventsForwarderService,
 		schedulerStorage,
+		schedulerCache,
 	}
 }
 

@@ -59,7 +59,8 @@ func TestCreateScheduler(t *testing.T) {
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 	operationManager := mock.NewMockOperationManager(mockCtrl)
 	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-	schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+	schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 	t.Run("with valid scheduler it returns no error when creating it", func(t *testing.T) {
 		scheduler := newValidScheduler()
@@ -117,7 +118,8 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 	operationManager := mock.NewMockOperationManager(mockCtrl)
 	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-	schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+	schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 	t.Run("with valid scheduler it returns no error when creating it", func(t *testing.T) {
 		scheduler := newValidScheduler()
@@ -157,7 +159,8 @@ func TestAddRooms(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, schedulerName, gomock.Any()).Return(&operation.Operation{}, nil)
 
@@ -172,7 +175,7 @@ func TestAddRooms(t *testing.T) {
 	t.Run("fails when scheduler does not exists", func(t *testing.T) {
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, schedulerName).Return(nil, errors.NewErrNotFound("err"))
 
@@ -187,7 +190,8 @@ func TestAddRooms(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, schedulerName).Return(nil, nil)
 		operationManager.EXPECT().CreateOperation(ctx, schedulerName, gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
@@ -210,7 +214,8 @@ func TestRemoveRooms(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, schedulerName, gomock.Any()).Return(&operation.Operation{}, nil)
 		schedulerStorage.EXPECT().GetScheduler(ctx, schedulerName).Return(nil, nil)
@@ -225,7 +230,7 @@ func TestRemoveRooms(t *testing.T) {
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, schedulerName).Return(nil, errors.NewErrNotFound("err"))
 
@@ -240,7 +245,8 @@ func TestRemoveRooms(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, schedulerName).Return(nil, nil)
 		operationManager.EXPECT().CreateOperation(ctx, schedulerName, gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
@@ -268,7 +274,8 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(&operation.Operation{}, nil)
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
@@ -288,7 +295,8 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 
@@ -305,7 +313,8 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.NewErrUnexpected("some_error"))
 
@@ -321,7 +330,8 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
@@ -352,7 +362,8 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(&operation.Operation{}, nil)
 
@@ -375,7 +386,8 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		_, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler, true)
 		require.Error(t, err)
@@ -393,7 +405,8 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
 
@@ -416,7 +429,8 @@ func TestGetSchedulerVersions(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerVersions(ctx, scheduler.Name).Return(schedulerVersionList, nil)
 
@@ -433,7 +447,8 @@ func TestGetSchedulerVersions(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerVersions(ctx, scheduler.Name).Return(nil, errors.NewErrNotFound("scheduler not found"))
 
@@ -453,7 +468,8 @@ func TestGetScheduler(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerFilter := &filters.SchedulerFilter{
 			Name:    scheduler.Name,
@@ -474,7 +490,8 @@ func TestGetScheduler(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerFilter := &filters.SchedulerFilter{
 			Name:    scheduler.Name,
@@ -500,7 +517,8 @@ func TestGetSchedulersWithFilter(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulers := []*entities.Scheduler{scheduler}
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulersWithFilter(ctx, gomock.Any()).Return(schedulers, nil)
 
@@ -516,7 +534,8 @@ func TestGetSchedulersWithFilter(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulersWithFilter(ctx, gomock.Any()).Return(nil, errors.NewErrUnexpected("some error"))
 
@@ -528,6 +547,10 @@ func TestGetSchedulersWithFilter(t *testing.T) {
 
 func TestUpdateScheduler(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
 
 	t.Run("with success", func(t *testing.T) {
 		scheduler := newValidScheduler()
@@ -537,9 +560,29 @@ func TestUpdateScheduler(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().UpdateScheduler(ctx, scheduler).Return(nil)
+		schedulerCache.EXPECT().DeleteScheduler(ctx, scheduler.Name).Return(nil)
+
+		err := schedulerManager.UpdateScheduler(ctx, scheduler)
+		require.NoError(t, err)
+	})
+
+	t.Run("with success - deleting cache fails", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		ctx := context.Background()
+
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		schedulerStorage.EXPECT().UpdateScheduler(ctx, scheduler).Return(nil)
+		schedulerCache.EXPECT().DeleteScheduler(ctx, scheduler.Name).Return(errors.NewErrUnexpected("error"))
 
 		err := schedulerManager.UpdateScheduler(ctx, scheduler)
 		require.NoError(t, err)
@@ -553,7 +596,8 @@ func TestUpdateScheduler(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().UpdateScheduler(ctx, scheduler).Return(errors.NewErrUnexpected("error"))
 
@@ -567,7 +611,8 @@ func TestUpdateScheduler(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		err := schedulerManager.CreateNewSchedulerVersion(ctx, scheduler)
 
@@ -591,7 +636,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, gomock.Any()).Return(&operation.Operation{}, nil)
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(scheduler, nil)
@@ -611,7 +657,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("err"))
 
@@ -626,7 +672,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrUnexpected("err"))
@@ -643,7 +689,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, operationManager, roomStorage)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(scheduler, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(scheduler, nil)
@@ -662,7 +709,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 		schedulerFilter := filters.SchedulerFilter{Game: "Tennis-Clash"}
 		scheduler := newValidScheduler()
 		schedulers := []*entities.Scheduler{scheduler}
@@ -687,7 +734,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 		schedulerFilter := filters.SchedulerFilter{Game: "Tennis-Clash"}
 		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("err"))
 
@@ -703,7 +750,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 		schedulerFilter := filters.SchedulerFilter{Game: "Tennis-Clash"}
 		scheduler := newValidScheduler()
 		schedulers := []*entities.Scheduler{scheduler}
@@ -722,7 +769,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("with valid request it returns a scheduler and game rooms information", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(10, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(15, nil)
@@ -741,7 +788,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("it returns with error when couldn't get game rooms information in ready state", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
 		scheduler := newValidScheduler()
 
@@ -754,7 +801,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("it returns with error when couldn't get game rooms information in pending state", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
 		scheduler := newValidScheduler()
@@ -768,7 +815,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("it returns with error when couldn't get game rooms information in occupied state", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
@@ -783,7 +830,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("it returns with error when couldn't get game rooms information in terminating state", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, roomStorage)
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
@@ -804,7 +851,7 @@ func TestDeleteScheduler(t *testing.T) {
 		scheduler := newValidScheduler()
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(scheduler, nil)
 		schedulerStorage.EXPECT().DeleteScheduler(gomock.Any(), scheduler).Return(nil)
 
@@ -817,7 +864,7 @@ func TestDeleteScheduler(t *testing.T) {
 		schedulerName := "scheduler-name"
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(nil, errors.NewErrNotFound("err"))
 
 		err := schedulerManager.DeleteScheduler(ctx, schedulerName)
@@ -832,7 +879,7 @@ func TestDeleteScheduler(t *testing.T) {
 		scheduler := newValidScheduler()
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil)
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(scheduler, nil)
 		schedulerStorage.EXPECT().DeleteScheduler(gomock.Any(), scheduler).Return(errors.NewErrUnexpected("err"))
 
@@ -851,9 +898,9 @@ func newValidScheduler() *entities.Scheduler {
 		Game:            "game",
 		State:           entities.StateCreating,
 		MaxSurge:        "10%",
-		RollbackVersion: "",
+		RollbackVersion: "v1.0.0",
 		Spec: game_room.Spec{
-			Version:                "v1",
+			Version:                "v1.1.0",
 			TerminationGracePeriod: 60,
 			Toleration:             "toleration",
 			Affinity:               "affinity",

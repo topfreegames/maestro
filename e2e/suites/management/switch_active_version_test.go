@@ -25,6 +25,8 @@ package management
 import (
 	"context"
 	"fmt"
+	_struct "github.com/golang/protobuf/ptypes/struct"
+	"google.golang.org/protobuf/types/known/structpb"
 	"testing"
 	"time"
 
@@ -42,8 +44,9 @@ import (
 
 func TestSwitchActiveVersion(t *testing.T) {
 	game := "switch-active-version-game"
+
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		t.Run("Should Succeed - create minor version, rollback version", func(t *testing.T) {
+		t.Run("Succeed - create minor version, rollback version", func(t *testing.T) {
 			t.Parallel()
 
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
@@ -175,7 +178,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 			}
 		})
 
-		t.Run("Should Succeed - create major change, rollback version", func(t *testing.T) {
+		t.Run("Succeed - create major change, rollback version", func(t *testing.T) {
 			t.Parallel()
 
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
@@ -304,7 +307,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 			}
 		})
 
-		t.Run("Should fail - version does not exist", func(t *testing.T) {
+		t.Run("Fail - version does not exist", func(t *testing.T) {
 			t.Parallel()
 
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
@@ -403,5 +406,139 @@ func TestSwitchActiveVersion(t *testing.T) {
 			err = managementApiClient.Do("PUT", fmt.Sprintf("/schedulers/%s", scheduler.Name), switchActiveVersionRequest, switchActiveVersionResponse)
 			require.Error(t, err)
 		})
+
+		t.Run("Fail - adding forwarders crashes (testing scheduler cache)", func(t *testing.T) {
+			t.Parallel()
+
+			forwarders := []*maestroApiV1.Forwarder{
+				{
+					Name:    "matchmaker-grpc",
+					Enable:  true,
+					Type:    "grpc",
+					Address: maestro.ServerMocks.GrpcForwarderAddress,
+					Options: &maestroApiV1.ForwarderOptions{
+						Timeout: 5000,
+						Metadata: &_struct.Struct{
+							Fields: map[string]*structpb.Value{
+								"roomType": {
+									Kind: &structpb.Value_StringValue{
+										StringValue: "green",
+									},
+								},
+								"forwarderMetadata1": {
+									Kind: &structpb.Value_StringValue{
+										StringValue: "value1",
+									},
+								},
+								"forwarderMetadata2": {
+									Kind: &structpb.Value_NumberValue{
+										NumberValue: 245,
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
+			firstPods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+			firstRoomName := firstPods.Items[0].ObjectMeta.Name
+
+			// Can ping since there is no mock for grpc, and now we have forwarders
+			require.True(t, canPingForwarderWithRoom(roomsApiClient, scheduler.Name, firstRoomName))
+
+			// Update scheduler
+			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
+				Name:     scheduler.Name,
+				Game:     "test",
+				MaxSurge: "10%",
+				Spec: &maestroApiV1.Spec{
+					TerminationGracePeriod: 15,
+					Containers: []*maestroApiV1.Container{
+						{
+							Name:  "example",
+							Image: "alpine:3.15.0",
+							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
+								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
+							ImagePullPolicy: "Always",
+							Environment: []*maestroApiV1.ContainerEnvironment{
+								{
+									Name:  "ROOMS_API_ADDRESS",
+									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+								},
+							},
+							Requests: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Limits: &maestroApiV1.ContainerResources{
+								Memory: "20Mi",
+								Cpu:    "10m",
+							},
+							Ports: []*maestroApiV1.ContainerPort{
+								{
+									Name:     "default",
+									Protocol: "tcp",
+									Port:     80,
+								},
+							},
+						},
+					},
+				},
+				PortRange: &maestroApiV1.PortRange{
+					Start: 80,
+					End:   8000,
+				},
+				Forwarders: forwarders,
+			}
+			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
+
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s", scheduler.Name), updateRequest, updateResponse)
+			require.NoError(t, err)
+			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
+
+			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "create_new_scheduler_version")
+			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
+
+			lastPods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+			lastRoomName := lastPods.Items[0].ObjectMeta.Name
+
+			// Cannot ping since there is no mock for grpc, and now we have forwarders
+			require.False(t, canPingForwarderWithRoom(roomsApiClient, scheduler.Name, lastRoomName))
+		})
 	})
+}
+
+func canPingForwarderWithRoom(roomsApiClient *framework.APIClient, schedulerName, roomName string) bool {
+	playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
+		RoomName:  roomName,
+		Event:     "playerLeft",
+		Timestamp: time.Now().Unix(),
+		Metadata: &_struct.Struct{
+			Fields: map[string]*structpb.Value{
+				"playerId": {
+					Kind: &structpb.Value_StringValue{
+						StringValue: "c50acc91-4d88-46fa-aa56-48d63c5b5311",
+					},
+				},
+				"eventMetadata1": {
+					Kind: &structpb.Value_StringValue{
+						StringValue: "value1",
+					},
+				},
+				"eventMetadata2": {
+					Kind: &structpb.Value_BoolValue{
+						BoolValue: true,
+					},
+				},
+			},
+		},
+	}
+	playerEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
+	_ = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", schedulerName, roomName), playerEventRequest, playerEventResponse)
+	return playerEventResponse.Success
 }
