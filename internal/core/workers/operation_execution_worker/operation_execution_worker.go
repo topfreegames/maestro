@@ -127,6 +127,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		err = w.operationManager.StartOperation(operationContext, op, operationCancellationFunction)
 		if err != nil {
 			w.Stop(ctx)
+			operationCancellationFunction()
 
 			op.Status = operation.StatusError
 			err = w.operationManager.FinishOperation(ctx, op)
