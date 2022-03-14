@@ -45,8 +45,6 @@ import (
 func TestSwitchActiveVersion(t *testing.T) {
 	game := "switch-active-version-game"
 
-
-
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("Succeed - create minor version, rollback version", func(t *testing.T) {
 			t.Parallel()
@@ -309,7 +307,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 			}
 		})
 
-		t.Run("fail - version does not exist", func(t *testing.T) {
+		t.Run("Fail - version does not exist", func(t *testing.T) {
 			t.Parallel()
 
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
@@ -409,7 +407,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 			require.Error(t, err)
 		})
 
-		t.Run("fail - adding forwarders crashes (testing scheduler cache)", func(t *testing.T) {
+		t.Run("Fail - adding forwarders crashes (testing scheduler cache)", func(t *testing.T) {
 			t.Parallel()
 
 			forwarders := []*maestroApiV1.Forwarder{
