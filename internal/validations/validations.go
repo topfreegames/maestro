@@ -77,7 +77,7 @@ func RegisterValidations() error {
 
 	err = Validate.RegisterValidation("forwarder_type", forwarderTypeValidate)
 	if err != nil {
-		return errors.New("could not register kubeResourceNameValidate")
+		return errors.New("could not register forwarderTypeValidate")
 	}
 	addTranslation(Validate, "forwarder_type", "{0} must be one of the following options: gRPC")
 

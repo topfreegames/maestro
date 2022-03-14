@@ -23,10 +23,11 @@
 package validations
 
 import (
-	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 
 	"github.com/Masterminds/semver"
 )

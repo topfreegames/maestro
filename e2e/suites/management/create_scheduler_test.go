@@ -25,10 +25,11 @@ package management
 import (
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"testing"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 
 	"github.com/stretchr/testify/assert"
 
