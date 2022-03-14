@@ -165,7 +165,7 @@ func newRoomEvent() pb.RoomEvent {
 			Port:     9090,
 			Metadata: map[string]string{"roomType": "red", "ping": "true"},
 		},
-		EventType: "grpc",
+		EventType: "gRPC",
 		Metadata:  map[string]string{"roomType": "red", "ping": "true"},
 	}
 }

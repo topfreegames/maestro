@@ -46,7 +46,7 @@
       }
   ],
   "forwarders": {
-    "grpc": {
+    "gRPC": {
       "matchmaking": {
         "enabled": true,
         "metadata": {
@@ -63,4 +63,3 @@
     }
   }
 }
-         

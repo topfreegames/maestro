@@ -534,7 +534,7 @@ func createSchedulerWithForwarderAndRooms(t *testing.T, maestro *maestro.Maestro
 		{
 			Name:    "matchmaker-grpc",
 			Enable:  true,
-			Type:    "grpc",
+			Type:    "gRPC",
 			Address: forwarderAddress,
 			Options: &maestroApiV1.ForwarderOptions{
 				Timeout: 5000,
