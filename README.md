@@ -16,6 +16,7 @@ All documentation regarding this version (v10.x, AKA NEXT) can be accessed at ht
 ## Dependencies
 
 > **⚠ WARNING: Ensure using cgroupv1**
+> 
 > K3s needs to use the deprecated `cgroupv1`, to successfully run the project in your machine ensure that your current docker use this version.
 
 ### Grpc gateway
