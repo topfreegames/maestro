@@ -268,7 +268,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 			{
 				Name:    "matchmaker-grpc",
 				Enable:  true,
-				Type:    "grpc",
+				Type:    "gRPC",
 				Address: maestro.ServerMocks.GrpcForwarderAddress,
 				Options: &maestroApiV1.ForwarderOptions{
 					Timeout: 5000,
@@ -443,7 +443,7 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 			{
 				Name:    "matchmaker-grpc",
 				Enable:  true,
-				Type:    "grpc",
+				Type:    "gRPC",
 				Address: maestro.ServerMocks.GrpcForwarderAddress,
 				Options: &maestroApiV1.ForwarderOptions{
 					Timeout: 5000,

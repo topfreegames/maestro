@@ -27,6 +27,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+
 	"github.com/Masterminds/semver"
 )
 
@@ -106,4 +108,15 @@ func IsKubeResourceNameValid(name string) bool {
 		return false
 	}
 	return true
+}
+
+// IsForwarderTypeSupported check if received forwarder type is supported by Maestro
+func IsForwarderTypeSupported(forwarderType string) bool {
+	types := []string{string(forwarder.TypeGrpc)}
+	for _, item := range types {
+		if item == forwarderType {
+			return true
+		}
+	}
+	return false
 }

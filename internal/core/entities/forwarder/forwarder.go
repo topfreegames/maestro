@@ -31,7 +31,7 @@ const (
 type Forwarder struct {
 	Name        string `validate:"required"`
 	Enabled     bool
-	ForwardType ForwardType `validate:"required"`
+	ForwardType ForwardType `validate:"required,forwarder_type"`
 	Address     string      `validate:"required"`
 	Options     *ForwardOptions
 }
