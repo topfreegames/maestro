@@ -184,9 +184,19 @@ func (om *OperationManager) EnqueueOperationCancellationRequest(ctx context.Cont
 		return fmt.Errorf("failed to fetch scheduler from storage: %w", err)
 	}
 
-	_, _, err = om.Storage.GetOperation(ctx, schedulerName, operationID)
+	op, _, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch operation from storage: %w", err)
+	}
+
+	if !(op.Status == operation.StatusPending || op.Status == operation.StatusInProgress) {
+		status, err := op.Status.String()
+		if err != nil {
+			om.Logger.Error("cannot cancel operation because operation have invalid status", zap.Error(err))
+			return err
+		}
+		om.Logger.Sugar().Infof("cannot cancel operation since status \"%v\" is a final status", status)
+		return errors.NewErrConflict("cannot cancel operation since status \"%v\" is a final status", status)
 	}
 
 	err = om.Flow.EnqueueOperationCancellationRequest(ctx, ports.OperationCancellationRequest{

@@ -120,6 +120,30 @@ func TestCancelOperation(t *testing.T) {
 				return true
 			}, 240*time.Second, time.Second)
 		})
+
+		t.Run("error when try to cancel operations on final state", func(t *testing.T) {
+			scheduler, err := createSchedulerAndWaitForIt(
+				t,
+				maestro,
+				managementApiClient,
+				kubeClient,
+				"test",
+				[]string{"sh", "-c", "while true; do sleep 1; done"},
+			)
+
+			listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
+			listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
+			require.NoError(t, err)
+
+			finishedOpId := listOperationsResponse.FinishedOperations[0].Id
+
+			finishedOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: finishedOpId}
+			finishedOpCancelResponse := &maestroApiV1.CancelOperationResponse{}
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, finishedOpId), finishedOpCancelRequest, finishedOpCancelResponse)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "status 409")
+		})
 	})
 }
 
