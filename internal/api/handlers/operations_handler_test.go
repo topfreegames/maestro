@@ -63,6 +63,13 @@ func TestListOperations(t *testing.T) {
 			CreatedAt:      dates[0],
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 		&operation.Operation{
 			ID:             "7af3250c-af5b-428a-955f-a8fa22fb7cf7",
@@ -70,6 +77,13 @@ func TestListOperations(t *testing.T) {
 			CreatedAt:      dates[1],
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 		&operation.Operation{
 			ID:             "83cc7850-9c90-4033-948f-368eea4b976e",
@@ -77,6 +91,13 @@ func TestListOperations(t *testing.T) {
 			CreatedAt:      dates[2],
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 	}
 	finishedOperations := []*operation.Operation{
@@ -86,6 +107,13 @@ func TestListOperations(t *testing.T) {
 			CreatedAt:      dates[0],
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 		&operation.Operation{
 			ID:             "f1fce7b2-3374-464e-9eb4-08b25fa0da54",
@@ -93,6 +121,13 @@ func TestListOperations(t *testing.T) {
 			CreatedAt:      dates[1],
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 		&operation.Operation{
 			ID:             "ae218cc1-2dd8-448b-a78f-0cc979f89f37",
@@ -100,6 +135,13 @@ func TestListOperations(t *testing.T) {
 			CreatedAt:      dates[2],
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 	}
 	activeOperations := []*operation.Operation{
@@ -110,6 +152,13 @@ func TestListOperations(t *testing.T) {
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
 			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306511, 0)},
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 		&operation.Operation{
 			ID:             "59e58c61-1758-4f02-b6ea-a87a64172902",
@@ -118,6 +167,13 @@ func TestListOperations(t *testing.T) {
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
 			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306521, 0)},
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 		&operation.Operation{
 			ID:             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
@@ -126,6 +182,13 @@ func TestListOperations(t *testing.T) {
 			SchedulerName:  schedulerName,
 			DefinitionName: "create_scheduler",
 			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306531, 0)},
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 	}
 

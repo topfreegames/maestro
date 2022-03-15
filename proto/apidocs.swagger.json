@@ -772,6 +772,17 @@
           "type": "string",
           "format": "date-time",
           "description": "Time the operation was created."
+        },
+        "input": {
+          "type": "object",
+          "description": "Input the data that was sent by client."
+        },
+        "executionHistory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1OperationEvent"
+          },
+          "description": "ExecutionHistory is the execution details filled by Maestro."
         }
       },
       "title": "The operation object representation"
@@ -1134,6 +1145,21 @@
         }
       },
       "description": "Update schedule operation response payload."
+    },
+    "v1OperationEvent": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "DateTime is the time when the event occurred."
+        },
+        "event": {
+          "type": "string",
+          "description": "Event describe what happened in this event."
+        }
+      },
+      "description": "OperationEvent object represent an execution event."
     },
     "v1PortRange": {
       "type": "object",

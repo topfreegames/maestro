@@ -24,6 +24,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -33,6 +34,7 @@ import (
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"go.uber.org/zap"
+	_struct "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -141,27 +143,55 @@ func (h *OperationsHandler) fromOperationsToResponses(entities []*operation.Oper
 }
 
 func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation) (*api.Operation, error) {
-	status, err := entity.Status.String()
+	operation := &api.Operation{
+		Id:             entity.ID,
+		DefinitionName: entity.DefinitionName,
+		SchedulerName:  entity.SchedulerName,
+		CreatedAt:      timestamppb.New(entity.CreatedAt),
+	}
+
+	var err error
+	operation.Status, err = entity.Status.String()
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert operation entity to response: %w", err)
 	}
+
+	operation.ExecutionHistory = h.fromOperationEventsToResponse(entity.ExecutionHistory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert execution history to response: %w", err)
+	}
+
+	var inputMap map[string]interface{}
+	err = json.Unmarshal(entity.Input, &inputMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert input to struct: %w", err)
+	}
+	operation.Input, err = _struct.NewStruct(inputMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert input to response struct: %w", err)
+	}
+
 	if entity.Lease != nil {
-		return &api.Operation{
-			Id:             entity.ID,
-			Status:         status,
-			DefinitionName: entity.DefinitionName,
-			SchedulerName:  entity.SchedulerName,
-			Lease:          &api.Lease{Ttl: entity.Lease.Ttl.UTC().Format(time.RFC3339)},
-			CreatedAt:      timestamppb.New(entity.CreatedAt),
-		}, nil
-	} else {
-		return &api.Operation{
-			Id:             entity.ID,
-			Status:         status,
-			DefinitionName: entity.DefinitionName,
-			SchedulerName:  entity.SchedulerName,
-			CreatedAt:      timestamppb.New(entity.CreatedAt),
-		}, nil
+		operation.Lease = &api.Lease{Ttl: entity.Lease.Ttl.UTC().Format(time.RFC3339)}
+		return operation, nil
+	}
+
+	return operation, nil
+}
+
+func (h *OperationsHandler) fromOperationEventsToResponse(entities []operation.OperationEvent) []*api.OperationEvent {
+	apiOperationEvents := make([]*api.OperationEvent, 0, len(entities))
+	for _, entity := range entities {
+		apiOperationEvents = append(apiOperationEvents, h.fromOperationEventToResponse(entity))
+	}
+
+	return apiOperationEvents
+}
+
+func (h *OperationsHandler) fromOperationEventToResponse(entity operation.OperationEvent) *api.OperationEvent {
+	return &api.OperationEvent{
+		CreatedAt: timestamppb.New(entity.CreatedAt),
+		Event:     entity.Event,
 	}
 }
 
