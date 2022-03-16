@@ -43,7 +43,6 @@ import (
 )
 
 func TestEventsForwarding(t *testing.T) {
-
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		schedulerWithForwarderAndRooms, roomsNames := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
 		schedulerWithRooms, roomNameNoForwarder := createSchedulerWithRooms(t, maestro, kubeClient, managementApiClient)
@@ -564,7 +563,7 @@ func createSchedulerWithForwarderAndRooms(t *testing.T, maestro *maestro.Maestro
 		require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
 		require.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
 		return true
-	}, 240*time.Second, time.Second)
+	}, 4*time.Minute, time.Second)
 
 	require.Eventually(t, func() bool {
 		podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})

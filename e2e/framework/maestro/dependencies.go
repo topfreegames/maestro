@@ -69,7 +69,7 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 		if err != nil {
 			return err
 		}
-		if strings.Contains(string(output), "migration completed") {
+		if strings.Contains(string(output), "migration completed") || strings.Contains(string(output), "database schema already up to date") {
 			return nil
 		}
 

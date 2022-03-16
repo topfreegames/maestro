@@ -47,7 +47,6 @@ import (
 )
 
 func TestCancelOperation(t *testing.T) {
-
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock())
 		operationFlow := operationadapters.NewRedisOperationFlow(redisClient)

@@ -43,7 +43,6 @@ import (
 )
 
 func TestAddRooms(t *testing.T) {
-
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		roomsStorage := roomStorageRedis.NewRedisStateStorage(redisClient)
 

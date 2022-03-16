@@ -48,7 +48,6 @@ import (
 )
 
 func TestCreateNewSchedulerVersion(t *testing.T) {
-
 	game := "create-new-scheduler-version-game"
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("Should Succeed - create minor version, no pods replaces, create major version, all pods are changed", func(t *testing.T) {
