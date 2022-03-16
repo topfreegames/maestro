@@ -69,7 +69,7 @@ func TestCreateOperation(t *testing.T) {
 		require.Equal(t, op.SchedulerName, operationStored[schedulerNameRedisKey])
 		require.Equal(t, op.DefinitionName, operationStored[definitionNameRedisKey])
 		require.Equal(t, createdAtString, operationStored[createdAtRedisKey])
-		require.Equal(t, op.Input, operationStored[definitionContentsRedisKey])
+		require.EqualValues(t, op.Input, operationStored[definitionContentsRedisKey])
 
 		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
 		require.NoError(t, err)
