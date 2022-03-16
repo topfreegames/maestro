@@ -326,7 +326,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 					Fields: map[string]*structpb.Value{
 						"playerId": {
 							Kind: &structpb.Value_StringValue{
-								StringValue: "c50acc91-4d88-46fa-aa56-48d63c5b5311",
+								StringValue: "invalid-id",
 							},
 						},
 						"eventMetadata1": {

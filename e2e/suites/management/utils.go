@@ -261,7 +261,7 @@ func waitForOperationToFinish(t *testing.T, managementApiClient *framework.APICl
 
 		if len(listOperationsResponse.FinishedOperations) >= 1 {
 			for _, _operation := range listOperationsResponse.FinishedOperations {
-				if _operation.DefinitionName == operation {
+				if _operation.DefinitionName == operation && _operation.Status == "finished" {
 					return true
 				}
 			}
