@@ -26,14 +26,15 @@
 package metricsreporter
 
 import (
+	"container/ring"
 	"context"
 	"errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/stretchr/testify/assert"
 	mockinstance "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -43,29 +44,14 @@ import (
 
 func TestMetricsReporterWorker_Start(t *testing.T) {
 	t.Run("produce metrics for pods and game rooms with success when no error occurs", func(t *testing.T) {
+		resetMetricsCollectors()
+
 		mockCtl := gomock.NewController(t)
 		roomStorage := mock.NewMockRoomStorage(mockCtl)
 		instanceStorage := mockinstance.NewMockGameRoomInstanceStorage(mockCtl)
 		ctx, cancelFunc := context.WithCancel(context.Background())
-
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
-		instances := []*game_room.Instance{
-			{
-				Status: game_room.InstanceStatus{Type: 0},
-			},
-			{
-				Status: game_room.InstanceStatus{Type: 1},
-			},
-			{
-				Status: game_room.InstanceStatus{Type: 2},
-			},
-			{
-				Status: game_room.InstanceStatus{Type: 3},
-			},
-			{
-				Status: game_room.InstanceStatus{Type: 4},
-			},
-		}
+		instances := newInstancesList(40)
 
 		workerOpts := &workers.WorkerOptions{
 			RoomStorage:           roomStorage,
@@ -75,32 +61,47 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 		worker := NewMetricsReporterWorker(scheduler, workerOpts)
 
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).
-			Return(1, nil).MinTimes(3)
+			Return(11, nil).MinTimes(3)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusPending).
-			Return(1, nil).MinTimes(3)
+			Return(22, nil).MinTimes(3)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusTerminating).
-			Return(1, nil).MinTimes(3)
+			Return(33, nil).MinTimes(3)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).
-			Return(1, nil).MinTimes(3)
+			Return(44, nil).MinTimes(3)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusUnready).
-			Return(1, nil).MinTimes(3)
+			Return(55, nil).MinTimes(3)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusError).
-			Return(1, nil).MinTimes(3)
-
+			Return(66, nil).MinTimes(3)
 		instanceStorage.EXPECT().GetAllInstances(gomock.Any(), scheduler.Name).Return(instances, nil).MinTimes(3)
 
 		go func() {
 			err := worker.Start(ctx)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}()
 
 		time.Sleep(time.Second * 2)
 		assert.True(t, worker.IsRunning())
 		cancelFunc()
 		assert.False(t, worker.IsRunning())
+
+		// assert metrics were collected
+		assert.Equal(t, float64(11), testutil.ToFloat64((gameRoomReadyGaugeMetric)))
+		assert.Equal(t, float64(22), testutil.ToFloat64((gameRoomPendingGaugeMetric)))
+		assert.Equal(t, float64(33), testutil.ToFloat64((gameRoomTerminatingGaugeMetric)))
+		assert.Equal(t, float64(44), testutil.ToFloat64((gameRoomOccupiedGaugeMetric)))
+		assert.Equal(t, float64(55), testutil.ToFloat64((gameRoomUnreadyGaugeMetric)))
+		assert.Equal(t, float64(66), testutil.ToFloat64((gameRoomErrorGaugeMetric)))
+
+		assert.Equal(t, float64(8), testutil.ToFloat64((instanceReadyGaugeMetric)))
+		assert.Equal(t, float64(8), testutil.ToFloat64((instancePendingGaugeMetric)))
+		assert.Equal(t, float64(8), testutil.ToFloat64((instanceUnknownGaugeMetric)))
+		assert.Equal(t, float64(8), testutil.ToFloat64((instanceTerminatingGaugeMetric)))
+		assert.Equal(t, float64(8), testutil.ToFloat64((instanceErrorGaugeMetric)))
 	})
 
-	t.Run("log errors but doesn't stop worker when some error occurs", func(t *testing.T) {
+	t.Run("don't produce metrics, log errors but doesn't stop worker when some error occurs", func(t *testing.T) {
+		resetMetricsCollectors()
+
 		mockCtl := gomock.NewController(t)
 		roomStorage := mock.NewMockRoomStorage(mockCtl)
 		instanceStorage := mockinstance.NewMockGameRoomInstanceStorage(mockCtl)
@@ -127,18 +128,60 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 			Return(0, errors.New("some_error")).MinTimes(3)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusError).
 			Return(0, errors.New("some_error")).MinTimes(3)
-
 		instanceStorage.EXPECT().GetAllInstances(gomock.Any(), scheduler.Name).
 			Return([]*game_room.Instance{}, errors.New("some_error")).MinTimes(3)
 
 		go func() {
 			err := worker.Start(ctx)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}()
 		time.Sleep(time.Second * 2)
 		assert.True(t, worker.IsRunning())
 		cancelFunc()
 		assert.False(t, worker.IsRunning())
+
+		// assert metrics were not collected
+		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomReadyGaugeMetric))
+		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomPendingGaugeMetric))
+		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomTerminatingGaugeMetric))
+		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomOccupiedGaugeMetric))
+		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomUnreadyGaugeMetric))
+		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomErrorGaugeMetric))
+
+		assert.Equal(t, 0, testutil.CollectAndCount(instanceReadyGaugeMetric))
+		assert.Equal(t, 0, testutil.CollectAndCount(instancePendingGaugeMetric))
+		assert.Equal(t, 0, testutil.CollectAndCount(instanceUnknownGaugeMetric))
+		assert.Equal(t, 0, testutil.CollectAndCount(instanceTerminatingGaugeMetric))
+		assert.Equal(t, 0, testutil.CollectAndCount(instanceErrorGaugeMetric))
 	})
 
+}
+
+func newInstancesList(numberOfInstances int) []*game_room.Instance {
+	possibleInstanceStatus := []game_room.InstanceStatusType{game_room.InstanceReady, game_room.InstanceUnknown, game_room.InstanceError, game_room.InstanceTerminating, game_room.InstancePending}
+	statusRing := ring.New(len(possibleInstanceStatus))
+	for i := 0; i < statusRing.Len(); i++ {
+		statusRing.Value = possibleInstanceStatus[i]
+		statusRing = statusRing.Next()
+	}
+
+	instances := []*game_room.Instance{}
+	for i := 0; i < numberOfInstances; i++ {
+		status, _ := statusRing.Move(i).Value.(game_room.InstanceStatusType)
+		instances = append(instances, &game_room.Instance{Status: game_room.InstanceStatus{Type: status}})
+	}
+	return instances
+}
+func resetMetricsCollectors() {
+	gameRoomReadyGaugeMetric.Reset()
+	gameRoomPendingGaugeMetric.Reset()
+	gameRoomTerminatingGaugeMetric.Reset()
+	gameRoomOccupiedGaugeMetric.Reset()
+	gameRoomUnreadyGaugeMetric.Reset()
+	gameRoomErrorGaugeMetric.Reset()
+	instanceReadyGaugeMetric.Reset()
+	instancePendingGaugeMetric.Reset()
+	instanceUnknownGaugeMetric.Reset()
+	instanceTerminatingGaugeMetric.Reset()
+	instanceErrorGaugeMetric.Reset()
 }

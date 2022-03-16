@@ -38,7 +38,7 @@ import (
 
 var _ workers.Worker = (*MetricsReporterWorker)(nil)
 
-// MetricsReporterWorker is the service responsible for implementing the worker responsibilities.
+// MetricsReporterWorker is the service responsible producing periodic metrics.
 type MetricsReporterWorker struct {
 	schedulerName                 string
 	metricsReporterPeriodInMillis time.Duration
@@ -127,39 +127,38 @@ func (w *MetricsReporterWorker) reportGameRoomMetrics() {
 
 	readyRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusReady)
 	if err != nil {
-		w.logger.Error("Error getting pods", zap.Error(err))
+		w.logger.Error("Error getting ready pods", zap.Error(err))
 	} else {
 		reportGameRoomReadyNumber(w.schedulerName, readyRooms)
 	}
 	pendingRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusPending)
 	if err != nil {
-		w.logger.Error("Error getting pods", zap.Error(err))
+		w.logger.Error("Error getting pending pods", zap.Error(err))
 	} else {
 		reportGameRoomPendingNumber(w.schedulerName, pendingRooms)
 	}
 	occupiedRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusOccupied)
 	if err != nil {
-		w.logger.Error("Error getting pods", zap.Error(err))
+		w.logger.Error("Error getting occupied pods", zap.Error(err))
 	} else {
 		reportGameRoomOccupiedNumber(w.schedulerName, occupiedRooms)
 	}
 	terminatingRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusTerminating)
 	if err != nil {
-		w.logger.Error("Error getting pods", zap.Error(err))
+		w.logger.Error("Error getting terminating pods", zap.Error(err))
 	} else {
 		reportGameRoomTerminatingNumber(w.schedulerName, terminatingRooms)
 	}
 	errorRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusError)
 	if err != nil {
-		w.logger.Error("Error getting pods", zap.Error(err))
+		w.logger.Error("Error getting error pods", zap.Error(err))
 	} else {
 		reportGameRoomErrorNumber(w.schedulerName, errorRooms)
 	}
 	unreadyRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusUnready)
 	if err != nil {
-		w.logger.Error("Error getting pods", zap.Error(err))
+		w.logger.Error("Error getting unready pods", zap.Error(err))
 	} else {
 		reportGameRoomUnreadyNumber(w.schedulerName, unreadyRooms)
 	}
-
 }
