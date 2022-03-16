@@ -157,9 +157,6 @@ func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation)
 	}
 
 	operation.ExecutionHistory = h.fromOperationEventsToResponse(entity.ExecutionHistory)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert execution history to response: %w", err)
-	}
 
 	if len(entity.Input) > 0 {
 		var inputMap map[string]interface{} = make(map[string]interface{})
