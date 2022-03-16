@@ -282,7 +282,7 @@ func TestUpdateOperationExecutionHistory(t *testing.T) {
 		err = json.Unmarshal([]byte(operationStored[executionHistory]), &execHist)
 		require.NoError(t, err)
 
-		for i, _ := range op.ExecutionHistory {
+		for i := range op.ExecutionHistory {
 			require.Equal(t, op.ExecutionHistory[i].Event, execHist[i].Event)
 			require.Equal(t, op.ExecutionHistory[i].CreatedAt.Unix(), execHist[i].CreatedAt.Unix())
 		}
