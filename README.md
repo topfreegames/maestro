@@ -16,6 +16,7 @@ All documentation regarding this version (v10.x, AKA NEXT) can be accessed at ht
 ## Dependencies
 
 > **⚠ WARNING: Ensure using cgroupv1**
+> 
 > K3s needs to use the deprecated `cgroupv1`, to successfully run the project in your machine ensure that your current docker use this version.
 
 ### Grpc gateway
@@ -45,44 +46,66 @@ make run/management-api
 
 To test if the service (with dependencies) is up and running, try to create a scheduler by running the following command:
 ```
-curl --location --request POST 'http://localhost:8080/schedulers' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "name": "scheduler-test",
-    "game": "test",
-    "version": "v1.1",
-    "terminationGracePeriod": "100",
-    "maxSurge": "10",
-    "containers": [
-        {
-            "name": "example",
-            "image": "alpine:3.15.0",
-            "imagePullPolicy": "Always",
-            "command": ["sh", "-c", "while true; do sleep 1; done"],
-            "environment": [],
-            "requests": {
-                "memory": "20Mi",
-                "cpu": "10m"
-            },
-            "limits": {
-                "memory": "20Mi",
-                "cpu": "10m"
-            },
-            "ports": [
-                {
-                    "name": "default",
-                    "protocol": "tcp",
-                    "port": 80,
-                    "hostPort": 80
-                }
-            ]
-        }
-    ],
-    "portRange": {
-        "start": 0,
-        "end": 100
-    }
-}'
+curl --location --request POST "localhost:8080/schedulers" \
+--header "Content-Type: application/json" \
+--header "Accept: application/json" \
+--data-raw "{
+	\"name\": \"scheduler-test\",
+	\"game\": \"game-test\",
+	\"state\": \"creating\",
+	\"portRange\": {
+		\"start\": 1,
+		\"end\": 1000
+	},
+	\"maxSurge\": \"10%\",
+	\"spec\": {
+		\"terminationGracePeriod\": \"100\",
+		\"containers\": [
+			{
+				\"name\": \"alpine\",
+				\"image\": \"alpine\",
+				\"imagePullPolicy\": \"IfNotPresent\",
+				\"command\": [ \"sh\", \"-c\", \"while true; do sleep 1; done\" ],
+				\"environment\": [
+					{
+						\"name\": \"env-var-name\",
+						\"value\": \"env-var-value\"
+					}
+				],
+				\"requests\": {
+					\"memory\": \"100Mi\",
+					\"cpu\": \"100m\"
+				},
+				\"limits\": {
+					\"memory\": \"200Mi\",
+					\"cpu\": \"200m\"
+				},
+				\"ports\": [
+					{
+						\"name\": \"port-name\",
+						\"protocol\": \"tcp\",
+						\"port\": 12345,
+						\"hostPort\": 54321
+					}
+				]
+			}
+		],
+		\"toleration\": \"\",
+		\"affinity\": \"\"
+	},
+	\"forwarders\": [
+		{
+            \"name\": \"test-fwd\",
+            \"enable\": true,
+            \"type\": \"gRPC\",
+            \"address\": \"www.NON-EXISTANT-URL.com\",
+            \"options\": {
+               \"timeout\": 1000,
+               \"metadata\": {}
+            }
+		}
+    ]
+}"'
 ```
 
 ### Worker Flavor
