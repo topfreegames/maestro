@@ -149,6 +149,10 @@ message Operation {
   string scheduler_name = 5;
   // Time the operation was created.
   google.protobuf.Timestamp created_at = 6;
+  // Input the data that was sent by client.
+  google.protobuf.Struct input = 7;
+  // ExecutionHistory is the execution details filled by Maestro.
+  repeated OperationEvent execution_history = 8;
 }
 
 // The operation lease object representation
@@ -156,6 +160,14 @@ message Lease {
   // Lease time to live in RFC3999 format UTC. if the current time is greater than this value,
   // the lease is probably expired.
   string ttl = 1;
+}
+
+// OperationEvent object represent an execution event.
+message OperationEvent {
+  // DateTime is the time when the event occurred.
+  google.protobuf.Timestamp created_at = 1;
+  // Event describe what happened in this event.
+  string  event = 2;
 }
 
 // Represents the version of a Scheduler
