@@ -44,7 +44,6 @@ import (
 )
 
 func TestSwitchActiveVersion(t *testing.T) {
-	t.Parallel()
 
 	game := "switch-active-version-game"
 

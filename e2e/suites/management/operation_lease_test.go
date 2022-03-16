@@ -41,7 +41,6 @@ import (
 )
 
 func TestOperationLease(t *testing.T) {
-	t.Parallel()
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		operationLeaseStorage := operationadapters.NewRedisOperationLeaseStorage(redisClient, timeClock.NewClock())
