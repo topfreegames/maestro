@@ -32,6 +32,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -283,8 +285,8 @@ func TestUpdateOperationExecutionHistory(t *testing.T) {
 		require.NoError(t, err)
 
 		for i := range op.ExecutionHistory {
-			require.Equal(t, op.ExecutionHistory[i].Event, execHist[i].Event)
-			require.Equal(t, op.ExecutionHistory[i].CreatedAt.Unix(), execHist[i].CreatedAt.Unix())
+			assert.Equal(t, op.ExecutionHistory[i].Event, execHist[i].Event)
+			assert.Equal(t, op.ExecutionHistory[i].CreatedAt.Unix(), execHist[i].CreatedAt.Unix())
 		}
 	})
 
@@ -303,6 +305,7 @@ func TestUpdateOperationExecutionHistory(t *testing.T) {
 
 		err := storage.UpdateOperationExecutionHistory(context.Background(), op)
 		require.Error(t, err)
+		require.EqualError(t, err, "failed to update operation execution history: redis: client is closed")
 	})
 
 }
