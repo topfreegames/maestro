@@ -116,7 +116,7 @@ func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *event
 			}
 		}
 	} else {
-		es.logger.Info(fmt.Sprintf("scheduler \"%v\" do not have forwarders configured", event.SchedulerID))
+		es.logger.Debug(fmt.Sprintf("scheduler \"%v\" do not have forwarders configured", event.SchedulerID))
 	}
 
 	return nil
