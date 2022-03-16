@@ -29,6 +29,13 @@ import (
 
 type Status int
 
+// OperationEvent holds when and which event occurred during operation
+// execution.
+type OperationEvent struct {
+	CreatedAt time.Time
+	Event     string
+}
+
 const (
 	// StatusPending operation was created but no worker has started it yet.
 	StatusPending Status = iota
@@ -45,12 +52,14 @@ const (
 )
 
 type Operation struct {
-	ID             string
-	Status         Status
-	DefinitionName string
-	SchedulerName  string
-	Lease          *OperationLease
-	CreatedAt      time.Time
+	ID               string
+	Status           Status
+	DefinitionName   string
+	SchedulerName    string
+	Lease            *OperationLease
+	CreatedAt        time.Time
+	Input            []byte           // should be used ony after conversion to its operations.Definition.
+	ExecutionHistory []OperationEvent // should be used only to return information to users.
 }
 
 func (o *Operation) SetLease(lease *OperationLease) {
