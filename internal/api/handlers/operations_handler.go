@@ -161,12 +161,14 @@ func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation)
 		return nil, fmt.Errorf("failed to convert execution history to response: %w", err)
 	}
 
-	var inputMap map[string]interface{}
-	err = json.Unmarshal(entity.Input, &inputMap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert input to struct: %w", err)
+	if len(entity.Input) > 0 {
+		var inputMap map[string]interface{} = make(map[string]interface{})
+		err = json.Unmarshal(entity.Input, &inputMap)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert input to struct: %w", err)
+		}
+		operation.Input, err = _struct.NewStruct(inputMap)
 	}
-	operation.Input, err = _struct.NewStruct(inputMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert input to response struct: %w", err)
 	}
