@@ -23,6 +23,7 @@
 package maestro
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -55,13 +56,24 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 	}
 
 	migrateErr := helpers.TimedRetry(func() error {
-		_, err := exec.ExecGoCmd(
+		cmd, err := exec.ExecGoCmd(
 			maestroPath,
 			[]string{},
 			"main.go", "migrate",
 		)
+		if err != nil {
+			return err
+		}
 
-		return err
+		output, err := cmd.ReadOutput()
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(output), "migration completed") {
+			return nil
+		}
+
+		return errors.New("migration not ready")
 	}, time.Second, 30*time.Second)
 
 	if migrateErr != nil {

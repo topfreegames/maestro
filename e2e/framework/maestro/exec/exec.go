@@ -66,7 +66,6 @@ func ExecGoCmd(dir string, env []string, externalArgs ...string) (*Cmd, error) {
 		"MAESTRO_OPERATIONFLOW_REDIS_URL=redis://localhost:6379/0",
 		"MAESTRO_OPERATIONSTORAGE_REDIS_URL=redis://localhost:6379/0",
 	}
-
 	c.execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	c.execCmd.Stdout = c.output
 	c.execCmd.Stderr = c.output
@@ -81,7 +80,7 @@ func ExecGoCmd(dir string, env []string, externalArgs ...string) (*Cmd, error) {
 		c.Kill()
 		return nil, fmt.Errorf("failed to start command: %s", err)
 	}
-
+	c.execCmd.Wait()
 	return c, nil
 }
 
