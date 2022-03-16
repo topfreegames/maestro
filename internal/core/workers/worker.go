@@ -45,13 +45,13 @@ type Worker interface {
 // its construction. This struct is going to be used to inject the worker
 // dependencies like ports.
 type WorkerOptions struct {
-	OperationManager      ports.OperationManager
-	OperationExecutors    map[string]operations.Executor
-	RoomManager           ports.RoomManager
-	Runtime               ports.Runtime
-	RoomStorage           ports.RoomStorage
-	InstanceStorage       ports.GameRoomInstanceStorage
-	MetricsReporterPeriod time.Duration
+	OperationManager            ports.OperationManager
+	OperationExecutors          map[string]operations.Executor
+	RoomManager                 ports.RoomManager
+	Runtime                     ports.Runtime
+	RoomStorage                 ports.RoomStorage
+	InstanceStorage             ports.GameRoomInstanceStorage
+	MetricsReporterPeriodMillis time.Duration
 }
 
 func ProvideWorkerOptions(

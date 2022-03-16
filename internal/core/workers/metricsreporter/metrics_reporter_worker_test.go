@@ -54,9 +54,9 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 		instances := newInstancesList(40)
 
 		workerOpts := &workers.WorkerOptions{
-			RoomStorage:           roomStorage,
-			InstanceStorage:       instanceStorage,
-			MetricsReporterPeriod: 500}
+			RoomStorage:                 roomStorage,
+			InstanceStorage:             instanceStorage,
+			MetricsReporterPeriodMillis: 500}
 
 		worker := NewMetricsReporterWorker(scheduler, workerOpts)
 
@@ -110,9 +110,9 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 
 		workerOpts := &workers.WorkerOptions{
-			RoomStorage:           roomStorage,
-			InstanceStorage:       instanceStorage,
-			MetricsReporterPeriod: 500}
+			RoomStorage:                 roomStorage,
+			InstanceStorage:             instanceStorage,
+			MetricsReporterPeriodMillis: 500}
 
 		worker := NewMetricsReporterWorker(scheduler, workerOpts)
 
@@ -157,15 +157,20 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 
 }
 
-func newInstancesList(numberOfInstances int) []*game_room.Instance {
-	possibleInstanceStatus := []game_room.InstanceStatusType{game_room.InstanceReady, game_room.InstanceUnknown, game_room.InstanceError, game_room.InstanceTerminating, game_room.InstancePending}
+func newInstancesList(numberOfInstances int) (instances []*game_room.Instance) {
+	possibleInstanceStatus := []game_room.InstanceStatusType{
+		game_room.InstanceReady,
+		game_room.InstanceUnknown,
+		game_room.InstanceError,
+		game_room.InstanceTerminating,
+		game_room.InstancePending,
+	}
 	statusRing := ring.New(len(possibleInstanceStatus))
 	for i := 0; i < statusRing.Len(); i++ {
 		statusRing.Value = possibleInstanceStatus[i]
 		statusRing = statusRing.Next()
 	}
 
-	instances := []*game_room.Instance{}
 	for i := 0; i < numberOfInstances; i++ {
 		status, _ := statusRing.Move(i).Value.(game_room.InstanceStatusType)
 		instances = append(instances, &game_room.Instance{Status: game_room.InstanceStatus{Type: status}})

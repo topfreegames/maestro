@@ -52,7 +52,7 @@ type MetricsReporterWorker struct {
 func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
 	return &MetricsReporterWorker{
 		schedulerName:                 scheduler.Name,
-		metricsReporterPeriodInMillis: opts.MetricsReporterPeriod,
+		metricsReporterPeriodInMillis: opts.MetricsReporterPeriodMillis,
 		roomStorage:                   opts.RoomStorage,
 		instanceStorage:               opts.InstanceStorage,
 		logger:                        zap.L().With(zap.String(logs.LogFieldServiceName, "metrics_reporter_worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
@@ -63,7 +63,6 @@ func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.Worke
 // periodically report metrics for scheduler pods and game rooms.
 func (w *MetricsReporterWorker) Start(ctx context.Context) error {
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
-
 	ticker := time.NewTicker(time.Millisecond * w.metricsReporterPeriodInMillis)
 	defer ticker.Stop()
 
