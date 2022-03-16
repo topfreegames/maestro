@@ -85,18 +85,18 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 		assert.False(t, worker.IsRunning())
 
 		// assert metrics were collected
-		assert.Equal(t, float64(11), testutil.ToFloat64((gameRoomReadyGaugeMetric)))
-		assert.Equal(t, float64(22), testutil.ToFloat64((gameRoomPendingGaugeMetric)))
-		assert.Equal(t, float64(33), testutil.ToFloat64((gameRoomTerminatingGaugeMetric)))
-		assert.Equal(t, float64(44), testutil.ToFloat64((gameRoomOccupiedGaugeMetric)))
-		assert.Equal(t, float64(55), testutil.ToFloat64((gameRoomUnreadyGaugeMetric)))
-		assert.Equal(t, float64(66), testutil.ToFloat64((gameRoomErrorGaugeMetric)))
+		assert.Equal(t, float64(11), testutil.ToFloat64(gameRoomReadyGaugeMetric))
+		assert.Equal(t, float64(22), testutil.ToFloat64(gameRoomPendingGaugeMetric))
+		assert.Equal(t, float64(33), testutil.ToFloat64(gameRoomTerminatingGaugeMetric))
+		assert.Equal(t, float64(44), testutil.ToFloat64(gameRoomOccupiedGaugeMetric))
+		assert.Equal(t, float64(55), testutil.ToFloat64(gameRoomUnreadyGaugeMetric))
+		assert.Equal(t, float64(66), testutil.ToFloat64(gameRoomErrorGaugeMetric))
 
-		assert.Equal(t, float64(8), testutil.ToFloat64((instanceReadyGaugeMetric)))
-		assert.Equal(t, float64(8), testutil.ToFloat64((instancePendingGaugeMetric)))
-		assert.Equal(t, float64(8), testutil.ToFloat64((instanceUnknownGaugeMetric)))
-		assert.Equal(t, float64(8), testutil.ToFloat64((instanceTerminatingGaugeMetric)))
-		assert.Equal(t, float64(8), testutil.ToFloat64((instanceErrorGaugeMetric)))
+		assert.Equal(t, float64(8), testutil.ToFloat64(instanceReadyGaugeMetric))
+		assert.Equal(t, float64(8), testutil.ToFloat64(instancePendingGaugeMetric))
+		assert.Equal(t, float64(8), testutil.ToFloat64(instanceUnknownGaugeMetric))
+		assert.Equal(t, float64(8), testutil.ToFloat64(instanceTerminatingGaugeMetric))
+		assert.Equal(t, float64(8), testutil.ToFloat64(instanceErrorGaugeMetric))
 	})
 
 	t.Run("don't produce metrics, log errors but doesn't stop worker when some error occurs", func(t *testing.T) {
