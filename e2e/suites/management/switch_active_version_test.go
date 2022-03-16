@@ -415,7 +415,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				{
 					Name:    "matchmaker-grpc",
 					Enable:  true,
-					Type:    "grpc",
+					Type:    "gRPC",
 					Address: maestro.ServerMocks.GrpcForwarderAddress,
 					Options: &maestroApiV1.ForwarderOptions{
 						Timeout: 5000,
@@ -523,7 +523,7 @@ func canPingForwarderWithRoom(roomsApiClient *framework.APIClient, schedulerName
 			Fields: map[string]*structpb.Value{
 				"playerId": {
 					Kind: &structpb.Value_StringValue{
-						StringValue: "c50acc91-4d88-46fa-aa56-48d63c5b5311",
+						StringValue: "invalid-id",
 					},
 				},
 				"eventMetadata1": {
