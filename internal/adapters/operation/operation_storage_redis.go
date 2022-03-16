@@ -24,6 +24,7 @@ package operation
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -42,6 +43,7 @@ const (
 	definitionNameRedisKey     = "definitionName"
 	createdAtRedisKey          = "createdAt"
 	definitionContentsRedisKey = "definitionContents"
+	executionHistory           = "executionHistory"
 )
 
 var _ ports.OperationStorage = (*redisOperationStorage)(nil)
@@ -127,6 +129,22 @@ func (r *redisOperationStorage) UpdateOperationStatus(ctx context.Context, sched
 
 	if _, err := pipe.Exec(ctx); err != nil {
 		return errors.NewErrUnexpected("failed to update operations").WithError(err)
+	}
+
+	return nil
+}
+
+func (r *redisOperationStorage) UpdateOperationExecutionHistory(ctx context.Context, op *operation.Operation) error {
+	jsonExecutionHistory, err := json.Marshal(op.ExecutionHistory)
+	if err != nil {
+		return errors.NewErrUnexpected("failed to marshal operation execution history").WithError(err)
+	}
+	err = r.client.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+		executionHistory: jsonExecutionHistory,
+	}).Err()
+
+	if err != nil {
+		return errors.NewErrUnexpected("failed to update operation execution history").WithError(err)
 	}
 
 	return nil

@@ -404,6 +404,20 @@ func (mr *MockOperationStorageMockRecorder) ListSchedulerFinishedOperations(ctx,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSchedulerFinishedOperations", reflect.TypeOf((*MockOperationStorage)(nil).ListSchedulerFinishedOperations), ctx, schedulerName)
 }
 
+// UpdateOperationExecutionHistory mocks base method.
+func (m *MockOperationStorage) UpdateOperationExecutionHistory(ctx context.Context, op *operation.Operation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateOperationExecutionHistory", ctx, op)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateOperationExecutionHistory indicates an expected call of UpdateOperationExecutionHistory.
+func (mr *MockOperationStorageMockRecorder) UpdateOperationExecutionHistory(ctx, op interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOperationExecutionHistory", reflect.TypeOf((*MockOperationStorage)(nil).UpdateOperationExecutionHistory), ctx, op)
+}
+
 // UpdateOperationStatus mocks base method.
 func (m *MockOperationStorage) UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) error {
 	m.ctrl.T.Helper()
