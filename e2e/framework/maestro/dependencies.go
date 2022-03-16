@@ -74,7 +74,7 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 		}
 
 		return errors.New("migration not ready")
-	}, time.Second, 30*time.Second)
+	}, time.Second, 2*time.Minute)
 
 	if migrateErr != nil {
 		compose.Down()
