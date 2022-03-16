@@ -70,9 +70,10 @@ func (om *OperationManager) CreateOperation(ctx context.Context, schedulerName s
 		DefinitionName: definition.Name(),
 		SchedulerName:  schedulerName,
 		CreatedAt:      time.Now(),
+		Input:          definition.Marshal(),
 	}
 
-	err := om.Storage.CreateOperation(ctx, op, definition.Marshal())
+	err := om.Storage.CreateOperation(ctx, op)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create operation: %w", err)
 	}
@@ -87,7 +88,7 @@ func (om *OperationManager) CreateOperation(ctx context.Context, schedulerName s
 }
 
 func (om *OperationManager) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, operations.Definition, error) {
-	op, definitionContents, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
+	op, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -98,7 +99,7 @@ func (om *OperationManager) GetOperation(ctx context.Context, schedulerName, ope
 	}
 
 	definition := definitionConstructor()
-	err = definition.Unmarshal(definitionContents)
+	err = definition.Unmarshal(op.Input)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal definition: %s", err)
 	}
@@ -137,7 +138,7 @@ func (om *OperationManager) ListSchedulerPendingOperations(ctx context.Context, 
 	}
 	pendingOperations := make([]*operation.Operation, len(pendingOperationIDs))
 	for i, operationID := range pendingOperationIDs {
-		op, _, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
+		op, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
 		if err != nil {
 			return nil, err
 		}
@@ -184,7 +185,7 @@ func (om *OperationManager) EnqueueOperationCancellationRequest(ctx context.Cont
 		return fmt.Errorf("failed to fetch scheduler from storage: %w", err)
 	}
 
-	op, _, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
+	op, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch operation from storage: %w", err)
 	}
@@ -319,7 +320,7 @@ func (om *OperationManager) addOperationsLeaseData(ctx context.Context, schedule
 
 func (om OperationManager) cancelOperation(ctx context.Context, schedulerName, operationID string) error {
 
-	op, _, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
+	op, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch operation from storage: %w", err)
 	}

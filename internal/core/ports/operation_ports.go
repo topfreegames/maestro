@@ -78,9 +78,9 @@ type OperationFlow interface {
 }
 
 type OperationStorage interface {
-	CreateOperation(ctx context.Context, operation *operation.Operation, definitionContent []byte) error
+	CreateOperation(ctx context.Context, operation *operation.Operation) error
 	// GetOperation returns the operation and the definition contents.
-	GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, []byte, error)
+	GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, error)
 	// ListSchedulerActiveOperations list scheduler active operations.
 	ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
 	// ListSchedulerFinishedOperations list scheduler finished operations.

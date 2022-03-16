@@ -110,8 +110,7 @@ func TestCreateOperation(t *testing.T) {
 			opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 			ctx := context.Background()
-			testDefinition, _ := test.definition.(*testOperationDefinition)
-			operationStorage.EXPECT().CreateOperation(ctx, &opMatcher{operation.StatusPending, test.definition}, testDefinition.marshalResult).Return(test.storageErr)
+			operationStorage.EXPECT().CreateOperation(ctx, &opMatcher{operation.StatusPending, test.definition}).Return(test.storageErr)
 
 			if test.storageErr == nil {
 				operationFlow.EXPECT().InsertOperationID(ctx, schedulerName, gomock.Any()).Return(test.flowErr)
@@ -131,8 +130,11 @@ func TestCreateOperation(t *testing.T) {
 				return
 			}
 
-			require.NotNil(t, op)
-			require.Equal(t, operation.StatusPending, op.Status)
+			assert.NotEmpty(t, op.ID)
+			assert.Equal(t, operation.StatusPending, op.Status)
+			assert.Equal(t, test.definition.Name(), op.DefinitionName)
+			assert.Equal(t, schedulerName, op.SchedulerName)
+			assert.EqualValues(t, test.definition.Marshal(), op.Input)
 		})
 	}
 }
@@ -156,16 +158,19 @@ func TestGetOperation(t *testing.T) {
 		schedulerName := "test-scheduler"
 		operationID := "some-op-id"
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
-			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
-			[]byte{},
+			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name(), Status: operation.StatusPending},
 			nil,
 		)
 
 		op, definition, err := opManager.GetOperation(ctx, schedulerName, operationID)
 		require.NoError(t, err)
-		require.NotNil(t, op)
-		require.Equal(t, operationID, op.ID)
-		require.Equal(t, schedulerName, op.SchedulerName)
+
+		assert.Equal(t, op.ID, operationID)
+		assert.Equal(t, operation.StatusPending, op.Status)
+		assert.Equal(t, schedulerName, op.SchedulerName)
+		assert.Equal(t, defFunc().Name(), op.DefinitionName)
+		assert.EqualValues(t, defFunc().Marshal(), op.Input)
+
 		require.IsType(t, defFunc(), definition)
 	})
 
@@ -187,7 +192,6 @@ func TestGetOperation(t *testing.T) {
 		operationID := "some-op-id"
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
-			[]byte{},
 			nil,
 		)
 
@@ -213,7 +217,6 @@ func TestGetOperation(t *testing.T) {
 		operationID := "some-op-id"
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
-			[]byte{},
 			porterrors.ErrNotFound,
 		)
 
@@ -239,7 +242,6 @@ func TestGetOperation(t *testing.T) {
 		operationID := "some-op-id"
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
-			[]byte{},
 			porterrors.ErrNotFound,
 		)
 
@@ -270,7 +272,6 @@ func TestNextSchedulerOperation(t *testing.T) {
 		operationFlow.EXPECT().NextOperationID(ctx, schedulerName).Return(operationID, nil)
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
-			[]byte{},
 			nil,
 		)
 
@@ -325,7 +326,6 @@ func TestNextSchedulerOperation(t *testing.T) {
 		operationFlow.EXPECT().NextOperationID(ctx, schedulerName).Return(operationID, nil)
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			nil,
-			[]byte{},
 			porterrors.ErrNotFound,
 		)
 
@@ -534,9 +534,9 @@ func TestListSchedulerPendingOperations(t *testing.T) {
 
 		schedulerName := "test-scheduler"
 		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(ctx, schedulerName).Return([]string{"1", "2", "3"}, nil)
-		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "1").Return(operationsResult[0], []byte{}, nil)
-		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "2").Return(operationsResult[1], []byte{}, nil)
-		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "3").Return(operationsResult[2], []byte{}, nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "1").Return(operationsResult[0], nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "2").Return(operationsResult[1], nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "3").Return(operationsResult[2], nil)
 
 		operations, err := opManager.ListSchedulerPendingOperations(ctx, schedulerName)
 		require.NoError(t, err)
@@ -569,7 +569,7 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 			SchedulerName: schedulerName,
 			ID:            operationID,
 			Status:        operation.StatusInProgress,
-		}, nil, nil)
+		}, nil)
 
 		go func() {
 			err := opManager.WatchOperationCancellationRequests(ctx)
@@ -878,7 +878,6 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
 			op,
-			[]byte{},
 			nil,
 		)
 		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Any()).Return(nil)
@@ -906,7 +905,6 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 			schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
 			operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
 				operationFinished,
-				[]byte{},
 				nil,
 			)
 
@@ -932,7 +930,6 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
 			operationInvalid,
-			[]byte{},
 			nil,
 		)
 
@@ -976,7 +973,6 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
 			nil,
-			[]byte{},
 			errors.New("err"),
 		)
 
@@ -1000,7 +996,6 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
 		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
 			op,
-			[]byte{},
 			nil,
 		)
 		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Any()).Return(errors.New("err"))

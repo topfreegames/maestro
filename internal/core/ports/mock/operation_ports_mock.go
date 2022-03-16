@@ -345,27 +345,26 @@ func (m *MockOperationStorage) EXPECT() *MockOperationStorageMockRecorder {
 }
 
 // CreateOperation mocks base method.
-func (m *MockOperationStorage) CreateOperation(ctx context.Context, operation *operation.Operation, definitionContent []byte) error {
+func (m *MockOperationStorage) CreateOperation(ctx context.Context, operation *operation.Operation) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOperation", ctx, operation, definitionContent)
+	ret := m.ctrl.Call(m, "CreateOperation", ctx, operation)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateOperation indicates an expected call of CreateOperation.
-func (mr *MockOperationStorageMockRecorder) CreateOperation(ctx, operation, definitionContent interface{}) *gomock.Call {
+func (mr *MockOperationStorageMockRecorder) CreateOperation(ctx, operation interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOperation", reflect.TypeOf((*MockOperationStorage)(nil).CreateOperation), ctx, operation, definitionContent)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOperation", reflect.TypeOf((*MockOperationStorage)(nil).CreateOperation), ctx, operation)
 }
 
 // GetOperation mocks base method.
-func (m *MockOperationStorage) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, []byte, error) {
+func (m *MockOperationStorage) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOperation", ctx, schedulerName, operationID)
 	ret0, _ := ret[0].(*operation.Operation)
-	ret1, _ := ret[1].([]byte)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetOperation indicates an expected call of GetOperation.

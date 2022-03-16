@@ -57,10 +57,10 @@ func TestCreateOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
 			CreatedAt:      createdAt,
+			Input:          []byte("hello test"),
 		}
 
-		contents := []byte("hello test")
-		err := storage.CreateOperation(context.Background(), op, contents)
+		err := storage.CreateOperation(context.Background(), op)
 		require.NoError(t, err)
 
 		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
@@ -69,7 +69,7 @@ func TestCreateOperation(t *testing.T) {
 		require.Equal(t, op.SchedulerName, operationStored[schedulerNameRedisKey])
 		require.Equal(t, op.DefinitionName, operationStored[definitionNameRedisKey])
 		require.Equal(t, createdAtString, operationStored[createdAtRedisKey])
-		require.Equal(t, string(contents), operationStored[definitionContentsRedisKey])
+		require.Equal(t, op.Input, operationStored[definitionContentsRedisKey])
 
 		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
 		require.NoError(t, err)
@@ -92,7 +92,7 @@ func TestCreateOperation(t *testing.T) {
 		// "drop" redis connection
 		client.Close()
 
-		err := storage.CreateOperation(context.Background(), op, []byte{})
+		err := storage.CreateOperation(context.Background(), op)
 		require.ErrorIs(t, errors.ErrUnexpected, err)
 	})
 }
@@ -111,15 +111,15 @@ func TestGetOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
 			CreatedAt:      createdAt,
+			Input:          []byte("hello test"),
 		}
 
-		contents := []byte("hello test")
-		err := storage.CreateOperation(context.Background(), op, contents)
+		err := storage.CreateOperation(context.Background(), op)
 		require.NoError(t, err)
 
-		operationStored, definitionContents, err := storage.GetOperation(context.Background(), op.SchedulerName, op.ID)
+		operationStored, err := storage.GetOperation(context.Background(), op.SchedulerName, op.ID)
 		require.NoError(t, err)
-		require.Equal(t, contents, definitionContents)
+		require.Equal(t, op.Input, operationStored.Input)
 		require.Equal(t, op.ID, operationStored.ID)
 		require.Equal(t, op.SchedulerName, operationStored.SchedulerName)
 		require.Equal(t, op.Status, operationStored.Status)
@@ -132,10 +132,9 @@ func TestGetOperation(t *testing.T) {
 		clock := clockmock.NewFakeClock(time.Now())
 		storage := NewRedisOperationStorage(client, clock)
 
-		operationStored, definitionContents, err := storage.GetOperation(context.Background(), "test-scheduler", "inexistent-id")
+		operationStored, err := storage.GetOperation(context.Background(), "test-scheduler", "inexistent-id")
 		require.ErrorIs(t, errors.ErrNotFound, err)
 		require.Nil(t, operationStored)
-		require.Nil(t, definitionContents)
 	})
 
 	t.Run("fail to parse created at field", func(t *testing.T) {
@@ -149,20 +148,19 @@ func TestGetOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
 			CreatedAt:      time.Now(),
+			Input:          []byte("hello test"),
 		}
 
-		contents := []byte("hello test")
-		err := storage.CreateOperation(context.Background(), op, contents)
+		err := storage.CreateOperation(context.Background(), op)
 		require.NoError(t, err)
 
 		client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
 			createdAtRedisKey: "INVALID DATE",
 		})
 
-		operationStored, definitionContents, err := storage.GetOperation(context.Background(), "test-scheduler", "some-op-id")
+		operationStored, err := storage.GetOperation(context.Background(), "test-scheduler", "some-op-id")
 		require.Contains(t, err.Error(), "failed to parse operation createdAt field")
 		require.Nil(t, operationStored)
-		require.Nil(t, definitionContents)
 	})
 
 	t.Run("fails on redis", func(t *testing.T) {
@@ -173,10 +171,9 @@ func TestGetOperation(t *testing.T) {
 		// "drop" redis connection
 		client.Close()
 
-		operationStored, definitionContents, err := storage.GetOperation(context.Background(), "test-scheduler", "some-op-id")
+		operationStored, err := storage.GetOperation(context.Background(), "test-scheduler", "some-op-id")
 		require.ErrorIs(t, errors.ErrUnexpected, err)
 		require.Nil(t, operationStored)
-		require.Nil(t, definitionContents)
 	})
 }
 
@@ -193,7 +190,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 			Status:        operation.StatusPending,
 		}
 
-		err := storage.CreateOperation(context.Background(), op, []byte{})
+		err := storage.CreateOperation(context.Background(), op)
 		require.NoError(t, err)
 
 		err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusInProgress)
@@ -226,7 +223,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 			Status:        operation.StatusPending,
 		}
 
-		err := storage.CreateOperation(context.Background(), op, []byte{})
+		err := storage.CreateOperation(context.Background(), op)
 		require.NoError(t, err)
 
 		err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusInProgress)
@@ -330,7 +327,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		}
 
 		for _, op := range append(activeOperations, pendingOperations...) {
-			err := storage.CreateOperation(context.Background(), op, []byte{})
+			err := storage.CreateOperation(context.Background(), op)
 			require.NoError(t, err)
 
 			if op.Status == operation.StatusInProgress {
@@ -367,7 +364,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		}
 
 		for _, op := range activeOperations {
-			err := storage.CreateOperation(context.Background(), op, []byte{})
+			err := storage.CreateOperation(context.Background(), op)
 			require.NoError(t, err)
 
 			err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, op.Status)
