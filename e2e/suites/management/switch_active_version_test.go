@@ -44,6 +44,8 @@ import (
 )
 
 func TestSwitchActiveVersion(t *testing.T) {
+	t.Parallel()
+
 	game := "switch-active-version-game"
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
@@ -104,6 +106,18 @@ func TestSwitchActiveVersion(t *testing.T) {
 
 			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "create_new_scheduler_version")
 			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
+
+			require.Eventually(t, func() bool {
+				podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, podsAfterUpdate.Items)
+
+				if len(podsAfterUpdate.Items) == 2 {
+					return true
+				}
+
+				return false
+			}, 1*time.Minute, 100*time.Millisecond)
 
 			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
@@ -243,6 +257,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
 
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
+			require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Spec.Version)
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
@@ -250,7 +265,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				require.NoError(t, err)
 				require.NotEmpty(t, podsAfterUpdate.Items)
 
-				if len(podsAfterUpdate.Items) == 2 {
+				if len(podsAfterUpdate.Items) == 2 && podsAfterUpdate.Items[0].Spec.Containers[0].Name == "example-update" {
 					return true
 				}
 
@@ -265,8 +280,6 @@ func TestSwitchActiveVersion(t *testing.T) {
 				require.NotEqual(t, podsAfterUpdate.Items[i].Spec, podsBeforeUpdate.Items[i].Spec)
 				require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
 			}
-
-			require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Spec.Version)
 
 			// Rollback scheduler version
 			switchActiveVersionRequest := &maestroApiV1.SwitchActiveVersionRequest{
@@ -447,8 +460,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 			require.NoError(t, err)
 			firstRoomName := firstPods.Items[0].ObjectMeta.Name
 
-			// Can ping since there is no mock for grpc, and now we have forwarders
-			require.True(t, canPingForwarderWithRoom(roomsApiClient, scheduler.Name, firstRoomName))
+			// Forward player event true return true since there is no forwarder configured
+			require.True(t, canForwardPlayerEvent(roomsApiClient, scheduler.Name, firstRoomName))
 
 			// Update scheduler
 			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
@@ -504,17 +517,29 @@ func TestSwitchActiveVersion(t *testing.T) {
 			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "create_new_scheduler_version")
 			waitForOperationToFinish(t, managementApiClient, scheduler.Name, "switch_active_version")
 
+			require.Eventually(t, func() bool {
+				podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, podsAfterUpdate.Items)
+
+				if len(podsAfterUpdate.Items) == 2 {
+					return true
+				}
+
+				return false
+			}, 1*time.Minute, 100*time.Millisecond)
+
 			lastPods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)
 			lastRoomName := lastPods.Items[0].ObjectMeta.Name
 
-			// Cannot ping since there is no mock for grpc, and now we have forwarders
-			require.False(t, canPingForwarderWithRoom(roomsApiClient, scheduler.Name, lastRoomName))
+			// Forward player event return false since there is no mock for grpc, and now we have forwarders
+			require.False(t, canForwardPlayerEvent(roomsApiClient, scheduler.Name, lastRoomName))
 		})
 	})
 }
 
-func canPingForwarderWithRoom(roomsApiClient *framework.APIClient, schedulerName, roomName string) bool {
+func canForwardPlayerEvent(roomsApiClient *framework.APIClient, schedulerName, roomName string) bool {
 	playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
 		RoomName:  roomName,
 		Event:     "playerLeft",

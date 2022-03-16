@@ -43,6 +43,8 @@ import (
 )
 
 func TestEventsForwarding(t *testing.T) {
+	t.Parallel()
+
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		schedulerWithForwarderAndRooms, roomsNames := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
 		schedulerWithRooms, roomNameNoForwarder := createSchedulerWithRooms(t, maestro, kubeClient, managementApiClient)
@@ -353,7 +355,7 @@ func TestEventsForwarding(t *testing.T) {
 
 			pingRequest := &maestroApiV1.UpdateRoomStatusRequest{
 				RoomName:  roomsNames[0],
-				Status:    "terminating",
+				Status:    "ready",
 				Timestamp: time.Now().Unix(),
 				Metadata: &_struct.Struct{
 					Fields: map[string]*structpb.Value{
@@ -413,7 +415,7 @@ func TestEventsForwarding(t *testing.T) {
 
 			pingRequest := &maestroApiV1.UpdateRoomStatusRequest{
 				RoomName:  roomsNames[0],
-				Status:    "terminating",
+				Status:    "ready",
 				Timestamp: time.Now().Unix(),
 				Metadata: &_struct.Struct{
 					Fields: map[string]*structpb.Value{
