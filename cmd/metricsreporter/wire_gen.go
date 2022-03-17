@@ -11,9 +11,9 @@ import (
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
+	config2 "github.com/topfreegames/maestro/internal/core/workers/config"
 	"github.com/topfreegames/maestro/internal/core/workers/metricsreporter"
 	"github.com/topfreegames/maestro/internal/service"
-	"time"
 )
 
 // Injectors from wire.go:
@@ -32,11 +32,11 @@ func initializeMetricsReporter(c config.Config) (*workers_manager.WorkersManager
 	if err != nil {
 		return nil, err
 	}
-	duration := provideMetricsReporterIntervalMillis(c)
+	metricsReporterConfig := provideMetricsReporterConfig(c)
 	workerOptions := &workers.WorkerOptions{
-		RoomStorage:                   roomStorage,
-		InstanceStorage:               gameRoomInstanceStorage,
-		MetricsReporterIntervalMillis: duration,
+		RoomStorage:           roomStorage,
+		InstanceStorage:       gameRoomInstanceStorage,
+		MetricsReporterConfig: metricsReporterConfig,
 	}
 	workersManager := workers_manager.NewWorkersManager(workerBuilder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
@@ -48,8 +48,9 @@ func provideMetricsReporterBuilder() workers.WorkerBuilder {
 	return metricsreporter.NewMetricsReporterWorker
 }
 
-func provideMetricsReporterIntervalMillis(c config.Config) time.Duration {
-	return c.GetDuration("reporter.metrics.intervalMillis")
+func provideMetricsReporterConfig(c config.Config) *config2.MetricsReporterConfig {
+	return &config2.MetricsReporterConfig{MetricsReporterIntervalMillis: c.GetDuration("reporter.metrics.intervalMillis")}
+
 }
 
-var WorkerOptionsSet = wire.NewSet(service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, provideMetricsReporterIntervalMillis, wire.Struct(new(workers.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterIntervalMillis"))
+var WorkerOptionsSet = wire.NewSet(service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, provideMetricsReporterConfig, wire.Struct(new(workers.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterConfig"))

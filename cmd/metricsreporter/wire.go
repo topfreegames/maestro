@@ -26,12 +26,11 @@
 package metricsreporter
 
 import (
-	"time"
-
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
+	workerconfigs "github.com/topfreegames/maestro/internal/core/workers/config"
 	"github.com/topfreegames/maestro/internal/core/workers/metricsreporter"
 	"github.com/topfreegames/maestro/internal/service"
 )
@@ -40,15 +39,16 @@ func provideMetricsReporterBuilder() workers.WorkerBuilder {
 	return metricsreporter.NewMetricsReporterWorker
 }
 
-func provideMetricsReporterIntervalMillis(c config.Config) time.Duration {
-	return c.GetDuration("reporter.metrics.intervalMillis")
+func provideMetricsReporterConfig(c config.Config) *workerconfigs.MetricsReporterConfig {
+	return &workerconfigs.MetricsReporterConfig{MetricsReporterIntervalMillis: c.GetDuration("reporter.metrics.intervalMillis")}
+
 }
 
 var WorkerOptionsSet = wire.NewSet(
 	service.NewRoomStorageRedis,
 	service.NewGameRoomInstanceStorageRedis,
-	provideMetricsReporterIntervalMillis,
-	wire.Struct(new(workers.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterIntervalMillis"))
+	provideMetricsReporterConfig,
+	wire.Struct(new(workers.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterConfig"))
 
 func initializeMetricsReporter(c config.Config) (*workers_manager.WorkersManager, error) {
 	wire.Build(
