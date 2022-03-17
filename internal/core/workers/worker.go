@@ -25,6 +25,8 @@ package workers
 import (
 	"context"
 
+	"github.com/topfreegames/maestro/internal/core/workers/config"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -44,10 +46,13 @@ type Worker interface {
 // its construction. This struct is going to be used to inject the worker
 // dependencies like ports.
 type WorkerOptions struct {
-	OperationManager   ports.OperationManager
-	OperationExecutors map[string]operations.Executor
-	RoomManager        ports.RoomManager
-	Runtime            ports.Runtime
+	OperationManager      ports.OperationManager
+	OperationExecutors    map[string]operations.Executor
+	RoomManager           ports.RoomManager
+	Runtime               ports.Runtime
+	RoomStorage           ports.RoomStorage
+	InstanceStorage       ports.GameRoomInstanceStorage
+	MetricsReporterConfig *config.MetricsReporterConfig
 }
 
 func ProvideWorkerOptions(
