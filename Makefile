@@ -92,6 +92,11 @@ run/rooms-api: build ## Runs maestro rooms-api.
 run/runtime-watcher: build ## Runs maestro runtime-watcher.
 	@go run main.go start runtime-watcher -l development
 
+
+.PHONY: run/metrics-reporter
+run/metrics-reporter: build ## Runs maestro metrics-reporter.
+	@go run main.go start metrics-reporter -l development
+
 #-------------------------------------------------------------------------------
 #  Code generation
 #-------------------------------------------------------------------------------

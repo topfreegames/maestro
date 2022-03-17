@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package runtimewatcher
+package metricsreporter
 
 import (
 	"context"
@@ -37,23 +37,23 @@ var (
 	configPath string
 )
 
-var RuntimeWatcherCmd = &cobra.Command{
-	Use:   "runtime-watcher",
-	Short: "Starts maestro runtime-watcher service component",
-	Long: "Starts maestro runtime-watcher service component, a service that monitors the runtime of the cluster," +
-		"this component does not expose any means of external communication",
-	Example: "maestro start runtime-watcher -c config.yaml -l production",
+var MetricsReporterCmd = &cobra.Command{
+	Use:   "metrics-reporter",
+	Short: "Starts maestro metrics-reporter service component",
+	Long: "Starts maestro metrics-reporter service component, a service that keeps collecting and reporting room " +
+		"and instance metrics, this component does not expose any means of external communication",
+	Example: "maestro start metrics-reporter -c config.yaml -l production",
 	Run: func(cmd *cobra.Command, args []string) {
-		runRuntimeWatcher()
+		runMetricsReporter()
 	},
 }
 
 func init() {
-	RuntimeWatcherCmd.Flags().StringVarP(&logConfig, "log-config", "l", "production", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	RuntimeWatcherCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/runtime-watcher.local.yaml", "path of the configuration YAML file")
+	MetricsReporterCmd.Flags().StringVarP(&logConfig, "log-config", "l", "production", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
+	MetricsReporterCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/metrics-reporter.local.yaml", "path of the configuration YAML file")
 }
 
-func runRuntimeWatcher() {
+func runMetricsReporter() {
 	ctx, cancelFn := context.WithCancel(context.Background())
 
 	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
@@ -61,16 +61,16 @@ func runRuntimeWatcher() {
 		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
 	}
 
-	runtimeWatcherWorkerManager, err := initializeRuntimeWatcher(config)
+	metricsReporterWorkerManager, err := initializeMetricsReporter(config)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("failed to initialize runtime watcher worker manager")
+		zap.L().With(zap.Error(err)).Fatal("failed to initialize metrics reporter worker manager")
 	}
 
 	go func() {
-		zap.L().Info("runtime watcher worker manager initialized, starting...")
-		err := runtimeWatcherWorkerManager.Start(ctx)
+		zap.L().Info("metrics reporter worker manager initialized, starting...")
+		err := metricsReporterWorkerManager.Start(ctx)
 		if err != nil {
-			zap.L().With(zap.Error(err)).Info("runtime watcher worker manager stopped with error")
+			zap.L().With(zap.Error(err)).Info("metrics reporter worker manager stopped with error")
 			// enforce the cancellation
 			cancelFn()
 		}
