@@ -88,6 +88,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		)
 
 		if op.Status != operation.StatusPending {
+			err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation is at an invalid status to proceed")
+			if err != nil {
+				return fmt.Errorf("Error appending operation event to execution history: %w", err)
+			}
+
 			loopLogger.Warn("operation is at an invalid status to proceed")
 			continue
 		}
@@ -95,6 +100,12 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		executor, hasExecutor := w.executorsByName[def.Name()]
 		if !hasExecutor {
 			loopLogger.Warn("operation definition has no executor")
+
+			err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation definition has no executor")
+			if err != nil {
+				return fmt.Errorf("Error appending operation event to execution history: %w", err)
+			}
+
 			w.evictOperation(ctx, loopLogger, op)
 			reportOperationEvicted(w.schedulerName, op.DefinitionName, LabelNoOperationExecutorFound)
 			continue
@@ -108,12 +119,22 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 		loopLogger.Info("Starting operation")
 
+		err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation")
+		if err != nil {
+			return fmt.Errorf("Error appending operation event to execution history: %w", err)
+		}
+
 		operationContext, operationCancellationFunction := context.WithCancel(ctx)
 		err = w.operationManager.GrantLease(operationContext, op)
 		if err != nil {
 			w.Stop(ctx)
 			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
 			operationCancellationFunction()
+
+			err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to grant lease to operation")
+			if err != nil {
+				return fmt.Errorf("Error appending operation event to execution history: %w", err)
+			}
 
 			op.Status = operation.StatusError
 			err = w.operationManager.FinishOperation(ctx, op)
@@ -128,6 +149,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		if err != nil {
 			w.Stop(ctx)
 			operationCancellationFunction()
+
+			err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to finish operation")
+			if err != nil {
+				return fmt.Errorf("Error appending operation event to execution history: %w", err)
+			}
 
 			op.Status = operation.StatusError
 			err = w.operationManager.FinishOperation(ctx, op)
@@ -151,6 +177,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				op.Status = operation.StatusCanceled
 			}
 
+			err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation execution failed")
+			if err != nil {
+				return fmt.Errorf("Error appending operation event to execution history: %w", err)
+			}
+
 			loopLogger.Error("operation execution failed", zap.Error(executionErr))
 
 			onErrorStartTime := time.Now()
@@ -169,6 +200,10 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		err = w.operationManager.FinishOperation(ctx, op)
 		if err != nil {
 			loopLogger.Error("failed to finish operation", zap.Error(err))
+		}
+		err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation")
+		if err != nil {
+			return fmt.Errorf("Error appending operation event to execution history: %w", err)
 		}
 		err = w.operationManager.RevokeLease(ctx, op)
 		if err != nil {
