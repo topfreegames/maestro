@@ -43,7 +43,7 @@ const (
 	definitionNameRedisKey     = "definitionName"
 	createdAtRedisKey          = "createdAt"
 	definitionContentsRedisKey = "definitionContents"
-	executionHistory           = "executionHistory"
+	executionHistoryRedisKey   = "executionHistory"
 )
 
 var _ ports.OperationStorage = (*redisOperationStorage)(nil)
@@ -62,13 +62,19 @@ func NewRedisOperationStorage(client *redis.Client, clock ports.Clock) *redisOpe
 // CreateOperation marshal and pushes the operation to the scheduler pending
 // operations list.
 func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operation.Operation) error {
-	err := r.client.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+	executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
+	if err != nil {
+		return errors.NewErrUnexpected("failed to create operation on redis").WithError(err)
+	}
+
+	err = r.client.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
 		idRedisKey:                 op.ID,
 		schedulerNameRedisKey:      op.SchedulerName,
 		statusRedisKey:             strconv.Itoa(int(op.Status)),
 		definitionNameRedisKey:     op.DefinitionName,
 		createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
 		definitionContentsRedisKey: op.Input,
+		executionHistoryRedisKey:   executionHistoryJson,
 	}).Err()
 
 	if err != nil {
@@ -88,6 +94,12 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 		return nil, errors.NewErrNotFound("operation %s not found in scheduler %s", operationID, schedulerName)
 	}
 
+	var executionHistory []operation.OperationEvent
+	err = json.Unmarshal([]byte(res[executionHistoryRedisKey]), &executionHistory)
+	if err != nil {
+		return nil, errors.NewErrEncoding("failed to parse operation execution history").WithError(err)
+	}
+
 	statusInt, err := strconv.Atoi(res[statusRedisKey])
 	if err != nil {
 		return nil, errors.NewErrEncoding("failed to parse operation status").WithError(err)
@@ -99,12 +111,13 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 	}
 
 	op := &operation.Operation{
-		ID:             res[idRedisKey],
-		SchedulerName:  res[schedulerNameRedisKey],
-		DefinitionName: res[definitionNameRedisKey],
-		CreatedAt:      createdAt,
-		Status:         operation.Status(statusInt),
-		Input:          []byte(res[definitionContentsRedisKey]),
+		ID:               res[idRedisKey],
+		SchedulerName:    res[schedulerNameRedisKey],
+		DefinitionName:   res[definitionNameRedisKey],
+		CreatedAt:        createdAt,
+		Status:           operation.Status(statusInt),
+		Input:            []byte(res[definitionContentsRedisKey]),
+		ExecutionHistory: executionHistory,
 	}
 
 	return op, nil
@@ -141,7 +154,7 @@ func (r *redisOperationStorage) UpdateOperationExecutionHistory(ctx context.Cont
 		return errors.NewErrUnexpected("failed to marshal operation execution history").WithError(err)
 	}
 	err = r.client.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
-		executionHistory: jsonExecutionHistory,
+		executionHistoryRedisKey: jsonExecutionHistory,
 	}).Err()
 
 	if err != nil {
