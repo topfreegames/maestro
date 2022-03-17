@@ -27,9 +27,12 @@ package operation
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
@@ -246,6 +249,65 @@ func TestUpdateOperationStatus(t *testing.T) {
 		err = client.ZScore(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), op.ID).Err()
 		require.ErrorIs(t, redis.Nil, err)
 	})
+}
+
+func TestUpdateOperationExecutionHistory(t *testing.T) {
+
+	t.Run("set execution history with value", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		now := time.Now()
+		clock := clockmock.NewFakeClock(now)
+		storage := NewRedisOperationStorage(client, clock)
+
+		op := &operation.Operation{
+			ID:            "some-op-id",
+			SchedulerName: "test-scheduler",
+			Status:        operation.StatusPending,
+		}
+
+		err := storage.CreateOperation(context.Background(), op, []byte{})
+		require.NoError(t, err)
+
+		events := []operation.OperationEvent{
+			operation.OperationEvent{CreatedAt: time.Now(), Event: "event1"},
+			operation.OperationEvent{CreatedAt: time.Now(), Event: "event2"},
+		}
+		op.ExecutionHistory = events
+
+		err = storage.UpdateOperationExecutionHistory(context.Background(), op)
+		require.NoError(t, err)
+
+		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
+		require.NoError(t, err)
+
+		execHist := []operation.OperationEvent{}
+		err = json.Unmarshal([]byte(operationStored[executionHistory]), &execHist)
+		require.NoError(t, err)
+
+		for i := range op.ExecutionHistory {
+			assert.Equal(t, op.ExecutionHistory[i].Event, execHist[i].Event)
+			assert.Equal(t, op.ExecutionHistory[i].CreatedAt.Unix(), execHist[i].CreatedAt.Unix())
+		}
+	})
+
+	t.Run("redis connection closed: returns error", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		now := time.Now()
+		clock := clockmock.NewFakeClock(now)
+		storage := NewRedisOperationStorage(client, clock)
+
+		op := &operation.Operation{
+			ID:            "some-op-id",
+			SchedulerName: "test-scheduler",
+			Status:        operation.StatusPending,
+		}
+		client.Close()
+
+		err := storage.UpdateOperationExecutionHistory(context.Background(), op)
+		require.Error(t, err)
+		require.EqualError(t, err, "failed to update operation execution history: redis: client is closed")
+	})
+
 }
 
 func TestListSchedulerActiveOperations(t *testing.T) {
