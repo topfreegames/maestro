@@ -262,7 +262,7 @@ func TestUpdateOperationExecutionHistory(t *testing.T) {
 			Status:        operation.StatusPending,
 		}
 
-		err := storage.CreateOperation(context.Background(), op, []byte{})
+		err := storage.CreateOperation(context.Background(), op)
 		require.NoError(t, err)
 
 		events := []operation.OperationEvent{
