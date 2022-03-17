@@ -32,6 +32,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/workers/config"
+
 	"github.com/golang/mock/gomock"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -54,9 +56,10 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 		instances := newInstancesList(40)
 
 		workerOpts := &workers.WorkerOptions{
-			RoomStorage:                   roomStorage,
-			InstanceStorage:               instanceStorage,
-			MetricsReporterIntervalMillis: 500}
+			RoomStorage:           roomStorage,
+			InstanceStorage:       instanceStorage,
+			MetricsReporterConfig: &config.MetricsReporterConfig{MetricsReporterIntervalMillis: 500},
+		}
 
 		worker := NewMetricsReporterWorker(scheduler, workerOpts)
 
@@ -110,10 +113,10 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 
 		workerOpts := &workers.WorkerOptions{
-			RoomStorage:                   roomStorage,
-			InstanceStorage:               instanceStorage,
-			MetricsReporterIntervalMillis: 500}
-
+			RoomStorage:           roomStorage,
+			InstanceStorage:       instanceStorage,
+			MetricsReporterConfig: &config.MetricsReporterConfig{MetricsReporterIntervalMillis: 500},
+		}
 		worker := NewMetricsReporterWorker(scheduler, workerOpts)
 
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).

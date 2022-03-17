@@ -26,6 +26,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/workers/config"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/logs"
 
@@ -40,22 +42,22 @@ var _ workers.Worker = (*MetricsReporterWorker)(nil)
 
 // MetricsReporterWorker is the service responsible producing periodic metrics.
 type MetricsReporterWorker struct {
-	schedulerName                 string
-	metricsReporterIntervalMillis time.Duration
-	roomStorage                   ports.RoomStorage
-	instanceStorage               ports.GameRoomInstanceStorage
-	workerContext                 context.Context
-	cancelWorkerContext           context.CancelFunc
-	logger                        *zap.Logger
+	schedulerName       string
+	config              *config.MetricsReporterConfig
+	roomStorage         ports.RoomStorage
+	instanceStorage     ports.GameRoomInstanceStorage
+	workerContext       context.Context
+	cancelWorkerContext context.CancelFunc
+	logger              *zap.Logger
 }
 
 func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
 	return &MetricsReporterWorker{
-		schedulerName:                 scheduler.Name,
-		metricsReporterIntervalMillis: opts.MetricsReporterIntervalMillis,
-		roomStorage:                   opts.RoomStorage,
-		instanceStorage:               opts.InstanceStorage,
-		logger:                        zap.L().With(zap.String(logs.LogFieldServiceName, "metrics_reporter_worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		schedulerName:   scheduler.Name,
+		config:          opts.MetricsReporterConfig,
+		roomStorage:     opts.RoomStorage,
+		instanceStorage: opts.InstanceStorage,
+		logger:          zap.L().With(zap.String(logs.LogFieldServiceName, "metrics_reporter_worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
 
@@ -63,7 +65,7 @@ func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.Worke
 // periodically report metrics for scheduler pods and game rooms.
 func (w *MetricsReporterWorker) Start(ctx context.Context) error {
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
-	ticker := time.NewTicker(time.Millisecond * w.metricsReporterIntervalMillis)
+	ticker := time.NewTicker(time.Millisecond * w.config.MetricsReporterIntervalMillis)
 	defer ticker.Stop()
 
 	for {
