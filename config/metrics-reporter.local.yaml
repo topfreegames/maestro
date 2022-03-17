@@ -1,0 +1,23 @@
+internalApi:
+  port: 8091
+  gracefulShutdownTimeout: 10s
+  metrics:
+    enabled: true
+  healthcheck:
+    enabled: true
+adapters:
+  schedulerStorage:
+    postgres:
+      url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
+  roomStorage:
+    redis:
+      url: "redis://localhost:6379/0"
+  instanceStorage:
+    redis:
+      url: "redis://localhost:6379/0"
+workers:
+  syncInterval: 10s
+  stopTimeoutDuration: 1m
+reporter:
+  metrics:
+    periodMillis: 2000

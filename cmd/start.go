@@ -25,6 +25,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/cmd/managementapi"
+	"github.com/topfreegames/maestro/cmd/metricsreporter"
 	"github.com/topfreegames/maestro/cmd/roomsapi"
 	"github.com/topfreegames/maestro/cmd/runtimewatcher"
 	"github.com/topfreegames/maestro/cmd/worker"
@@ -40,4 +41,5 @@ func init() {
 	startCmd.AddCommand(runtimewatcher.RuntimeWatcherCmd)
 	startCmd.AddCommand(roomsapi.RoomsAPICmd)
 	startCmd.AddCommand(managementapi.ManagementApiCmd)
+	startCmd.AddCommand(metricsreporter.MetricsReporterCmd)
 }
