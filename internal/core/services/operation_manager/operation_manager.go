@@ -71,6 +71,12 @@ func (om *OperationManager) CreateOperation(ctx context.Context, schedulerName s
 		SchedulerName:  schedulerName,
 		CreatedAt:      time.Now(),
 		Input:          definition.Marshal(),
+		ExecutionHistory: []operation.OperationEvent{
+			{
+				CreatedAt: time.Now().UTC(),
+				Event:     "Created",
+			},
+		},
 	}
 
 	err := om.Storage.CreateOperation(ctx, op)
@@ -296,6 +302,16 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 			}
 		}
 	}()
+}
+
+func (om *OperationManager) AppendOperationEventToExecutionHistory(ctx context.Context, op *operation.Operation, eventMessage string) error {
+	event := operation.OperationEvent{
+		CreatedAt: time.Now().UTC(),
+		Event:     eventMessage,
+	}
+	op.ExecutionHistory = append(op.ExecutionHistory, event)
+
+	return om.Storage.UpdateOperationExecutionHistory(ctx, op)
 }
 
 func (om *OperationManager) addOperationsLeaseData(ctx context.Context, schedulerName string, ops []*operation.Operation) error {

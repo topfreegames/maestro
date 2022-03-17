@@ -1007,6 +1007,74 @@ func TestEnqueueOperationCancellationRequest(t *testing.T) {
 	})
 }
 
+func TestAppendOperationEventToExecutionHistory(t *testing.T) {
+	t.Run("success case", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName:    schedulerName,
+			ExecutionHistory: []operation.OperationEvent{},
+		}
+
+		eventMessage := "some-event-message"
+		operationStorage.EXPECT().UpdateOperationExecutionHistory(ctx, op).Do(func(ctx context.Context, op *operation.Operation) {
+			for _, event := range op.ExecutionHistory {
+				if event.Event == eventMessage {
+					return
+				}
+
+				assert.Fail(t, "ExecutionHistory does not have new event")
+			}
+		}).Return(nil)
+		err := opManager.AppendOperationEventToExecutionHistory(ctx, op, eventMessage)
+		require.NoError(t, err)
+	})
+
+	t.Run("when UpdateOperationExecutionHistory return error should return error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName:    schedulerName,
+			ExecutionHistory: []operation.OperationEvent{},
+		}
+
+		operationStorage.EXPECT().UpdateOperationExecutionHistory(ctx, op).Return(fmt.Errorf("failed to update execution history"))
+		err := opManager.AppendOperationEventToExecutionHistory(ctx, op, "some-event-message")
+		require.Error(t, err)
+		require.Equal(t, err.Error(), "failed to update execution history")
+	})
+}
+
 // newValidScheduler generates a valid scheduler with the required fields.
 func newValidScheduler() *entities.Scheduler {
 	return &entities.Scheduler{

@@ -59,7 +59,9 @@ type OperationManager interface {
 	// RevokeLease revokes the lease of the given operation.
 	RevokeLease(ctx context.Context, operation *operation.Operation) error
 	// StartLeaseRenewGoRoutine starts an async process to keep renewing the lease of the given operation.
-	StartLeaseRenewGoRoutine(operationCtx context.Context, op *operation.Operation)
+	StartLeaseRenewGoRoutine(ctx context.Context, op *operation.Operation)
+	// AppendOperationEventToExecutionHistory add operation event to execution history
+	AppendOperationEventToExecutionHistory(ctx context.Context, op *operation.Operation, eventMessage string) error
 }
 
 // Secondary ports (output, driven ports)
