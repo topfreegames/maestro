@@ -20,4 +20,4 @@ workers:
   stopTimeoutDuration: 1m
 reporter:
   metrics:
-    periodMillis: 2000
+    intervalMillis: 2000

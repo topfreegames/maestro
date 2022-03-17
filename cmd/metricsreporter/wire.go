@@ -40,15 +40,15 @@ func provideMetricsReporterBuilder() workers.WorkerBuilder {
 	return metricsreporter.NewMetricsReporterWorker
 }
 
-func provideMetricsReporterPeriodMillis(c config.Config) time.Duration {
-	return c.GetDuration("reporter.metrics.periodMillis")
+func provideMetricsReporterIntervalMillis(c config.Config) time.Duration {
+	return c.GetDuration("reporter.metrics.intervalMillis")
 }
 
 var WorkerOptionsSet = wire.NewSet(
 	service.NewRoomStorageRedis,
 	service.NewGameRoomInstanceStorageRedis,
-	provideMetricsReporterPeriodMillis,
-	wire.Struct(new(workers.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterPeriodMillis"))
+	provideMetricsReporterIntervalMillis,
+	wire.Struct(new(workers.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterIntervalMillis"))
 
 func initializeMetricsReporter(c config.Config) (*workers_manager.WorkersManager, error) {
 	wire.Build(
