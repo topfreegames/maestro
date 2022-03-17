@@ -41,7 +41,7 @@ var _ workers.Worker = (*MetricsReporterWorker)(nil)
 // MetricsReporterWorker is the service responsible producing periodic metrics.
 type MetricsReporterWorker struct {
 	schedulerName                 string
-	metricsReporterPeriodInMillis time.Duration
+	metricsReporterIntervalMillis time.Duration
 	roomStorage                   ports.RoomStorage
 	instanceStorage               ports.GameRoomInstanceStorage
 	workerContext                 context.Context
@@ -52,7 +52,7 @@ type MetricsReporterWorker struct {
 func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
 	return &MetricsReporterWorker{
 		schedulerName:                 scheduler.Name,
-		metricsReporterPeriodInMillis: opts.MetricsReporterPeriodMillis,
+		metricsReporterIntervalMillis: opts.MetricsReporterIntervalMillis,
 		roomStorage:                   opts.RoomStorage,
 		instanceStorage:               opts.InstanceStorage,
 		logger:                        zap.L().With(zap.String(logs.LogFieldServiceName, "metrics_reporter_worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
@@ -63,7 +63,7 @@ func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.Worke
 // periodically report metrics for scheduler pods and game rooms.
 func (w *MetricsReporterWorker) Start(ctx context.Context) error {
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
-	ticker := time.NewTicker(time.Millisecond * w.metricsReporterPeriodInMillis)
+	ticker := time.NewTicker(time.Millisecond * w.metricsReporterIntervalMillis)
 	defer ticker.Stop()
 
 	for {

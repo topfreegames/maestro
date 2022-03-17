@@ -54,9 +54,9 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 		instances := newInstancesList(40)
 
 		workerOpts := &workers.WorkerOptions{
-			RoomStorage:                 roomStorage,
-			InstanceStorage:             instanceStorage,
-			MetricsReporterPeriodMillis: 500}
+			RoomStorage:                   roomStorage,
+			InstanceStorage:               instanceStorage,
+			MetricsReporterIntervalMillis: 500}
 
 		worker := NewMetricsReporterWorker(scheduler, workerOpts)
 
@@ -110,9 +110,9 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 
 		workerOpts := &workers.WorkerOptions{
-			RoomStorage:                 roomStorage,
-			InstanceStorage:             instanceStorage,
-			MetricsReporterPeriodMillis: 500}
+			RoomStorage:                   roomStorage,
+			InstanceStorage:               instanceStorage,
+			MetricsReporterIntervalMillis: 500}
 
 		worker := NewMetricsReporterWorker(scheduler, workerOpts)
 
