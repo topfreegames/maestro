@@ -61,16 +61,16 @@ func runRuntimeWatcher() {
 		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
 	}
 
-	operationExecutionWorkerManager, err := initializeRuntimeWatcher(config)
+	runtimeWatcherWorkerManager, err := initializeRuntimeWatcher(config)
 	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("failed to initialize operation execution worker manager")
+		zap.L().With(zap.Error(err)).Fatal("failed to initialize runtime watcher worker manager")
 	}
 
 	go func() {
-		zap.L().Info("operation execution worker manager initialized, starting...")
-		err := operationExecutionWorkerManager.Start(ctx)
+		zap.L().Info("runtime watcher worker manager initialized, starting...")
+		err := runtimeWatcherWorkerManager.Start(ctx)
 		if err != nil {
-			zap.L().With(zap.Error(err)).Info("operation execution worker manager stopped with error")
+			zap.L().With(zap.Error(err)).Info("runtime watcher worker manager stopped with error")
 			// enforce the cancellation
 			cancelFn()
 		}
