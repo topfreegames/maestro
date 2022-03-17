@@ -63,7 +63,7 @@ func TestOperationStorageRedis(t *testing.T) {
 		opStorage, err := NewOperationStorageRedis(clock, config)
 		require.NoError(t, err)
 
-		_, _, err = opStorage.GetOperation(context.Background(), "", "")
+		_, err = opStorage.GetOperation(context.Background(), "", "")
 		require.ErrorIs(t, err, errors.ErrNotFound)
 	})
 
@@ -77,7 +77,7 @@ func TestOperationStorageRedis(t *testing.T) {
 		opStorage, err := NewOperationStorageRedis(clock, config)
 		require.NoError(t, err)
 
-		_, _, err = opStorage.GetOperation(context.Background(), "", "")
+		_, err = opStorage.GetOperation(context.Background(), "", "")
 		require.ErrorIs(t, err, errors.ErrUnexpected)
 	})
 

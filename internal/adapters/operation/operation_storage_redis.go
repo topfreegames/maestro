@@ -61,14 +61,14 @@ func NewRedisOperationStorage(client *redis.Client, clock ports.Clock) *redisOpe
 
 // CreateOperation marshal and pushes the operation to the scheduler pending
 // operations list.
-func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operation.Operation, definitionContents []byte) error {
+func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operation.Operation) error {
 	err := r.client.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
 		idRedisKey:                 op.ID,
 		schedulerNameRedisKey:      op.SchedulerName,
 		statusRedisKey:             strconv.Itoa(int(op.Status)),
 		definitionNameRedisKey:     op.DefinitionName,
 		createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
-		definitionContentsRedisKey: definitionContents,
+		definitionContentsRedisKey: op.Input,
 	}).Err()
 
 	if err != nil {
@@ -78,24 +78,24 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 	return nil
 }
 
-func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, []byte, error) {
+func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, error) {
 	res, err := r.client.HGetAll(ctx, fmt.Sprintf("operations:%s:%s", schedulerName, operationID)).Result()
 	if err != nil {
-		return nil, nil, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
+		return nil, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
 	}
 
 	if len(res) == 0 {
-		return nil, nil, errors.NewErrNotFound("operation %s not found in scheduler %s", operationID, schedulerName)
+		return nil, errors.NewErrNotFound("operation %s not found in scheduler %s", operationID, schedulerName)
 	}
 
 	statusInt, err := strconv.Atoi(res[statusRedisKey])
 	if err != nil {
-		return nil, nil, errors.NewErrEncoding("failed to parse operation status").WithError(err)
+		return nil, errors.NewErrEncoding("failed to parse operation status").WithError(err)
 	}
 
 	createdAt, err := time.Parse(time.RFC3339Nano, res[createdAtRedisKey])
 	if err != nil {
-		return nil, nil, errors.NewErrEncoding("failed to parse operation createdAt field").WithError(err)
+		return nil, errors.NewErrEncoding("failed to parse operation createdAt field").WithError(err)
 	}
 
 	op := &operation.Operation{
@@ -104,9 +104,10 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 		DefinitionName: res[definitionNameRedisKey],
 		CreatedAt:      createdAt,
 		Status:         operation.Status(statusInt),
+		Input:          []byte(res[definitionContentsRedisKey]),
 	}
 
-	return op, []byte(res[definitionContentsRedisKey]), nil
+	return op, nil
 }
 
 func (r *redisOperationStorage) UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) error {
@@ -158,7 +159,7 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 
 	operations := make([]*operation.Operation, len(operationsIDs))
 	for i, operationID := range operationsIDs {
-		op, _, err := r.GetOperation(ctx, schedulerName, operationID)
+		op, err := r.GetOperation(ctx, schedulerName, operationID)
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +178,7 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 
 	operations := make([]*operation.Operation, len(operationsIDs))
 	for i, operationID := range operationsIDs {
-		op, _, err := r.GetOperation(ctx, schedulerName, operationID)
+		op, err := r.GetOperation(ctx, schedulerName, operationID)
 		if err != nil {
 			return nil, err
 		}

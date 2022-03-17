@@ -159,9 +159,10 @@ func createTestOperation(ctx context.Context, t *testing.T, operationStorage por
 		DefinitionName: definition.Name(),
 		SchedulerName:  schedulerName,
 		CreatedAt:      time.Now(),
+		Input:          definition.Marshal(),
 	}
 
-	err := operationStorage.CreateOperation(ctx, op, definition.Marshal())
+	err := operationStorage.CreateOperation(ctx, op)
 	require.NoError(t, err)
 	err = operationFlow.InsertOperationID(ctx, op.SchedulerName, op.ID)
 	require.NoError(t, err)

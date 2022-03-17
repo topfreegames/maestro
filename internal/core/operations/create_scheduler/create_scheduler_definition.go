@@ -24,13 +24,19 @@ package create_scheduler
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"go.uber.org/zap"
 )
 
 const OperationName = "create_scheduler"
 
-type CreateSchedulerDefinition struct{}
+type CreateSchedulerDefinition struct {
+	NewScheduler *entities.Scheduler `json:"scheduler"`
+}
 
 // ShouldExecute we're going to always perform the scheduler creation.
 func (d *CreateSchedulerDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
@@ -42,9 +48,20 @@ func (d *CreateSchedulerDefinition) Name() string {
 }
 
 func (d *CreateSchedulerDefinition) Marshal() []byte {
-	return make([]byte, 0)
+	bytes, err := json.Marshal(d)
+	if err != nil {
+		zap.L().With(zap.Error(err)).Error("error marshalling update scheduler operation definition")
+		return nil
+	}
+
+	return bytes
 }
 
 func (d *CreateSchedulerDefinition) Unmarshal(raw []byte) error {
+	err := json.Unmarshal(raw, d)
+	if err != nil {
+		return fmt.Errorf("error marshalling update scheduler operation definition: %w", err)
+	}
+
 	return nil
 }
