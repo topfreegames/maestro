@@ -137,52 +137,52 @@ func (w *MetricsReporterWorker) reportPendingRooms() {
 	pendingRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusPending)
 	if err != nil {
 		w.logger.Error("Error getting pending pods", zap.Error(err))
-	} else {
-		reportGameRoomPendingNumber(w.schedulerName, pendingRooms)
+		return
 	}
+	reportGameRoomPendingNumber(w.schedulerName, pendingRooms)
 }
 
 func (w *MetricsReporterWorker) reportReadyRooms() {
 	readyRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusReady)
 	if err != nil {
 		w.logger.Error("Error getting ready pods", zap.Error(err))
-	} else {
-		reportGameRoomReadyNumber(w.schedulerName, readyRooms)
+		return
 	}
+	reportGameRoomReadyNumber(w.schedulerName, readyRooms)
 }
 
 func (w *MetricsReporterWorker) reportOccupiedRooms() {
 	occupiedRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusOccupied)
 	if err != nil {
 		w.logger.Error("Error getting occupied pods", zap.Error(err))
-	} else {
-		reportGameRoomOccupiedNumber(w.schedulerName, occupiedRooms)
+		return
 	}
+	reportGameRoomOccupiedNumber(w.schedulerName, occupiedRooms)
 }
 
 func (w *MetricsReporterWorker) reportTerminatingRooms() {
 	terminatingRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusTerminating)
 	if err != nil {
 		w.logger.Error("Error getting terminating pods", zap.Error(err))
-	} else {
-		reportGameRoomTerminatingNumber(w.schedulerName, terminatingRooms)
+		return
 	}
+	reportGameRoomTerminatingNumber(w.schedulerName, terminatingRooms)
 }
 
 func (w *MetricsReporterWorker) reportErrorRooms() {
 	errorRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusError)
 	if err != nil {
 		w.logger.Error("Error getting error pods", zap.Error(err))
-	} else {
-		reportGameRoomErrorNumber(w.schedulerName, errorRooms)
+		return
 	}
+	reportGameRoomErrorNumber(w.schedulerName, errorRooms)
 }
 
 func (w *MetricsReporterWorker) reportUnreadyRooms() {
 	unreadyRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusUnready)
 	if err != nil {
 		w.logger.Error("Error getting unready pods", zap.Error(err))
-	} else {
-		reportGameRoomUnreadyNumber(w.schedulerName, unreadyRooms)
+		return
 	}
+	reportGameRoomUnreadyNumber(w.schedulerName, unreadyRooms)
 }
