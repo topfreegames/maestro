@@ -39,11 +39,9 @@ func (m *MockOperationManager) EXPECT() *MockOperationManagerMockRecorder {
 }
 
 // AppendOperationEventToExecutionHistory mocks base method.
-func (m *MockOperationManager) AppendOperationEventToExecutionHistory(ctx context.Context, op *operation.Operation, eventMessage string) error {
+func (m *MockOperationManager) AppendOperationEventToExecutionHistory(ctx context.Context, op *operation.Operation, eventMessage string) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AppendOperationEventToExecutionHistory", ctx, op, eventMessage)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "AppendOperationEventToExecutionHistory", ctx, op, eventMessage)
 }
 
 // AppendOperationEventToExecutionHistory indicates an expected call of AppendOperationEventToExecutionHistory.

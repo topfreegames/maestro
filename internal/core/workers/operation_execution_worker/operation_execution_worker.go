@@ -90,10 +90,6 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		if op.Status != operation.StatusPending {
 			loopLogger.Warn("operation is at an invalid status to proceed")
 
-			err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation is at an invalid status to proceed")
-			if err != nil {
-				return fmt.Errorf("Error appending operation event to execution history: %w", err)
-			}
 			continue
 		}
 
@@ -103,11 +99,8 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 			w.evictOperation(ctx, loopLogger, op)
 			reportOperationEvicted(w.schedulerName, op.DefinitionName, LabelNoOperationExecutorFound)
+			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation definition has no executor")
 
-			err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation definition has no executor")
-			if err != nil {
-				return fmt.Errorf("Error appending operation event to execution history: %w", err)
-			}
 			continue
 		}
 
@@ -119,10 +112,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 		loopLogger.Info("Starting operation")
 
-		err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation")
-		if err != nil {
-			return fmt.Errorf("Error appending operation event to execution history: %w", err)
-		}
+		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation")
 
 		operationContext, operationCancellationFunction := context.WithCancel(ctx)
 		err = w.operationManager.GrantLease(operationContext, op)
@@ -137,10 +127,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				loopLogger.Error("failed to finish operation", zap.Error(err))
 			}
 
-			err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to grant lease to operation")
-			if err != nil {
-				return fmt.Errorf("Error appending operation event to execution history: %w", err)
-			}
+			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to grant lease to operation")
 
 			return fmt.Errorf("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 		}
@@ -158,10 +145,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
 
-			err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to finish operation")
-			if err != nil {
-				return fmt.Errorf("Error appending operation event to execution history: %w", err)
-			}
+			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to finish operation")
 
 			return fmt.Errorf("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 		}
@@ -177,10 +161,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			if errors.Is(executionErr, context.Canceled) {
 				op.Status = operation.StatusCanceled
 
-				err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation cancelled")
-				if err != nil {
-					return fmt.Errorf("Error appending operation event to execution history: %w", err)
-				}
+				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation cancelled")
 			}
 
 			loopLogger.Error("operation execution failed", zap.Error(executionErr))
@@ -193,10 +174,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				loopLogger.Error("operation OnError failed", zap.Error(onErrorErr))
 			}
 
-			err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation execution failed")
-			if err != nil {
-				return fmt.Errorf("Error appending operation event to execution history: %w", err)
-			}
+			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation execution failed")
 		}
 
 		loopLogger.Info("Finishing operation")
@@ -211,11 +189,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		if err != nil {
 			loopLogger.Error("failed to revoke operation lease", zap.Error(err))
 		}
-
-		err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation")
-		if err != nil {
-			return fmt.Errorf("Error appending operation event to execution history: %w", err)
-		}
+		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation")
 	}
 }
 
@@ -236,4 +210,5 @@ func (w *OperationExecutionWorker) evictOperation(ctx context.Context, logger *z
 	logger.Info("operation evicted")
 	op.Status = operation.StatusEvicted
 	_ = w.operationManager.FinishOperation(ctx, op)
+	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation evicted because there is no executor to them")
 }

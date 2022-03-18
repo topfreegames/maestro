@@ -304,14 +304,19 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 	}()
 }
 
-func (om *OperationManager) AppendOperationEventToExecutionHistory(ctx context.Context, op *operation.Operation, eventMessage string) error {
+func (om *OperationManager) AppendOperationEventToExecutionHistory(ctx context.Context, op *operation.Operation, eventMessage string) {
+	managerLogger := om.Logger.With(zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
+	managerLogger.Info("starting operation lease renew go routine")
+
 	event := operation.OperationEvent{
 		CreatedAt: time.Now().UTC(),
 		Event:     eventMessage,
 	}
 	op.ExecutionHistory = append(op.ExecutionHistory, event)
 
-	return om.Storage.UpdateOperationExecutionHistory(ctx, op)
+	if err := om.Storage.UpdateOperationExecutionHistory(ctx, op); err != nil {
+		managerLogger.Error("Error updating execution history", zap.Error(err))
+	}
 }
 
 func (om *OperationManager) addOperationsLeaseData(ctx context.Context, schedulerName string, ops []*operation.Operation) error {
