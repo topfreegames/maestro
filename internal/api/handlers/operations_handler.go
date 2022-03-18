@@ -119,10 +119,11 @@ func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.Ca
 	handlerLogger.Info("received request to cancel operation")
 	err := h.operationManager.EnqueueOperationCancellationRequest(ctx, request.SchedulerName, request.OperationId)
 	if err != nil {
-		handlerLogger.Error("error cancelling operation", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()), zap.Error(err))
 		if errors.Is(err, portsErrors.ErrConflict) {
+			handlerLogger.Warn("Cancel operation conflict", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()), zap.Error(err))
 			return nil, status.Error(codes.Aborted, err.Error())
 		}
+		handlerLogger.Error("error cancelling operation", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()), zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
