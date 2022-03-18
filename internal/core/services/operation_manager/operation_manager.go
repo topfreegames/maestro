@@ -304,9 +304,14 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 	}()
 }
 
+// AppendOperationEventToExecutionHistory add a new operation event to Operation.ExecutionHistory.
+// It expects:
+// * ctx execution context
+// * op operation to add and persist the new event; and
+// * eventMessage the message that describe the event.
 func (om *OperationManager) AppendOperationEventToExecutionHistory(ctx context.Context, op *operation.Operation, eventMessage string) {
 	managerLogger := om.Logger.With(zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
-	managerLogger.Info("starting operation lease renew go routine")
+	managerLogger.Debug("Appeding operation event to execution history", zap.String("eventMessage", eventMessage))
 
 	event := operation.OperationEvent{
 		CreatedAt: time.Now().UTC(),
