@@ -176,6 +176,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			op.Status = operation.StatusError
 			if errors.Is(executionErr, context.Canceled) {
 				op.Status = operation.StatusCanceled
+
+				err = w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation cancelled")
+				if err != nil {
+					return fmt.Errorf("Error appending operation event to execution history: %w", err)
+				}
 			}
 
 			loopLogger.Error("operation execution failed", zap.Error(executionErr))
