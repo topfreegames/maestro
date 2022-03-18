@@ -311,6 +311,45 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.False(t, workerService.IsRunning())
 	})
 
+	t.Run("error appending event to exectution history should stop execution of operation", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationName := "test_operation"
+		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
+		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
+		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
+
+		defFunc := func() operations.Definition { return operationDefinition }
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
+
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
+		expectedOperation := &operation.Operation{
+			ID:             "random-operation-id",
+			SchedulerName:  scheduler.Name,
+			Status:         operation.StatusPending,
+			DefinitionName: operationName,
+		}
+
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+
+		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
+		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, gomock.Any()).Return(fmt.Errorf("append operation to execution history error"))
+
+		err := workerService.Start(context.Background())
+		assert.Error(t, err, "Error appending operation event to execution history: append operation to execution history error")
+
+		workerService.Stop(context.Background())
+		require.False(t, workerService.IsRunning())
+	})
+
 	t.Run("error getting next operation should stop execution of operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
@@ -342,7 +381,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, errors.New("error"))
 
 		err := workerService.Start(context.Background())
-		require.Error(t, err)
+		assert.Error(t, err, "failed to get next operation: error")
 
 		workerService.Stop(context.Background())
 		require.False(t, workerService.IsRunning())
