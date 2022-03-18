@@ -99,7 +99,6 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 			w.evictOperation(ctx, loopLogger, op)
 			reportOperationEvicted(w.schedulerName, op.DefinitionName, LabelNoOperationExecutorFound)
-			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation definition has no executor")
 
 			continue
 		}
@@ -140,12 +139,12 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			op.Status = operation.StatusError
 			err = w.operationManager.FinishOperation(ctx, op)
 			if err != nil {
-				loopLogger.Error("failed to finish operation", zap.Error(err))
+				loopLogger.Error("failed to start operation", zap.Error(err))
 			}
 
 			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
 
-			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to finish operation")
+			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to start operation")
 
 			return fmt.Errorf("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 		}
@@ -189,7 +188,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		if err != nil {
 			loopLogger.Error("failed to revoke operation lease", zap.Error(err))
 		}
-		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation")
+		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Finishing operation")
 	}
 }
 
@@ -210,5 +209,5 @@ func (w *OperationExecutionWorker) evictOperation(ctx context.Context, logger *z
 	logger.Info("operation evicted")
 	op.Status = operation.StatusEvicted
 	_ = w.operationManager.FinishOperation(ctx, op)
-	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation evicted because there is no executor to them")
+	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation evicted")
 }
