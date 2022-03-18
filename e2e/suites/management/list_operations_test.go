@@ -70,8 +70,8 @@ func TestListOperations(t *testing.T) {
 					return false
 				}
 
-				require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
-				require.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
+				assert.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
+				assert.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
 				return true
 			}, 240*time.Second, time.Second)
 
@@ -90,6 +90,8 @@ func TestListOperations(t *testing.T) {
 				assert.True(t, operationExists)
 
 				assert.Equal(t, apiOperation.SchedulerName, scheduler.Name)
+				assert.NotEmpty(t, apiOperation.Input)
+				assert.Greater(t, len(apiOperation.ExecutionHistory), 0)
 			}
 
 			statusInProgressString, err := operation.StatusInProgress.String()
@@ -101,6 +103,8 @@ func TestListOperations(t *testing.T) {
 				assert.True(t, operationExists)
 
 				assert.Equal(t, apiOperation.SchedulerName, scheduler.Name)
+				assert.NotEmpty(t, apiOperation.Input)
+				assert.Greater(t, len(apiOperation.ExecutionHistory), 0)
 			}
 
 			statusFinishedString, err := operation.StatusFinished.String()
@@ -112,6 +116,8 @@ func TestListOperations(t *testing.T) {
 				assert.True(t, operationExists)
 
 				assert.Equal(t, apiOperation.SchedulerName, scheduler.Name)
+				assert.NotEmpty(t, apiOperation.Input)
+				assert.Greater(t, len(apiOperation.ExecutionHistory), 0)
 			}
 		})
 	})
