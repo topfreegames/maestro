@@ -96,7 +96,8 @@ func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler str
 		var err error
 		var results []string
 
-		results, cursor, err := client.HScan(ctx, redisKey, cursor, "*", r.scanPageSize).Result()
+		results, resultCursor, err := client.HScan(ctx, redisKey, cursor, "*", r.scanPageSize).Result()
+		cursor = resultCursor
 		if err != nil {
 			return nil, errors.NewErrUnexpected("error scanning %s on redis", redisKey).WithError(err)
 		}
