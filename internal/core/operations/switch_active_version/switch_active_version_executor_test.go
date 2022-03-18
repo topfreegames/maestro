@@ -42,7 +42,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/validations"
 )
 
@@ -50,7 +49,7 @@ import (
 // operation executor.
 type mockRoomAndSchedulerManager struct {
 	roomManager      *mockports.MockRoomManager
-	schedulerManager *scheduler_manager.SchedulerManager
+	schedulerManager *mockports.MockSchedulerManager
 	portAllocator    *portallocatormock.MockPortAllocator
 	roomStorage      *mockports.MockRoomStorage
 	instanceStorage  *instancestoragemock.MockGameRoomInstanceStorage
@@ -68,16 +67,17 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		t.Errorf("unexpected error %d'", err)
 	}
 
-	currentVersion := "v1"
+	newMajorScheduler := newValidSchedulerV2()
+	newMajorScheduler.PortRange.Start = 1000
+	newMajorScheduler.MaxSurge = "3"
 
-	newScheduler := newValidScheduler()
-	newScheduler.PortRange.Start = 1000
-	newScheduler.MaxSurge = "3"
+	newMinorScheduler := newMajorScheduler
+	newMinorScheduler.Spec.Version = "v1.1.0"
 
-	definition := &switch_active_version.SwitchActiveVersionDefinition{
-		NewActiveScheduler: newScheduler,
-		ReplacePods:        true,
-	}
+	activeScheduler := newMajorScheduler
+	activeScheduler.Spec.Version = "v1.0.0"
+
+	definition := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newMajorScheduler.Spec.Version}
 	maxSurge := 3
 
 	t.Run("should succeed - Execute switch active version operation replacing pods", func(t *testing.T) {
@@ -90,8 +90,8 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		for i := 0; i < maxSurge; i++ {
 			gameRoomListCycle1 = append(gameRoomListCycle1, &game_room.GameRoom{
 				ID:          fmt.Sprintf("room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
-				Version:     currentVersion,
+				SchedulerID: newMajorScheduler.Name,
+				Version:     activeScheduler.Spec.Version,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
 			})
@@ -99,12 +99,15 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		for i := maxSurge; i < maxSurge*2; i++ {
 			gameRoomListCycle2 = append(gameRoomListCycle2, &game_room.GameRoom{
 				ID:          fmt.Sprintf("room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
-				Version:     currentVersion,
+				SchedulerID: newMajorScheduler.Name,
+				Version:     activeScheduler.Spec.Version,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
 			})
 		}
+
+		mocks.schedulerManager.EXPECT().GetSchedulerByVersion(context.Background(), gomock.Any(), definition.NewActiveVersion).Return(newMajorScheduler)
+		mocks.schedulerManager.EXPECT().GetActiveScheduler(context.Background(), gomock.Any()).Return(activeScheduler)
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle1, nil)
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle2, nil)
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle3, nil)
@@ -112,8 +115,8 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		for i := range append(gameRoomListCycle1, gameRoomListCycle2...) {
 			gameRoom := &game_room.GameRoom{
 				ID:          fmt.Sprintf("new-room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
-				Version:     currentVersion,
+				SchedulerID: newMajorScheduler.Name,
+				Version:     activeScheduler.Spec.Version,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
 			}
@@ -122,7 +125,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).MaxTimes(len(append(gameRoomListCycle1, gameRoomListCycle2...)))
 
 		mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
-		mocks.schedulerCache.EXPECT().DeleteScheduler(gomock.Any(), definition.NewActiveScheduler.Name).Return(nil)
+		mocks.schedulerCache.EXPECT().DeleteScheduler(gomock.Any(), newMajorScheduler.Name).Return(nil)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 		err = executor.Execute(context.Background(), &operation.Operation{}, definition)
@@ -130,14 +133,12 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	})
 
 	t.Run("should succeed - Execute switch active version operation not replacing pods", func(t *testing.T) {
+		noReplaceDefinition := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newMinorScheduler.Spec.Version}
 		mocks := newMockRoomAndSchedulerManager(mockCtrl)
-		noReplaceDefinition := &switch_active_version.SwitchActiveVersionDefinition{
-			NewActiveScheduler: newScheduler,
-			ReplacePods:        false,
-		}
 
-		mocks.schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
-		mocks.schedulerCache.EXPECT().DeleteScheduler(gomock.Any(), noReplaceDefinition.NewActiveScheduler.Name).Return(nil)
+		mocks.schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), activeScheduler.Name).Return(activeScheduler, nil)
+		mocks.schedulerManager.EXPECT().GetSchedulerByVersion(gomock.Any(), newMinorScheduler.Name, newMinorScheduler.Spec.Version).Return(newMinorScheduler, nil)
+		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 		err = executor.Execute(context.Background(), &operation.Operation{}, noReplaceDefinition)
@@ -181,8 +182,8 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		for i := 0; i < maxSurge; i++ {
 			gameRoomListCycle1 = append(gameRoomListCycle1, &game_room.GameRoom{
 				ID:          fmt.Sprintf("room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
-				Version:     currentVersion,
+				SchedulerID: newMajorScheduler.Name,
+				Version:     activeScheduler.Spec.Version,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
 			})
@@ -205,8 +206,8 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		for i := 0; i < maxSurge; i++ {
 			gameRoomListCycle1 = append(gameRoomListCycle1, &game_room.GameRoom{
 				ID:          fmt.Sprintf("room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
-				Version:     currentVersion,
+				SchedulerID: newMajorScheduler.Name,
+				Version:     activeScheduler.Spec.Version,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
 			})
@@ -252,11 +253,8 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 		t.Errorf("unexpected error %d'", err)
 	}
 
-	newScheduler := newValidScheduler()
-	definition := &switch_active_version.SwitchActiveVersionDefinition{
-		NewActiveScheduler: newScheduler,
-		ReplacePods:        true,
-	}
+	newMajorScheduler := newValidSchedulerV2()
+	definition := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newMajorScheduler.Spec.Version}
 
 	t.Run("should succeed - Execute on error if operation finishes (no created rooms)", func(t *testing.T) {
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
@@ -275,7 +273,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 		for i := 0; i < maxSurge; i++ {
 			gameRoomListCycle1 = append(gameRoomListCycle1, &game_room.GameRoom{
 				ID:          fmt.Sprintf("room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
+				SchedulerID: newMajorScheduler.Name,
 				Version:     currentVersion,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
@@ -284,7 +282,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 		for i := maxSurge; i < maxSurge*2; i++ {
 			gameRoomListCycle2 = append(gameRoomListCycle2, &game_room.GameRoom{
 				ID:          fmt.Sprintf("room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
+				SchedulerID: newMajorScheduler.Name,
 				Version:     currentVersion,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
@@ -297,7 +295,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 		for i := range append(gameRoomListCycle1, gameRoomListCycle2...) {
 			gameRoom := &game_room.GameRoom{
 				ID:          fmt.Sprintf("new-room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
+				SchedulerID: newMajorScheduler.Name,
 				Version:     currentVersion,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
@@ -312,7 +310,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 		op := &operation.Operation{
 			ID:             "op",
 			DefinitionName: definition.Name(),
-			SchedulerName:  definition.NewActiveScheduler.Name,
+			SchedulerName:  newMajorScheduler.Name,
 			CreatedAt:      time.Now(),
 		}
 		err = executor.Execute(context.Background(), op, definition)
@@ -337,7 +335,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 		for i := 0; i < maxSurge; i++ {
 			gameRoomListCycle1 = append(gameRoomListCycle1, &game_room.GameRoom{
 				ID:          fmt.Sprintf("room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
+				SchedulerID: newMajorScheduler.Name,
 				Version:     currentVersion,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
@@ -346,7 +344,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 		for i := maxSurge; i < maxSurge*2; i++ {
 			gameRoomListCycle2 = append(gameRoomListCycle2, &game_room.GameRoom{
 				ID:          fmt.Sprintf("room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
+				SchedulerID: newMajorScheduler.Name,
 				Version:     currentVersion,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
@@ -359,7 +357,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 		for i := range append(gameRoomListCycle1, gameRoomListCycle2...) {
 			gameRoom := &game_room.GameRoom{
 				ID:          fmt.Sprintf("new-room-%v", i),
-				SchedulerID: definition.NewActiveScheduler.Name,
+				SchedulerID: newMajorScheduler.Name,
 				Version:     currentVersion,
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
@@ -374,7 +372,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 		op := &operation.Operation{
 			ID:             "op",
 			DefinitionName: definition.Name(),
-			SchedulerName:  definition.NewActiveScheduler.Name,
+			SchedulerName:  newMajorScheduler.Name,
 			CreatedAt:      time.Now(),
 		}
 		err = executor.Execute(context.Background(), op, definition)
@@ -397,7 +395,7 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 
 	roomManager := mockports.NewMockRoomManager(mockCtrl)
-	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, nil, nil)
+	schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 
 	return &mockRoomAndSchedulerManager{
 		roomManager,
@@ -412,7 +410,7 @@ func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSch
 	}
 }
 
-func newValidScheduler() entities.Scheduler {
+func newValidSchedulerV2() entities.Scheduler {
 	return entities.Scheduler{
 		Name:            "scheduler",
 		Game:            "game",

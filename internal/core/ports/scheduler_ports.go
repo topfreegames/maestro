@@ -36,10 +36,10 @@ import (
 type SchedulerManager interface {
 	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error)
-	CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error
+	GetSchedulerByVersion(ctx context.Context, schedulerName, schedulerVersion string) (*entities.Scheduler, error)
+	CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler) error
 	CreateNewSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
-	EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error)
-	SwitchActiveVersion(ctx context.Context, schedulerName string, targetVersion string) (*operation.Operation, error)
+	EnqueueSwitchActiveVersionOperation(ctx context.Context, schedulerName, newVersion string) (*operation.Operation, error)
 	GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error)
 	GetSchedulerVersions(ctx context.Context, schedulerName string) ([]*entities.SchedulerVersion, error)
 	DeleteScheduler(ctx context.Context, schedulerName string) error

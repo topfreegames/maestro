@@ -79,8 +79,19 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 	if !ok {
 		return fmt.Errorf("the definition is invalid. Should be type SwitchActiveVersionDefinition")
 	}
-	scheduler := &updateDefinition.NewActiveScheduler
-	replacePods := updateDefinition.ReplacePods
+
+	actualActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, op.SchedulerName)
+	if err != nil {
+		logger.Error("error fetching active scheduler", zap.Error(err))
+		return err
+	}
+	scheduler, err := ex.schedulerManager.GetSchedulerByVersion(ctx, op.SchedulerName, updateDefinition.NewActiveVersion)
+	if err != nil {
+		logger.Error("error fetching scheduler to be switched to", zap.Error(err))
+		return err
+	}
+
+	replacePods := actualActiveScheduler.IsMajorVersion(scheduler)
 
 	if replacePods {
 		maxSurgeNum, err := ex.roomManager.SchedulerMaxSurge(ctx, scheduler)
@@ -96,7 +107,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 	}
 
 	logger.Sugar().Debugf("switching version to %v", scheduler.Spec.Version)
-	err := ex.schedulerManager.UpdateScheduler(ctx, scheduler)
+	err = ex.schedulerManager.UpdateScheduler(ctx, scheduler)
 	if err != nil {
 		logger.Error("Error switching active scheduler version on scheduler manager")
 		return err

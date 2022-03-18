@@ -72,9 +72,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 		schedulerManager.
 			EXPECT().
-			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any(), true).
+			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) error {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
 					return nil
 				})
@@ -111,9 +111,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 		schedulerManager.
 			EXPECT().
-			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any(), true).
+			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) error {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
 					return nil
 				})
@@ -150,9 +150,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 		schedulerManager.
 			EXPECT().
-			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any(), true).
+			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) error {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
 					return nil
 				})
@@ -189,9 +189,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 		schedulerManager.
 			EXPECT().
-			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any(), true).
+			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) error {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
 					return nil
 				})
@@ -307,9 +307,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 		schedulerManager.
 			EXPECT().
-			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any(), false).
+			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) error {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
 					return nil
 				})
@@ -343,9 +343,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 		schedulerManager.
 			EXPECT().
-			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any(), false).
+			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) error {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
 					return nil
 				})
@@ -379,9 +379,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 		schedulerManager.
 			EXPECT().
-			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any(), false).
+			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) error {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
 					return nil
 				})
@@ -468,7 +468,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return([]*entities.SchedulerVersion{}, nil)
 		schedulerManager.
 			EXPECT().
-			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any(), false).
+			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			Return(errors.NewErrUnexpected("some_error"))
 
 		result := executor.Execute(context.Background(), op, operationDef)
