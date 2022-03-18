@@ -24,6 +24,7 @@ package service
 
 import (
 	"fmt"
+	"go.uber.org/zap/zapcore"
 
 	"go.uber.org/zap"
 )
@@ -35,6 +36,7 @@ func ConfigureLogging(configPreset string) error {
 		cfg = zap.NewDevelopmentConfig()
 	case "production":
 		cfg = zap.NewProductionConfig()
+		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	default:
 		return fmt.Errorf("unexpected log_config: %v", configPreset)
 	}
