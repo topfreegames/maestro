@@ -58,9 +58,18 @@ func TestCreateOperation(t *testing.T) {
 			DefinitionName: "test-definition",
 			CreatedAt:      createdAt,
 			Input:          []byte("hello test"),
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 19, 6, 12, 15, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
 		}
 
 		err := storage.CreateOperation(context.Background(), op)
+		require.NoError(t, err)
+
+		executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
 		require.NoError(t, err)
 
 		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
@@ -70,6 +79,7 @@ func TestCreateOperation(t *testing.T) {
 		require.Equal(t, op.DefinitionName, operationStored[definitionNameRedisKey])
 		require.Equal(t, createdAtString, operationStored[createdAtRedisKey])
 		require.EqualValues(t, op.Input, operationStored[definitionContentsRedisKey])
+		require.EqualValues(t, executionHistoryJson, operationStored[executionHistoryRedisKey])
 
 		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
 		require.NoError(t, err)
@@ -112,6 +122,12 @@ func TestGetOperation(t *testing.T) {
 			DefinitionName: "test-definition",
 			CreatedAt:      createdAt,
 			Input:          []byte("hello test"),
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 19, 6, 12, 15, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
 		}
 
 		err := storage.CreateOperation(context.Background(), op)
@@ -120,6 +136,7 @@ func TestGetOperation(t *testing.T) {
 		operationStored, err := storage.GetOperation(context.Background(), op.SchedulerName, op.ID)
 		require.NoError(t, err)
 		require.Equal(t, op.Input, operationStored.Input)
+		require.Equal(t, op.ExecutionHistory, operationStored.ExecutionHistory)
 		require.Equal(t, op.ID, operationStored.ID)
 		require.Equal(t, op.SchedulerName, operationStored.SchedulerName)
 		require.Equal(t, op.Status, operationStored.Status)
@@ -278,7 +295,7 @@ func TestUpdateOperationExecutionHistory(t *testing.T) {
 		require.NoError(t, err)
 
 		execHist := []operation.OperationEvent{}
-		err = json.Unmarshal([]byte(operationStored[executionHistory]), &execHist)
+		err = json.Unmarshal([]byte(operationStored[executionHistoryRedisKey]), &execHist)
 		require.NoError(t, err)
 
 		for i := range op.ExecutionHistory {

@@ -38,6 +38,18 @@ func (m *MockOperationManager) EXPECT() *MockOperationManagerMockRecorder {
 	return m.recorder
 }
 
+// AppendOperationEventToExecutionHistory mocks base method.
+func (m *MockOperationManager) AppendOperationEventToExecutionHistory(ctx context.Context, op *operation.Operation, eventMessage string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AppendOperationEventToExecutionHistory", ctx, op, eventMessage)
+}
+
+// AppendOperationEventToExecutionHistory indicates an expected call of AppendOperationEventToExecutionHistory.
+func (mr *MockOperationManagerMockRecorder) AppendOperationEventToExecutionHistory(ctx, op, eventMessage interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AppendOperationEventToExecutionHistory", reflect.TypeOf((*MockOperationManager)(nil).AppendOperationEventToExecutionHistory), ctx, op, eventMessage)
+}
+
 // CreateOperation mocks base method.
 func (m *MockOperationManager) CreateOperation(ctx context.Context, schedulerName string, definition operations.Definition) (*operation.Operation, error) {
 	m.ctrl.T.Helper()
@@ -187,15 +199,15 @@ func (mr *MockOperationManagerMockRecorder) RevokeLease(ctx, operation interface
 }
 
 // StartLeaseRenewGoRoutine mocks base method.
-func (m *MockOperationManager) StartLeaseRenewGoRoutine(operationCtx context.Context, op *operation.Operation) {
+func (m *MockOperationManager) StartLeaseRenewGoRoutine(ctx context.Context, op *operation.Operation) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StartLeaseRenewGoRoutine", operationCtx, op)
+	m.ctrl.Call(m, "StartLeaseRenewGoRoutine", ctx, op)
 }
 
 // StartLeaseRenewGoRoutine indicates an expected call of StartLeaseRenewGoRoutine.
-func (mr *MockOperationManagerMockRecorder) StartLeaseRenewGoRoutine(operationCtx, op interface{}) *gomock.Call {
+func (mr *MockOperationManagerMockRecorder) StartLeaseRenewGoRoutine(ctx, op interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartLeaseRenewGoRoutine", reflect.TypeOf((*MockOperationManager)(nil).StartLeaseRenewGoRoutine), operationCtx, op)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartLeaseRenewGoRoutine", reflect.TypeOf((*MockOperationManager)(nil).StartLeaseRenewGoRoutine), ctx, op)
 }
 
 // StartOperation mocks base method.
