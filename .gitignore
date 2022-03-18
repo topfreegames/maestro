@@ -42,6 +42,7 @@ _testmain.go
 .vscode
 .history
 .idea
+.tool-versions
 
 # Python
 __pycache__
