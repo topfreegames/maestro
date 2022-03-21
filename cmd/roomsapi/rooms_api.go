@@ -93,15 +93,17 @@ func runRoomsAPI() {
 func runRoomsServer(configs config.Config, mux *runtime.ServeMux) func() error {
 	// Prometheus go-http-metrics middleware
 	mdlw := middleware.New(middleware.Config{
+		Service: "rooms-api",
 		Recorder: metrics.NewRecorder(metrics.Config{
 			DurationBuckets: monitoring.DefBucketsMs,
 		}),
 	})
-	muxWithMetrics := std.Handler("", mdlw, mux)
+
+	muxHandlerWithMetricsMdlw := buildMuxWithMetricsMdlw(mdlw, mux)
 
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%s", configs.GetString("roomsApi.port")),
-		Handler: muxWithMetrics,
+		Handler: muxHandlerWithMetricsMdlw,
 	}
 
 	go func() {
@@ -118,4 +120,34 @@ func runRoomsServer(configs config.Config, mux *runtime.ServeMux) func() error {
 		zap.L().Info("stopping HTTP rooms server")
 		return httpServer.Shutdown(shutdownCtx)
 	}
+}
+
+func buildMuxWithMetricsMdlw(mdlw middleware.Middleware, mux *runtime.ServeMux) http.Handler {
+	muxHandlerWithMetricsMdlw := http.NewServeMux()
+
+	// ensure we are keeping metric cardinality to a minimum
+	muxHandlerWithMetricsMdlw.Handle("/", http.HandlerFunc(func(respWriter http.ResponseWriter, request *http.Request) {
+		path := request.URL.Path
+
+		var handler http.Handler
+		anyWordRegex := "[^/]+?"
+
+		switch {
+		// Rooms handler
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/ping$", anyWordRegex, anyWordRegex)):
+			handler = std.Handler("/scheduler/:schedulerName/rooms/:roomID/ping", mdlw, mux)
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/roomevent", anyWordRegex, anyWordRegex)):
+			handler = std.Handler("/scheduler/:schedulerName/rooms/:roomID/roomevent", mdlw, mux)
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/playerevent", anyWordRegex, anyWordRegex)):
+			handler = std.Handler("/scheduler/:schedulerName/rooms/:roomID/playerevent", mdlw, mux)
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/status", anyWordRegex, anyWordRegex)):
+			handler = std.Handler("/scheduler/:schedulerName/rooms/:roomID/status", mdlw, mux)
+
+		default:
+			handler = std.Handler("", mdlw, mux)
+		}
+		handler.ServeHTTP(respWriter, request)
+	}),
+	)
+	return muxHandlerWithMetricsMdlw
 }
