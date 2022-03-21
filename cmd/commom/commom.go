@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"regexp"
 	"syscall"
 
 	"github.com/topfreegames/maestro/internal/config"
@@ -69,4 +70,12 @@ func launchTerminatingListenerGoroutine(cancelFunc context.CancelFunc) {
 
 		cancelFunc()
 	}()
+}
+
+func MatchPath(path, pattern string) bool {
+	match, err := regexp.MatchString(pattern, path)
+	if err != nil {
+		return false
+	}
+	return match
 }

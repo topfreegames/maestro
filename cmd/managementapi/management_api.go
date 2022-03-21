@@ -95,15 +95,17 @@ func runManagementApi() {
 func runManagementServer(ctx context.Context, configs config.Config, mux *runtime.ServeMux) func() error {
 	// Prometheus go-http-metrics middleware
 	mdlw := middleware.New(middleware.Config{
+		Service: "management-api",
 		Recorder: metrics.NewRecorder(metrics.Config{
 			DurationBuckets: monitoring.DefBucketsMs,
 		}),
 	})
-	muxWithMetrics := std.Handler("", mdlw, mux)
+
+	muxHandlerWithMetricsMdlw := buildMuxWithMetricsMdlw(mdlw, mux)
 
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%s", configs.GetString("managementApi.port")),
-		Handler: muxWithMetrics,
+		Handler: muxHandlerWithMetricsMdlw,
 	}
 
 	go func() {
@@ -120,4 +122,44 @@ func runManagementServer(ctx context.Context, configs config.Config, mux *runtim
 		zap.L().Info("stopping HTTP management server")
 		return httpServer.Shutdown(shutdownCtx)
 	}
+}
+
+func buildMuxWithMetricsMdlw(mdlw middleware.Middleware, mux *runtime.ServeMux) http.Handler {
+	muxHandlerWithMetricsMdlw := http.NewServeMux()
+
+	// ensure we are keeping metric cardinality to a minimum
+	muxHandlerWithMetricsMdlw.Handle("/", http.HandlerFunc(func(respWriter http.ResponseWriter, request *http.Request) {
+		path := request.URL.Path
+
+		var handler http.Handler
+		anyWordRegex := "[^/]+?"
+
+		switch {
+		// Schedulers handler
+		case commom.MatchPath(path, "^/schedulers$"):
+			handler = std.Handler("/schedulers", mdlw, mux)
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s$", anyWordRegex)):
+			handler = std.Handler("/schedulers/:schedulerName", mdlw, mux)
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s/add-rooms$", anyWordRegex)):
+			handler = std.Handler("/schedulers/:schedulerName/add-rooms", mdlw, mux)
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s/remove-rooms$", anyWordRegex)):
+			handler = std.Handler("/schedulers/:schedulerName/remove-rooms", mdlw, mux)
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s/versions$", anyWordRegex)):
+			handler = std.Handler("/schedulers/:schedulerName/versions", mdlw, mux)
+		case commom.MatchPath(path, "^/schedulers/info$"):
+			handler = std.Handler("/schedulers/info", mdlw, mux)
+
+		// Operations handler
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s/operations$", anyWordRegex)):
+			handler = std.Handler("/schedulers/:schedulerName/operations"+
+				"", mdlw, mux)
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s/operations/%s/cancel$", anyWordRegex, anyWordRegex)):
+			handler = std.Handler("/schedulers/:schedulerName/operations/:operationID/cancel", mdlw, mux)
+		default:
+			handler = std.Handler("", mdlw, mux)
+		}
+		handler.ServeHTTP(respWriter, request)
+	}),
+	)
+	return muxHandlerWithMetricsMdlw
 }
