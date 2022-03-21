@@ -35,7 +35,7 @@ func reportSchedulerStorageFailsCounterMetric(operation string, labels ...string
 	metrics.PostgresFailsCounterMetric.WithLabelValues(append([]string{SchedulerStorageMetricLabel, operation}, labels...)...).Inc()
 }
 
-func reportSchedulerStorageLatency(operation string, executionFunction func()) {
+func runSchedulerStorageFunctionCollectingLatency(operation string, executionFunction func()) {
 	start := time.Now()
 	executionFunction()
 	monitoring.ReportLatencyMetricInMillis(
