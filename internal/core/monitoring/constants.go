@@ -34,4 +34,5 @@ const (
 	LabelReason    = "reason"
 	LabelScheduler = "scheduler"
 	LabelOperation = "operation"
+	LabelStorage   = "storage"
 )

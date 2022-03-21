@@ -20,21 +20,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package scheduler
+package metrics
 
 import (
-	"time"
-
-	"github.com/topfreegames/maestro/internal/adapters/metrics"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
-func reportSchedulerStorageFailsCounterMetric(storage, operation string, labels ...string) {
-	metrics.PostgresFailsCounterMetric.WithLabelValues(append([]string{storage, operation}, labels...)...).Inc()
-}
+var (
+	PostgresFailsCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "postgres_fails_counter_metric",
+		Help:      "Postgres fails counter metric",
+		Labels: []string{
+			monitoring.LabelStorage,
+			monitoring.LabelOperation,
+			monitoring.LabelScheduler,
+		},
+	})
 
-func reportSchedulerStorageLatency(start time.Time, storage, operation string) {
-	monitoring.ReportLatencyMetricInMillis(
-		metrics.PostgresLatencyMetric, start, storage, operation,
-	)
-}
+	PostgresLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "postgres_latency_metric",
+		Help:      "Postgres latency metric",
+		Labels: []string{
+			monitoring.LabelStorage,
+			monitoring.LabelOperation,
+		},
+	})
+)
