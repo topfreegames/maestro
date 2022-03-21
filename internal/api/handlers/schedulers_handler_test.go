@@ -1084,7 +1084,6 @@ func TestSwitchActiveVersion(t *testing.T) {
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
 
 		mux := runtime.NewServeMux()
@@ -1125,10 +1124,10 @@ func TestSwitchActiveVersion(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 404, rr.Code)
-		require.Contains(t, rr.Body.String(), "no scheduler versions found to switch")
+		require.Contains(t, rr.Body.String(), "not found")
 	})
 
-	t.Run("fails when operation enqueue fails", func(t *testing.T) {
+	t.Run("fails when operation enqueue fails since version does not exist", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -1138,7 +1137,6 @@ func TestSwitchActiveVersion(t *testing.T) {
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil, errors.NewErrUnexpected("internal error"))
 
 		mux := runtime.NewServeMux()
@@ -1152,7 +1150,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 500, rr.Code)
-		require.Contains(t, rr.Body.String(), "failed to schedule operation: failed to schedule switch_active_version operation")
+		require.Contains(t, rr.Body.String(), "internal error")
 	})
 }
 
