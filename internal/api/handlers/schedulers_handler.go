@@ -226,7 +226,7 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *api.SwitchActiveVersionRequest) (*api.SwitchActiveVersionResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	handlerLogger.Info("handling switch active version request")
-	operation, err := h.schedulerManager.SwitchActiveVersion(ctx, request.GetSchedulerName(), request.GetVersion())
+	operation, err := h.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, request.GetSchedulerName(), request.GetVersion())
 
 	if err != nil {
 		handlerLogger.Error(fmt.Sprintf("error switching active version %s", request.GetVersion()), zap.Error(err))

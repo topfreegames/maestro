@@ -24,7 +24,10 @@ package scheduler_manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -49,6 +52,8 @@ type SchedulerManager struct {
 	logger           *zap.Logger
 }
 
+var _ ports.SchedulerManager = (*SchedulerManager)(nil)
+
 func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache ports.SchedulerCache, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *SchedulerManager {
 	return &SchedulerManager{
 		schedulerStorage: schedulerStorage,
@@ -62,6 +67,18 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache
 func (s *SchedulerManager) GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
 	activeScheduler, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
 	if err != nil {
+		return nil, err
+	}
+	return activeScheduler, nil
+}
+
+func (s *SchedulerManager) GetSchedulerByVersion(ctx context.Context, schedulerName, schedulerVersion string) (*entities.Scheduler, error) {
+	activeScheduler, err := s.schedulerStorage.GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
+		Name:    schedulerName,
+		Version: schedulerVersion,
+	})
+	if err != nil {
+		s.logger.Error("error fetching scheduler by version", zap.Error(err))
 		return nil, err
 	}
 	return activeScheduler, nil
@@ -101,7 +118,7 @@ func (s *SchedulerManager) CreateNewSchedulerVersion(ctx context.Context, schedu
 	return nil
 }
 
-func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error {
+func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler) error {
 	err := scheduler.Validate()
 	if err != nil {
 		return fmt.Errorf("failing in creating schedule: %w", err)
@@ -113,7 +130,7 @@ func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx 
 			return err
 		}
 
-		_, err = s.EnqueueSwitchActiveVersionOperation(ctx, scheduler, replacePods)
+		_, err = s.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
 		if err != nil {
 			return fmt.Errorf("error enqueuing switch active version operation: %w", err)
 		}
@@ -197,13 +214,18 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 	return op, nil
 }
 
-func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error) {
-	err := newScheduler.Validate()
+func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, schedulerName, newVersion string) (*operation.Operation, error) {
+	_, err := s.GetSchedulerByVersion(ctx, schedulerName, newVersion)
 	if err != nil {
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			s.logger.Sugar().Warnf("scheduler \"%s\" version \"%s\" not found", schedulerName, newVersion)
+			return nil, portsErrors.NewErrNotFound("scheduler \"%s\" version \"%s\" not found", schedulerName, newVersion)
+		}
+		s.logger.Sugar().Error("scheduler \"%s\" version \"%s\" could not be fetched", schedulerName, newVersion, zap.Error(err))
 		return nil, err
 	}
-	opDef := &switch_active_version.SwitchActiveVersionDefinition{NewActiveScheduler: *newScheduler, ReplacePods: replacePods}
-	op, err := s.operationManager.CreateOperation(ctx, newScheduler.Name, opDef)
+	opDef := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newVersion}
+	op, err := s.operationManager.CreateOperation(ctx, schedulerName, opDef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)
 	}
@@ -227,30 +249,6 @@ func (s *SchedulerManager) UpdateScheduler(ctx context.Context, scheduler *entit
 		s.logger.Error("error deleting scheduler from cache", zap.String("scheduler", scheduler.Name), zap.Error(err))
 	}
 	return nil
-}
-
-func (s *SchedulerManager) SwitchActiveVersion(ctx context.Context, schedulerName string, targetVersion string) (*operation.Operation, error) {
-	schedulerTargetVersion, err := s.schedulerStorage.GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
-		Name:    schedulerName,
-		Version: targetVersion,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("no scheduler versions found to switch: %w", err)
-	}
-
-	currentActiveVersion, err := s.GetActiveScheduler(ctx, schedulerName)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching current active version for scheduler. err: %w", err)
-	}
-
-	isMajorChange := currentActiveVersion.IsMajorVersion(schedulerTargetVersion)
-	s.logger.Sugar().Infof("Change between version \"%v\" and \"%v\" is major: %v", currentActiveVersion.Spec.Version, schedulerTargetVersion.Spec.Version, isMajorChange)
-	op, err := s.EnqueueSwitchActiveVersionOperation(ctx, schedulerTargetVersion, isMajorChange)
-	if err != nil {
-		return nil, fmt.Errorf("failed to schedule operation: %w", err)
-	}
-
-	return op, nil
 }
 
 func (s *SchedulerManager) GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error) {

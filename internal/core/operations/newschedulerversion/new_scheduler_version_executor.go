@@ -146,7 +146,7 @@ func (ex *CreateNewSchedulerVersionExecutor) RemoveValidationRoomId(schedulerNam
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) error {
-	err := ex.schedulerManager.CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx, newScheduler, replacePods)
+	err := ex.schedulerManager.CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx, newScheduler)
 	if err != nil {
 		logger.Error("error creating new scheduler version in db", zap.Error(err))
 		return fmt.Errorf("error creating new scheduler version in db: %w", err)

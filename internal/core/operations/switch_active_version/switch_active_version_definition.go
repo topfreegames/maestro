@@ -27,7 +27,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"go.uber.org/zap"
 )
@@ -35,8 +34,7 @@ import (
 const OperationName = "switch_active_version"
 
 type SwitchActiveVersionDefinition struct {
-	NewActiveScheduler entities.Scheduler `json:"scheduler"`
-	ReplacePods        bool               `json:"replacePods"`
+	NewActiveVersion string `json:"newActiveVersion"`
 }
 
 func (d *SwitchActiveVersionDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {

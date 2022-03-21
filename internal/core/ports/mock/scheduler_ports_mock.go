@@ -54,17 +54,17 @@ func (mr *MockSchedulerManagerMockRecorder) CreateNewSchedulerVersion(ctx, sched
 }
 
 // CreateNewSchedulerVersionAndEnqueueSwitchVersion mocks base method.
-func (m *MockSchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler, replacePods bool) error {
+func (m *MockSchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateNewSchedulerVersionAndEnqueueSwitchVersion", ctx, scheduler, replacePods)
+	ret := m.ctrl.Call(m, "CreateNewSchedulerVersionAndEnqueueSwitchVersion", ctx, scheduler)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateNewSchedulerVersionAndEnqueueSwitchVersion indicates an expected call of CreateNewSchedulerVersionAndEnqueueSwitchVersion.
-func (mr *MockSchedulerManagerMockRecorder) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx, scheduler, replacePods interface{}) *gomock.Call {
+func (mr *MockSchedulerManagerMockRecorder) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx, scheduler interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNewSchedulerVersionAndEnqueueSwitchVersion", reflect.TypeOf((*MockSchedulerManager)(nil).CreateNewSchedulerVersionAndEnqueueSwitchVersion), ctx, scheduler, replacePods)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNewSchedulerVersionAndEnqueueSwitchVersion", reflect.TypeOf((*MockSchedulerManager)(nil).CreateNewSchedulerVersionAndEnqueueSwitchVersion), ctx, scheduler)
 }
 
 // DeleteScheduler mocks base method.
@@ -82,18 +82,18 @@ func (mr *MockSchedulerManagerMockRecorder) DeleteScheduler(ctx, schedulerName i
 }
 
 // EnqueueSwitchActiveVersionOperation mocks base method.
-func (m *MockSchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, newScheduler *entities.Scheduler, replacePods bool) (*operation.Operation, error) {
+func (m *MockSchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, schedulerName, newVersion string) (*operation.Operation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnqueueSwitchActiveVersionOperation", ctx, newScheduler, replacePods)
+	ret := m.ctrl.Call(m, "EnqueueSwitchActiveVersionOperation", ctx, schedulerName, newVersion)
 	ret0, _ := ret[0].(*operation.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // EnqueueSwitchActiveVersionOperation indicates an expected call of EnqueueSwitchActiveVersionOperation.
-func (mr *MockSchedulerManagerMockRecorder) EnqueueSwitchActiveVersionOperation(ctx, newScheduler, replacePods interface{}) *gomock.Call {
+func (mr *MockSchedulerManagerMockRecorder) EnqueueSwitchActiveVersionOperation(ctx, schedulerName, newVersion interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueSwitchActiveVersionOperation", reflect.TypeOf((*MockSchedulerManager)(nil).EnqueueSwitchActiveVersionOperation), ctx, newScheduler, replacePods)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueSwitchActiveVersionOperation", reflect.TypeOf((*MockSchedulerManager)(nil).EnqueueSwitchActiveVersionOperation), ctx, schedulerName, newVersion)
 }
 
 // GetActiveScheduler mocks base method.
@@ -109,6 +109,21 @@ func (m *MockSchedulerManager) GetActiveScheduler(ctx context.Context, scheduler
 func (mr *MockSchedulerManagerMockRecorder) GetActiveScheduler(ctx, schedulerName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveScheduler", reflect.TypeOf((*MockSchedulerManager)(nil).GetActiveScheduler), ctx, schedulerName)
+}
+
+// GetSchedulerByVersion mocks base method.
+func (m *MockSchedulerManager) GetSchedulerByVersion(ctx context.Context, schedulerName, schedulerVersion string) (*entities.Scheduler, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSchedulerByVersion", ctx, schedulerName, schedulerVersion)
+	ret0, _ := ret[0].(*entities.Scheduler)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSchedulerByVersion indicates an expected call of GetSchedulerByVersion.
+func (mr *MockSchedulerManagerMockRecorder) GetSchedulerByVersion(ctx, schedulerName, schedulerVersion interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulerByVersion", reflect.TypeOf((*MockSchedulerManager)(nil).GetSchedulerByVersion), ctx, schedulerName, schedulerVersion)
 }
 
 // GetSchedulerVersions mocks base method.
@@ -139,21 +154,6 @@ func (m *MockSchedulerManager) GetSchedulersInfo(ctx context.Context, filter *fi
 func (mr *MockSchedulerManagerMockRecorder) GetSchedulersInfo(ctx, filter interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulersInfo", reflect.TypeOf((*MockSchedulerManager)(nil).GetSchedulersInfo), ctx, filter)
-}
-
-// SwitchActiveVersion mocks base method.
-func (m *MockSchedulerManager) SwitchActiveVersion(ctx context.Context, schedulerName, targetVersion string) (*operation.Operation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SwitchActiveVersion", ctx, schedulerName, targetVersion)
-	ret0, _ := ret[0].(*operation.Operation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SwitchActiveVersion indicates an expected call of SwitchActiveVersion.
-func (mr *MockSchedulerManagerMockRecorder) SwitchActiveVersion(ctx, schedulerName, targetVersion interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SwitchActiveVersion", reflect.TypeOf((*MockSchedulerManager)(nil).SwitchActiveVersion), ctx, schedulerName, targetVersion)
 }
 
 // UpdateScheduler mocks base method.
