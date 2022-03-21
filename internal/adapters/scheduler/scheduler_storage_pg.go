@@ -25,7 +25,6 @@ package scheduler
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -101,9 +100,11 @@ func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entit
 	var dbScheduler Scheduler
 
 	queryString := queryGetActiveScheduler
-	start := time.Now()
-	_, err := client.QueryOne(&dbScheduler, queryString, name)
-	reportSchedulerStorageLatency(start, "GetScheduler")
+
+	var err error
+	reportSchedulerStorageLatency("GetScheduler", func() {
+		_, err = client.QueryOne(&dbScheduler, queryString, name)
+	})
 	if err == pg.ErrNoRows {
 		return nil, errors.NewErrNotFound("scheduler %s not found", name)
 	}
@@ -135,14 +136,16 @@ func (s schedulerStorage) GetSchedulerWithFilter(ctx context.Context, schedulerF
 	}
 
 	queryString = queryString + " order by created_at desc limit 1"
-	start := time.Now()
-	_, err := client.QueryOne(&dbScheduler, queryString, queryArr...)
-	reportSchedulerStorageLatency(start, "GetSchedulerWithFilter")
+
+	var err error
+	reportSchedulerStorageLatency("GetSchedulerWithFilter", func() {
+		_, err = client.QueryOne(&dbScheduler, queryString, queryArr...)
+	})
 	if err == pg.ErrNoRows {
 		return nil, errors.NewErrNotFound("scheduler %s not found", schedulerFilter.Name)
 	}
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric(schedulerFilter.Name)
+		reportSchedulerStorageFailsCounterMetric("GetSchedulerWithFilter", schedulerFilter.Name)
 		return nil, errors.NewErrUnexpected("error getting scheduler %s", schedulerFilter.Name).WithError(err)
 	}
 	scheduler, err := dbScheduler.ToScheduler()
@@ -155,9 +158,10 @@ func (s schedulerStorage) GetSchedulerWithFilter(ctx context.Context, schedulerF
 func (s schedulerStorage) GetSchedulerVersions(ctx context.Context, name string) ([]*entities.SchedulerVersion, error) {
 	client := s.db.WithContext(ctx)
 	var dbSchedulerVersions []SchedulerVersion
-	start := time.Now()
-	_, err := client.Query(&dbSchedulerVersions, queryGetSchedulerVersions, name)
-	reportSchedulerStorageLatency(start, "GetSchedulerVersions")
+	var err error
+	reportSchedulerStorageLatency("GetSchedulerVersions", func() {
+		_, err = client.Query(&dbSchedulerVersions, queryGetSchedulerVersions, name)
+	})
 	if len(dbSchedulerVersions) == 0 {
 		return nil, errors.NewErrNotFound("scheduler %s not found", name)
 	}
@@ -176,9 +180,10 @@ func (s schedulerStorage) GetSchedulerVersions(ctx context.Context, name string)
 func (s schedulerStorage) GetSchedulers(ctx context.Context, names []string) ([]*entities.Scheduler, error) {
 	client := s.db.WithContext(ctx)
 	var dbSchedulers []Scheduler
-	start := time.Now()
-	_, err := client.Query(&dbSchedulers, queryGetSchedulers, pg.In(names))
-	reportSchedulerStorageLatency(start, "GetSchedulers")
+	var err error
+	reportSchedulerStorageLatency("GetSchedulers", func() {
+		_, err = client.Query(&dbSchedulers, queryGetSchedulers, pg.In(names))
+	})
 	if err != nil {
 		reportSchedulerStorageFailsCounterMetric("GetSchedulers")
 		return nil, errors.NewErrUnexpected("error getting schedulers").WithError(err)
@@ -202,9 +207,11 @@ func (s schedulerStorage) GetSchedulersWithFilter(ctx context.Context, scheduler
 	whereClauses, arrayValues := createWhereClauses(schedulerFilter)
 
 	queryString = queryString + whereClauses
-	start := time.Now()
-	_, err := client.Query(&dbSchedulers, queryString, arrayValues...)
-	reportSchedulerStorageLatency(start, "GetSchedulersWithFilter")
+
+	var err error
+	reportSchedulerStorageLatency("GetSchedulersWithFilter", func() {
+		_, err = client.Query(&dbSchedulers, queryString, arrayValues...)
+	})
 	if err != nil {
 		reportSchedulerStorageFailsCounterMetric("GetSchedulersWithFilter")
 		return nil, errors.NewErrUnexpected("error getting schedulers").WithError(err)
@@ -263,9 +270,10 @@ func createWhereClauses(schedulerFilter *filters.SchedulerFilter) (string, []int
 func (s schedulerStorage) GetAllSchedulers(ctx context.Context) ([]*entities.Scheduler, error) {
 	client := s.db.WithContext(ctx)
 	var dbSchedulers []Scheduler
-	start := time.Now()
-	_, err := client.Query(&dbSchedulers, queryGetAllSchedulers)
-	reportSchedulerStorageLatency(start, "GetAllSchedulers")
+	var err error
+	reportSchedulerStorageLatency("GetAllSchedulers", func() {
+		_, err = client.Query(&dbSchedulers, queryGetAllSchedulers)
+	})
 	if err != nil {
 		reportSchedulerStorageFailsCounterMetric("GetAllSchedulers")
 		return nil, errors.NewErrUnexpected("error getting schedulers").WithError(err)
@@ -284,14 +292,15 @@ func (s schedulerStorage) GetAllSchedulers(ctx context.Context) ([]*entities.Sch
 func (s schedulerStorage) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
 	client := s.db.WithContext(ctx)
 	dbScheduler := NewDBScheduler(scheduler)
-	start := time.Now()
-	_, err := client.Exec(queryInsertScheduler, dbScheduler)
-	reportSchedulerStorageLatency(start, "CreateScheduler")
+	var err error
+	reportSchedulerStorageLatency("CreateScheduler", func() {
+		_, err = client.Exec(queryInsertScheduler, dbScheduler)
+	})
 	if err != nil {
 		if strings.Contains(err.Error(), "schedulers_name_unique") {
 			return errors.NewErrAlreadyExists("error creating scheduler %s: name already exists", dbScheduler.Name)
 		}
-		reportSchedulerStorageFailsCounterMetric("CreateScheduler")
+		reportSchedulerStorageFailsCounterMetric("CreateScheduler", scheduler.Name)
 		return errors.NewErrUnexpected("error creating scheduler %s", dbScheduler.Name).WithError(err)
 	}
 	err = s.CreateSchedulerVersion(ctx, "", scheduler)
@@ -304,14 +313,15 @@ func (s schedulerStorage) CreateScheduler(ctx context.Context, scheduler *entiti
 func (s schedulerStorage) UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
 	client := s.db.WithContext(ctx)
 	dbScheduler := NewDBScheduler(scheduler)
-	start := time.Now()
-	_, err := client.ExecOne(queryUpdateScheduler, dbScheduler)
-	reportSchedulerStorageLatency(start, "UpdateScheduler")
+	var err error
+	reportSchedulerStorageLatency("UpdateScheduler", func() {
+		_, err = client.ExecOne(queryUpdateScheduler, dbScheduler)
+	})
 	if err == pg.ErrNoRows {
 		return errors.NewErrNotFound("scheduler %s not found", dbScheduler.Name)
 	}
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric("UpdateScheduler")
+		reportSchedulerStorageFailsCounterMetric("UpdateScheduler", dbScheduler.Name)
 		return errors.NewErrUnexpected("error updating scheduler %s", dbScheduler.Name).WithError(err)
 	}
 
@@ -320,14 +330,15 @@ func (s schedulerStorage) UpdateScheduler(ctx context.Context, scheduler *entiti
 
 func (s schedulerStorage) DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
 	client := s.db.WithContext(ctx)
-	start := time.Now()
-	_, err := client.ExecOne(queryDeleteScheduler, scheduler.Name)
-	reportSchedulerStorageLatency(start, "DeleteScheduler")
+	var err error
+	reportSchedulerStorageLatency("DeleteScheduler", func() {
+		_, err = client.ExecOne(queryDeleteScheduler, scheduler.Name)
+	})
 	if err == pg.ErrNoRows {
 		return errors.NewErrNotFound("scheduler %s not found", scheduler.Name)
 	}
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric("DeleteScheduler")
+		reportSchedulerStorageFailsCounterMetric("DeleteScheduler", scheduler.Name)
 		return errors.NewErrUnexpected("error updating scheduler %s", scheduler.Name).WithError(err)
 	}
 	return nil
@@ -341,22 +352,22 @@ func (s schedulerStorage) CreateSchedulerVersion(ctx context.Context, transactio
 		if !ok {
 			return errors.NewErrNotFound("transaction %s not found", transactionID)
 		}
-		start := time.Now()
-		_, err = txClient.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
-		reportSchedulerStorageLatency(start, "CreateSchedulerVersion")
+		reportSchedulerStorageLatency("CreateSchedulerVersion", func() {
+			_, err = txClient.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+		})
 
 	} else {
 		client := s.db.WithContext(ctx)
-		start := time.Now()
-		_, err = client.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
-		reportSchedulerStorageLatency(start, "CreateSchedulerVersion")
+		reportSchedulerStorageLatency("CreateSchedulerVersion", func() {
+			_, err = client.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+		})
 	}
 
 	if err != nil {
 		if strings.Contains(err.Error(), "violates foreign key constraint") {
 			return errors.NewErrUnexpected("error creating version %s for non existent scheduler \"%s\"", dbScheduler.Version, dbScheduler.Name)
 		}
-		reportSchedulerStorageFailsCounterMetric("CreateSchedulerVersion")
+		reportSchedulerStorageFailsCounterMetric("CreateSchedulerVersion", scheduler.Name)
 		return errors.NewErrUnexpected("error creating scheduler %s version %s", dbScheduler.Name, dbScheduler.Version).WithError(err)
 	}
 	return nil
