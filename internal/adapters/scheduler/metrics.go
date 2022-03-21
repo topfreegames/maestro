@@ -20,19 +20,25 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package monitoring
+package scheduler
 
-const (
-	Namespace       = "maestro"
-	SubsystemApi    = "api"
-	SubsystemWorker = "worker"
+import (
+	"time"
+
+	"github.com/topfreegames/maestro/internal/adapters/metrics"
+	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
-const (
-	LabelPlatform  = "platform"
-	LabelSuccess   = "success"
-	LabelReason    = "reason"
-	LabelScheduler = "scheduler"
-	LabelOperation = "operation"
-	LabelStorage   = "storage"
-)
+const SchedulerStorageMetricLabel = "scheduler-storage"
+
+func reportSchedulerStorageFailsCounterMetric(operation string, labels ...string) {
+	metrics.PostgresFailsCounterMetric.WithLabelValues(append([]string{SchedulerStorageMetricLabel, operation}, labels...)...).Inc()
+}
+
+func runSchedulerStorageFunctionCollectingLatency(operation string, executionFunction func()) {
+	start := time.Now()
+	executionFunction()
+	monitoring.ReportLatencyMetricInMillis(
+		metrics.PostgresLatencyMetric, start, SchedulerStorageMetricLabel, operation,
+	)
+}

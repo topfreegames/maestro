@@ -20,19 +20,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package monitoring
+package metrics
 
-const (
-	Namespace       = "maestro"
-	SubsystemApi    = "api"
-	SubsystemWorker = "worker"
+import (
+	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
-const (
-	LabelPlatform  = "platform"
-	LabelSuccess   = "success"
-	LabelReason    = "reason"
-	LabelScheduler = "scheduler"
-	LabelOperation = "operation"
-	LabelStorage   = "storage"
+var (
+	PostgresFailsCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "postgres_fails_counter_metric",
+		Help:      "Postgres fails counter metric",
+		Labels: []string{
+			monitoring.LabelStorage,
+			monitoring.LabelOperation,
+			monitoring.LabelScheduler,
+		},
+	})
+
+	PostgresLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "postgres_latency_metric",
+		Help:      "Postgres latency metric",
+		Labels: []string{
+			monitoring.LabelStorage,
+			monitoring.LabelOperation,
+		},
+	})
 )
