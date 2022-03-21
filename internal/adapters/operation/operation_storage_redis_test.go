@@ -115,6 +115,7 @@ func TestGetOperation(t *testing.T) {
 
 		createdAtString := "2020-01-01T00:00:00.001Z"
 		createdAt, _ := time.Parse(time.RFC3339Nano, createdAtString)
+
 		op := &operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "test-scheduler",
@@ -130,18 +131,54 @@ func TestGetOperation(t *testing.T) {
 			},
 		}
 
-		err := storage.CreateOperation(context.Background(), op)
-		require.NoError(t, err)
+		t.Run("when there is ExecutionHistory", func(t *testing.T) {
+			executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
+			require.NoError(t, err)
 
-		operationStored, err := storage.GetOperation(context.Background(), op.SchedulerName, op.ID)
-		require.NoError(t, err)
-		require.Equal(t, op.Input, operationStored.Input)
-		require.Equal(t, op.ExecutionHistory, operationStored.ExecutionHistory)
-		require.Equal(t, op.ID, operationStored.ID)
-		require.Equal(t, op.SchedulerName, operationStored.SchedulerName)
-		require.Equal(t, op.Status, operationStored.Status)
-		require.Equal(t, op.DefinitionName, operationStored.DefinitionName)
-		require.Equal(t, createdAt, operationStored.CreatedAt)
+			err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+				idRedisKey:                 op.ID,
+				schedulerNameRedisKey:      op.SchedulerName,
+				statusRedisKey:             strconv.Itoa(int(op.Status)),
+				definitionNameRedisKey:     op.DefinitionName,
+				createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+				definitionContentsRedisKey: op.Input,
+				executionHistoryRedisKey:   executionHistoryJson,
+			}).Err()
+			require.NoError(t, err)
+
+			operationStored, err := storage.GetOperation(context.Background(), op.SchedulerName, op.ID)
+			require.NoError(t, err)
+			assert.Equal(t, op.Input, operationStored.Input)
+			assert.Equal(t, op.ExecutionHistory, operationStored.ExecutionHistory)
+			assert.Equal(t, op.ID, operationStored.ID)
+			assert.Equal(t, op.SchedulerName, operationStored.SchedulerName)
+			assert.Equal(t, op.Status, operationStored.Status)
+			assert.Equal(t, op.DefinitionName, operationStored.DefinitionName)
+			assert.Equal(t, createdAt, operationStored.CreatedAt)
+		})
+
+		t.Run("when there is no ExecutionHistory", func(t *testing.T) {
+			op.ID = "some-other-id"
+			err := client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+				idRedisKey:                 op.ID,
+				schedulerNameRedisKey:      op.SchedulerName,
+				statusRedisKey:             strconv.Itoa(int(op.Status)),
+				definitionNameRedisKey:     op.DefinitionName,
+				createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+				definitionContentsRedisKey: op.Input,
+			}).Err()
+			require.NoError(t, err)
+
+			operationStored, err := storage.GetOperation(context.Background(), op.SchedulerName, op.ID)
+			require.NoError(t, err)
+			assert.Equal(t, op.Input, operationStored.Input)
+			assert.Empty(t, operationStored.ExecutionHistory)
+			assert.Equal(t, op.ID, operationStored.ID)
+			assert.Equal(t, op.SchedulerName, operationStored.SchedulerName)
+			assert.Equal(t, op.Status, operationStored.Status)
+			assert.Equal(t, op.DefinitionName, operationStored.DefinitionName)
+			assert.Equal(t, createdAt, operationStored.CreatedAt)
+		})
 	})
 
 	t.Run("not found", func(t *testing.T) {

@@ -95,9 +95,11 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 	}
 
 	var executionHistory []operation.OperationEvent
-	err = json.Unmarshal([]byte(res[executionHistoryRedisKey]), &executionHistory)
-	if err != nil {
-		return nil, errors.NewErrEncoding("failed to parse operation execution history").WithError(err)
+	if history, ok := res[executionHistoryRedisKey]; ok {
+		err = json.Unmarshal([]byte(history), &executionHistory)
+		if err != nil {
+			return nil, errors.NewErrEncoding("failed to parse operation execution history").WithError(err)
+		}
 	}
 
 	statusInt, err := strconv.Atoi(res[statusRedisKey])
