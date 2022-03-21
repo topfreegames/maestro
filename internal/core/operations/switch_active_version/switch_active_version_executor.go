@@ -80,18 +80,17 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 		return fmt.Errorf("the definition is invalid. Should be type SwitchActiveVersionDefinition")
 	}
 
-	actualActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, op.SchedulerName)
-	if err != nil {
-		logger.Error("error fetching active scheduler", zap.Error(err))
-		return err
-	}
 	scheduler, err := ex.schedulerManager.GetSchedulerByVersion(ctx, op.SchedulerName, updateDefinition.NewActiveVersion)
 	if err != nil {
 		logger.Error("error fetching scheduler to be switched to", zap.Error(err))
 		return err
 	}
 
-	replacePods := actualActiveScheduler.IsMajorVersion(scheduler)
+	replacePods, err := ex.shouldReplacePods(ctx, scheduler)
+	if err != nil {
+		logger.Error("error calculating if should replace pods", zap.Error(err))
+		return err
+	}
 
 	if replacePods {
 		maxSurgeNum, err := ex.roomManager.SchedulerMaxSurge(ctx, scheduler)
@@ -237,4 +236,12 @@ func (ex *SwitchActiveVersionExecutor) appendToNewCreatedRooms(schedulerName str
 
 func (ex *SwitchActiveVersionExecutor) clearNewCreatedRooms(schedulerName string) {
 	delete(ex.newCreatedRooms, schedulerName)
+}
+
+func (ex *SwitchActiveVersionExecutor) shouldReplacePods(ctx context.Context, newScheduler *entities.Scheduler) (bool, error) {
+	actualActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, newScheduler.Name)
+	if err != nil {
+		return false, err
+	}
+	return actualActiveScheduler.IsMajorVersion(newScheduler), nil
 }
