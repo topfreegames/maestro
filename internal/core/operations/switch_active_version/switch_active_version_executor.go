@@ -88,7 +88,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 
 	replacePods, err := ex.shouldReplacePods(ctx, scheduler)
 	if err != nil {
-		logger.Error("error calculating if should replace pods", zap.Error(err))
+		logger.Error("error deciding if should replace pods", zap.Error(err))
 		return err
 	}
 

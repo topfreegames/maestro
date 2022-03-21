@@ -263,6 +263,29 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
 		require.Error(t, err)
 	})
+
+	t.Run("should fail - Can't get new scheduler", func(t *testing.T) {
+		definition := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newMajorScheduler.Spec.Version}
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
+
+		mocks.schedulerManager.EXPECT().GetSchedulerByVersion(gomock.Any(), newMajorScheduler.Name, newMajorScheduler.Spec.Version).Return(nil, errors.New("error"))
+
+		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
+		require.Error(t, err)
+	})
+
+	t.Run("should fail - Can't get active scheduler", func(t *testing.T) {
+		definition := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newMajorScheduler.Spec.Version}
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
+
+		mocks.schedulerManager.EXPECT().GetSchedulerByVersion(gomock.Any(), newMajorScheduler.Name, newMajorScheduler.Spec.Version).Return(newMajorScheduler, nil)
+		mocks.schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), activeScheduler.Name).Return(nil, errors.New("error"))
+
+		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
+		require.Error(t, err)
+	})
 }
 
 func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
