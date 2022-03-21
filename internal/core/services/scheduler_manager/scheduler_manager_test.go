@@ -497,6 +497,50 @@ func TestGetSchedulerVersions(t *testing.T) {
 	})
 }
 
+func TestGetSchedulerByVersion(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	t.Run("with success", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
+			Name:    scheduler.Name,
+			Version: scheduler.Spec.Version,
+		}).Return(scheduler, nil)
+
+		schedulerReturned, err := schedulerManager.GetSchedulerByVersion(ctx, scheduler.Name, scheduler.Spec.Version)
+		require.NoError(t, err)
+		require.NotNil(t, schedulerReturned)
+	})
+
+	t.Run("fail", func(t *testing.T) {
+		scheduler := newValidScheduler()
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
+			Name:    scheduler.Name,
+			Version: scheduler.Spec.Version,
+		}).Return(nil, errors.NewErrUnexpected("error"))
+
+		schedulerReturned, err := schedulerManager.GetSchedulerByVersion(ctx, scheduler.Name, scheduler.Spec.Version)
+		require.Error(t, err)
+		require.Nil(t, schedulerReturned)
+	})
+}
+
 func TestGetScheduler(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
