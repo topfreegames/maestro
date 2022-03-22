@@ -44,7 +44,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/workers"
 )
 
-func TestMetricsReporterWorker_Start(t *testing.T) {
+func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 	t.Run("produce metrics for pods and game rooms with success when no error occurs", func(t *testing.T) {
 		resetMetricsCollectors()
 
@@ -101,7 +101,9 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 		assert.Equal(t, float64(8), testutil.ToFloat64(instanceTerminatingGaugeMetric))
 		assert.Equal(t, float64(8), testutil.ToFloat64(instanceErrorGaugeMetric))
 	})
+}
 
+func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 	t.Run("don't produce metrics, log errors but doesn't stop worker when some error occurs", func(t *testing.T) {
 		resetMetricsCollectors()
 
@@ -157,7 +159,6 @@ func TestMetricsReporterWorker_Start(t *testing.T) {
 		assert.Equal(t, 0, testutil.CollectAndCount(instanceTerminatingGaugeMetric))
 		assert.Equal(t, 0, testutil.CollectAndCount(instanceErrorGaugeMetric))
 	})
-
 }
 
 func newInstancesList(numberOfInstances int) (instances []*game_room.Instance) {
