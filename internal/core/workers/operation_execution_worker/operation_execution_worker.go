@@ -150,9 +150,9 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		}
 		w.operationManager.StartLeaseRenewGoRoutine(operationContext, op)
 
-		executeStartTime := time.Now()
-		executionErr := executor.Execute(operationContext, op, def)
-		reportOperationExecutionLatency(executeStartTime, w.schedulerName, op.DefinitionName, executionErr == nil)
+		executionErr := executeCollectingLatencyMetrics(w.schedulerName, op.DefinitionName, func() error {
+			return executor.Execute(operationContext, op, def)
+		})
 
 		op.Status = operation.StatusFinished
 		if executionErr != nil {
@@ -165,9 +165,9 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 			loopLogger.Error("operation execution failed", zap.Error(executionErr))
 
-			onErrorStartTime := time.Now()
-			onErrorErr := executor.OnError(operationContext, op, def, executionErr)
-			reportOperationOnErrorLatency(onErrorStartTime, w.schedulerName, op.DefinitionName, onErrorErr == nil)
+			onErrorErr := executeOnErrorCollectingLatencyMetrics(w.schedulerName, op.DefinitionName, func() error {
+				return executor.OnError(operationContext, op, def, executionErr)
+			})
 
 			if onErrorErr != nil {
 				loopLogger.Error("operation OnError failed", zap.Error(onErrorErr))
@@ -210,4 +210,18 @@ func (w *OperationExecutionWorker) evictOperation(ctx context.Context, logger *z
 	op.Status = operation.StatusEvicted
 	_ = w.operationManager.FinishOperation(ctx, op)
 	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation evicted")
+}
+
+func executeCollectingLatencyMetrics(schedulerName, definitionName string, f func() error) (err error) {
+	executeStartTime := time.Now()
+	err = f()
+	reportOperationExecutionLatency(executeStartTime, schedulerName, definitionName, err == nil)
+	return err
+}
+
+func executeOnErrorCollectingLatencyMetrics(schedulerName, definitionName string, f func() error) (err error) {
+	onErrorStartTime := time.Now()
+	err = f()
+	reportOperationOnErrorLatency(onErrorStartTime, schedulerName, definitionName, err == nil)
+	return err
 }
