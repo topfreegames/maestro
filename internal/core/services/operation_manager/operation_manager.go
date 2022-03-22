@@ -199,10 +199,8 @@ func (om *OperationManager) EnqueueOperationCancellationRequest(ctx context.Cont
 	if !(op.Status == operation.StatusPending || op.Status == operation.StatusInProgress) {
 		status, err := op.Status.String()
 		if err != nil {
-			om.Logger.Error("cannot cancel operation because operation have invalid status", zap.Error(err))
-			return err
+			return errors.NewErrUnexpected("cannot cancel operation because operation have invalid status")
 		}
-		om.Logger.Sugar().Infof("cannot cancel operation since status \"%v\" is a final status", status)
 		return errors.NewErrConflict("cannot cancel operation since status \"%v\" is a final status", status)
 	}
 
