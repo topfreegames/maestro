@@ -11,6 +11,7 @@ import (
 
 const OperationFlowStorageLabel = "operation-flow-storage"
 const OperationLeaseStorageLabel = "operation-lease-storage"
+const OperationStorageLabel = "operation-storage"
 
 func runWithMetrics(storage string, executionFunction func() error) {
 	start := time.Now()
