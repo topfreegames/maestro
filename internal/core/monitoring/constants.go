@@ -29,6 +29,9 @@ const (
 )
 
 const (
+	LabelService   = "service"
+	LabelMethod    = "method"
+	LabelCode      = "code"
 	LabelPlatform  = "platform"
 	LabelSuccess   = "success"
 	LabelReason    = "reason"

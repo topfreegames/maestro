@@ -27,26 +27,15 @@ import (
 )
 
 var (
-	PostgresFailsCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+	GrpcLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
-		Name:      "postgres_fails",
-		Help:      "Postgres fails counter metric",
+		Name:      "grpc_request",
+		Help:      "Grpc latency metric",
 		Labels: []string{
-			monitoring.LabelStorage,
-			monitoring.LabelOperation,
-			monitoring.LabelScheduler,
-		},
-	})
-
-	PostgresLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
-		Namespace: monitoring.Namespace,
-		Subsystem: monitoring.SubsystemWorker,
-		Name:      "postgres_operation",
-		Help:      "Postgres latency metric",
-		Labels: []string{
-			monitoring.LabelStorage,
-			monitoring.LabelOperation,
+			monitoring.LabelService,
+			monitoring.LabelMethod,
+			monitoring.LabelCode,
 		},
 	})
 )
