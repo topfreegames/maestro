@@ -49,8 +49,10 @@ func NewRedisOperationFlow(client *redis.Client) *redisOperationFlow {
 
 // InsertOperationID pushes the operation ID to the scheduler pending
 // operations list.
-func (r *redisOperationFlow) InsertOperationID(ctx context.Context, schedulerName string, operationID string) error {
-	err := r.client.RPush(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), operationID).Err()
+func (r *redisOperationFlow) InsertOperationID(ctx context.Context, schedulerName string, operationID string) (err error) {
+	runRedisOperationReportingLatencyMetric("InsertOperationID", func() {
+		err = r.client.RPush(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), operationID).Err()
+	})
 	if err != nil {
 		return errors.NewErrUnexpected("failed to insert operation ID on redis").WithError(err)
 	}
@@ -60,8 +62,11 @@ func (r *redisOperationFlow) InsertOperationID(ctx context.Context, schedulerNam
 
 // NextOperationID fetches the next scheduler operation ID from the
 // pending_operations list.
-func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName string) (string, error) {
-	opIDs, err := r.client.BLPop(ctx, 0, r.buildSchedulerPendingOperationsKey(schedulerName)).Result()
+func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName string) (opId string, err error) {
+	var opIDs []string
+	runRedisOperationReportingLatencyMetric("NextOperationID", func() {
+		opIDs, err = r.client.BLPop(ctx, 0, r.buildSchedulerPendingOperationsKey(schedulerName)).Result()
+	})
 	if err != nil {
 		return "", errors.NewErrUnexpected("failed to fetch next operation ID").WithError(err)
 	}
@@ -76,8 +81,10 @@ func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName 
 	return opIDs[1], nil
 }
 
-func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) ([]string, error) {
-	operationsIDs, err := r.client.LRange(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), 0, -1).Result()
+func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) (operationsIDs []string, err error) {
+	runRedisOperationReportingLatencyMetric("ListSchedulerPendingOperationIDs", func() {
+		operationsIDs, err = r.client.LRange(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), 0, -1).Result()
+	})
 	if err != nil {
 		return nil, errors.NewErrUnexpected("failed to list pending operations for \"%s\"", schedulerName).WithError(err)
 	}
@@ -86,13 +93,14 @@ func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Contex
 }
 
 func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Context, request ports.OperationCancellationRequest) error {
-
 	requestAsString, err := json.Marshal(request)
 	if err != nil {
 		return fmt.Errorf("failed to marshal operation cancellation request to string: %w", err)
 	}
 
-	err = r.client.Publish(ctx, watchOperationCancellationRequestKey, string(requestAsString)).Err()
+	runRedisOperationReportingLatencyMetric("EnqueueOperationCancellationRequest", func() {
+		err = r.client.Publish(ctx, watchOperationCancellationRequestKey, string(requestAsString)).Err()
+	})
 	if err != nil {
 		return fmt.Errorf("failed to publish operation cancellation request: %w", err)
 	}
@@ -101,7 +109,10 @@ func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Con
 }
 
 func (r *redisOperationFlow) WatchOperationCancellationRequests(ctx context.Context) chan ports.OperationCancellationRequest {
-	sub := r.client.Subscribe(ctx, watchOperationCancellationRequestKey)
+	var sub *redis.PubSub
+	runRedisOperationReportingLatencyMetric("WatchOperationCancellationRequests", func() {
+		sub = r.client.Subscribe(ctx, watchOperationCancellationRequestKey)
+	})
 
 	resultChan := make(chan ports.OperationCancellationRequest, 100)
 
