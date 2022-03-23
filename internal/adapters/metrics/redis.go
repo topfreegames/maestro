@@ -34,8 +34,6 @@ var (
 		Help:      "Redis fails counter metric",
 		Labels: []string{
 			monitoring.LabelStorage,
-			monitoring.LabelOperation,
-			monitoring.LabelScheduler,
 		},
 	})
 
@@ -46,7 +44,6 @@ var (
 		Help:      "Redis latency metric",
 		Labels: []string{
 			monitoring.LabelStorage,
-			monitoring.LabelOperation,
 		},
 	})
 )
