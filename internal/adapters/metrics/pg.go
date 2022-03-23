@@ -30,7 +30,7 @@ var (
 	PostgresFailsCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
-		Name:      "postgres_fails_counter_metric",
+		Name:      "postgres_fails",
 		Help:      "Postgres fails counter metric",
 		Labels: []string{
 			monitoring.LabelStorage,
@@ -42,7 +42,7 @@ var (
 	PostgresLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
-		Name:      "postgres_latency_metric",
+		Name:      "postgres_operation",
 		Help:      "Postgres latency metric",
 		Labels: []string{
 			monitoring.LabelStorage,
