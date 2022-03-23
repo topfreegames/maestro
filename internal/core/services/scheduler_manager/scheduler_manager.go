@@ -24,10 +24,7 @@ package scheduler_manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
-
-	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -215,15 +212,15 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 }
 
 func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, schedulerName, newVersion string) (*operation.Operation, error) {
-	_, err := s.GetSchedulerByVersion(ctx, schedulerName, newVersion)
-	if err != nil {
-		if errors.Is(err, portsErrors.ErrNotFound) {
-			s.logger.Sugar().Warnf("scheduler \"%s\" version \"%s\" not found", schedulerName, newVersion)
-			return nil, portsErrors.NewErrNotFound("scheduler \"%s\" version \"%s\" not found", schedulerName, newVersion)
-		}
-		s.logger.Sugar().Error("scheduler \"%s\" version \"%s\" could not be fetched", schedulerName, newVersion, zap.Error(err))
-		return nil, err
-	}
+	//_, err := s.GetSchedulerByVersion(ctx, schedulerName, newVersion)
+	//if err != nil {
+	//	if errors.Is(err, portsErrors.ErrNotFound) {
+	//		s.logger.Sugar().Warnf("scheduler \"%s\" version \"%s\" not found", schedulerName, newVersion)
+	//		return nil, portsErrors.NewErrNotFound("scheduler \"%s\" version \"%s\" not found", schedulerName, newVersion)
+	//	}
+	//	s.logger.Sugar().Error("scheduler \"%s\" version \"%s\" could not be fetched", schedulerName, newVersion, zap.Error(err))
+	//	return nil, err
+	//}
 	opDef := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newVersion}
 	op, err := s.operationManager.CreateOperation(ctx, schedulerName, opDef)
 	if err != nil {
