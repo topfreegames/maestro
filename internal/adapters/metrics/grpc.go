@@ -20,22 +20,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package monitoring
+package metrics
 
-const (
-	Namespace       = "maestro"
-	SubsystemApi    = "api"
-	SubsystemWorker = "worker"
+import (
+	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
-const (
-	LabelService   = "service"
-	LabelMethod    = "method"
-	LabelCode      = "code"
-	LabelPlatform  = "platform"
-	LabelSuccess   = "success"
-	LabelReason    = "reason"
-	LabelScheduler = "scheduler"
-	LabelOperation = "operation"
-	LabelStorage   = "storage"
+var (
+	GrpcLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "grpc_request",
+		Help:      "Grpc latency metric",
+		Labels: []string{
+			monitoring.LabelService,
+			monitoring.LabelMethod,
+			monitoring.LabelCode,
+		},
+	})
 )

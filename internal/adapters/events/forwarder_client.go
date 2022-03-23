@@ -65,7 +65,9 @@ func (f *forwarderClient) SendRoomEvent(ctx context.Context, forwarder forwarder
 	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout*time.Millisecond)
 	defer cancel()
 
-	return client.SendRoomEvent(ctx, in)
+	return runReportingLatencyMetrics("SendRoomEvent", func() (*pb.Response, error) {
+		return client.SendRoomEvent(ctx, in)
+	})
 }
 
 func (f *forwarderClient) SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus) (*pb.Response, error) {
@@ -76,8 +78,9 @@ func (f *forwarderClient) SendRoomReSync(ctx context.Context, forwarder forwarde
 
 	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout*time.Millisecond)
 	defer cancel()
-
-	return client.SendRoomResync(ctx, in)
+	return runReportingLatencyMetrics("SendRoomResync", func() (*pb.Response, error) {
+		return client.SendRoomResync(ctx, in)
+	})
 }
 
 func (f *forwarderClient) SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent) (*pb.Response, error) {
@@ -88,8 +91,9 @@ func (f *forwarderClient) SendPlayerEvent(ctx context.Context, forwarder forward
 
 	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout*time.Millisecond)
 	defer cancel()
-
-	return client.SendPlayerEvent(ctx, in)
+	return runReportingLatencyMetrics("SendPlayerEvent", func() (*pb.Response, error) {
+		return client.SendPlayerEvent(ctx, in)
+	})
 }
 
 func (f *forwarderClient) CacheFlush() {
