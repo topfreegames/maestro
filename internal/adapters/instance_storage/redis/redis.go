@@ -26,6 +26,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/adapters/metrics"
 	"strings"
 
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -42,10 +43,15 @@ type redisInstanceStorage struct {
 	scanPageSize int64
 }
 
-func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string, instanceId string) (*game_room.Instance, error) {
-	var instance game_room.Instance
+const instanceStorageMetricLabel = "instance-storage"
+
+func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string, instanceId string) (instance *game_room.Instance, err error) {
+	var instanceJson string
 	podMapRedisKey := getPodMapRedisKey(scheduler)
-	instanceJson, err := r.client.HGet(ctx, podMapRedisKey, instanceId).Result()
+	metrics.RunWithMetrics(instanceStorageMetricLabel, func() error {
+		instanceJson, err = r.client.HGet(ctx, podMapRedisKey, instanceId).Result()
+		return err
+	})
 	if err == redis.Nil {
 		return nil, errors.NewErrNotFound("instance %s not found in scheduler %s", instanceId, scheduler)
 	}
@@ -56,7 +62,7 @@ func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string,
 	if err != nil {
 		return nil, errors.NewErrEncoding("error unmarshalling room %s json", instanceId).WithError(err)
 	}
-	return &instance, nil
+	return instance, nil
 }
 
 func (r redisInstanceStorage) UpsertInstance(ctx context.Context, instance *game_room.Instance) error {
@@ -68,16 +74,23 @@ func (r redisInstanceStorage) UpsertInstance(ctx context.Context, instance *game
 		return errors.NewErrUnexpected("error marshalling room %s json", instance.ID).WithError(err)
 	}
 	podMapRedisKey := getPodMapRedisKey(instance.SchedulerID)
-	err = r.client.HSet(ctx, podMapRedisKey, instance.ID, instanceJson).Err()
+	metrics.RunWithMetrics(instanceStorageMetricLabel, func() error {
+		err = r.client.HSet(ctx, podMapRedisKey, instance.ID, instanceJson).Err()
+		return err
+	})
 	if err != nil {
 		return errors.NewErrUnexpected("error updating member %s from hash %s", instance.ID, podMapRedisKey).WithError(err)
 	}
 	return nil
 }
 
-func (r redisInstanceStorage) DeleteInstance(ctx context.Context, scheduler string, instanceId string) error {
+func (r redisInstanceStorage) DeleteInstance(ctx context.Context, scheduler string, instanceId string) (err error) {
 	podMapRedisKey := getPodMapRedisKey(scheduler)
-	deleted, err := r.client.HDel(ctx, getPodMapRedisKey(scheduler), instanceId).Result()
+	var deleted int64
+	metrics.RunWithMetrics(instanceStorageMetricLabel, func() error {
+		deleted, err = r.client.HDel(ctx, getPodMapRedisKey(scheduler), instanceId).Result()
+		return err
+	})
 	if err != nil {
 		return errors.NewErrUnexpected("error removing member %s from hash %s", instanceId, podMapRedisKey).WithError(err)
 	}
@@ -95,8 +108,12 @@ func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler str
 	for {
 		var err error
 		var results []string
+		var resultCursor uint64
 
-		results, resultCursor, err := client.HScan(ctx, redisKey, cursor, "*", r.scanPageSize).Result()
+		metrics.RunWithMetrics(instanceStorageMetricLabel, func() error {
+			results, resultCursor, err = client.HScan(ctx, redisKey, cursor, "*", r.scanPageSize).Result()
+			return err
+		})
 		cursor = resultCursor
 		if err != nil {
 			return nil, errors.NewErrUnexpected("error scanning %s on redis", redisKey).WithError(err)
@@ -118,13 +135,17 @@ func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler str
 	return instances, nil
 }
 
-func (r redisInstanceStorage) GetInstanceCount(ctx context.Context, scheduler string) (int, error) {
+func (r redisInstanceStorage) GetInstanceCount(ctx context.Context, scheduler string) (count int, err error) {
 	podMapRedisKey := getPodMapRedisKey(scheduler)
-	count, err := r.client.HLen(ctx, podMapRedisKey).Result()
+	var resultCount int64
+	metrics.RunWithMetrics(instanceStorageMetricLabel, func() error {
+		resultCount, err = r.client.HLen(ctx, podMapRedisKey).Result()
+		return err
+	})
 	if err != nil {
 		return 0, errors.NewErrUnexpected("error counting %s on redis", podMapRedisKey).WithError(err)
 	}
-	return int(count), nil
+	return int(resultCount), nil
 }
 
 var _ ports.GameRoomInstanceStorage = (*redisInstanceStorage)(nil)

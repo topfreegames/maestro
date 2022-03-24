@@ -26,6 +26,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/adapters/metrics"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
@@ -36,6 +37,8 @@ import (
 
 var _ ports.OperationFlow = (*redisOperationFlow)(nil)
 var watchOperationCancellationRequestKey = "scheduler:operation_cancellation_requests"
+
+const operationFlowStorageMetricLabel = "operation-flow-storage"
 
 // redisOperationFlow adapter of the OperationStorage port. It stores
 // the operations in lists to keep their creation/update order.
@@ -50,7 +53,7 @@ func NewRedisOperationFlow(client *redis.Client) *redisOperationFlow {
 // InsertOperationID pushes the operation ID to the scheduler pending
 // operations list.
 func (r *redisOperationFlow) InsertOperationID(ctx context.Context, schedulerName string, operationID string) (err error) {
-	runWithMetrics(OperationFlowStorageLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
 		err = r.client.RPush(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), operationID).Err()
 		return err
 	})
@@ -65,7 +68,7 @@ func (r *redisOperationFlow) InsertOperationID(ctx context.Context, schedulerNam
 // pending_operations list.
 func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName string) (opId string, err error) {
 	var opIDs []string
-	runWithMetrics(OperationFlowStorageLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
 		opIDs, err = r.client.BLPop(ctx, 0, r.buildSchedulerPendingOperationsKey(schedulerName)).Result()
 		return err
 	})
@@ -84,7 +87,7 @@ func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName 
 }
 
 func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) (operationsIDs []string, err error) {
-	runWithMetrics(OperationFlowStorageLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
 		operationsIDs, err = r.client.LRange(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), 0, -1).Result()
 		return err
 	})
@@ -101,7 +104,7 @@ func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Con
 		return fmt.Errorf("failed to marshal operation cancellation request to string: %w", err)
 	}
 
-	runWithMetrics(OperationFlowStorageLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
 		err = r.client.Publish(ctx, watchOperationCancellationRequestKey, string(requestAsString)).Err()
 		return err
 	})
@@ -114,7 +117,7 @@ func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Con
 
 func (r *redisOperationFlow) WatchOperationCancellationRequests(ctx context.Context) chan ports.OperationCancellationRequest {
 	var sub *redis.PubSub
-	runWithMetrics(OperationFlowStorageLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
 		sub = r.client.Subscribe(ctx, watchOperationCancellationRequestKey)
 		return nil
 	})

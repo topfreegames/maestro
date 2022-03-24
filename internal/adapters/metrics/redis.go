@@ -23,7 +23,9 @@
 package metrics
 
 import (
+	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
+	"time"
 )
 
 var (
@@ -47,3 +49,18 @@ var (
 		},
 	})
 )
+
+func RunWithMetrics(storage string, executionFunction func() error) {
+	start := time.Now()
+	err := executionFunction()
+	if err != nil && err != redis.Nil {
+		ReportOperationFlowStorageFailsCounterMetric(storage)
+	}
+	monitoring.ReportLatencyMetricInMillis(
+		RedisLatencyMetric, start, storage,
+	)
+}
+
+func ReportOperationFlowStorageFailsCounterMetric(storage string) {
+	RedisFailsCounterMetric.WithLabelValues(storage).Inc()
+}
