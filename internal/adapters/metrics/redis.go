@@ -51,17 +51,17 @@ var (
 	})
 )
 
-func RunWithMetrics(storage string, executionFunction func() error) {
+func RunWithMetrics(storageLabel string, executionFunction func() error) {
 	start := time.Now()
 	err := executionFunction()
 	if err != nil && err != redis.Nil {
-		ReportOperationFlowStorageFailsCounterMetric(storage)
+		ReportOperationFlowStorageFailsCounterMetric(storageLabel)
 	}
 	monitoring.ReportLatencyMetricInMillis(
-		RedisLatencyMetric, start, storage,
+		RedisLatencyMetric, start, storageLabel,
 	)
 }
 
-func ReportOperationFlowStorageFailsCounterMetric(storage string) {
-	RedisFailsCounterMetric.WithLabelValues(storage).Inc()
+func ReportOperationFlowStorageFailsCounterMetric(storageLabel string) {
+	RedisFailsCounterMetric.WithLabelValues(storageLabel).Inc()
 }
