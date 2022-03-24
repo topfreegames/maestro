@@ -74,18 +74,18 @@ var (
 	})
 )
 
-func reportRoomEventForwardingSuccess(schedulerName string) {
+func reportRoomEventForwardingSuccess(game, schedulerName string) {
 	successRoomEventForwardingMetric.WithLabelValues(schedulerName).Inc()
 }
 
-func reportPlayerEventForwardingSuccess(schedulerName string) {
+func reportPlayerEventForwardingSuccess(game, schedulerName string) {
 	successPlayerEventForwardingMetric.WithLabelValues(schedulerName).Inc()
 }
 
-func reportRoomEventForwardingFailed(schedulerName string) {
+func reportRoomEventForwardingFailed(game, schedulerName string) {
 	failedRoomEventForwardingMetric.WithLabelValues(schedulerName).Inc()
 }
 
-func reportPlayerEventForwardingFailed(schedulerName string) {
+func reportPlayerEventForwardingFailed(game, schedulerName string) {
 	failedPlayerEventForwardingMetric.WithLabelValues(schedulerName).Inc()
 }

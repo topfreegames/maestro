@@ -104,12 +104,12 @@ func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *event
 					es.logger.Error(fmt.Sprintf("Failed to get instance for room \"%v\" from scheduler \"%v\" info", event.RoomID, event.SchedulerID), zap.Error(err))
 					return err
 				}
-				err = es.forwardRoomEvent(ctx, event, eventType, *instance, *scheduler, _forwarder)
+				err = es.forwardRoomEvent(ctx, event, eventType, instance, scheduler, _forwarder)
 				if err != nil {
 					return err
 				}
 			case events.PlayerEvent:
-				err = es.forwardPlayerEvent(ctx, event, eventType, _forwarder)
+				err = es.forwardPlayerEvent(ctx, event, eventType, scheduler, _forwarder)
 				if err != nil {
 					return err
 				}
@@ -126,8 +126,8 @@ func (es *EventsForwarderService) forwardRoomEvent(
 	ctx context.Context,
 	event *events.Event,
 	eventType string,
-	instance game_room.Instance,
-	scheduler entities.Scheduler,
+	instance *game_room.Instance,
+	scheduler *entities.Scheduler,
 	_forwarder *forwarder.Forwarder,
 ) error {
 	selectedPort, err := es.selectPort(instance.Address)
@@ -163,12 +163,12 @@ func (es *EventsForwarderService) forwardRoomEvent(
 	}
 	err = es.eventsForwarder.ForwardRoomEvent(ctx, roomAttributes, *_forwarder)
 	if err != nil {
-		reportRoomEventForwardingFailed(event.SchedulerID)
+		reportRoomEventForwardingFailed(scheduler.Game, event.SchedulerID)
 		es.logger.Error(fmt.Sprintf("Failed to forward room events for room %s and scheduler %s", event.RoomID, event.SchedulerID), zap.Error(err))
 		return err
 	}
 
-	reportRoomEventForwardingSuccess(event.SchedulerID)
+	reportRoomEventForwardingSuccess(scheduler.Game, event.SchedulerID)
 	return nil
 }
 
@@ -176,6 +176,7 @@ func (es *EventsForwarderService) forwardPlayerEvent(
 	ctx context.Context,
 	event *events.Event,
 	eventType string,
+	scheduler *entities.Scheduler,
 	_forwarder *forwarder.Forwarder,
 ) error {
 	playerId, err := es.getPlayerInfo(event)
@@ -197,11 +198,11 @@ func (es *EventsForwarderService) forwardPlayerEvent(
 
 	err = es.eventsForwarder.ForwardPlayerEvent(ctx, playerAttributes, *_forwarder)
 	if err != nil {
-		reportPlayerEventForwardingFailed(event.SchedulerID)
+		reportPlayerEventForwardingFailed(scheduler.Game, event.SchedulerID)
 		es.logger.Error(fmt.Sprintf("Failed to forward player events for room %s and scheduler %s", event.RoomID, event.SchedulerID), zap.Error(err))
 		return err
 	}
-	reportPlayerEventForwardingSuccess(event.SchedulerID)
+	reportPlayerEventForwardingSuccess(scheduler.Game, event.SchedulerID)
 	return nil
 }
 
