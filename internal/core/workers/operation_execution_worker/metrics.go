@@ -43,6 +43,7 @@ var (
 		Name:      "operation_execution",
 		Help:      "An scheduler operation was executed",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 			monitoring.LabelOperation,
 			monitoring.LabelSuccess,
@@ -55,6 +56,7 @@ var (
 		Name:      "operation_on_error",
 		Help:      "An scheduler operation on error fallback was executed",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 			monitoring.LabelOperation,
 			monitoring.LabelSuccess,
@@ -67,6 +69,7 @@ var (
 		Name:      "operation_evicted",
 		Help:      "An scheduler operation was evicted",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 			monitoring.LabelOperation,
 			monitoring.LabelReason,
@@ -79,30 +82,31 @@ var (
 		Name:      "operation_execution_worker_failed",
 		Help:      "An scheduler operation execution worker failed and is no longer running",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 			monitoring.LabelReason,
 		},
 	})
 )
 
-func reportOperationExecutionLatency(start time.Time, schedulerName, operationName string, success bool) {
+func reportOperationExecutionLatency(start time.Time, game, schedulerName, operationName string, success bool) {
 	successLabelValue := fmt.Sprint(success)
 	monitoring.ReportLatencyMetricInMillis(
-		operationExecutionLatencyMetric, start, schedulerName, operationName, successLabelValue,
+		operationExecutionLatencyMetric, start, game, schedulerName, operationName, successLabelValue,
 	)
 }
 
-func reportOperationOnErrorLatency(start time.Time, schedulerName, operationName string, success bool) {
+func reportOperationOnErrorLatency(start time.Time, game, schedulerName, operationName string, success bool) {
 	successLabelValue := fmt.Sprint(success)
 	monitoring.ReportLatencyMetricInMillis(
-		operationOnErrorLatencyMetric, start, schedulerName, operationName, successLabelValue,
+		operationOnErrorLatencyMetric, start, game, schedulerName, operationName, successLabelValue,
 	)
 }
 
-func reportOperationEvicted(schedulerName, operationName, reason string) {
-	operationEvictedCountMetric.WithLabelValues(schedulerName, operationName, reason).Inc()
+func reportOperationEvicted(game, schedulerName, operationName, reason string) {
+	operationEvictedCountMetric.WithLabelValues(game, schedulerName, operationName, reason).Inc()
 }
 
-func reportOperationExecutionWorkerFailed(schedulerName, reason string) {
-	operationExecutionWorkerFailedCountMetric.WithLabelValues(schedulerName, reason).Inc()
+func reportOperationExecutionWorkerFailed(game, schedulerName, reason string) {
+	operationExecutionWorkerFailedCountMetric.WithLabelValues(game, schedulerName, reason).Inc()
 }

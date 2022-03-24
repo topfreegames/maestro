@@ -45,6 +45,7 @@ var _ workers.Worker = (*OperationExecutionWorker)(nil)
 // responsibilities.
 type OperationExecutionWorker struct {
 	schedulerName    string
+	game             string
 	operationManager ports.OperationManager
 	// TODO(gabrielcorado): check if we this is the right place to have all
 	// executors.
@@ -59,6 +60,7 @@ func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *workers.Wo
 	return &OperationExecutionWorker{
 		operationManager: opts.OperationManager,
 		executorsByName:  opts.OperationExecutors,
+		game:             scheduler.Game,
 		schedulerName:    scheduler.Name,
 		logger:           zap.L().With(zap.String(logs.LogFieldServiceName, "worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
@@ -78,7 +80,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			}
 
 			w.Stop(ctx)
-			reportOperationExecutionWorkerFailed(w.schedulerName, LabelNextOperationFailed)
+			reportOperationExecutionWorkerFailed(w.game, w.schedulerName, LabelNextOperationFailed)
 			return fmt.Errorf("failed to get next operation: %w", err)
 		}
 
@@ -98,14 +100,14 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			loopLogger.Warn("operation definition has no executor")
 
 			w.evictOperation(ctx, loopLogger, op)
-			reportOperationEvicted(w.schedulerName, op.DefinitionName, LabelNoOperationExecutorFound)
+			reportOperationEvicted(w.game, w.schedulerName, op.DefinitionName, LabelNoOperationExecutorFound)
 
 			continue
 		}
 
 		if !def.ShouldExecute(ctx, []*operation.Operation{}) {
 			w.evictOperation(ctx, loopLogger, op)
-			reportOperationEvicted(w.schedulerName, op.DefinitionName, LabelShouldNotExecute)
+			reportOperationEvicted(w.game, w.schedulerName, op.DefinitionName, LabelShouldNotExecute)
 			continue
 		}
 
@@ -117,7 +119,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		err = w.operationManager.GrantLease(operationContext, op)
 		if err != nil {
 			w.Stop(ctx)
-			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
+			reportOperationExecutionWorkerFailed(w.game, w.schedulerName, LabelStartOperationFailed)
 			operationCancellationFunction()
 
 			op.Status = operation.StatusError
@@ -142,7 +144,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				loopLogger.Error("failed to start operation", zap.Error(err))
 			}
 
-			reportOperationExecutionWorkerFailed(w.schedulerName, LabelStartOperationFailed)
+			reportOperationExecutionWorkerFailed(w.game, w.schedulerName, LabelStartOperationFailed)
 
 			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to start operation")
 
@@ -150,7 +152,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		}
 		w.operationManager.StartLeaseRenewGoRoutine(operationContext, op)
 
-		executionErr := executeCollectingLatencyMetrics(w.schedulerName, op.DefinitionName, func() error {
+		executionErr := w.executeCollectingLatencyMetrics(op.DefinitionName, func() error {
 			return executor.Execute(operationContext, op, def)
 		})
 
@@ -165,7 +167,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 			loopLogger.Error("operation execution failed", zap.Error(executionErr))
 
-			onErrorErr := executeOnErrorCollectingLatencyMetrics(w.schedulerName, op.DefinitionName, func() error {
+			onErrorErr := w.executeOnErrorCollectingLatencyMetrics(op.DefinitionName, func() error {
 				return executor.OnError(operationContext, op, def, executionErr)
 			})
 
@@ -212,16 +214,16 @@ func (w *OperationExecutionWorker) evictOperation(ctx context.Context, logger *z
 	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation evicted")
 }
 
-func executeCollectingLatencyMetrics(schedulerName, definitionName string, f func() error) (err error) {
+func (w *OperationExecutionWorker) executeCollectingLatencyMetrics(definitionName string, f func() error) (err error) {
 	executeStartTime := time.Now()
 	err = f()
-	reportOperationExecutionLatency(executeStartTime, schedulerName, definitionName, err == nil)
+	reportOperationExecutionLatency(executeStartTime, w.game, w.schedulerName, definitionName, err == nil)
 	return err
 }
 
-func executeOnErrorCollectingLatencyMetrics(schedulerName, definitionName string, f func() error) (err error) {
+func (w *OperationExecutionWorker) executeOnErrorCollectingLatencyMetrics(definitionName string, f func() error) (err error) {
 	onErrorStartTime := time.Now()
 	err = f()
-	reportOperationOnErrorLatency(onErrorStartTime, schedulerName, definitionName, err == nil)
+	reportOperationOnErrorLatency(onErrorStartTime, w.game, w.schedulerName, definitionName, err == nil)
 	return err
 }
