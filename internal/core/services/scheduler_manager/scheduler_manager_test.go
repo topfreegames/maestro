@@ -365,10 +365,6 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
-		//schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
-		//	Name:    scheduler.Name,
-		//	Version: scheduler.Spec.Version,
-		//}).Return(scheduler, nil)
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(&operation.Operation{}, nil)
 
 		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
@@ -392,11 +388,6 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
-		//schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
-		//	Name:    scheduler.Name,
-		//	Version: scheduler.Spec.Version,
-		//}).Return(scheduler, nil)
-
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
 
 		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
@@ -404,56 +395,6 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		require.ErrorIs(t, err, errors.ErrUnexpected)
 		require.Contains(t, err.Error(), "failed to schedule switch_active_version operation:")
 	})
-
-	//t.Run("return error when error not found fetching scheduler version to switch", func(t *testing.T) {
-	//	currentScheduler := newValidScheduler()
-	//	currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
-	//
-	//	scheduler := newValidScheduler()
-	//	scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
-	//
-	//	ctx := context.Background()
-	//	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-	//	operationManager := mock.NewMockOperationManager(mockCtrl)
-	//	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-	//	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-	//	schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
-	//
-	//	schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
-	//		Name:    scheduler.Name,
-	//		Version: scheduler.Spec.Version,
-	//	}).Return(scheduler, errors.NewErrNotFound("error"))
-	//
-	//	op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
-	//	require.Nil(t, op)
-	//	require.ErrorIs(t, err, errors.ErrNotFound)
-	//	require.Contains(t, err.Error(), "not found")
-	//})
-
-	//t.Run("return error when error unexpected fetching scheduler version to switch", func(t *testing.T) {
-	//	currentScheduler := newValidScheduler()
-	//	currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
-	//
-	//	scheduler := newValidScheduler()
-	//	scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
-	//
-	//	ctx := context.Background()
-	//	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-	//	operationManager := mock.NewMockOperationManager(mockCtrl)
-	//	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-	//	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-	//	schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
-	//
-	//	schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
-	//		Name:    scheduler.Name,
-	//		Version: scheduler.Spec.Version,
-	//	}).Return(scheduler, errors.NewErrUnexpected("error"))
-	//
-	//	op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
-	//	require.Nil(t, op)
-	//	require.ErrorIs(t, err, errors.ErrUnexpected)
-	//	require.Contains(t, err.Error(), "error")
-	//})
 }
 
 func TestGetSchedulerVersions(t *testing.T) {

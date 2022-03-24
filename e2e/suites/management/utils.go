@@ -308,3 +308,22 @@ func waitForOperationToFail(t *testing.T, managementApiClient *framework.APIClie
 		return false
 	}, 4*time.Minute, time.Second)
 }
+
+func waitForOperationToFailById(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operationId string) {
+	require.Eventually(t, func() bool {
+		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
+		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
+		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		require.NoError(t, err)
+
+		if len(listOperationsResponse.FinishedOperations) >= 1 {
+			for _, _operation := range listOperationsResponse.FinishedOperations {
+				if _operation.Id == operationId && _operation.Status == "error" {
+					return true
+				}
+			}
+		}
+
+		return false
+	}, 4*time.Minute, time.Second)
+}
