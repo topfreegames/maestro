@@ -416,7 +416,9 @@ func TestSwitchActiveVersion(t *testing.T) {
 			switchActiveVersionResponse := &maestroApiV1.SwitchActiveVersionResponse{}
 
 			err = managementApiClient.Do("PUT", fmt.Sprintf("/schedulers/%s", scheduler.Name), switchActiveVersionRequest, switchActiveVersionResponse)
-			require.Error(t, err)
+			require.NoError(t, err)
+
+			waitForOperationToFailById(t, managementApiClient, scheduler.Name, switchActiveVersionResponse.OperationId)
 		})
 
 		t.Run("Fail - adding forwarders crashes (testing scheduler cache)", func(t *testing.T) {

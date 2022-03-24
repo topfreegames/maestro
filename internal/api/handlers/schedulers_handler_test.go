@@ -1083,7 +1083,6 @@ func TestSwitchActiveVersion(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
-		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
 
 		mux := runtime.NewServeMux()
@@ -1104,29 +1103,6 @@ func TestSwitchActiveVersion(t *testing.T) {
 		require.NotEmpty(t, body["operationId"])
 	})
 
-	t.Run("fails when scheduler and target version does not exists", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
-
-		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("err"))
-
-		mux := runtime.NewServeMux()
-		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
-		require.NoError(t, err)
-
-		req, err := http.NewRequest(http.MethodPut, "/schedulers/scheduler-name-1", bytes.NewReader([]byte("{\"version\": \"v2.0.0\"}")))
-		require.NoError(t, err)
-
-		rr := httptest.NewRecorder()
-		mux.ServeHTTP(rr, req)
-
-		require.Equal(t, 404, rr.Code)
-		require.Contains(t, rr.Body.String(), "not found")
-	})
-
 	t.Run("fails when operation enqueue fails since version does not exist", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
@@ -1136,7 +1112,6 @@ func TestSwitchActiveVersion(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
-		schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), gomock.Any()).Return(newValidScheduler(), nil)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil, errors.NewErrUnexpected("internal error"))
 
 		mux := runtime.NewServeMux()
