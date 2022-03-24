@@ -25,8 +25,9 @@ package operation
 import (
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/adapters/metrics"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/adapters/metrics"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"

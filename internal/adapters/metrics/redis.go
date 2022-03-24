@@ -23,9 +23,10 @@
 package metrics
 
 import (
+	"time"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
-	"time"
 )
 
 var (

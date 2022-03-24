@@ -26,8 +26,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/adapters/metrics"
 	"strings"
+
+	"github.com/topfreegames/maestro/internal/adapters/metrics"
 
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
