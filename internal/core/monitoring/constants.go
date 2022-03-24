@@ -36,6 +36,7 @@ const (
 	LabelSuccess   = "success"
 	LabelReason    = "reason"
 	LabelScheduler = "scheduler"
+	LabelGame      = "game"
 	LabelOperation = "operation"
 	LabelStorage   = "storage"
 )

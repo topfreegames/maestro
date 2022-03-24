@@ -43,6 +43,7 @@ var _ workers.Worker = (*MetricsReporterWorker)(nil)
 // MetricsReporterWorker is the service responsible producing periodic metrics.
 type MetricsReporterWorker struct {
 	schedulerName       string
+	game                string
 	config              *config.MetricsReporterConfig
 	roomStorage         ports.RoomStorage
 	instanceStorage     ports.GameRoomInstanceStorage
@@ -54,6 +55,7 @@ type MetricsReporterWorker struct {
 func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
 	return &MetricsReporterWorker{
 		schedulerName:   scheduler.Name,
+		game:            scheduler.Game,
 		config:          opts.MetricsReporterConfig,
 		roomStorage:     opts.RoomStorage,
 		instanceStorage: opts.InstanceStorage,
@@ -115,11 +117,11 @@ func (w *MetricsReporterWorker) reportInstanceMetrics() {
 			terminatingInstances++
 		}
 	}
-	reportInstanceReadyNumber(w.schedulerName, readyInstances)
-	reportInstancePendingNumber(w.schedulerName, pendingInstances)
-	reportInstanceErrorNumber(w.schedulerName, errorInstances)
-	reportInstanceUnknownNumber(w.schedulerName, unknownInstances)
-	reportInstanceTerminatingNumber(w.schedulerName, terminatingInstances)
+	reportInstanceReadyNumber(w.game, w.schedulerName, readyInstances)
+	reportInstancePendingNumber(w.game, w.schedulerName, pendingInstances)
+	reportInstanceErrorNumber(w.game, w.schedulerName, errorInstances)
+	reportInstanceUnknownNumber(w.game, w.schedulerName, unknownInstances)
+	reportInstanceTerminatingNumber(w.game, w.schedulerName, terminatingInstances)
 
 }
 
@@ -139,7 +141,7 @@ func (w *MetricsReporterWorker) reportPendingRooms() {
 		w.logger.Error("Error getting pending pods", zap.Error(err))
 		return
 	}
-	reportGameRoomPendingNumber(w.schedulerName, pendingRooms)
+	reportGameRoomPendingNumber(w.game, w.schedulerName, pendingRooms)
 }
 
 func (w *MetricsReporterWorker) reportReadyRooms() {
@@ -148,7 +150,7 @@ func (w *MetricsReporterWorker) reportReadyRooms() {
 		w.logger.Error("Error getting ready pods", zap.Error(err))
 		return
 	}
-	reportGameRoomReadyNumber(w.schedulerName, readyRooms)
+	reportGameRoomReadyNumber(w.game, w.schedulerName, readyRooms)
 }
 
 func (w *MetricsReporterWorker) reportOccupiedRooms() {
@@ -157,7 +159,7 @@ func (w *MetricsReporterWorker) reportOccupiedRooms() {
 		w.logger.Error("Error getting occupied pods", zap.Error(err))
 		return
 	}
-	reportGameRoomOccupiedNumber(w.schedulerName, occupiedRooms)
+	reportGameRoomOccupiedNumber(w.game, w.schedulerName, occupiedRooms)
 }
 
 func (w *MetricsReporterWorker) reportTerminatingRooms() {
@@ -166,7 +168,7 @@ func (w *MetricsReporterWorker) reportTerminatingRooms() {
 		w.logger.Error("Error getting terminating pods", zap.Error(err))
 		return
 	}
-	reportGameRoomTerminatingNumber(w.schedulerName, terminatingRooms)
+	reportGameRoomTerminatingNumber(w.game, w.schedulerName, terminatingRooms)
 }
 
 func (w *MetricsReporterWorker) reportErrorRooms() {
@@ -175,7 +177,7 @@ func (w *MetricsReporterWorker) reportErrorRooms() {
 		w.logger.Error("Error getting error pods", zap.Error(err))
 		return
 	}
-	reportGameRoomErrorNumber(w.schedulerName, errorRooms)
+	reportGameRoomErrorNumber(w.game, w.schedulerName, errorRooms)
 }
 
 func (w *MetricsReporterWorker) reportUnreadyRooms() {
@@ -184,5 +186,5 @@ func (w *MetricsReporterWorker) reportUnreadyRooms() {
 		w.logger.Error("Error getting unready pods", zap.Error(err))
 		return
 	}
-	reportGameRoomUnreadyNumber(w.schedulerName, unreadyRooms)
+	reportGameRoomUnreadyNumber(w.game, w.schedulerName, unreadyRooms)
 }
