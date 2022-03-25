@@ -44,8 +44,7 @@ var _ workers.Worker = (*OperationExecutionWorker)(nil)
 // OperationExecutionWorker is the service responsible for implementing the worker
 // responsibilities.
 type OperationExecutionWorker struct {
-	schedulerName    string
-	game             string
+	scheduler        *entities.Scheduler
 	operationManager ports.OperationManager
 	// TODO(gabrielcorado): check if we this is the right place to have all
 	// executors.
@@ -60,8 +59,7 @@ func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *workers.Wo
 	return &OperationExecutionWorker{
 		operationManager: opts.OperationManager,
 		executorsByName:  opts.OperationExecutors,
-		game:             scheduler.Game,
-		schedulerName:    scheduler.Name,
+		scheduler:        scheduler,
 		logger:           zap.L().With(zap.String(logs.LogFieldServiceName, "worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
@@ -73,14 +71,14 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
 
 	for {
-		op, def, err := w.operationManager.NextSchedulerOperation(w.workerContext, w.schedulerName)
+		op, def, err := w.operationManager.NextSchedulerOperation(w.workerContext, w.scheduler.Name)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return nil
 			}
 
 			w.Stop(ctx)
-			reportOperationExecutionWorkerFailed(w.game, w.schedulerName, LabelNextOperationFailed)
+			reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelNextOperationFailed)
 			return fmt.Errorf("failed to get next operation: %w", err)
 		}
 
@@ -100,14 +98,14 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			loopLogger.Warn("operation definition has no executor")
 
 			w.evictOperation(ctx, loopLogger, op)
-			reportOperationEvicted(w.game, w.schedulerName, op.DefinitionName, LabelNoOperationExecutorFound)
+			reportOperationEvicted(w.scheduler.Game, w.scheduler.Name, op.DefinitionName, LabelNoOperationExecutorFound)
 
 			continue
 		}
 
 		if !def.ShouldExecute(ctx, []*operation.Operation{}) {
 			w.evictOperation(ctx, loopLogger, op)
-			reportOperationEvicted(w.game, w.schedulerName, op.DefinitionName, LabelShouldNotExecute)
+			reportOperationEvicted(w.scheduler.Game, w.scheduler.Name, op.DefinitionName, LabelShouldNotExecute)
 			continue
 		}
 
@@ -119,7 +117,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		err = w.operationManager.GrantLease(operationContext, op)
 		if err != nil {
 			w.Stop(ctx)
-			reportOperationExecutionWorkerFailed(w.game, w.schedulerName, LabelStartOperationFailed)
+			reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelStartOperationFailed)
 			operationCancellationFunction()
 
 			op.Status = operation.StatusError
@@ -144,7 +142,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				loopLogger.Error("failed to start operation", zap.Error(err))
 			}
 
-			reportOperationExecutionWorkerFailed(w.game, w.schedulerName, LabelStartOperationFailed)
+			reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelStartOperationFailed)
 
 			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to start operation")
 
@@ -217,13 +215,13 @@ func (w *OperationExecutionWorker) evictOperation(ctx context.Context, logger *z
 func (w *OperationExecutionWorker) executeCollectingLatencyMetrics(definitionName string, f func() error) (err error) {
 	executeStartTime := time.Now()
 	err = f()
-	reportOperationExecutionLatency(executeStartTime, w.game, w.schedulerName, definitionName, err == nil)
+	reportOperationExecutionLatency(executeStartTime, w.scheduler.Game, w.scheduler.Name, definitionName, err == nil)
 	return err
 }
 
 func (w *OperationExecutionWorker) executeOnErrorCollectingLatencyMetrics(definitionName string, f func() error) (err error) {
 	onErrorStartTime := time.Now()
 	err = f()
-	reportOperationOnErrorLatency(onErrorStartTime, w.game, w.schedulerName, definitionName, err == nil)
+	reportOperationOnErrorLatency(onErrorStartTime, w.scheduler.Game, w.scheduler.Name, definitionName, err == nil)
 	return err
 }
