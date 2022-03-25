@@ -42,7 +42,7 @@ var _ workers.Worker = (*MetricsReporterWorker)(nil)
 
 // MetricsReporterWorker is the service responsible producing periodic metrics.
 type MetricsReporterWorker struct {
-	schedulerName       string
+	scheduler           *entities.Scheduler
 	config              *config.MetricsReporterConfig
 	roomStorage         ports.RoomStorage
 	instanceStorage     ports.GameRoomInstanceStorage
@@ -53,7 +53,7 @@ type MetricsReporterWorker struct {
 
 func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
 	return &MetricsReporterWorker{
-		schedulerName:   scheduler.Name,
+		scheduler:       scheduler,
 		config:          opts.MetricsReporterConfig,
 		roomStorage:     opts.RoomStorage,
 		instanceStorage: opts.InstanceStorage,
@@ -95,7 +95,7 @@ func (w *MetricsReporterWorker) IsRunning() bool {
 func (w *MetricsReporterWorker) reportInstanceMetrics() {
 	w.logger.Info("Reporting instance metrics")
 
-	instances, err := w.instanceStorage.GetAllInstances(w.workerContext, w.schedulerName)
+	instances, err := w.instanceStorage.GetAllInstances(w.workerContext, w.scheduler.Name)
 	if err != nil {
 		w.logger.Error("Error getting pods", zap.Error(err))
 		return
@@ -115,11 +115,11 @@ func (w *MetricsReporterWorker) reportInstanceMetrics() {
 			terminatingInstances++
 		}
 	}
-	reportInstanceReadyNumber(w.schedulerName, readyInstances)
-	reportInstancePendingNumber(w.schedulerName, pendingInstances)
-	reportInstanceErrorNumber(w.schedulerName, errorInstances)
-	reportInstanceUnknownNumber(w.schedulerName, unknownInstances)
-	reportInstanceTerminatingNumber(w.schedulerName, terminatingInstances)
+	reportInstanceReadyNumber(w.scheduler.Game, w.scheduler.Name, readyInstances)
+	reportInstancePendingNumber(w.scheduler.Game, w.scheduler.Name, pendingInstances)
+	reportInstanceErrorNumber(w.scheduler.Game, w.scheduler.Name, errorInstances)
+	reportInstanceUnknownNumber(w.scheduler.Game, w.scheduler.Name, unknownInstances)
+	reportInstanceTerminatingNumber(w.scheduler.Game, w.scheduler.Name, terminatingInstances)
 
 }
 
@@ -134,55 +134,55 @@ func (w *MetricsReporterWorker) reportGameRoomMetrics() {
 }
 
 func (w *MetricsReporterWorker) reportPendingRooms() {
-	pendingRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusPending)
+	pendingRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusPending)
 	if err != nil {
 		w.logger.Error("Error getting pending pods", zap.Error(err))
 		return
 	}
-	reportGameRoomPendingNumber(w.schedulerName, pendingRooms)
+	reportGameRoomPendingNumber(w.scheduler.Game, w.scheduler.Name, pendingRooms)
 }
 
 func (w *MetricsReporterWorker) reportReadyRooms() {
-	readyRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusReady)
+	readyRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusReady)
 	if err != nil {
 		w.logger.Error("Error getting ready pods", zap.Error(err))
 		return
 	}
-	reportGameRoomReadyNumber(w.schedulerName, readyRooms)
+	reportGameRoomReadyNumber(w.scheduler.Game, w.scheduler.Name, readyRooms)
 }
 
 func (w *MetricsReporterWorker) reportOccupiedRooms() {
-	occupiedRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusOccupied)
+	occupiedRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusOccupied)
 	if err != nil {
 		w.logger.Error("Error getting occupied pods", zap.Error(err))
 		return
 	}
-	reportGameRoomOccupiedNumber(w.schedulerName, occupiedRooms)
+	reportGameRoomOccupiedNumber(w.scheduler.Game, w.scheduler.Name, occupiedRooms)
 }
 
 func (w *MetricsReporterWorker) reportTerminatingRooms() {
-	terminatingRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusTerminating)
+	terminatingRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusTerminating)
 	if err != nil {
 		w.logger.Error("Error getting terminating pods", zap.Error(err))
 		return
 	}
-	reportGameRoomTerminatingNumber(w.schedulerName, terminatingRooms)
+	reportGameRoomTerminatingNumber(w.scheduler.Game, w.scheduler.Name, terminatingRooms)
 }
 
 func (w *MetricsReporterWorker) reportErrorRooms() {
-	errorRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusError)
+	errorRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusError)
 	if err != nil {
 		w.logger.Error("Error getting error pods", zap.Error(err))
 		return
 	}
-	reportGameRoomErrorNumber(w.schedulerName, errorRooms)
+	reportGameRoomErrorNumber(w.scheduler.Game, w.scheduler.Name, errorRooms)
 }
 
 func (w *MetricsReporterWorker) reportUnreadyRooms() {
-	unreadyRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.schedulerName, game_room.GameStatusUnready)
+	unreadyRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusUnready)
 	if err != nil {
 		w.logger.Error("Error getting unready pods", zap.Error(err))
 		return
 	}
-	reportGameRoomUnreadyNumber(w.schedulerName, unreadyRooms)
+	reportGameRoomUnreadyNumber(w.scheduler.Game, w.scheduler.Name, unreadyRooms)
 }

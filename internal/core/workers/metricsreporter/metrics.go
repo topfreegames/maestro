@@ -33,6 +33,7 @@ var (
 		Name:      "gru_ready",
 		Help:      "The number of game rooms with status ready",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -43,6 +44,7 @@ var (
 		Name:      "gru_pending",
 		Help:      "The number of game rooms with status pending",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -53,6 +55,7 @@ var (
 		Name:      "gru_unready",
 		Help:      "The number of game rooms with status unready",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -63,6 +66,7 @@ var (
 		Name:      "gru_terminating",
 		Help:      "The number of game rooms with status terminating",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -72,6 +76,7 @@ var (
 		Name:      "gru_error",
 		Help:      "The number of game rooms with status error",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -81,6 +86,7 @@ var (
 		Name:      "gru_occupied",
 		Help:      "The number of game rooms with status occupied",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -91,6 +97,7 @@ var (
 		Name:      "instance_ready",
 		Help:      "The number of instances with status ready",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -101,6 +108,7 @@ var (
 		Name:      "instance_pending",
 		Help:      "The number of instances with status pending",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -111,6 +119,7 @@ var (
 		Name:      "instance_unknown",
 		Help:      "The number of instances with status unknown",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -121,6 +130,7 @@ var (
 		Name:      "instance_terminating",
 		Help:      "The number of instances with status terminating",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -130,45 +140,46 @@ var (
 		Name:      "instance_error",
 		Help:      "The number of instances with status error",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
 )
 
-func reportGameRoomReadyNumber(schedulerName string, numberOfGameRooms int) {
-	gameRoomReadyGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfGameRooms))
+func reportGameRoomReadyNumber(game, schedulerName string, numberOfGameRooms int) {
+	gameRoomReadyGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfGameRooms))
 }
-func reportGameRoomPendingNumber(schedulerName string, numberOfGameRooms int) {
-	gameRoomPendingGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfGameRooms))
+func reportGameRoomPendingNumber(game, schedulerName string, numberOfGameRooms int) {
+	gameRoomPendingGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfGameRooms))
 }
-func reportGameRoomUnreadyNumber(schedulerName string, numberOfGameRooms int) {
-	gameRoomUnreadyGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfGameRooms))
+func reportGameRoomUnreadyNumber(game, schedulerName string, numberOfGameRooms int) {
+	gameRoomUnreadyGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfGameRooms))
 }
-func reportGameRoomTerminatingNumber(schedulerName string, numberOfGameRooms int) {
-	gameRoomTerminatingGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfGameRooms))
+func reportGameRoomTerminatingNumber(game, schedulerName string, numberOfGameRooms int) {
+	gameRoomTerminatingGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfGameRooms))
 }
-func reportGameRoomErrorNumber(schedulerName string, numberOfGameRooms int) {
-	gameRoomErrorGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfGameRooms))
+func reportGameRoomErrorNumber(game, schedulerName string, numberOfGameRooms int) {
+	gameRoomErrorGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfGameRooms))
 }
-func reportGameRoomOccupiedNumber(schedulerName string, numberOfGameRooms int) {
-	gameRoomOccupiedGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfGameRooms))
-}
-
-func reportInstanceReadyNumber(schedulerName string, numberOfInstances int) {
-	instanceReadyGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfInstances))
+func reportGameRoomOccupiedNumber(game, schedulerName string, numberOfGameRooms int) {
+	gameRoomOccupiedGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfGameRooms))
 }
 
-func reportInstancePendingNumber(schedulerName string, numberOfInstances int) {
-	instancePendingGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfInstances))
+func reportInstanceReadyNumber(game, schedulerName string, numberOfInstances int) {
+	instanceReadyGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfInstances))
 }
 
-func reportInstanceUnknownNumber(schedulerName string, numberOfInstances int) {
-	instanceUnknownGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfInstances))
+func reportInstancePendingNumber(game, schedulerName string, numberOfInstances int) {
+	instancePendingGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfInstances))
 }
 
-func reportInstanceTerminatingNumber(schedulerName string, numberOfInstances int) {
-	instanceTerminatingGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfInstances))
+func reportInstanceUnknownNumber(game, schedulerName string, numberOfInstances int) {
+	instanceUnknownGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfInstances))
 }
-func reportInstanceErrorNumber(schedulerName string, numberOfInstances int) {
-	instanceErrorGaugeMetric.WithLabelValues(schedulerName).Set(float64(numberOfInstances))
+
+func reportInstanceTerminatingNumber(game, schedulerName string, numberOfInstances int) {
+	instanceTerminatingGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfInstances))
+}
+func reportInstanceErrorNumber(game, schedulerName string, numberOfInstances int) {
+	instanceErrorGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfInstances))
 }

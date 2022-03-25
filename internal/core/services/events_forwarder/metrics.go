@@ -33,6 +33,7 @@ var (
 		Name:      "success_room_event_forwarding",
 		Help:      "Current number of room events forwarding with success",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -45,6 +46,7 @@ var (
 		Name:      "success_player_event_forwarding",
 		Help:      "Current number of player events forwarding with success",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -57,6 +59,7 @@ var (
 		Name:      "failed_room_event_forwarding",
 		Help:      "Current number of failed room events forwarding",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
@@ -69,23 +72,24 @@ var (
 		Name:      "failed_player_event_forwarding",
 		Help:      "Current number of failed player events forwarding",
 		Labels: []string{
+			monitoring.LabelGame,
 			monitoring.LabelScheduler,
 		},
 	})
 )
 
-func reportRoomEventForwardingSuccess(schedulerName string) {
-	successRoomEventForwardingMetric.WithLabelValues(schedulerName).Inc()
+func reportRoomEventForwardingSuccess(game, schedulerName string) {
+	successRoomEventForwardingMetric.WithLabelValues(game, schedulerName).Inc()
 }
 
-func reportPlayerEventForwardingSuccess(schedulerName string) {
-	successPlayerEventForwardingMetric.WithLabelValues(schedulerName).Inc()
+func reportPlayerEventForwardingSuccess(game, schedulerName string) {
+	successPlayerEventForwardingMetric.WithLabelValues(game, schedulerName).Inc()
 }
 
-func reportRoomEventForwardingFailed(schedulerName string) {
-	failedRoomEventForwardingMetric.WithLabelValues(schedulerName).Inc()
+func reportRoomEventForwardingFailed(game, schedulerName string) {
+	failedRoomEventForwardingMetric.WithLabelValues(game, schedulerName).Inc()
 }
 
-func reportPlayerEventForwardingFailed(schedulerName string) {
-	failedPlayerEventForwardingMetric.WithLabelValues(schedulerName).Inc()
+func reportPlayerEventForwardingFailed(game, schedulerName string) {
+	failedPlayerEventForwardingMetric.WithLabelValues(game, schedulerName).Inc()
 }
