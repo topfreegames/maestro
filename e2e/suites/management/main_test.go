@@ -23,13 +23,31 @@
 package management
 
 import (
+	"go.uber.org/zap"
 	"os"
+	"os/signal"
+	"syscall"
 	"testing"
 
 	"github.com/topfreegames/maestro/e2e/framework"
 )
 
 func TestMain(m *testing.M) {
+	defer func() {
+		if err := recover(); err != nil {
+			framework.Teardown()
+			panic(err)
+		}
+	}()
+	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		<-sigs
+		zap.L().Info("received termination")
+		framework.Teardown()
+		os.Exit(1)
+	}()
+
 	err := framework.Setup()
 	if err != nil {
 		panic(err)

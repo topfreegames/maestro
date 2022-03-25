@@ -44,10 +44,10 @@ type dependencies struct {
 // environment to avoid conflicts.
 func provideDependencies(maestroPath string) (*dependencies, error) {
 	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("test-something")
+	identifier := strings.ToLower("e2e-test")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	_ = compose.Down()
+	_ = compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
 
 	composeErr := compose.WithCommand([]string{"up", "-d", "postgres", "redis", "k3s_agent", "k3s_server"}).Invoke()
 
@@ -77,7 +77,7 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 	}, time.Second, 2*time.Minute)
 
 	if migrateErr != nil {
-		compose.Down()
+		compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
 		return nil, fmt.Errorf("failed to migrate database: %s", migrateErr)
 	}
 
@@ -90,10 +90,5 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 }
 
 func (d *dependencies) Teardown() {
-	d.compose.Down()
-	exec.ExecSysCmd(
-		maestroPath,
-		"docker",
-		"volume ", "rm", "test-something_eventsproto", "test-something_kubeconfig",
-	)
+	d.compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
 }

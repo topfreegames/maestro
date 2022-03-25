@@ -41,7 +41,7 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 	client := &http.Client{}
 
 	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("test-something")
+	identifier := strings.ToLower("e2e-test")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
 	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "worker"}).Invoke()
@@ -71,5 +71,5 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 }
 
 func (ws *WorkerServer) Teardown() {
-	ws.compose.Down()
+	ws.compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
 }

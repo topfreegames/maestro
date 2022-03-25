@@ -43,7 +43,7 @@ func ProvideManagementApi(maestroPath string) (*ManagementApiServer, error) {
 	client := &http.Client{}
 
 	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("test-something")
+	identifier := strings.ToLower("e2e-test")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
 	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "management-api"}).Invoke()
@@ -76,5 +76,5 @@ func ProvideManagementApi(maestroPath string) (*ManagementApiServer, error) {
 }
 
 func (ms *ManagementApiServer) Teardown() {
-	ms.compose.Down()
+	ms.compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
 }
