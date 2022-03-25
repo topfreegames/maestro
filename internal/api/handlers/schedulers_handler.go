@@ -418,8 +418,24 @@ func (h *SchedulersHandler) fromApiContainerEnvironments(apiEnvironments []*api.
 	var environments []game_room.ContainerEnvironment
 	for _, apiEnvironment := range apiEnvironments {
 		environment := game_room.ContainerEnvironment{
-			Name:  apiEnvironment.GetName(),
-			Value: apiEnvironment.GetValue(),
+			Name: apiEnvironment.GetName(),
+		}
+		switch {
+		case apiEnvironment.Value != "":
+			environment.Value = apiEnvironment.Value
+		case apiEnvironment.ValueFrom != nil && apiEnvironment.ValueFrom.SecretKeyRef != nil:
+			environment.ValueFrom = &game_room.ValueFrom{
+				SecretKeyRef: &game_room.SecretKeyRef{
+					Name: apiEnvironment.ValueFrom.SecretKeyRef.Name,
+					Key:  apiEnvironment.ValueFrom.SecretKeyRef.Key,
+				},
+			}
+		case apiEnvironment.ValueFrom != nil && apiEnvironment.ValueFrom.FieldRef != nil:
+			environment.ValueFrom = &game_room.ValueFrom{
+				FieldRef: &game_room.FieldRef{
+					FieldPath: apiEnvironment.ValueFrom.FieldRef.FieldPath,
+				},
+			}
 		}
 		environments = append(environments, environment)
 	}
@@ -490,10 +506,27 @@ func fromEntityContainerToApiContainer(containers []game_room.Container) []*api.
 func fromEntityContainerEnvironmentToApiContainerEnvironment(environments []game_room.ContainerEnvironment) []*api.ContainerEnvironment {
 	var convertedContainerEnvironment []*api.ContainerEnvironment
 	for _, environment := range environments {
-		convertedContainerEnvironment = append(convertedContainerEnvironment, &api.ContainerEnvironment{
-			Name:  environment.Name,
-			Value: environment.Value,
-		})
+		apiContainerEnv := &api.ContainerEnvironment{
+			Name: environment.Name,
+		}
+		switch {
+		case environment.Value != "":
+			apiContainerEnv.Value = environment.Value
+		case environment.ValueFrom != nil && environment.ValueFrom.SecretKeyRef != nil:
+			apiContainerEnv.ValueFrom = &api.ContainerEnvironmentValueFrom{
+				SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
+					Name: environment.ValueFrom.SecretKeyRef.Name,
+					Key:  environment.ValueFrom.SecretKeyRef.Key,
+				},
+			}
+		case environment.ValueFrom != nil && environment.ValueFrom.FieldRef != nil:
+			apiContainerEnv.ValueFrom = &api.ContainerEnvironmentValueFrom{
+				FieldRef: &api.ContainerEnvironmentValueFromFieldRef{
+					FieldPath: environment.ValueFrom.FieldRef.FieldPath,
+				},
+			}
+		}
+		convertedContainerEnvironment = append(convertedContainerEnvironment, apiContainerEnv)
 	}
 	return convertedContainerEnvironment
 }
