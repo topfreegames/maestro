@@ -121,30 +121,30 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			operationCancellationFunction()
 
 			op.Status = operation.StatusError
+			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Failed to grant lease to operation, reason: %s", err.Error()))
+
 			err = w.operationManager.FinishOperation(ctx, op)
 			if err != nil {
 				loopLogger.Error("failed to finish operation", zap.Error(err))
 			}
-
-			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to grant lease to operation")
 
 			return fmt.Errorf("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 		}
 
 		err = w.operationManager.StartOperation(operationContext, op, operationCancellationFunction)
 		if err != nil {
+
 			w.Stop(ctx)
 			operationCancellationFunction()
 
 			op.Status = operation.StatusError
+			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Failed to start operation, reason: %s", err.Error()))
 			err = w.operationManager.FinishOperation(ctx, op)
 			if err != nil {
 				loopLogger.Error("failed to start operation", zap.Error(err))
 			}
 
 			reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelStartOperationFailed)
-
-			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Failed to start operation")
 
 			return fmt.Errorf("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 		}
@@ -164,6 +164,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			}
 
 			loopLogger.Error("operation execution failed", zap.Error(executionErr))
+			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation execution failed, reason: %s", executionErr.Error()))
 
 			onErrorErr := w.executeOnErrorCollectingLatencyMetrics(op.DefinitionName, func() error {
 				return executor.OnError(operationContext, op, def, executionErr)
@@ -171,9 +172,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 			if onErrorErr != nil {
 				loopLogger.Error("operation OnError failed", zap.Error(onErrorErr))
+				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation OnError flow execution failed, reason: %s", onErrorErr.Error()))
+			} else {
+				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation OnError flow execution finished with success")
 			}
 
-			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation execution failed")
 		}
 
 		loopLogger.Info("Finishing operation")
