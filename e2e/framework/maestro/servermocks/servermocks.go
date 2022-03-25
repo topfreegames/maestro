@@ -36,7 +36,7 @@ type ServerMocks struct {
 
 func ProvideServerMocks(maestroPath string) (*ServerMocks, error) {
 	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("test-something")
+	identifier := strings.ToLower("e2e-test")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
 	composeErr := compose.WithCommand([]string{"up", "-d", "grpc-mock"}).Invoke()
@@ -52,5 +52,6 @@ func ProvideServerMocks(maestroPath string) (*ServerMocks, error) {
 }
 
 func (s *ServerMocks) Teardown() {
-	s.compose.Down()
+	s.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "grpc-mock"}).Invoke()
+
 }

@@ -46,7 +46,7 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 	client := &http.Client{}
 
 	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("test-something")
+	identifier := strings.ToLower("e2e-test")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
 	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "rooms-api"}).Invoke()
@@ -75,7 +75,7 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 	cmd, err := exec.ExecSysCmd(
 		maestroPath,
 		"docker",
-		"inspect", "-f", "'{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}'", "test-something_rooms-api_1",
+		"inspect", "-f", "'{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}'", "e2e-test_rooms-api_1",
 	)
 
 	if err != nil {
@@ -95,5 +95,5 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 }
 
 func (ms *RoomsApiServer) Teardown() {
-	ms.compose.Down()
+	ms.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "rooms-api"}).Invoke()
 }
