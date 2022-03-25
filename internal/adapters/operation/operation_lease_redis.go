@@ -51,7 +51,7 @@ func NewRedisOperationLeaseStorage(client *redis.Client, clock ports.Clock) *red
 	return &redisOperationLeaseStorage{client, clock}
 }
 
-func (r *redisOperationLeaseStorage) GrantLease(ctx context.Context, schedulerName, operationID string, initialTTL time.Duration) error {
+func (r *redisOperationLeaseStorage) GrantLease(ctx context.Context, schedulerName, operationID string, initialTTL time.Duration) (err error) {
 	expireUnixTime := r.clock.Now().Add(initialTTL).Unix()
 
 	alreadyExistsLease, err := r.existsOperationLease(ctx, schedulerName, operationID)
@@ -129,7 +129,8 @@ func (r *redisOperationLeaseStorage) FetchLeaseTTL(ctx context.Context, schedule
 		}
 		return time.Time{}, errors.NewErrUnexpected("failed on fetching ttl for \"%s\" and operationID \"%s\"", schedulerName, operationID).WithError(err)
 	}
-	return time.Unix(int64(leaseTtl), 0), err
+	ttl = time.Unix(int64(leaseTtl), 0)
+	return ttl, err
 }
 
 func (r *redisOperationLeaseStorage) FetchOperationsLease(ctx context.Context, schedulerName string, operationIDs ...string) (leases []*operation.OperationLease, err error) {

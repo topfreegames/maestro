@@ -66,7 +66,7 @@ func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string,
 	return instance, nil
 }
 
-func (r redisInstanceStorage) UpsertInstance(ctx context.Context, instance *game_room.Instance) error {
+func (r redisInstanceStorage) UpsertInstance(ctx context.Context, instance *game_room.Instance) (err error) {
 	if instance == nil {
 		return errors.NewErrUnexpected("Cannot upsert nil instance")
 	}
@@ -101,13 +101,12 @@ func (r redisInstanceStorage) DeleteInstance(ctx context.Context, scheduler stri
 	return nil
 }
 
-func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler string) ([]*game_room.Instance, error) {
+func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler string) (instances []*game_room.Instance, err error) {
 	client := r.client.WithContext(ctx)
 	redisKey := getPodMapRedisKey(scheduler)
 	cursor := uint64(0)
-	instances := make([]*game_room.Instance, 0)
+	instances = make([]*game_room.Instance, 0)
 	for {
-		var err error
 		var results []string
 		var resultCursor uint64
 
@@ -146,7 +145,8 @@ func (r redisInstanceStorage) GetInstanceCount(ctx context.Context, scheduler st
 	if err != nil {
 		return 0, errors.NewErrUnexpected("error counting %s on redis", podMapRedisKey).WithError(err)
 	}
-	return int(resultCount), nil
+	count = int(resultCount)
+	return count, nil
 }
 
 var _ ports.GameRoomInstanceStorage = (*redisInstanceStorage)(nil)

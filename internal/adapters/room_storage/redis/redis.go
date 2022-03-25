@@ -252,7 +252,8 @@ func (r *redisStateStorage) GetRoomCount(ctx context.Context, scheduler string) 
 	if err != nil {
 		return 0, errors.NewErrUnexpected("error counting rooms on redis").WithError(err)
 	}
-	return int(resultCount), nil
+	count = int(resultCount)
+	return count, nil
 }
 
 func (r *redisStateStorage) GetRoomCountByStatus(ctx context.Context, scheduler string, status game_room.GameRoomStatus) (count int, err error) {

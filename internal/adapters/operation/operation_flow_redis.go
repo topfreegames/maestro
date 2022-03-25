@@ -84,7 +84,8 @@ func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName 
 	// Once redis finds any operation ID, it returns an array using:
 	// - the first position to indicate the list name;
 	// - the second position with the found value.
-	return opIDs[1], nil
+	opId = opIDs[1]
+	return opId, nil
 }
 
 func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) (operationsIDs []string, err error) {
@@ -99,7 +100,7 @@ func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Contex
 	return operationsIDs, nil
 }
 
-func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Context, request ports.OperationCancellationRequest) error {
+func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Context, request ports.OperationCancellationRequest) (err error) {
 	requestAsString, err := json.Marshal(request)
 	if err != nil {
 		return fmt.Errorf("failed to marshal operation cancellation request to string: %w", err)
@@ -116,14 +117,14 @@ func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Con
 	return nil
 }
 
-func (r *redisOperationFlow) WatchOperationCancellationRequests(ctx context.Context) chan ports.OperationCancellationRequest {
+func (r *redisOperationFlow) WatchOperationCancellationRequests(ctx context.Context) (resultChan chan ports.OperationCancellationRequest) {
 	var sub *redis.PubSub
 	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
 		sub = r.client.Subscribe(ctx, watchOperationCancellationRequestKey)
 		return nil
 	})
 
-	resultChan := make(chan ports.OperationCancellationRequest, 100)
+	resultChan = make(chan ports.OperationCancellationRequest, 100)
 
 	go func() {
 		defer sub.Close()

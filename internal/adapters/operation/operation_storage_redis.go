@@ -65,7 +65,7 @@ func NewRedisOperationStorage(client *redis.Client, clock ports.Clock) *redisOpe
 
 // CreateOperation marshal and pushes the operation to the scheduler pending
 // operations list.
-func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operation.Operation) error {
+func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operation.Operation) (err error) {
 	executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
 	if err != nil {
 		return errors.NewErrUnexpected("failed to create operation on redis").WithError(err)

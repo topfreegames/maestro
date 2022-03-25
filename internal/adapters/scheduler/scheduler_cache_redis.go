@@ -68,7 +68,7 @@ func (r redisSchedulerCache) GetScheduler(ctx context.Context, schedulerName str
 	return scheduler, nil
 }
 
-func (r redisSchedulerCache) SetScheduler(ctx context.Context, scheduler *entities.Scheduler, ttl time.Duration) error {
+func (r redisSchedulerCache) SetScheduler(ctx context.Context, scheduler *entities.Scheduler, ttl time.Duration) (err error) {
 	jsonScheduler, err := json.Marshal(scheduler)
 	if err != nil {
 		return err
