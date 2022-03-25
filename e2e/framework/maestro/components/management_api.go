@@ -76,5 +76,5 @@ func ProvideManagementApi(maestroPath string) (*ManagementApiServer, error) {
 }
 
 func (ms *ManagementApiServer) Teardown() {
-	ms.compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
+	ms.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "management-api"}).Invoke()
 }

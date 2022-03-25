@@ -95,5 +95,5 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 }
 
 func (ms *RoomsApiServer) Teardown() {
-	ms.compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
+	ms.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "rooms-api"}).Invoke()
 }

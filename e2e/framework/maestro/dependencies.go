@@ -90,5 +90,10 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 }
 
 func (d *dependencies) Teardown() {
-	d.compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
+	d.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "postgres", "redis", "k3s_agent", "k3s_server"}).Invoke()
+	exec.ExecSysCmd(
+		maestroPath,
+		"docker",
+		"volume ", "rm", "e2e-test_eventsproto", "e2e-test_kubeconfig",
+	)
 }

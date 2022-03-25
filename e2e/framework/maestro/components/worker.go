@@ -71,5 +71,5 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 }
 
 func (ws *WorkerServer) Teardown() {
-	ws.compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
+	ws.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "runtime-watcher"}).Invoke()
 }

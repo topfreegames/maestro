@@ -52,5 +52,6 @@ func ProvideServerMocks(maestroPath string) (*ServerMocks, error) {
 }
 
 func (s *ServerMocks) Teardown() {
-	s.compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
+	s.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "grpc-mock"}).Invoke()
+
 }

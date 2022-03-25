@@ -71,5 +71,5 @@ func ProvideRuntimeWatcher(maestroPath string) (*RuntimeWatcherServer, error) {
 }
 
 func (ws *RuntimeWatcherServer) Teardown() {
-	ws.compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
+	ws.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "runtime-watcher"}).Invoke()
 }
