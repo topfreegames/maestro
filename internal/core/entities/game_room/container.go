@@ -34,8 +34,23 @@ type Container struct {
 }
 
 type ContainerEnvironment struct {
-	Name  string `validate:"required"`
-	Value string
+	Name      string `validate:"required"`
+	Value     string
+	ValueFrom *ValueFrom
+}
+
+type ValueFrom struct {
+	FieldRef     *FieldRef
+	SecretKeyRef *SecretKeyRef
+}
+
+type SecretKeyRef struct {
+	Name string `yaml:"name" json:"name"`
+	Key  string `yaml:"key" json:"key"`
+}
+
+type FieldRef struct {
+	FieldPath string `yaml:"fieldPath" json:"fieldPath"`
 }
 
 type ContainerResources struct {

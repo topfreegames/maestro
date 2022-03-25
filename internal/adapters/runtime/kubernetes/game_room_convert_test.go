@@ -324,11 +324,15 @@ func TestConvertContainer(t *testing.T) {
 		},
 		"with options container": {
 			container: game_room.Container{
-				Name:        "complete",
-				Image:       "image",
-				Command:     []string{"some", "command"},
-				Environment: []game_room.ContainerEnvironment{{Name: "env", Value: "value"}},
-				Ports:       []game_room.ContainerPort{{Port: 2222, Protocol: "tcp"}},
+				Name:    "complete",
+				Image:   "image",
+				Command: []string{"some", "command"},
+				Environment: []game_room.ContainerEnvironment{
+					{Name: "env", Value: "value"},
+					{Name: "envFieldValue", ValueFrom: &game_room.ValueFrom{FieldRef: &game_room.FieldRef{FieldPath: "status.podIP"}}},
+					{Name: "envSecretValue", ValueFrom: &game_room.ValueFrom{SecretKeyRef: &game_room.SecretKeyRef{Name: "namespace_secret", Key: "database_password"}}},
+				},
+				Ports: []game_room.ContainerPort{{Port: 2222, Protocol: "tcp"}},
 			},
 			expectedContainer: v1.Container{
 				Name:    "complete",
@@ -336,6 +340,8 @@ func TestConvertContainer(t *testing.T) {
 				Command: []string{"some", "command"},
 				Env: []v1.EnvVar{
 					{Name: "env", Value: "value"},
+					{Name: "envFieldValue", ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "status.podIP"}}},
+					{Name: "envSecretValue", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: "namespace_secret"}, Key: "database_password"}}},
 					{Name: "MAESTRO_SCHEDULER_NAME", Value: "scheduler-name"},
 					{Name: "MAESTRO_ROOM_ID", Value: "scheduler-name-1234"},
 				},
