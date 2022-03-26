@@ -27,6 +27,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
 	"net/http"
 	"testing"
 	"time"
@@ -63,6 +64,18 @@ func createSchedulerAndWaitForIt(
 						{
 							Name:  "ROOMS_API_ADDRESS",
 							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+						},
+						{
+							Name: "HOST_IP",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								FieldRef: &maestroApiV1.ContainerEnvironmentValueFromFieldRef{FieldPath: "status.hostIP"},
+							},
+						},
+						{
+							Name: "SECRET_ENV_VAR",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								SecretKeyRef: &maestroApiV1.ContainerEnvironmentValueFromSecretKeyRef{Name: "namespace-secret", Key: "secret_key"},
+							},
 						},
 					},
 					Requests: &maestroApiV1.ContainerResources{
@@ -121,6 +134,16 @@ func createSchedulerAndWaitForIt(
 
 		return len(svcAccs.Items) > 0
 	}, 5*time.Second, time.Second)
+
+	// creating secret used by the pods
+	kubeClient.CoreV1().Secrets(schedulerName).Create(context.Background(), &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "namespace-secret",
+		},
+		Data: map[string][]byte{
+			"secret_key": []byte("secret_value"),
+		},
+	}, metav1.CreateOptions{})
 	return createResponse.Scheduler, err
 }
 
@@ -148,6 +171,18 @@ func createSchedulerWithForwardersAndWaitForIt(
 						{
 							Name:  "ROOMS_API_ADDRESS",
 							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+						},
+						{
+							Name: "HOST_IP",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								FieldRef: &maestroApiV1.ContainerEnvironmentValueFromFieldRef{FieldPath: "status.hostIP"},
+							},
+						},
+						{
+							Name: "SECRET_ENV_VAR",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								SecretKeyRef: &maestroApiV1.ContainerEnvironmentValueFromSecretKeyRef{Name: "namespace-secret", Key: "secret_key"},
+							},
 						},
 					},
 					Requests: &maestroApiV1.ContainerResources{
@@ -204,6 +239,16 @@ func createSchedulerWithForwardersAndWaitForIt(
 
 		return len(svcAccs.Items) > 0
 	}, 5*time.Second, time.Second)
+
+	// creating secret used by the pods
+	kubeClient.CoreV1().Secrets(schedulerName).Create(context.Background(), &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "namespace-secret",
+		},
+		Data: map[string][]byte{
+			"secret_key": []byte("secret_value"),
+		},
+	}, metav1.CreateOptions{})
 	return createResponse.Scheduler, err
 }
 
