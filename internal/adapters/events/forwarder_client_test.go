@@ -20,135 +20,146 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//go:build integration
+// +build integration
+
 package events
 
 import (
 	"context"
+	"os"
+	"time"
 
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/test"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 )
 
 var (
-	forwarderClientAdapter *forwarderClient
+	forwarderClientAdapter *ForwarderClient
+	grpcMockAddress        string
+	httpInputMockAddress   string
 )
 
+func TestMain(m *testing.M) {
+	var code int
+	test.WithGrpcMockContainer(func(grpcAddress, httpInputAddress string) {
+		grpcMockAddress = grpcAddress
+		httpInputMockAddress = httpInputAddress
+		code = m.Run()
+	})
+	os.Exit(code)
+}
+
 func TestSendRoomEvent(t *testing.T) {
-	t.Run("failed when trying to send event", func(t *testing.T) {
+	t.Run("success case should return response", func(t *testing.T) {
+		err := test.AddStubRequestToMockedGrpcServer(
+			httpInputMockAddress,
+			"../../../test/data/events_mock/events-forwarder-grpc-send-room-event-success.json",
+		)
+		require.NoError(t, err)
+
 		basicArrangeForwarderClient(t)
-		event := newRoomEvent()
+		event := newRoomEvent("cbfef643-4fed-4ca9-94f8-9ad424fd5624")
 
-		response, err := forwarderClientAdapter.SendRoomEvent(context.Background(), newForwarder(), &event)
+		response, err := forwarderClientAdapter.SendRoomEvent(context.Background(), newForwarder(grpcMockAddress), &event)
+		require.NoError(t, err)
 
-		require.Nil(t, response)
-		require.Error(t, err)
+		assert.EqualValues(t, 200, response.Code)
+		assert.Equal(t, "Event received with success", response.Message)
+	})
+
+	t.Run("failed when trying to send event", func(t *testing.T) {
+		err := test.AddStubRequestToMockedGrpcServer(
+			httpInputMockAddress,
+			"../../../test/data/events_mock/events-forwarder-grpc-send-room-event-failure.json",
+		)
+		require.NoError(t, err)
+
+		basicArrangeForwarderClient(t)
+		event := newRoomEvent("d85b0160-2522-494d-9efe-79a6a3612849")
+
+		response, err := forwarderClientAdapter.SendRoomEvent(context.Background(), newForwarder(grpcMockAddress), &event)
+		require.NoError(t, err)
+
+		assert.EqualValues(t, 500, response.Code)
+		assert.Equal(t, "Internal server error from matchmaker", response.Message)
 	})
 }
 
 func TestSendRoomReSync(t *testing.T) {
-	t.Run("failed when trying to send event", func(t *testing.T) {
+	t.Run("success case should return response", func(t *testing.T) {
+		err := test.AddStubRequestToMockedGrpcServer(
+			httpInputMockAddress,
+			"../../../test/data/events_mock/events-forwarder-grpc-send-room-resync-success.json",
+		)
+		require.NoError(t, err)
+
 		basicArrangeForwarderClient(t)
-		event := newRoomStatus()
+		event := newRoomStatusEvent("65e810a0-bb81-4633-93c9-826414a0062d")
 
-		response, err := forwarderClientAdapter.SendRoomReSync(context.Background(), newForwarder(), &event)
+		response, err := forwarderClientAdapter.SendRoomReSync(context.Background(), newForwarder(grpcMockAddress), &event)
+		require.NoError(t, err)
 
-		require.Nil(t, response)
-		require.Error(t, err)
+		assert.EqualValues(t, 200, response.Code)
+		assert.Equal(t, "Event received with success", response.Message)
+	})
+
+	t.Run("failed when trying to send event", func(t *testing.T) {
+		err := test.AddStubRequestToMockedGrpcServer(
+			httpInputMockAddress,
+			"../../../test/data/events_mock/events-forwarder-grpc-send-room-resync-failure.json",
+		)
+		require.NoError(t, err)
+
+		basicArrangeForwarderClient(t)
+		event := newRoomStatusEvent("f7415c97-5c28-418b-b19b-87380e2d0113")
+
+		response, err := forwarderClientAdapter.SendRoomReSync(context.Background(), newForwarder(grpcMockAddress), &event)
+		require.NoError(t, err)
+
+		assert.EqualValues(t, 500, response.Code)
+		assert.Equal(t, "Internal server error from matchmaker", response.Message)
 	})
 }
 
 func TestSendPlayerEvent(t *testing.T) {
+	t.Run("success case should return response", func(t *testing.T) {
+		err := test.AddStubRequestToMockedGrpcServer(
+			httpInputMockAddress,
+			"../../../test/data/events_mock/events-forwarder-grpc-send-player-event-success.json",
+		)
+		require.NoError(t, err)
+
+		basicArrangeForwarderClient(t)
+		event := newPlayerEvent("c50acc91-4d88-46fa-aa56-48d63c5b5311")
+
+		response, err := forwarderClientAdapter.SendPlayerEvent(context.Background(), newForwarder(grpcMockAddress), &event)
+		require.NoError(t, err)
+
+		assert.EqualValues(t, 200, response.Code)
+		assert.Equal(t, "Event received with success", response.Message)
+	})
+
 	t.Run("failed when trying to send event", func(t *testing.T) {
-		basicArrangeForwarderClient(t)
-		event := newPlayerEvent()
-		response, err := forwarderClientAdapter.SendPlayerEvent(context.Background(), newForwarder(), &event)
-
-		require.Nil(t, response)
-		require.Error(t, err)
-	})
-}
-
-func TestGetGrpcClient(t *testing.T) {
-	t.Run("success to get new configuration", func(t *testing.T) {
-		basicArrangeForwarderClient(t)
-
-		grpcClient, err := forwarderClientAdapter.getGrpcClient("matchmaker.svc.io")
-
-		require.NotNil(t, grpcClient)
+		err := test.AddStubRequestToMockedGrpcServer(
+			httpInputMockAddress,
+			"../../../test/data/events_mock/events-forwarder-grpc-send-player-event-failure.json",
+		)
 		require.NoError(t, err)
-	})
 
-	t.Run("success returning configuration from cache", func(t *testing.T) {
 		basicArrangeForwarderClient(t)
-		forwarderAddress := "matchmaker.svc.io"
-		_, errArrange := forwarderClientAdapter.getGrpcClient(Address(forwarderAddress))
-		require.NoError(t, errArrange)
+		event := newPlayerEvent("446bb3d0-0334-4468-a4e7-8068a97caa53")
 
-		grpcClient, err := forwarderClientAdapter.getGrpcClient(Address(forwarderAddress))
-
-		require.NotNil(t, grpcClient)
+		response, err := forwarderClientAdapter.SendPlayerEvent(context.Background(), newForwarder(grpcMockAddress), &event)
 		require.NoError(t, err)
-	})
 
-	t.Run("failed when argument is invalid", func(t *testing.T) {
-		basicArrangeForwarderClient(t)
-
-		grpcClient, err := forwarderClientAdapter.getGrpcClient("")
-
-		require.Nil(t, grpcClient)
-		require.Error(t, err)
-	})
-}
-
-func TestConfigureGrpcClient(t *testing.T) {
-
-	t.Run("with success", func(t *testing.T) {
-		basicArrangeForwarderClient(t)
-
-		grpcClient, err := forwarderClientAdapter.configureGrpcClient("matchmaker.svc.io")
-
-		require.NotNil(t, grpcClient)
-		require.NoError(t, err)
-	})
-
-	t.Run("failed when argument is invalid", func(t *testing.T) {
-		basicArrangeForwarderClient(t)
-
-		grpcClient, err := forwarderClientAdapter.configureGrpcClient("")
-
-		require.Nil(t, grpcClient)
-		require.Error(t, err)
-	})
-}
-
-func TestCacheDelete(t *testing.T) {
-	t.Run("with success", func(t *testing.T) {
-		basicArrangeForwarderClient(t)
-		forwarderAddress := "matchmaker.svc.io"
-		_, errArrange := forwarderClientAdapter.getGrpcClient(Address(forwarderAddress))
-		require.NoError(t, errArrange)
-
-		err := forwarderClientAdapter.CacheDelete(forwarderAddress)
-
-		require.NoError(t, err)
-	})
-
-	t.Run("failed when forwarder not found", func(t *testing.T) {
-		basicArrangeForwarderClient(t)
-
-		err := forwarderClientAdapter.CacheDelete("matchmaker.svc.io")
-
-		require.Error(t, err)
-	})
-
-	t.Run("failed when argument is invalid", func(t *testing.T) {
-		basicArrangeForwarderClient(t)
-
-		err := forwarderClientAdapter.CacheDelete("matchmaker.svc.io")
-
-		require.Error(t, err)
+		assert.EqualValues(t, 500, response.Code)
+		assert.Equal(t, "Internal server error from matchmaker", response.Message)
 	})
 }
 
@@ -156,36 +167,49 @@ func basicArrangeForwarderClient(t *testing.T) {
 	forwarderClientAdapter = NewForwarderClient()
 }
 
-func newRoomEvent() pb.RoomEvent {
+func newRoomEvent(mockIdentifier string) pb.RoomEvent {
 	return pb.RoomEvent{
 		Room: &pb.Room{
 			Game:     "game-name",
 			RoomId:   "123",
 			Host:     "game.svc.io",
 			Port:     9090,
-			Metadata: map[string]string{"roomType": "red", "ping": "true"},
+			Metadata: map[string]string{"mockIdentifier": mockIdentifier},
 		},
-		EventType: "gRPC",
+		EventType: "roomReady",
 		Metadata:  map[string]string{"roomType": "red", "ping": "true"},
 	}
 }
 
-func newRoomStatus() pb.RoomStatus {
+func newForwarder(address string) forwarder.Forwarder {
+	return forwarder.Forwarder{
+		Name:        "matchmaking",
+		Enabled:     true,
+		ForwardType: forwarder.TypeGrpc,
+		Address:     address,
+		Options: &forwarder.ForwardOptions{
+			Timeout:  time.Duration(1000),
+			Metadata: map[string]interface{}{"roomType": "red", "ping": true, "roomEvent": "ready"},
+		},
+	}
+}
+
+func newRoomStatusEvent(mockIdentifier string) pb.RoomStatus {
 	return pb.RoomStatus{
 		Room: &pb.Room{
 			Game:     "game-name",
 			RoomId:   "123",
 			Host:     "game.svc.io",
 			Port:     9090,
-			Metadata: map[string]string{"roomType": "red", "ping": "true"},
+			Metadata: map[string]string{"mockIdentifier": mockIdentifier},
 		},
 		StatusType: pb.RoomStatus_ready,
 	}
 }
 
-func newPlayerEvent() pb.PlayerEvent {
+func newPlayerEvent(playerID string) pb.PlayerEvent {
 	return pb.PlayerEvent{
-		PlayerId: "123",
+		PlayerId: playerID,
 		Room: &pb.Room{
 			RoomId:   "123",
 			Metadata: map[string]string{"roomType": "red", "ping": "true"},
