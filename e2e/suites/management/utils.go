@@ -27,10 +27,11 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	v1 "k8s.io/api/core/v1"
 	"net/http"
 	"testing"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"

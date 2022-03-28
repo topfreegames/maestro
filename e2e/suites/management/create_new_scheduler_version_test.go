@@ -252,9 +252,18 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 						{
 							Name:  "ROOMS_API_ADDRESS",
 							Value: maestro.RoomsApiServer.ContainerInternalAddress,
-						}, {
-							Name:  "ROOMS_API_ADDRESS",
-							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+						},
+						{
+							Name: "HOST_IP",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								FieldRef: &maestroApiV1.ContainerEnvironmentValueFromFieldRef{FieldPath: "status.hostIP"},
+							},
+						},
+						{
+							Name: "SECRET_ENV_VAR",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								SecretKeyRef: &maestroApiV1.ContainerEnvironmentValueFromSecretKeyRef{Name: "namespace-secret", Key: "secret_key"},
+							},
 						},
 					},
 					Requests: &maestroApiV1.ContainerResources{
@@ -430,9 +439,18 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 						{
 							Name:  "ROOMS_API_ADDRESS",
 							Value: maestro.RoomsApiServer.ContainerInternalAddress,
-						}, {
-							Name:  "ROOMS_API_ADDRESS",
-							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+						},
+						{
+							Name: "HOST_IP",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								FieldRef: &maestroApiV1.ContainerEnvironmentValueFromFieldRef{FieldPath: "status.hostIP"},
+							},
+						},
+						{
+							Name: "SECRET_ENV_VAR",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								SecretKeyRef: &maestroApiV1.ContainerEnvironmentValueFromSecretKeyRef{Name: "namespace-secret", Key: "secret_key"},
+							},
 						},
 					},
 					Requests: &maestroApiV1.ContainerResources{
