@@ -46,17 +46,17 @@ message ContainerEnvironment {
   // Container environment variable name.
   string name = 1;
   // Container environment variable value.
-  string value = 2;
+  optional string value = 2;
   // Source for the environment variable's value. Cannot be used if value is not empty.
-  ContainerEnvironmentValueFrom value_from = 3;
+  optional ContainerEnvironmentValueFrom value_from = 3;
 }
 // Container environment ValueFrom possible values
 message ContainerEnvironmentValueFrom {
   // Container environment variable name using field reference, supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
   // spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
-  ContainerEnvironmentValueFromFieldRef field_ref = 1;
+  optional ContainerEnvironmentValueFromFieldRef field_ref = 1;
   // Container environment variable value using a secret key reference contained in the namespace.
-  ContainerEnvironmentValueFromSecretKeyRef secret_key_ref = 2;
+  optional ContainerEnvironmentValueFromSecretKeyRef secret_key_ref = 2;
 }
 
 //  Container environment valueFrom using field reference.

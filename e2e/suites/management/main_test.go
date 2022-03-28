@@ -23,11 +23,12 @@
 package management
 
 import (
-	"go.uber.org/zap"
 	"os"
 	"os/signal"
 	"syscall"
 	"testing"
+
+	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/e2e/framework"
 )

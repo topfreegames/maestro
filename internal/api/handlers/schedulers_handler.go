@@ -421,8 +421,8 @@ func (h *SchedulersHandler) fromApiContainerEnvironments(apiEnvironments []*api.
 			Name: apiEnvironment.GetName(),
 		}
 		switch {
-		case apiEnvironment.Value != "":
-			environment.Value = apiEnvironment.Value
+		case apiEnvironment.Value != nil:
+			environment.Value = *apiEnvironment.Value
 		case apiEnvironment.ValueFrom != nil && apiEnvironment.ValueFrom.SecretKeyRef != nil:
 			environment.ValueFrom = &game_room.ValueFrom{
 				SecretKeyRef: &game_room.SecretKeyRef{
@@ -511,7 +511,8 @@ func fromEntityContainerEnvironmentToApiContainerEnvironment(environments []game
 		}
 		switch {
 		case environment.Value != "":
-			apiContainerEnv.Value = environment.Value
+			value := environment.Value
+			apiContainerEnv.Value = &value
 		case environment.ValueFrom != nil && environment.ValueFrom.SecretKeyRef != nil:
 			apiContainerEnv.ValueFrom = &api.ContainerEnvironmentValueFrom{
 				SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{

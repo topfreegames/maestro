@@ -217,10 +217,24 @@ func TestGetScheduler(t *testing.T) {
 						Image:           "game-room-container-image",
 						ImagePullPolicy: "IfNotPresent",
 						Command:         []string{"./run"},
-						Environment: []game_room.ContainerEnvironment{{
-							Name:  "env-var-name",
-							Value: "env-var-value",
-						}},
+						Environment: []game_room.ContainerEnvironment{
+							{
+								Name:  "env-var-name",
+								Value: "env-var-value",
+							},
+							{
+								Name: "env-var-field-ref",
+								ValueFrom: &game_room.ValueFrom{
+									FieldRef: &game_room.FieldRef{FieldPath: "metadata.name"},
+								},
+							},
+							{
+								Name: "env-var-field-ref",
+								ValueFrom: &game_room.ValueFrom{
+									SecretKeyRef: &game_room.SecretKeyRef{Name: "secret_name", Key: "secret_key"},
+								},
+							},
+						},
 						Requests: game_room.ContainerResources{
 							Memory: "100mi",
 							CPU:    "100m",
@@ -238,7 +252,7 @@ func TestGetScheduler(t *testing.T) {
 					},
 				},
 			},
-			CreatedAt: time.Now(),
+			CreatedAt: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
 			PortRange: &entities.PortRange{
 				Start: 1,
 				End:   2,
@@ -273,97 +287,9 @@ func TestGetScheduler(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, rr.Code)
 
-		var response struct {
-			Scheduler struct {
-				Name     string
-				Game     string
-				State    string
-				MaxSurge string
-				Spec     struct {
-					Version                string
-					TerminationGracePeriod string
-					Containers             []struct {
-						Name            string
-						Image           string
-						ImagePullPolicy string
-						Command         []string
-						Environment     []struct {
-							Name  string
-							Value string
-						}
-						Requests struct {
-							Memory string
-							CPU    string
-						}
-						Limits struct {
-							Memory string
-							CPU    string
-						}
-						Ports []struct {
-							Name     string
-							Protocol string
-							Port     int
-							HostPort int
-						}
-					}
-				}
-				PortRange  *entities.PortRange
-				Forwarders []*struct {
-					Name    string
-					Enable  bool
-					Type    string
-					Address string
-					Options struct {
-						Timeout  string
-						Metadata interface{}
-					}
-				}
-			} `json:"scheduler"`
-		}
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/get_scheduler.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 
-		bodyString := rr.Body.String()
-		err = json.Unmarshal([]byte(bodyString), &response)
-		require.NoError(t, err)
-
-		schedulerResponse := response.Scheduler
-
-		assert.Equal(t, scheduler.Name, schedulerResponse.Name)
-		assert.Equal(t, scheduler.Game, schedulerResponse.Game)
-		assert.Equal(t, scheduler.State, schedulerResponse.State)
-		assert.Equal(t, scheduler.MaxSurge, schedulerResponse.MaxSurge)
-
-		specResponse := schedulerResponse.Spec
-		assert.Equal(t, scheduler.Spec.Version, specResponse.Version)
-		assert.Equal(t, fmt.Sprint(int64(scheduler.Spec.TerminationGracePeriod)), specResponse.TerminationGracePeriod)
-		for i, container := range specResponse.Containers {
-			assert.Equal(t, scheduler.Spec.Containers[i].Name, container.Name)
-			assert.Equal(t, scheduler.Spec.Containers[i].Image, container.Image)
-			assert.Equal(t, scheduler.Spec.Containers[i].ImagePullPolicy, container.ImagePullPolicy)
-			assert.Equal(t, scheduler.Spec.Containers[i].Command, container.Command)
-			for j, env := range container.Environment {
-				assert.Equal(t, scheduler.Spec.Containers[i].Environment[j].Name, env.Name)
-				assert.Equal(t, scheduler.Spec.Containers[i].Environment[j].Value, env.Value)
-			}
-			assert.Equal(t, scheduler.Spec.Containers[i].Requests.Memory, container.Requests.Memory)
-			assert.Equal(t, scheduler.Spec.Containers[i].Requests.CPU, container.Requests.CPU)
-			assert.Equal(t, scheduler.Spec.Containers[i].Limits.Memory, container.Limits.Memory)
-			assert.Equal(t, scheduler.Spec.Containers[i].Limits.CPU, container.Limits.CPU)
-			for j, port := range container.Ports {
-				assert.Equal(t, scheduler.Spec.Containers[i].Ports[j].Name, port.Name)
-				assert.Equal(t, scheduler.Spec.Containers[i].Ports[j].Protocol, port.Protocol)
-				assert.Equal(t, scheduler.Spec.Containers[i].Ports[j].Port, port.Port)
-				assert.Equal(t, scheduler.Spec.Containers[i].Ports[j].HostPort, port.HostPort)
-			}
-		}
-
-		assert.Equal(t, scheduler.PortRange, schedulerResponse.PortRange)
-		for i, forwarder := range schedulerResponse.Forwarders {
-			assert.Equal(t, scheduler.Forwarders[i].Name, forwarder.Name)
-			assert.Equal(t, scheduler.Forwarders[i].Enabled, forwarder.Enable)
-			assert.Equal(t, string(scheduler.Forwarders[i].ForwardType), forwarder.Type)
-			assert.Equal(t, scheduler.Forwarders[i].Address, forwarder.Address)
-			assert.Equal(t, fmt.Sprint(int64(scheduler.Forwarders[i].Options.Timeout)), forwarder.Options.Timeout)
-		}
 	})
 
 	t.Run("with valid request and no scheduler found", func(t *testing.T) {
