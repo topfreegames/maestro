@@ -1,0 +1,15 @@
+{
+  "service": "GRPCForwarder",
+  "method": "SendPlayerEvent",
+  "input": {
+    "contains": {
+      "playerId": "446bb3d0-0334-4468-a4e7-8068a97caa53"
+    }
+  },
+  "output": {
+    "data": {
+      "code": 500,
+      "message": "Internal server error from matchmaker"
+    }
+  }
+}
