@@ -95,6 +95,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 		t.Run("Should Fail - image of GRU is invalid. Operation fails, version and pods are unchanged", func(t *testing.T) {
 			t.Parallel()
 
+			roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
@@ -115,7 +116,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
 									Name:  "ROOMS_API_ADDRESS",
-									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+									Value: &roomsApiAddress,
 								},
 								{
 									Name: "HOST_IP",
@@ -231,6 +232,7 @@ func switchVersion(t *testing.T, scheduler *maestrov1.Scheduler, managementApiCl
 }
 
 func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []string, kubeClient kubernetes.Interface, scheduler *maestrov1.Scheduler, maestro *maestro.MaestroInstance, managementApiClient *framework.APIClient, roomsApiClient *framework.APIClient, expectNewVersion string) *v1.PodList {
+	roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 	podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 	require.NoError(t, err)
 
@@ -251,7 +253,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 					Environment: []*maestroApiV1.ContainerEnvironment{
 						{
 							Name:  "ROOMS_API_ADDRESS",
-							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+							Value: &roomsApiAddress,
 						},
 						{
 							Name: "HOST_IP",
@@ -417,6 +419,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 }
 
 func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernetes.Interface, scheduler *maestrov1.Scheduler, maestro *maestro.MaestroInstance, managementApiClient *framework.APIClient, expectedNewVersion string) {
+	roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 	podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 	require.NoError(t, err)
 
@@ -438,7 +441,7 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 					Environment: []*maestroApiV1.ContainerEnvironment{
 						{
 							Name:  "ROOMS_API_ADDRESS",
-							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+							Value: &roomsApiAddress,
 						},
 						{
 							Name: "HOST_IP",

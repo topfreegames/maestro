@@ -48,6 +48,7 @@ import (
 func TestCreateScheduler(t *testing.T) {
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("should succeed", func(t *testing.T) {
+			roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 			schedulerName := framework.GenerateSchedulerName()
 			createRequest := &maestrov1.CreateSchedulerRequest{
 				Name:     schedulerName,
@@ -68,6 +69,24 @@ func TestCreateScheduler(t *testing.T) {
 							Limits: &maestrov1.ContainerResources{
 								Memory: "1",
 								Cpu:    "1",
+							},
+							Environment: []*maestrov1.ContainerEnvironment{
+								{
+									Name:  "ROOMS_API_ADDRESS",
+									Value: &roomsApiAddress,
+								},
+								{
+									Name: "HOST_IP",
+									ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+										FieldRef: &maestroApiV1.ContainerEnvironmentValueFromFieldRef{FieldPath: "status.hostIP"},
+									},
+								},
+								{
+									Name: "SECRET_ENV_VAR",
+									ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+										SecretKeyRef: &maestroApiV1.ContainerEnvironmentValueFromSecretKeyRef{Name: "namespace-secret", Key: "secret_key"},
+									},
+								},
 							},
 							Ports: []*maestrov1.ContainerPort{
 								{
@@ -111,6 +130,7 @@ func TestCreateScheduler(t *testing.T) {
 			// Check on kubernetes that the namespace was created.
 			_, err = kubeClient.CoreV1().Namespaces().Get(context.Background(), schedulerName, metav1.GetOptions{})
 			assert.NoError(t, err)
+
 		})
 
 		t.Run("should fail - operations finish with error (namespace already exists) - scheduler not found", func(t *testing.T) {

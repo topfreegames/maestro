@@ -511,8 +511,8 @@ func fromEntityContainerEnvironmentToApiContainerEnvironment(environments []game
 		}
 		switch {
 		case environment.Value != "":
-			value := environment.Value
-			apiContainerEnv.Value = &value
+			envValue := environment.Value
+			apiContainerEnv.Value = &envValue
 		case environment.ValueFrom != nil && environment.ValueFrom.SecretKeyRef != nil:
 			apiContainerEnv.ValueFrom = &api.ContainerEnvironmentValueFrom{
 				SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{

@@ -17,7 +17,25 @@
       "environment": [{
         "name": "env-var-name",
         "value": "env-var-value"
-      }],
+      },
+        {
+          "name": "env-var-field-ref",
+          "valueFrom": {
+            "fieldRef": {
+              "fieldPath": "metadata.name"
+            }
+          }
+        },
+        {
+          "name": "env-var-secret-ref",
+          "valueFrom": {
+            "secretKeyRef": {
+              "name": "secret_name",
+              "key": "secret_key"
+            }
+          }
+        }
+      ],
       "requests": {
         "memory": "100mi",
         "cpu": "100m"

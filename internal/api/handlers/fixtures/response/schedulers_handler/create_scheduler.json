@@ -1,13 +1,13 @@
 {
   "scheduler": {
-    "name": "zooba-us",
-    "game": "zooba",
-    "state": "in-sync",
+    "name": "scheduler-name-1",
+    "game": "game-name",
+    "state": "creating",
     "portRange": {
       "start": 1,
-      "end": 2
+      "end": 1000
     },
-    "createdAt": "2022-01-01T00:00:00Z",
+    "createdAt": "0001-01-01T00:00:00Z",
     "maxSurge": "10%",
     "spec": {
       "version": "v1.0.0",
@@ -53,8 +53,8 @@
           },
           "ports": [
             {
-              "name": "container-port-name",
-              "protocol": "https",
+              "name": "port-name",
+              "protocol": "tcp",
               "port": 12345,
               "hostPort": 54321
             }

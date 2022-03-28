@@ -50,6 +50,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 		t.Run("Succeed - create minor version, rollback version", func(t *testing.T) {
 			t.Parallel()
 
+			roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			// Update scheduler
@@ -70,7 +71,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
 									Name:  "ROOMS_API_ADDRESS",
-									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+									Value: &roomsApiAddress,
 								},
 								{
 									Name: "HOST_IP",
@@ -206,6 +207,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 		t.Run("Succeed - create major change, rollback version", func(t *testing.T) {
 			t.Parallel()
 
+			roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
@@ -228,7 +230,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
 									Name:  "ROOMS_API_ADDRESS",
-									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+									Value: &roomsApiAddress,
 								},
 								{
 									Name: "HOST_IP",
@@ -346,6 +348,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 		t.Run("Fail - version does not exist", func(t *testing.T) {
 			t.Parallel()
 
+			roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, game, kubeClient)
 
 			podsBeforeUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
@@ -368,7 +371,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
 									Name:  "ROOMS_API_ADDRESS",
-									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+									Value: &roomsApiAddress,
 								},
 								{
 									Name: "HOST_IP",
@@ -459,7 +462,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 
 		t.Run("Fail - adding forwarders crashes (testing scheduler cache)", func(t *testing.T) {
 			t.Parallel()
-
+			roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 			forwarders := []*maestroApiV1.Forwarder{
 				{
 					Name:    "matchmaker-grpc",
@@ -517,7 +520,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
 									Name:  "ROOMS_API_ADDRESS",
-									Value: maestro.RoomsApiServer.ContainerInternalAddress,
+									Value: &roomsApiAddress,
 								},
 								{
 									Name: "HOST_IP",

@@ -48,6 +48,7 @@ func createSchedulerAndWaitForIt(
 	kubeClient kubernetes.Interface,
 	game string,
 	gruCommand []string) (*maestroApiV1.Scheduler, error) {
+	roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
 		Name:     schedulerName,
@@ -64,7 +65,7 @@ func createSchedulerAndWaitForIt(
 					Environment: []*maestroApiV1.ContainerEnvironment{
 						{
 							Name:  "ROOMS_API_ADDRESS",
-							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+							Value: &roomsApiAddress,
 						},
 						{
 							Name: "HOST_IP",
@@ -156,6 +157,7 @@ func createSchedulerWithForwardersAndWaitForIt(
 	gruCommand []string,
 	forwarders []*maestroApiV1.Forwarder,
 ) (*maestroApiV1.Scheduler, error) {
+	roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
 		Name: schedulerName,
@@ -171,7 +173,7 @@ func createSchedulerWithForwardersAndWaitForIt(
 					Environment: []*maestroApiV1.ContainerEnvironment{
 						{
 							Name:  "ROOMS_API_ADDRESS",
-							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+							Value: &roomsApiAddress,
 						},
 						{
 							Name: "HOST_IP",
