@@ -50,22 +50,23 @@ message ContainerEnvironment {
   // Source for the environment variable's value. Cannot be used if value is not empty.
   ContainerEnvironmentValueFrom value_from = 3;
 }
-
+// Container environment ValueFrom possible values
 message ContainerEnvironmentValueFrom {
-  // Container environment variable name.
-  ContainerEnvironmentValueFromFieldRef fieldRef = 1;
-  // Container environment variable value.
-  ContainerEnvironmentValueFromSecretKeyRef secretKeyRef = 2;
+  // Container environment variable name using field reference, supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+  // spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+  ContainerEnvironmentValueFromFieldRef field_ref = 1;
+  // Container environment variable value using a secret key reference contained in the namespace.
+  ContainerEnvironmentValueFromSecretKeyRef secret_key_ref = 2;
 }
 
-// Container environment variables.
+//  Container environment valueFrom using field reference.
 message ContainerEnvironmentValueFromFieldRef {
   // The field path of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
   // spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
   string field_path = 1;
 }
 
-// Container environment variables.
+// Container environment valueFrom using secret key reference.
 message ContainerEnvironmentValueFromSecretKeyRef {
   // Name of the secret contained in the scheduler namespace.
   string name = 1;
