@@ -150,21 +150,21 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		}
 		w.operationManager.StartLeaseRenewGoRoutine(operationContext, op)
 
-		executionErr := w.executeCollectingLatencyMetrics(op.DefinitionName, func() error {
+		executionErr := w.executeCollectingLatencyMetrics(op.DefinitionName, func() operations.ExecutionError {
 			return executor.Execute(operationContext, op, def)
 		})
 
 		op.Status = operation.StatusFinished
 		if executionErr != nil {
 			op.Status = operation.StatusError
-			if errors.Is(executionErr, context.Canceled) {
+			if errors.Is(executionErr.Error(), context.Canceled) {
 				op.Status = operation.StatusCanceled
 
 				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Canceling operation")
 			}
 
-			loopLogger.Error("operation execution failed", zap.Error(executionErr))
-			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation execution failed, reason: %s", executionErr.Error()))
+			loopLogger.Error("operation execution failed", zap.Error(executionErr.Error()))
+			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation execution failed : %s", executionErr.FormattedMessage()))
 
 			rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
 				return executor.Rollback(w.workerContext, op, def, executionErr)
@@ -214,7 +214,7 @@ func (w *OperationExecutionWorker) evictOperation(ctx context.Context, logger *z
 	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation evicted")
 }
 
-func (w *OperationExecutionWorker) executeCollectingLatencyMetrics(definitionName string, f func() error) (err error) {
+func (w *OperationExecutionWorker) executeCollectingLatencyMetrics(definitionName string, f func() operations.ExecutionError) (err operations.ExecutionError) {
 	executeStartTime := time.Now()
 	err = f()
 	reportOperationExecutionLatency(executeStartTime, w.scheduler.Game, w.scheduler.Name, definitionName, err == nil)

@@ -40,52 +40,54 @@ var (
 
 type ExecutionError interface {
 	Kind() errorKind
-	Message() string
 	FormattedMessage() string
+	Error() error
 }
 
 type operationExecutionError struct {
 	kind             errorKind
-	message          string
 	formattedMessage string
+	err              error
+}
+
+func (e *operationExecutionError) Error() error {
+	return e.err
 }
 
 func (e *operationExecutionError) Kind() errorKind {
 	return e.kind
 }
-func (e *operationExecutionError) Message() string {
-	return e.message
-}
+
 func (e *operationExecutionError) FormattedMessage() string {
 	return e.formattedMessage
 }
 
-func NewErrUnexpected(format string, args ...interface{}) *operationExecutionError {
-	message := fmt.Sprintf(format, args...)
+func NewErrUnexpected(err error) *operationExecutionError {
+	message := err.Error()
 	return &operationExecutionError{
-		kind:    ErrKindUnexpected,
-		message: message,
+		kind: ErrKindUnexpected,
 		formattedMessage: fmt.Sprintf("Unexpected Error: %s - Contact the Maestro's responsible team for helping "+
 			"troubleshoot.", message),
+		err: err,
 	}
 }
 
-func NewErrInvalidGru(format string, args ...interface{}) *operationExecutionError {
+func NewErrInvalidGru(err error) *operationExecutionError {
 	return &operationExecutionError{
-		kind:    ErrKindInvalidGru,
-		message: fmt.Sprintf(format, args...),
+		kind: ErrKindInvalidGru,
 		formattedMessage: `The GRU could not be validated. Maestro could not wait for game room to be ready,
 		either the room is not sending the "ready" ping correctly or it is taking too long to respond. Please check if
 		the GRU image is stable, or if roomInitializationTimeoutMillis configuration value needs to be increased, 
 		and try again.`,
+		err: err,
 	}
 }
 
-func NewErrReadyPingTimeout(format string, args ...interface{}) *operationExecutionError {
+func NewErrReadyPingTimeout(err error) *operationExecutionError {
 	return &operationExecutionError{
-		kind:    ErrKindReadyPingTimeout,
-		message: fmt.Sprintf(format, args...),
+		kind: ErrKindReadyPingTimeout,
 		formattedMessage: `Got timeout while waiting room status to be ready. Please check if 
 		roomInitializationTimeoutMillis configuration value needs to be increased.`,
+		err: err,
 	}
 }
