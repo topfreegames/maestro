@@ -85,7 +85,7 @@ func TestExecute(t *testing.T) {
 	})
 }
 
-func TestOnError(t *testing.T) {
+func TestRollback(t *testing.T) {
 	t.Run("it returns nil when delete scheduler on execution error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		runtime := runtimeMock.NewMockRuntime(mockCtrl)
@@ -99,7 +99,7 @@ func TestOnError(t *testing.T) {
 		}
 		schedulerManager.EXPECT().DeleteScheduler(gomock.Any(), op.SchedulerName).Return(nil)
 
-		err := NewExecutor(runtime, schedulerManager).OnError(context.Background(), &op, definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, errors.ErrUnexpected)
 
 		assert.NoError(t, err)
 	})
@@ -117,10 +117,10 @@ func TestOnError(t *testing.T) {
 		}
 		schedulerManager.EXPECT().DeleteScheduler(gomock.Any(), op.SchedulerName).Return(errors.NewErrUnexpected("err"))
 
-		err := NewExecutor(runtime, schedulerManager).OnError(context.Background(), &op, definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, errors.ErrUnexpected)
 
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, errors.ErrUnexpected)
-		assert.Contains(t, err.Error(), "error in OnError function execution")
+		assert.Contains(t, err.Error(), "error in Rollback function execution")
 	})
 }

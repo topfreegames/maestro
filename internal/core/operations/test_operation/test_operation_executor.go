@@ -55,8 +55,8 @@ func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Oper
 	return nil
 }
 
-// OnError will do nothing.
-func (e *TestOperationExecutor) OnError(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
+// Rollback will do nothing.
+func (e *TestOperationExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
 	return nil
 }
 

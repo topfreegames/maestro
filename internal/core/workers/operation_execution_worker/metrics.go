@@ -50,11 +50,11 @@ var (
 		},
 	})
 
-	operationOnErrorLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
+	operationRollbackLatencyMetric = monitoring.CreateLatencyMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
-		Name:      "operation_on_error",
-		Help:      "An scheduler operation on error fallback was executed",
+		Name:      "operation_rollback",
+		Help:      "An scheduler operation rollback was executed",
 		Labels: []string{
 			monitoring.LabelGame,
 			monitoring.LabelScheduler,
@@ -96,10 +96,10 @@ func reportOperationExecutionLatency(start time.Time, game, schedulerName, opera
 	)
 }
 
-func reportOperationOnErrorLatency(start time.Time, game, schedulerName, operationName string, success bool) {
+func reportOperationRollbackLatency(start time.Time, game, schedulerName, operationName string, success bool) {
 	successLabelValue := fmt.Sprint(success)
 	monitoring.ReportLatencyMetricInMillis(
-		operationOnErrorLatencyMetric, start, game, schedulerName, operationName, successLabelValue,
+		operationRollbackLatencyMetric, start, game, schedulerName, operationName, successLabelValue,
 	)
 }
 

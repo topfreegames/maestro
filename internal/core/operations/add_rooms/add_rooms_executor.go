@@ -91,20 +91,20 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 	return nil
 }
 
-func (ex *AddRoomsExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ex *AddRoomsExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	executionLogger := ex.logger.With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
-	executionLogger.Info("starting OnError routine")
+	executionLogger.Info("starting rollback routine")
 
 	err := ex.deleteNewCreatedRooms(ctx, executionLogger, op.SchedulerName)
 	ex.clearNewCreatedRooms(op.SchedulerName)
 	if err != nil {
 		return err
 	}
-	executionLogger.Info("finished OnError routine")
+	executionLogger.Info("finished rollback routine")
 	return nil
 }
 
