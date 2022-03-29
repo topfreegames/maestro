@@ -288,7 +288,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 	})
 }
 
-func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
+func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mocks := newMockRoomAndSchedulerManager(mockCtrl)
 
@@ -313,7 +313,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 
 	t.Run("should succeed - Execute on error if operation finishes (no created rooms)", func(t *testing.T) {
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.OnError(context.Background(), &operation.Operation{}, definition, nil)
+		err = executor.Rollback(context.Background(), &operation.Operation{}, definition, nil)
 		require.NoError(t, err)
 	})
 
@@ -376,7 +376,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
 		}
 
-		err = executor.OnError(context.Background(), op, definition, nil)
+		err = executor.Rollback(context.Background(), op, definition, nil)
 		require.NoError(t, err)
 	})
 
@@ -436,7 +436,7 @@ func TestSwitchActiveVersionOperation_OnError(t *testing.T) {
 
 		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.New("error"))
 
-		err = executor.OnError(context.Background(), op, definition, nil)
+		err = executor.Rollback(context.Background(), op, definition, nil)
 		require.Error(t, err)
 	})
 }

@@ -128,7 +128,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	})
 }
 
-func TestAddRoomsExecutor_OnError(t *testing.T) {
+func TestAddRoomsExecutor_Rollback(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	clockMock := clock_mock.NewFakeClock(time.Now())
@@ -193,7 +193,7 @@ func TestAddRoomsExecutor_OnError(t *testing.T) {
 		require.Error(t, err)
 
 		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).Times(9)
-		err = executor.OnError(context.Background(), &op, &definition, nil)
+		err = executor.Rollback(context.Background(), &op, &definition, nil)
 		require.NoError(t, err)
 	})
 
@@ -212,7 +212,7 @@ func TestAddRoomsExecutor_OnError(t *testing.T) {
 
 		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("error")).Times(1)
 
-		err = executor.OnError(context.Background(), &op, &definition, nil)
+		err = executor.Rollback(context.Background(), &op, &definition, nil)
 		require.Error(t, err)
 	})
 

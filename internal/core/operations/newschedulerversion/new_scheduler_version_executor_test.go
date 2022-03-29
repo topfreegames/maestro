@@ -554,7 +554,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 }
 
-func TestCreateNewSchedulerVersionExecutor_OnError(t *testing.T) {
+func TestCreateNewSchedulerVersionExecutor_Rollback(t *testing.T) {
 	err := validations.RegisterValidations()
 	if err != nil {
 		t.Errorf("unexpected error %d'", err)
@@ -577,7 +577,7 @@ func TestCreateNewSchedulerVersionExecutor_OnError(t *testing.T) {
 		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
 		executor.AddValidationRoomId(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
 		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
-		result := executor.OnError(context.Background(), op, operationDef, nil)
+		result := executor.Rollback(context.Background(), op, operationDef, nil)
 
 		require.NoError(t, result)
 	})
@@ -599,9 +599,9 @@ func TestCreateNewSchedulerVersionExecutor_OnError(t *testing.T) {
 		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
 		executor.AddValidationRoomId(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
 		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some error"))
-		result := executor.OnError(context.Background(), op, operationDef, nil)
+		result := executor.Rollback(context.Background(), op, operationDef, nil)
 
-		require.EqualError(t, result, "error in OnError function execution: some error")
+		require.EqualError(t, result, "error in Rollback function execution: some error")
 	})
 
 	t.Run("when no game room were created during execution, it does nothing", func(t *testing.T) {
@@ -619,7 +619,7 @@ func TestCreateNewSchedulerVersionExecutor_OnError(t *testing.T) {
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 
 		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
-		result := executor.OnError(context.Background(), op, operationDef, nil)
+		result := executor.Rollback(context.Background(), op, operationDef, nil)
 
 		require.NoError(t, result)
 	})

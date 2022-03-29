@@ -160,23 +160,22 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			if errors.Is(executionErr, context.Canceled) {
 				op.Status = operation.StatusCanceled
 
-				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation cancelled")
+				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Canceling operation")
 			}
 
 			loopLogger.Error("operation execution failed", zap.Error(executionErr))
 			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation execution failed, reason: %s", executionErr.Error()))
 
-			onErrorErr := w.executeOnErrorCollectingLatencyMetrics(op.DefinitionName, func() error {
-				return executor.OnError(operationContext, op, def, executionErr)
+			rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
+				return executor.Rollback(w.workerContext, op, def, executionErr)
 			})
 
-			if onErrorErr != nil {
-				loopLogger.Error("operation OnError failed", zap.Error(onErrorErr))
-				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation OnError flow execution failed, reason: %s", onErrorErr.Error()))
+			if rollbackErr != nil {
+				loopLogger.Error("operation rollback failed", zap.Error(rollbackErr))
+				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
 			} else {
-				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation OnError flow execution finished with success")
+				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation rollback flow execution finished with success")
 			}
-
 		}
 
 		loopLogger.Info("Finishing operation")
@@ -191,7 +190,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		if err != nil {
 			loopLogger.Error("failed to revoke operation lease", zap.Error(err))
 		}
-		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Finishing operation")
+		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation finished")
 	}
 }
 
@@ -222,9 +221,9 @@ func (w *OperationExecutionWorker) executeCollectingLatencyMetrics(definitionNam
 	return err
 }
 
-func (w *OperationExecutionWorker) executeOnErrorCollectingLatencyMetrics(definitionName string, f func() error) (err error) {
-	onErrorStartTime := time.Now()
+func (w *OperationExecutionWorker) executeRollbackCollectingLatencyMetrics(definitionName string, f func() error) (err error) {
+	rollbackStartTime := time.Now()
 	err = f()
-	reportOperationOnErrorLatency(onErrorStartTime, w.scheduler.Game, w.scheduler.Name, definitionName, err == nil)
+	reportOperationRollbackLatency(rollbackStartTime, w.scheduler.Game, w.scheduler.Name, definitionName, err == nil)
 	return err
 }

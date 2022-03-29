@@ -71,7 +71,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) OnError(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
+func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
 	return nil
 }
 

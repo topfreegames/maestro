@@ -64,18 +64,18 @@ func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 	return nil
 }
 
-func (e *CreateSchedulerExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (e *CreateSchedulerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
-		zap.String("operation_phase", "OnError"),
+		zap.String("operation_phase", "Rollback"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 
 	err := e.schedulerManager.DeleteScheduler(ctx, op.SchedulerName)
 	if err != nil {
 		logger.Error(fmt.Sprintf("error deleting scheduler %s", op.SchedulerName), zap.Error(err))
-		return fmt.Errorf("error in OnError function execution: %w", err)
+		return fmt.Errorf("error in Rollback function execution: %w", err)
 	}
 	return nil
 }

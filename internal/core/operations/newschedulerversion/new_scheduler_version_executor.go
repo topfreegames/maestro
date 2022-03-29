@@ -100,18 +100,18 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	return nil
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ex *CreateNewSchedulerVersionExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
-		zap.String("operation_phase", "OnError"),
+		zap.String("operation_phase", "Rollback"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	if gameRoom, ok := ex.validationRoomIdsMap[op.SchedulerName]; ok {
 		err := ex.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, gameRoom)
 		if err != nil {
 			logger.Error("error deleting new game room created for validation", zap.Error(err))
-			return fmt.Errorf("error in OnError function execution: %w", err)
+			return fmt.Errorf("error in Rollback function execution: %w", err)
 		}
 		ex.RemoveValidationRoomId(op.SchedulerName)
 	}

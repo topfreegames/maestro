@@ -117,13 +117,13 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 	return nil
 }
 
-func (ex *SwitchActiveVersionExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ex *SwitchActiveVersionExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
-	logger.Info("starting OnError routine")
+	logger.Info("starting Rollback routine")
 
 	err := ex.deleteNewCreatedRooms(ctx, logger, op.SchedulerName)
 	ex.clearNewCreatedRooms(op.SchedulerName)
@@ -131,7 +131,7 @@ func (ex *SwitchActiveVersionExecutor) OnError(ctx context.Context, op *operatio
 		return err
 	}
 
-	logger.Info("finished OnError routine")
+	logger.Info("finished Rollback routine")
 	return nil
 }
 

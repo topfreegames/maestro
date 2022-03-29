@@ -79,7 +79,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
-		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Finishing operation")
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
 		// Ends the worker by cancelling it
 		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, context.Canceled)
 
@@ -96,7 +96,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.False(t, workerService.IsRunning())
 	})
 
-	t.Run("execute OnError when a Execute fails", func(t *testing.T) {
+	t.Run("execute Rollback when a Execute fails", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationName := "test_operation"
@@ -131,17 +131,17 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executionErr := fmt.Errorf("some execution error")
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
-		operationExecutor.EXPECT().OnError(gomock.Any(), expectedOperation, operationDefinition, executionErr).Do(
+		operationExecutor.EXPECT().Rollback(gomock.Any(), expectedOperation, operationDefinition, executionErr).Do(
 			func(ctx, operation, definition, executeErr interface{}) {
 				time.Sleep(time.Second * 1)
 			},
 		).Return(nil)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation execution failed, reason: some execution error")
-		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation OnError flow execution finished with success")
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation rollback flow execution finished with success")
 
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
-		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Finishing operation")
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
 		// Ends the worker by cancelling it
 		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, context.Canceled)
 
