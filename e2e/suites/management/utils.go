@@ -251,7 +251,6 @@ func createSchedulerWithForwardersAndWaitForIt(
 	}, 5*time.Second, time.Second)
 
 	// creating secret used by the pods
-	// creating secret used by the pods
 	_, err = createNamespaceSecrets(kubeClient, schedulerName, "namespace-secret", map[string]string{"secret_key": "secret_value"})
 	require.NoError(t, err)
 	return createResponse.Scheduler, err
