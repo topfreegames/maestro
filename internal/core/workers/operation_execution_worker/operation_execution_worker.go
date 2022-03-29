@@ -166,8 +166,8 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			loopLogger.Error("operation execution failed", zap.Error(executionErr))
 			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation execution failed, reason: %s", executionErr.Error()))
 
-			onErrorErr := w.executeOnErrorCollectingLatencyMetrics(op.DefinitionName, func() error {
-				return executor.OnError(operationContext, op, def, executionErr)
+			rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
+				return executor.Rollback(w.workerContext, op, def, executionErr)
 			})
 
 			if rollbackErr != nil {
