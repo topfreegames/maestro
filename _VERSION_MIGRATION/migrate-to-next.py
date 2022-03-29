@@ -1,15 +1,17 @@
 import os
+import sys
 import requests
 import yaml
 import json
 import time
+import argparse
 from tqdm import tqdm
 
 # Env Vars
 game = ""
+backup_folder_absolute_path = ""
 maestro_v9_endpoint = ""
 maestro_next_endpoint = ""
-backup_folder_absolute_path = ""
 
 
 # BACKUP
@@ -368,6 +370,48 @@ def main():
 def setup():
     global maestro_v9_endpoint
     global maestro_next_endpoint
+    global game
+    global backup_folder_absolute_path
+
+    my_parser = argparse.ArgumentParser(description='Args necessary to migrate schedulers from v9 to v10')
+    my_parser.add_argument('-o',
+                           '--old_url',
+                           metavar='v9_url',
+                           type=str,
+                           required=True,
+                           help='Maestro v9 API endpoint')
+
+    my_parser.add_argument('-n',
+                           '--new_url',
+                           metavar='v10_url',
+                           type=str,
+                           required=True,
+                           help='Maestro v10 API endpoint')
+
+    my_parser.add_argument('-b',
+                           '--backup',
+                           metavar='bkp_folder',
+                           type=str,
+                           required=True,
+                           help='Backup folder to store schedulers yaml files')
+
+    my_parser.add_argument('-g',
+                           '--game',
+                           metavar='game',
+                           type=str,
+                           required=True,
+                           help='Name of the game containing the schedulers to be migrated')
+
+    args = my_parser.parse_args()
+
+    maestro_v9_endpoint = args.old_url
+    maestro_next_endpoint = args.new_url
+    game = args.game
+    backup_folder_absolute_path = args.backup
+
+    if not os.path.isdir(backup_folder_absolute_path):
+        print('The backup path specified does not exist')
+        sys.exit()
 
     v9_last_char = maestro_v9_endpoint[-1]
     next_last_char = maestro_next_endpoint[-1]
