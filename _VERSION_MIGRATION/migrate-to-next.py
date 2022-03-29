@@ -239,6 +239,7 @@ def create_next_scheduler(scheduler):
         """
         timeout_in_seconds = 10
         for i in range(0, timeout_in_seconds):
+            # TODO: list operations for scheduler, see if operation is finished
             request = requests.get(
                 f'{maestro_next_endpoint}/schedulers/{scheduler["name"]}')
             if request.status_code == 200:
@@ -330,7 +331,7 @@ def main():
             sys.exit()
         print("...success")
 
-        print(f"=====> mapping configs and creating backup (locally) on path: '{backup_folder_absolute_path}'")
+        print(f"=====> mapping configs for schedulers")
         schedulers = map_configs_for_schedulers(schedulers)
         time.sleep(1)
         print("...success")
@@ -349,7 +350,7 @@ def main():
             if not deleted:
                 print(
                     f"ERROR: could not delete scheduler '{scheduler_name}'. reason=> {reason}")
-                continue
+                break
 
             created, reason = create_next_scheduler(scheduler)
             if not created:
