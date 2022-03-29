@@ -30,12 +30,14 @@ const (
 	ErrKindUnexpected errorKind = iota
 	ErrKindInvalidGru
 	ErrKindReadyPingTimeout
+	ErrKindTerminatingPingTimeout
 )
 
 var (
-	ErrUnexpected  = &operationExecutionError{kind: ErrKindUnexpected}
-	ErrInvalidGru  = &operationExecutionError{kind: ErrKindInvalidGru}
-	ErrPingTimeout = &operationExecutionError{kind: ErrKindReadyPingTimeout}
+	ErrUnexpected             = &operationExecutionError{kind: ErrKindUnexpected}
+	ErrInvalidGru             = &operationExecutionError{kind: ErrKindInvalidGru}
+	ErrReadyPingTimeout       = &operationExecutionError{kind: ErrKindReadyPingTimeout}
+	ErrTerminatingPingTimeout = &operationExecutionError{kind: ErrKindReadyPingTimeout}
 )
 
 type ExecutionError interface {
@@ -88,6 +90,15 @@ func NewErrReadyPingTimeout(err error) *operationExecutionError {
 		kind: ErrKindReadyPingTimeout,
 		formattedMessage: `Got timeout while waiting room status to be ready. Please check if 
 		roomInitializationTimeoutMillis configuration value needs to be increased.`,
+		err: err,
+	}
+}
+
+func NewErrTerminatingPingTimeout(err error) *operationExecutionError {
+	return &operationExecutionError{
+		kind: ErrKindTerminatingPingTimeout,
+		formattedMessage: `Got timeout while waiting room status to be terminating. Please check if 
+		roomDeletionTimeoutMillis configuration value needs to be increased.`,
 		err: err,
 	}
 }
