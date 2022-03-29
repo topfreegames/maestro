@@ -24,6 +24,7 @@ package add_rooms
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -39,6 +40,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 )
 
 type AddRoomsExecutor struct {
@@ -48,6 +50,8 @@ type AddRoomsExecutor struct {
 	newCreatedRooms     map[string][]*game_room.GameRoom
 	newCreatedRoomsLock sync.Mutex
 }
+
+var _ operations.Executor = (*AddRoomsExecutor)(nil)
 
 func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) *AddRoomsExecutor {
 	return &AddRoomsExecutor{
@@ -59,7 +63,7 @@ func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) 
 	}
 }
 
-func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
 	executionLogger := ex.logger.With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
@@ -69,7 +73,7 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 	scheduler, err := ex.storage.GetScheduler(ctx, op.SchedulerName)
 	if err != nil {
 		executionLogger.Error(fmt.Sprintf("Could not find scheduler with name %s, can not create rooms", op.SchedulerName), zap.Error(err))
-		return err
+		return operations.NewErrUnexpected(err)
 	}
 
 	errGroup, errContext := errgroup.WithContext(ctx)
@@ -83,7 +87,11 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 
 	if executionErr := errGroup.Wait(); executionErr != nil {
 		executionLogger.Error("Error creating rooms", zap.Error(executionErr))
-		return executionErr
+		if errors.Is(executionErr, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
+			return operations.NewErrReadyPingTimeout(executionErr)
+		} else {
+			return operations.NewErrUnexpected(executionErr)
+		}
 	}
 	ex.clearNewCreatedRooms(op.SchedulerName)
 
