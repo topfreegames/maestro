@@ -41,6 +41,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 )
 
 const (
@@ -117,13 +118,13 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 	// is absent.
 	duration := m.Config.RoomInitializationTimeout
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
+	defer cancelFunc()
 
 	err = m.WaitRoomStatus(timeoutContext, room, game_room.GameStatusReady)
-	defer cancelFunc()
 
 	if err != nil {
 		_ = m.DeleteRoomAndWaitForRoomTerminated(ctx, room)
-		return nil, nil, err
+		return nil, nil, serviceerrors.NewErrGameRoomStatusWaitingTimeout("").WithError(err)
 	}
 
 	return room, instance, err
@@ -147,7 +148,7 @@ func (m *RoomManager) DeleteRoomAndWaitForRoomTerminated(ctx context.Context, ga
 	defer cancelFunc()
 	err = m.WaitRoomStatus(timeoutContext, gameRoom, game_room.GameStatusTerminating)
 	if err != nil {
-		return fmt.Errorf("got timeout while waiting game room status to be terminating: %w", err)
+		return serviceerrors.NewErrGameRoomStatusWaitingTimeout("").WithError(err)
 	}
 
 	return nil

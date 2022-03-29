@@ -49,6 +49,8 @@ import (
 	ismock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
+
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
@@ -147,6 +149,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 
 		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
+		require.True(t, errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout))
 		require.Nil(t, room)
 		require.Nil(t, instance)
 	})
@@ -249,7 +252,8 @@ func TestRoomManager_DeleteRoomAndWaitForRoomTerminated(t *testing.T) {
 		roomStorageStatusWatcher.EXPECT().Stop()
 
 		err := roomManager.DeleteRoomAndWaitForRoomTerminated(context.Background(), gameRoom)
-		require.Error(t, err, "got timeout while waiting game room status to be terminating: failed to wait until room has desired status: context deadline exceeded")
+		require.True(t, errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout))
+		require.EqualError(t, err, "failed to wait until room has desired status: terminating, reason: context deadline exceeded")
 	})
 
 	t.Run("when room deletion has error returns error", func(t *testing.T) {
