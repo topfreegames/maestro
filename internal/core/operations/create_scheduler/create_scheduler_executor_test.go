@@ -27,6 +27,7 @@ package create_scheduler
 
 import (
 	"context"
+	"github.com/topfreegames/maestro/internal/core/operations"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -60,7 +61,7 @@ func TestExecute(t *testing.T) {
 		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(nil)
 
 		err := NewExecutor(runtime, schedulerManager).Execute(context.Background(), &op, &definition)
-		require.NoError(t, err)
+		require.Nil(t, err)
 	})
 
 	t.Run("fails with runtime request fails", func(t *testing.T) {
@@ -81,7 +82,8 @@ func TestExecute(t *testing.T) {
 		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(errors.ErrUnexpected)
 
 		err := NewExecutor(runtime, schedulerManager).Execute(context.Background(), &op, &definition)
-		require.ErrorIs(t, err, errors.ErrUnexpected)
+		require.NotNil(t, err)
+		require.Equal(t, err.Kind(), operations.ErrKindUnexpected)
 	})
 }
 
@@ -99,7 +101,7 @@ func TestRollback(t *testing.T) {
 		}
 		schedulerManager.EXPECT().DeleteScheduler(gomock.Any(), op.SchedulerName).Return(nil)
 
-		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, operations.NewErrUnexpected(errors.ErrUnexpected))
 
 		assert.NoError(t, err)
 	})
@@ -117,7 +119,7 @@ func TestRollback(t *testing.T) {
 		}
 		schedulerManager.EXPECT().DeleteScheduler(gomock.Any(), op.SchedulerName).Return(errors.NewErrUnexpected("err"))
 
-		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, operations.NewErrUnexpected(errors.ErrUnexpected))
 
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, errors.ErrUnexpected)
