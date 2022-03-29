@@ -33,11 +33,13 @@ import (
 
 type TestOperationExecutor struct{}
 
+var _ operations.Executor = (*TestOperationExecutor)(nil)
+
 func NewExecutor() *TestOperationExecutor {
 	return &TestOperationExecutor{}
 }
 
-func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Operation, definition operations.Definition) error {
+func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Operation, definition operations.Definition) operations.ExecutionError {
 	testOperationDefinition := definition.(*TestOperationDefinition)
 
 	zap.L().Sugar().Infof("sleeping routine for %d seconds", testOperationDefinition.SleepSeconds)
@@ -47,7 +49,7 @@ func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Oper
 	case <-ticker.C:
 
 	case <-ctx.Done():
-		return ctx.Err()
+		return operations.NewErrUnexpected(ctx.Err())
 	}
 
 	zap.L().Sugar().Infof("routine slept for %d seconds", testOperationDefinition.SleepSeconds)
