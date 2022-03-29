@@ -20,6 +20,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//go:build unit
+// +build unit
+
 package events
 
 import (
@@ -46,7 +49,7 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newStaticForwarder())
 
 		// assert
 		require.NoError(t, err)
@@ -58,7 +61,7 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 		_, eventsForwarderAdapter := basicArrange(mockCtrl)
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, map[string]interface{}{"roomType": "red", "ping": true}), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, map[string]interface{}{"roomType": "red", "ping": true}), newStaticForwarder())
 
 		// assert
 		require.Error(t, err)
@@ -70,7 +73,7 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newStaticForwarder())
 
 		// assert
 		require.Error(t, err)
@@ -81,7 +84,7 @@ func TestForwardRoomEvent_Arbitrary(t *testing.T) {
 		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newStaticForwarder())
 
 		require.Error(t, err)
 		require.NotNil(t, err)
@@ -97,7 +100,7 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newStaticForwarder())
 
 		// assert
 		require.NoError(t, err)
@@ -110,7 +113,7 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newStaticForwarder())
 
 		// assert
 		require.Error(t, err)
@@ -121,7 +124,7 @@ func TestForwardRoomEvent_Ping(t *testing.T) {
 		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
 		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newStaticForwarder())
 
 		require.Error(t, err)
 		require.NotNil(t, err)
@@ -136,7 +139,7 @@ func TestForwardRoomEvent(t *testing.T) {
 		_, eventsForwarderAdapter := basicArrange(mockCtrl)
 
 		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.RoomEventType("Unknown"), nil), newForwarder())
+		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.RoomEventType("Unknown"), nil), newStaticForwarder())
 
 		// assert
 		require.Error(t, err)
@@ -153,7 +156,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 		forwarderClientMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
 
 		// act
-		err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
+		err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newStaticForwarder())
 
 		// assert
 		require.NoError(t, err)
@@ -166,7 +169,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 		forwarderClientMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
 
 		// act
-		err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
+		err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newStaticForwarder())
 
 		// assert
 		require.Error(t, err)
@@ -179,7 +182,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 		forwarderClientMock.EXPECT().SendPlayerEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
 
 		// act
-		err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newForwarder())
+		err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newStaticForwarder())
 
 		require.Error(t, err)
 		require.NotNil(t, err)
@@ -228,7 +231,7 @@ func newPlayerEventAttributes() events.PlayerEventAttributes {
 	}
 }
 
-func newForwarder() forwarder.Forwarder {
+func newStaticForwarder() forwarder.Forwarder {
 	return forwarder.Forwarder{
 		Name:        "matchmaking",
 		Enabled:     true,

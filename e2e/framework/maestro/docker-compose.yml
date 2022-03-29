@@ -151,7 +151,7 @@ services:
     - "4770:4770"
     - "4771:4771"
     volumes:
-     - ../events.proto:/events.proto
+     - ../../../test/data/events.proto:/events.proto
 
 volumes:
   kubeconfig: {}

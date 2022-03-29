@@ -1,0 +1,20 @@
+{
+  "service": "GRPCForwarder",
+  "method": "SendRoomEvent",
+  "input": {
+    "contains": {
+      "room": {
+        "metadata":{
+            "mockIdentifier": "cbfef643-4fed-4ca9-94f8-9ad424fd5624"
+        }
+      },
+      "eventType": "roomReady"
+    }
+  },
+  "output": {
+    "data": {
+      "code": 200,
+      "message": "Event received with success"
+    }
+  }
+}

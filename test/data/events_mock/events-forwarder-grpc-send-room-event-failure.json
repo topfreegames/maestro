@@ -1,0 +1,20 @@
+{
+  "service": "GRPCForwarder",
+  "method": "SendRoomEvent",
+  "input": {
+    "contains": {
+      "room": {
+        "metadata":{
+            "mockIdentifier": "d85b0160-2522-494d-9efe-79a6a3612849"
+        }
+      },
+      "eventType": "roomReady"
+    }
+  },
+  "output": {
+    "data": {
+      "code": 500,
+      "message": "Internal server error from matchmaker"
+    }
+  }
+}
