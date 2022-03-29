@@ -31,6 +31,8 @@ import (
 	"testing"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
@@ -46,6 +48,7 @@ func createSchedulerAndWaitForIt(
 	kubeClient kubernetes.Interface,
 	game string,
 	gruCommand []string) (*maestroApiV1.Scheduler, error) {
+	roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
 		Name:     schedulerName,
@@ -62,7 +65,19 @@ func createSchedulerAndWaitForIt(
 					Environment: []*maestroApiV1.ContainerEnvironment{
 						{
 							Name:  "ROOMS_API_ADDRESS",
-							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+							Value: &roomsApiAddress,
+						},
+						{
+							Name: "HOST_IP",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								FieldRef: &maestroApiV1.ContainerEnvironmentValueFromFieldRef{FieldPath: "status.hostIP"},
+							},
+						},
+						{
+							Name: "SECRET_ENV_VAR",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								SecretKeyRef: &maestroApiV1.ContainerEnvironmentValueFromSecretKeyRef{Name: "namespace-secret", Key: "secret_key"},
+							},
 						},
 					},
 					Requests: &maestroApiV1.ContainerResources{
@@ -121,7 +136,24 @@ func createSchedulerAndWaitForIt(
 
 		return len(svcAccs.Items) > 0
 	}, 5*time.Second, time.Second)
+
+	// creating secret used by the pods
+	_, err = createNamespaceSecrets(kubeClient, schedulerName, "namespace-secret", map[string]string{"secret_key": "secret_value"})
+	require.NoError(t, err)
 	return createResponse.Scheduler, err
+}
+
+func createNamespaceSecrets(kubeClient kubernetes.Interface, schedulerName string, secretName string, secretMap map[string]string) (*v1.Secret, error) {
+	kubeSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: secretName,
+		},
+	}
+	kubeSecret.Data = map[string][]byte{}
+	for key, value := range secretMap {
+		kubeSecret.Data[key] = []byte(value)
+	}
+	return kubeClient.CoreV1().Secrets(schedulerName).Create(context.Background(), kubeSecret, metav1.CreateOptions{})
 }
 
 func createSchedulerWithForwardersAndWaitForIt(
@@ -132,6 +164,7 @@ func createSchedulerWithForwardersAndWaitForIt(
 	gruCommand []string,
 	forwarders []*maestroApiV1.Forwarder,
 ) (*maestroApiV1.Scheduler, error) {
+	roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
 		Name: schedulerName,
@@ -147,7 +180,19 @@ func createSchedulerWithForwardersAndWaitForIt(
 					Environment: []*maestroApiV1.ContainerEnvironment{
 						{
 							Name:  "ROOMS_API_ADDRESS",
-							Value: maestro.RoomsApiServer.ContainerInternalAddress,
+							Value: &roomsApiAddress,
+						},
+						{
+							Name: "HOST_IP",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								FieldRef: &maestroApiV1.ContainerEnvironmentValueFromFieldRef{FieldPath: "status.hostIP"},
+							},
+						},
+						{
+							Name: "SECRET_ENV_VAR",
+							ValueFrom: &maestroApiV1.ContainerEnvironmentValueFrom{
+								SecretKeyRef: &maestroApiV1.ContainerEnvironmentValueFromSecretKeyRef{Name: "namespace-secret", Key: "secret_key"},
+							},
 						},
 					},
 					Requests: &maestroApiV1.ContainerResources{
@@ -204,6 +249,10 @@ func createSchedulerWithForwardersAndWaitForIt(
 
 		return len(svcAccs.Items) > 0
 	}, 5*time.Second, time.Second)
+
+	// creating secret used by the pods
+	_, err = createNamespaceSecrets(kubeClient, schedulerName, "namespace-secret", map[string]string{"secret_key": "secret_value"})
+	require.NoError(t, err)
 	return createResponse.Scheduler, err
 }
 

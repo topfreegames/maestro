@@ -896,9 +896,51 @@
         "value": {
           "type": "string",
           "description": "Container environment variable value."
+        },
+        "valueFrom": {
+          "$ref": "#/definitions/v1ContainerEnvironmentValueFrom",
+          "description": "Source for the environment variable's value. Cannot be used if value is not empty."
         }
       },
       "description": "Container environment variables."
+    },
+    "v1ContainerEnvironmentValueFrom": {
+      "type": "object",
+      "properties": {
+        "fieldRef": {
+          "$ref": "#/definitions/v1ContainerEnvironmentValueFromFieldRef",
+          "description": "Container environment variable name using field reference, supports metadata.name, metadata.namespace, `metadata.labels['\u003cKEY\u003e']`, `metadata.annotations['\u003cKEY\u003e']`,\nspec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs."
+        },
+        "secretKeyRef": {
+          "$ref": "#/definitions/v1ContainerEnvironmentValueFromSecretKeyRef",
+          "description": "Container environment variable value using a secret key reference contained in the namespace."
+        }
+      },
+      "title": "Container environment ValueFrom possible values"
+    },
+    "v1ContainerEnvironmentValueFromFieldRef": {
+      "type": "object",
+      "properties": {
+        "fieldPath": {
+          "type": "string",
+          "description": "The field path of the pod: supports metadata.name, metadata.namespace, `metadata.labels['\u003cKEY\u003e']`, `metadata.annotations['\u003cKEY\u003e']`,\nspec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs."
+        }
+      },
+      "description": "Container environment valueFrom using field reference."
+    },
+    "v1ContainerEnvironmentValueFromSecretKeyRef": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the secret contained in the scheduler namespace."
+        },
+        "key": {
+          "type": "string",
+          "description": "Secret key."
+        }
+      },
+      "description": "Container environment valueFrom using secret key reference."
     },
     "v1ContainerPort": {
       "type": "object",
