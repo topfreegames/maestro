@@ -26,9 +26,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/operations"
 	"testing"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/operations"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 

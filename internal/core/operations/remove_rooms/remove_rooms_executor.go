@@ -26,8 +26,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 	"sync"
+
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"

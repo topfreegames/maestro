@@ -27,8 +27,9 @@ package create_scheduler
 
 import (
 	"context"
-	"github.com/topfreegames/maestro/internal/core/operations"
 	"testing"
+
+	"github.com/topfreegames/maestro/internal/core/operations"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"

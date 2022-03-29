@@ -28,9 +28,10 @@ package remove_rooms
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"github.com/topfreegames/maestro/internal/core/operations"
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
-	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
