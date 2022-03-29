@@ -138,15 +138,22 @@ func createSchedulerAndWaitForIt(
 	}, 5*time.Second, time.Second)
 
 	// creating secret used by the pods
-	kubeClient.CoreV1().Secrets(schedulerName).Create(context.Background(), &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "namespace-secret",
-		},
-		Data: map[string][]byte{
-			"secret_key": []byte("secret_value"),
-		},
-	}, metav1.CreateOptions{})
+	_, err = createNamespaceSecrets(kubeClient, schedulerName, "namespace-secret", map[string]string{"secret_key": "secret_value"})
+	require.NoError(t, err)
 	return createResponse.Scheduler, err
+}
+
+func createNamespaceSecrets(kubeClient kubernetes.Interface, schedulerName string, secretName string, secretMap map[string]string) (*v1.Secret, error) {
+	kubeSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: secretName,
+		},
+	}
+	kubeSecret.Data = map[string][]byte{}
+	for key, value := range secretMap {
+		kubeSecret.Data[key] = []byte(value)
+	}
+	return kubeClient.CoreV1().Secrets(schedulerName).Create(context.Background(), kubeSecret, metav1.CreateOptions{})
 }
 
 func createSchedulerWithForwardersAndWaitForIt(
@@ -244,14 +251,9 @@ func createSchedulerWithForwardersAndWaitForIt(
 	}, 5*time.Second, time.Second)
 
 	// creating secret used by the pods
-	kubeClient.CoreV1().Secrets(schedulerName).Create(context.Background(), &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "namespace-secret",
-		},
-		Data: map[string][]byte{
-			"secret_key": []byte("secret_value"),
-		},
-	}, metav1.CreateOptions{})
+	// creating secret used by the pods
+	_, err = createNamespaceSecrets(kubeClient, schedulerName, "namespace-secret", map[string]string{"secret_key": "secret_value"})
+	require.NoError(t, err)
 	return createResponse.Scheduler, err
 }
 
