@@ -25,10 +25,7 @@ package roomsapi
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
-
-	_ "net/http/pprof"
 
 	"github.com/topfreegames/maestro/cmd/commom"
 
@@ -65,10 +62,6 @@ func init() {
 }
 
 func runRoomsAPI() {
-	go func() {
-		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
-	}()
-
 	ctx, cancelFn := context.WithCancel(context.Background())
 
 	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
