@@ -24,7 +24,9 @@ package newschedulerversion
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -37,8 +39,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
-
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"go.uber.org/zap"
@@ -50,6 +50,8 @@ type CreateNewSchedulerVersionExecutor struct {
 	validationRoomIdsMap map[string]*game_room.GameRoom
 }
 
+var _ operations.Executor = (*CreateNewSchedulerVersionExecutor)(nil)
+
 func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager) *CreateNewSchedulerVersionExecutor {
 	return &CreateNewSchedulerVersionExecutor{
 		roomManager:          roomManager,
@@ -58,7 +60,7 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 	}
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -67,33 +69,39 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	)
 	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
 	if !ok {
-		return errors.NewErrInvalidArgument(fmt.Sprintf("invalid operation definition for %s operation", ex.Name()))
+		return operations.NewErrUnexpected(fmt.Errorf("invalid operation definition for %s operation", ex.Name()))
 	}
 
 	newScheduler := opDef.NewScheduler
 	currentActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, opDef.NewScheduler.Name)
 	if err != nil {
 		logger.Error("error getting active scheduler", zap.Error(err))
-		return fmt.Errorf("error getting active scheduler: %w", err)
+		return operations.NewErrUnexpected(fmt.Errorf("error getting active scheduler: %w", err))
 	}
 
 	isSchedulerMajorVersion := currentActiveScheduler.IsMajorVersion(newScheduler)
 
 	err = ex.populateSchedulerNewVersion(ctx, newScheduler, currentActiveScheduler.Spec.Version, isSchedulerMajorVersion)
 	if err != nil {
-		return err
+		return operations.NewErrUnexpected(err)
 	}
 
 	if isSchedulerMajorVersion {
 		err = ex.validateGameRoomCreation(ctx, newScheduler, logger)
+
 		if err != nil {
 			logger.Error("could not validate new game room creation", zap.Error(err))
-			return err
+			validationErr := fmt.Errorf("error creating new game room for validating new version: %w", err)
+			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
+				return operations.NewErrInvalidGru(validationErr)
+			} else {
+				return operations.NewErrUnexpected(validationErr)
+			}
 		}
 	}
 	err = ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
-		return err
+		return operations.NewErrUnexpected(err)
 	}
 	logger.Sugar().Infof("new scheduler version created: %s, is major: %t", newScheduler.Spec.Version, isSchedulerMajorVersion)
 	logger.Sugar().Infof("%s operation succeded, %s operation enqueued to continue scheduler update process, switching to version %s", opDef.Name(), switch_active_version.OperationName, newScheduler.Spec.Version)
@@ -125,8 +133,8 @@ func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
 	gameRoom, _, err := ex.roomManager.CreateRoomAndWaitForReadiness(ctx, *scheduler, true)
 	if err != nil {
-		logger.Error("error creating new game room for validating new version")
-		return fmt.Errorf("error creating new game room for validating new version: %w", err)
+		logger.Error("error creating new game room for validating new version", zap.Error(err))
+		return err
 	}
 	ex.AddValidationRoomId(scheduler.Name, gameRoom)
 	err = ex.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, gameRoom)
