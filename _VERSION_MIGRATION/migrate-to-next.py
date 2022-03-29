@@ -325,10 +325,12 @@ def main():
     try:
         print(f"=====> finding v9 schedulers for game: '{game}'")
         schedulers = get_v9_game_schedulers()
+        if len(schedulers) == 0:
+            print(f"=====> no schedulers found to switch for game: '{game}'")
+            sys.exit()
         print("...success")
 
-        print(
-            f"=====> mapping configs and creating backup (locally) on path: '{backup_folder_absolute_path}'")
+        print(f"=====> mapping configs and creating backup (locally) on path: '{backup_folder_absolute_path}'")
         schedulers = map_configs_for_schedulers(schedulers)
         time.sleep(1)
         print("...success")
