@@ -24,8 +24,11 @@ package remove_rooms
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
+
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -39,15 +42,17 @@ type RemoveRoomsExecutor struct {
 	roomManager ports.RoomManager
 }
 
+var _ operations.Executor = (*RemoveRoomsExecutor)(nil)
+
 func NewExecutor(roomManager ports.RoomManager) *RemoveRoomsExecutor {
 	return &RemoveRoomsExecutor{roomManager}
 }
 
-func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
 	removeDefinition := definition.(*RemoveRoomsDefinition)
 	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, op.SchedulerName, "", removeDefinition.Amount, &sync.Map{})
 	if err != nil {
-		return fmt.Errorf("failed to list rooms to delete: %w", err)
+		return operations.NewErrUnexpected(fmt.Errorf("failed to list rooms to delete: %w", err))
 	}
 
 	logger := zap.L().With(
@@ -63,7 +68,12 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
-			return fmt.Errorf("failed to remove room: %w", err)
+			deleteErr := fmt.Errorf("failed to remove room: %w", err)
+
+			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
+				return operations.NewErrTerminatingPingTimeout(deleteErr)
+			}
+			return operations.NewErrUnexpected(deleteErr)
 		}
 	}
 
@@ -71,7 +81,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
+func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ operations.ExecutionError) error {
 	return nil
 }
 

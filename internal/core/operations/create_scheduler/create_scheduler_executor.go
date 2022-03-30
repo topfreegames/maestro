@@ -39,6 +39,8 @@ type CreateSchedulerExecutor struct {
 	schedulerManager ports.SchedulerManager
 }
 
+var _ operations.Executor = (*CreateSchedulerExecutor)(nil)
+
 func NewExecutor(runtime ports.Runtime, schedulerManager ports.SchedulerManager) *CreateSchedulerExecutor {
 	return &CreateSchedulerExecutor{
 		runtime:          runtime,
@@ -46,7 +48,7 @@ func NewExecutor(runtime ports.Runtime, schedulerManager ports.SchedulerManager)
 	}
 }
 
-func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -57,14 +59,14 @@ func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName})
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to create scheduler %s in runtime", op.SchedulerName), zap.Error(err))
-		return err
+		return operations.NewErrUnexpected(err)
 	}
 
 	logger.Info(fmt.Sprintf("%s operation succeded, %s scheduler was created", definition.Name(), op.SchedulerName))
 	return nil
 }
 
-func (e *CreateSchedulerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (e *CreateSchedulerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),

@@ -29,6 +29,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations"
+
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
@@ -128,8 +130,8 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), newMajorScheduler).Return(nil)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
-		require.NoError(t, err)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
+		require.Nil(t, execErr)
 	})
 
 	t.Run("should succeed - Execute switch active version operation not replacing pods", func(t *testing.T) {
@@ -141,8 +143,8 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMinorScheduler.Name}, noReplaceDefinition)
-		require.NoError(t, err)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMinorScheduler.Name}, noReplaceDefinition)
+		require.Nil(t, execErr)
 	})
 
 	t.Run("should succeed - Execute switch active version operation (no running rooms)", func(t *testing.T) {
@@ -159,8 +161,8 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: activeScheduler.Name}, definition)
-		require.NoError(t, err)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: activeScheduler.Name}, definition)
+		require.Nil(t, execErr)
 	})
 
 	t.Run("should fail - Can't update scheduler (switch active version on database)", func(t *testing.T) {
@@ -172,8 +174,9 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(errors.New("error"))
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMinorScheduler.Name}, noReplaceDefinition)
-		require.Error(t, err)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMinorScheduler.Name}, noReplaceDefinition)
+		require.NotNil(t, execErr)
+		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't create room", func(t *testing.T) {
@@ -201,8 +204,9 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.New("error")).MaxTimes(maxSurge)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
-		require.Error(t, err)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
+		require.NotNil(t, execErr)
+		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't delete room", func(t *testing.T) {
@@ -231,8 +235,9 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.New("error")).MaxTimes(maxSurge)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
-		require.Error(t, err)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
+		require.NotNil(t, execErr)
+		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't find max surge", func(t *testing.T) {
@@ -244,8 +249,9 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.schedulerManager.EXPECT().GetSchedulerByVersion(gomock.Any(), newMajorScheduler.Name, newMajorScheduler.Spec.Version).Return(newMajorScheduler, nil)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
-		require.Error(t, err)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
+		require.NotNil(t, execErr)
+		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't list rooms to delete", func(t *testing.T) {
@@ -260,8 +266,9 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error"))
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
-		require.Error(t, err)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
+		require.NotNil(t, execErr)
+		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't get new scheduler", func(t *testing.T) {
@@ -271,8 +278,9 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.schedulerManager.EXPECT().GetSchedulerByVersion(gomock.Any(), newMajorScheduler.Name, newMajorScheduler.Spec.Version).Return(nil, errors.New("error"))
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
-		require.Error(t, err)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
+		require.NotNil(t, execErr)
+		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't get active scheduler", func(t *testing.T) {
@@ -283,8 +291,9 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), activeScheduler.Name).Return(nil, errors.New("error"))
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		err = executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
-		require.Error(t, err)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
+		require.NotNil(t, execErr)
+		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 }
 
@@ -369,8 +378,9 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 			SchedulerName:  newMajorScheduler.Name,
 			CreatedAt:      time.Now(),
 		}
-		err = executor.Execute(context.Background(), op, definition)
-		require.Error(t, err)
+		execErr := executor.Execute(context.Background(), op, definition)
+		require.NotNil(t, execErr)
+		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 
 		for range append(gameRoomListCycle1, gameRoomListCycle2...) {
 			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
@@ -431,8 +441,9 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 			SchedulerName:  newMajorScheduler.Name,
 			CreatedAt:      time.Now(),
 		}
-		err = executor.Execute(context.Background(), op, definition)
-		require.Error(t, err)
+		execErr := executor.Execute(context.Background(), op, definition)
+		require.NotNil(t, execErr)
+		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 
 		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.New("error"))
 

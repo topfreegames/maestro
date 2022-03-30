@@ -25,6 +25,8 @@ package add_rooms
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations"
+
 	"context"
 	"testing"
 
@@ -34,7 +36,9 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
+
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
@@ -98,10 +102,10 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		executor := NewExecutor(roomsManager, schedulerStorage)
 		err := executor.Execute(context.Background(), &op, &definition)
 
-		require.NoError(t, err)
+		require.Nil(t, err)
 	})
 
-	t.Run("should fail - some room creation fail, others succeed => returns error", func(t *testing.T) {
+	t.Run("should fail - some room creation fail, others succeed => returns unexpected error", func(t *testing.T) {
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
@@ -110,21 +114,41 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		gameRoomReady.Status = game_room.GameStatusReady
 
 		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
-		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, errors.NewErrUnexpected("error"))
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error"))
 
 		executor := NewExecutor(roomsManager, schedulerStorage)
 		err := executor.Execute(context.Background(), &op, &definition)
 
-		require.Error(t, err)
+		require.NotNil(t, err)
+		require.Equal(t, err.Kind(), operations.ErrKindUnexpected)
+	})
+
+	t.Run("should fail - some room creation fail with timeout => returns timeout error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
+
+		gameRoomReady := gameRoom
+		gameRoomReady.Status = game_room.GameStatusReady
+
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, serviceerrors.NewErrGameRoomStatusWaitingTimeout("context deadline exceeded"))
+
+		executor := NewExecutor(roomsManager, schedulerStorage)
+		err := executor.Execute(context.Background(), &op, &definition)
+
+		require.NotNil(t, err)
+		require.Equal(t, err.Kind(), operations.ErrKindReadyPingTimeout)
 	})
 
 	t.Run("should fail - no scheduler found => returns error", func(t *testing.T) {
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(nil, errors.NewErrNotFound("scheduler not found"))
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(nil, porterrors.NewErrNotFound("scheduler not found"))
 
 		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &op, &definition)
-		require.Error(t, err)
+		require.NotNil(t, err)
+		require.Equal(t, err.Kind(), operations.ErrKindUnexpected)
 	})
 }
 
@@ -185,16 +209,16 @@ func TestAddRoomsExecutor_Rollback(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
 
 		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
-		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, errors.NewErrUnexpected("error"))
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error"))
 
 		executor := NewExecutor(roomsManager, schedulerStorage)
 		err := executor.Execute(context.Background(), &op, &definition)
 
-		require.Error(t, err)
+		require.NotNil(t, err)
 
 		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).Times(9)
-		err = executor.Rollback(context.Background(), &op, &definition, nil)
-		require.NoError(t, err)
+		rollbackErr := executor.Rollback(context.Background(), &op, &definition, nil)
+		require.NoError(t, rollbackErr)
 	})
 
 	t.Run("when some error occurs while deleting rooms it returns error", func(t *testing.T) {
@@ -203,17 +227,17 @@ func TestAddRoomsExecutor_Rollback(t *testing.T) {
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
 
 		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
-		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, errors.NewErrUnexpected("error"))
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error"))
 
 		executor := NewExecutor(roomsManager, schedulerStorage)
 		err := executor.Execute(context.Background(), &op, &definition)
 
-		require.Error(t, err)
+		require.NotNil(t, err)
 
-		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("error")).Times(1)
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(porterrors.NewErrUnexpected("error")).Times(1)
 
-		err = executor.Rollback(context.Background(), &op, &definition, nil)
-		require.Error(t, err)
+		rollbackErr := executor.Rollback(context.Background(), &op, &definition, nil)
+		require.Error(t, rollbackErr)
 	})
 
 }

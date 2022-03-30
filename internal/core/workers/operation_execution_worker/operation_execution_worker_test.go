@@ -129,14 +129,14 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.Any(), expectedOperation)
 
-		executionErr := fmt.Errorf("some execution error")
+		executionErr := operations.NewErrUnexpected(fmt.Errorf("some execution error"))
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
 		operationExecutor.EXPECT().Rollback(gomock.Any(), expectedOperation, operationDefinition, executionErr).Do(
 			func(ctx, operation, definition, executeErr interface{}) {
 				time.Sleep(time.Second * 1)
 			},
 		).Return(nil)
-		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation execution failed, reason: some execution error")
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation execution failed : Unexpected Error: some execution error - Contact the Maestro's responsible team for helping troubleshoot.")
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation rollback flow execution finished with success")
 
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)

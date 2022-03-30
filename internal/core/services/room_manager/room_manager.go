@@ -32,6 +32,8 @@ import (
 	"sync"
 	"time"
 
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
+
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 	"github.com/topfreegames/maestro/internal/core/logs"
 
@@ -117,9 +119,9 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 	// is absent.
 	duration := m.Config.RoomInitializationTimeout
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
+	defer cancelFunc()
 
 	err = m.WaitRoomStatus(timeoutContext, room, game_room.GameStatusReady)
-	defer cancelFunc()
 
 	if err != nil {
 		_ = m.DeleteRoomAndWaitForRoomTerminated(ctx, room)
@@ -146,11 +148,7 @@ func (m *RoomManager) DeleteRoomAndWaitForRoomTerminated(ctx context.Context, ga
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
 	defer cancelFunc()
 	err = m.WaitRoomStatus(timeoutContext, gameRoom, game_room.GameStatusTerminating)
-	if err != nil {
-		return fmt.Errorf("got timeout while waiting game room status to be terminating: %w", err)
-	}
-
-	return nil
+	return err
 }
 
 func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
@@ -368,7 +366,11 @@ watchLoop:
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to wait until room has desired status: %s, reason: %w", status, err)
+		waitErr := fmt.Errorf("failed to wait until room has desired status: %s, reason: %w", status, err)
+		if errors.Is(err, context.DeadlineExceeded) {
+			return serviceerrors.NewErrGameRoomStatusWaitingTimeout("").WithError(waitErr)
+		}
+		return waitErr
 	}
 
 	return nil
