@@ -77,10 +77,8 @@ func NewErrUnexpected(err error) *operationExecutionError {
 func NewErrInvalidGru(err error) *operationExecutionError {
 	return &operationExecutionError{
 		kind: ErrKindInvalidGru,
-		formattedMessage: `The GRU could not be validated. Maestro could not wait for game room to be ready,
-		either the room is not sending the "ready" ping correctly or it is taking too long to respond. Please check if
-		the GRU image is stable, or if roomInitializationTimeoutMillis configuration value needs to be increased, 
-		and try again.`,
+		formattedMessage: `The GRU could not be validated. Maestro got timeout waiting the GRU to be ready. You can check if
+		the GRU image is stable, or if roomInitializationTimeoutMillis configuration value needs to be increased.`,
 		err: err,
 	}
 }
@@ -88,7 +86,7 @@ func NewErrInvalidGru(err error) *operationExecutionError {
 func NewErrReadyPingTimeout(err error) *operationExecutionError {
 	return &operationExecutionError{
 		kind: ErrKindReadyPingTimeout,
-		formattedMessage: `Got timeout while waiting room status to be ready. Please check if 
+		formattedMessage: `Got timeout while waiting room status to be ready. You can check if 
 		roomInitializationTimeoutMillis configuration value needs to be increased.`,
 		err: err,
 	}
@@ -97,7 +95,7 @@ func NewErrReadyPingTimeout(err error) *operationExecutionError {
 func NewErrTerminatingPingTimeout(err error) *operationExecutionError {
 	return &operationExecutionError{
 		kind: ErrKindTerminatingPingTimeout,
-		formattedMessage: `Got timeout while waiting room status to be terminating. Please check if 
+		formattedMessage: `Got timeout while waiting room status to be terminating. You can check if 
 		roomDeletionTimeoutMillis configuration value needs to be increased.`,
 		err: err,
 	}
