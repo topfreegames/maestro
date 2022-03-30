@@ -7,7 +7,7 @@ import time
 import argparse
 from tqdm import tqdm
 
-# Env Vars
+# global variables
 game = ""
 backup_folder_absolute_path = ""
 maestro_v9_endpoint = ""
