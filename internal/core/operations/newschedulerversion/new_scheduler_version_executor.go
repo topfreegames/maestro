@@ -95,9 +95,8 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 			validationErr := fmt.Errorf("error creating new game room for validating new version: %w", err)
 			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
 				return operations.NewErrInvalidGru(validationErr)
-			} else {
-				return operations.NewErrUnexpected(validationErr)
 			}
+			return operations.NewErrUnexpected(validationErr)
 		}
 	}
 	err = ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)

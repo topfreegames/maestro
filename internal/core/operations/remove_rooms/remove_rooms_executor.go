@@ -72,9 +72,8 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 
 			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
 				return operations.NewErrTerminatingPingTimeout(deleteErr)
-			} else {
-				return operations.NewErrUnexpected(deleteErr)
 			}
+			return operations.NewErrUnexpected(deleteErr)
 		}
 	}
 

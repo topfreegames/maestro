@@ -89,9 +89,8 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 		executionLogger.Error("Error creating rooms", zap.Error(executionErr))
 		if errors.Is(executionErr, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
 			return operations.NewErrReadyPingTimeout(executionErr)
-		} else {
-			return operations.NewErrUnexpected(executionErr)
 		}
+		return operations.NewErrUnexpected(executionErr)
 	}
 	ex.clearNewCreatedRooms(op.SchedulerName)
 
