@@ -99,7 +99,7 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 	return nil
 }
 
-func (ex *AddRoomsExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ex *AddRoomsExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
 	executionLogger := ex.logger.With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),

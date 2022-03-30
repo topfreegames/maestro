@@ -236,7 +236,7 @@ func TestAddRoomsExecutor_Rollback(t *testing.T) {
 
 		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(porterrors.NewErrUnexpected("error")).Times(1)
 
-		rollbackErr = executor.Rollback(context.Background(), &op, &definition, nil)
+		rollbackErr := executor.Rollback(context.Background(), &op, &definition, nil)
 		require.Error(t, rollbackErr)
 	})
 
