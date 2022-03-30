@@ -26,14 +26,11 @@ def make_backup(scheduler_name, yaml_config):
 
 
 # MAPPERS
-def get_port_range(port_range):
-    if not port_range:
-        return {
-            'start': 10000,
-            'end': 20000
-        }
-    else:
-        return port_range
+def get_port_range():
+    return {
+        'start': 40000,
+        'end': 60000
+    }
 
 
 def get_forwarders(forwarders):
@@ -92,7 +89,7 @@ def convert_v9_config_to_next(config):
             'game': config['game'],
             'spec': get_spec(config),
             'forwarders': get_forwarders(config['forwarders']),
-            'portRange': get_port_range(config['portRange']),
+            'portRange': get_port_range(),
             'maxSurge': '20%'
         }
         return next_config
@@ -235,18 +232,20 @@ def create_next_scheduler(scheduler):
 
     def wait_for_scheduler_to_be_created():
         """
-        :returns: could_wait
+        :returns: created
         """
-        timeout_in_seconds = 10
+        timeout_in_seconds = 30
         for i in range(0, timeout_in_seconds):
-            # TODO: list operations for scheduler, see if operation is finished
-            request = requests.get(
-                f'{maestro_next_endpoint}/schedulers/{scheduler["name"]}')
+            request = requests.get(f'{maestro_next_endpoint}/schedulers/{scheduler["name"]}')
             if request.status_code == 200:
-                return True
-            else:
-                time.sleep(1)
-                continue
+                request2 = requests.get(f'{maestro_next_endpoint}/schedulers/{scheduler["name"]}/operations')
+                if request2.status_code == 200:
+                    finished_operations = request2.json()["finishedOperations"]
+                    # if the operation finishes with error, in this case, it's like it never existed
+                    if len(finished_operations) > 0:
+                        return True
+
+            time.sleep(1)
         return False
 
     r = requests.post(f'{maestro_next_endpoint}/schedulers',
@@ -333,12 +332,10 @@ def main():
 
         print(f"=====> mapping configs for schedulers")
         schedulers = map_configs_for_schedulers(schedulers)
-        time.sleep(1)
         print("...success")
 
         print("=====> mapping Next format schedulers")
         schedulers = map_maestro_next_configs_for_scheduler(schedulers)
-        time.sleep(1)
         print("...success")
 
         print("##### all set to start migration! #####")
@@ -348,9 +345,9 @@ def main():
 
             deleted, reason = delete_scheduler_from_v9(scheduler)
             if not deleted:
-                print(
-                    f"ERROR: could not delete scheduler '{scheduler_name}'. reason=> {reason}")
-                break
+                print(f"ERROR: could not delete scheduler '{scheduler_name}'. reason=> {reason}")
+                print(f"INFO: stop execution")
+                sys.exit()
 
             created, reason = create_next_scheduler(scheduler)
             if not created:
@@ -358,12 +355,11 @@ def main():
                     f"ERROR: could not create scheduler '{scheduler_name}' on next. reason=> {reason}")
                 print(f"INFO: stop execution")
                 create_v9_scheduler(scheduler)
-                break
+                sys.exit()
 
             created, reason = create_rooms_existed_before(scheduler)
             if not created:
-                print(
-                    f"WARN: could not create rooms for scheduler '{scheduler_name}'. reason => {reason}")
+                print(f"WARN: could not create rooms for scheduler '{scheduler_name}'. reason => {reason}")
 
         print("=====> migration finished")
     except Exception as e:
