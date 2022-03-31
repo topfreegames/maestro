@@ -272,6 +272,29 @@ def create_next_scheduler(scheduler):
         return False, r.text
 
 
+def wait_for_operation_by_id(scheduler_name, operation_id):
+    """Waits for 240 sec
+    :returns: succeeded, reason
+    """
+    timeout_in_seconds = 240
+    for i in range(0, timeout_in_seconds):
+        request = requests.get(f'{maestro_next_endpoint}/schedulers/{scheduler_name}/operations')
+        if request.status_code == 200:
+            finished_operations = request.json()["finishedOperations"]
+            if len(finished_operations) > 1:
+                finished = list(filter(lambda x: x["id"] == operation_id, finished_operations))
+                if len(finished) > 0:
+                    finished_operation = finished[0]
+                    if finished_operation['status'] == 'finished':
+                        return True, ""
+                    else:
+                        execution_history = finished_operation["executionHistory"]
+                        return False, execution_history
+
+        time.sleep(1)
+    return False, "timeout waiting for operation to finish"
+
+
 def create_rooms_existed_before(scheduler):
     """
     scheduler: {
@@ -296,7 +319,9 @@ def create_rooms_existed_before(scheduler):
         'amount': scheduler['roomsReady']
     }))
     if r.status_code == 200:
-        return True, ""
+        operation_id = r.json()['operationId']
+        could_create, reason = wait_for_operation_by_id(scheduler["name"], operation_id)
+        return could_create, reason
     else:
         return False, r.text
 
@@ -372,6 +397,8 @@ def main():
             created, reason = create_rooms_existed_before(scheduler)
             if not created:
                 print(f"WARN: could not create rooms for scheduler '{scheduler_name}'. reason => {reason}")
+                print(f"INFO: stop execution")
+                sys.exit()
 
         print("=====> migration finished")
     except Exception as e:
