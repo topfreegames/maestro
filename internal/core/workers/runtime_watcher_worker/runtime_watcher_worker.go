@@ -99,24 +99,26 @@ func (w *runtimeWatcherWorker) IsRunning() bool {
 }
 
 func (w *runtimeWatcherWorker) processEvent(ctx context.Context, event game_room.InstanceEvent) error {
-	w.logger.Info("processing event", zap.Any("event", event))
+	eventLogger := w.logger.With(zap.String(logs.LogFieldInstanceID, event.Instance.ID))
 	switch event.Type {
 	case game_room.InstanceEventTypeAdded, game_room.InstanceEventTypeUpdated:
-		w.logger.Info("processing event. Updating rooms instance")
+		eventLogger.Info(fmt.Sprintf("processing %s event. Updating rooms instance", event.Type.String()))
 		if event.Instance == nil {
 			return fmt.Errorf("cannot process event since instance is nil")
 		}
 		err := w.roomManager.UpdateRoomInstance(ctx, event.Instance)
 		if err != nil {
+			eventLogger.Error(fmt.Sprintf("failed to process %s event.", event.Type.String()), zap.Error(err))
 			return fmt.Errorf("failed to update room instance %s: %w", event.Instance.ID, err)
 		}
 	case game_room.InstanceEventTypeDeleted:
-		w.logger.Info("processing event. Cleaning Room state")
+		eventLogger.Info(fmt.Sprintf("processing %s event. Cleaning Room state", event.Type.String()))
 		if event.Instance == nil {
 			return fmt.Errorf("cannot process event since instance is nil")
 		}
 		err := w.roomManager.CleanRoomState(ctx, event.Instance.SchedulerID, event.Instance.ID)
 		if err != nil {
+			eventLogger.Error(fmt.Sprintf("failed to process %s event.", event.Type.String()), zap.Error(err))
 			return fmt.Errorf("failed to clean room %s state: %w", event.Instance.ID, err)
 		}
 	default:
