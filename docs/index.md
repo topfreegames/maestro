@@ -6,7 +6,7 @@ A Scheduler defines the requirements of a game room as to how much memory and CP
 
 Each Operation has its own properties to be executed.
 
-Maestro has four components: Management API, Game Rooms API, Execution Worker, Runtime Watcher and Metrics Reporter. They all deliver together the Maestro features that will be described in the next sections.
+Maestro has five components: Management API, Game Rooms API, Execution Worker, Runtime Watcher and Metrics Reporter. They all deliver together the Maestro features that will be described in the next sections.
 
 ## Features & Components
 
@@ -15,7 +15,7 @@ Maestro is composed by:
 - *Management API:* this is the component that the users will use to create your requests to interact with Maestro. For example: create a Scheduler, get Scheduler information, etc.
 - *Execution Worker:* have an execution component to handle Operations to each Scheduler. For example: three Schedulers will have each one an execution component.
 - *Game Rooms API*: game rooms API expose an HTTP API to receive from game rooms messages that symbolize their respective status. For example: when a game room is ready to receive matches it will send a message informing that.
-- *Runtime Watcher:* is a component in Maestro that listen to Runtime events and reflect them in Maestro. For example: when a game room was created it caths this event and creates it in the maestro.
+- *Runtime Watcher:* is a component in Maestro that listen to Runtime events and reflect them in Maestro. For example: when a game room was created it is notified that this event happened.
 - *Metrics Reporter:* time spaced this component query the Runtime for metrics related to rooms and expose them in an open metrics route. For example: how many occupied rooms and ready rooms are up.
 
 ## Support & Community
