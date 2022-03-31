@@ -12,7 +12,7 @@ game = ""
 backup_folder_absolute_path = ""
 maestro_v9_endpoint = ""
 maestro_next_endpoint = ""
-container_input_env_vars = ""
+container_input_env_vars = {}
 
 
 # BACKUP
@@ -60,7 +60,11 @@ def get_ports(ports):
 
 def get_env(env):
     for env_var in container_input_env_vars:
-        env.append(env_var)
+        exists_to_override = [(index, var) for index, var in enumerate(env) if env_var['name'] == var['name']]
+        if len(exists_to_override) > 0:
+            env[exists_to_override[0][0]] = env_var
+        else:
+            env.append(env_var)
 
     return env
 
