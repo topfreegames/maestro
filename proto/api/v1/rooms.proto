@@ -15,7 +15,7 @@ service RoomsService {
   // Updates a game room with ping data.
   rpc UpdateRoomWithPing(UpdateRoomWithPingRequest) returns (UpdateRoomWithPingResponse) {
     option (google.api.http) = {
-      post: "/scheduler/{scheduler_name=*}/rooms/{room_name=*}/ping",
+      put: "/scheduler/{scheduler_name=*}/rooms/{room_name=*}/ping",
       body: "*"
     };
   }

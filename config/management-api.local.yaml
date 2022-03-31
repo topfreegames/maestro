@@ -6,7 +6,7 @@ internalApi:
   healthcheck:
     enabled: true
 managementApi:
-  port: 8080
+  port: 7070
   gracefulShutdownTimeout: 10s
 adapters:
   schedulerStorage:

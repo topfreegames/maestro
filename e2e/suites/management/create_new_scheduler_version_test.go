@@ -246,7 +246,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 				{
 					Name:  "example-update",
 					Image: "alpine:3.15.0",
-					Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
+					Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
 						"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 						"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 					ImagePullPolicy: "Always",
@@ -434,7 +434,7 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 				{
 					Name:  "example",
 					Image: "alpine:3.15.0",
-					Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request POST " +
+					Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
 						"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 						"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 					ImagePullPolicy: "Always",
