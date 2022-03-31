@@ -1,6 +1,6 @@
 <img align="right" width="300" height="260" src="./images/gopher-maestro.png">
 # Overview
-Maestro is a game room orchestration system. Each game room is a match execution context and a group of game rooms is organized in a Scheduler. Each time that a user requires some change in the Scheduler or game room, Maestro creates an Operation that is a change unit that will be enqueued and handled sequentially by a proper worker related exclusively to its respective Scheduler, in other words, each Scheduler has a worker that sequentialy handles Operations that is created to it.
+Maestro is a game room orchestration system, which can be used by multiplayer games to manage the scalability of its game rooms (Aka game servers). Ideally, Maestro should be used by games that implement [dedicated game server](https://docs-multiplayer.unity3d.com/docs/reference/glossary/network-topologies/index.html#dedicated-game-server-dgs) (dgs) architecture. Each game room is a dedicated game server that runs in a match execution context, a group of game rooms is organized in a **Scheduler**. Each time that a user requires some change in the Scheduler or game room, Maestro creates an Operation that is a change unit that will be enqueued and handled sequentially by a proper worker related exclusively to its respective Scheduler, in other words, each Scheduler has a worker that sequentially handles Operations that is created to it.
 
 A Scheduler defines the requirements of a game room as to how much memory and CPU it will need to execute and other information.
 
