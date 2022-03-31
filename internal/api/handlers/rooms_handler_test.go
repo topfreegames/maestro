@@ -70,7 +70,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 			request, err := validRawRequest.MarshalJSON()
 			require.NoError(t, err)
 
-			req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/room-name-1/ping", bytes.NewReader(request))
+			req, err := http.NewRequest(http.MethodPut, "/scheduler/scheduler-name-1/rooms/room-name-1/ping", bytes.NewReader(request))
 			require.NoError(t, err)
 
 			rr := httptest.NewRecorder()
@@ -98,7 +98,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		request, err := validRawRequests[0].MarshalJSON()
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/room-name-1/ping", bytes.NewReader(request))
+		req, err := http.NewRequest(http.MethodPut, "/scheduler/scheduler-name-1/rooms/room-name-1/ping", bytes.NewReader(request))
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -122,7 +122,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		request, err := validRawRequests[0].MarshalJSON()
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/room-name-1/ping", bytes.NewReader(request))
+		req, err := http.NewRequest(http.MethodPut, "/scheduler/scheduler-name-1/rooms/room-name-1/ping", bytes.NewReader(request))
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -144,7 +144,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/bad-ping-data.json")
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/room-name-1/ping", bytes.NewReader(request))
+		req, err := http.NewRequest(http.MethodPut, "/scheduler/scheduler-name-1/rooms/room-name-1/ping", bytes.NewReader(request))
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()

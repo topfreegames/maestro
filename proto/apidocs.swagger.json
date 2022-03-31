@@ -27,7 +27,7 @@
   ],
   "paths": {
     "/scheduler/{schedulerName}/rooms/{roomName}/ping": {
-      "post": {
+      "put": {
         "summary": "Updates a game room with ping data.",
         "operationId": "RoomsService_UpdateRoomWithPing",
         "responses": {
