@@ -12,6 +12,7 @@ game = ""
 backup_folder_absolute_path = ""
 maestro_v9_endpoint = ""
 maestro_next_endpoint = ""
+container_input_env_vars = {}
 
 
 # BACKUP
@@ -57,6 +58,17 @@ def get_ports(ports):
     return port_list
 
 
+def get_env(env):
+    for env_var in container_input_env_vars:
+        exists_to_override = [(index, var) for index, var in enumerate(env) if env_var['name'] == var['name']]
+        if len(exists_to_override) > 0:
+            env[exists_to_override[0][0]] = env_var
+        else:
+            env.append(env_var)
+
+    return env
+
+
 def get_containers(containers):
     containers_list = []
     for container in containers:
@@ -66,7 +78,7 @@ def get_containers(containers):
             'imagePullPolicy': container['imagePullPolicy'],
             'command': container['cmd'],
             'ports': get_ports(container['ports']),
-            "environment": container['env'],
+            "environment": get_env(container['env']),
             "requests": container['requests'],
             "limits": container['limits']
         })
@@ -371,6 +383,7 @@ def setup():
     global maestro_next_endpoint
     global game
     global backup_folder_absolute_path
+    global container_input_env_vars
 
     my_parser = argparse.ArgumentParser(description='Args necessary to migrate schedulers from v9 to v10')
     my_parser.add_argument('-o',
@@ -401,6 +414,13 @@ def setup():
                            required=True,
                            help='Name of the game containing the schedulers to be migrated')
 
+    my_parser.add_argument('-f',
+                           '--yaml_file',
+                           metavar='container_env_vars_file',
+                           type=str,
+                           required=True,
+                           help='yaml file containing env variables to be overridden in the format "env: -name: value:"')
+
     args = my_parser.parse_args()
 
     maestro_v9_endpoint = args.old_url
@@ -408,9 +428,24 @@ def setup():
     game = args.game
     backup_folder_absolute_path = args.backup
 
+    with open(args.yaml_file, "r") as f:
+        yaml_file = yaml.load(f, Loader=yaml.loader.SafeLoader)
+
     if not os.path.isdir(backup_folder_absolute_path):
         print('The backup path specified does not exist')
         sys.exit()
+
+    env_vars = yaml_file.get('env')
+    if not env_vars:
+        print('The yaml file do not have "env" property')
+        sys.exit()
+
+    for var in env_vars:
+        if not var.get('name'):
+            print(f'invalid syntax for {var} at yaml file')
+            sys.exit()
+
+    container_input_env_vars = env_vars
 
     v9_last_char = maestro_v9_endpoint[-1]
     next_last_char = maestro_next_endpoint[-1]
