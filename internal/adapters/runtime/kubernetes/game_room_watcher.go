@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
+
 	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -118,7 +120,6 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 	if kw.stopped {
 		return
 	}
-	kw.logger.Info("Received event from runtime watcher", zap.Any("obj", obj))
 
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
@@ -127,18 +128,16 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 
 	instance, err := kw.convertInstance(pod)
 	if err != nil {
-		kw.logger.Error("Error converting pod to game room instance", zap.Error(err))
+		kw.logger.Error("Error converting pod to game room instance", zap.String(logs.LogFieldInstanceID, pod.ObjectMeta.Name), zap.Error(err))
 		kw.stopWithError(err)
 		return
 	}
 
-	kw.logger.Info("Converted pod to instance", zap.Any("convertedInstance", instance))
 	instanceEvent := game_room.InstanceEvent{
 		Instance: instance,
 		Type:     eventType,
 	}
 
-	kw.logger.Info("Sending instance event to resultsChan", zap.Any("instanceEvent", instanceEvent))
 	kw.resultsChan <- instanceEvent
 }
 
