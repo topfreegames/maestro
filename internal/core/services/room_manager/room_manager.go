@@ -77,22 +77,12 @@ func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports
 }
 
 func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
-	numberOfPorts := 0
-	for _, container := range scheduler.Spec.Containers {
-		numberOfPorts += len(container.Ports)
-	}
-	allocatedPorts, err := m.PortAllocator.Allocate(scheduler.PortRange, numberOfPorts)
+	spec, err := m.populateSpecWithHostPort(scheduler)
 	if err != nil {
 		return nil, nil, err
 	}
-	portIndex := 0
-	for _, container := range scheduler.Spec.Containers {
-		for i := range container.Ports {
-			container.Ports[i].HostPort = int(allocatedPorts[portIndex])
-			portIndex++
-		}
-	}
-	instance, err := m.Runtime.CreateGameRoomInstance(ctx, scheduler.Name, scheduler.Spec)
+
+	instance, err := m.Runtime.CreateGameRoomInstance(ctx, scheduler.Name, *spec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -134,6 +124,26 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 	}
 
 	return room, instance, err
+}
+
+func (m *RoomManager) populateSpecWithHostPort(scheduler entities.Scheduler) (*game_room.Spec, error) {
+	numberOfPorts := 0
+	spec := scheduler.Spec.DeepCopy()
+	for _, container := range spec.Containers {
+		numberOfPorts += len(container.Ports)
+	}
+	allocatedPorts, err := m.PortAllocator.Allocate(scheduler.PortRange, numberOfPorts)
+	if err != nil {
+		return nil, err
+	}
+	portIndex := 0
+	for _, container := range spec.Containers {
+		for i := range container.Ports {
+			container.Ports[i].HostPort = int(allocatedPorts[portIndex])
+			portIndex++
+		}
+	}
+	return spec, nil
 }
 
 func (m *RoomManager) DeleteRoomAndWaitForRoomTerminated(ctx context.Context, gameRoom *game_room.GameRoom) error {
