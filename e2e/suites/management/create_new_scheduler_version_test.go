@@ -152,8 +152,8 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -289,8 +289,8 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 			},
 		},
 		PortRange: &maestroApiV1.PortRange{
-			Start: 80,
-			End:   8000,
+			Start: 40000,
+			End:   60000,
 		},
 		Forwarders: []*maestroApiV1.Forwarder{
 			{
@@ -477,8 +477,8 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 			},
 		},
 		PortRange: &maestroApiV1.PortRange{
-			Start: 80,
-			End:   8000,
+			Start: 40000,
+			End:   60000,
 		},
 		Forwarders: []*maestroApiV1.Forwarder{
 			{

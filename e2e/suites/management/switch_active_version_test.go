@@ -107,8 +107,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -266,8 +266,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -407,8 +407,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -556,8 +556,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 				Forwarders: forwarders,
 			}
