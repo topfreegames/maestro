@@ -44,6 +44,8 @@ import (
 )
 
 func TestSwitchActiveVersion(t *testing.T) {
+	t.Parallel()
+
 	game := "switch-active-version-game"
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {

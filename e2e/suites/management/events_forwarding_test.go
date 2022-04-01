@@ -43,6 +43,8 @@ import (
 )
 
 func TestEventsForwarding(t *testing.T) {
+	t.Parallel()
+
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		schedulerWithForwarderAndRooms, roomsNames := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
 		schedulerWithRooms, roomNameNoForwarder := createSchedulerWithRooms(t, maestro, kubeClient, managementApiClient)
