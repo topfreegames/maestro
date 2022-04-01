@@ -137,6 +137,64 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			},
 		).Return(nil)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation execution failed : Unexpected Error: some execution error - Contact the Maestro's responsible team for helping troubleshoot.")
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation rollback")
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation rollback flow execution finished with success")
+
+		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
+		// Ends the worker by cancelling it
+		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, context.Canceled)
+
+		err := workerService.Start(context.Background())
+		require.NoError(t, err)
+
+		workerService.Stop(context.Background())
+		require.False(t, workerService.IsRunning())
+	})
+
+	t.Run("execute Rollback when a Execute was canceled", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		operationName := "test_operation"
+		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
+		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
+
+		defFunc := func() operations.Definition { return operationDefinition }
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
+
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
+		expectedOperation := &operation.Operation{
+			ID:             "random-operation-id",
+			SchedulerName:  scheduler.Name,
+			Status:         operation.StatusPending,
+			DefinitionName: operationName,
+		}
+
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+
+		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
+		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
+		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
+		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.Any(), expectedOperation)
+
+		executionErr := operations.NewErrUnexpected(fmt.Errorf("some execution error: %s", context.Canceled.Error()))
+		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
+		operationExecutor.EXPECT().Rollback(gomock.Any(), expectedOperation, operationDefinition, executionErr).Do(
+			func(ctx, operation, definition, executeErr interface{}) {
+				time.Sleep(time.Second * 1)
+			},
+		).Return(nil)
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation canceled by the user")
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation rollback")
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation rollback flow execution finished with success")
 
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)

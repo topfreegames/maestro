@@ -22,7 +22,11 @@
 
 package operations
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"strings"
+)
 
 type errorKind int
 
@@ -44,6 +48,7 @@ type ExecutionError interface {
 	Kind() errorKind
 	FormattedMessage() string
 	Error() error
+	IsContextCanceled() bool
 }
 
 type operationExecutionError struct {
@@ -62,6 +67,10 @@ func (e *operationExecutionError) Kind() errorKind {
 
 func (e *operationExecutionError) FormattedMessage() string {
 	return e.formattedMessage
+}
+
+func (e *operationExecutionError) IsContextCanceled() bool {
+	return strings.Contains(e.err.Error(), context.Canceled.Error())
 }
 
 func NewErrUnexpected(err error) *operationExecutionError {
