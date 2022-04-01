@@ -160,7 +160,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				op.Status = operation.StatusCanceled
 
 				loopLogger.Info("operation execution canceled")
-				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Canceling operation")
+				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation canceled by the user")
 			} else {
 				op.Status = operation.StatusError
 
@@ -168,6 +168,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation execution failed : %s", executionErr.FormattedMessage()))
 			}
 
+			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation rollback")
 			rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
 				return executor.Rollback(w.workerContext, op, def, executionErr)
 			})
