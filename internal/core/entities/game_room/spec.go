@@ -48,3 +48,15 @@ func NewSpec(version string, terminationGracePeriod time.Duration, containers []
 		Toleration:             toleration,
 		Affinity:               affinity}
 }
+
+func (s *Spec) DeepCopy() *Spec {
+	spec := *s
+	spec.Containers = make([]Container, len(s.Containers))
+	copy(spec.Containers, s.Containers)
+	for i := range spec.Containers {
+		spec.Containers[i].Ports = make([]ContainerPort, len(spec.Containers[i].Ports))
+		copy(spec.Containers[i].Ports, s.Containers[i].Ports)
+	}
+
+	return &spec
+}

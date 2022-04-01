@@ -23,10 +23,9 @@
 package game_room_test
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"testing"
 )
 
 func TestNewSpec(t *testing.T) {
@@ -57,4 +56,72 @@ func TestNewSpec(t *testing.T) {
 			"10")
 		require.NotNil(t, spec)
 	})
+}
+
+func TestSpec_DeepCopy(t *testing.T) {
+
+	tests := []struct {
+		name string
+		spec *game_room.Spec
+		want *game_room.Spec
+	}{
+		{
+			name: "return a deep copy of the spec",
+			spec: &game_room.Spec{
+				Version:                "v1.1",
+				TerminationGracePeriod: 12,
+				Containers: []game_room.Container{
+					{
+						Name:            "default",
+						Image:           "some-image",
+						ImagePullPolicy: "Always",
+						Command:         []string{"hello"},
+						Ports: []game_room.ContainerPort{
+							{Name: "tcp", Protocol: "tcp", Port: 80},
+						},
+						Requests: game_room.ContainerResources{
+							CPU:    "10m",
+							Memory: "100Mi",
+						},
+						Limits: game_room.ContainerResources{
+							CPU:    "10m",
+							Memory: "100Mi",
+						},
+					},
+				},
+			},
+			want: &game_room.Spec{
+				Version:                "v1.1",
+				TerminationGracePeriod: 12,
+				Containers: []game_room.Container{
+					{
+						Name:            "default",
+						Image:           "some-image",
+						ImagePullPolicy: "Always",
+						Command:         []string{"hello"},
+						Ports: []game_room.ContainerPort{
+							{Name: "tcp", Protocol: "tcp", Port: 80},
+						},
+						Requests: game_room.ContainerResources{
+							CPU:    "10m",
+							Memory: "100Mi",
+						},
+						Limits: game_room.ContainerResources{
+							CPU:    "10m",
+							Memory: "100Mi",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.spec.DeepCopy()
+			require.True(t, &tt.want != &got)
+			require.True(t, &tt.want.Containers != &got.Containers)
+			require.True(t, &tt.want.Containers[0].Ports[0] != &got.Containers[0].Ports[0])
+			require.EqualValues(t, tt.want, got)
+		})
+	}
 }
