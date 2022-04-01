@@ -23,10 +23,11 @@
 package random
 
 import (
+	"math/rand"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
-	"math/rand"
 )
 
 var _ ports.PortAllocator = (*RandomPortAllocator)(nil)

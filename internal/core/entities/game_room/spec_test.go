@@ -23,9 +23,10 @@
 package game_room_test
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"testing"
 )
 
 func TestNewSpec(t *testing.T) {
