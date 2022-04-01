@@ -585,6 +585,45 @@
         ]
       }
     },
+    "/schedulers/{schedulerName}/operation/{operationId}": {
+      "get": {
+        "summary": "Cancel operation based on scheduler name and operation ID",
+        "operationId": "OperationsService_GetOperation",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetOperationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name that the operations are part of.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "operationId",
+            "description": "ID of the requested operation.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "OperationsService"
+        ]
+      }
+    },
     "/schedulers/{schedulerName}/operations": {
       "get": {
         "summary": "List operations based on a scheduler.",
@@ -1091,6 +1130,16 @@
         }
       },
       "description": "Forwarder Options definitions."
+    },
+    "v1GetOperationResponse": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "$ref": "#/definitions/apiv1Operation",
+          "description": "Operation requested."
+        }
+      },
+      "title": "The get operation route response/reply"
     },
     "v1GetSchedulerResponse": {
       "type": "object",
