@@ -29,6 +29,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -141,8 +142,8 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		instance := &game_room.Instance{ID: "test-instance"}
 		gameRoomTerminating := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusTerminating}
 
-		instanceStorage.EXPECT().GetInstance(context.Background(), gomock.Any(), gomock.Any()).Return(instance, nil)
-		runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(nil)
+		instanceStorage.EXPECT().GetInstance(gomock.Any(), gomock.Any(), gomock.Any()).Return(instance, nil)
+		runtime.EXPECT().DeleteGameRoomInstance(gomock.Any(), instance).Return(nil)
 		roomStorage.EXPECT().GetRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomTerminating, nil)
 		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
 		roomStorageStatusWatcher.EXPECT().Stop()
@@ -150,6 +151,42 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
 		require.Error(t, err)
 		require.True(t, errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout))
+		require.Nil(t, room)
+		require.Nil(t, instance)
+	})
+
+	t.Run("when context is cancelled while waiting game room to be ready, it deletes the created game room", func(t *testing.T) {
+		mainContext, mainContextCancelFunc := context.WithCancel(context.Background())
+		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		runtime.EXPECT().CreateGameRoomInstance(gomock.Any(), scheduler.Name, game_room.Spec{
+			Containers: []game_room.Container{container1, container2},
+		}).Return(&gameRoomInstance, nil)
+
+		roomStorage.EXPECT().CreateRoom(mainContext, &gameRoom)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoom, nil)
+		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).DoAndReturn(func(ctx context.Context, room *game_room.GameRoom) (ports.RoomStorageStatusWatcher, error) {
+			mainContextCancelFunc()
+			return roomStorageStatusWatcher, nil
+		})
+		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
+		roomStorageStatusWatcher.EXPECT().Stop()
+		roomStorageStatusWatcher.EXPECT().ResultChan()
+
+		instance := &game_room.Instance{ID: "test-instance"}
+		gameRoomTerminating := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusTerminating}
+
+		instanceStorage.EXPECT().GetInstance(gomock.Any(), gomock.Any(), gomock.Any()).Return(instance, nil)
+		runtime.EXPECT().DeleteGameRoomInstance(gomock.Any(), instance).DoAndReturn(func(deleteContext context.Context, gameRoomInstance *game_room.Instance) error {
+			require.NoError(t, deleteContext.Err())
+			return nil
+		})
+		roomStorage.EXPECT().GetRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomTerminating, nil)
+		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
+		roomStorageStatusWatcher.EXPECT().Stop()
+
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(mainContext, scheduler, false)
+		require.Error(t, err)
+		require.True(t, strings.Contains(err.Error(), context.Canceled.Error()))
 		require.Nil(t, room)
 		require.Nil(t, instance)
 	})

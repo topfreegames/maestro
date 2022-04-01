@@ -124,7 +124,12 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 	err = m.WaitRoomStatus(timeoutContext, room, game_room.GameStatusReady)
 
 	if err != nil {
-		_ = m.DeleteRoomAndWaitForRoomTerminated(ctx, room)
+		deleteCtx, deleteCancelFunc := context.WithTimeout(context.Background(), m.Config.RoomDeletionTimeout)
+		defer deleteCancelFunc()
+		deleteErr := m.DeleteRoomAndWaitForRoomTerminated(deleteCtx, room)
+		if deleteErr != nil {
+			m.Logger.Error("error deleting room that wasn't created with success", zap.Error(deleteErr))
+		}
 		return nil, nil, err
 	}
 
