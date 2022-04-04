@@ -1,0 +1,20 @@
+{
+  "operation": {
+    "id": "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+    "status": "pending",
+    "definitionName": "create_scheduler",
+    "schedulerName": "scheduler",
+    "createdAt": "2021-01-01T00:00:00Z",
+    "input": {
+      "scheduler": {
+        "name": "some-scheduler"
+      }
+    },
+    "executionHistory": [
+      {
+        "createdAt":  "1999-11-29T08:00:00Z",
+        "event": "some-event"
+      }
+    ]
+  }
+}

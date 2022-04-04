@@ -130,6 +130,27 @@ func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.Ca
 	return &api.CancelOperationResponse{}, nil
 }
 
+func (h *OperationsHandler) GetOperation(ctx context.Context, request *api.GetOperationRequest) (*api.GetOperationResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()))
+	handlerLogger.Info("received request to get operation by id")
+	op, _, err := h.operationManager.GetOperation(ctx, request.GetSchedulerName(), request.GetOperationId())
+	if err != nil {
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			handlerLogger.Warn("operation not found", zap.Error(err))
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		handlerLogger.Error("error fetching operation", zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	convertedOp, err := h.fromOperationToResponse(op)
+	if err != nil {
+		handlerLogger.Error("invalid operation object. Fail to convert", zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	return &api.GetOperationResponse{Operation: convertedOp}, nil
+}
+
 func (h *OperationsHandler) fromOperationsToResponses(entities []*operation.Operation) ([]*api.Operation, error) {
 	responses := make([]*api.Operation, len(entities))
 	for i, entity := range entities {

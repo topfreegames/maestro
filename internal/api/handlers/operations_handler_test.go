@@ -454,6 +454,161 @@ func TestCancelOperation(t *testing.T) {
 	})
 }
 
+func TestGetOperation(t *testing.T) {
+	dates := []time.Time{
+		time.Time{}.AddDate(2020, 0, 0),
+		time.Time{}.AddDate(2020, 1, 0),
+		time.Time{}.AddDate(2020, 2, 0),
+	}
+
+	type TestMock struct {
+		Operation *operation.Operation
+		Err       error
+	}
+	type TestInput struct {
+		OperationId   string
+		SchedulerName string
+	}
+	type TestOutput struct {
+		Operation *operation.Operation
+		Status    int
+	}
+	type Test struct {
+		Description string
+		Input       TestInput
+		Output      TestOutput
+		Mock        TestMock
+	}
+
+	for _, test := range []Test{
+		Test{
+			Description: "returns 200 with operation when operation found",
+			Mock: TestMock{
+				Operation: &operation.Operation{
+					ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+					Status:         operation.StatusPending,
+					CreatedAt:      dates[0],
+					SchedulerName:  "scheduler",
+					DefinitionName: "create_scheduler",
+					ExecutionHistory: []operation.OperationEvent{
+						{
+							CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+							Event:     "some-event",
+						},
+					},
+					Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+				},
+			},
+			Input: TestInput{
+				OperationId:   "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+				SchedulerName: "scheduler",
+			},
+			Output: TestOutput{
+				Operation: &operation.Operation{
+					ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+					Status:         operation.StatusPending,
+					CreatedAt:      dates[0],
+					SchedulerName:  "scheduler",
+					DefinitionName: "create_scheduler",
+					ExecutionHistory: []operation.OperationEvent{
+						{
+							CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+							Event:     "some-event",
+						},
+					},
+					Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+				},
+				Status: 200,
+			},
+		},
+		Test{
+			Description: "returns 404 when op not found",
+			Mock: TestMock{
+				Operation: &operation.Operation{
+					ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+					Status:         operation.StatusPending,
+					CreatedAt:      dates[0],
+					SchedulerName:  "scheduler",
+					DefinitionName: "create_scheduler",
+					ExecutionHistory: []operation.OperationEvent{
+						{
+							CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+							Event:     "some-event",
+						},
+					},
+					Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+				},
+				Err: errors.NewErrNotFound("error"),
+			},
+			Input: TestInput{
+				OperationId:   "NON-EXISTENT-OPERATIONS",
+				SchedulerName: "scheduler",
+			},
+			Output: TestOutput{
+				Operation: &operation.Operation{
+					ID: "NON-EXISTENT-OPERATIONS",
+				},
+				Status: 404,
+			},
+		},
+		Test{
+			Description: "returns 500 when error unexpected",
+			Mock: TestMock{
+				Operation: &operation.Operation{
+					ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+					Status:         operation.StatusPending,
+					CreatedAt:      dates[0],
+					SchedulerName:  "scheduler",
+					DefinitionName: "create_scheduler",
+					ExecutionHistory: []operation.OperationEvent{
+						{
+							CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+							Event:     "some-event",
+						},
+					},
+					Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+				},
+				Err: errors.NewErrUnexpected("error"),
+			},
+			Input: TestInput{
+				OperationId:   "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+				SchedulerName: "scheduler",
+			},
+			Output: TestOutput{
+				Operation: &operation.Operation{
+					ID: "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+				},
+				Status: 500,
+			},
+		},
+	} {
+		t.Run(test.Description, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			operationManager := mock.NewMockOperationManager(mockCtrl)
+
+			operationManager.EXPECT().GetOperation(gomock.Any(), test.Input.SchedulerName, test.Input.OperationId).Return(test.Mock.Operation, nil, test.Mock.Err)
+
+			mux := runtime.NewServeMux()
+			err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+			require.NoError(t, err)
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/schedulers/%s/operations/%s", test.Input.SchedulerName, test.Input.OperationId), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+			require.Equal(t, test.Output.Status, rr.Code)
+
+			if rr.Code == 200 {
+				responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/get_operation.json")
+				require.Equal(t, responseBody, expectedResponseBody)
+			}
+		})
+	}
+}
+
 func extractBodyForComparison(t *testing.T, body []byte, expectedBodyFixturePath string) (string, string) {
 	dirPath, err := os.Getwd()
 	require.NoError(t, err)
