@@ -461,101 +461,138 @@ func TestGetOperation(t *testing.T) {
 		time.Time{}.AddDate(2020, 2, 0),
 	}
 
-	type tableTestInput struct {
+	type TestMock struct {
 		Operation *operation.Operation
-	}
-	type tableTestOutput struct {
-		Operation *operation.Operation
-		Status    int
 		Err       error
 	}
-	type tableTests struct {
+	type TestInput struct {
+		OperationId   string
+		SchedulerName string
+	}
+	type TestOutput struct {
+		Operation *operation.Operation
+		Status    int
+	}
+	type Test struct {
 		Description string
-		Input       tableTestInput
-		Output      tableTestOutput
+		Input       TestInput
+		Output      TestOutput
+		Mock        TestMock
 	}
 
-	test1 := tableTests{
-		Description: "succeed - returns operation",
-		Input: tableTestInput{
-			Operation: &operation.Operation{
-				ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
-				Status:         operation.StatusPending,
-				CreatedAt:      dates[0],
-				SchedulerName:  "scheduler",
-				DefinitionName: "create_scheduler",
-				ExecutionHistory: []operation.OperationEvent{
-					{
-						CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-						Event:     "some-event",
+	for _, test := range []Test{
+		Test{
+			Description: "returns 200 with operation when operation found",
+			Mock: TestMock{
+				Operation: &operation.Operation{
+					ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+					Status:         operation.StatusPending,
+					CreatedAt:      dates[0],
+					SchedulerName:  "scheduler",
+					DefinitionName: "create_scheduler",
+					ExecutionHistory: []operation.OperationEvent{
+						{
+							CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+							Event:     "some-event",
+						},
 					},
+					Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 				},
-				Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 			},
-		},
-		Output: tableTestOutput{
-			Operation: &operation.Operation{
-				ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
-				Status:         operation.StatusPending,
-				CreatedAt:      dates[0],
-				SchedulerName:  "scheduler",
-				DefinitionName: "create_scheduler",
-				ExecutionHistory: []operation.OperationEvent{
-					{
-						CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-						Event:     "some-event",
+			Input: TestInput{
+				OperationId:   "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+				SchedulerName: "scheduler",
+			},
+			Output: TestOutput{
+				Operation: &operation.Operation{
+					ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+					Status:         operation.StatusPending,
+					CreatedAt:      dates[0],
+					SchedulerName:  "scheduler",
+					DefinitionName: "create_scheduler",
+					ExecutionHistory: []operation.OperationEvent{
+						{
+							CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+							Event:     "some-event",
+						},
 					},
+					Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 				},
-				Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
-			},
-			Status: 200,
-			Err:    nil,
-		},
-	}
-	test2 := tableTests{
-		Description: "fail - returns 404 since op not found",
-		Input: tableTestInput{
-			Operation: &operation.Operation{
-				ID: "NON-EXISTENT-OPERATIONS",
+				Status: 200,
 			},
 		},
-		Output: tableTestOutput{
-			Operation: &operation.Operation{
-				ID: "NON-EXISTENT-OPERATIONS",
+		Test{
+			Description: "returns 404 when op not found",
+			Mock: TestMock{
+				Operation: &operation.Operation{
+					ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+					Status:         operation.StatusPending,
+					CreatedAt:      dates[0],
+					SchedulerName:  "scheduler",
+					DefinitionName: "create_scheduler",
+					ExecutionHistory: []operation.OperationEvent{
+						{
+							CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+							Event:     "some-event",
+						},
+					},
+					Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+				},
+				Err: errors.NewErrNotFound("error"),
 			},
-			Status: 404,
-			Err:    errors.NewErrNotFound("error"),
-		},
-	}
-	test3 := tableTests{
-		Description: "fail - returns 500 since error unexpected",
-		Input: tableTestInput{
-			Operation: &operation.Operation{
-				ID: "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+			Input: TestInput{
+				OperationId:   "NON-EXISTENT-OPERATIONS",
+				SchedulerName: "scheduler",
+			},
+			Output: TestOutput{
+				Operation: &operation.Operation{
+					ID: "NON-EXISTENT-OPERATIONS",
+				},
+				Status: 404,
 			},
 		},
-		Output: tableTestOutput{
-			Operation: &operation.Operation{
-				ID: "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+		Test{
+			Description: "returns 500 when error unexpected",
+			Mock: TestMock{
+				Operation: &operation.Operation{
+					ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+					Status:         operation.StatusPending,
+					CreatedAt:      dates[0],
+					SchedulerName:  "scheduler",
+					DefinitionName: "create_scheduler",
+					ExecutionHistory: []operation.OperationEvent{
+						{
+							CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+							Event:     "some-event",
+						},
+					},
+					Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+				},
+				Err: errors.NewErrUnexpected("error"),
 			},
-			Status: 500,
-			Err:    errors.NewErrUnexpected("error"),
+			Input: TestInput{
+				OperationId:   "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+				SchedulerName: "scheduler",
+			},
+			Output: TestOutput{
+				Operation: &operation.Operation{
+					ID: "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+				},
+				Status: 500,
+			},
 		},
-	}
-
-	tests := []tableTests{test1, test2, test3}
-	for _, test := range tests {
+	} {
 		t.Run(test.Description, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			operationManager := mock.NewMockOperationManager(mockCtrl)
 
-			operationManager.EXPECT().GetOperation(gomock.Any(), test.Input.Operation.SchedulerName, test.Input.Operation.ID).Return(test.Output.Operation, nil, test.Output.Err)
+			operationManager.EXPECT().GetOperation(gomock.Any(), test.Input.SchedulerName, test.Input.OperationId).Return(test.Mock.Operation, nil, test.Mock.Err)
 
 			mux := runtime.NewServeMux()
 			err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 			require.NoError(t, err)
 
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/schedulers/%s/operations/%s", test.Input.Operation.SchedulerName, test.Input.Operation.ID), nil)
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/schedulers/%s/operations/%s", test.Input.SchedulerName, test.Input.OperationId), nil)
 			if err != nil {
 				t.Fatal(err)
 			}
