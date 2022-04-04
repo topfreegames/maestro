@@ -42,6 +42,8 @@ import (
 )
 
 func TestListOperations(t *testing.T) {
+	t.Parallel()
+
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("when listing operations should return all of them with filled fields", func(t *testing.T) {
 			t.Parallel()

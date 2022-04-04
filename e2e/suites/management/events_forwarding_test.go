@@ -43,6 +43,8 @@ import (
 )
 
 func TestEventsForwarding(t *testing.T) {
+	t.Parallel()
+
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		schedulerWithForwarderAndRooms, roomsNames := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
 		schedulerWithRooms, roomNameNoForwarder := createSchedulerWithRooms(t, maestro, kubeClient, managementApiClient)
@@ -377,7 +379,7 @@ func TestEventsForwarding(t *testing.T) {
 			}
 
 			pingResponse := &maestroApiV1.UpdateRoomWithPingResponse{}
-			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerWithForwarderAndRooms.Name, roomsNames[0]), pingRequest, pingResponse)
+			err = roomsApiClient.Do("PUT", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerWithForwarderAndRooms.Name, roomsNames[0]), pingRequest, pingResponse)
 			require.NoError(t, err)
 			require.Equal(t, true, pingResponse.Success)
 		})
@@ -399,7 +401,7 @@ func TestEventsForwarding(t *testing.T) {
 				},
 			}
 			pingResponse := &maestroApiV1.UpdateRoomWithPingResponse{}
-			err := roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerWithRooms.Name, roomNameNoForwarder), pingRequest, pingResponse)
+			err := roomsApiClient.Do("PUT", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerWithRooms.Name, roomNameNoForwarder), pingRequest, pingResponse)
 			require.NoError(t, err)
 			require.Equal(t, true, pingResponse.Success)
 		})
@@ -436,7 +438,7 @@ func TestEventsForwarding(t *testing.T) {
 				},
 			}
 			pingResponse := &maestroApiV1.UpdateRoomWithPingResponse{}
-			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerWithForwarderAndRooms.Name, roomsNames[0]), pingRequest, pingResponse)
+			err = roomsApiClient.Do("PUT", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerWithForwarderAndRooms.Name, roomsNames[0]), pingRequest, pingResponse)
 			require.NoError(t, err)
 			require.Equal(t, true, pingResponse.Success)
 		})
@@ -459,7 +461,7 @@ func TestEventsForwarding(t *testing.T) {
 				},
 			}
 			pingResponse := &maestroApiV1.UpdateRoomWithPingResponse{}
-			err := roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerWithInvalidGrpc.Name, invalidGrpcRooms[0]), pingRequest, pingResponse)
+			err := roomsApiClient.Do("PUT", fmt.Sprintf("/scheduler/%s/rooms/%s/ping", schedulerWithInvalidGrpc.Name, invalidGrpcRooms[0]), pingRequest, pingResponse)
 			require.NoError(t, err)
 			require.Equal(t, true, pingResponse.Success)
 		})

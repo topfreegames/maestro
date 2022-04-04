@@ -44,6 +44,8 @@ import (
 )
 
 func TestSwitchActiveVersion(t *testing.T) {
+	t.Parallel()
+
 	game := "switch-active-version-game"
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
@@ -105,8 +107,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -264,8 +266,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -405,8 +407,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -554,8 +556,8 @@ func TestSwitchActiveVersion(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 				Forwarders: forwarders,
 			}
