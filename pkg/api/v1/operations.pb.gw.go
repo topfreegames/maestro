@@ -303,7 +303,7 @@ func RegisterOperationsServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.OperationsService/GetOperation", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}/operation/{operation_id=*}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.OperationsService/GetOperation", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}/operations/{operation_id=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -405,7 +405,7 @@ func RegisterOperationsServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.OperationsService/GetOperation", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}/operation/{operation_id=*}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.OperationsService/GetOperation", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}/operations/{operation_id=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -429,7 +429,7 @@ var (
 
 	pattern_OperationsService_CancelOperation_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"schedulers", "scheduler_name", "operations", "operation_id", "cancel"}, ""))
 
-	pattern_OperationsService_GetOperation_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"schedulers", "scheduler_name", "operation", "operation_id"}, ""))
+	pattern_OperationsService_GetOperation_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"schedulers", "scheduler_name", "operations", "operation_id"}, ""))
 )
 
 var (

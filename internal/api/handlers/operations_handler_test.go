@@ -454,6 +454,184 @@ func TestCancelOperation(t *testing.T) {
 	})
 }
 
+func TestGetOperation(t *testing.T) {
+
+	dates := []time.Time{
+		time.Time{}.AddDate(2020, 0, 0),
+		time.Time{}.AddDate(2020, 1, 0),
+		time.Time{}.AddDate(2020, 2, 0),
+	}
+
+	type tableTestInput struct {
+		Operation *operation.Operation
+	}
+	type tableTestOutput struct {
+		Operation *operation.Operation
+		Status    int
+		Err       error
+	}
+	type tableTests struct {
+		Description string
+		Input       tableTestInput
+		Output      tableTestOutput
+	}
+
+	test1 := tableTests{
+		Description: "succeed - returns operation",
+		Input: tableTestInput{
+			Operation: &operation.Operation{
+				ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+				Status:         operation.StatusPending,
+				CreatedAt:      dates[0],
+				SchedulerName:  "scheduler",
+				DefinitionName: "create_scheduler",
+				ExecutionHistory: []operation.OperationEvent{
+					{
+						CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+						Event:     "some-event",
+					},
+				},
+				Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+			},
+		},
+		Output: tableTestOutput{
+			Operation: &operation.Operation{
+				ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+				Status:         operation.StatusPending,
+				CreatedAt:      dates[0],
+				SchedulerName:  "scheduler",
+				DefinitionName: "create_scheduler",
+				ExecutionHistory: []operation.OperationEvent{
+					{
+						CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+						Event:     "some-event",
+					},
+				},
+				Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+			},
+			Status: 200,
+			Err:    nil,
+		},
+	}
+	test2 := tableTests{
+		Description: "fail - returns 404 since op not found",
+		Input: tableTestInput{
+			Operation: &operation.Operation{
+				ID: "NON-EXISTENT-OPERATIONS",
+			},
+		},
+		Output: tableTestOutput{
+			Operation: &operation.Operation{
+				ID: "NON-EXISTENT-OPERATIONS",
+			},
+			Status: 404,
+			Err:    errors.NewErrNotFound("error"),
+		},
+	}
+	test3 := tableTests{
+		Description: "fail - returns 500 since error unexpected",
+		Input: tableTestInput{
+			Operation: &operation.Operation{
+				ID: "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+			},
+		},
+		Output: tableTestOutput{
+			Operation: &operation.Operation{
+				ID: "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+			},
+			Status: 500,
+			Err:    errors.NewErrUnexpected("error"),
+		},
+	}
+
+	tests := []tableTests{test1, test2, test3}
+	for _, test := range tests {
+		t.Run(test.Description, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			operationManager := mock.NewMockOperationManager(mockCtrl)
+
+			operationManager.EXPECT().GetOperation(gomock.Any(), test.Input.Operation.SchedulerName, test.Input.Operation.ID).Return(test.Output.Operation, nil, test.Output.Err)
+
+			mux := runtime.NewServeMux()
+			err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+			require.NoError(t, err)
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/schedulers/%s/operations/%s", test.Input.Operation.SchedulerName, test.Input.Operation.ID), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+			require.Equal(t, test.Output.Status, rr.Code)
+
+			if rr.Code == 200 {
+				responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/get_operation.json")
+				require.Equal(t, responseBody, expectedResponseBody)
+			}
+		})
+	}
+
+	//t.Run("returns operation", func(t *testing.T) {
+	//	mockCtrl := gomock.NewController(t)
+	//	operationManager := mock.NewMockOperationManager(mockCtrl)
+	//
+	//	operationManager.EXPECT().GetOperation(gomock.Any(), schedulerName, expectedOp.ID).Return(expectedOp, nil, nil)
+	//
+	//	mux := runtime.NewServeMux()
+	//	err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+	//	require.NoError(t, err)
+	//
+	//	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/schedulers/zooba/operations/%s", expectedOp.ID), nil)
+	//	if err != nil {
+	//		t.Fatal(err)
+	//	}
+	//
+	//	rr := httptest.NewRecorder()
+	//	mux.ServeHTTP(rr, req)
+	//	require.Equal(t, 200, rr.Code)
+	//})
+	//
+	//t.Run("returns 404", func(t *testing.T) {
+	//	mockCtrl := gomock.NewController(t)
+	//	operationManager := mock.NewMockOperationManager(mockCtrl)
+	//
+	//	operationManager.EXPECT().GetOperation(gomock.Any(), schedulerName, "NON-EXISTENT-OP").Return(nil, nil, errors.NewErrNotFound("error"))
+	//
+	//	mux := runtime.NewServeMux()
+	//	err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+	//
+	//	req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations/NON-EXISTENT-OP", nil)
+	//	if err != nil {
+	//		t.Fatal(err)
+	//	}
+	//
+	//	rr := httptest.NewRecorder()
+	//	mux.ServeHTTP(rr, req)
+	//	require.Equal(t, 404, rr.Code)
+	//})
+	//
+	//t.Run("with success and default sorting", func(t *testing.T) {
+	//	mockCtrl := gomock.NewController(t)
+	//	operationManager := mock.NewMockOperationManager(mockCtrl)
+	//
+	//	operationManager.EXPECT().GetOperation(gomock.Any(), schedulerName, "NON-EXISTENT-OP").Return(nil, nil, errors.NewErrNotFound("error"))
+	//
+	//	mux := runtime.NewServeMux()
+	//	err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+	//
+	//	req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations/NON-EXISTENT-OP", nil)
+	//	if err != nil {
+	//		t.Fatal(err)
+	//	}
+	//
+	//	rr := httptest.NewRecorder()
+	//	mux.ServeHTTP(rr, req)
+	//	require.Equal(t, 404, rr.Code)
+	//})
+
+}
+
 func extractBodyForComparison(t *testing.T, body []byte, expectedBodyFixturePath string) (string, string) {
 	dirPath, err := os.Getwd()
 	require.NoError(t, err)

@@ -585,45 +585,6 @@
         ]
       }
     },
-    "/schedulers/{schedulerName}/operation/{operationId}": {
-      "get": {
-        "summary": "Cancel operation based on scheduler name and operation ID",
-        "operationId": "OperationsService_GetOperation",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1GetOperationResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "schedulerName",
-            "description": "Scheduler name that the operations are part of.\nNOTE: On http protocol, this operates as a path param.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "operationId",
-            "description": "ID of the requested operation.\nNOTE: On http protocol, this operates as a path param.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "OperationsService"
-        ]
-      }
-    },
     "/schedulers/{schedulerName}/operations": {
       "get": {
         "summary": "List operations based on a scheduler.",
@@ -655,6 +616,45 @@
             "description": "Optional parameter for enabling operations sorting.\nGeneral `order_by` string syntax: \u003cfield\u003e (\u003casc|desc\u003e)\nDefault value is `created_at desc`\nNOTE: On http protocol, this operates as a query parameter.",
             "in": "query",
             "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "OperationsService"
+        ]
+      }
+    },
+    "/schedulers/{schedulerName}/operations/{operationId}": {
+      "get": {
+        "summary": "Cancel operation based on scheduler name and operation ID",
+        "operationId": "OperationsService_GetOperation",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetOperationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name that the operations are part of.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "operationId",
+            "description": "ID of the requested operation.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
             "type": "string"
           }
         ],
