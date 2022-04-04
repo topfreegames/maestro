@@ -26,6 +26,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -322,17 +323,15 @@ func waitForOperationToFinish(t *testing.T, managementApiClient *framework.APICl
 
 func waitForOperationToFinishByOperationId(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operationId string) {
 	require.Eventually(t, func() bool {
-		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		getOperationRequest := &maestroApiV1.GetOperationRequest{}
+		getOperationResponse := &maestroApiV1.GetOperationResponse{}
+		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", schedulerName, operationId), getOperationRequest, getOperationResponse)
 		require.NoError(t, err)
 
-		if len(listOperationsResponse.FinishedOperations) >= 1 {
-			for _, _operation := range listOperationsResponse.FinishedOperations {
-				if _operation.Id == operationId {
-					return true
-				}
-			}
+		op := getOperationResponse.GetOperation()
+		statusFinish, _ := operation.StatusFinished.String()
+		if op.GetStatus() == statusFinish {
+			return true
 		}
 
 		return false
