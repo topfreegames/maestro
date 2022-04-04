@@ -136,16 +136,16 @@ func (h *OperationsHandler) GetOperation(ctx context.Context, request *api.GetOp
 	op, _, err := h.operationManager.GetOperation(ctx, request.GetSchedulerName(), request.GetOperationId())
 	if err != nil {
 		if errors.Is(err, portsErrors.ErrNotFound) {
-			handlerLogger.Warn("operation not found", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()), zap.Error(err))
+			handlerLogger.Warn("operation not found", zap.Error(err))
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
-		handlerLogger.Error("error fetching operation", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()), zap.Error(err))
+		handlerLogger.Error("error fetching operation", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	convertedOp, err := h.fromOperationToResponse(op)
 	if err != nil {
-		handlerLogger.Error("invalid operation object. Fail to convert", zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()), zap.Error(err))
+		handlerLogger.Error("invalid operation object. Fail to convert", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	return &api.GetOperationResponse{Operation: convertedOp}, nil
