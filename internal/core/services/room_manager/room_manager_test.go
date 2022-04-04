@@ -83,6 +83,20 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		},
 	}
 
+	containerWithHostPort1 := game_room.Container{
+		Name: "container1",
+		Ports: []game_room.ContainerPort{
+			{Protocol: "tcp", HostPort: 5000},
+		},
+	}
+
+	containerWithHostPort2 := game_room.Container{
+		Name: "container2",
+		Ports: []game_room.ContainerPort{
+			{Protocol: "udp", HostPort: 6000},
+		},
+	}
+
 	scheduler := entities.Scheduler{
 		Name: "game",
 		Spec: game_room.Spec{
@@ -106,7 +120,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	t.Run("when room creation is successful then it returns the game room and instance", func(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{container1, container2},
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
 		}).Return(&gameRoomInstance, nil)
 
 		gameRoomReady := gameRoom
@@ -128,7 +142,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	t.Run("when game room creation fails with initialization timeout then it returns nil with proper error", func(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{container1, container2},
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
 		}).Return(&gameRoomInstance, nil)
 
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
@@ -159,7 +173,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		mainContext, mainContextCancelFunc := context.WithCancel(context.Background())
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(gomock.Any(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{container1, container2},
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
 		}).Return(&gameRoomInstance, nil)
 
 		roomStorage.EXPECT().CreateRoom(mainContext, &gameRoom)
@@ -194,7 +208,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	t.Run("when game room creation fails while creating instance then it returns nil with proper error", func(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{container1, container2},
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
 		}).Return(nil, porterrors.NewErrUnexpected("error create game room instance"))
 
 		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
@@ -206,7 +220,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	t.Run("when game room creation fails while creating game room on storage then it returns nil with proper error", func(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{container1, container2},
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
 		}).Return(&gameRoomInstance, nil)
 		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
 
@@ -230,7 +244,7 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 	t.Run("when upsert instance fails then it returns nil with proper error", func(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{container1, container2},
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
 		}).Return(&gameRoomInstance, nil)
 		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(errors.New("error"))
 

@@ -46,6 +46,8 @@ import (
 )
 
 func TestCreateScheduler(t *testing.T) {
+	t.Parallel()
+
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("should succeed", func(t *testing.T) {
 			roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
@@ -99,8 +101,8 @@ func TestCreateScheduler(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 			}
 
@@ -171,8 +173,8 @@ func TestCreateScheduler(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 			}
 

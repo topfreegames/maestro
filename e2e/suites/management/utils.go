@@ -99,8 +99,8 @@ func createSchedulerAndWaitForIt(
 			},
 		},
 		PortRange: &maestroApiV1.PortRange{
-			Start: 80,
-			End:   8000,
+			Start: 40000,
+			End:   60000,
 		},
 	}
 
@@ -214,8 +214,8 @@ func createSchedulerWithForwardersAndWaitForIt(
 			},
 		},
 		PortRange: &maestroApiV1.PortRange{
-			Start: 80,
-			End:   8000,
+			Start: 40000,
+			End:   60000,
 		},
 		MaxSurge:   "10%",
 		Forwarders: forwarders,

@@ -48,6 +48,8 @@ import (
 )
 
 func TestCreateNewSchedulerVersion(t *testing.T) {
+	t.Parallel()
+
 	game := "create-new-scheduler-version-game"
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("Should Succeed - create minor version, no pods replaces, create major version, all pods are changed", func(t *testing.T) {
@@ -150,8 +152,8 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 					},
 				},
 				PortRange: &maestroApiV1.PortRange{
-					Start: 80,
-					End:   8000,
+					Start: 40000,
+					End:   60000,
 				},
 			}
 			updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
@@ -287,8 +289,8 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 			},
 		},
 		PortRange: &maestroApiV1.PortRange{
-			Start: 80,
-			End:   8000,
+			Start: 40000,
+			End:   60000,
 		},
 		Forwarders: []*maestroApiV1.Forwarder{
 			{
@@ -475,8 +477,8 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 			},
 		},
 		PortRange: &maestroApiV1.PortRange{
-			Start: 80,
-			End:   8000,
+			Start: 40000,
+			End:   60000,
 		},
 		Forwarders: []*maestroApiV1.Forwarder{
 			{
