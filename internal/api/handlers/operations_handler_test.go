@@ -455,7 +455,6 @@ func TestCancelOperation(t *testing.T) {
 }
 
 func TestGetOperation(t *testing.T) {
-
 	dates := []time.Time{
 		time.Time{}.AddDate(2020, 0, 0),
 		time.Time{}.AddDate(2020, 1, 0),
@@ -571,65 +570,6 @@ func TestGetOperation(t *testing.T) {
 			}
 		})
 	}
-
-	//t.Run("returns operation", func(t *testing.T) {
-	//	mockCtrl := gomock.NewController(t)
-	//	operationManager := mock.NewMockOperationManager(mockCtrl)
-	//
-	//	operationManager.EXPECT().GetOperation(gomock.Any(), schedulerName, expectedOp.ID).Return(expectedOp, nil, nil)
-	//
-	//	mux := runtime.NewServeMux()
-	//	err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
-	//	require.NoError(t, err)
-	//
-	//	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/schedulers/zooba/operations/%s", expectedOp.ID), nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//
-	//	rr := httptest.NewRecorder()
-	//	mux.ServeHTTP(rr, req)
-	//	require.Equal(t, 200, rr.Code)
-	//})
-	//
-	//t.Run("returns 404", func(t *testing.T) {
-	//	mockCtrl := gomock.NewController(t)
-	//	operationManager := mock.NewMockOperationManager(mockCtrl)
-	//
-	//	operationManager.EXPECT().GetOperation(gomock.Any(), schedulerName, "NON-EXISTENT-OP").Return(nil, nil, errors.NewErrNotFound("error"))
-	//
-	//	mux := runtime.NewServeMux()
-	//	err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
-	//
-	//	req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations/NON-EXISTENT-OP", nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//
-	//	rr := httptest.NewRecorder()
-	//	mux.ServeHTTP(rr, req)
-	//	require.Equal(t, 404, rr.Code)
-	//})
-	//
-	//t.Run("with success and default sorting", func(t *testing.T) {
-	//	mockCtrl := gomock.NewController(t)
-	//	operationManager := mock.NewMockOperationManager(mockCtrl)
-	//
-	//	operationManager.EXPECT().GetOperation(gomock.Any(), schedulerName, "NON-EXISTENT-OP").Return(nil, nil, errors.NewErrNotFound("error"))
-	//
-	//	mux := runtime.NewServeMux()
-	//	err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
-	//
-	//	req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations/NON-EXISTENT-OP", nil)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//
-	//	rr := httptest.NewRecorder()
-	//	mux.ServeHTTP(rr, req)
-	//	require.Equal(t, 404, rr.Code)
-	//})
-
 }
 
 func extractBodyForComparison(t *testing.T, body []byte, expectedBodyFixturePath string) (string, string) {
