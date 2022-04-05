@@ -82,7 +82,7 @@ services:
 
   k3s_server:
     image: "rancher/k3s:v1.22.7-k3s1"
-    command: server --bind-address k3s_server
+    command: server --bind-address k3s_server --node-name control-plane
     tmpfs:
     - /run
     - /var/run
@@ -117,7 +117,7 @@ services:
     privileged: true
     restart: always
     environment:
-    - K3S_URL=https://server:6443
+    - K3S_URL=https://k3s_server:6443
     - K3S_TOKEN=maestro
 
   postgres:
