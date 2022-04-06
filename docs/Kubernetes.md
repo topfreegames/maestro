@@ -5,8 +5,8 @@ Table of Contents
   - [Runtime watcher](#runtime-watcher)
   - [Operation execution worker](#operation-execution-worker)
 - [Configuring cluster access](#configuring-cluster-access)
-    - [inCluster mode](#using-incluster-mode)
-    - [kubeconfig mode](#using-kubeconfig-mode)
+  - [inCluster mode](#using-incluster-mode)
+  - [kubeconfig mode](#using-kubeconfig-mode)
 
 ## Kubernetes usage
 Maestro uses kubernetes for orchestrating game room instances. It uses a unique **namespace** for each scheduler, and a unique **pod** for each game room instance.
@@ -68,6 +68,11 @@ kubernetes resources, all it does is to watch for changes and update its game ro
 
 ### Operation execution worker
 The worker uses kubernetes for managing pods and namespaces. It executes several [operations](Operations.md) that, alongside other side effects, will need to create, update, and delete namespaces and pods.
+
+One important note regarding how maestro creates pods: each new requested game room instance will be assigned to a pseudo-random port to be used as **HostPort**.
+Maestro uses the scheduler **PortRange** to generate the pseudo-random port. Currently, maestro does not check for HostPort conflict while creating new rooms. The final address
+of the game room will be composed of the **Node** address and the game room container assigned **HostPort**. That's the reason why
+maestro needs access for reading the Node addresses.
 
 ## Configuring cluster access
 
