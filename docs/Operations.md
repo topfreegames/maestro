@@ -16,9 +16,8 @@ Table of Contents
 
 
 ## What is
-Operation is a core concept at Maestro, and it represents executions done in multiple layers of Maestro, a state update, or a configuration change. 
-Requests sent from game rooms are not handled in operations. Instead, the services directly take those. 
-In most scenarios, those will be only state updates and won't perform any action on the scheduler or rooms.
+Operation is a core concept at Maestro, and it represents executions done in multiple layers of Maestro, a state update, or a configuration change.
+Operations can be created by user actions while managing schedulers (e.g. consuming management API), or internally by Maestro to fulfill internal states requirements
 
 Operations are heavily inspired by the [Command Design Pattern](https://en.wikipedia.org/wiki/Command_pattern)
 
@@ -26,7 +25,7 @@ Operations are heavily inspired by the [Command Design Pattern](https://en.wikip
 
 Maestro will have multiple operations, and those will be set using pairs of definitions and executors.
 An operation definition consists of the operation parameters.
-An operation executor is where the actual operation logic is implemented, and it will receive as input its correlated definition.
+An operation executor is where the actual operation execution and rollback logic is implemented, and it will receive as input its correlated definition.
 So, for example, the `CreateSchedulerExecutor` will always receive a `CreateSchedulerDefinition`.
 
 ```
@@ -63,16 +62,16 @@ So, for example, the `CreateSchedulerExecutor` will always receive a `CreateSche
 ```
 
 ## How does Maestro handle operations
-- Each scheduler have 1 worker (no operations running in parallel for a scheduler).
-- Every worker have 1 queue for operations.
+- Each scheduler has 1 operation execution (no operations running in parallel for a scheduler).
+- Every operation execution has 1 queue for pending operations.
 - When the worker is ready to work on a new operation, it'll pop from the queue.
 - The operation is executed by the worker following the lifecycle described [here](#lifecycle).
 
 ## State
 An operation can have one of the Status below:
-- Pending: When an operation is enqueued;
+- Pending: When an operation is enqueued to be executed;
 - Evicted: When an operation is unknown or should not be executed By Maestro;
-- In Progress: Operation is currently active; 
+- In Progress: Operation is currently being executed; 
 - Finished: Operation finished; Execution succeeded;
 - Error: Operation finished. Execution failed;
 - Canceled: Operation was canceled by the user.
@@ -107,6 +106,7 @@ flowchart TD
     
     should_execute{Should Execute?}
     execution_succeeded{Success?}
+    err_kind{Error Kind}
 
     execute[[Execute]]
     rollback[[Rollback]]
@@ -117,24 +117,28 @@ flowchart TD
     should_execute -- No --> evicted --> finish;
     should_execute -- Yes --> execute;
     execute --> execution_succeeded;
-    execute --> canceled_by_user --> canceled --> rollback;
+    execute --> canceled_by_user --> rollback;
     execution_succeeded -- Yes --> finished --> finish;
-    execution_succeeded -- No --> error --> rollback --> finish;
+    execution_succeeded -- No --> rollback;
+    rollback --> err_kind;
+    err_kind -- Canceled --> canceled --> finish;
+    err_kind -- Error --> error --> finish
 ```
 
 ## Lease
 ### What is the operation lease
-Lease is a mechanism to track operations execution and help troubleshooting long/delayed operations. 
+Lease is a mechanism to track the operations' execution process and check if we can rely on the current/future operation state. 
 ### Why Operations have it
 Sometimes, an operation might get stuck. It could happen, for example, if the worker crashes during the execution of an operation.
 To keep track of operations, we assign each operation a Lease.
 This Lease has a TTL (time to live). 
 
-When the operation is being executed, this TTL is renewed each time the lease is about to expire but the operation is still in progress.
+When the operation is being executed, this TTL is renewed each time the lease is about to expire while the operation is still in progress.
 It'll be revoked once the operation is finished.
 
 ### Troubleshooting
-If an operation is fetched and the TTL expired (the TTL is in the past), the operation probably got stuck.
+If an operation is fetched and the TTL expired (the TTL is in the past), the operation probably got stuck, 
+and we can't rely upon its current state, nor guarantee the required side effects of the execution or rollback have succeeded.
 
 If an operation does not have a Lease, it either did not start at all (should be on the queue) or is already finished. 
 An Active Operation without a Lease is at an invalid state.
@@ -190,11 +194,11 @@ For more details on how to use Maestro API, see [this section](https://topfreega
     - If operation fails rollback routine deletes anything (except for the operation) created related to new version.
 - **Switch Active Version**
   - Accessed through `PUT /schedulers/:schedulerName` endpoint.
-    - If it's a major change (anything under Scheduler.Spec changed), GRUs are switched using scheduler **maxSurge** property;
-    - If it's a minor change (Scheduler.Spec haven't changed), GRUs are **not** switched;
+    - If it's a major change (anything under Scheduler.Spec changed), GRUs are replaced using scheduler **maxSurge** property;
+    - If it's a minor change (Scheduler.Spec haven't changed), GRUs are **not** replaced;
 - **Add Rooms**
   - Accessed through `POST /schedulers/:schedulerName/add-rooms` endpoint.
-    - If any room fail on creating, the operation fails and other rooms are deleted on rollback feature;
+    - If any room fail on creating, the operation fails and created rooms are deleted on rollback feature;
 - **Remove Rooms**
   - Accessed through `POST /schedulers/:schedulerName/remove-rooms` endpoint.
     - Remove rooms based on amount;
