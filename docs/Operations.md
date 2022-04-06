@@ -68,10 +68,10 @@ So, for example, the `CreateSchedulerExecutor` will always receive a `CreateSche
 - **status**: Operations status. For reference, see [here](#state).
 - **definitionName**: Name of the operation. For reference, see [here](#available-operations).
 - **schedulerName**: Name of the scheduler which this operation affects.
-- **createdAt**: Timestamp representing when the operation as enqueued.
+- **createdAt**: Timestamp representing when the operation was enqueued.
 - **input**: Contains the input value for this operation. Each operation has its own input format.
   For details, see [below](#input).
-- **executionHistory**: Contains logs containing detailed info about the operation execution. See [below](#execution-history).
+- **executionHistory**: Contains logs with detailed info about the operation execution. See [below](#execution-history).
 
 ```yaml
 id: String
