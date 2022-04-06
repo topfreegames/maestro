@@ -97,18 +97,6 @@ An operation can have one of the Status below:
         in_progress --> canceled;
     </div>
   </body>
-  <script>
-  var config = {
-    startOnLoad:true,
-    theme: 'default',
-    flowchart:{
-      useMaxWidth:false,
-      htmlLabels:true
-    }
-  };
-  mermaid.initialize(config);
-  window.mermaid.init(undefined, document.querySelectorAll('.language-mermaid'));
-  </script>
 </html>
 
 ## Lifecycle
@@ -144,18 +132,6 @@ An operation can have one of the Status below:
         err_kind -- Error --> error --> finish
     </div>
   </body>
-  <script>
-  var config = {
-    startOnLoad:true,
-    theme: 'default',
-    flowchart:{
-      useMaxWidth:false,
-      htmlLabels:true
-    }
-  };
-  mermaid.initialize(config);
-  window.mermaid.init(undefined, document.querySelectorAll('.language-mermaid'));
-  </script>
 </html>
 
 ## Lease
@@ -212,18 +188,6 @@ An Active Operation without a Lease is at an invalid state.
           renew_lease_routine --&gt; finish;
     </div>
   </body>
-  <script>
-  var config = {
-    startOnLoad:true,
-    theme: 'default',
-    flowchart:{
-      useMaxWidth:false,
-      htmlLabels:true
-    }
-  };
-  mermaid.initialize(config);
-  window.mermaid.init(undefined, document.querySelectorAll('.language-mermaid'));
-  </script>
 </html>
 
 
