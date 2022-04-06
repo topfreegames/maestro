@@ -16,47 +16,45 @@ is the interface used for managing resources, you can find all of the features w
 
 The diagram below shows how maestro components interact with kubernetes for managing resources.
 
-```mermaid
-flowchart BT
-classDef borderless stroke-width:0px
-classDef darkBlue fill:#00008B, color:#fff
-classDef brightBlue fill:#6082B6, color:#fff
-classDef gray fill:#62524F, color:#fff
-classDef gray2 fill:#4F625B, color:#fff
-
-
-subgraph maestroSystem[ ]
-    subgraph k8s[ ]
-        A3[Kubernetes]
-    end
-    class k8s,A3 brightBlue
-    class A3, borderless
-    
-    subgraph WORKER[ ]
-        A7[Operation Execution Worker<br/><br/>manage kubernetes resources by creating/deleting/updating pods abnd namespaces]
-    end
-    class WORKER,A7 brightBlue
-    class WORKER,A7 borderless
-    WORKER--Create namespace<br/>HTTPS-->k8s
-    WORKER--Delete namespace<br/>HTTPS-->k8s
-    WORKER--Create pod<br/>HTTPS-->k8s
-    WORKER--Delete pod<br/>HTTPS-->k8s
-    
-    subgraph RUNTIME_WATCHER[ ]
-        A8[Runtime Watcher <br/><br/> watch for change events in managed pods]
-    end
-    class RUNTIME_WATCHER,A8 brightBlue
-    class RUNTIME_WATCHER,A8 borderless
-    RUNTIME_WATCHER--List/Watch pods<br/>HTTPS-->k8s
-    
-
-    
-end
-
-
-click A3 "/csymapp/mermaid-c4-model/blob/master/AWAComponent.md" "AWA"
-
-```
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.14.0/mermaid.min.js"></script>
+  </head>
+  <body>
+    <div class="mermaid">
+      flowchart BT
+        classDef borderless stroke-width:0px
+        classDef darkBlue fill:#00008B, color:#fff
+        classDef brightBlue fill:#6082B6, color:#fff
+        classDef gray fill:#62524F, color:#fff
+        classDef gray2 fill:#4F625B, color:#fff
+        subgraph maestroSystem[ ]
+            subgraph k8s[ ]
+                A3[Kubernetes]
+            end
+            class k8s,A3 brightBlue
+            class A3, borderless
+            subgraph WORKER[ ]
+                A7[Operation Execution Worker<br/><br/>manage kubernetes resources by creating/deleting/updating pods abnd namespaces]
+            end
+            class WORKER,A7 brightBlue
+            class WORKER,A7 borderless
+            WORKER--Create namespace<br/>HTTPS-->k8s
+            WORKER--Delete namespace<br/>HTTPS-->k8s
+            WORKER--Create pod<br/>HTTPS-->k8s
+            WORKER--Delete pod<br/>HTTPS-->k8s
+            subgraph RUNTIME_WATCHER[ ]
+                A8[Runtime Watcher <br/><br/> watch for change events in managed pods]
+            end
+            class RUNTIME_WATCHER,A8 brightBlue
+            class RUNTIME_WATCHER,A8 borderless
+            RUNTIME_WATCHER--List/Watch pods<br/>HTTPS-->k8s
+        end
+        click A3 "/csymapp/mermaid-c4-model/blob/master/AWAComponent.md" "AWA"
+    </div>
+  </body>
+</html>
 
 ### Runtime watcher
 The runtime watcher component maintains a worker process for each scheduler that keeps watching and processing _change
@@ -69,6 +67,7 @@ kubernetes resources, all it does is to watch for changes and update its game ro
 ### Operation execution worker
 The worker uses kubernetes for managing pods and namespaces. It executes several [operations](Operations.md) that, alongside other side effects, will need to create, update, and delete namespaces and pods.
 
+> **⚠ Currently, maestro does not check for HostPort conflict while creating new rooms**
 One important note regarding how maestro creates pods: each new requested game room instance will be assigned to a pseudo-random port to be used as **HostPort**.
 Maestro uses the scheduler **PortRange** to generate the pseudo-random port. Currently, maestro does not check for HostPort conflict while creating new rooms. The final address
 of the game room will be composed of the **Node** address and the game room container assigned **HostPort**. That's the reason why
