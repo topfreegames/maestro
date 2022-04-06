@@ -2,31 +2,57 @@ Table of Contents
 ---
 - [What Is](#what-is)
   - [Versions](#versions)
-  - [Operations](#operations)
+  - [How to Operate](#how-to-operate)
   - [Example](#example)
 
 ## What is
-Objectively, a **Scheduler** is 1:1 to **Kubernetes namespace**, and contains all the information for creating game rooms
-and forwarding rooms information to other services.
+Objectively, a **Scheduler** is 1:1 to **Kubernetes namespace** (as referenced [here](Kubernetes.md)), and contains all the information for creating 
+game rooms and forwarding rooms information to other services.
+The scheduler, then, is like a template for kubernetes.
 
 The `create scheduler` operation stores the scheduler with all it's info,
 and creates a namespace on Kubernetes with the name of the scheduler.
 
-### Versions
+### Structure
+The scheduler is represented as:
+```yaml
+name: String
+game: String
+state: String
+portRange: PortRange
+maxSurge: String
+spec: Spec
+forwarders: Forwarders
+```
+
+- **Name**: Scheduler name. This name is unique and will be the same name used for the kubernetes namespace.
+  It's offered by the user in the creation and cannot be changed in the future. It's used as an ID for the scheduler.
+- **game**: Name of the game which will use the scheduler. The game is important since it's common to use multiple schedulers
+for a specific game. So you probably will want to fetch all the schedulers from a game.
+## Versions
 A Scheduler have versions, and each time we want to change scheduler properties, we end-up creating a new version to it.
-> Versions are directly calculated by Maestro, not sent by the client.
+> ⚠ Versions are directly calculated by Maestro, not sent by the client.
 > 
-> The client can only switch the active version based on the versions created by Maestro.
+> The client can only switch the active version based on the versions created by Maestro. To switch to an specific version, see [this](Operations.md#available-operations).
 
 This version can either be a Minor or a Major change.
-- Major version: Replace the game rooms. 
+
+- Major version: **Replace** the game rooms. 
   - Basically, any change under **spec**, that are related to the game room directly.
-- Minor version: **Don't** replace game rooms. 
+- Minor version: **Don't replace** game rooms. 
   - Info such as MaxSurge or forwarders, that do not impact the game rooms.
 
-### Operations
+## How to Operate
+To directly interact with a Scheduler, the client enqueues [operations](Operations.md).
 
-### Example
+These operations are responsible for creating a scheduler or newer versions, switching an active version, switch version, 
+adding/removing rooms, etc.
+
+Because of that, everything that happens for a Scheduler can be tracked based on history of the operations executed for 
+that scheduler and the order they were executed.
+
+
+## Example
 A complete Scheduler looks like this:
 
 [comment]: <> (YAML scheduler)
