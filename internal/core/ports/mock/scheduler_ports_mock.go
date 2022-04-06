@@ -156,6 +156,21 @@ func (mr *MockSchedulerManagerMockRecorder) GetSchedulersInfo(ctx, filter interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSchedulersInfo", reflect.TypeOf((*MockSchedulerManager)(nil).GetSchedulersInfo), ctx, filter)
 }
 
+// PatchSchedulerAndSwitchActiveVersionOperation mocks base method.
+func (m *MockSchedulerManager) PatchSchedulerAndSwitchActiveVersionOperation(ctx context.Context, schedulerName string, patchMap map[string]interface{}) (*operation.Operation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PatchSchedulerAndSwitchActiveVersionOperation", ctx, schedulerName, patchMap)
+	ret0, _ := ret[0].(*operation.Operation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PatchSchedulerAndSwitchActiveVersionOperation indicates an expected call of PatchSchedulerAndSwitchActiveVersionOperation.
+func (mr *MockSchedulerManagerMockRecorder) PatchSchedulerAndSwitchActiveVersionOperation(ctx, schedulerName, patchMap interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchSchedulerAndSwitchActiveVersionOperation", reflect.TypeOf((*MockSchedulerManager)(nil).PatchSchedulerAndSwitchActiveVersionOperation), ctx, schedulerName, patchMap)
+}
+
 // UpdateScheduler mocks base method.
 func (m *MockSchedulerManager) UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
 	m.ctrl.T.Helper()
