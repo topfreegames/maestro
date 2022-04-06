@@ -8,6 +8,7 @@ nav:
   - Architecture: 'Architecture.md'
   - OpenAPI: 'OpenAPI.md'
   - Operations: 'Operations.md'
+  - Kubernetes Usage: 'Kubernetes.md'
   - Guidelines: 'Guidelines.md'
 
 
