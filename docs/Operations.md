@@ -3,6 +3,9 @@ Table of Contents
 
 - [What Is](#what-is)
   - [Definition and Executors](#definition-and-executors)
+- [Operation Structure](#operation-structure)
+  - [Input](#input)
+  - [Execution History](#execution-history)
 - [How does Maestro handle operations](#how-does-maestro-handle-operations)
 - [States](#state)
   - [State Machine](#state-machine)
@@ -22,7 +25,6 @@ Operations can be created by user actions while managing schedulers (e.g. consum
 Operations are heavily inspired by the [Command Design Pattern](https://en.wikipedia.org/wiki/Command_pattern)
 
 ### Definition and executors
-
 Maestro will have multiple operations, and those will be set using pairs of definitions and executors.
 An operation definition consists of the operation parameters.
 An operation executor is where the actual operation execution and rollback logic is implemented, and it will receive as input its correlated definition.
@@ -60,6 +62,56 @@ So, for example, the `CreateSchedulerExecutor` will always receive a `CreateSche
 │                              ...│
 └─────────────────────────────────┘
 ```
+
+## Operation Structure
+- **id**: Unique operation identification. Auto-Generated;
+- **status**: Operations status. For reference, see [here](#state).
+- **definitionName**: Name of the operation. For reference, see [here](#available-operations).
+- **schedulerName**: Name of the scheduler which this operation affects.
+- **createdAt**: Timestamp representing when the operation as enqueued.
+- **input**: Contains the input value for this operation. Each operation has its own input format.
+  For details, see [below](#input).
+- **executionHistory**: Contains logs containing detailed info about the operation execution. See [below](#execution-history).
+
+```yaml
+id: String
+status: String
+definitionName: String
+schedulerName: String
+createdAt: Timestamp
+input: Any
+executionHistory: ExecutionHistory
+```
+
+### Input
+- Create Scheduler
+```yaml
+scheduler: Scheduler
+```
+- Create New Scheduler Version
+```yaml
+scheduler: Scheduler
+```
+- Switch Scheduler Version
+```yaml
+newActiveVersion: Scheduler
+```
+- Add Rooms
+```yaml
+amount: Integer
+```
+- Remove Rooms
+```yaml
+amount: Integer
+```
+
+### Execution History
+```yaml
+createdAt: timestamp
+event: String
+```
+- **createdAt**: When did the event happened.
+- **event**: What happened. E.g. "Operation failed because...".
 
 ## How does Maestro handle operations
 - Each scheduler has 1 operation execution (no operations running in parallel for a scheduler).
