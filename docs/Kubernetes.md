@@ -1,32 +1,20 @@
-Maestro uses kubernetes for managing game room instances. Each maestro scheduler will have its own kubernetes namespace,
-and each managed game room will reside in a kubernetes pod.
+Table of Contents
+---
 
-## Configuring cluster access
-
-Maestro needs the following permissions for managing resources in a kubernetes cluster:
-- nodes: read;
-- pods: read, create, update, delete;
-- namespace: read, create, update, delete.
-
-Maestro provides two ways to configure kubernetes cluster access.
-
-### Using inCluster mode
-Set **adapters.runtime.kubernetes.inCluster** config to true, and the kubernetes client will be configured 
-automatically using the _service account_ of the maestro pod. This mode is recommended to be used when running maestro in the same cluster
-in which the schedulers and rooms will be managed.
-
-### Using kubeconfig + master url
-Populate **adapters.runtime.kubernetes.kubeconfig** and **adapters.runtime.kubernetes.masterUrl**, the kubernetes client
-will be configured using the provided kubeconfig file and master url.
-
+- [Kubernetes usage](#kubernetes-usage)
+  - [Runtime watcher](#runtime-watcher)
+  - [Operation execution worker](#operation-execution-worker)
+- [Configuring cluster access](#configuring-cluster-access)
+    - [inCluster mode](#using-incluster-mode)
+    - [kubeconfig mode](#using-kubeconfig-mode)
 
 ## Kubernetes usage
-Maestro uses [client-go](https://github.com/kubernetes/client-go) for communicating with kubernetes. The [Runtime](internal/core/ports/runtime.go) port
-is the interface used for managing resources, you can find all of the features we are using for creating resources in it. 
+Maestro uses kubernetes for orchestrating game room instances. It uses a unique **namespace** for each scheduler, and a unique **pod** for each game room instance.
 
-The diagram below describes how maestro components interact with kubernetes for managing resources.
+We use [client-go](https://github.com/kubernetes/client-go) for communicating with kubernetes. The [Runtime](internal/core/ports/runtime.go) port
+is the interface used for managing resources, you can find all of the features we are using for managing k8s resources in it.
 
-
+The diagram below shows how maestro components interact with kubernetes for managing resources.
 
 ```mermaid
 flowchart BT
@@ -71,12 +59,34 @@ click A3 "/csymapp/mermaid-c4-model/blob/master/AWAComponent.md" "AWA"
 ```
 
 ### Runtime watcher
-The runtime watcher component maintain a worker process for each scheduler that keeps watching and processing _change 
+The runtime watcher component maintains a worker process for each scheduler that keeps watching and processing _change
 events_ in pods resources. For doing that, it uses a [pods informer](https://medium.com/codex/explore-client-go-informer-patterns-4415bb5f1fbd),
-binding handlers for add, update and delete events for the pods in all schedulers. This component is not responsible for updating/creating/deleting
-kubernetes resources, all it does it to watch for changes and update its game room instances internal representation.
+binding handlers for **add**, **update** and **delete** events for all pods managed by it.
+
+This component is not responsible for updating/creating/deleting
+kubernetes resources, all it does is to watch for changes and update its game room instances internal representation using redis.
 
 ### Operation execution worker
-The worker uses kubernetes for managing pods and namespaces. It executes several operations that, alongside other side effects,
-will create, update and delete namespaces and pods.
+The worker uses kubernetes for managing pods and namespaces. It executes several [operations](Operations.md) that, alongside other side effects, will need to create, update, and delete namespaces and pods.
+
+## Configuring cluster access
+
+Maestro needs the following permissions for managing resources in a kubernetes cluster:
+- nodes: read (we need to use the node address to compose the game room address);
+- pods: read, create, update, delete;
+- namespace: read, create, update, delete.
+
+Maestro provides two ways for configuring kubernetes cluster access.
+
+### Using inCluster mode
+Set `adapters.runtime.kubernetes.inCluster` config value to true or use its env var equivalent, the kubernetes client will be configured 
+automatically using the same _service account_ of the maestro component running pod.
+
+This mode is recommended to be used when running maestro components in the same cluster
+in which the schedulers and rooms will be managed.
+
+### Using kubeconfig mode
+Populate `adapters.runtime.kubernetes.kubeconfig` and `adapters.runtime.kubernetes.masterUrl` configs or use its env var equivalent, the kubernetes client
+will be configured using the provided kubeconfig file and master url.
+
 
