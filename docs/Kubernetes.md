@@ -1,0 +1,82 @@
+Maestro uses kubernetes for managing game room instances. Each maestro scheduler will have its own kubernetes namespace,
+and each managed game room will reside in a kubernetes pod.
+
+## Configuring cluster access
+
+Maestro needs the following permissions for managing resources in a kubernetes cluster:
+- nodes: read;
+- pods: read, create, update, delete;
+- namespace: read, create, update, delete.
+
+Maestro provides two ways to configure kubernetes cluster access.
+
+### Using inCluster mode
+Set **adapters.runtime.kubernetes.inCluster** config to true, and the kubernetes client will be configured 
+automatically using the _service account_ of the maestro pod. This mode is recommended to be used when running maestro in the same cluster
+in which the schedulers and rooms will be managed.
+
+### Using kubeconfig + master url
+Populate **adapters.runtime.kubernetes.kubeconfig** and **adapters.runtime.kubernetes.masterUrl**, the kubernetes client
+will be configured using the provided kubeconfig file and master url.
+
+
+## Kubernetes usage
+Maestro uses [client-go](https://github.com/kubernetes/client-go) for communicating with kubernetes. The [Runtime](internal/core/ports/runtime.go) port
+is the interface used for managing resources, you can find all of the features we are using for creating resources in it. 
+
+The diagram below describes how maestro components interact with kubernetes for managing resources.
+
+
+
+```mermaid
+flowchart BT
+classDef borderless stroke-width:0px
+classDef darkBlue fill:#00008B, color:#fff
+classDef brightBlue fill:#6082B6, color:#fff
+classDef gray fill:#62524F, color:#fff
+classDef gray2 fill:#4F625B, color:#fff
+
+
+subgraph maestroSystem[ ]
+    subgraph k8s[ ]
+        A3[Kubernetes]
+    end
+    class k8s,A3 brightBlue
+    class A3, borderless
+    
+    subgraph WORKER[ ]
+        A7[Operation Execution Worker<br/><br/>manage kubernetes resources by creating/deleting/updating pods abnd namespaces]
+    end
+    class WORKER,A7 brightBlue
+    class WORKER,A7 borderless
+    WORKER--Create namespace<br/>HTTPS-->k8s
+    WORKER--Delete namespace<br/>HTTPS-->k8s
+    WORKER--Create pod<br/>HTTPS-->k8s
+    WORKER--Delete pod<br/>HTTPS-->k8s
+    
+    subgraph RUNTIME_WATCHER[ ]
+        A8[Runtime Watcher <br/><br/> watch for change events in managed pods]
+    end
+    class RUNTIME_WATCHER,A8 brightBlue
+    class RUNTIME_WATCHER,A8 borderless
+    RUNTIME_WATCHER--List/Watch pods<br/>HTTPS-->k8s
+    
+
+    
+end
+
+
+click A3 "/csymapp/mermaid-c4-model/blob/master/AWAComponent.md" "AWA"
+
+```
+
+### Runtime watcher
+The runtime watcher component maintain a worker process for each scheduler that keeps watching and processing _change 
+events_ in pods resources. For doing that, it uses a [pods informer](https://medium.com/codex/explore-client-go-informer-patterns-4415bb5f1fbd),
+binding handlers for add, update and delete events for the pods in all schedulers. This component is not responsible for updating/creating/deleting
+kubernetes resources, all it does it to watch for changes and update its game room instances internal representation.
+
+### Operation execution worker
+The worker uses kubernetes for managing pods and namespaces. It executes several operations that, alongside other side effects,
+will create, update and delete namespaces and pods.
+
