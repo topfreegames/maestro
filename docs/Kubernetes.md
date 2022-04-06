@@ -60,7 +60,7 @@ click A3 "/csymapp/mermaid-c4-model/blob/master/AWAComponent.md" "AWA"
 
 ### Runtime watcher
 The runtime watcher component maintains a worker process for each scheduler that keeps watching and processing _change
-events_ in pods resources. For doing that, it uses a [pods informer](https://medium.com/codex/explore-client-go-informer-patterns-4415bb5f1fbd),
+events_ in pods resources. For doing that, it uses a [pods informer](https://pkg.go.dev/k8s.io/client-go/informers),
 binding handlers for **add**, **update** and **delete** events for all pods managed by it.
 
 This component is not responsible for updating/creating/deleting
