@@ -16,6 +16,11 @@ Table of Contents
   - [Troubleshooting operations with lease](#troubleshooting)
   - [Operation Lease Lifecycle](#operation-lease-lifecycle)
 - [Available Operations](#available-operations)
+  - [Create Scheduler](#create-scheduler)
+  - [Create New Scheduler Version](#create-new-scheduler-version)
+  - [Switch Active Version](#switch-active-version)
+  - [Add Rooms](#add-rooms)
+  - [Remove Rooms](#remove-rooms)
 
 
 ## What is
@@ -243,32 +248,32 @@ An Active Operation without a Lease is at an invalid state.
 </html>
 
 
-### Available Operations
+## Available Operations
 For more details on how to use Maestro API, see [this section](https://topfreegames.github.io/maestro/OpenAPI/).
 
-- **Create Scheduler**
-  - Accessed through the `POST /schedulers` endpoint.
-    - Creates the scheduler structure for receiving rooms; 
-    - The scheduler structure is validated, but the game room is not;
-    - If operation fails, rollback feature will delete anything created related to scheduler.
+### **Create Scheduler**
+- Accessed through the `POST /schedulers` endpoint.
+  - Creates the scheduler structure for receiving rooms;
+  - The scheduler structure is validated, but the game room is not;
+  - If operation fails, rollback feature will delete anything created related to scheduler.
 
-- **Create New Scheduler Version**
-  - Accessed through the `POST /schedulers/:schedulerName` endpoint.
-    - Creates a validation room (deleted right after).
+### **Create New Scheduler Version**
+- Accessed through the `POST /schedulers/:schedulerName` endpoint.
+  - Creates a validation room (deleted right after).
     If Maestro cannot receive pings (not forwarded) from validation game room, operation fails;
-    - When this operation finishes successfully, it enqueues the "Switch Active Version".
-    - If operation fails rollback routine deletes anything (except for the operation) created related to new version.
+  - When this operation finishes successfully, it enqueues the "Switch Active Version".
+  - If operation fails rollback routine deletes anything (except for the operation) created related to new version.
 
-- **Switch Active Version**
-  - Accessed through `PUT /schedulers/:schedulerName` endpoint.
-    - If it's a major change (anything under Scheduler.Spec changed), GRUs are replaced using scheduler **maxSurge** property;
-    - If it's a minor change (Scheduler.Spec haven't changed), GRUs are **not** replaced;
+### **Switch Active Version**
+- Accessed through `PUT /schedulers/:schedulerName` endpoint.
+  - If it's a major change (anything under Scheduler.Spec changed), GRUs are replaced using scheduler **maxSurge** property;
+  - If it's a minor change (Scheduler.Spec haven't changed), GRUs are **not** replaced;
 
-- **Add Rooms**
-  - Accessed through `POST /schedulers/:schedulerName/add-rooms` endpoint.
-    - If any room fail on creating, the operation fails and created rooms are deleted on rollback feature;
+### **Add Rooms**
+- Accessed through `POST /schedulers/:schedulerName/add-rooms` endpoint.
+  - If any room fail on creating, the operation fails and created rooms are deleted on rollback feature;
 
-- **Remove Rooms**
-  - Accessed through `POST /schedulers/:schedulerName/remove-rooms` endpoint.
-    - Remove rooms based on amount;
-    - Rollback routine does nothing.
+### **Remove Rooms**
+- Accessed through `POST /schedulers/:schedulerName/remove-rooms` endpoint.
+  - Remove rooms based on amount;
+  - Rollback routine does nothing.
