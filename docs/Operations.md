@@ -76,54 +76,87 @@ An operation can have one of the Status below:
 - Error: Operation finished. Execution failed;
 - Canceled: Operation was canceled by the user.
 ### State Machine
-```mermaid
-flowchart TD
-    pending(Pending)
-    in_progress(In Progress)
-    evicted(Evicted)
-    finished(Finished)
-    canceled(Canceled)
-    error(Error)
-    
-    pending --> in_progress;
-    pending --> evicted;
-    in_progress --> finished;
-    in_progress --> error;
-    in_progress --> canceled;
-	
-```
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.14.0/mermaid.min.js"></script>
+  </head>
+  <body>
+    <div class="mermaid">
+      flowchart TD
+        pending(Pending)
+        in_progress(In Progress)
+        evicted(Evicted)
+        finished(Finished)
+        canceled(Canceled)
+        error(Error)
+        pending --> in_progress;
+        pending --> evicted;
+        in_progress --> finished;
+        in_progress --> error;
+        in_progress --> canceled;
+    </div>
+  </body>
+  <script>
+  var config = {
+    startOnLoad:true,
+    theme: 'default',
+    flowchart:{
+      useMaxWidth:false,
+      htmlLabels:true
+    }
+  };
+  mermaid.initialize(config);
+  window.mermaid.init(undefined, document.querySelectorAll('.language-mermaid'));
+  </script>
+</html>
 
 ## Lifecycle
-```mermaid
-flowchart TD
-    finish((End))
-    
-    created("Created (Pending)")
-    evicted(Evicted)
-    error(Error)
-    finished(Finished)
-    canceled(Canceled)
-    
-    should_execute{Should Execute?}
-    execution_succeeded{Success?}
-    err_kind{Error Kind}
-
-    execute[[Execute]]
-    rollback[[Rollback]]
-
-    canceled_by_user>Canceled By User]
-    
-    created --> should_execute;
-    should_execute -- No --> evicted --> finish;
-    should_execute -- Yes --> execute;
-    execute --> execution_succeeded;
-    execute --> canceled_by_user --> rollback;
-    execution_succeeded -- Yes --> finished --> finish;
-    execution_succeeded -- No --> rollback;
-    rollback --> err_kind;
-    err_kind -- Canceled --> canceled --> finish;
-    err_kind -- Error --> error --> finish
-```
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.14.0/mermaid.min.js"></script>
+  </head>
+  <body>
+    <div class="mermaid">
+      flowchart TD
+        finish((End))
+        created("Created (Pending)")
+        evicted(Evicted)
+        error(Error)
+        finished(Finished)
+        canceled(Canceled)
+        should_execute{Should Execute?}
+        execution_succeeded{Success?}
+        err_kind{Error Kind}
+        execute[[Execute]]
+        rollback[[Rollback]]
+        canceled_by_user>Canceled By User]
+        created --> should_execute;
+        should_execute -- No --> evicted --> finish;
+        should_execute -- Yes --> execute;
+        execute --> execution_succeeded;
+        execute --> canceled_by_user --> rollback;
+        execution_succeeded -- Yes --> finished --> finish;
+        execution_succeeded -- No --> rollback;
+        rollback --> err_kind;
+        err_kind -- Canceled --> canceled --> finish;
+        err_kind -- Error --> error --> finish
+    </div>
+  </body>
+  <script>
+  var config = {
+    startOnLoad:true,
+    theme: 'default',
+    flowchart:{
+      useMaxWidth:false,
+      htmlLabels:true
+    }
+  };
+  mermaid.initialize(config);
+  window.mermaid.init(undefined, document.querySelectorAll('.language-mermaid'));
+  </script>
+</html>
 
 ## Lease
 ### What is the operation lease
@@ -148,57 +181,77 @@ An Active Operation without a Lease is at an invalid state.
 
 
 ### Operation Lease Lifecycle
-```mermaid
-flowchart TD
-    finish_routine((End))
-    start_routine((Start))
-    finish((End))
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.14.0/mermaid.min.js"></script>
+  </head>
+  <body>
+    <div class="mermaid">
+      flowchart TD
+          finish_routine((End))
+          start_routine((Start))
+          finish((End))
+          operation_finished{Op. Finished?}
+          to_execute[Operation to Execute]
+          grant_lease[[Grant Lease]]
+          renew_lease[[Renew Lease]]
+          revoke_lease[[Revoke Lease]]
+          wait_for_ttl(Wait for TTL)
+          execute(Execute Operation)
+          to_execute --&gt; grant_lease;
+          grant_lease --&gt; renew_lease_routine;
+          grant_lease --&gt; execute;
+          subgraph renew_lease_routine [ASYNC Renew Lease Routine]
+              start_routine --&gt; wait_for_ttl;
+              wait_for_ttl --&gt; operation_finished;
+              operation_finished -- Yes --&gt; revoke_lease;
+              operation_finished -- No --&gt; renew_lease --&gt; wait_for_ttl;
+              revoke_lease --&gt; finish_routine;
+          end
+          renew_lease_routine --&gt; finish;
+    </div>
+  </body>
+  <script>
+  var config = {
+    startOnLoad:true,
+    theme: 'default',
+    flowchart:{
+      useMaxWidth:false,
+      htmlLabels:true
+    }
+  };
+  mermaid.initialize(config);
+  window.mermaid.init(undefined, document.querySelectorAll('.language-mermaid'));
+  </script>
+</html>
 
-    operation_finished{Op. Finished?}
-
-    to_execute[Operation to Execute]
-
-    grant_lease[[Grant Lease]]
-    renew_lease[[Renew Lease]]
-    revoke_lease[[Revoke Lease]]
-
-    wait_for_ttl(Wait for TTL)
-    execute(Execute Operation)
-
-    to_execute --> grant_lease;
-    grant_lease --> renew_lease_routine;
-    grant_lease --> execute;
-    
-    subgraph renew_lease_routine [ASYNC Renew Lease Routine]
-        start_routine --> wait_for_ttl;
-        wait_for_ttl --> operation_finished;
-        operation_finished -- Yes --> revoke_lease;
-        operation_finished -- No --> renew_lease --> wait_for_ttl;
-        revoke_lease --> finish_routine;
-    end
-    renew_lease_routine --> finish;
-```
 
 ### Available Operations
 For more details on how to use Maestro API, see [this section](https://topfreegames.github.io/maestro/OpenAPI/).
+
 - **Create Scheduler**
   - Accessed through the `POST /schedulers` endpoint.
     - Creates the scheduler structure for receiving rooms; 
     - The scheduler structure is validated, but the game room is not;
     - If operation fails, rollback feature will delete anything created related to scheduler.
+
 - **Create New Scheduler Version**
   - Accessed through the `POST /schedulers/:schedulerName` endpoint.
     - Creates a validation room (deleted right after).
     If Maestro cannot receive pings (not forwarded) from validation game room, operation fails;
     - When this operation finishes successfully, it enqueues the "Switch Active Version".
     - If operation fails rollback routine deletes anything (except for the operation) created related to new version.
+
 - **Switch Active Version**
   - Accessed through `PUT /schedulers/:schedulerName` endpoint.
     - If it's a major change (anything under Scheduler.Spec changed), GRUs are replaced using scheduler **maxSurge** property;
     - If it's a minor change (Scheduler.Spec haven't changed), GRUs are **not** replaced;
+
 - **Add Rooms**
   - Accessed through `POST /schedulers/:schedulerName/add-rooms` endpoint.
     - If any room fail on creating, the operation fails and created rooms are deleted on rollback feature;
+
 - **Remove Rooms**
   - Accessed through `POST /schedulers/:schedulerName/remove-rooms` endpoint.
     - Remove rooms based on amount;
