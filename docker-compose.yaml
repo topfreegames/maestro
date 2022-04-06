@@ -6,7 +6,7 @@ services:
 
   k3s_server:
     image: "rancher/k3s:v1.19.11-k3s1"
-    command: server
+    command: server --node-name control-plane
     tmpfs:
     - /run
     - /var/run
@@ -24,7 +24,7 @@ services:
     volumes:
     - k3s-server:/var/lib/rancher/k3s
     # This is just so that we get the kubeconfig file out
-    - .:/output
+    - ./kubeconfig:/output
     ports:
     - 6443:6443  # Kubernetes API Server
     - 80:80      # Ingress controller port 80
@@ -43,7 +43,7 @@ services:
     privileged: true
     restart: always
     environment:
-    - K3S_URL=https://server:6443
+    - K3S_URL=https://k3s_server:6443
     - K3S_TOKEN=maestro
 
   postgres:
