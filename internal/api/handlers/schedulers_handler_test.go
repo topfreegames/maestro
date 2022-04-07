@@ -38,9 +38,11 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager/patch_scheduler"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/filters"
+	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -1060,6 +1062,151 @@ func TestGetSchedulersInfo(t *testing.T) {
 		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/get_schedulers_info_internal_error.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
+}
+
+func TestPatchScheduler(t *testing.T) {
+	type Input struct {
+		Request *api.PatchSchedulerRequest
+	}
+
+	type Mocks struct {
+		ExpectedChangeMap                                map[string]interface{}
+		PatchSchedulerAndCreateNewSchedulerVersionReturn *operation.Operation
+		PatchSchedulerAndCreateNewSchedulerVersionError  error
+	}
+
+	type Output struct {
+		Response *api.PatchSchedulerResponse
+		Status   int
+	}
+
+	maxSurge := "60%"
+
+	testCases := []struct {
+		Title string
+		Input
+		Mocks
+		Output
+	}{
+		{
+			Title: "When all is ok",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
+				},
+			},
+			Mocks: Mocks{
+				ExpectedChangeMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: maxSurge,
+				},
+				PatchSchedulerAndCreateNewSchedulerVersionReturn: &operation.Operation{
+					ID: "some-id",
+				},
+				PatchSchedulerAndCreateNewSchedulerVersionError: nil,
+			},
+			Output: Output{
+				Response: &api.PatchSchedulerResponse{
+					OperationId: "some-id",
+				},
+				Status: http.StatusOK,
+			},
+		},
+		{
+			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrNotFound return 404",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
+				},
+			},
+			Mocks: Mocks{
+				ExpectedChangeMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: maxSurge,
+				},
+				PatchSchedulerAndCreateNewSchedulerVersionReturn: nil,
+				PatchSchedulerAndCreateNewSchedulerVersionError:  portsErrors.NewErrNotFound("not found"),
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusNotFound,
+			},
+		},
+		{
+			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrInvalidArgument return 400",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
+				},
+			},
+			Mocks: Mocks{
+				ExpectedChangeMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: maxSurge,
+				},
+				PatchSchedulerAndCreateNewSchedulerVersionReturn: nil,
+				PatchSchedulerAndCreateNewSchedulerVersionError:  portsErrors.NewErrInvalidArgument("invalid argument"),
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusBadRequest,
+			},
+		},
+		{
+			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrUnexpected return 500",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
+				},
+			},
+			Mocks: Mocks{
+				ExpectedChangeMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: maxSurge,
+				},
+				PatchSchedulerAndCreateNewSchedulerVersionReturn: nil,
+				PatchSchedulerAndCreateNewSchedulerVersionError:  portsErrors.NewErrUnexpected("unexpected error"),
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusInternalServerError,
+			},
+		},
+	}
+	dirPath, _ := os.Getwd()
+	for _, testCase := range testCases {
+		t.Run(testCase.Title, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
+			currentScheduler := newValidScheduler()
+			currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+
+			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+			operationManager := mock.NewMockOperationManager(mockCtrl)
+			schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, operationManager, nil)
+
+			schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(currentScheduler, nil)
+			operationManager.EXPECT().
+				CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).
+				Return(testCase.Mocks.PatchSchedulerAndCreateNewSchedulerVersionReturn, testCase.Mocks.PatchSchedulerAndCreateNewSchedulerVersionError)
+
+			mux := runtime.NewServeMux()
+			err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+			require.NoError(t, err)
+
+			url := "/schedulers/scheduler-name-1"
+
+			request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-patch.json")
+			require.NoError(t, err)
+
+			req, err := http.NewRequest("PATCH", url, bytes.NewReader(request))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+			require.Equal(t, testCase.Output.Status, rr.Code)
+			responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/patch_scheduler_response.json")
+			require.Equal(t, expectedResponseBody, responseBody)
+		})
+	}
 }
 
 func newValidScheduler() *entities.Scheduler {
