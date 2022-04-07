@@ -381,6 +381,7 @@ def main():
 
         if dry_run:
             print('schedulers meant to be migrated:\n', *list(map(lambda x: f"{x.get('name')}\n", schedulers)))
+            print(f'converted scheduler example:\n', yaml.dump(schedulers[0]['next-config'], indent=2))
             sys.exit()
 
         print("##### all set to start migration! #####")
