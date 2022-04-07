@@ -141,7 +141,7 @@ func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx 
 	return nil
 }
 
-func (s *SchedulerManager) PatchSchedulerAndSwitchActiveVersionOperation(ctx context.Context, schedulerName string, patchMap map[string]interface{}) (*operation.Operation, error) {
+func (s *SchedulerManager) PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx context.Context, schedulerName string, patchMap map[string]interface{}) (*operation.Operation, error) {
 	scheduler, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
 	if err != nil {
 		return nil, fmt.Errorf("no scheduler found, can not create new version for inexistent scheduler: %w", err)
