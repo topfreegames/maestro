@@ -14,8 +14,12 @@ nav:
 
 theme:
   name: material
+  logo: docs/images/gopher-maestro.png
+  palette:
+    primary: cyan
 
 plugins:
   - git-revision-date
   - search
   - render_swagger
+  - mermaid2

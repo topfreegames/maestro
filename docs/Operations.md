@@ -35,37 +35,23 @@ An operation definition consists of the operation parameters.
 An operation executor is where the actual operation execution and rollback logic is implemented, and it will receive as input its correlated definition.
 So, for example, the `CreateSchedulerExecutor` will always receive a `CreateSchedulerDefinition`.
 
-```
-┌─────────────────────────────────┐
-│ Operations                      │
-│ ┌─────────────────────────────┐ │
-│ │ Operation implementation    │ │
-│ │                             │ │
-│ │ ┌──────────┐   ┌──────────┐ │ │
-│ │ │Definition│   │Executor  │ │ │
-│ │ └──────────┘   └──────────┘ │ │
-│ │                             │ │
-│ └─────────────────────────────┘ │
-│                                 │
-│ ┌─────────────────────────────┐ │
-│ │ Operation implementation    │ │
-│ │                             │ │
-│ │ ┌──────────┐   ┌──────────┐ │ │
-│ │ │Definition│   │Executor  │ │ │
-│ │ └──────────┘   └──────────┘ │ │
-│ │                             │ │
-│ └─────────────────────────────┘ │
-│                                 │
-│ ┌─────────────────────────────┐ │
-│ │ Operation implementation    │ │
-│ │                             │ │
-│ │ ┌──────────┐   ┌──────────┐ │ │
-│ │ │Definition│   │Executor  │ │ │
-│ │ └──────────┘   └──────────┘ │ │
-│ │                             │ │
-│ └─────────────────────────────┘ │
-│                              ...│
-└─────────────────────────────────┘
+```mermaid
+flowchart TD
+  subgraph operations [Operations]
+    subgraph operation_implementation [Operation Impl.]
+      definition(Definition)
+      executor(Executor)
+    end
+    subgraph operation_implementation2 [Operation Impl.]
+      definition2(Definition)
+      executor2(Executor)
+    end
+    subgraph operation_implementation3 [Operation Impl.]
+      definition3(Definition)
+      executor3(Executor)
+    end
+    ...
+  end
 ```
 
 ## Operation Structure
@@ -126,12 +112,19 @@ event: String
 
 ## State
 An operation can have one of the Status below:
-- Pending: When an operation is enqueued to be executed;
-- Evicted: When an operation is unknown or should not be executed By Maestro;
-- In Progress: Operation is currently being executed; 
-- Finished: Operation finished; Execution succeeded;
-- Error: Operation finished. Execution failed;
-- Canceled: Operation was canceled by the user.
+
+- **Pending**: When an operation is enqueued to be executed;
+
+- **Evicted**: When an operation is unknown or should not be executed By Maestro;
+
+- **In Progress**: Operation is currently being executed;
+
+- **Finished**: Operation finished; Execution succeeded;
+
+- **Error**: Operation finished. Execution failed;
+
+- **Canceled**: Operation was canceled by the user.
+
 ### State Machine
 <!DOCTYPE html>
 <html lang="en">
