@@ -1,28 +1,3 @@
-Table of Contents
----
-
-- [What Is](#what-is)
-  - [Definition and Executors](#definition-and-executors)
-- [Operation Structure](#operation-structure)
-  - [Input](#input)
-  - [Execution History](#execution-history)
-- [How does Maestro handle operations](#how-does-maestro-handle-operations)
-- [States](#state)
-  - [State Machine](#state-machine)
-- [Lifecycle](#lifecycle)
-- [Lease](#lease)
-  - [What is](#what-is-the-operation-lease)
-  - [Why operations have it](#why-operations-have-it)
-  - [Troubleshooting operations with lease](#troubleshooting)
-  - [Operation Lease Lifecycle](#operation-lease-lifecycle)
-- [Available Operations](#available-operations)
-  - [Create Scheduler](#create-scheduler)
-  - [Create New Scheduler Version](#create-new-scheduler-version)
-  - [Switch Active Version](#switch-active-version)
-  - [Add Rooms](#add-rooms)
-  - [Remove Rooms](#remove-rooms)
-
-
 ## What is
 Operation is a core concept at Maestro, and it represents executions done in multiple layers of Maestro, a state update, or a configuration change.
 Operations can be created by user actions while managing schedulers (e.g. consuming management API), or internally by Maestro to fulfill internal states requirements
@@ -126,63 +101,49 @@ An operation can have one of the Status below:
 - **Canceled**: Operation was canceled by the user.
 
 ### State Machine
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.14.0/mermaid.min.js"></script>
-  </head>
-  <body>
-    <div class="mermaid">
-      flowchart TD
-        pending(Pending)
-        in_progress(In Progress)
-        evicted(Evicted)
-        finished(Finished)
-        canceled(Canceled)
-        error(Error)
-        pending --> in_progress;
-        pending --> evicted;
-        in_progress --> finished;
-        in_progress --> error;
-        in_progress --> canceled;
-    </div>
-  </body>
-</html>
+```mermaid
+flowchart TD
+  pending(Pending)
+  in_progress(In Progress)
+  evicted(Evicted)
+  finished(Finished)
+  canceled(Canceled)
+  error(Error)
+  
+  pending --> in_progress;
+  pending --> evicted;
+  in_progress --> finished;
+  in_progress --> error;
+  in_progress --> canceled;
+```
 
 ## Lifecycle
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.14.0/mermaid.min.js"></script>
-  </head>
-  <body>
-    <div class="mermaid">
-      flowchart TD
-        finish((End))
-        created("Created (Pending)")
-        evicted(Evicted)
-        error(Error)
-        finished(Finished)
-        canceled(Canceled)
-        should_execute{Should Execute?}
-        execution_succeeded{Success?}
-        err_kind{Error Kind}
-        execute[[Execute]]
-        rollback[[Rollback]]
-        canceled_by_user>Canceled By User]
-        created --> should_execute;
-        should_execute -- No --> evicted --> finish;
-        should_execute -- Yes --> execute;
-        execute --> execution_succeeded;
-        execute --> canceled_by_user --> rollback;
-        execution_succeeded -- Yes --> finished --> finish;
-        execution_succeeded -- No --> rollback;
-        rollback --> err_kind;
-        err_kind -- Canceled --> canceled --> finish;
-        err_kind -- Error --> error --> finish
-    </div>
-  </body>
-</html>
+```mermaid
+flowchart TD
+  finish((End))
+  created("Created (Pending)")
+  evicted(Evicted)
+  error(Error)
+  finished(Finished)
+  canceled(Canceled)
+  should_execute{Should Execute?}
+  execution_succeeded{Success?}
+  err_kind{Error Kind}
+  execute[[Execute]]
+  rollback[[Rollback]]
+  canceled_by_user>Canceled By User]
+  created --> should_execute;
+  should_execute -- No --> evicted --> finish;
+  should_execute -- Yes --> execute;
+  execute --> execution_succeeded;
+  execute --> canceled_by_user --> rollback;
+  execution_succeeded -- Yes --> finished --> finish;
+  execution_succeeded -- No --> rollback;
+  rollback --> err_kind;
+  err_kind -- Canceled --> canceled --> finish;
+  err_kind -- Error --> error --> finish
+```
+
 
 ## Lease
 ### What is the operation lease
@@ -207,39 +168,35 @@ An Active Operation without a Lease is at an invalid state.
 
 
 ### Operation Lease Lifecycle
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.14.0/mermaid.min.js"></script>
-  </head>
-  <body>
-    <div class="mermaid">
-      flowchart TD
-          finish_routine((End))
-          start_routine((Start))
-          finish((End))
-          operation_finished{Op. Finished?}
-          to_execute[Operation to Execute]
-          grant_lease[[Grant Lease]]
-          renew_lease[[Renew Lease]]
-          revoke_lease[[Revoke Lease]]
-          wait_for_ttl(Wait for TTL)
-          execute(Execute Operation)
-          to_execute --&gt; grant_lease;
-          grant_lease --&gt; renew_lease_routine;
-          grant_lease --&gt; execute;
-          subgraph renew_lease_routine [ASYNC Renew Lease Routine]
-              start_routine --&gt; wait_for_ttl;
-              wait_for_ttl --&gt; operation_finished;
-              operation_finished -- Yes --&gt; revoke_lease;
-              operation_finished -- No --&gt; renew_lease --&gt; wait_for_ttl;
-              revoke_lease --&gt; finish_routine;
-          end
-          renew_lease_routine --&gt; finish;
-    </div>
-  </body>
-</html>
-
+```mermaid
+flowchart TD
+  finish_routine((End))
+  start_routine((Start))
+  finish((End))
+  
+  operation_finished{Op. Finished?}
+  
+  to_execute[Operation to Execute]
+  
+  grant_lease[[Grant Lease]]
+  renew_lease[[Renew Lease]]
+  revoke_lease[[Revoke Lease]]
+  
+  wait_for_ttl(Wait for TTL)
+  execute(Execute Operation)
+  
+  to_execute --> grant_lease;
+  grant_lease --> renew_lease_routine;
+  grant_lease --> execute;
+  subgraph renew_lease_routine [ASYNC Renew Lease Routine]
+      start_routine --> wait_for_ttl;
+      wait_for_ttl --> operation_finished;
+      operation_finished -- Yes --> revoke_lease;
+      operation_finished -- No --> renew_lease --> wait_for_ttl;
+      revoke_lease --> finish_routine;
+  end
+  renew_lease_routine --> finish;
+```
 
 ## Available Operations
 For more details on how to use Maestro API, see [this section](https://topfreegames.github.io/maestro/OpenAPI/).
