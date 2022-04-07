@@ -14,7 +14,7 @@ nav:
 
 theme:
   name: material
-  logo: https://github.com/topfreegames/maestro/docs/images/gopher-maestro.png
+  logo: https://github.com/topfreegames/maestro/blob/main/docs/images/gopher-maestro.png?raw=true
   palette:
     primary: cyan
 
@@ -22,4 +22,5 @@ plugins:
   - git-revision-date
   - search
   - render_swagger
-  - mermaid2
+  - mermaid2:
+      version: 8.14.0
