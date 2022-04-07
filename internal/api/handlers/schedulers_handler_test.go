@@ -607,7 +607,6 @@ func TestCreateScheduler(t *testing.T) {
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.TerminationGracePeriod: TerminationGracePeriod must be greater than 0")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Name: Name is a required field")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Image: Image is a required field")
-		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Command: Command is a required field")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Ports[0].Name: Name must be a maximum of 15 characters in length")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Requests.CPU: CPU is a required field")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Requests.Memory: Memory is a required field")
