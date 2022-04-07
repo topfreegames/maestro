@@ -30,6 +30,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager/patch_scheduler"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -38,6 +39,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
 )
 
@@ -138,6 +140,27 @@ func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx 
 		return err
 	}
 	return nil
+}
+
+func (s *SchedulerManager) PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx context.Context, schedulerName string, patchMap map[string]interface{}) (*operation.Operation, error) {
+	scheduler, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
+	if err != nil {
+		return nil, portsErrors.NewErrNotFound("no scheduler found, can not create new version for inexistent scheduler: %s", err.Error())
+	}
+
+	scheduler, err = patch_scheduler.PatchScheduler(*scheduler, patchMap)
+	if err != nil {
+		return nil, portsErrors.NewErrInvalidArgument("error patching scheduler: %s", err.Error())
+	}
+
+	opDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: scheduler}
+
+	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, opDef)
+	if err != nil {
+		return nil, portsErrors.NewErrUnexpected("failed to schedule %s operation: %s", opDef.Name(), err.Error())
+	}
+
+	return op, nil
 }
 
 func (s *SchedulerManager) GetSchedulersWithFilter(ctx context.Context, schedulerFilter *filters.SchedulerFilter) ([]*entities.Scheduler, error) {

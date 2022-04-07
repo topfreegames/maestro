@@ -43,6 +43,7 @@ type SchedulerManager interface {
 	GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error)
 	GetSchedulerVersions(ctx context.Context, schedulerName string) ([]*entities.SchedulerVersion, error)
 	DeleteScheduler(ctx context.Context, schedulerName string) error
+	PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx context.Context, schedulerName string, patchMap map[string]interface{}) (*operation.Operation, error)
 }
 
 // Secondary ports (output, driven ports)
