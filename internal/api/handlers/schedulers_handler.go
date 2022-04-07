@@ -43,6 +43,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager/patch_scheduler"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 
 	"google.golang.org/grpc/codes"
@@ -223,6 +224,29 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 	return &api.NewSchedulerVersionResponse{OperationId: operation.ID}, nil
 }
 
+func (h *SchedulersHandler) PatchScheduler(ctx context.Context, request *api.PatchSchedulerRequest) (*api.PatchSchedulerResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()))
+	handlerLogger.Info("handling patch scheduler request")
+	patchMap := h.fromApiPatchSchedulerRequestToChangeMap(request)
+
+	operation, err := h.schedulerManager.PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx, request.GetName(), patchMap)
+
+	if err != nil {
+		handlerLogger.Error("error patching scheduler", zap.Error(err))
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		if errors.Is(err, portsErrors.ErrInvalidArgument) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	handlerLogger.Info("finish handling patch scheduler request")
+
+	return &api.PatchSchedulerResponse{OperationId: operation.ID}, nil
+}
+
 func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *api.SwitchActiveVersionRequest) (*api.SwitchActiveVersionResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
 	handlerLogger.Info("handling switch active version request")
@@ -304,6 +328,31 @@ func (h *SchedulersHandler) fromApiNewSchedulerVersionRequestToEntity(request *a
 	)
 }
 
+func (h *SchedulersHandler) fromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest) map[string]interface{} {
+	patchMap := make(map[string]interface{})
+
+	if request.Spec != nil {
+		patchMap[patch_scheduler.LabelSchedulerSpec] = h.fromApiOptionalSpecToChangeMap(request.Spec)
+	}
+
+	if request.PortRange != nil {
+		patchMap[patch_scheduler.LabelSchedulerPortRange] = entities.NewPortRange(
+			request.GetPortRange().GetStart(),
+			request.GetPortRange().GetEnd(),
+		)
+	}
+
+	if request.MaxSurge != nil {
+		patchMap[patch_scheduler.LabelSchedulerMaxSurge] = request.GetMaxSurge()
+	}
+
+	if request.Forwarders != nil {
+		patchMap[patch_scheduler.LabelSchedulerForwarders] = h.fromApiForwarders(request.GetForwarders())
+	}
+
+	return patchMap
+}
+
 func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, error) {
 	forwarders, err := h.fromEntityForwardersToResponse(entity.Forwarders)
 	if err != nil {
@@ -374,6 +423,28 @@ func (h *SchedulersHandler) fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
 	)
 }
 
+func (h *SchedulersHandler) fromApiOptionalSpecToChangeMap(request *api.OptionalSpec) map[string]interface{} {
+	changeMap := make(map[string]interface{})
+
+	if request.TerminationGracePeriod != nil {
+		changeMap[patch_scheduler.LabelSpecTerminationGracePeriod] = time.Duration(request.GetTerminationGracePeriod())
+	}
+
+	if request.Containers != nil {
+		changeMap[patch_scheduler.LabelSpecContainers] = h.fromApiOptinalContainersToChangeMap(request.GetContainers())
+	}
+
+	if request.Toleration != nil {
+		changeMap[patch_scheduler.LabelSpecToleration] = request.GetToleration()
+	}
+
+	if request.Affinity != nil {
+		changeMap[patch_scheduler.LabelSpecAffinity] = request.GetAffinity()
+	}
+
+	return changeMap
+}
+
 func (h *SchedulersHandler) fromApiContainers(apiContainers []*api.Container) []game_room.Container {
 	var containers []game_room.Container
 	for _, apiContainer := range apiContainers {
@@ -397,6 +468,52 @@ func (h *SchedulersHandler) fromApiContainers(apiContainers []*api.Container) []
 	}
 
 	return containers
+}
+
+func (h *SchedulersHandler) fromApiOptinalContainersToChangeMap(request []*api.OptionalContainer) []map[string]interface{} {
+	returnSlice := make([]map[string]interface{}, 0, len(request))
+
+	for _, container := range request {
+		changeMap := make(map[string]interface{})
+
+		if container.Image != nil {
+			changeMap[patch_scheduler.LabelContainerImage] = container.GetImage()
+		}
+
+		if container.ImagePullPolicy != nil {
+			changeMap[patch_scheduler.LabelContainerImagePullPolicy] = container.GetImagePullPolicy()
+		}
+
+		if container.Command != nil {
+			changeMap[patch_scheduler.LabelContainerCommand] = container.GetCommand()
+		}
+
+		if container.Environment != nil {
+			changeMap[patch_scheduler.LabelContainerEnvironment] = h.fromApiContainerEnvironments(container.GetEnvironment())
+		}
+
+		if container.Requests != nil {
+			changeMap[patch_scheduler.LabelContainerRequests] = game_room.ContainerResources{
+				CPU:    container.GetRequests().GetCpu(),
+				Memory: container.GetRequests().GetMemory(),
+			}
+		}
+
+		if container.Limits != nil {
+			changeMap[patch_scheduler.LabelContainerLimits] = game_room.ContainerResources{
+				CPU:    container.GetLimits().GetCpu(),
+				Memory: container.GetLimits().GetMemory(),
+			}
+		}
+
+		if container.Ports != nil {
+			changeMap[patch_scheduler.LabelContainerPorts] = h.fromApiContainerPorts(container.GetPorts())
+		}
+
+		returnSlice = append(returnSlice, changeMap)
+	}
+
+	return returnSlice
 }
 
 func (h *SchedulersHandler) fromApiContainerPorts(apiPorts []*api.ContainerPort) []game_room.ContainerPort {

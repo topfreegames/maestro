@@ -451,6 +451,66 @@
         "tags": [
           "SchedulersService"
         ]
+      },
+      "patch": {
+        "summary": "Patch a scheduler and switch it to active version.",
+        "operationId": "SchedulersService_PatchScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1PatchSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Unique identifier for the scheduler.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "spec": {
+                  "$ref": "#/definitions/v1OptionalSpec",
+                  "description": "The spec object defines all the game room container configurations and spec."
+                },
+                "portRange": {
+                  "$ref": "#/definitions/v1PortRange",
+                  "description": "The port range object describes what is the port range used to allocate game rooms."
+                },
+                "maxSurge": {
+                  "type": "string",
+                  "title": "The max surge of new rooms, used to scale and update"
+                },
+                "forwarders": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/v1Forwarder"
+                  },
+                  "title": "List of Scheduler forwarders"
+                }
+              },
+              "description": "PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler."
+            }
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
       }
     },
     "/schedulers/{schedulerName}": {
@@ -1252,6 +1312,85 @@
       },
       "description": "OperationEvent object represent an execution event."
     },
+    "v1OptionalContainer": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "description": "Image address."
+        },
+        "imagePullPolicy": {
+          "type": "string",
+          "description": "Image pull policy: Always, Never and IfNotExists."
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Container command to be called when container is instantiated."
+        },
+        "environment": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ContainerEnvironment"
+          },
+          "description": "Container environment variables."
+        },
+        "requests": {
+          "$ref": "#/definitions/v1ContainerResources",
+          "description": "Container resources request (cpu/memory)."
+        },
+        "limits": {
+          "$ref": "#/definitions/v1ContainerResources",
+          "description": "Container resources limits (cpu/memory)."
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ContainerPort"
+          },
+          "description": "Container exposed ports definitions."
+        }
+      },
+      "description": "OptionalContainer is the struct that defines a game room container configuration.\nThis message is used to patch container configuration."
+    },
+    "v1OptionalSpec": {
+      "type": "object",
+      "properties": {
+        "terminationGracePeriod": {
+          "type": "string",
+          "format": "int64",
+          "description": "The game room termination grace period."
+        },
+        "containers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1OptionalContainer"
+          },
+          "description": "The container object array defines all the game room container configurations."
+        },
+        "toleration": {
+          "type": "string",
+          "description": "Runtime game room toleration configuration."
+        },
+        "affinity": {
+          "type": "string",
+          "description": "Runtime game room affinity configuration."
+        }
+      },
+      "description": "OptionalSpec is the specifications of the scheduler, with relevant info about what is being used.\nThis message is used to patch spec configuration."
+    },
+    "v1PatchSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Operation ID, further this id can be used to consult its state."
+        }
+      },
+      "description": "PatchSchedulerResponse have the operation response id that represents the operation creted to this change."
+    },
     "v1PortRange": {
       "type": "object",
       "properties": {
@@ -1440,7 +1579,7 @@
           "description": "Runtime game room affinity configuration."
         }
       },
-      "title": "Spec is the specifications of the scheduler, with relevant info about what is being used"
+      "description": "Spec is the specifications of the scheduler, with relevant info about what is being used."
     },
     "v1SwitchActiveVersionResponse": {
       "type": "object",
