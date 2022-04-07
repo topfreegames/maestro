@@ -963,7 +963,7 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 				Return(testCase.ExpectedMock.CreateOperationReturn, testCase.ExpectedMock.CreateOperationError).
 				AnyTimes()
 
-			op, err := schedulerManager.PatchSchedulerAndSwitchActiveVersionOperation(ctx, scheduler.Name, testCase.Input.PatchMap)
+			op, err := schedulerManager.PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx, scheduler.Name, testCase.Input.PatchMap)
 			if testCase.Output.Err != nil {
 				assert.ErrorContains(t, err, testCase.Output.Err.Error())
 
