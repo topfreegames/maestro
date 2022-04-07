@@ -1,13 +1,3 @@
-Table of Contents
----
-
-- [Kubernetes usage](#kubernetes-usage)
-  - [Runtime watcher](#runtime-watcher)
-  - [Operation execution worker](#operation-execution-worker)
-- [Configuring cluster access](#configuring-cluster-access)
-  - [inCluster mode](#using-incluster-mode)
-  - [kubeconfig mode](#using-kubeconfig-mode)
-
 ## Kubernetes usage
 Maestro uses kubernetes for orchestrating game room instances. It uses a unique **namespace** for each scheduler, and a unique **pod** for each game room instance.
 

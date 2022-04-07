@@ -1,28 +1,3 @@
-Table of Contents
----
-
-- [What Is](#what-is)
-  - [Definition and Executors](#definition-and-executors)
-- [Operation Structure](#operation-structure)
-  - [Input](#input)
-  - [Execution History](#execution-history)
-- [How does Maestro handle operations](#how-does-maestro-handle-operations)
-- [States](#state)
-  - [State Machine](#state-machine)
-- [Lifecycle](#lifecycle)
-- [Lease](#lease)
-  - [What is](#what-is-the-operation-lease)
-  - [Why operations have it](#why-operations-have-it)
-  - [Troubleshooting operations with lease](#troubleshooting)
-  - [Operation Lease Lifecycle](#operation-lease-lifecycle)
-- [Available Operations](#available-operations)
-  - [Create Scheduler](#create-scheduler)
-  - [Create New Scheduler Version](#create-new-scheduler-version)
-  - [Switch Active Version](#switch-active-version)
-  - [Add Rooms](#add-rooms)
-  - [Remove Rooms](#remove-rooms)
-
-
 ## What is
 Operation is a core concept at Maestro, and it represents executions done in multiple layers of Maestro, a state update, or a configuration change.
 Operations can be created by user actions while managing schedulers (e.g. consuming management API), or internally by Maestro to fulfill internal states requirements
