@@ -38,7 +38,6 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager/patch_scheduler"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/filters"
@@ -1070,9 +1069,11 @@ func TestPatchScheduler(t *testing.T) {
 	}
 
 	type Mocks struct {
-		ExpectedChangeMap                                map[string]interface{}
-		PatchSchedulerAndCreateNewSchedulerVersionReturn *operation.Operation
-		PatchSchedulerAndCreateNewSchedulerVersionError  error
+		RequestFile           string
+		GetSchedulerReturn    *entities.Scheduler
+		GetSchedulerError     error
+		CreateOperationReturn *operation.Operation
+		CreateOperationError  error
 	}
 
 	type Output struct {
@@ -1096,19 +1097,38 @@ func TestPatchScheduler(t *testing.T) {
 				},
 			},
 			Mocks: Mocks{
-				ExpectedChangeMap: map[string]interface{}{
-					patch_scheduler.LabelSchedulerMaxSurge: maxSurge,
-				},
-				PatchSchedulerAndCreateNewSchedulerVersionReturn: &operation.Operation{
+				RequestFile:        "scheduler-patch.json",
+				GetSchedulerReturn: newValidScheduler(),
+				GetSchedulerError:  nil,
+				CreateOperationReturn: &operation.Operation{
 					ID: "some-id",
 				},
-				PatchSchedulerAndCreateNewSchedulerVersionError: nil,
+				CreateOperationError: nil,
 			},
 			Output: Output{
 				Response: &api.PatchSchedulerResponse{
 					OperationId: "some-id",
 				},
 				Status: http.StatusOK,
+			},
+		},
+		{
+			Title: "When invalid request payload return 400",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
+				},
+			},
+			Mocks: Mocks{
+				RequestFile:           "invalid-scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     portsErrors.NewErrNotFound("not found error"),
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusBadRequest,
 			},
 		},
 		{
@@ -1119,34 +1139,15 @@ func TestPatchScheduler(t *testing.T) {
 				},
 			},
 			Mocks: Mocks{
-				ExpectedChangeMap: map[string]interface{}{
-					patch_scheduler.LabelSchedulerMaxSurge: maxSurge,
-				},
-				PatchSchedulerAndCreateNewSchedulerVersionReturn: nil,
-				PatchSchedulerAndCreateNewSchedulerVersionError:  portsErrors.NewErrNotFound("not found"),
+				RequestFile:           "scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     portsErrors.NewErrNotFound("not found error"),
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
 			},
 			Output: Output{
 				Response: nil,
 				Status:   http.StatusNotFound,
-			},
-		},
-		{
-			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrInvalidArgument return 400",
-			Input: Input{
-				Request: &api.PatchSchedulerRequest{
-					MaxSurge: &maxSurge,
-				},
-			},
-			Mocks: Mocks{
-				ExpectedChangeMap: map[string]interface{}{
-					patch_scheduler.LabelSchedulerMaxSurge: maxSurge,
-				},
-				PatchSchedulerAndCreateNewSchedulerVersionReturn: nil,
-				PatchSchedulerAndCreateNewSchedulerVersionError:  portsErrors.NewErrInvalidArgument("invalid argument"),
-			},
-			Output: Output{
-				Response: nil,
-				Status:   http.StatusBadRequest,
 			},
 		},
 		{
@@ -1157,11 +1158,30 @@ func TestPatchScheduler(t *testing.T) {
 				},
 			},
 			Mocks: Mocks{
-				ExpectedChangeMap: map[string]interface{}{
-					patch_scheduler.LabelSchedulerMaxSurge: maxSurge,
+				RequestFile:           "scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     portsErrors.NewErrUnexpected("unexpected error"),
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusInternalServerError,
+			},
+		},
+		{
+			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrUnexpected return 500",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
 				},
-				PatchSchedulerAndCreateNewSchedulerVersionReturn: nil,
-				PatchSchedulerAndCreateNewSchedulerVersionError:  portsErrors.NewErrUnexpected("unexpected error"),
+			},
+			Mocks: Mocks{
+				RequestFile:           "scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     nil,
+				CreateOperationReturn: nil,
+				CreateOperationError:  portsErrors.NewErrUnexpected("unexpected error"),
 			},
 			Output: Output{
 				Response: nil,
@@ -1181,10 +1201,15 @@ func TestPatchScheduler(t *testing.T) {
 			operationManager := mock.NewMockOperationManager(mockCtrl)
 			schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, operationManager, nil)
 
-			schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(currentScheduler, nil)
+			schedulerStorage.EXPECT().
+				GetScheduler(gomock.Any(), "scheduler-name-1").
+				Return(testCase.Mocks.GetSchedulerReturn, testCase.Mocks.GetSchedulerError).
+				AnyTimes()
+
 			operationManager.EXPECT().
 				CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).
-				Return(testCase.Mocks.PatchSchedulerAndCreateNewSchedulerVersionReturn, testCase.Mocks.PatchSchedulerAndCreateNewSchedulerVersionError)
+				Return(testCase.Mocks.CreateOperationReturn, testCase.Mocks.CreateOperationError).
+				AnyTimes()
 
 			mux := runtime.NewServeMux()
 			err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -1192,7 +1217,8 @@ func TestPatchScheduler(t *testing.T) {
 
 			url := "/schedulers/scheduler-name-1"
 
-			request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-patch.json")
+			requestFile := fmt.Sprintf("%s/fixtures/request/%s", dirPath, testCase.Mocks.RequestFile)
+			request, err := ioutil.ReadFile(requestFile)
 			require.NoError(t, err)
 
 			req, err := http.NewRequest("PATCH", url, bytes.NewReader(request))
@@ -1203,8 +1229,10 @@ func TestPatchScheduler(t *testing.T) {
 			rr := httptest.NewRecorder()
 			mux.ServeHTTP(rr, req)
 			require.Equal(t, testCase.Output.Status, rr.Code)
-			responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/patch_scheduler_response.json")
-			require.Equal(t, expectedResponseBody, responseBody)
+			if testCase.Output.Status == http.StatusOK {
+				responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/patch_scheduler_response.json")
+				require.Equal(t, expectedResponseBody, responseBody)
+			}
 		})
 	}
 }

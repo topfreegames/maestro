@@ -231,8 +231,6 @@ func (h *SchedulersHandler) PatchScheduler(ctx context.Context, request *api.Pat
 
 	operation, err := h.schedulerManager.PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx, request.GetName(), patchMap)
 
-	fmt.Printf("\n\n%T %t\n\n", err, errors.Is(err, portsErrors.ErrNotFound))
-
 	if err != nil {
 		handlerLogger.Error("error patching scheduler", zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
