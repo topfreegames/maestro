@@ -1082,6 +1082,7 @@ func TestPatchScheduler(t *testing.T) {
 	}
 
 	maxSurge := "60%"
+	wrongMaxSurge := "wrong-max-surge"
 
 	testCases := []struct {
 		Title string
@@ -1151,6 +1152,25 @@ func TestPatchScheduler(t *testing.T) {
 			},
 		},
 		{
+			Title: "When patch scheduler results in an invalid scheulder return 400",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &wrongMaxSurge,
+				},
+			},
+			Mocks: Mocks{
+				RequestFile:           "invalid-scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     nil,
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusBadRequest,
+			},
+		},
+		{
 			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrUnexpected return 500",
 			Input: Input{
 				Request: &api.PatchSchedulerRequest{
@@ -1189,6 +1209,10 @@ func TestPatchScheduler(t *testing.T) {
 			},
 		},
 	}
+
+	err := validations.RegisterValidations()
+	require.NoError(t, err)
+
 	dirPath, _ := os.Getwd()
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {

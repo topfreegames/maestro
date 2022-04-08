@@ -158,6 +158,10 @@ func (s *SchedulerManager) PatchSchedulerAndCreateNewSchedulerVersionOperation(c
 		return nil, portsErrors.NewErrInvalidArgument("error patching scheduler: %s", err.Error())
 	}
 
+	if err := scheduler.Validate(); err != nil {
+		return nil, portsErrors.NewErrInvalidArgument("invalid patched scheduler: %s", err.Error())
+	}
+
 	opDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: scheduler}
 
 	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, opDef)

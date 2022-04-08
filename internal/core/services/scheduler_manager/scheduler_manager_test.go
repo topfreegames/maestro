@@ -924,6 +924,27 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 			},
 		},
 		{
+			Title: "Scheduler validation returns in error then return ErrInvalidArgument",
+			Input: Input{
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: "potato",
+				},
+			},
+			ExpectedMock: ExpectedMock{
+				GetSchedulerError: nil,
+				ChangedSchedulerFunction: func() *entities.Scheduler {
+					scheduler.MaxSurge = "17%"
+					return scheduler
+				},
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Operation: nil,
+				Err:       fmt.Errorf("invalid patched scheduler:"),
+			},
+		},
+		{
 			Title: "CreateOperation returns in error then return error",
 			Input: Input{
 				PatchMap: map[string]interface{}{
@@ -966,6 +987,9 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 			},
 		},
 	}
+
+	err := validations.RegisterValidations()
+	require.NoError(t, err)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
