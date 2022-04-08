@@ -24,6 +24,7 @@ package scheduler_manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -145,7 +146,11 @@ func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx 
 func (s *SchedulerManager) PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx context.Context, schedulerName string, patchMap map[string]interface{}) (*operation.Operation, error) {
 	scheduler, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
 	if err != nil {
-		return nil, portsErrors.NewErrNotFound("no scheduler found, can not create new version for inexistent scheduler: %s", err.Error())
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, portsErrors.NewErrNotFound("no scheduler found, can not create new version for inexistent scheduler: %s", err.Error())
+		}
+
+		return nil, portsErrors.NewErrUnexpected("unexpected error getting scheduler to patch: %s", err.Error())
 	}
 
 	scheduler, err = patch_scheduler.PatchScheduler(*scheduler, patchMap)
