@@ -249,6 +249,9 @@ func (es *EventsForwarderService) selectPort(address *game_room.Address) (int32,
 }
 
 func (es *EventsForwarderService) incrementEventAttributesWithPortsInfo(event *events.Event, ports []game_room.Port) error {
+	if len(ports) == 0 {
+		return nil
+	}
 	portsMap := make([]map[string]interface{}, 0)
 	for _, port := range ports {
 		portsMap = append(portsMap, map[string]interface{}{
@@ -257,10 +260,12 @@ func (es *EventsForwarderService) incrementEventAttributesWithPortsInfo(event *e
 			"protocol": port.Protocol,
 		})
 	}
+
 	portsJson, err := json.Marshal(portsMap)
 	if err != nil {
 		return err
 	}
+
 	event.Attributes["ports"] = string(portsJson)
 	return nil
 }
