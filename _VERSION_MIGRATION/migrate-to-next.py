@@ -13,6 +13,7 @@ backup_folder_absolute_path = ""
 maestro_v9_endpoint = ""
 maestro_next_endpoint = ""
 container_input_env_vars = {}
+dry_run = False
 
 
 # BACKUP
@@ -360,6 +361,9 @@ def map_maestro_next_configs_for_scheduler(schedulers):
 
 def main():
     try:
+        if dry_run:
+            print('***** DRY RUN *****')
+
         print(f"=====> finding v9 schedulers for game: '{game}'")
         schedulers = get_v9_game_schedulers()
         if len(schedulers) == 0:
@@ -374,6 +378,11 @@ def main():
         print("=====> mapping Next format schedulers")
         schedulers = map_maestro_next_configs_for_scheduler(schedulers)
         print("...success")
+
+        if dry_run:
+            print('schedulers meant to be migrated:\n', *list(map(lambda x: f"{x.get('name')}\n", schedulers)))
+            print(f'converted scheduler example:\n', yaml.dump(schedulers[0]['next-config'], indent=2))
+            sys.exit()
 
         print("##### all set to start migration! #####")
         for scheduler in tqdm(schedulers):
@@ -411,6 +420,7 @@ def setup():
     global game
     global backup_folder_absolute_path
     global container_input_env_vars
+    global dry_run
 
     my_parser = argparse.ArgumentParser(description='Args necessary to migrate schedulers from v9 to v10')
     my_parser.add_argument('-o',
@@ -448,12 +458,18 @@ def setup():
                            required=True,
                            help='yaml file containing env variables to be overridden in the format "env: -name: value:"')
 
+    my_parser.add_argument('-d',
+                           '--dry',
+                           help='dry-run to test the expected execution',
+                           action='store_true')
+
     args = my_parser.parse_args()
 
     maestro_v9_endpoint = args.old_url
     maestro_next_endpoint = args.new_url
     game = args.game
     backup_folder_absolute_path = args.backup
+    dry_run = args.dry
 
     with open(args.yaml_file, "r") as f:
         yaml_file = yaml.load(f, Loader=yaml.loader.SafeLoader)
