@@ -27,6 +27,7 @@ package events_forwarder_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -194,6 +195,16 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
 		require.NoError(t, err)
 		require.NotEmpty(t, event.Attributes["ports"])
+
+		portsUnmarshalled := make([]map[string]interface{}, 0)
+		err = json.Unmarshal([]byte(event.Attributes["ports"].(string)), &portsUnmarshalled)
+		require.NoError(t, err)
+
+		for _, _port := range portsUnmarshalled {
+			require.NotNil(t, _port["name"])
+			require.NotNil(t, _port["protocol"])
+			require.NotNil(t, _port["port"])
+		}
 	})
 
 	t.Run("should fail when event type is not in eventAttributes", func(t *testing.T) {

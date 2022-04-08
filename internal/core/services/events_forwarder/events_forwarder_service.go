@@ -24,6 +24,7 @@ package events_forwarder
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -134,7 +135,10 @@ func (es *EventsForwarderService) forwardRoomEvent(
 	if err != nil {
 		return fmt.Errorf("no room port found to forward roomEvent. Forwarder name: \"%v\", Scheduler: \"%v\"", _forwarder.Name, event.SchedulerID)
 	}
-	es.incrementEventAttributesWithPortsInfo(event, instance.Address.Ports)
+	err = es.incrementEventAttributesWithPortsInfo(event, instance.Address.Ports)
+	if err != nil {
+		return err
+	}
 
 	roomEvent, err := events.ConvertToRoomEventType(eventType)
 	if err != nil {
@@ -244,16 +248,26 @@ func (es *EventsForwarderService) selectPort(address *game_room.Address) (int32,
 	return selectedPort, nil
 }
 
-func (es *EventsForwarderService) incrementEventAttributesWithPortsInfo(event *events.Event, ports []game_room.Port) {
-	portsMap := make(map[int]interface{})
-	for i, port := range ports {
-		portsMap[i] = map[string]interface{}{
+func (es *EventsForwarderService) incrementEventAttributesWithPortsInfo(event *events.Event, ports []game_room.Port) error {
+	if len(ports) == 0 {
+		return nil
+	}
+	portsMap := make([]map[string]interface{}, 0)
+	for _, port := range ports {
+		portsMap = append(portsMap, map[string]interface{}{
 			"port":     port.Port,
 			"name":     port.Name,
 			"protocol": port.Protocol,
-		}
+		})
 	}
-	event.Attributes["ports"] = portsMap
+
+	portsJson, err := json.Marshal(portsMap)
+	if err != nil {
+		return err
+	}
+
+	event.Attributes["ports"] = string(portsJson)
+	return nil
 }
 
 func (es *EventsForwarderService) getPlayerInfo(event *events.Event) (string, error) {
