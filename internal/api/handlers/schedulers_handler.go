@@ -32,7 +32,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	_struct "google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/topfreegames/maestro/internal/api/handlers/adapters"
+	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 
@@ -227,7 +227,7 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 func (h *SchedulersHandler) PatchScheduler(ctx context.Context, request *api.PatchSchedulerRequest) (*api.PatchSchedulerResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()))
 	handlerLogger.Info("handling patch scheduler request")
-	patchMap := adapters.FromApiPatchSchedulerRequestToChangeMap(request)
+	patchMap := request_adapters.FromApiPatchSchedulerRequestToChangeMap(request)
 
 	operation, err := h.schedulerManager.PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx, request.GetName(), patchMap)
 

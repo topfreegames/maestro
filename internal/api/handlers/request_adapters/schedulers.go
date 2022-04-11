@@ -1,4 +1,4 @@
-package adapters
+package request_adapters
 
 import (
 	"time"

@@ -1,14 +1,14 @@
 //go:build unit
 // +build unit
 
-package adapters_test
+package request_adapters_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/topfreegames/maestro/internal/api/handlers/adapters"
+	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -69,7 +69,7 @@ func TestFromApiContainerPort(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := adapters.FromApiContainerPorts(testCase.Input.Ports)
+			returnValues := request_adapters.FromApiContainerPorts(testCase.Input.Ports)
 			assert.EqualValues(t, testCase.Output.Ports, returnValues)
 		})
 	}
@@ -148,7 +148,7 @@ func TestFromApiContainerEnvironments(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := adapters.FromApiContainerEnvironments(testCase.Input.Environments)
+			returnValues := request_adapters.FromApiContainerEnvironments(testCase.Input.Environments)
 			assert.EqualValues(t, testCase.Output.Environments, returnValues)
 		})
 	}
@@ -246,7 +246,7 @@ func TestFromApiForwarders(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := adapters.FromApiForwarders(testCase.Input.Forwarders)
+			returnValues := request_adapters.FromApiForwarders(testCase.Input.Forwarders)
 			assert.EqualValues(t, testCase.Output.Forwarders, returnValues)
 		})
 	}
@@ -361,7 +361,7 @@ func TestFromApiOptinalContainersToChangeMap(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := adapters.FromApiOptinalContainersToChangeMap(testCase.Input.Containers)
+			returnValues := request_adapters.FromApiOptinalContainersToChangeMap(testCase.Input.Containers)
 			assert.EqualValues(t, testCase.Output.Containers, returnValues)
 		})
 	}
@@ -450,7 +450,7 @@ func TestFromApiOptionalSpecToChangeMap(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := adapters.FromApiOptionalSpecToChangeMap(testCase.Input.Spec)
+			returnValues := request_adapters.FromApiOptionalSpecToChangeMap(testCase.Input.Spec)
 			assert.EqualValues(t, testCase.Output.Spec, returnValues)
 		})
 	}
@@ -576,7 +576,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := adapters.FromApiPatchSchedulerRequestToChangeMap(testCase.Input.PatchScheduler)
+			returnValues := request_adapters.FromApiPatchSchedulerRequestToChangeMap(testCase.Input.PatchScheduler)
 			assert.EqualValues(t, testCase.Output.PatchScheduler, returnValues)
 		})
 	}
