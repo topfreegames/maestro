@@ -47,6 +47,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/validations"
 )
@@ -881,6 +882,27 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 			},
 		},
 		{
+			Title: "GetScheduler returns error not found then return not found error",
+			Input: Input{
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: "12%",
+				},
+			},
+			ExpectedMock: ExpectedMock{
+				GetSchedulerError: portsErrors.NewErrNotFound("scheduler not found"),
+				ChangedSchedulerFunction: func() *entities.Scheduler {
+					scheduler.MaxSurge = "15%"
+					return scheduler
+				},
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Operation: nil,
+				Err:       fmt.Errorf("no scheduler found, can not create new version for inexistent scheduler:"),
+			},
+		},
+		{
 			Title: "GetScheduler returns in error then return error",
 			Input: Input{
 				PatchMap: map[string]interface{}{
@@ -898,7 +920,28 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 			},
 			Output: Output{
 				Operation: nil,
-				Err:       fmt.Errorf("no scheduler found, can not create new version for inexistent scheduler:"),
+				Err:       fmt.Errorf("unexpected error getting scheduler to patch:"),
+			},
+		},
+		{
+			Title: "Scheduler validation returns in error then return ErrInvalidArgument",
+			Input: Input{
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: "potato",
+				},
+			},
+			ExpectedMock: ExpectedMock{
+				GetSchedulerError: nil,
+				ChangedSchedulerFunction: func() *entities.Scheduler {
+					scheduler.MaxSurge = "17%"
+					return scheduler
+				},
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Operation: nil,
+				Err:       fmt.Errorf("invalid patched scheduler:"),
 			},
 		},
 		{
@@ -944,6 +987,9 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 			},
 		},
 	}
+
+	err := validations.RegisterValidations()
+	require.NoError(t, err)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {

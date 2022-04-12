@@ -61,6 +61,14 @@ service SchedulersService {
     };
   }
 
+  // Patch a scheduler and switch it to active version.
+  rpc PatchScheduler(PatchSchedulerRequest) returns (PatchSchedulerResponse) {
+    option (google.api.http) = {
+      patch: "/schedulers/{name=*}",
+      body: "*"
+    };
+  }
+
   // Given a Scheduler, returns it's versions
   rpc GetSchedulerVersions(GetSchedulerVersionsRequest) returns (GetSchedulerVersionsResponse) {
     option (google.api.http) = {
@@ -182,6 +190,26 @@ message NewSchedulerVersionRequest {
 
 // Update schedule operation response payload.
 message NewSchedulerVersionResponse {
+  // Operation ID, further this id can be used to consult its state.
+  string operation_id = 1;
+}
+
+// PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler.
+message PatchSchedulerRequest {
+  // Unique identifier for the scheduler.
+  string name = 1;
+  // The spec object defines all the game room container configurations and spec.
+  optional OptionalSpec spec = 2;
+  // The port range object describes what is the port range used to allocate game rooms.
+  optional PortRange port_range = 3;
+  // The max surge of new rooms, used to scale and update
+  optional string max_surge = 4;
+  // List of Scheduler forwarders
+  repeated Forwarder forwarders = 5;
+}
+
+// PatchSchedulerResponse have the operation response id that represents the operation creted to this change.
+message PatchSchedulerResponse {
   // Operation ID, further this id can be used to consult its state.
   string operation_id = 1;
 }

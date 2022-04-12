@@ -41,6 +41,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/filters"
+	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -1060,6 +1061,221 @@ func TestGetSchedulersInfo(t *testing.T) {
 		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/get_schedulers_info_internal_error.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
+}
+
+func TestPatchScheduler(t *testing.T) {
+	type Input struct {
+		Request *api.PatchSchedulerRequest
+	}
+
+	type Mocks struct {
+		RequestFile           string
+		GetSchedulerReturn    *entities.Scheduler
+		GetSchedulerError     error
+		CreateOperationReturn *operation.Operation
+		CreateOperationError  error
+	}
+
+	type Output struct {
+		Response *api.PatchSchedulerResponse
+		Status   int
+	}
+
+	maxSurge := "60%"
+	wrongMaxSurge := "wrong-max-surge"
+
+	testCases := []struct {
+		Title string
+		Input
+		Mocks
+		Output
+	}{
+		{
+			Title: "When all is ok",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
+				},
+			},
+			Mocks: Mocks{
+				RequestFile:        "scheduler-patch.json",
+				GetSchedulerReturn: newValidScheduler(),
+				GetSchedulerError:  nil,
+				CreateOperationReturn: &operation.Operation{
+					ID: "some-id",
+				},
+				CreateOperationError: nil,
+			},
+			Output: Output{
+				Response: &api.PatchSchedulerResponse{
+					OperationId: "some-id",
+				},
+				Status: http.StatusOK,
+			},
+		},
+		{
+			Title: "When invalid request payload return 400",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
+				},
+			},
+			Mocks: Mocks{
+				RequestFile:           "invalid-scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     portsErrors.NewErrNotFound("not found error"),
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusBadRequest,
+			},
+		},
+		{
+			Title: "When request payload does not change scheudler return 409",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{},
+			},
+			Mocks: Mocks{
+				RequestFile:           "empty-scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     nil,
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusConflict,
+			},
+		},
+		{
+			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrNotFound return 404",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
+				},
+			},
+			Mocks: Mocks{
+				RequestFile:           "scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     portsErrors.NewErrNotFound("not found error"),
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusNotFound,
+			},
+		},
+		{
+			Title: "When patch scheduler results in an invalid scheulder return 400",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &wrongMaxSurge,
+				},
+			},
+			Mocks: Mocks{
+				RequestFile:           "invalid-scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     nil,
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusBadRequest,
+			},
+		},
+		{
+			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrUnexpected return 500",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
+				},
+			},
+			Mocks: Mocks{
+				RequestFile:           "scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     portsErrors.NewErrUnexpected("unexpected error"),
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusInternalServerError,
+			},
+		},
+		{
+			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrUnexpected return 500",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					MaxSurge: &maxSurge,
+				},
+			},
+			Mocks: Mocks{
+				RequestFile:           "scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     nil,
+				CreateOperationReturn: nil,
+				CreateOperationError:  portsErrors.NewErrUnexpected("unexpected error"),
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusInternalServerError,
+			},
+		},
+	}
+
+	err := validations.RegisterValidations()
+	require.NoError(t, err)
+
+	dirPath, _ := os.Getwd()
+	for _, testCase := range testCases {
+		t.Run(testCase.Title, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
+			currentScheduler := newValidScheduler()
+			currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+
+			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+			operationManager := mock.NewMockOperationManager(mockCtrl)
+			schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, operationManager, nil)
+
+			schedulerStorage.EXPECT().
+				GetScheduler(gomock.Any(), "scheduler-name-1").
+				Return(testCase.Mocks.GetSchedulerReturn, testCase.Mocks.GetSchedulerError).
+				AnyTimes()
+
+			operationManager.EXPECT().
+				CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).
+				Return(testCase.Mocks.CreateOperationReturn, testCase.Mocks.CreateOperationError).
+				AnyTimes()
+
+			mux := runtime.NewServeMux()
+			err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+			require.NoError(t, err)
+
+			url := "/schedulers/scheduler-name-1"
+
+			requestFile := fmt.Sprintf("%s/fixtures/request/%s", dirPath, testCase.Mocks.RequestFile)
+			request, err := ioutil.ReadFile(requestFile)
+			require.NoError(t, err)
+
+			req, err := http.NewRequest("PATCH", url, bytes.NewReader(request))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+			require.Equal(t, testCase.Output.Status, rr.Code)
+			if testCase.Output.Status == http.StatusOK {
+				responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/patch_scheduler_response.json")
+				require.Equal(t, expectedResponseBody, responseBody)
+			}
+		})
+	}
 }
 
 func newValidScheduler() *entities.Scheduler {

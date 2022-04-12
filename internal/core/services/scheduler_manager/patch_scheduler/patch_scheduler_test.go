@@ -245,6 +245,30 @@ func TestPatchScheduler(t *testing.T) {
 		// Containers success
 
 		{
+			Title: "Have name return scheduler with changed Name",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerSpec: map[string]interface{}{
+						patch_scheduler.LabelSpecContainers: []map[string]interface{}{
+							map[string]interface{}{
+								patch_scheduler.LabelContainerName: "some-name",
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					scheduler.Spec.Containers[0].Name = "some-name"
+
+					return scheduler
+				},
+				Error: nil,
+			},
+		},
+		{
 			Title: "Have image return scheduler with changed Image",
 			Input: Input{
 				Scheduler: basicSchedulerToPatchSchedulerTests(),

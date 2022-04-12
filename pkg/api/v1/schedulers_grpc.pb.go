@@ -30,6 +30,8 @@ type SchedulersServiceClient interface {
 	RemoveRooms(ctx context.Context, in *RemoveRoomsRequest, opts ...grpc.CallOption) (*RemoveRoomsResponse, error)
 	// Creates new scheduler version and switch it to active version.
 	NewSchedulerVersion(ctx context.Context, in *NewSchedulerVersionRequest, opts ...grpc.CallOption) (*NewSchedulerVersionResponse, error)
+	// Patch a scheduler and switch it to active version.
+	PatchScheduler(ctx context.Context, in *PatchSchedulerRequest, opts ...grpc.CallOption) (*PatchSchedulerResponse, error)
 	// Given a Scheduler, returns it's versions
 	GetSchedulerVersions(ctx context.Context, in *GetSchedulerVersionsRequest, opts ...grpc.CallOption) (*GetSchedulerVersionsResponse, error)
 	// Switch Active Version to Scheduler
@@ -100,6 +102,15 @@ func (c *schedulersServiceClient) NewSchedulerVersion(ctx context.Context, in *N
 	return out, nil
 }
 
+func (c *schedulersServiceClient) PatchScheduler(ctx context.Context, in *PatchSchedulerRequest, opts ...grpc.CallOption) (*PatchSchedulerResponse, error) {
+	out := new(PatchSchedulerResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/PatchScheduler", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *schedulersServiceClient) GetSchedulerVersions(ctx context.Context, in *GetSchedulerVersionsRequest, opts ...grpc.CallOption) (*GetSchedulerVersionsResponse, error) {
 	out := new(GetSchedulerVersionsResponse)
 	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/GetSchedulerVersions", in, out, opts...)
@@ -143,6 +154,8 @@ type SchedulersServiceServer interface {
 	RemoveRooms(context.Context, *RemoveRoomsRequest) (*RemoveRoomsResponse, error)
 	// Creates new scheduler version and switch it to active version.
 	NewSchedulerVersion(context.Context, *NewSchedulerVersionRequest) (*NewSchedulerVersionResponse, error)
+	// Patch a scheduler and switch it to active version.
+	PatchScheduler(context.Context, *PatchSchedulerRequest) (*PatchSchedulerResponse, error)
 	// Given a Scheduler, returns it's versions
 	GetSchedulerVersions(context.Context, *GetSchedulerVersionsRequest) (*GetSchedulerVersionsResponse, error)
 	// Switch Active Version to Scheduler
@@ -173,6 +186,9 @@ func (UnimplementedSchedulersServiceServer) RemoveRooms(context.Context, *Remove
 }
 func (UnimplementedSchedulersServiceServer) NewSchedulerVersion(context.Context, *NewSchedulerVersionRequest) (*NewSchedulerVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewSchedulerVersion not implemented")
+}
+func (UnimplementedSchedulersServiceServer) PatchScheduler(context.Context, *PatchSchedulerRequest) (*PatchSchedulerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PatchScheduler not implemented")
 }
 func (UnimplementedSchedulersServiceServer) GetSchedulerVersions(context.Context, *GetSchedulerVersionsRequest) (*GetSchedulerVersionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchedulerVersions not implemented")
@@ -304,6 +320,24 @@ func _SchedulersService_NewSchedulerVersion_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SchedulersService_PatchScheduler_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PatchSchedulerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SchedulersServiceServer).PatchScheduler(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.SchedulersService/PatchScheduler",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SchedulersServiceServer).PatchScheduler(ctx, req.(*PatchSchedulerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SchedulersService_GetSchedulerVersions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetSchedulerVersionsRequest)
 	if err := dec(in); err != nil {
@@ -388,6 +422,10 @@ var SchedulersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "NewSchedulerVersion",
 			Handler:    _SchedulersService_NewSchedulerVersion_Handler,
+		},
+		{
+			MethodName: "PatchScheduler",
+			Handler:    _SchedulersService_PatchScheduler_Handler,
 		},
 		{
 			MethodName: "GetSchedulerVersions",

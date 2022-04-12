@@ -32,7 +32,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	_struct "google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
 	"github.com/topfreegames/maestro/internal/core/logs"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 
 	"go.uber.org/zap"
 
@@ -42,7 +44,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 
 	"google.golang.org/grpc/codes"
@@ -221,6 +222,33 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 	handlerLogger.Info("finish handling new scheduler version request")
 
 	return &api.NewSchedulerVersionResponse{OperationId: operation.ID}, nil
+}
+
+func (h *SchedulersHandler) PatchScheduler(ctx context.Context, request *api.PatchSchedulerRequest) (*api.PatchSchedulerResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()))
+	handlerLogger.Info("handling patch scheduler request")
+
+	patchMap := request_adapters.FromApiPatchSchedulerRequestToChangeMap(request)
+	if len(patchMap) == 0 {
+		return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("no change found to scheduler %s", request.GetName()))
+	}
+
+	operation, err := h.schedulerManager.PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx, request.GetName(), patchMap)
+
+	if err != nil {
+		handlerLogger.Error("error patching scheduler", zap.Error(err))
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		if errors.Is(err, portsErrors.ErrInvalidArgument) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	handlerLogger.Info("finish handling patch scheduler request")
+
+	return &api.PatchSchedulerResponse{OperationId: operation.ID}, nil
 }
 
 func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *api.SwitchActiveVersionRequest) (*api.SwitchActiveVersionResponse, error) {

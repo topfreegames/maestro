@@ -41,6 +41,27 @@ message Container {
   repeated ContainerPort ports = 8;
 }
 
+// OptionalContainer is the struct that defines a game room container configuration.
+// This message is used to patch container configuration.
+message OptionalContainer {
+  // Name of the container.
+  optional string name = 1;
+  // Image address.
+  optional string image = 2;
+  // Image pull policy: Always, Never and IfNotExists.
+  optional string image_pull_policy = 3;
+  // Container command to be called when container is instantiated.
+  repeated string command = 4;
+  // Container environment variables.
+  repeated ContainerEnvironment environment = 5;
+  // Container resources request (cpu/memory).
+  optional ContainerResources requests = 6;
+  // Container resources limits (cpu/memory).
+  optional ContainerResources limits = 7;
+  // Container exposed ports definitions.
+  repeated ContainerPort ports = 8;
+}
+
 // Container environment variables.
 message ContainerEnvironment {
   // Container environment variable name.
@@ -103,7 +124,7 @@ message PortRange {
 	int32 end = 2;
 }
 
-// Spec is the specifications of the scheduler, with relevant info about what is being used
+// Spec is the specifications of the scheduler, with relevant info about what is being used.
 message Spec {
   // GameRoom.spec version
   string version = 1;
@@ -115,6 +136,19 @@ message Spec {
   string toleration = 4;
   // Runtime game room affinity configuration.
   string affinity = 5;
+}
+
+// OptionalSpec is the specifications of the scheduler, with relevant info about what is being used.
+// This message is used to patch spec configuration.
+message OptionalSpec {
+  // The game room termination grace period.
+  optional int64 termination_grace_period = 2;
+  // The container object array defines all the game room container configurations.
+  repeated OptionalContainer containers = 3;
+  // Runtime game room toleration configuration.
+  optional string toleration = 4;
+  // Runtime game room affinity configuration.
+  optional string affinity = 5;
 }
 
 // Scheduler definition.
