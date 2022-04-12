@@ -686,7 +686,7 @@
     },
     "/schedulers/{schedulerName}/operations/{operationId}": {
       "get": {
-        "summary": "Cancel operation based on scheduler name and operation ID",
+        "summary": "Get operation based on scheduler name and operation ID",
         "operationId": "OperationsService_GetOperation",
         "responses": {
           "200": {

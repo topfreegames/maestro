@@ -23,7 +23,7 @@ service OperationsService {
     };
   }
 
-  // Cancel operation based on scheduler name and operation ID
+  // Get operation based on scheduler name and operation ID
   rpc GetOperation(GetOperationRequest) returns (GetOperationResponse) {
     option (google.api.http) = {
       get: "/schedulers/{scheduler_name=*}/operations/{operation_id=*}",
