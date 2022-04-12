@@ -26,11 +26,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
 
 	v1 "k8s.io/api/core/v1"
 

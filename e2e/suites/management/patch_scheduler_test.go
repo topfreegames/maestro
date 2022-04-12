@@ -24,10 +24,11 @@ package management
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
@@ -38,27 +39,23 @@ import (
 
 func TestPatchScheduler(t *testing.T) {
 	t.Parallel()
-
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		t.Run("should succeed patching the entire scheduler and isolated fields", func(t *testing.T) {
+		scheduler, err := createSchedulerAndWaitForIt(t,
+			maestro,
+			managementApiClient,
+			kubeClient,
+			"test",
+			[]string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
+				"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
+				"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"})
 
-			scheduler, err := createSchedulerAndWaitForIt(t,
-				maestro,
-				managementApiClient,
-				kubeClient,
-				"test",
-				[]string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
-					"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"})
+		getSchedulerRequest := &maestrov1.GetSchedulerRequest{}
+		getSchedulerResponse := &maestrov1.GetSchedulerResponse{}
+		err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
+		require.NoError(t, err)
+		require.Equal(t, "v1.0.0", getSchedulerResponse.Scheduler.Spec.Version)
 
-			getSchedulerRequest := &maestrov1.GetSchedulerRequest{}
-			getSchedulerResponse := &maestrov1.GetSchedulerResponse{}
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
-			require.NoError(t, err)
-			require.Equal(t, "v1.0.0", getSchedulerResponse.Scheduler.Spec.Version)
-
-			// Patching single field of the scheduler
-
+		t.Run("should succeed patching single field of the scheduler", func(t *testing.T) {
 			newMaxSurge := "22"
 			patchSchedulerRequest := &maestrov1.PatchSchedulerRequest{MaxSurge: &newMaxSurge}
 			patchSchedulerResponse := &maestrov1.PatchSchedulerResponse{}
@@ -73,10 +70,10 @@ func TestPatchScheduler(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "v1.1.0", getSchedulerResponse.Scheduler.Spec.Version)
 			require.Equal(t, newMaxSurge, getSchedulerResponse.Scheduler.MaxSurge)
+		})
 
-			// Patching the entire scheduler
-
-			newMaxSurge = "50%"
+		t.Run("should succeed patching multiple fields of the scheduler", func(t *testing.T) {
+			newMaxSurge := "50%"
 			newPortRange := maestrov1.PortRange{
 				Start: 1000,
 				End:   2000,
@@ -118,13 +115,13 @@ func TestPatchScheduler(t *testing.T) {
 					Options: nil,
 				},
 			}
-			patchSchedulerRequest = &maestrov1.PatchSchedulerRequest{
+			patchSchedulerRequest := &maestrov1.PatchSchedulerRequest{
 				MaxSurge:   &newMaxSurge,
 				PortRange:  &newPortRange,
 				Spec:       &newSpec,
 				Forwarders: newForwarders,
 			}
-			patchSchedulerResponse = &maestrov1.PatchSchedulerResponse{}
+			patchSchedulerResponse := &maestrov1.PatchSchedulerResponse{}
 			err = managementApiClient.Do("PATCH", fmt.Sprintf("/schedulers/%s", scheduler.Name), patchSchedulerRequest, patchSchedulerResponse)
 			require.NoError(t, err)
 
@@ -144,19 +141,21 @@ func TestPatchScheduler(t *testing.T) {
 			assert.Equal(t, newSpec.Containers[0].Ports, getSchedulerResponse.Scheduler.Spec.Containers[0].Ports)
 			assert.Equal(t, *newSpec.TerminationGracePeriod, getSchedulerResponse.Scheduler.Spec.TerminationGracePeriod)
 
-			// Patching nothing
+		})
 
-			patchSchedulerRequest = &maestrov1.PatchSchedulerRequest{}
-			patchSchedulerResponse = &maestrov1.PatchSchedulerResponse{}
+		t.Run("should fail patching empty fields of the scheduler", func(t *testing.T) {
+			patchSchedulerRequest := &maestrov1.PatchSchedulerRequest{}
+			patchSchedulerResponse := &maestrov1.PatchSchedulerResponse{}
 			err = managementApiClient.Do("PATCH", fmt.Sprintf("/schedulers/%s", scheduler.Name), patchSchedulerRequest, patchSchedulerResponse)
 			require.Error(t, err)
+			require.Contains(t, err.Error(), "failed with status 409")
 			getSchedulerRequest = &maestrov1.GetSchedulerRequest{}
 			getSchedulerResponse = &maestrov1.GetSchedulerResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
 			// Nothing changed
 			require.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Spec.Version)
-
 		})
+
 	})
 }
