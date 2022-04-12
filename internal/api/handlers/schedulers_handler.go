@@ -381,6 +381,9 @@ func (h *SchedulersHandler) fromEntityForwardersToResponse(entities []*forwarder
 }
 
 func (h *SchedulersHandler) fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderOptions, error) {
+	if entity == nil {
+		return nil, nil
+	}
 	protoStruct, err := _struct.NewStruct(entity.Metadata)
 	if err != nil {
 		return nil, err
