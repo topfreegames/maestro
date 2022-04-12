@@ -43,6 +43,7 @@ const (
 	LabelSpecToleration             = "toleration"
 	LabelSpecAffinity               = "affinity"
 
+	LabelContainerName            = "name"
 	LabelContainerImage           = "image"
 	LabelContainerImagePullPolicy = "image_pull_policy"
 	LabelContainerCommand         = "command"

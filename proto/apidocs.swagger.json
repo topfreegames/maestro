@@ -1315,6 +1315,10 @@
     "v1OptionalContainer": {
       "type": "object",
       "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the container."
+        },
         "image": {
           "type": "string",
           "description": "Image address."

@@ -44,20 +44,22 @@ message Container {
 // OptionalContainer is the struct that defines a game room container configuration.
 // This message is used to patch container configuration.
 message OptionalContainer {
+  // Name of the container.
+  optional string name = 1;
   // Image address.
-  optional string image = 1;
+  optional string image = 2;
   // Image pull policy: Always, Never and IfNotExists.
-  optional string image_pull_policy = 2;
+  optional string image_pull_policy = 3;
   // Container command to be called when container is instantiated.
-  repeated string command = 3;
+  repeated string command = 4;
   // Container environment variables.
-  repeated ContainerEnvironment environment = 4;
+  repeated ContainerEnvironment environment = 5;
   // Container resources request (cpu/memory).
-  optional ContainerResources requests = 5;
+  optional ContainerResources requests = 6;
   // Container resources limits (cpu/memory).
-  optional ContainerResources limits = 6;
+  optional ContainerResources limits = 7;
   // Container exposed ports definitions.
-  repeated ContainerPort ports = 7;
+  repeated ContainerPort ports = 8;
 }
 
 // Container environment variables.
