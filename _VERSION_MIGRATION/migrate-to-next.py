@@ -31,7 +31,7 @@ def make_backup(scheduler_name, yaml_config):
 def get_port_range():
     return {
         'start': 40000,
-        'end': 60000
+        'end': 41000
     }
 
 
@@ -386,6 +386,7 @@ def main():
 
         print("##### all set to start migration! #####")
         for scheduler in tqdm(schedulers):
+            print(f'.{scheduler.get("name")}')
             scheduler_name = scheduler["name"]
             make_backup(scheduler["name"], scheduler['yaml'])
 
