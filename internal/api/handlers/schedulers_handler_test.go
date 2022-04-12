@@ -1133,6 +1133,23 @@ func TestPatchScheduler(t *testing.T) {
 			},
 		},
 		{
+			Title: "When request payload does not change scheudler return 409",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{},
+			},
+			Mocks: Mocks{
+				RequestFile:           "empty-scheduler-patch.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     nil,
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusConflict,
+			},
+		},
+		{
 			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrNotFound return 404",
 			Input: Input{
 				Request: &api.PatchSchedulerRequest{

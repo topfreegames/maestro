@@ -227,7 +227,11 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 func (h *SchedulersHandler) PatchScheduler(ctx context.Context, request *api.PatchSchedulerRequest) (*api.PatchSchedulerResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()))
 	handlerLogger.Info("handling patch scheduler request")
+
 	patchMap := request_adapters.FromApiPatchSchedulerRequestToChangeMap(request)
+	if len(patchMap) == 0 {
+		return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("no change found to scheduler %s", request.GetName()))
+	}
 
 	operation, err := h.schedulerManager.PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx, request.GetName(), patchMap)
 
