@@ -141,6 +141,7 @@ def set_min_to_zero(scheduler_name):
             }))
             if r.status_code == 200:
                 success = True
+                break
             else:
                 success = False
                 reason = r.text
@@ -161,6 +162,7 @@ def set_replica_amount(scheduler_name, replicas):
             }))
             if r.status_code == 200:
                 success = True
+                break
             else:
                 success = False
                 reason = r.text
