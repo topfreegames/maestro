@@ -130,6 +130,48 @@ def get_scheduler_config(scheduler):
         raise e
 
 
+def set_min_to_zero(scheduler_name):
+    success = True
+    reason = ""
+    try:
+        retry = 3
+        for i in range(0, retry):
+            r = requests.put(f'{maestro_v9_endpoint}/scheduler/{scheduler_name}/min', data=json.dumps({
+                "min": 0
+            }))
+            if r.status_code == 200:
+                success = True
+                break
+            else:
+                success = False
+                reason = r.text
+
+        return success, reason
+    except Exception as e:
+        raise e
+
+
+def set_replica_amount(scheduler_name, replicas):
+    success = True
+    reason = ""
+    try:
+        retry = 3
+        for i in range(0, retry):
+            r = requests.post(f'{maestro_v9_endpoint}/scheduler/{scheduler_name}', data=json.dumps({
+                "replicas": replicas
+            }))
+            if r.status_code == 200:
+                success = True
+                break
+            else:
+                success = False
+                reason = r.text
+
+        return success, reason
+    except Exception as e:
+        raise e
+
+
 def get_v9_game_schedulers():
     """
     :returns: [{
@@ -182,7 +224,6 @@ def delete_scheduler_from_v9(scheduler):
 
     :returns: succeed, reason
     """
-
     def wait_for_scheduler_to_be_deleted():
         """
         :returns: could_wait
@@ -203,15 +244,22 @@ def delete_scheduler_from_v9(scheduler):
 
         return False
 
-    r = requests.delete(f'{maestro_v9_endpoint}/scheduler/{scheduler["name"]}')
-    if r.status_code == 200:
-        succeeded = wait_for_scheduler_to_be_deleted()
-        if not succeeded:
-            return succeeded, f"could not wait for scheduler to be deleted"
-
-        return succeeded, ""
-    else:
-        return False, r.text
+    succeed = False
+    reason = ""
+    retry = 3
+    for i in range(0, retry):
+        r = requests.delete(f'{maestro_v9_endpoint}/scheduler/{scheduler["name"]}')
+        if r.status_code == 200:
+            succeed = wait_for_scheduler_to_be_deleted()
+            reason = ""
+            if not succeed:
+                reason = "could not wait for scheduler to be deleted"
+                continue
+            break
+        else:
+            succeed = False
+            reason = r.text
+    return succeed, reason
 
 
 def create_v9_scheduler(scheduler):
@@ -386,15 +434,32 @@ def main():
 
         print("##### all set to start migration! #####")
         for scheduler in tqdm(schedulers):
-            print(f'.{scheduler.get("name")}')
+            print(f'.{scheduler.get("name")} - start')
             scheduler_name = scheduler["name"]
+
             make_backup(scheduler["name"], scheduler['yaml'])
+            print(f'.{scheduler.get("name")} - backup done')
+
+            success, reason = set_min_to_zero(scheduler["name"])
+            if not success:
+                print(f"ERROR: could not set min to 0 to scheduler '{scheduler_name}'. reason=> {reason}")
+                print(f"INFO: stop execution")
+                sys.exit()
+            print(f'.{scheduler.get("name")} - min set to 0')
+
+            success, reason = set_replica_amount(scheduler["name"], 0)
+            if not success:
+                print(f"ERROR: could not set replicas to 0 to scheduler '{scheduler_name}'. reason=> {reason}")
+                print(f"INFO: stop execution")
+                sys.exit()
+            print(f'.{scheduler.get("name")} - replica set to 0')
 
             deleted, reason = delete_scheduler_from_v9(scheduler)
             if not deleted:
                 print(f"ERROR: could not delete scheduler '{scheduler_name}'. reason=> {reason}")
                 print(f"INFO: stop execution")
                 sys.exit()
+            print(f'.{scheduler.get("name")} - deleted')
 
             created, reason = create_next_scheduler(scheduler)
             if not created:
@@ -403,13 +468,16 @@ def main():
                 print(f"INFO: stop execution")
                 create_v9_scheduler(scheduler)
                 sys.exit()
+            print(f'.{scheduler.get("name")} - created on next')
 
             created, reason = create_rooms_existed_before(scheduler)
             if not created:
                 print(f"WARN: could not create rooms for scheduler '{scheduler_name}'. reason => {reason}")
                 print(f"INFO: stop execution")
                 sys.exit()
+            print(f'.{scheduler.get("name")} - new rooms created')
 
+            print(f'.{scheduler.get("name")} - done')
         print("=====> migration finished")
     except Exception as e:
         print('Script execution failed. err =>', e)
