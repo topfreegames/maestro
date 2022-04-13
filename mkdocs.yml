@@ -22,4 +22,5 @@ plugins:
   - git-revision-date
   - search
   - render_swagger
-  - mermaid2
+  - mermaid2:
+      version: 9.0.0
