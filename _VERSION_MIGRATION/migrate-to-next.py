@@ -136,7 +136,7 @@ def set_min_to_zero(scheduler_name):
     try:
         retry = 3
         for i in range(0, retry):
-            r = requests.put(f'{maestro_v9_endpoint}/scheduler/{scheduler_name}', data=json.dumps({
+            r = requests.put(f'{maestro_v9_endpoint}/scheduler/{scheduler_name}/min', data=json.dumps({
                 "min": 0
             }))
             if r.status_code == 200:
