@@ -93,6 +93,20 @@ func (f *ForwarderClient) SendRoomReSync(ctx context.Context, forwarder forwarde
 	})
 }
 
+// SendRoomStatus fetch or create a grpc client and send a room status event to forwarder.
+func (f *ForwarderClient) SendRoomStatus(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus) (*pb.Response, error) {
+	client, err := f.getGrpcClient(Address(forwarder.Address))
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout*time.Millisecond)
+	defer cancel()
+	return runReportingLatencyMetrics("SendRoomStatus", func() (*pb.Response, error) {
+		return client.SendRoomStatus(ctx, in)
+	})
+}
+
 // SendPlayerEvent fetch or create a grpc client and send a player event to forwarder.
 func (f *ForwarderClient) SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent) (*pb.Response, error) {
 	client, err := f.getGrpcClient(Address(forwarder.Address))

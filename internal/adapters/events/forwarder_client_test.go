@@ -27,15 +27,18 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
 	"testing"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/test"
+
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 )
 
@@ -125,6 +128,92 @@ func TestSendRoomReSync(t *testing.T) {
 		assert.EqualValues(t, 500, response.Code)
 		assert.Equal(t, "Internal server error from matchmaker", response.Message)
 	})
+}
+
+func TestForwarderClient_SendRoomStatus(t *testing.T) {
+	type fields struct {
+		c *cache.Cache
+	}
+	type args struct {
+		ctx       context.Context
+		forwarder forwarder.Forwarder
+		in        pb.RoomStatus
+	}
+	tests := []struct {
+		name            string
+		requestStubFile string
+		fields          fields
+		args            args
+		want            *pb.Response
+		wantErr         assert.ErrorAssertionFunc
+	}{
+		{
+			name:            "return response with code 200 when request succeeds",
+			requestStubFile: "../../../test/data/events_mock/events-forwarder-grpc-send-room-status-success.json",
+			fields: fields{
+				c: cache.New(time.Minute, time.Minute),
+			},
+			args: args{
+				ctx:       context.Background(),
+				forwarder: newForwarder(grpcMockAddress),
+				in:        newRoomStatusEvent("65e810a0-bb81-4633-93c9-826414a0062d"),
+			},
+			want: &pb.Response{
+				Code:    200,
+				Message: "Event received with success",
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name:            "return response with code 500 when request fails",
+			requestStubFile: "../../../test/data/events_mock/events-forwarder-grpc-send-room-status-failure.json",
+			fields: fields{
+				c: cache.New(time.Minute, time.Minute),
+			},
+			args: args{
+				ctx:       context.Background(),
+				forwarder: newForwarder(grpcMockAddress),
+				in:        newRoomStatusEvent("f7415c97-5c28-418b-b19b-87380e2d0113"),
+			},
+			want: &pb.Response{
+				Code:    500,
+				Message: "Internal server error from matchmaker",
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name:            "return error when connection establishment fails",
+			requestStubFile: "",
+			fields: fields{
+				c: cache.New(time.Minute, time.Minute),
+			},
+			args: args{
+				ctx:       context.Background(),
+				forwarder: newForwarder(""),
+				in:        newRoomStatusEvent(""),
+			},
+			wantErr: assert.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.requestStubFile != "" {
+				err := test.AddStubRequestToMockedGrpcServer(
+					httpInputMockAddress,
+					tt.requestStubFile,
+				)
+				require.NoError(t, err)
+			}
+			f := &ForwarderClient{
+				c: tt.fields.c,
+			}
+			got, err := f.SendRoomStatus(tt.args.ctx, tt.args.forwarder, &tt.args.in)
+			if !tt.wantErr(t, err, fmt.Sprintf("SendRoomStatus(%v, %v, %v)", tt.args.ctx, tt.args.forwarder, tt.args.in)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "SendRoomStatus(%v, %v, %v)", tt.args.ctx, tt.args.forwarder, tt.args.in)
+		})
+	}
 }
 
 func TestSendPlayerEvent(t *testing.T) {
