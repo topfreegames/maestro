@@ -15,7 +15,7 @@ nav:
 
 theme:
   name: material
-  logo: https://github.com/topfreegames/maestro/docs/images/gopher-maestro.png
+  logo: https://github.com/topfreegames/maestro/blob/main/docs/images/gopher-maestro.png?raw=true
   palette:
     primary: cyan
 
