@@ -23,10 +23,10 @@
 package game_room
 
 type Container struct {
-	Name            string                 `validate:"required,kube_resource_name"`
-	Image           string                 `validate:"required"`
-	ImagePullPolicy string                 `validate:"required,image_pull_policy"`
-	Command         []string               `validate:"required"`
+	Name            string `validate:"required,kube_resource_name"`
+	Image           string `validate:"required"`
+	ImagePullPolicy string `validate:"required,image_pull_policy"`
+	Command         []string
 	Environment     []ContainerEnvironment `validate:"dive"`
 	Requests        ContainerResources
 	Limits          ContainerResources

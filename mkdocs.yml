@@ -8,13 +8,18 @@ nav:
   - Architecture: 'Architecture.md'
   - OpenAPI: 'OpenAPI.md'
   - Operations: 'Operations.md'
+  - Kubernetes Usage: 'Kubernetes.md'
   - Guidelines: 'Guidelines.md'
 
 
 theme:
   name: material
+  logo: https://github.com/topfreegames/maestro/docs/images/gopher-maestro.png
+  palette:
+    primary: cyan
 
 plugins:
   - git-revision-date
   - search
   - render_swagger
+  - mermaid2

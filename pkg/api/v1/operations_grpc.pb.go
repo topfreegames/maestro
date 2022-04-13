@@ -22,7 +22,7 @@ type OperationsServiceClient interface {
 	ListOperations(ctx context.Context, in *ListOperationsRequest, opts ...grpc.CallOption) (*ListOperationsResponse, error)
 	// Cancel operation based on scheduler name and operation ID
 	CancelOperation(ctx context.Context, in *CancelOperationRequest, opts ...grpc.CallOption) (*CancelOperationResponse, error)
-	// Cancel operation based on scheduler name and operation ID
+	// Get operation based on scheduler name and operation ID
 	GetOperation(ctx context.Context, in *GetOperationRequest, opts ...grpc.CallOption) (*GetOperationResponse, error)
 }
 
@@ -69,7 +69,7 @@ type OperationsServiceServer interface {
 	ListOperations(context.Context, *ListOperationsRequest) (*ListOperationsResponse, error)
 	// Cancel operation based on scheduler name and operation ID
 	CancelOperation(context.Context, *CancelOperationRequest) (*CancelOperationResponse, error)
-	// Cancel operation based on scheduler name and operation ID
+	// Get operation based on scheduler name and operation ID
 	GetOperation(context.Context, *GetOperationRequest) (*GetOperationResponse, error)
 	mustEmbedUnimplementedOperationsServiceServer()
 }

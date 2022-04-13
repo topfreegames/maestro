@@ -27,11 +27,15 @@ package scheduler_manager
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager/patch_scheduler"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
@@ -43,6 +47,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/validations"
 )
@@ -832,6 +837,191 @@ func TestDeleteScheduler(t *testing.T) {
 	})
 }
 
+func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
+	type Input struct {
+		PatchMap map[string]interface{}
+	}
+	type ExpectedMock struct {
+		GetSchedulerError        error
+		ChangedSchedulerFunction func() *entities.Scheduler
+		CreateOperationReturn    *operation.Operation
+		CreateOperationError     error
+	}
+	type Output struct {
+		*operation.Operation
+		Err error
+	}
+
+	scheduler := newValidScheduler()
+
+	testCases := []struct {
+		Title string
+		Input
+		ExpectedMock
+		Output
+	}{
+		{
+			Title: "There are parameters then send scheduler to CreateNewSchedulerVersionDefinition to changing it",
+			Input: Input{
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: "12%",
+				},
+			},
+			ExpectedMock: ExpectedMock{
+				GetSchedulerError: nil,
+				ChangedSchedulerFunction: func() *entities.Scheduler {
+					scheduler.MaxSurge = "12%"
+					return scheduler
+				},
+				CreateOperationReturn: &operation.Operation{ID: "some-id"},
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Operation: &operation.Operation{ID: "some-id"},
+				Err:       nil,
+			},
+		},
+		{
+			Title: "GetScheduler returns error not found then return not found error",
+			Input: Input{
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: "12%",
+				},
+			},
+			ExpectedMock: ExpectedMock{
+				GetSchedulerError: portsErrors.NewErrNotFound("scheduler not found"),
+				ChangedSchedulerFunction: func() *entities.Scheduler {
+					scheduler.MaxSurge = "15%"
+					return scheduler
+				},
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Operation: nil,
+				Err:       fmt.Errorf("no scheduler found, can not create new version for inexistent scheduler:"),
+			},
+		},
+		{
+			Title: "GetScheduler returns in error then return error",
+			Input: Input{
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: "12%",
+				},
+			},
+			ExpectedMock: ExpectedMock{
+				GetSchedulerError: fmt.Errorf("error on get scheduler"),
+				ChangedSchedulerFunction: func() *entities.Scheduler {
+					scheduler.MaxSurge = "15%"
+					return scheduler
+				},
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Operation: nil,
+				Err:       fmt.Errorf("unexpected error getting scheduler to patch:"),
+			},
+		},
+		{
+			Title: "Scheduler validation returns in error then return ErrInvalidArgument",
+			Input: Input{
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: "potato",
+				},
+			},
+			ExpectedMock: ExpectedMock{
+				GetSchedulerError: nil,
+				ChangedSchedulerFunction: func() *entities.Scheduler {
+					scheduler.MaxSurge = "17%"
+					return scheduler
+				},
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Operation: nil,
+				Err:       fmt.Errorf("invalid patched scheduler:"),
+			},
+		},
+		{
+			Title: "CreateOperation returns in error then return error",
+			Input: Input{
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerMaxSurge: "17%",
+				},
+			},
+			ExpectedMock: ExpectedMock{
+				GetSchedulerError: nil,
+				ChangedSchedulerFunction: func() *entities.Scheduler {
+					scheduler.MaxSurge = "17%"
+					return scheduler
+				},
+				CreateOperationReturn: nil,
+				CreateOperationError:  fmt.Errorf("error on create operation"),
+			},
+			Output: Output{
+				Operation: nil,
+				Err:       fmt.Errorf("failed to schedule create_new_scheduler_version operation:"),
+			},
+		},
+		{
+			Title: "PatchScheduler returns in error then return error",
+			Input: Input{
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerPortRange: "wrong-port-range-format",
+				},
+			},
+			ExpectedMock: ExpectedMock{
+				GetSchedulerError: nil,
+				ChangedSchedulerFunction: func() *entities.Scheduler {
+					scheduler.MaxSurge = "19%"
+					return scheduler
+				},
+				CreateOperationReturn: nil,
+				CreateOperationError:  nil,
+			},
+			Output: Output{
+				Operation: nil,
+				Err:       fmt.Errorf("error patching scheduler:"),
+			},
+		},
+	}
+
+	err := validations.RegisterValidations()
+	require.NoError(t, err)
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Title, func(t *testing.T) {
+			ctx := context.Background()
+			mockCtrl := gomock.NewController(t)
+			mockOperationManager := mock.NewMockOperationManager(mockCtrl)
+			mockSchedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+			schedulerManager := NewSchedulerManager(mockSchedulerStorage, nil, mockOperationManager, nil)
+
+			mockSchedulerStorage.EXPECT().GetScheduler(gomock.Any(), scheduler.Name).Return(scheduler, testCase.ExpectedMock.GetSchedulerError)
+			mockOperationManager.EXPECT().
+				CreateOperation(gomock.Any(), scheduler.Name, gomock.Any()).Do(func(_ context.Context, _ string, op operations.Definition) {
+				newSchedulerVersion, ok := op.(*newschedulerversion.CreateNewSchedulerVersionDefinition)
+				assert.True(t, ok)
+				assert.EqualValues(t, testCase.ExpectedMock.ChangedSchedulerFunction(), newSchedulerVersion.NewScheduler)
+			}).
+				Return(testCase.ExpectedMock.CreateOperationReturn, testCase.ExpectedMock.CreateOperationError).
+				AnyTimes()
+
+			op, err := schedulerManager.PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx, scheduler.Name, testCase.Input.PatchMap)
+			if testCase.Output.Err != nil {
+				assert.ErrorContains(t, err, testCase.Output.Err.Error())
+
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.EqualValues(t, testCase.Output.Operation, op)
+		})
+	}
+}
+
 // newValidScheduler generates a valid scheduler with the required fields.
 func newValidScheduler() *entities.Scheduler {
 	return &entities.Scheduler{
@@ -872,7 +1062,7 @@ func newValidScheduler() *entities.Scheduler {
 	}
 }
 
-// newValidScheduler generates an invalid scheduler
+// newInvalidScheduler generate an invalid Scheduler,.
 func newInvalidScheduler() *entities.Scheduler {
 	return &entities.Scheduler{
 		Name:            "",
