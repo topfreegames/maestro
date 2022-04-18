@@ -115,6 +115,16 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 // UpdateRoomStatus was only implemented to keep compatibility with previous maestro version (v9), it has no inner execution since the
 // ping event is already forwarding the incoming rooms status to matchmaker
 func (h *RoomsHandler) UpdateRoomStatus(ctx context.Context, message *api.UpdateRoomStatusRequest) (*api.UpdateRoomStatusResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
+	eventMetadata := message.Metadata.AsMap()
+	eventMetadata["eventType"] = events.FromRoomEventTypeToString(events.Status)
+	eventMetadata["pingType"] = message.Status
+
+	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))
+	if err != nil {
+		handlerLogger.Error("error forwarding room status event", zap.Any("event_message", message), zap.Error(err))
+		return &api.UpdateRoomStatusResponse{Success: false}, nil
+	}
 	return &api.UpdateRoomStatusResponse{Success: true}, nil
 }
 

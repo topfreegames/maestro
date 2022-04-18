@@ -32,6 +32,13 @@ import (
 	"os"
 	"testing"
 
+	_struct "github.com/golang/protobuf/ptypes/struct"
+	"github.com/stretchr/testify/assert"
+	"github.com/topfreegames/maestro/internal/core/entities/events"
+	"github.com/topfreegames/maestro/internal/core/ports"
+	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/golang/mock/gomock"
@@ -296,31 +303,114 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 }
 
 func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
+	type args struct {
+		ctx     context.Context
+		message *api.UpdateRoomStatusRequest
+	}
 
-	t.Run("it does nothing and returns 200 ok with success equal true for all requests", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-
-		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
-
-		roomsManager := mockports.NewMockRoomManager(mockCtrl)
-		mux := runtime.NewServeMux()
-		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
-		require.NoError(t, err)
-
-		require.NoError(t, err)
-
-		req, err := http.NewRequest(http.MethodPut, "/scheduler/schedulerName/rooms/roomName/status", bytes.NewReader([]byte{}))
-		require.NoError(t, err)
-
-		rr := httptest.NewRecorder()
-		mux.ServeHTTP(rr, req)
-
-		require.Equal(t, 200, rr.Code)
-		bodyString := rr.Body.String()
-		var body map[string]interface{}
-		err = json.Unmarshal([]byte(bodyString), &body)
-		require.NoError(t, err)
-		require.Equal(t, true, body["success"])
-	})
-
+	type mockPreparation func(controller *gomock.Controller) (ports.RoomManager, ports.EventsService)
+	tests := []struct {
+		name            string
+		mockPreparation mockPreparation
+		args            args
+		responseWanted  *api.UpdateRoomStatusResponse
+		errWanted       error
+	}{
+		{
+			"return success when no error occurs",
+			func(controller *gomock.Controller) (ports.RoomManager, ports.EventsService) {
+				roomManagerMock := mockports.NewMockRoomManager(controller)
+				eventsServiceMock := mockports.NewMockEventsService(controller)
+				requiredEvent := &events.Event{
+					Name:        "RoomEvent",
+					SchedulerID: "scheduler-name",
+					RoomID:      "room-name",
+					Attributes: map[string]interface{}{
+						"eventType": "roomStatus",
+						"pingType":  "ready",
+						"roomType":  "red",
+					},
+				}
+				eventsServiceMock.EXPECT().ProduceEvent(gomock.Any(), requiredEvent)
+				return roomManagerMock, eventsServiceMock
+			},
+			args{
+				ctx: context.Background(),
+				message: &api.UpdateRoomStatusRequest{
+					SchedulerName: "scheduler-name",
+					RoomName:      "room-name",
+					Metadata: &_struct.Struct{
+						Fields: map[string]*structpb.Value{
+							"roomType": {
+								Kind: &structpb.Value_StringValue{
+									StringValue: "red",
+								},
+							},
+						},
+					},
+					Status:    "ready",
+					Timestamp: 0,
+				},
+			},
+			&api.UpdateRoomStatusResponse{Success: true},
+			nil,
+		},
+		{
+			"return no error and success false when some error occurs producing the event",
+			func(controller *gomock.Controller) (ports.RoomManager, ports.EventsService) {
+				roomManagerMock := mockports.NewMockRoomManager(controller)
+				eventsServiceMock := mockports.NewMockEventsService(controller)
+				requiredEvent := &events.Event{
+					Name:        "RoomEvent",
+					SchedulerID: "scheduler-name",
+					RoomID:      "room-name",
+					Attributes: map[string]interface{}{
+						"eventType": "roomStatus",
+						"pingType":  "ready",
+						"roomType":  "red",
+					},
+				}
+				eventsServiceMock.EXPECT().ProduceEvent(gomock.Any(), requiredEvent).Return(errors.NewErrUnexpected("some error"))
+				return roomManagerMock, eventsServiceMock
+			},
+			args{
+				ctx: context.Background(),
+				message: &api.UpdateRoomStatusRequest{
+					SchedulerName: "scheduler-name",
+					RoomName:      "room-name",
+					Metadata: &_struct.Struct{
+						Fields: map[string]*structpb.Value{
+							"roomType": {
+								Kind: &structpb.Value_StringValue{
+									StringValue: "red",
+								},
+							},
+						},
+					},
+					Status:    "ready",
+					Timestamp: 0,
+				},
+			},
+			&api.UpdateRoomStatusResponse{Success: false},
+			nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			mockRoomManager, mockEventsService := tt.mockPreparation(mockCtrl)
+			h := &RoomsHandler{
+				roomManager:   mockRoomManager,
+				eventsService: mockEventsService,
+				logger:        zap.L(),
+			}
+			got, err := h.UpdateRoomStatus(tt.args.ctx, tt.args.message)
+			if tt.errWanted != nil {
+				assert.EqualError(t, err, tt.errWanted.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.responseWanted, got)
+			}
+		})
+	}
 }
