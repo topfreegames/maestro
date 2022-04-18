@@ -36,16 +36,23 @@ def get_port_range():
 
 
 def get_forwarders(forwarders):
-    return [{
-        "name": 'matchmaking',
-        "enable": forwarders['grpc']['matchmaking']['enabled'],
-        "type": "gRPC",
-        "address": 'matchmaker-rpc.matchmaker.svc.cluster.local:80',
-        "options": {
-            "timeout": '1000',
-            "metadata": forwarders['grpc']['matchmaking']['metadata']
-        }
-    }]
+    if not forwarders:
+        return []
+    try:
+        return [{
+            "name": 'matchmaking',
+            "enable": forwarders['grpc']['matchmaking']['enabled'],
+            "type": "gRPC",
+            "address": 'matchmaker-rpc.matchmaker.svc.cluster.local:80',
+            "options": {
+                "timeout": '1000',
+                "metadata": forwarders['grpc']['matchmaking']['metadata']
+            }
+        }]
+    except Exception as e:
+        print('Converting forwarders error. err =>', e)
+        print('forwarders =>', forwarders)
+        return []
 
 
 def get_ports(ports):
@@ -87,11 +94,15 @@ def get_containers(containers):
 
 
 def get_spec(config):
+    containers = [config]
+    if config.get('containers'):
+        containers = config['containers']
+
     return {
         'terminationGracePeriod': 100,
         'toleration': config['toleration'],
         'affinity': config['affinity'],
-        'containers': get_containers(config['containers'])
+        'containers': get_containers(containers)
     }
 
 
@@ -101,7 +112,7 @@ def convert_v9_config_to_next(config):
             'name': config['name'],
             'game': config['game'],
             'spec': get_spec(config),
-            'forwarders': get_forwarders(config['forwarders']),
+            'forwarders': get_forwarders(config.get('forwarders')),
             'portRange': get_port_range(),
             'maxSurge': '20%'
         }
@@ -437,30 +448,35 @@ def main():
             print(f'.{scheduler.get("name")} - start')
             scheduler_name = scheduler["name"]
 
+            print(f'.{scheduler.get("name")} - making backup...')
             make_backup(scheduler["name"], scheduler['yaml'])
-            print(f'.{scheduler.get("name")} - backup done')
+            print("...success")
 
+            print(f'.{scheduler.get("name")} - setting min to 0...')
             success, reason = set_min_to_zero(scheduler["name"])
             if not success:
                 print(f"ERROR: could not set min to 0 to scheduler '{scheduler_name}'. reason=> {reason}")
                 print(f"INFO: stop execution")
                 sys.exit()
-            print(f'.{scheduler.get("name")} - min set to 0')
+            print("...success")
 
+            print(f'.{scheduler.get("name")} - setting replica to 0...')
             success, reason = set_replica_amount(scheduler["name"], 0)
             if not success:
                 print(f"ERROR: could not set replicas to 0 to scheduler '{scheduler_name}'. reason=> {reason}")
                 print(f"INFO: stop execution")
                 sys.exit()
-            print(f'.{scheduler.get("name")} - replica set to 0')
+            print("...success")
 
+            print(f'.{scheduler.get("name")} - deleting...')
             deleted, reason = delete_scheduler_from_v9(scheduler)
             if not deleted:
                 print(f"ERROR: could not delete scheduler '{scheduler_name}'. reason=> {reason}")
                 print(f"INFO: stop execution")
                 sys.exit()
-            print(f'.{scheduler.get("name")} - deleted')
+            print("...success")
 
+            print(f'.{scheduler.get("name")} - creating on next...')
             created, reason = create_next_scheduler(scheduler)
             if not created:
                 print(
@@ -468,14 +484,15 @@ def main():
                 print(f"INFO: stop execution")
                 create_v9_scheduler(scheduler)
                 sys.exit()
-            print(f'.{scheduler.get("name")} - created on next')
+            print("...success")
 
+            print(f'.{scheduler.get("name")} - creating new rooms...')
             created, reason = create_rooms_existed_before(scheduler)
             if not created:
                 print(f"WARN: could not create rooms for scheduler '{scheduler_name}'. reason => {reason}")
                 print(f"INFO: stop execution")
                 sys.exit()
-            print(f'.{scheduler.get("name")} - new rooms created')
+            print("...success")
 
             print(f'.{scheduler.get("name")} - done')
         print("=====> migration finished")
