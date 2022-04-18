@@ -258,7 +258,7 @@ func TestEventsForwarding(t *testing.T) {
 			require.Equal(t, true, roomEventResponse.Success)
 		})
 
-		t.Run("[Room event failures] Forward room event return success false when some error occurs in GRPC call", func(t *testing.T) {
+		t.Run("[Room event failure] Forward room event return success false when some error occurs in GRPC call", func(t *testing.T) {
 			t.Parallel()
 
 			// This configuration make the grpc service return with failure
@@ -296,7 +296,7 @@ func TestEventsForwarding(t *testing.T) {
 			require.Equal(t, "failed to forward event room at \"matchmaker-grpc\"", roomEventResponse.Message)
 		})
 
-		t.Run("[Room event failure] Forward player event return success false when forwarding event for an inexistent room", func(t *testing.T) {
+		t.Run("[Room event failure] Forward room event return success false when forwarding event for an inexistent room", func(t *testing.T) {
 			t.Parallel()
 			inexistentRoom := "inexistent-room"
 
@@ -322,7 +322,7 @@ func TestEventsForwarding(t *testing.T) {
 			require.Equal(t, false, roomEventResponse.Success)
 		})
 
-		t.Run("[Room event failure] Forward player event return success false when the forwarder connection can't be established", func(t *testing.T) {
+		t.Run("[Room event failure] Forward room event return success false when the forwarder connection can't be established", func(t *testing.T) {
 			t.Parallel()
 
 			roomEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
@@ -406,7 +406,7 @@ func TestEventsForwarding(t *testing.T) {
 			require.Equal(t, true, pingResponse.Success)
 		})
 
-		t.Run("[Ping event failures] Ping event return success when some error occurs in GRPC call", func(t *testing.T) {
+		t.Run("[Ping event failure] Ping event return success when some error occurs in GRPC call", func(t *testing.T) {
 			t.Parallel()
 
 			// This configuration make the grpc service return with failure
@@ -465,6 +465,159 @@ func TestEventsForwarding(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, true, pingResponse.Success)
 		})
+
+		t.Run("[Room status event success] Forward room status event return success true when no error occurs while forwarding events call", func(t *testing.T) {
+			t.Parallel()
+
+			// This configuration make the grpc service return with success
+			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-room-status-event-success")
+			require.NoError(t, err)
+
+			roomStatusEventRequest := &maestroApiV1.UpdateRoomStatusRequest{
+				Status: "ready",
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "9da046b8-3ef9-4f28-966d-d5c0cd1fe627",
+							},
+						},
+						"eventMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"eventMetadata2": {
+							Kind: &structpb.Value_BoolValue{
+								BoolValue: true,
+							},
+						},
+					},
+				},
+				Timestamp: time.Now().Unix(),
+			}
+			roomStatusEventResponse := &maestroApiV1.UpdateRoomStatusResponse{}
+			err = roomsApiClient.Do("PUT", fmt.Sprintf("/scheduler/%s/rooms/%s/status", schedulerWithForwarderAndRooms.Name, roomsNames[0]), roomStatusEventRequest, roomStatusEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, true, roomStatusEventResponse.Success)
+		})
+
+		t.Run("[Room status event success] Forward room status event return success true when no forwarder is configured for the scheduler", func(t *testing.T) {
+			t.Parallel()
+
+			roomStatusEventRequest := &maestroApiV1.UpdateRoomStatusRequest{
+				Status:    "ready",
+				Timestamp: time.Now().Unix(),
+			}
+			roomStatusEventResponse := &maestroApiV1.UpdateRoomStatusResponse{}
+			err := roomsApiClient.Do("PUT", fmt.Sprintf("/scheduler/%s/rooms/%s/status", schedulerWithRooms.Name, roomNameNoForwarder), roomStatusEventRequest, roomStatusEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, true, roomStatusEventResponse.Success)
+		})
+
+		t.Run("[Room status event failure] Forward room status event return success false when some error occurs in GRPC call", func(t *testing.T) {
+			t.Parallel()
+
+			// This configuration make the grpc service return with failure
+			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-room-event-failure")
+			require.NoError(t, err)
+
+			roomStatusEventRequest := &maestroApiV1.UpdateRoomStatusRequest{
+				Status: "ready",
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "24db7925-fdc9-45ef-8b87-f1fff6a9eaaa",
+							},
+						},
+						"eventMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"eventMetadata2": {
+							Kind: &structpb.Value_BoolValue{
+								BoolValue: true,
+							},
+						},
+					},
+				},
+				Timestamp: time.Now().Unix(),
+			}
+			roomStatusEventResponse := &maestroApiV1.UpdateRoomStatusResponse{}
+			err = roomsApiClient.Do("PUT", fmt.Sprintf("/scheduler/%s/rooms/%s/status", schedulerWithForwarderAndRooms.Name, roomsNames[0]), roomStatusEventRequest, roomStatusEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, false, roomStatusEventResponse.Success)
+		})
+
+		t.Run("[Room status event failure] Forward room status event return success false when forwarding event for an inexistent room", func(t *testing.T) {
+			t.Parallel()
+			inexistentRoom := "inexistent-room"
+
+			err := addStubRequestToMockedGrpcServer("events-forwarder-grpc-send-player-event-failure")
+
+			roomStatusEventRequest := &maestroApiV1.UpdateRoomStatusRequest{
+				Status: "ready",
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "9da046b8-3ef9-4f28-966d-d5c0cd1fe627",
+							},
+						},
+						"eventMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"eventMetadata2": {
+							Kind: &structpb.Value_BoolValue{
+								BoolValue: true,
+							},
+						},
+					},
+				},
+				Timestamp: time.Now().Unix(),
+			}
+			roomStatusEventResponse := &maestroApiV1.UpdateRoomStatusResponse{}
+			err = roomsApiClient.Do("PUT", fmt.Sprintf("/scheduler/%s/rooms/%s/status", schedulerWithForwarderAndRooms.Name, inexistentRoom), roomStatusEventRequest, roomStatusEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, false, roomStatusEventResponse.Success)
+		})
+
+		t.Run("[Room status event failure] Forward room status event return success false when the forwarder connection can't be established", func(t *testing.T) {
+			t.Parallel()
+
+			roomStatusEventRequest := &maestroApiV1.UpdateRoomStatusRequest{
+				Status: "ready",
+				Metadata: &_struct.Struct{
+					Fields: map[string]*structpb.Value{
+						"mockIdentifier": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "9da046b8-3ef9-4f28-966d-d5c0cd1fe627",
+							},
+						},
+						"eventMetadata1": {
+							Kind: &structpb.Value_StringValue{
+								StringValue: "value1",
+							},
+						},
+						"eventMetadata2": {
+							Kind: &structpb.Value_BoolValue{
+								BoolValue: true,
+							},
+						},
+					},
+				},
+				Timestamp: time.Now().Unix(),
+			}
+			roomStatusEventResponse := &maestroApiV1.UpdateRoomStatusResponse{}
+			err := roomsApiClient.Do("PUT", fmt.Sprintf("/scheduler/%s/rooms/%s/status", schedulerWithInvalidGrpc.Name, invalidGrpcRooms[0]), roomStatusEventRequest, roomStatusEventResponse)
+			require.NoError(t, err)
+			require.Equal(t, false, roomStatusEventResponse.Success)
+		})
+
 	})
 
 }
