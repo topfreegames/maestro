@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
 
 	"github.com/golang/mock/gomock"
@@ -40,111 +42,310 @@ import (
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 )
 
-func TestForwardRoomEvent_Arbitrary(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
+func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
+	type args struct {
+		ctx             context.Context
+		eventAttributes events.RoomEventAttributes
+		forwarder       forwarder.Forwarder
+	}
+	type mockPreparation func(controller *gomock.Controller) *mock.MockForwarderClient
+	arbitraryEventAttributes := newRoomEventAttributes(events.Arbitrary, nil)
+	pingEventAttributes := newRoomEventAttributes(events.Ping, nil)
+	statusEventAttributes := newRoomEventAttributes(events.Status, nil)
+	staticForwarder := newStaticForwarder()
 
-	t.Run("with success when event type is Arbitrary", func(t *testing.T) {
-		// arrange
-		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
-		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
+	tests := []struct {
+		name            string
+		mockPreparation mockPreparation
+		args            args
+		errWanted       error
+	}{
+		{
+			"with success when event type is Arbitrary",
+			func(controller *gomock.Controller) *mock.MockForwarderClient {
+				forwarderClientMock := mock.NewMockForwarderClient(controller)
+				requiredEvent := pb.RoomEvent{
+					Room: &pb.Room{
+						Game:   arbitraryEventAttributes.Game,
+						RoomId: arbitraryEventAttributes.RoomId,
+						Host:   arbitraryEventAttributes.Host,
+						Port:   arbitraryEventAttributes.Port,
+						Metadata: map[string]string{
+							"roomType":  "red",
+							"ping":      "true",
+							"roomEvent": "ready",
+						},
+					},
+					EventType: "ready",
+				}
+				forwarderClientMock.EXPECT().SendRoomEvent(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 200}, nil)
+				return forwarderClientMock
+			},
+			args{
+				context.Background(),
+				arbitraryEventAttributes,
+				staticForwarder,
+			},
+			nil,
+		},
+		{
+			"failed when event type is Arbitrary and roomEvent is not provided",
+			func(controller *gomock.Controller) *mock.MockForwarderClient {
+				return mock.NewMockForwarderClient(controller)
+			},
+			args{
+				context.Background(),
+				newRoomEventAttributes(events.Arbitrary, map[string]interface{}{"roomType": "red", "ping": true}),
+				staticForwarder,
+			},
+			errors.NewErrInvalidArgument("invalid or missing eventAttributes.Other['roomEvent'] field"),
+		},
+		{
+			"failed when event type is Arbitrary and forwarder client returns error",
+			func(controller *gomock.Controller) *mock.MockForwarderClient {
+				forwarderClientMock := mock.NewMockForwarderClient(controller)
+				requiredEvent := pb.RoomEvent{
+					Room: &pb.Room{
+						Game:   arbitraryEventAttributes.Game,
+						RoomId: arbitraryEventAttributes.RoomId,
+						Host:   arbitraryEventAttributes.Host,
+						Port:   arbitraryEventAttributes.Port,
+						Metadata: map[string]string{
+							"roomType":  "red",
+							"ping":      "true",
+							"roomEvent": "ready",
+						},
+					},
+					EventType: "ready",
+				}
+				forwarderClientMock.EXPECT().SendRoomEvent(context.Background(), staticForwarder, &requiredEvent).Return(nil, errors.NewErrNotFound("an error occurred"))
+				return forwarderClientMock
+			},
+			args{
+				context.Background(),
+				arbitraryEventAttributes,
+				staticForwarder,
+			},
+			errors.NewErrUnexpected("an error occurred"),
+		},
+		{
+			"failed when event type is Arbitrary and forwarder client returns status code different than 200",
+			func(controller *gomock.Controller) *mock.MockForwarderClient {
+				forwarderClientMock := mock.NewMockForwarderClient(controller)
+				requiredEvent := pb.RoomEvent{
+					Room: &pb.Room{
+						Game:   arbitraryEventAttributes.Game,
+						RoomId: arbitraryEventAttributes.RoomId,
+						Host:   arbitraryEventAttributes.Host,
+						Port:   arbitraryEventAttributes.Port,
+						Metadata: map[string]string{
+							"roomType":  "red",
+							"ping":      "true",
+							"roomEvent": "ready",
+						},
+					},
+					EventType: "ready",
+				}
+				forwarderClientMock.EXPECT().SendRoomEvent(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 404}, nil)
+				return forwarderClientMock
+			},
+			args{
+				context.Background(),
+				newRoomEventAttributes(events.Arbitrary, nil),
+				staticForwarder,
+			},
+			errors.NewErrUnexpected("failed to forward event room at \"matchmaking\""),
+		},
+		{
+			"with success when event type is Ping",
+			func(controller *gomock.Controller) *mock.MockForwarderClient {
+				forwarderClientMock := mock.NewMockForwarderClient(controller)
+				requiredEvent := pb.RoomStatus{
+					Room: &pb.Room{
+						Game:   pingEventAttributes.Game,
+						RoomId: pingEventAttributes.RoomId,
+						Host:   pingEventAttributes.Host,
+						Port:   pingEventAttributes.Port,
+						Metadata: map[string]string{
+							"roomType":  "red",
+							"ping":      "true",
+							"roomEvent": "ready",
+						},
+						RoomType: "red",
+					},
+					StatusType: pb.RoomStatus_ready,
+				}
+				forwarderClientMock.EXPECT().SendRoomReSync(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 200}, nil)
+				return forwarderClientMock
+			},
+			args{
+				context.Background(),
+				pingEventAttributes,
+				staticForwarder,
+			},
+			nil,
+		},
+		{
+			"failed when event type is Ping and forwarder client returns error",
+			func(controller *gomock.Controller) *mock.MockForwarderClient {
+				forwarderClientMock := mock.NewMockForwarderClient(controller)
+				requiredEvent := pb.RoomStatus{
+					Room: &pb.Room{
+						Game:   pingEventAttributes.Game,
+						RoomId: pingEventAttributes.RoomId,
+						Host:   pingEventAttributes.Host,
+						Port:   pingEventAttributes.Port,
+						Metadata: map[string]string{
+							"roomType":  "red",
+							"ping":      "true",
+							"roomEvent": "ready",
+						},
+						RoomType: "red",
+					},
+					StatusType: pb.RoomStatus_ready,
+				}
+				forwarderClientMock.EXPECT().SendRoomReSync(context.Background(), staticForwarder, &requiredEvent).Return(nil, errors.NewErrNotFound("an error occurred"))
+				return forwarderClientMock
+			},
+			args{
+				context.Background(),
+				pingEventAttributes,
+				staticForwarder,
+			},
+			errors.NewErrUnexpected("an error occurred"),
+		},
+		{
+			"failed when event type is Ping and forwarder client returns status code different than 200",
+			func(controller *gomock.Controller) *mock.MockForwarderClient {
+				forwarderClientMock := mock.NewMockForwarderClient(controller)
+				requiredEvent := pb.RoomStatus{
+					Room: &pb.Room{
+						Game:   pingEventAttributes.Game,
+						RoomId: pingEventAttributes.RoomId,
+						Host:   pingEventAttributes.Host,
+						Port:   pingEventAttributes.Port,
+						Metadata: map[string]string{
+							"roomType":  "red",
+							"ping":      "true",
+							"roomEvent": "ready",
+						},
+						RoomType: "red",
+					},
+					StatusType: pb.RoomStatus_ready,
+				}
+				forwarderClientMock.EXPECT().SendRoomReSync(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 404}, nil)
+				return forwarderClientMock
+			},
+			args{
+				context.Background(),
+				pingEventAttributes,
+				staticForwarder,
+			},
+			errors.NewErrUnexpected("failed to forward event room at \"matchmaking\""),
+		},
+		{
+			"with success when event type is Status",
+			func(controller *gomock.Controller) *mock.MockForwarderClient {
+				forwarderClientMock := mock.NewMockForwarderClient(controller)
+				requiredEvent := pb.RoomStatus{
+					Room: &pb.Room{
+						Game:   statusEventAttributes.Game,
+						RoomId: statusEventAttributes.RoomId,
+						Host:   statusEventAttributes.Host,
+						Port:   statusEventAttributes.Port,
+						Metadata: map[string]string{
+							"roomType":  "red",
+							"ping":      "true",
+							"roomEvent": "ready",
+						},
+						RoomType: "red",
+					},
+					StatusType: pb.RoomStatus_ready,
+				}
+				forwarderClientMock.EXPECT().SendRoomStatus(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 200}, nil)
+				return forwarderClientMock
+			},
+			args{
+				context.Background(),
+				statusEventAttributes,
+				staticForwarder,
+			},
+			nil,
+		},
+		{
+			"failed when event type is Status and forwarder client returns error",
+			func(controller *gomock.Controller) *mock.MockForwarderClient {
+				forwarderClientMock := mock.NewMockForwarderClient(controller)
+				requiredEvent := pb.RoomStatus{
+					Room: &pb.Room{
+						Game:   statusEventAttributes.Game,
+						RoomId: statusEventAttributes.RoomId,
+						Host:   statusEventAttributes.Host,
+						Port:   statusEventAttributes.Port,
+						Metadata: map[string]string{
+							"roomType":  "red",
+							"ping":      "true",
+							"roomEvent": "ready",
+						},
+						RoomType: "red",
+					},
+					StatusType: pb.RoomStatus_ready,
+				}
+				forwarderClientMock.EXPECT().SendRoomStatus(context.Background(), staticForwarder, &requiredEvent).Return(nil, errors.NewErrNotFound("an error occurred"))
+				return forwarderClientMock
+			},
+			args{
+				context.Background(),
+				statusEventAttributes,
+				staticForwarder,
+			},
+			errors.NewErrUnexpected("an error occurred"),
+		},
+		{
+			"failed when event type is Status and forwarder client returns status code different than 200",
+			func(controller *gomock.Controller) *mock.MockForwarderClient {
+				forwarderClientMock := mock.NewMockForwarderClient(controller)
+				requiredEvent := pb.RoomStatus{
+					Room: &pb.Room{
+						Game:   statusEventAttributes.Game,
+						RoomId: statusEventAttributes.RoomId,
+						Host:   statusEventAttributes.Host,
+						Port:   statusEventAttributes.Port,
+						Metadata: map[string]string{
+							"roomType":  "red",
+							"ping":      "true",
+							"roomEvent": "ready",
+						},
+						RoomType: "red",
+					},
+					StatusType: pb.RoomStatus_ready,
+				}
+				forwarderClientMock.EXPECT().SendRoomStatus(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 404}, nil)
+				return forwarderClientMock
+			},
+			args{
+				context.Background(),
+				statusEventAttributes,
+				staticForwarder,
+			},
+			errors.NewErrUnexpected("failed to forward event room at \"matchmaking\""),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			forwarderClientMock := tt.mockPreparation(mockCtrl)
+			eventsForwarderAdapter := NewEventsForwarder(forwarderClientMock)
 
-		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newStaticForwarder())
+			err := eventsForwarderAdapter.ForwardRoomEvent(tt.args.ctx, tt.args.eventAttributes, tt.args.forwarder)
 
-		// assert
-		require.NoError(t, err)
-		require.Nil(t, err)
-	})
-
-	t.Run("failed when roomEvent is not provided", func(t *testing.T) {
-		// arrange
-		_, eventsForwarderAdapter := basicArrange(mockCtrl)
-
-		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, map[string]interface{}{"roomType": "red", "ping": true}), newStaticForwarder())
-
-		// assert
-		require.Error(t, err)
-	})
-
-	t.Run("failed when grpcClient returns error", func(t *testing.T) {
-		// arrange
-		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
-		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
-
-		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newStaticForwarder())
-
-		// assert
-		require.Error(t, err)
-		require.NotNil(t, err)
-	})
-
-	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
-		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
-		forwarderClientMock.EXPECT().SendRoomEvent(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
-
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Arbitrary, nil), newStaticForwarder())
-
-		require.Error(t, err)
-		require.NotNil(t, err)
-	})
-}
-
-func TestForwardRoomEvent_Ping(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
-	t.Run("with success when event type is Ping", func(t *testing.T) {
-		// arrange
-		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
-		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 200}, nil)
-
-		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newStaticForwarder())
-
-		// assert
-		require.NoError(t, err)
-		require.Nil(t, err)
-	})
-
-	t.Run("failed when grpcClient returns error", func(t *testing.T) {
-		// arrange
-		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
-		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("an error occurred"))
-
-		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newStaticForwarder())
-
-		// assert
-		require.Error(t, err)
-		require.NotNil(t, err)
-	})
-
-	t.Run("failed when grpcClient returns statusCode not equal 200", func(t *testing.T) {
-		forwarderClientMock, eventsForwarderAdapter := basicArrange(mockCtrl)
-		forwarderClientMock.EXPECT().SendRoomReSync(gomock.Any(), gomock.Any(), gomock.Any()).Return(&pb.Response{Code: 404}, nil)
-
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.Ping, nil), newStaticForwarder())
-
-		require.Error(t, err)
-		require.NotNil(t, err)
-	})
-}
-
-func TestForwardRoomEvent(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
-	t.Run("failed when EventType doesn't exists", func(t *testing.T) {
-		// arrange
-		_, eventsForwarderAdapter := basicArrange(mockCtrl)
-
-		// act
-		err := eventsForwarderAdapter.ForwardRoomEvent(context.Background(), newRoomEventAttributes(events.RoomEventType("Unknown"), nil), newStaticForwarder())
-
-		// assert
-		require.Error(t, err)
-		require.NotNil(t, err)
-	})
+			if tt.errWanted != nil {
+				assert.EqualError(t, err, tt.errWanted.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestForwardPlayerEvent(t *testing.T) {
@@ -205,20 +406,20 @@ func TestMergeInfos(t *testing.T) {
 }
 
 func newRoomEventAttributes(eventType events.RoomEventType, eventMetadata map[string]interface{}) events.RoomEventAttributes {
-	pingType := events.RoomPingReady
+	pingType := events.RoomStatusReady
 	other := map[string]interface{}{"roomType": "red", "ping": true, "roomEvent": "ready"}
 	if eventMetadata != nil {
 		other = eventMetadata
 	}
 
 	return events.RoomEventAttributes{
-		Game:      "game-test",
-		RoomId:    "123",
-		Host:      "host.com",
-		Port:      5050,
-		EventType: eventType,
-		PingType:  &pingType,
-		Other:     other,
+		Game:           "game-test",
+		RoomId:         "123",
+		Host:           "host.com",
+		Port:           5050,
+		EventType:      eventType,
+		RoomStatusType: &pingType,
+		Other:          other,
 	}
 }
 

@@ -25,13 +25,13 @@ package events
 import "fmt"
 
 type RoomEventAttributes struct {
-	Game      string
-	RoomId    string
-	Host      string
-	Port      int32
-	EventType RoomEventType
-	PingType  *RoomPingEventType
-	Other     map[string]interface{}
+	Game           string
+	RoomId         string
+	Host           string
+	Port           int32
+	EventType      RoomEventType
+	RoomStatusType *RoomStatusType
+	Other          map[string]interface{}
 }
 
 type RoomEventType string
@@ -39,15 +39,16 @@ type RoomEventType string
 const (
 	Ping      RoomEventType = "resync"
 	Arbitrary RoomEventType = "roomEvent"
+	Status    RoomEventType = "status"
 )
 
-type RoomPingEventType string
+type RoomStatusType string
 
 const (
-	RoomPingReady       RoomPingEventType = "roomReady"
-	RoomPingOccupied    RoomPingEventType = "roomOccupied"
-	RoomPingTerminating RoomPingEventType = "roomTerminating"
-	RoomPingTerminated  RoomPingEventType = "roomTerminated"
+	RoomStatusReady       RoomStatusType = "roomReady"
+	RoomStatusOccupied    RoomStatusType = "roomOccupied"
+	RoomStatusTerminating RoomStatusType = "roomTerminating"
+	RoomStatusTerminated  RoomStatusType = "roomTerminated"
 )
 
 func ConvertToRoomEventType(value string) (RoomEventType, error) {
@@ -72,17 +73,17 @@ func FromRoomEventTypeToString(eventType RoomEventType) string {
 	}
 }
 
-func ConvertToRoomPingEventType(value string) (RoomPingEventType, error) {
+func ConvertToRoomPingEventType(value string) (RoomStatusType, error) {
 	switch value {
 	case "ready":
-		return RoomPingReady, nil
+		return RoomStatusReady, nil
 	case "occupied":
-		return RoomPingOccupied, nil
+		return RoomStatusOccupied, nil
 	case "terminating":
-		return RoomPingTerminating, nil
+		return RoomStatusTerminating, nil
 	case "terminated":
-		return RoomPingTerminated, nil
+		return RoomStatusTerminated, nil
 	default:
-		return "", fmt.Errorf("invalid RoomPingEventType. Should be \"ready\", \"occupied\", \"terminating\" or \"terminated\"")
+		return "", fmt.Errorf("invalid RoomStatusType. Should be \"ready\", \"occupied\", \"terminating\" or \"terminated\"")
 	}
 }

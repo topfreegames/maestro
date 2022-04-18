@@ -40,7 +40,7 @@ func TestPlayerEvent(t *testing.T) {
 		require.IsType(t, PlayerEventType("playerJoin"), converted)
 	})
 
-	t.Run("with error when converting to RoomPingEventType", func(t *testing.T) {
+	t.Run("with error when converting to RoomStatusType", func(t *testing.T) {
 
 		_, err := ConvertToPlayerEventType("INVALID")
 		require.Error(t, err)
