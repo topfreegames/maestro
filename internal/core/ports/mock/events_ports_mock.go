@@ -209,3 +209,18 @@ func (mr *MockForwarderClientMockRecorder) SendRoomReSync(ctx, forwarder, in int
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRoomReSync", reflect.TypeOf((*MockForwarderClient)(nil).SendRoomReSync), ctx, forwarder, in)
 }
+
+// SendRoomStatus mocks base method.
+func (m *MockForwarderClient) SendRoomStatus(ctx context.Context, forwarder forwarder.Forwarder, in *eventforwarder.RoomStatus) (*eventforwarder.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendRoomStatus", ctx, forwarder, in)
+	ret0, _ := ret[0].(*eventforwarder.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendRoomStatus indicates an expected call of SendRoomStatus.
+func (mr *MockForwarderClientMockRecorder) SendRoomStatus(ctx, forwarder, in interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRoomStatus", reflect.TypeOf((*MockForwarderClient)(nil).SendRoomStatus), ctx, forwarder, in)
+}

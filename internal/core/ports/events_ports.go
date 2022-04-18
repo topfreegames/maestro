@@ -52,6 +52,7 @@ type EventsForwarder interface {
 type ForwarderClient interface {
 	SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent) (*pb.Response, error)
 	SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus) (*pb.Response, error)
+	SendRoomStatus(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus) (*pb.Response, error)
 	SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent) (*pb.Response, error)
 	CacheFlush()
 	CacheDelete(forwarderAddress string) error
