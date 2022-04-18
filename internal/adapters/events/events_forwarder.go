@@ -50,38 +50,21 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 	switch eventAttributes.EventType {
 	case events.Arbitrary:
 		if roomEvent, ok := eventAttributes.Other["roomEvent"].(string); ok {
-			event := pb.RoomEvent{
-				Room: &pb.Room{
-					Game:     eventAttributes.Game,
-					RoomId:   eventAttributes.RoomId,
-					Host:     eventAttributes.Host,
-					Port:     eventAttributes.Port,
-					Metadata: f.mergeInfos(eventAttributes.Other, forwarder.Options.Metadata),
-				},
-				EventType: roomEvent,
-			}
-
+			event := f.buildRoomEventMessage(eventAttributes, forwarder, roomEvent)
 			eventResponse, err := f.forwarderClient.SendRoomEvent(ctx, forwarder, &event)
 			return handlerGrpcClientResponse(forwarder, eventResponse, err)
 		}
 		return errors.NewErrInvalidArgument("invalid or missing eventAttributes.Other['roomEvent'] field")
 
 	case events.Ping:
-		event := pb.RoomStatus{
-			Room: &pb.Room{
-				Game:     eventAttributes.Game,
-				RoomId:   eventAttributes.RoomId,
-				Host:     eventAttributes.Host,
-				Port:     eventAttributes.Port,
-				Metadata: f.mergeInfos(forwarder.Options.Metadata, eventAttributes.Other),
-			},
-			StatusType: fromRoomPingEventTypeToRoomStatusType(*eventAttributes.PingType),
-		}
-		if roomType, ok := forwarder.Options.Metadata["roomType"].(string); ok {
-			event.Room.RoomType = roomType
-		}
-
+		event := f.buildRoomStatusMessage(eventAttributes, forwarder)
 		eventResponse, err := f.forwarderClient.SendRoomReSync(ctx, forwarder, &event)
+
+		return handlerGrpcClientResponse(forwarder, eventResponse, err)
+	case events.Status:
+		event := f.buildRoomStatusMessage(eventAttributes, forwarder)
+		eventResponse, err := f.forwarderClient.SendRoomStatus(ctx, forwarder, &event)
+
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	}
 
@@ -90,16 +73,9 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 
 // ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
 func (f *eventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder entities.Forwarder) error {
-	event := pb.PlayerEvent{
-		PlayerId: eventAttributes.PlayerId,
-		Room: &pb.Room{
-			RoomId: eventAttributes.RoomId,
-		},
-		EventType: fromPlayerEventTypeToGrpcPlayerEventType(eventAttributes.EventType),
-		Metadata:  f.mergePlayerInfos(eventAttributes.Other, forwarder.Options.Metadata),
-	}
-
+	event := f.buildPlayerEventMessage(eventAttributes, forwarder)
 	eventResponse, err := f.forwarderClient.SendPlayerEvent(ctx, forwarder, &event)
+
 	return handlerGrpcClientResponse(forwarder, eventResponse, err)
 }
 
@@ -138,6 +114,49 @@ func (*eventsForwarder) mergePlayerInfos(eventMetadata, fwdMetadata map[string]i
 	return m
 }
 
+func (f *eventsForwarder) buildRoomStatusMessage(eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) pb.RoomStatus {
+	event := pb.RoomStatus{
+		Room: &pb.Room{
+			Game:     eventAttributes.Game,
+			RoomId:   eventAttributes.RoomId,
+			Host:     eventAttributes.Host,
+			Port:     eventAttributes.Port,
+			Metadata: f.mergeInfos(forwarder.Options.Metadata, eventAttributes.Other),
+		},
+		StatusType: fromStatusToRoomStatusType(*eventAttributes.RoomStatusType),
+	}
+	if roomType, ok := forwarder.Options.Metadata["roomType"].(string); ok {
+		event.Room.RoomType = roomType
+	}
+	return event
+}
+
+func (f *eventsForwarder) buildRoomEventMessage(eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder, roomEvent string) pb.RoomEvent {
+	event := pb.RoomEvent{
+		Room: &pb.Room{
+			Game:     eventAttributes.Game,
+			RoomId:   eventAttributes.RoomId,
+			Host:     eventAttributes.Host,
+			Port:     eventAttributes.Port,
+			Metadata: f.mergeInfos(eventAttributes.Other, forwarder.Options.Metadata),
+		},
+		EventType: roomEvent,
+	}
+	return event
+}
+
+func (f *eventsForwarder) buildPlayerEventMessage(eventAttributes events.PlayerEventAttributes, forwarder entities.Forwarder) pb.PlayerEvent {
+	event := pb.PlayerEvent{
+		PlayerId: eventAttributes.PlayerId,
+		Room: &pb.Room{
+			RoomId: eventAttributes.RoomId,
+		},
+		EventType: fromPlayerEventTypeToGrpcPlayerEventType(eventAttributes.EventType),
+		Metadata:  f.mergePlayerInfos(eventAttributes.Other, forwarder.Options.Metadata),
+	}
+	return event
+}
+
 func fromMapInterfaceToMapString(mapInterface map[string]interface{}) *map[string]string {
 	mapString := make(map[string]string)
 	for key, value := range mapInterface {
@@ -150,15 +169,15 @@ func fromMapInterfaceToMapString(mapInterface map[string]interface{}) *map[strin
 	return &mapString
 }
 
-func fromRoomPingEventTypeToRoomStatusType(eventType events.RoomPingEventType) pb.RoomStatus_RoomStatusType {
+func fromStatusToRoomStatusType(eventType events.RoomStatusType) pb.RoomStatus_RoomStatusType {
 	switch eventType {
-	case events.RoomPingReady:
+	case events.RoomStatusReady:
 		return pb.RoomStatus_ready
-	case events.RoomPingOccupied:
+	case events.RoomStatusOccupied:
 		return pb.RoomStatus_occupied
-	case events.RoomPingTerminating:
+	case events.RoomStatusTerminating:
 		return pb.RoomStatus_terminating
-	case events.RoomPingTerminated:
+	case events.RoomStatusTerminated:
 		return pb.RoomStatus_terminated
 	default:
 		return pb.RoomStatus_terminated

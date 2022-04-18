@@ -145,7 +145,7 @@ func (es *EventsForwarderService) forwardRoomEvent(
 		return err
 	}
 
-	var pingType events.RoomPingEventType
+	var pingType events.RoomStatusType
 	if roomEvent == events.Ping {
 		if _, ok := event.Attributes["pingType"]; !ok {
 			return errors.New("roomEvent of type ping must contain key \"pingType\" in eventAttributes")
@@ -157,13 +157,13 @@ func (es *EventsForwarderService) forwardRoomEvent(
 	}
 
 	roomAttributes := events.RoomEventAttributes{
-		Game:      scheduler.Game,
-		RoomId:    event.RoomID,
-		Host:      instance.Address.Host,
-		Port:      selectedPort,
-		EventType: roomEvent,
-		PingType:  &pingType,
-		Other:     event.Attributes,
+		Game:           scheduler.Game,
+		RoomId:         event.RoomID,
+		Host:           instance.Address.Host,
+		Port:           selectedPort,
+		EventType:      roomEvent,
+		RoomStatusType: &pingType,
+		Other:          event.Attributes,
 	}
 	err = es.eventsForwarder.ForwardRoomEvent(ctx, roomAttributes, *_forwarder)
 	if err != nil {

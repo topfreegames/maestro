@@ -40,22 +40,22 @@ func TestRoomEvent(t *testing.T) {
 		require.IsType(t, RoomEventType("roomEvent"), converted)
 	})
 
-	t.Run("with success when converting to RoomPingEventType", func(t *testing.T) {
+	t.Run("with success when converting to RoomStatusType", func(t *testing.T) {
 		converted, err := ConvertToRoomPingEventType("ready")
 		require.NoError(t, err)
-		require.IsType(t, RoomPingEventType("ready"), converted)
+		require.IsType(t, RoomStatusType("ready"), converted)
 
 		converted, err = ConvertToRoomPingEventType("occupied")
 		require.NoError(t, err)
-		require.IsType(t, RoomPingEventType("occupied"), converted)
+		require.IsType(t, RoomStatusType("occupied"), converted)
 
 		converted, err = ConvertToRoomPingEventType("terminating")
 		require.NoError(t, err)
-		require.IsType(t, RoomPingEventType("terminating"), converted)
+		require.IsType(t, RoomStatusType("terminating"), converted)
 
 		converted, err = ConvertToRoomPingEventType("terminated")
 		require.NoError(t, err)
-		require.IsType(t, RoomPingEventType("terminated"), converted)
+		require.IsType(t, RoomStatusType("terminated"), converted)
 	})
 
 	t.Run("with error when converting to RoomEventType", func(t *testing.T) {
@@ -64,7 +64,7 @@ func TestRoomEvent(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("with error when converting to RoomPingEventType", func(t *testing.T) {
+	t.Run("with error when converting to RoomStatusType", func(t *testing.T) {
 
 		_, err := ConvertToRoomPingEventType("INVALID")
 		require.Error(t, err)
