@@ -36,16 +36,23 @@ def get_port_range():
 
 
 def get_forwarders(forwarders):
-    return [{
-        "name": 'matchmaking',
-        "enable": forwarders['grpc']['matchmaking']['enabled'],
-        "type": "gRPC",
-        "address": 'matchmaker-rpc.matchmaker.svc.cluster.local:80',
-        "options": {
-            "timeout": '1000',
-            "metadata": forwarders['grpc']['matchmaking']['metadata']
-        }
-    }]
+    if not forwarders:
+        return []
+    try:
+        return [{
+            "name": 'matchmaking',
+            "enable": forwarders['grpc']['matchmaking']['enabled'],
+            "type": "gRPC",
+            "address": 'matchmaker-rpc.matchmaker.svc.cluster.local:80',
+            "options": {
+                "timeout": '1000',
+                "metadata": forwarders['grpc']['matchmaking']['metadata']
+            }
+        }]
+    except Exception as e:
+        print('Converting forwarders error. err =>', e)
+        print('forwarders =>', forwarders)
+        return []
 
 
 def get_ports(ports):
@@ -87,11 +94,15 @@ def get_containers(containers):
 
 
 def get_spec(config):
+    containers = [config]
+    if config.get('containers'):
+        containers = config['containers']
+
     return {
         'terminationGracePeriod': 100,
         'toleration': config['toleration'],
         'affinity': config['affinity'],
-        'containers': get_containers(config['containers'])
+        'containers': get_containers(containers)
     }
 
 
@@ -101,7 +112,7 @@ def convert_v9_config_to_next(config):
             'name': config['name'],
             'game': config['game'],
             'spec': get_spec(config),
-            'forwarders': get_forwarders(config['forwarders']),
+            'forwarders': get_forwarders(config.get('forwarders')),
             'portRange': get_port_range(),
             'maxSurge': '20%'
         }
