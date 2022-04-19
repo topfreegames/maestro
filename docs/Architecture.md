@@ -7,6 +7,8 @@ Maestro is composed of Management API, Rooms API, Operation Execution Worker, Ru
 
 ### Maestro modules
 
+> ⚠ Note: Maestro currently only supports Kubernetes as Game Rooms runtime system. So Workers interact with them.
+
 #### Management API
 
 Management API is the module responsible for receiving user requests. It accepts gRPC and HTTP requests. It could be used to fetch a **Scheduler** status or else to execute a change in them. There is some different kind of routes. In the **Scheduler** creation, it simply adds a new entry in the Postgres (and the worker posteriorly creates a respective queue to it). In the fetch **Scheduler** routes, it fetches from Postgres the **Scheduler** information and in the Redis the **Operations**/game rooms information. And in the change routes, it creates **Operations** and enqueues them in the respective **Scheduler** queue in the Redis. Finally, fetch **Operation**/game rooms routes it fetches its information from Redis.
