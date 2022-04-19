@@ -50,8 +50,10 @@ kubernetes resources, all it does is to watch for changes and update its game ro
 The worker uses kubernetes for managing pods and namespaces. It executes several [operations](Operations.md) that, alongside other side effects, will need to create, update, and delete namespaces and pods.
 
 > **⚠ Currently, maestro does not check for HostPort conflict while creating new rooms**
-One important note regarding how maestro creates pods: each new requested game room instance will be assigned to a pseudo-random port to be used as **HostPort**.
-Maestro uses the scheduler **PortRange** to generate the pseudo-random port. Currently, maestro does not check for HostPort conflict while creating new rooms. The final address
+> 
+>One important note regarding how maestro creates pods: each new requested game room instance will be assigned to a pseudo-random port to be used as **HostPort**.
+>
+> Maestro uses the scheduler **PortRange** to generate the pseudo-random port. Currently, maestro does not check for HostPort conflict while creating new rooms. The final address
 of the game room will be composed of the **Node** address and the game room container assigned **HostPort**. That's the reason why
 maestro needs access for reading the Node addresses.
 
