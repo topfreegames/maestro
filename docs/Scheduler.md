@@ -1,16 +1,33 @@
 ## What is
-Objectively, a **Scheduler** is 1:1 to **Kubernetes namespace** (as referenced [here](Kubernetes.md)), and contains all the information for creating 
+Objectively, a **Scheduler** is a recipe, and contains all the information for creating 
 game rooms and forwarding rooms information to other services.
-The scheduler, then, is like a template for kubernetes.
 
-The `create scheduler` operation stores the scheduler with all it's info,
-and creates a namespace on Kubernetes with the name of the scheduler.
+A game can have multiple schedulers, and each scheduler can have multiple game rooms up and running.
+```mermaid
+flowchart TD
+  etc1("...")
+  etc2("...")
+  etc3("...")
+  
+  subgraph game [Game]
+    subgraph scheduler_1 [Scheduler 1]
+      gameRoom1("Game Room (host:port)")
+      gameRoom2("Game Room (host:port)")
+      etc1
+    end
+    subgraph scheduler_2 [Scheduler 2]
+      gameRoom3("Game Room (host:port)")
+      gameRoom4("Game Room (host:port)")
+      etc2
+    end
+    etc3
+  end
+```
 
 ### How to Operate
 To directly interact with a Scheduler, the user enqueues [operations](Operations.md) using the management API.
 
-These operations are responsible for creating a scheduler or newer versions, switching an active version, switch version,
-adding/removing rooms, etc.
+These operations are responsible for creating a scheduler or newer versions, switching an active version, adding/removing rooms, etc.
 
 Because of that, everything that happens for a Scheduler can be tracked based on history of the operations executed for
 that scheduler and the order they were executed.
@@ -23,9 +40,9 @@ A Scheduler have versions, and each time we want to change scheduler properties,
 
 This version can either be a Minor or a Major change.
 
-- Major version: **Replace** the game rooms.
+- Major version: **Replace** the game rooms in a switch active version event.
   - Basically, any change under **spec**, that are related to the game room directly.
-- Minor version: **Don't replace** game rooms.
+- Minor version: **Don't replace** game rooms in a switch active version event.
   - Info such as MaxSurge or forwarders, that do not impact the game rooms.
 
 ### Example
@@ -195,7 +212,7 @@ spec: Spec
 - **game**: Name of the game which will use the scheduler. The game is important since it's common to use multiple schedulers
   for a specific game. So you probably will want to fetch all the schedulers from a game;
 - **createdAt**: Info about the scheduler creation time. Cannot be altered by the user;
-- **maxSurge**: Value represented in percentage (%) or Integer. Offer by the user on the scheduler creation. Can be altered anytime.
+- **maxSurge**: Value represented in percentage (%) or Integer. Offered by the user on the scheduler creation. Can be altered anytime.
   Used by Maestro to replace pods. Ex: If maxSurge = 3, the [Switch Active Version](Operations.md#switch-active-version) (Major change) operation will replace pods from 3 to 3;
 - **portRange**: Range of ports that can be used by Maestro to create GRUs for the specified scheduler. Can be altered by the user anytime. More info [here](#portrange);
 - **forwarders**: Maestro can pass ahead info sent by the game rooms, such as Ping (Ready, Occupied, Terminating...), player and rooms events.
@@ -242,7 +259,7 @@ It is represented as:
     - **metadata**: Object that can contain any useful information for the game team. Will be forwarded with the events from Maestro.
 
 ### Spec
-Contains vital information about the game rooms. Be aware that the spec is the most related aspect of the scheduler interacting with kubernetes. 
+Contains vital information about the game rooms. Be aware that the spec is the most related aspect of the scheduler interacting with the runtime. 
 It might be important to understand the basics of kubernetes before deep diving into the Maestro scheduler itself.
 
 - Cannot be empty or null.
@@ -254,9 +271,9 @@ containers: Containers
 toleration: String
 affinity: String
 ```
-- **terminationGracePeriod**: When a game room receives the signal to be deleted, it will take this value (in milliseconds) to be completely deleted;
+- **terminationGracePeriod**: Required integer value. Must be greater than 0. When a game room receives the signal to be deleted, it will take this value (in milliseconds) to be completely deleted;
 - **containers**: Contain the information about the game room, such as the image and environment variables. This is a list since the game room can be compounded by
-more than two images;
+more than two containers;
 - **toleration**: Kubernetes specific. Represents the toleration value for all GRUs on the scheduler. See [more](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/);
 - **affinity**: Kubernetes specific. Represents the affinity value for all GRUs on the scheduler. See [more](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/).
 
@@ -295,17 +312,18 @@ List of environment variables used by the GRU.
 
 There are, now, 3 supported formats by Maestro:
 
+- Simple name-value format.
 [comment]: <> (With Name/Value)
 <details>
     <summary>With Name/Value</summary>
     <div class="highlight highlight-source-yaml position-relative overflow-auto">
         <pre>
 - name: String
-  value: String
-        </pre>
+  value: String</pre>
     </div>
 </details>
 
+- Exposing pod fields (kubernetes specific). See [here](https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/#use-pod-fields-as-values-for-environment-variables).
 [comment]: <> (With FieldRef/FieldPath)
 <details>
     <summary>With FieldRef/FieldPath</summary>
@@ -314,11 +332,11 @@ There are, now, 3 supported formats by Maestro:
 - name: String
   valueFrom:
     fieldRef:
-      fieldPath: String
-        </pre>
+      fieldPath: String</pre>
     </div>
 </details>
 
+- Secrets as environment variables (kubernetes specific). See [here](https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-environment-variables).
 [comment]: <> (With Secret)
 <details>
     <summary>With Secret</summary>
@@ -328,8 +346,7 @@ There are, now, 3 supported formats by Maestro:
   valueFrom:
     secretKeyRef:
       name: String
-      key: String
-        </pre>
+      key: String</pre>
     </div>
 </details>
 
