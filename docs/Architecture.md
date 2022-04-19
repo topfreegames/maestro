@@ -1,42 +1,53 @@
-Maestro v10 (aka Next) is a complete rewrite of the service, focusing on improving code maintainability, knowing what is being done on the rooms/schedulers, and changing the state management.
+Maestro Next is a set of modules that together deliver all features that it is built for. Internally they are all part of the same code base and could be run by giving the right arguments to your command line, or giving the same arguments to your docker container entrypoint. The execution process could be changed by giving correct arguments as environment variables (a proper list will be documented in the correct section).
 
-The main focus of the refactor was to take Maestro's strengths and areas that could be improved. After brainstorming, we've decided that a simpler and more concrete model was necessary to maximize those areas.
-
-The proposed model is very similar to what continuous integration services do. You have a definition of what has to be done, and there is an implementation that takes it and executes it. This describes the overall model of this version. We call it "Operations".
+Maestro is composed of Management API, Rooms API, Operation Execution Worker, Runtime Watcher Worker, and Metrics Reporter Worker. Each one with its own responsibilities and is broken enough in a way to avoid mixing the execution process. Each module was thought to avoid parallel problems and to give the client more visibility about which **Operations** are being executed and their respective status.
 
 
-## Architecture
+![architecture IMAGE](./diagrams/Architecture.jpg)
 
-Besides the new model described above, this release presents a completely different architecture and code organization.
+### Maestro modules
 
-```
-                        │
-Current components (v9) │ Next components (v10)
-                        │
-┌──────┐ ┌───┐          │ ┌─────────────────┐    ┌─────────┐
-│Worker│ │API│          │ │Operations Worker│    │Rooms API│
-└──────┘ └───┘          │ └─────────────────┘    └─────────┘
-                        │
-                        │ ┌──────────────┐ ┌───────────────┐
-                        │ │Management API│ │Runtime Watcher│
-                        │ └──────────────┘ └───────────────┘
-```
+#### Management API
 
--   Management API (Public API): This is the API that manages the scheduler and rooms. It is the component the users (usually game engineers) use while interacting with Maestro, making updates, and fetching scheduler information;
--   Rooms API (Internal API): API used by the game rooms to report their status to Maestro and communicate any extra information that may apply;
--   Operations executor worker: Worker that takes queued operations and processes them;
--   Runtime watcher: Watches any state change that happens on the Runtime and takes the necessary action (like updating some Maestro state or triggering an operation);
+Management API is the module responsible for receiving user requests. It accepts gRPC and HTTP requests. It could be used to fetch a **Scheduler** status or else to execute a change in them. There is some different kind of routes. In the **Scheduler** creation, it simply adds a new entry in the Postgres (and the worker posteriorly creates a respective queue to it). In the fetch **Scheduler** routes, it fetches from Postgres the **Scheduler** information and in the Redis the **Operations**/game rooms information. And in the change routes, it creates **Operations** and enqueues them in the respective **Scheduler** queue in the Redis. Finally, fetch **Operation**/game rooms routes it fetches its information from Redis.
 
-## Code structure
-Maestro codebase is organized following some concepts of Hexagonal architecture (Ports & Adapters). This "style" was used as a base of the development and had some adaptations. For example, the API is not considered a primary/input Port. Instead, it is outside the core package.
+![Management API IMAGE](./diagrams/Architecture-Management-API.jpg)
 
-Most of the business logic is present at services, and they rely on the ports to not depend on the specific implementations.
+#### Rooms API
 
-Entities are the structs that hold data on the system, and they don't provide any logic besides its initialization and validation. Therefore, services and ports should "communicate" using entities so that the entire system "speaks" the same language regarding data structs.
+Rooms API is the module that receive requests from game rooms and executes according to which kind of request was done.
 
-The API is responsible for converting the external protocol (currently gRPC with grpc-gateway) to entities, invoking the necessary service, and converting the response back.
+> ⚠ Note: The requests that Maestro receives in the Rooms API are documented in [this proto file](https://github.com/topfreegames/protos/blob/master/maestro/grpc/protobuf/events.proto).
 
-### Workers
-Maestro now provides a form of extending and adding more workers if they follow a worker interface. This was done to have the same pattern applied to the operation execution worker and runtime watcher. Workers are managed by the "WorkersManager," which starts an instance for each scheduler present on the storage. With this model, the implementation doesn't have to deal with multiple tenants (schedulers).
+![Rooms API IMAGE](./diagrams/Architecture-Rooms-API.jpg)
 
-Workers are not inside the service package, although they hold business logic about execution and flows. They were isolated since workers are a kind of service that has to implement an interface. Besides this difference, workers should be treated like core services.
+#### Operation Execution Worker
+
+> ⚠ Note: In Maestro a worker is a collection of routines that executes a flow related to one and only one **Scheduler** each.
+
+Operation Execution Worker creates for each **Scheduler** a thread that executes operations enqueued in the related **Scheduler** operation queue. So in this way became possible to track the events that happened and change a certain **Scheduler** in a healthier way.
+
+The Operations could be:
+- Create Scheduler: creates a **Scheduler**
+- New Scheduler Version: updates a **Scheduler**
+- Switch Active Version: change the current **Scheduler** version that is running. It uses the versions to know if the Game Rooms need to be changed
+- Add Rooms: adds a number of Game Rooms in a **Scheduler**
+- Remove Rooms: removes a number of Game Rooms in a **Scheduler**
+
+![Operation Execution Worker IMAGE](./diagrams/Architecture-Operation-Execution-Worker.jpg)
+
+#### Runtime Watcher Worker
+
+> ⚠ Note: In Maestro a worker is a collection of routines that executes a flow related to one and only one **Scheduler** each.
+
+Runtime Watcher Worker listens to runtime events related to the **Scheduler** and reflects the changes in the Maestro. Currently, it listens for Game Rooms creation and deletion.
+
+![Runtime Watcher Worker IMAGE](./diagrams/Architecture-Runtime-Watcher-Worker.jpg)
+
+#### Metrics Reporter Worker
+
+> ⚠ Note: In Maestro a worker is a collection of routines that executes a flow related to one and only one **Scheduler** each.
+
+From time to time Metrics Reporter Worker watch runtime to report metrics from them, such as the number of game rooms instances that are `ready`, `pending`, `error`, `unknown`, or `terminating` status. As well it watches from Game Rooms storage its status that could be `ready`, `pending`, `error`, `occupied`, `terminating`, or `unready`.
+
+![Metrics Reporter Worker IMAGE](./diagrams/Architecture-Metrics-Reporter-Worker.jpg)
