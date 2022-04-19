@@ -1,6 +1,9 @@
 ## What is
 Objectively, a **Scheduler** is a recipe, and contains all the information for creating 
-game rooms and forwarding rooms information to other services.
+game rooms and forwarding rooms information to other services. 
+
+Also, it's the **core entity** for operating game rooms in
+Maestro, since all game rooms are related to a specific scheduler.
 
 A game can have multiple schedulers, and each scheduler can have multiple game rooms up and running.
 ```mermaid
