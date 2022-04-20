@@ -32,8 +32,6 @@ docker inspect -f '{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}' {{ROOM
 This command should give you an IP address. 
 This IP is important because the game rooms will use it to communicate their status.
 
-An example of the answer could be: **172.30.0.1**. This is the **ROOMS_API_ADDRESS**.
-
 ## Create a scheduler
 If everything is working as expected now, each Maestro-module is up and running. 
 Use the command below to create a new scheduler:
