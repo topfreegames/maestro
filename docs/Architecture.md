@@ -1,6 +1,8 @@
 Maestro Next is a composition of different modules. Internally they are all part of the same code base but could be executed by giving the right arguments to the command line (or to your docker container entry point). E.g. `go run main.go start [MODULE_NAME]`
 
-Maestro is composed of Management API, Rooms API, Operation Execution Worker, Runtime Watcher Worker, and Metrics Reporter Worker. Each one with its own responsibilities and is broken enough in a way to avoid mixing the execution process. Each module was thought to avoid parallel problems and to give the client more visibility about which **Operations** are being executed and their respective status.
+Maestro is composed of **Management API**, **Rooms API**, **Operation Execution Worker**, **Runtime Watcher Worker**, and **Metrics Reporter Worker.** 
+
+Each module has its responsibilities and is divided apart in a way to avoid mixing the execution process. Each module was thought to avoid parallel problems and to give the client more visibility about which [**Operations**](Operations.md) are being executed and their respective status.
 
 
 ![architecture IMAGE](./diagrams/Architecture.jpg)
