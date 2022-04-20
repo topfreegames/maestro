@@ -8,8 +8,8 @@ option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
 
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
-
 
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
@@ -41,14 +41,59 @@ message Container {
   repeated ContainerPort ports = 8;
 }
 
+// OptionalContainer is the struct that defines a game room container configuration.
+// This message is used to patch container configuration.
+message OptionalContainer {
+  // Name of the container.
+  optional string name = 1;
+  // Image address.
+  optional string image = 2;
+  // Image pull policy: Always, Never and IfNotExists.
+  optional string image_pull_policy = 3;
+  // Container command to be called when container is instantiated.
+  repeated string command = 4;
+  // Container environment variables.
+  repeated ContainerEnvironment environment = 5;
+  // Container resources request (cpu/memory).
+  optional ContainerResources requests = 6;
+  // Container resources limits (cpu/memory).
+  optional ContainerResources limits = 7;
+  // Container exposed ports definitions.
+  repeated ContainerPort ports = 8;
+}
+
 // Container environment variables.
 message ContainerEnvironment {
   // Container environment variable name.
   string name = 1;
   // Container environment variable value.
-  string value = 2;
+  optional string value = 2;
+  // Source for the environment variable's value. Cannot be used if value is not empty.
+  optional ContainerEnvironmentValueFrom value_from = 3;
+}
+// Container environment ValueFrom possible values
+message ContainerEnvironmentValueFrom {
+  // Container environment variable name using field reference, supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+  // spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+  optional ContainerEnvironmentValueFromFieldRef field_ref = 1;
+  // Container environment variable value using a secret key reference contained in the namespace.
+  optional ContainerEnvironmentValueFromSecretKeyRef secret_key_ref = 2;
 }
 
+//  Container environment valueFrom using field reference.
+message ContainerEnvironmentValueFromFieldRef {
+  // The field path of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+  // spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+  string field_path = 1;
+}
+
+// Container environment valueFrom using secret key reference.
+message ContainerEnvironmentValueFromSecretKeyRef {
+  // Name of the secret contained in the scheduler namespace.
+  string name = 1;
+  // Secret key.
+  string key = 2;
+}
 // Container resources (cpu/memory) (request and limits).
 message ContainerResources {
   // Container memory amount.
@@ -79,7 +124,7 @@ message PortRange {
 	int32 end = 2;
 }
 
-// Spec is the specifications of the scheduler, with relevant info about what is being used
+// Spec is the specifications of the scheduler, with relevant info about what is being used.
 message Spec {
   // GameRoom.spec version
   string version = 1;
@@ -93,6 +138,19 @@ message Spec {
   string affinity = 5;
 }
 
+// OptionalSpec is the specifications of the scheduler, with relevant info about what is being used.
+// This message is used to patch spec configuration.
+message OptionalSpec {
+  // The game room termination grace period.
+  optional int64 termination_grace_period = 2;
+  // The container object array defines all the game room container configurations.
+  repeated OptionalContainer containers = 3;
+  // Runtime game room toleration configuration.
+  optional string toleration = 4;
+  // Runtime game room affinity configuration.
+  optional string affinity = 5;
+}
+
 // Scheduler definition.
 message Scheduler {
   // Name is an unique identifier for the scheduler.
@@ -102,20 +160,20 @@ message Scheduler {
   string game = 2;
   // Current state of the scheduler.
   string state = 3;
-  // Scheduler current version.
-  string version = 4;
   // Port range for the scheduler rooms.
-  PortRange port_range = 5;
+  PortRange port_range = 4;
   // Time the scheduler was created.
-  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp created_at = 5;
   // Max surge of rooms 
-  string max_surge = 7;
+  string max_surge = 6;
   // GameRoom spec
-  Spec spec = 8;
+  Spec spec = 7;
+  // List of Scheduler forwarders
+  repeated Forwarder forwarders = 8;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
-// on this message since it's unecessary for the list function
+// on this message since it's unnecessary for the list function
 message SchedulerWithoutSpec {
   // Name is an unique identifier for the scheduler.
   string name = 1;
@@ -143,16 +201,79 @@ message Operation {
   string status = 2;
   // Name of the operation being executed.
   string definition_name = 3;
-  // Scheduler indentifier that the operation is from.
-  string scheduler_name = 4;
+  // Operation lease. This is an optional field since not all operations have a lease.
+  optional Lease lease = 4;
+  // Scheduler identifier that the operation is from.
+  string scheduler_name = 5;
   // Time the operation was created.
-  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp created_at = 6;
+  // Input the data that was sent by client.
+  google.protobuf.Struct input = 7;
+  // ExecutionHistory is the execution details filled by Maestro.
+  repeated OperationEvent execution_history = 8;
+}
+
+// The operation lease object representation
+message Lease {
+  // Lease time to live in RFC3999 format UTC. if the current time is greater than this value,
+  // the lease is probably expired.
+  string ttl = 1;
+}
+
+// OperationEvent object represent an execution event.
+message OperationEvent {
+  // DateTime is the time when the event occurred.
+  google.protobuf.Timestamp created_at = 1;
+  // Event describe what happened in this event.
+  string  event = 2;
 }
 
 // Represents the version of a Scheduler
 message SchedulerVersion {
   // Specific version
   string version = 1;
+  // Flag indicating if the version is active or not
+  bool is_active = 2;
   // Specifies when the version has been created
-  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
+
+// Forwarder definitions.
+message Forwarder {
+  // Forwarder name used to identify it. Must be unique within the scheduler
+  string name = 1;
+  // Defines if the forwarder is going to receive events or not
+  bool enable = 2;
+  // Forwarder type
+  string type = 3;
+  // Forwarder gRPC service address.
+  string address = 4;
+  // Forwarder Options
+  optional ForwarderOptions options = 5;
+}
+
+// Forwarder Options definitions.
+message ForwarderOptions {
+  // Timeout of a request in milliseconds.
+  int64 timeout = 1;
+  // Additional information
+  google.protobuf.Struct metadata = 2;
+}
+
+// Scheduler Info
+message SchedulerInfo {
+  // Name
+  string name = 1;
+  // Game
+  string game = 2;
+  // State
+  string state = 3;
+  // Rooms ready
+  int32 rooms_ready = 4;
+  // Rooms Occupied
+  int32 rooms_occupied = 5;
+  // Rooms Pending
+  int32 rooms_pending = 6;
+  // Rooms Terminating
+  int32 rooms_terminating = 7;
 }

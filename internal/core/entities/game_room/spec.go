@@ -22,15 +22,41 @@
 
 package game_room
 
-import "time"
+import (
+	"time"
+)
 
 type Spec struct {
-	Version                string        `validate:"min=1"`
-	TerminationGracePeriod time.Duration `validate:"min=1"`
-	Containers             []Container   `validate:"min=1"`
+	Version                string        `validate:"required,semantic_version"`
+	TerminationGracePeriod time.Duration `validate:"gt=0"`
+	Containers             []Container   `validate:"required,dive"`
 
 	// NOTE: consider moving it to a kubernetes-specific option?
 	Toleration string
 	// NOTE: consider moving it to a kubernetes-specific option?
 	Affinity string
+}
+
+func NewSpec(version string, terminationGracePeriod time.Duration, containers []Container, toleration string, affinity string) *Spec {
+	if version == "" {
+		version = "v1.0.0"
+	}
+	return &Spec{
+		Version:                version,
+		TerminationGracePeriod: terminationGracePeriod,
+		Containers:             containers,
+		Toleration:             toleration,
+		Affinity:               affinity}
+}
+
+func (s *Spec) DeepCopy() *Spec {
+	spec := *s
+	spec.Containers = make([]Container, len(s.Containers))
+	copy(spec.Containers, s.Containers)
+	for i := range spec.Containers {
+		spec.Containers[i].Ports = make([]ContainerPort, len(spec.Containers[i].Ports))
+		copy(spec.Containers[i].Ports, s.Containers[i].Ports)
+	}
+
+	return &spec
 }

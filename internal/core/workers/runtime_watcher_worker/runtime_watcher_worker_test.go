@@ -27,39 +27,28 @@ package runtime_watcher_worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
-	eventsForwarder "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
-	instancemock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
-	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-	roomstoragemock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/workers"
 )
 
-func workerOptions(t *testing.T) (*gomock.Controller, *instancemock.MockGameRoomInstanceStorage, *roomstoragemock.MockRoomStorage, *runtimemock.MockRuntime, *workers.WorkerOptions) {
+func workerOptions(t *testing.T) (*gomock.Controller, *runtimemock.MockRuntime, *mockports.MockRoomManager, *workers.WorkerOptions) {
 	mockCtrl := gomock.NewController(t)
 
-	now := time.Now()
-	portAllocator := pamock.NewMockPortAllocator(mockCtrl)
-	roomStorage := roomstoragemock.NewMockRoomStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
-	instanceStorage := instancemock.NewMockGameRoomInstanceStorage(mockCtrl)
-	fakeClock := clockmock.NewFakeClock(now)
-	config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
-	eventsForwarder := eventsForwarder.NewMockEventsForwarder(mockCtrl)
-	roomManager := room_manager.NewRoomManager(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsForwarder, config)
+	roomManager := mockports.NewMockRoomManager(mockCtrl)
 
-	return mockCtrl, instanceStorage, roomStorage, runtime, &workers.WorkerOptions{
+	return mockCtrl, runtime, roomManager, &workers.WorkerOptions{
 		Runtime:     runtime,
 		RoomManager: roomManager,
 	}
@@ -67,8 +56,7 @@ func workerOptions(t *testing.T) (*gomock.Controller, *instancemock.MockGameRoom
 
 func TestRuntimeWatcher_Start(t *testing.T) {
 	t.Run("fails to start watcher", func(t *testing.T) {
-		mockCtrl, _, _, runtime, workerOptions := workerOptions(t)
-		defer mockCtrl.Finish()
+		_, runtime, _, workerOptions := workerOptions(t)
 
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -99,8 +87,7 @@ func TestRuntimeWatcher_UpdateInstance(t *testing.T) {
 
 	for _, event := range events {
 		t.Run(fmt.Sprintf("when %s happens, updates instance", event.String()), func(t *testing.T) {
-			mockCtrl, instanceStorage, roomStorage, runtime, workerOptions := workerOptions(t)
-			defer mockCtrl.Finish()
+			mockCtrl, runtime, roomManager, workerOptions := workerOptions(t)
 
 			scheduler := &entities.Scheduler{Name: "test"}
 			watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -110,20 +97,11 @@ func TestRuntimeWatcher_UpdateInstance(t *testing.T) {
 
 			resultChan := make(chan game_room.InstanceEvent)
 			runtimeWatcher.EXPECT().ResultChan().Return(resultChan)
-			runtimeWatcher.EXPECT().Stop()
+			runtimeWatcher.EXPECT().Stop().MinTimes(0)
 
 			// instance updates
 			newInstance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
-			gameRoom := &game_room.GameRoom{Status: game_room.GameStatusPending, PingStatus: game_room.GameRoomPingStatusReady}
-
-			updateCalled := false
-			instanceStorage.EXPECT().UpsertInstance(gomock.Any(), newInstance).DoAndReturn(func(_ context.Context, _ *game_room.Instance) error {
-				updateCalled = true
-				return nil
-			})
-			roomStorage.EXPECT().GetRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil)
-			instanceStorage.EXPECT().GetInstance(gomock.Any(), gomock.Any(), gomock.Any()).Return(newInstance, nil)
-			roomStorage.EXPECT().UpdateRoomStatus(gomock.Any(), gomock.Any(), gomock.Any(), game_room.GameStatusReady).Return(nil)
+			roomManager.EXPECT().UpdateRoomInstance(gomock.Any(), gomock.Any()).Return(nil).MinTimes(0)
 
 			watcherDone := make(chan error)
 			go func() {
@@ -131,19 +109,10 @@ func TestRuntimeWatcher_UpdateInstance(t *testing.T) {
 				watcherDone <- err
 			}()
 
-			require.Eventually(t, func() bool {
-				resultChan <- game_room.InstanceEvent{
-					Type:     event,
-					Instance: newInstance,
-				}
-
-				return true
-			}, time.Second, time.Millisecond)
-
-			// wait until the watcher process the event
-			require.Eventually(t, func() bool {
-				return updateCalled
-			}, time.Second, 100*time.Millisecond)
+			resultChan <- game_room.InstanceEvent{
+				Type:     event,
+				Instance: newInstance,
+			}
 
 			// stop the watcher
 			require.True(t, watcher.IsRunning())
@@ -158,9 +127,8 @@ func TestRuntimeWatcher_UpdateInstance(t *testing.T) {
 			}, time.Second, time.Millisecond)
 		})
 
-		t.Run(fmt.Sprintf("when %s happens, and update instance fails, does nothgin", event.String()), func(t *testing.T) {
-			mockCtrl, instanceStorage, _, runtime, workerOptions := workerOptions(t)
-			defer mockCtrl.Finish()
+		t.Run(fmt.Sprintf("when %s happens, and update instance fails, does nothing", event.String()), func(t *testing.T) {
+			mockCtrl, runtime, roomManager, workerOptions := workerOptions(t)
 
 			scheduler := &entities.Scheduler{Name: "test"}
 			watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -170,16 +138,11 @@ func TestRuntimeWatcher_UpdateInstance(t *testing.T) {
 
 			resultChan := make(chan game_room.InstanceEvent)
 			runtimeWatcher.EXPECT().ResultChan().Return(resultChan)
-			runtimeWatcher.EXPECT().Stop()
+			runtimeWatcher.EXPECT().Stop().MinTimes(0)
 
 			// instance updates
-			newInstance := &game_room.Instance{}
-
-			updateCalled := false
-			instanceStorage.EXPECT().UpsertInstance(gomock.Any(), newInstance).DoAndReturn(func(_ context.Context, _ *game_room.Instance) error {
-				updateCalled = true
-				return porterrors.ErrUnexpected
-			})
+			newInstance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+			roomManager.EXPECT().UpdateRoomInstance(gomock.Any(), gomock.Any()).Return(errors.New("error"))
 
 			watcherDone := make(chan error)
 			go func() {
@@ -187,19 +150,10 @@ func TestRuntimeWatcher_UpdateInstance(t *testing.T) {
 				watcherDone <- err
 			}()
 
-			require.Eventually(t, func() bool {
-				resultChan <- game_room.InstanceEvent{
-					Type:     event,
-					Instance: newInstance,
-				}
-
-				return true
-			}, time.Second, time.Millisecond)
-
-			// wait until the watcher process the event
-			require.Eventually(t, func() bool {
-				return updateCalled
-			}, time.Second, 100*time.Millisecond)
+			resultChan <- game_room.InstanceEvent{
+				Type:     event,
+				Instance: newInstance,
+			}
 
 			// stop the watcher
 			require.True(t, watcher.IsRunning())
@@ -218,14 +172,14 @@ func TestRuntimeWatcher_UpdateInstance(t *testing.T) {
 
 func TestRuntimeWatcher_CleanRoomState(t *testing.T) {
 	t.Run("clean room state on delete event", func(t *testing.T) {
-		mockCtrl, instanceStorage, roomStorage, runtime, workerOptions := workerOptions(t)
-		defer mockCtrl.Finish()
+		mockCtrl, runtime, roomManager, workerOptions := workerOptions(t)
 
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
 
 		runtimeWatcher := runtimemock.NewMockRuntimeWatcher(mockCtrl)
 		runtime.EXPECT().WatchGameRoomInstances(gomock.Any(), scheduler).Return(runtimeWatcher, nil)
+		roomManager.EXPECT().CleanRoomState(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 		resultChan := make(chan game_room.InstanceEvent)
 		runtimeWatcher.EXPECT().ResultChan().Return(resultChan)
@@ -234,36 +188,16 @@ func TestRuntimeWatcher_CleanRoomState(t *testing.T) {
 		// instance updates
 		instance := &game_room.Instance{ID: "room-id", SchedulerID: "room-scheduler"}
 
-		removeRoom := false
-		removeInstance := false
-		roomStorage.EXPECT().DeleteRoom(gomock.Any(), instance.SchedulerID, instance.ID).DoAndReturn(func(_ context.Context, _ string, _ string) error {
-			removeRoom = true
-			return nil
-		})
-		instanceStorage.EXPECT().DeleteInstance(gomock.Any(), instance.SchedulerID, instance.ID).DoAndReturn(func(_ context.Context, _ string, _ string) error {
-			removeInstance = true
-			return nil
-		})
-
 		watcherDone := make(chan error)
 		go func() {
 			err := watcher.Start(context.Background())
 			watcherDone <- err
 		}()
 
-		require.Eventually(t, func() bool {
-			resultChan <- game_room.InstanceEvent{
-				Type:     game_room.InstanceEventTypeDeleted,
-				Instance: instance,
-			}
-
-			return true
-		}, time.Second, time.Millisecond)
-
-		// wait until the watcher process the event
-		require.Eventually(t, func() bool {
-			return removeRoom && removeInstance
-		}, time.Second, 100*time.Millisecond)
+		resultChan <- game_room.InstanceEvent{
+			Type:     game_room.InstanceEventTypeDeleted,
+			Instance: instance,
+		}
 
 		// stop the watcher
 		watcher.Stop(context.Background())
@@ -277,14 +211,14 @@ func TestRuntimeWatcher_CleanRoomState(t *testing.T) {
 	})
 
 	t.Run("when clean room state fails, does nothing", func(t *testing.T) {
-		mockCtrl, _, roomStorage, runtime, workerOptions := workerOptions(t)
-		defer mockCtrl.Finish()
+		mockCtrl, runtime, roomManager, workerOptions := workerOptions(t)
 
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
 
 		runtimeWatcher := runtimemock.NewMockRuntimeWatcher(mockCtrl)
 		runtime.EXPECT().WatchGameRoomInstances(gomock.Any(), scheduler).Return(runtimeWatcher, nil)
+		roomManager.EXPECT().CleanRoomState(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("error"))
 
 		resultChan := make(chan game_room.InstanceEvent)
 		runtimeWatcher.EXPECT().ResultChan().Return(resultChan)
@@ -293,31 +227,16 @@ func TestRuntimeWatcher_CleanRoomState(t *testing.T) {
 		// instance updates
 		instance := &game_room.Instance{ID: "room-id", SchedulerID: "room-scheduler"}
 
-		removeRoom := false
-		roomStorage.EXPECT().DeleteRoom(gomock.Any(), instance.SchedulerID, instance.ID).DoAndReturn(func(_ context.Context, _ string, _ string) error {
-			removeRoom = true
-			return porterrors.ErrUnexpected
-		})
-
 		watcherDone := make(chan error)
 		go func() {
 			err := watcher.Start(context.Background())
 			watcherDone <- err
 		}()
 
-		require.Eventually(t, func() bool {
-			resultChan <- game_room.InstanceEvent{
-				Type:     game_room.InstanceEventTypeDeleted,
-				Instance: instance,
-			}
-
-			return true
-		}, time.Second, time.Millisecond)
-
-		// wait until the watcher process the event
-		require.Eventually(t, func() bool {
-			return removeRoom
-		}, time.Second, 100*time.Millisecond)
+		resultChan <- game_room.InstanceEvent{
+			Type:     game_room.InstanceEventTypeDeleted,
+			Instance: instance,
+		}
 
 		// stop the watcher
 		watcher.Stop(context.Background())

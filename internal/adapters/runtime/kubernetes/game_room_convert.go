@@ -189,10 +189,29 @@ func convertContainerResources(resources game_room.ContainerResources) (v1.Resou
 }
 
 func convertContainerEnvironment(env game_room.ContainerEnvironment) v1.EnvVar {
-	return v1.EnvVar{
-		Name:  env.Name,
-		Value: env.Value,
+	v1EnvVar := v1.EnvVar{Name: env.Name}
+
+	switch {
+	case env.Value != "":
+		v1EnvVar.Value = env.Value
+	case env.ValueFrom != nil && env.ValueFrom.SecretKeyRef != nil:
+		v1EnvVar.ValueFrom = &v1.EnvVarSource{
+			SecretKeyRef: &v1.SecretKeySelector{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: env.ValueFrom.SecretKeyRef.Name,
+				},
+				Key: env.ValueFrom.SecretKeyRef.Key,
+			},
+		}
+	case env.ValueFrom != nil && env.ValueFrom.FieldRef != nil:
+		v1EnvVar.ValueFrom = &v1.EnvVarSource{
+			FieldRef: &v1.ObjectFieldSelector{
+				FieldPath: env.ValueFrom.FieldRef.FieldPath,
+			},
+		}
 	}
+
+	return v1EnvVar
 }
 
 func convertSpecTolerations(spec game_room.Spec) []v1.Toleration {

@@ -29,9 +29,14 @@ const (
 )
 
 const (
+	LabelService   = "service"
+	LabelMethod    = "method"
+	LabelCode      = "code"
 	LabelPlatform  = "platform"
 	LabelSuccess   = "success"
 	LabelReason    = "reason"
 	LabelScheduler = "scheduler"
+	LabelGame      = "game"
 	LabelOperation = "operation"
+	LabelStorage   = "storage"
 )

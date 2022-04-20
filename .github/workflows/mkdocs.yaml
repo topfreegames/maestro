@@ -3,7 +3,7 @@ name: Documentation
 on:
   push:
     branches:
-      - next
+      - main
     paths:
       - "docs/*"
       - "**.md"
@@ -22,6 +22,7 @@ jobs:
       - run: pip install mkdocs-material 
       - run: pip install mkdocs-git-revision-date-plugin
       - run: pip install mkdocs-render-swagger-plugin
+      - run: pip install mkdocs-mermaid2-plugin
       - run: git config user.name 'github-actions[bot]' && git config user.email 'github-actions[bot]@users.noreply.github.com'
       - name: Publish docs
         run: mkdocs gh-deploy --force

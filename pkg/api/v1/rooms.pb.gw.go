@@ -389,7 +389,7 @@ func local_request_RoomsService_UpdateRoomStatus_0(ctx context.Context, marshale
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterRoomsServiceHandlerFromEndpoint instead.
 func RegisterRoomsServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server RoomsServiceServer) error {
 
-	mux.Handle("POST", pattern_RoomsService_UpdateRoomWithPing_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PUT", pattern_RoomsService_UpdateRoomWithPing_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -522,7 +522,7 @@ func RegisterRoomsServiceHandler(ctx context.Context, mux *runtime.ServeMux, con
 // "RoomsServiceClient" to call the correct interceptors.
 func RegisterRoomsServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client RoomsServiceClient) error {
 
-	mux.Handle("POST", pattern_RoomsService_UpdateRoomWithPing_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PUT", pattern_RoomsService_UpdateRoomWithPing_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)

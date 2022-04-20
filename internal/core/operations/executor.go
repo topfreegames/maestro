@@ -34,10 +34,10 @@ type Executor interface {
 	// Execute is where the operation logic will live; it will receive a context
 	// that will be used for deadline and cancellation. This function has only
 	// one return which is the operation error (if any);
-	Execute(ctx context.Context, op *operation.Operation, definition Definition) error
-	// OnError is called if Execute returns an error. This will be used
+	Execute(ctx context.Context, op *operation.Operation, definition Definition) ExecutionError
+	// Rollback is called if Execute returns an error. This will be used
 	// for operations that need to do some cleanup or any process if it fails.
-	OnError(ctx context.Context, op *operation.Operation, definition Definition, executeErr error) error
+	Rollback(ctx context.Context, op *operation.Operation, definition Definition, executeErr ExecutionError) error
 	// Name returns the executor name. This is used to identify a executor for a
 	// definition.
 	Name() string

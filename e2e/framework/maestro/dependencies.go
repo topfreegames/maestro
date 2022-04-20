@@ -23,6 +23,7 @@
 package maestro
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -43,9 +44,11 @@ type dependencies struct {
 // environment to avoid conflicts.
 func provideDependencies(maestroPath string) (*dependencies, error) {
 	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("test-something")
+	identifier := strings.ToLower("e2e-test")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
+	_ = compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
+
 	composeErr := compose.WithCommand([]string{"up", "-d", "postgres", "redis", "k3s_agent", "k3s_server"}).Invoke()
 
 	if composeErr.Error != nil {
@@ -53,17 +56,28 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 	}
 
 	migrateErr := helpers.TimedRetry(func() error {
-		_, err := exec.ExecGoCmd(
+		cmd, err := exec.ExecGoCmd(
 			maestroPath,
 			[]string{},
-			"cmd/utils/utils.go", "migrate",
+			"main.go", "migrate",
 		)
+		if err != nil {
+			return err
+		}
 
-		return err
-	}, time.Second, 30*time.Second)
+		output, err := cmd.ReadOutput()
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(output), "migration completed") || strings.Contains(string(output), "database schema already up to date") {
+			return nil
+		}
+
+		return errors.New("migration not ready")
+	}, time.Second, 2*time.Minute)
 
 	if migrateErr != nil {
-		compose.Down()
+		compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
 		return nil, fmt.Errorf("failed to migrate database: %s", migrateErr)
 	}
 
@@ -76,5 +90,10 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 }
 
 func (d *dependencies) Teardown() {
-	d.compose.Down()
+	d.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "postgres", "redis", "k3s_agent", "k3s_server"}).Invoke()
+	exec.ExecSysCmd(
+		maestroPath,
+		"docker",
+		"volume ", "rm", "e2e-test_eventsproto", "e2e-test_kubeconfig",
+	)
 }

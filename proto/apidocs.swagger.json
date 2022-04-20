@@ -9,9 +9,6 @@
       "name": "OperationsService"
     },
     {
-      "name": "PingService"
-    },
-    {
       "name": "RoomsService"
     },
     {
@@ -29,31 +26,8 @@
     "application/json"
   ],
   "paths": {
-    "/ping": {
-      "get": {
-        "summary": "To check the service is up.",
-        "operationId": "PingService_GetPing",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1GetPingResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "tags": [
-          "PingService"
-        ]
-      }
-    },
     "/scheduler/{schedulerName}/rooms/{roomName}/ping": {
-      "post": {
+      "put": {
         "summary": "Updates a game room with ping data.",
         "operationId": "RoomsService_UpdateRoomWithPing",
         "responses": {
@@ -322,6 +296,29 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Unique identifier for the scheduler.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "game",
+            "description": "Game the new scheduler will be part of.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "version",
+            "description": "Version to for the scheduler.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
         "tags": [
           "SchedulersService"
         ]
@@ -358,15 +355,47 @@
         ]
       }
     },
-    "/schedulers/{name=*}": {
-      "put": {
-        "summary": "Update a scheduler.",
-        "operationId": "SchedulersService_UpdateScheduler",
+    "/schedulers/info": {
+      "get": {
+        "summary": "List Scheduler and Game Rooms info by Game",
+        "operationId": "SchedulersService_GetSchedulersInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1UpdateSchedulerResponse"
+              "$ref": "#/definitions/v1GetSchedulersInfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "game",
+            "description": "Game name to filter schedulers.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
+    },
+    "/schedulers/{name=*}": {
+      "post": {
+        "summary": "Creates new scheduler version and switch it to active version.",
+        "operationId": "SchedulersService_NewSchedulerVersion",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1NewSchedulerVersionResponse"
             }
           },
           "default": {
@@ -395,36 +424,87 @@
                   "type": "string",
                   "description": "Game the new scheduler will be part of."
                 },
-                "terminationGracePeriod": {
-                  "type": "string",
-                  "format": "int64",
-                  "description": "The game room termination grace period."
-                },
-                "containers": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/v1Container"
-                  },
-                  "description": "The container object array defines all the game room container configurations."
+                "spec": {
+                  "$ref": "#/definitions/v1Spec",
+                  "description": "The spec object defines all the game room container configurations and spec."
                 },
                 "portRange": {
                   "$ref": "#/definitions/v1PortRange",
                   "description": "The port range object describes what is the port range used to allocate game rooms."
                 },
-                "toleration": {
+                "maxSurge": {
                   "type": "string",
-                  "description": "Runtime game room toleration configuration."
+                  "title": "The max surge of new rooms, used to scale and update"
                 },
-                "affinity": {
-                  "type": "string",
-                  "description": "Runtime game room affinity configuration."
+                "forwarders": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/v1Forwarder"
+                  },
+                  "title": "List of Scheduler forwarders"
+                }
+              },
+              "description": "Scheduler is the struct that defines a maestro scheduler."
+            }
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      },
+      "patch": {
+        "summary": "Patch a scheduler and switch it to active version.",
+        "operationId": "SchedulersService_PatchScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1PatchSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Unique identifier for the scheduler.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "spec": {
+                  "$ref": "#/definitions/v1OptionalSpec",
+                  "description": "The spec object defines all the game room container configurations and spec."
+                },
+                "portRange": {
+                  "$ref": "#/definitions/v1PortRange",
+                  "description": "The port range object describes what is the port range used to allocate game rooms."
                 },
                 "maxSurge": {
                   "type": "string",
                   "title": "The max surge of new rooms, used to scale and update"
+                },
+                "forwarders": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/v1Forwarder"
+                  },
+                  "title": "List of Scheduler forwarders"
                 }
               },
-              "description": "Scheduler is the struct that defines a maestro scheduler."
+              "description": "PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler."
             }
           }
         ],
@@ -465,6 +545,51 @@
             "in": "query",
             "required": false,
             "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      },
+      "put": {
+        "summary": "Switch Active Version to Scheduler",
+        "operationId": "SchedulersService_SwitchActiveVersion",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SwitchActiveVersionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler Name",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "title": "Version that will be activate in Scheduler"
+                }
+              },
+              "title": "Switch Active Version Request"
+            }
           }
         ],
         "tags": [
@@ -548,9 +673,48 @@
           },
           {
             "name": "orderBy",
-            "description": "Optional parameter for enabling operations sorting.\nGeneral `order_by` string syntax: \u003cfield\u003e (\u003casc|desc\u003e)\nNOTE: On http protocol, this operates as a query parameter.",
+            "description": "Optional parameter for enabling operations sorting.\nGeneral `order_by` string syntax: \u003cfield\u003e (\u003casc|desc\u003e)\nDefault value is `created_at desc`\nNOTE: On http protocol, this operates as a query parameter.",
             "in": "query",
             "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "OperationsService"
+        ]
+      }
+    },
+    "/schedulers/{schedulerName}/operations/{operationId}": {
+      "get": {
+        "summary": "Get operation based on scheduler name and operation ID",
+        "operationId": "OperationsService_GetOperation",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetOperationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name that the operations are part of.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "operationId",
+            "description": "ID of the requested operation.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
             "type": "string"
           }
         ],
@@ -695,14 +859,29 @@
           "type": "string",
           "description": "Name of the operation being executed."
         },
+        "lease": {
+          "$ref": "#/definitions/v1Lease",
+          "description": "Operation lease. This is an optional field since not all operations have a lease."
+        },
         "schedulerName": {
           "type": "string",
-          "description": "Scheduler indentifier that the operation is from."
+          "description": "Scheduler identifier that the operation is from."
         },
         "createdAt": {
           "type": "string",
           "format": "date-time",
           "description": "Time the operation was created."
+        },
+        "input": {
+          "type": "object",
+          "description": "Input the data that was sent by client."
+        },
+        "executionHistory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1OperationEvent"
+          },
+          "description": "ExecutionHistory is the execution details filled by Maestro."
         }
       },
       "title": "The operation object representation"
@@ -816,9 +995,51 @@
         "value": {
           "type": "string",
           "description": "Container environment variable value."
+        },
+        "valueFrom": {
+          "$ref": "#/definitions/v1ContainerEnvironmentValueFrom",
+          "description": "Source for the environment variable's value. Cannot be used if value is not empty."
         }
       },
       "description": "Container environment variables."
+    },
+    "v1ContainerEnvironmentValueFrom": {
+      "type": "object",
+      "properties": {
+        "fieldRef": {
+          "$ref": "#/definitions/v1ContainerEnvironmentValueFromFieldRef",
+          "description": "Container environment variable name using field reference, supports metadata.name, metadata.namespace, `metadata.labels['\u003cKEY\u003e']`, `metadata.annotations['\u003cKEY\u003e']`,\nspec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs."
+        },
+        "secretKeyRef": {
+          "$ref": "#/definitions/v1ContainerEnvironmentValueFromSecretKeyRef",
+          "description": "Container environment variable value using a secret key reference contained in the namespace."
+        }
+      },
+      "title": "Container environment ValueFrom possible values"
+    },
+    "v1ContainerEnvironmentValueFromFieldRef": {
+      "type": "object",
+      "properties": {
+        "fieldPath": {
+          "type": "string",
+          "description": "The field path of the pod: supports metadata.name, metadata.namespace, `metadata.labels['\u003cKEY\u003e']`, `metadata.annotations['\u003cKEY\u003e']`,\nspec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs."
+        }
+      },
+      "description": "Container environment valueFrom using field reference."
+    },
+    "v1ContainerEnvironmentValueFromSecretKeyRef": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the secret contained in the scheduler namespace."
+        },
+        "key": {
+          "type": "string",
+          "description": "Secret key."
+        }
+      },
+      "description": "Container environment valueFrom using secret key reference."
     },
     "v1ContainerPort": {
       "type": "object",
@@ -869,37 +1090,24 @@
           "type": "string",
           "description": "Game the new scheduler will be part of."
         },
-        "version": {
-          "type": "string",
-          "description": "?."
-        },
-        "terminationGracePeriod": {
-          "type": "string",
-          "format": "int64",
-          "description": "The game room termination grace period."
-        },
-        "containers": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1Container"
-          },
-          "description": "The container object array defines all the game room container configurations."
+        "spec": {
+          "$ref": "#/definitions/v1Spec",
+          "description": "The spec object defines all the game room container configurations and spec of the scheduler."
         },
         "portRange": {
           "$ref": "#/definitions/v1PortRange",
           "description": "The port range object describes what is the port range used to allocate game rooms."
         },
-        "toleration": {
-          "type": "string",
-          "description": "Runtime game room toleration configuration."
-        },
-        "affinity": {
-          "type": "string",
-          "description": "Runtime game room affinity configuration."
-        },
         "maxSurge": {
           "type": "string",
           "title": "The max surge of new rooms, used to scale and update"
+        },
+        "forwarders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Forwarder"
+          },
+          "title": "List of Scheduler forwarders"
         }
       },
       "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -942,15 +1150,56 @@
       },
       "description": "The room event response."
     },
-    "v1GetPingResponse": {
+    "v1Forwarder": {
       "type": "object",
       "properties": {
-        "message": {
+        "name": {
           "type": "string",
-          "description": "Pong is the ping response."
+          "title": "Forwarder name used to identify it. Must be unique within the scheduler"
+        },
+        "enable": {
+          "type": "boolean",
+          "title": "Defines if the forwarder is going to receive events or not"
+        },
+        "type": {
+          "type": "string",
+          "title": "Forwarder type"
+        },
+        "address": {
+          "type": "string",
+          "description": "Forwarder gRPC service address."
+        },
+        "options": {
+          "$ref": "#/definitions/v1ForwarderOptions",
+          "title": "Forwarder Options"
         }
       },
-      "description": "The ping response."
+      "description": "Forwarder definitions."
+    },
+    "v1ForwarderOptions": {
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timeout of a request in milliseconds."
+        },
+        "metadata": {
+          "type": "object",
+          "title": "Additional information"
+        }
+      },
+      "description": "Forwarder Options definitions."
+    },
+    "v1GetOperationResponse": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "$ref": "#/definitions/apiv1Operation",
+          "description": "Operation requested."
+        }
+      },
+      "title": "The get operation route response/reply"
     },
     "v1GetSchedulerResponse": {
       "type": "object",
@@ -960,7 +1209,7 @@
           "description": "List of schedulers fetched."
         }
       },
-      "description": "The list schedulers reponse message."
+      "description": "The list schedulers response message."
     },
     "v1GetSchedulerVersionsResponse": {
       "type": "object",
@@ -974,6 +1223,29 @@
         }
       },
       "title": "Get Scheduler Versions payload"
+    },
+    "v1GetSchedulersInfoResponse": {
+      "type": "object",
+      "properties": {
+        "schedulers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1SchedulerInfo"
+          },
+          "description": "List of schedulers fetched."
+        }
+      },
+      "title": "List Scheduler and Game Rooms Info Response"
+    },
+    "v1Lease": {
+      "type": "object",
+      "properties": {
+        "ttl": {
+          "type": "string",
+          "description": "Lease time to live in RFC3999 format UTC. if the current time is greater than this value,\nthe lease is probably expired."
+        }
+      },
+      "title": "The operation lease object representation"
     },
     "v1ListOperationsResponse": {
       "type": "object",
@@ -1013,7 +1285,115 @@
           "description": "List of schedulers fetched."
         }
       },
-      "description": "The list schedulers reponse message."
+      "description": "The list schedulers response message."
+    },
+    "v1NewSchedulerVersionResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Operation ID, further this id can be used to consult its state."
+        }
+      },
+      "description": "Update schedule operation response payload."
+    },
+    "v1OperationEvent": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "DateTime is the time when the event occurred."
+        },
+        "event": {
+          "type": "string",
+          "description": "Event describe what happened in this event."
+        }
+      },
+      "description": "OperationEvent object represent an execution event."
+    },
+    "v1OptionalContainer": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the container."
+        },
+        "image": {
+          "type": "string",
+          "description": "Image address."
+        },
+        "imagePullPolicy": {
+          "type": "string",
+          "description": "Image pull policy: Always, Never and IfNotExists."
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Container command to be called when container is instantiated."
+        },
+        "environment": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ContainerEnvironment"
+          },
+          "description": "Container environment variables."
+        },
+        "requests": {
+          "$ref": "#/definitions/v1ContainerResources",
+          "description": "Container resources request (cpu/memory)."
+        },
+        "limits": {
+          "$ref": "#/definitions/v1ContainerResources",
+          "description": "Container resources limits (cpu/memory)."
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ContainerPort"
+          },
+          "description": "Container exposed ports definitions."
+        }
+      },
+      "description": "OptionalContainer is the struct that defines a game room container configuration.\nThis message is used to patch container configuration."
+    },
+    "v1OptionalSpec": {
+      "type": "object",
+      "properties": {
+        "terminationGracePeriod": {
+          "type": "string",
+          "format": "int64",
+          "description": "The game room termination grace period."
+        },
+        "containers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1OptionalContainer"
+          },
+          "description": "The container object array defines all the game room container configurations."
+        },
+        "toleration": {
+          "type": "string",
+          "description": "Runtime game room toleration configuration."
+        },
+        "affinity": {
+          "type": "string",
+          "description": "Runtime game room affinity configuration."
+        }
+      },
+      "description": "OptionalSpec is the specifications of the scheduler, with relevant info about what is being used.\nThis message is used to patch spec configuration."
+    },
+    "v1PatchSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Operation ID, further this id can be used to consult its state."
+        }
+      },
+      "description": "PatchSchedulerResponse have the operation response id that represents the operation creted to this change."
     },
     "v1PortRange": {
       "type": "object",
@@ -1056,10 +1436,6 @@
           "type": "string",
           "description": "Current state of the scheduler."
         },
-        "version": {
-          "type": "string",
-          "description": "Scheduler current version."
-        },
         "portRange": {
           "$ref": "#/definitions/v1PortRange",
           "description": "Port range for the scheduler rooms."
@@ -1076,9 +1452,54 @@
         "spec": {
           "$ref": "#/definitions/v1Spec",
           "title": "GameRoom spec"
+        },
+        "forwarders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Forwarder"
+          },
+          "title": "List of Scheduler forwarders"
         }
       },
       "description": "Scheduler definition."
+    },
+    "v1SchedulerInfo": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "game": {
+          "type": "string",
+          "title": "Game"
+        },
+        "state": {
+          "type": "string",
+          "title": "State"
+        },
+        "roomsReady": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Rooms ready"
+        },
+        "roomsOccupied": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Rooms Occupied"
+        },
+        "roomsPending": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Rooms Pending"
+        },
+        "roomsTerminating": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Rooms Terminating"
+        }
+      },
+      "title": "Scheduler Info"
     },
     "v1SchedulerVersion": {
       "type": "object",
@@ -1086,6 +1507,10 @@
         "version": {
           "type": "string",
           "title": "Specific version"
+        },
+        "isActive": {
+          "type": "boolean",
+          "title": "Flag indicating if the version is active or not"
         },
         "createdAt": {
           "type": "string",
@@ -1128,7 +1553,7 @@
           "title": "Max surge of rooms"
         }
       },
-      "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unecessary for the list function"
+      "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unnecessary for the list function"
     },
     "v1Spec": {
       "type": "object",
@@ -1158,7 +1583,17 @@
           "description": "Runtime game room affinity configuration."
         }
       },
-      "title": "Spec is the specifications of the scheduler, with relevant info about what is being used"
+      "description": "Spec is the specifications of the scheduler, with relevant info about what is being used."
+    },
+    "v1SwitchActiveVersionResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "title": "Operation Id generated"
+        }
+      },
+      "title": "Switch Active Version Response"
     },
     "v1UpdateRoomStatusResponse": {
       "type": "object",
@@ -1179,16 +1614,6 @@
         }
       },
       "description": "The ping response."
-    },
-    "v1UpdateSchedulerResponse": {
-      "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "description": "Operation ID, further this id can be used to consult its state."
-        }
-      },
-      "description": "Update schedule operation response payload."
     }
   }
 }

@@ -23,14 +23,13 @@
 //go:build wireinject
 // +build wireinject
 
-package main
+package worker
 
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
+	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
@@ -45,19 +44,24 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		service.NewOperationFlowRedis,
 		service.NewClockTime,
 		service.NewOperationStorageRedis,
+		service.NewOperationManager,
+		service.NewSchedulerCacheRedis,
+		service.NewOperationLeaseStorageRedis,
 		service.NewPortAllocatorRandom,
 		service.NewRoomStorageRedis,
 		service.NewGameRoomInstanceStorageRedis,
 		service.NewRoomManagerConfig,
+		service.NewRoomManager,
+		service.NewOperationManagerConfig,
 		service.NewEventsForwarder,
+		service.NewEventsForwarderServiceConfig,
 
 		// scheduler operations
 		providers.ProvideDefinitionConstructors,
 		providers.ProvideExecutors,
 
 		// services
-		room_manager.NewRoomManager,
-		operation_manager.New,
+		events_forwarder.NewEventsForwarderService,
 		workers.ProvideWorkerOptions,
 		workers_manager.NewWorkersManager,
 		scheduler_manager.NewSchedulerManager,

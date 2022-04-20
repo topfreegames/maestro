@@ -24,52 +24,64 @@ package remove_rooms
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
+
+	"github.com/topfreegames/maestro/internal/core/logs"
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"go.uber.org/zap"
 )
 
 type RemoveRoomsExecutor struct {
-	roomManager *room_manager.RoomManager
+	roomManager ports.RoomManager
 }
 
-func NewExecutor(roomManager *room_manager.RoomManager) *RemoveRoomsExecutor {
+var _ operations.Executor = (*RemoveRoomsExecutor)(nil)
+
+func NewExecutor(roomManager ports.RoomManager) *RemoveRoomsExecutor {
 	return &RemoveRoomsExecutor{roomManager}
 }
 
-func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
 	removeDefinition := definition.(*RemoveRoomsDefinition)
-	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, op.SchedulerName, removeDefinition.Version, removeDefinition.Amount, &sync.Map{})
+	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, op.SchedulerName, "", removeDefinition.Amount, &sync.Map{})
 	if err != nil {
-		return fmt.Errorf("failed to list rooms to delete: %w", err)
+		return operations.NewErrUnexpected(fmt.Errorf("failed to list rooms to delete: %w", err))
 	}
 
 	logger := zap.L().With(
-		zap.String("scheduler_name", op.SchedulerName),
-		zap.String("operation_definition", definition.Name()),
-		zap.String("operation_id", op.ID),
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
+		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 
-	logger.Debug("start deleting rooms", zap.Int("amount", len(rooms)))
+	logger.Info("start deleting rooms", zap.Int("amount", len(rooms)))
 
 	for _, room := range rooms {
-		err = e.roomManager.DeleteRoom(ctx, room)
+		err = e.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
+			deleteErr := fmt.Errorf("failed to remove room: %w", err)
+
+			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
+				return operations.NewErrTerminatingPingTimeout(deleteErr)
+			}
+			return operations.NewErrUnexpected(deleteErr)
 		}
 	}
 
-	logger.Debug("finished deleting rooms")
+	logger.Info("finished deleting rooms")
 	return nil
 }
 
-// OnError will do nothing.
-func (e *RemoveRoomsExecutor) OnError(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
+func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ operations.ExecutionError) error {
 	return nil
 }
 

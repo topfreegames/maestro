@@ -26,10 +26,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/logs"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"go.uber.org/zap"
 )
@@ -41,13 +42,11 @@ var _ workers.Worker = (*runtimeWatcherWorker)(nil)
 // any action over the game rooms or the scheduler.
 type runtimeWatcherWorker struct {
 	scheduler   *entities.Scheduler
-	roomManager *room_manager.RoomManager
+	roomManager ports.RoomManager
 	// TODO(gabrielcorado): should we access the port directly? do we need to
 	// provide the same `Watcher` interface but on the RoomManager?
-	runtime ports.Runtime
-
-	logger *zap.Logger
-
+	runtime    ports.Runtime
+	logger     *zap.Logger
 	ctx        context.Context
 	cancelFunc context.CancelFunc
 }
@@ -57,7 +56,7 @@ func NewRuntimeWatcherWorker(scheduler *entities.Scheduler, opts *workers.Worker
 		scheduler:   scheduler,
 		roomManager: opts.RoomManager,
 		runtime:     opts.Runtime,
-		logger:      zap.L().With(zap.String("service", "runtime_watcher"), zap.String("scheduler_name", scheduler.Name)),
+		logger:      zap.L().With(zap.String(logs.LogFieldServiceName, "runtime_watcher"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
 
@@ -76,7 +75,11 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 		case <-w.ctx.Done():
 			watcher.Stop()
 			return nil
-		case event := <-resultChan:
+		case event, ok := <-resultChan:
+			if !ok {
+				watcher.Stop()
+				return nil
+			}
 			err := w.processEvent(w.ctx, event)
 			if err != nil {
 				w.logger.Warn("failed to process event", zap.Error(err))
@@ -96,15 +99,26 @@ func (w *runtimeWatcherWorker) IsRunning() bool {
 }
 
 func (w *runtimeWatcherWorker) processEvent(ctx context.Context, event game_room.InstanceEvent) error {
+	eventLogger := w.logger.With(zap.String(logs.LogFieldInstanceID, event.Instance.ID))
 	switch event.Type {
 	case game_room.InstanceEventTypeAdded, game_room.InstanceEventTypeUpdated:
+		eventLogger.Info(fmt.Sprintf("processing %s event. Updating rooms instance", event.Type.String()))
+		if event.Instance == nil {
+			return fmt.Errorf("cannot process event since instance is nil")
+		}
 		err := w.roomManager.UpdateRoomInstance(ctx, event.Instance)
 		if err != nil {
+			eventLogger.Error(fmt.Sprintf("failed to process %s event.", event.Type.String()), zap.Error(err))
 			return fmt.Errorf("failed to update room instance %s: %w", event.Instance.ID, err)
 		}
 	case game_room.InstanceEventTypeDeleted:
+		eventLogger.Info(fmt.Sprintf("processing %s event. Cleaning Room state", event.Type.String()))
+		if event.Instance == nil {
+			return fmt.Errorf("cannot process event since instance is nil")
+		}
 		err := w.roomManager.CleanRoomState(ctx, event.Instance.SchedulerID, event.Instance.ID)
 		if err != nil {
+			eventLogger.Error(fmt.Sprintf("failed to process %s event.", event.Type.String()), zap.Error(err))
 			return fmt.Errorf("failed to clean room %s state: %w", event.Instance.ID, err)
 		}
 	default:

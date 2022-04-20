@@ -38,7 +38,7 @@ var dbNumber int32 = 0
 
 func WithRedisContainer(exec func(redisAddress string)) {
 	var err error
-	redisContainer, err := gnomock.Start(predis.Preset())
+	redisContainer, err := gnomock.Start(predis.Preset(predis.WithVersion("6.2.0")))
 	if err != nil {
 		panic(fmt.Sprintf("error creating redis docker instance: %s\n", err))
 	}
@@ -49,6 +49,9 @@ func WithRedisContainer(exec func(redisAddress string)) {
 }
 
 func GetRedisConnection(t *testing.T, redisAddress string) *redis.Client {
+	if atomic.LoadInt32(&dbNumber) >= 15 {
+		atomic.StoreInt32(&dbNumber, -1)
+	}
 	db := atomic.AddInt32(&dbNumber, 1)
 	client := redis.NewClient(&redis.Options{
 		Addr: redisAddress,

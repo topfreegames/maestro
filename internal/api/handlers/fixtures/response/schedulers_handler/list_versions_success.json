@@ -1,0 +1,14 @@
+{
+  "versions": [
+    {
+      "version": "v1.1",
+      "isActive": true,
+      "createdAt": "2020-01-01T00:00:00.001Z"
+    },
+    {
+      "version": "v2.0",
+      "isActive": false,
+      "createdAt": "2020-01-01T00:00:00.001Z"
+    }
+  ]
+}

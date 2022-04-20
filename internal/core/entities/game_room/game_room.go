@@ -71,15 +71,15 @@ func (status GameRoomStatus) String() string {
 type GameRoomPingStatus int
 
 const (
-	// GameStatusPingUnknown room hasn't sent a ping yet.
+	// GameRoomPingStatusUnknown room hasn't sent a ping yet.
 	GameRoomPingStatusUnknown GameRoomPingStatus = iota
-	// GameStatusReady room is empty and ready to receive matches
+	// GameRoomPingStatusReady room is empty and ready to receive matches
 	GameRoomPingStatusReady
-	// GameStatusOccupied room has matches running inside of it.
+	// GameRoomPingStatusOccupied room has matches running inside of it.
 	GameRoomPingStatusOccupied
-	// GameStatusTerminating room is in the process of terminating itself.
+	// GameRoomPingStatusTerminating room is in the process of terminating itself.
 	GameRoomPingStatusTerminating
-	// GameStatusTerminating room has terminated.
+	// GameRoomPingStatusTerminated room has terminated.
 	GameRoomPingStatusTerminated
 )
 
@@ -117,11 +117,121 @@ func FromStringToGameRoomPingStatus(value string) (GameRoomPingStatus, error) {
 }
 
 type GameRoom struct {
-	ID          string
-	SchedulerID string
-	Version     string
-	Status      GameRoomStatus
-	PingStatus  GameRoomPingStatus
-	Metadata    map[string]interface{}
-	LastPingAt  time.Time
+	ID               string
+	SchedulerID      string
+	Version          string
+	Status           GameRoomStatus
+	PingStatus       GameRoomPingStatus
+	Metadata         map[string]interface{}
+	LastPingAt       time.Time
+	IsValidationRoom bool
+}
+
+// validStatusTransitions this map has all possible status changes for a game
+// room.
+var validStatusTransitions = map[GameRoomStatus]map[GameRoomStatus]struct{}{
+	GameStatusPending: {
+		GameStatusReady:       struct{}{},
+		GameStatusTerminating: struct{}{},
+		GameStatusUnready:     struct{}{},
+		GameStatusError:       struct{}{},
+	},
+	GameStatusReady: {
+		GameStatusOccupied:    struct{}{},
+		GameStatusTerminating: struct{}{},
+		GameStatusUnready:     struct{}{},
+		GameStatusError:       struct{}{},
+	},
+	GameStatusUnready: {
+		GameStatusTerminating: struct{}{},
+		GameStatusReady:       struct{}{},
+		GameStatusError:       struct{}{},
+		GameStatusPending:     struct{}{},
+	},
+	GameStatusOccupied: {
+		GameStatusReady:       struct{}{},
+		GameStatusTerminating: struct{}{},
+		GameStatusUnready:     struct{}{},
+		GameStatusError:       struct{}{},
+	},
+	GameStatusError: {
+		GameStatusTerminating: struct{}{},
+		GameStatusUnready:     struct{}{},
+		GameStatusReady:       struct{}{},
+	},
+	GameStatusTerminating: {},
+}
+
+// roomStatusComposition define what is the "final" game room status based on
+// the provided ping and instance status.
+var roomStatusComposition = []struct {
+	pingStatus         GameRoomPingStatus
+	instanceStatusType InstanceStatusType
+	status             GameRoomStatus
+}{
+	// Pending
+	{GameRoomPingStatusUnknown, InstanceUnknown, GameStatusPending},
+	{GameRoomPingStatusUnknown, InstancePending, GameStatusPending},
+	{GameRoomPingStatusReady, InstancePending, GameStatusPending},
+	{GameRoomPingStatusReady, InstanceUnknown, GameStatusPending},
+	{GameRoomPingStatusOccupied, InstanceUnknown, GameStatusPending},
+	{GameRoomPingStatusOccupied, InstancePending, GameStatusPending},
+
+	// Ready
+	{GameRoomPingStatusReady, InstanceReady, GameStatusReady},
+
+	// Occupied
+	{GameRoomPingStatusOccupied, InstanceReady, GameStatusOccupied},
+
+	// Unready
+	{GameRoomPingStatusUnknown, InstanceReady, GameStatusUnready},
+	{GameRoomPingStatusUnknown, InstancePending, GameStatusUnready},
+
+	// Terminating
+	{GameRoomPingStatusUnknown, InstanceTerminating, GameStatusTerminating},
+	{GameRoomPingStatusReady, InstanceTerminating, GameStatusTerminating},
+	{GameRoomPingStatusOccupied, InstanceTerminating, GameStatusTerminating},
+	{GameRoomPingStatusTerminating, InstancePending, GameStatusTerminating},
+	{GameRoomPingStatusTerminating, InstanceReady, GameStatusTerminating},
+	{GameRoomPingStatusTerminating, InstanceTerminating, GameStatusTerminating},
+	{GameRoomPingStatusTerminating, InstanceUnknown, GameStatusTerminating},
+	{GameRoomPingStatusTerminated, InstancePending, GameStatusTerminating},
+	{GameRoomPingStatusTerminated, InstanceReady, GameStatusTerminating},
+	{GameRoomPingStatusTerminated, InstanceTerminating, GameStatusTerminating},
+	{GameRoomPingStatusTerminated, InstanceUnknown, GameStatusTerminating},
+
+	// Error
+	{GameRoomPingStatusUnknown, InstanceError, GameStatusError},
+	{GameRoomPingStatusReady, InstanceError, GameStatusError},
+	{GameRoomPingStatusOccupied, InstanceError, GameStatusError},
+	{GameRoomPingStatusTerminating, InstanceError, GameStatusError},
+	{GameRoomPingStatusTerminated, InstanceError, GameStatusError},
+}
+
+// RoomComposedStatus returns a game room status formed by a game room ping status and an instance status
+func (g *GameRoom) RoomComposedStatus(instanceStatusType InstanceStatusType) (GameRoomStatus, error) {
+	for _, composition := range roomStatusComposition {
+		if composition.pingStatus == g.PingStatus && composition.instanceStatusType == instanceStatusType {
+			return composition.status, nil
+		}
+	}
+
+	return GameStatusPending, fmt.Errorf(
+		"ping status \"%s\" and instance status \"%s\" doesn't have a match",
+		g.PingStatus.String(), instanceStatusType.String(),
+	)
+}
+
+// ValidateRoomStatusTransition validates that a transition from currentStatus to newStatus can happen.
+func (g *GameRoom) ValidateRoomStatusTransition(newStatus GameRoomStatus) error {
+	transitions, ok := validStatusTransitions[g.Status]
+	if !ok {
+		return fmt.Errorf("game rooms has an invalid status %s", g.Status.String())
+	}
+
+	if _, valid := transitions[newStatus]; !valid {
+		return fmt.Errorf("cannot change game room status from %s to %s", g.Status.String(), newStatus.String())
+	}
+
+	return nil
 }

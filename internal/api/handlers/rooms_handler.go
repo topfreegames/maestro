@@ -27,7 +27,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
+	"github.com/topfreegames/maestro/internal/core/logs"
+
+	"go.uber.org/zap"
+
+	"github.com/topfreegames/maestro/internal/core/ports"
+
+	"github.com/topfreegames/maestro/internal/core/entities/events"
 
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
@@ -35,59 +41,65 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
 type RoomsHandler struct {
-	roomManager            *room_manager.RoomManager
-	eventsForwarderService *events_forwarder.EventsForwarderService
+	roomManager   ports.RoomManager
+	eventsService ports.EventsService
+	logger        *zap.Logger
 	api.UnimplementedRoomsServiceServer
 }
 
-func ProvideRoomsHandler(roomManager *room_manager.RoomManager, eventsForwarderService *events_forwarder.EventsForwarderService) *RoomsHandler {
+func ProvideRoomsHandler(roomManager ports.RoomManager, eventsService ports.EventsService) *RoomsHandler {
 	return &RoomsHandler{
-		roomManager:            roomManager,
-		eventsForwarderService: eventsForwarderService,
+		roomManager:   roomManager,
+		eventsService: eventsService,
+		logger: zap.L().
+			With(zap.String(logs.LogFieldComponent, "handler"), zap.String(logs.LogFieldHandlerName, "rooms_handler")),
 	}
 }
 
 func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.ForwardRoomEventRequest) (*api.ForwardRoomEventResponse, error) {
-	room := &game_room.GameRoom{ID: message.RoomName, SchedulerID: message.SchedulerName, Metadata: message.Metadata.AsMap()}
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
+	eventMetadata := message.Metadata.AsMap()
+	eventMetadata["eventType"] = events.FromRoomEventTypeToString(events.Arbitrary)
+	eventMetadata["roomEvent"] = message.Event
 
-	if message.Metadata != nil {
-		room.Metadata["eventType"] = message.Event
-	} else {
-		room.Metadata = map[string]interface{}{
-			"eventType": message.Event,
-		}
-	}
-
-	err := h.eventsForwarderService.ForwardRoomEvent(ctx, room, "", "roomEvent")
+	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		handlerLogger.Error("error forwarding room event", zap.Any("event_message", message), zap.Error(err))
+		return &api.ForwardRoomEventResponse{Success: false, Message: err.Error()}, nil
 	}
 	return &api.ForwardRoomEventResponse{Success: true, Message: ""}, nil
 }
 
 func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.ForwardPlayerEventRequest) (*api.ForwardPlayerEventResponse, error) {
-	room := &game_room.GameRoom{ID: message.RoomName, SchedulerID: message.SchedulerName, Metadata: message.Metadata.AsMap()}
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
+	eventMetadata := message.Metadata.AsMap()
+	eventMetadata["eventType"] = message.Event
 
-	err := h.eventsForwarderService.ForwardPlayerEvent(ctx, room, message.Event)
+	err := h.eventsService.ProduceEvent(ctx, events.NewPlayerEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		handlerLogger.Error("error forwarding player event", zap.Any("event_message", message), zap.Error(err))
+		return &api.ForwardPlayerEventResponse{Success: false, Message: err.Error()}, nil
 	}
 	return &api.ForwardPlayerEventResponse{Success: true, Message: ""}, nil
 }
 
 func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.UpdateRoomWithPingRequest) (*api.UpdateRoomWithPingResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
 	gameRoom, err := h.fromApiUpdateRoomRequestToEntity(message)
+	handlerLogger.Info("handling room ping request", zap.Any("message", message))
 	if err != nil {
+		handlerLogger.Error("error parsing ping request", zap.Any("ping", message), zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	// TODO(caio.rodrigues): receive only scheduler, room and metadata. Fetch room from storage on manager before producing event
 	err = h.roomManager.UpdateRoom(ctx, gameRoom)
 	if err != nil {
+		handlerLogger.Error("error updating room with ping", zap.Any("ping", message), zap.Error(err))
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
@@ -96,12 +108,23 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
+	handlerLogger.Info("Room updated with ping successfully")
 	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 
 // UpdateRoomStatus was only implemented to keep compatibility with previous maestro version (v9), it has no inner execution since the
 // ping event is already forwarding the incoming rooms status to matchmaker
 func (h *RoomsHandler) UpdateRoomStatus(ctx context.Context, message *api.UpdateRoomStatusRequest) (*api.UpdateRoomStatusResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
+	eventMetadata := message.Metadata.AsMap()
+	eventMetadata["eventType"] = events.FromRoomEventTypeToString(events.Status)
+	eventMetadata["pingType"] = message.Status
+
+	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))
+	if err != nil {
+		handlerLogger.Error("error forwarding room status event", zap.Any("event_message", message), zap.Error(err))
+		return &api.UpdateRoomStatusResponse{Success: false}, nil
+	}
 	return &api.UpdateRoomStatusResponse{Success: true}, nil
 }
 

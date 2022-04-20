@@ -30,8 +30,14 @@ import (
 
 // PortRange represents the which ports will be available for allocation.
 type PortRange struct {
-	Start int32
-	End   int32
+	Start int32 `validate:"ltfield=End"`
+	End   int32 `validate:"gtfield=Start"`
+}
+
+func NewPortRange(start int32, end int32) *PortRange {
+	return &PortRange{
+		Start: start,
+		End:   end}
 }
 
 // Total returns the total ports available.

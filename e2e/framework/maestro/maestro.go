@@ -25,12 +25,15 @@ package maestro
 import (
 	"fmt"
 
+	"github.com/topfreegames/maestro/e2e/framework/maestro/servermocks"
+
 	"github.com/topfreegames/maestro/e2e/framework/maestro/components"
 )
 
 type MaestroInstance struct {
 	path                 string
 	Deps                 *dependencies
+	ServerMocks          *servermocks.ServerMocks
 	WorkerServer         *components.WorkerServer
 	ManagementApiServer  *components.ManagementApiServer
 	RoomsApiServer       *components.RoomsApiServer
@@ -50,9 +53,14 @@ func ProvideMaestro() (*MaestroInstance, error) {
 		return nil, fmt.Errorf("failed to start dependencies: %s", err)
 	}
 
-	workerInstance, err := components.ProvideWorker(path)
+	serverMocks, err := servermocks.ProvideServerMocks(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start worker: %s", err)
+		return nil, fmt.Errorf("failed to start server mocks: %s", err)
+	}
+
+	roomsApiInstance, err := components.ProvideRoomsApi(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start rooms api: %s", err)
 	}
 
 	managementApiInstance, err := components.ProvideManagementApi(path)
@@ -60,9 +68,9 @@ func ProvideMaestro() (*MaestroInstance, error) {
 		return nil, fmt.Errorf("failed to start worker: %s", err)
 	}
 
-	roomsApiInstance, err := components.ProvideRoomsApi(path)
+	workerInstance, err := components.ProvideWorker(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start rooms api: %s", err)
+		return nil, fmt.Errorf("failed to start worker: %s", err)
 	}
 
 	runtimeWatcherInstance, err := components.ProvideRuntimeWatcher(path)
@@ -73,6 +81,7 @@ func ProvideMaestro() (*MaestroInstance, error) {
 	return &MaestroInstance{
 		"",
 		dependencies,
+		serverMocks,
 		workerInstance,
 		managementApiInstance,
 		roomsApiInstance,
@@ -85,8 +94,9 @@ func (mi *MaestroInstance) Teardown() {
 	mi.WorkerServer.Teardown()
 	mi.RoomsApiServer.Teardown()
 	mi.RuntimeWatcherServer.Teardown()
+	mi.ServerMocks.Teardown()
 
-	// TODO(gabrielcorado): add a flag to not stop depedencies during
+	// TODO(gabrielcorado): add a flag to not stop dependencies during
 	// development (this will make the e2e run way faster).
 	mi.Deps.Teardown()
 }

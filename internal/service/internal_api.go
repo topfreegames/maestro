@@ -38,30 +38,30 @@ import (
 // - metrics
 func RunInternalServer(ctx context.Context, configs config.Config) func() error {
 	mux := http.NewServeMux()
-	if configs.GetBool("internal_api.healthcheck.enabled") {
+	if configs.GetBool("internalApi.healthcheck.enabled") {
 		zap.L().Info("adding healthcheck handler to internal API")
 		mux.HandleFunc("/health", handleHealth)
 		mux.HandleFunc("/healthz", handleHealth)
 	}
-	if configs.GetBool("internal_api.metrics.enabled") {
+	if configs.GetBool("internalApi.metrics.enabled") {
 		zap.L().Info("adding metrics handler to internal API")
 		mux.Handle("/metrics", promhttp.Handler())
 	}
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%s", configs.GetString("internal_api.port")),
+		Addr:    fmt.Sprintf(":%s", configs.GetString("internalApi.port")),
 		Handler: mux,
 	}
 
 	go func() {
-		zap.L().Info(fmt.Sprintf("started HTTP internal at :%s", configs.GetString("internal_api.port")))
+		zap.L().Info(fmt.Sprintf("started HTTP internal at :%s", configs.GetString("internalApi.port")))
 		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			zap.L().With(zap.Error(err)).Fatal("failed to start HTTP internal server")
 		}
 	}()
 
 	return func() error {
-		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("internal_api.gracefulShutdownTimeout"))
+		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("internalApi.gracefulShutdownTimeout"))
 		defer cancelShutdownFn()
 
 		zap.L().Info("stopping HTTP internal server")

@@ -25,16 +25,27 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
-	validator "gopkg.in/validator.v2"
+	"github.com/go-playground/validator/v10"
+	_struct "google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
+	"github.com/topfreegames/maestro/internal/core/logs"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
+
+	"go.uber.org/zap"
+
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/internal/core/filters"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -42,18 +53,29 @@ import (
 
 type SchedulersHandler struct {
 	schedulerManager *scheduler_manager.SchedulerManager
+	logger           *zap.Logger
 	api.UnimplementedSchedulersServiceServer
 }
 
 func ProvideSchedulersHandler(schedulerManager *scheduler_manager.SchedulerManager) *SchedulersHandler {
 	return &SchedulersHandler{
 		schedulerManager: schedulerManager,
+		logger: zap.L().
+			With(zap.String(logs.LogFieldComponent, "handler"), zap.String(logs.LogFieldHandlerName, "schedulers_handler")),
 	}
 }
 
 func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
-	schedulerEntities, err := h.schedulerManager.GetAllSchedulers(ctx)
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldGame, message.GetGame()), zap.String(logs.LogFieldSchedulerName, message.GetName()))
+	handlerLogger.Info("handling list schedulers request")
+	schedulerFilter := &filters.SchedulerFilter{
+		Name:    message.GetName(),
+		Game:    message.GetGame(),
+		Version: message.GetVersion(),
+	}
+	schedulerEntities, err := h.schedulerManager.GetSchedulersWithFilter(ctx, schedulerFilter)
 	if err != nil {
+		handlerLogger.Error("error getting schedulers using the provided filter", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
@@ -62,124 +84,225 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 		schedulers[i] = h.fromEntitySchedulerToListResponse(entity)
 	}
 
-	return &api.ListSchedulersResponse{
-		Schedulers: schedulers,
-	}, nil
+	handlerLogger.Info("finish handling list schedulers request")
+
+	return &api.ListSchedulersResponse{Schedulers: schedulers}, nil
 }
 
 func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSchedulerRequest) (*api.GetSchedulerResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
+	handlerLogger.Info(fmt.Sprintf("handling get scheduler request, scheduler version: %s", request.GetVersion()))
 	var scheduler *entities.Scheduler
 	var err error
-	scheduler, err = h.schedulerManager.GetScheduler(ctx, request.GetSchedulerName(), request.GetVersion())
+
+	schedulerName := request.GetSchedulerName()
+	queryVersion := request.GetVersion()
+	if queryVersion != "" {
+		scheduler, err = h.schedulerManager.GetScheduler(ctx, schedulerName, queryVersion)
+	} else {
+		scheduler, err = h.schedulerManager.GetActiveScheduler(ctx, schedulerName)
+	}
 
 	if err != nil {
+		handlerLogger.Error("error getting scheduler", zap.Error(err))
 		if strings.Contains(err.Error(), "not found") {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+	handlerLogger.Info("finish handling get scheduler request")
 
-	return &api.GetSchedulerResponse{Scheduler: h.fromEntitySchedulerToResponse(scheduler)}, nil
+	returnScheduler, err := h.fromEntitySchedulerToResponse(scheduler)
+	if err != nil {
+		h.logger.Error("error parsing scheduler to response", zap.Any("schedulerName", schedulerName), zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	return &api.GetSchedulerResponse{Scheduler: returnScheduler}, nil
 }
 
 func (h *SchedulersHandler) GetSchedulerVersions(ctx context.Context, request *api.GetSchedulerVersionsRequest) (*api.GetSchedulerVersionsResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
+	handlerLogger.Info("handling get scheduler versions request")
 	versions, err := h.schedulerManager.GetSchedulerVersions(ctx, request.GetSchedulerName())
 
 	if err != nil {
+		handlerLogger.Error("error getting scheduler versions", zap.Error(err))
 		if strings.Contains(err.Error(), "not found") {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+	handlerLogger.Info("finish handling get scheduler versions request")
 
 	return &api.GetSchedulerVersionsResponse{Versions: h.fromEntitySchedulerVersionListToResponse(versions)}, nil
 }
 
 func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
-	scheduler := h.fromApiCreateSchedulerRequestToEntity(request)
-
-	scheduler, err := h.schedulerManager.CreateScheduler(ctx, scheduler)
-	if errors.Is(err, portsErrors.ErrAlreadyExists) {
-		return nil, status.Error(codes.AlreadyExists, err.Error())
-	}
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
+	handlerLogger.Info("handling create scheduler request")
+	scheduler, err := h.fromApiCreateSchedulerRequestToEntity(request)
 	if err != nil {
-		switch err.(type) {
-		case validator.ErrorMap:
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		default:
-			return nil, status.Error(codes.Unknown, err.Error())
-		}
+		apiValidationError := parseValidationError(err.(validator.ValidationErrors))
+		handlerLogger.Error("error parsing scheduler", zap.Error(apiValidationError))
+		return nil, status.Error(codes.InvalidArgument, apiValidationError.Error())
 	}
 
-	return &api.CreateSchedulerResponse{
-		Scheduler: h.fromEntitySchedulerToResponse(scheduler),
-	}, nil
+	scheduler, err = h.schedulerManager.CreateScheduler(ctx, scheduler)
+	if err != nil {
+		handlerLogger.Error("error creating scheduler", zap.Error(err))
+		if errors.Is(err, portsErrors.ErrAlreadyExists) {
+			return nil, status.Error(codes.AlreadyExists, err.Error())
+		}
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	handlerLogger.Info("finish handling create scheduler request")
+
+	returnScheduler, err := h.fromEntitySchedulerToResponse(scheduler)
+	if err != nil {
+		h.logger.Error("error parsing scheduler to response", zap.Any("schedulerName", request.GetName()), zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	return &api.CreateSchedulerResponse{Scheduler: returnScheduler}, nil
 }
 
 func (h *SchedulersHandler) AddRooms(ctx context.Context, request *api.AddRoomsRequest) (*api.AddRoomsResponse, error) {
-
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
+	handlerLogger.Info("handling add rooms request")
 	operation, err := h.schedulerManager.AddRooms(ctx, request.GetSchedulerName(), request.GetAmount())
-	if errors.Is(err, portsErrors.ErrNotFound) {
-		return nil, status.Error(codes.NotFound, err.Error())
-	}
+
 	if err != nil {
+		handlerLogger.Error(fmt.Sprintf("error adding rooms to scheduler, amount: %d", request.GetAmount()), zap.Error(err))
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+	handlerLogger.Info("finish handling add rooms request")
 
-	return &api.AddRoomsResponse{
-		OperationId: operation.ID,
-	}, nil
+	return &api.AddRoomsResponse{OperationId: operation.ID}, nil
 }
 
 func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.RemoveRoomsRequest) (*api.RemoveRoomsResponse, error) {
-
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
+	handlerLogger.Info("handling remove rooms request")
 	operation, err := h.schedulerManager.RemoveRooms(ctx, request.GetSchedulerName(), int(request.GetAmount()))
-	if errors.Is(err, portsErrors.ErrNotFound) {
-		return nil, status.Error(codes.NotFound, err.Error())
-	}
+
 	if err != nil {
+		handlerLogger.Error("error removing rooms from scheduler", zap.Error(err))
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	return &api.RemoveRoomsResponse{
-		OperationId: operation.ID,
-	}, nil
+	handlerLogger.Info("finish handling remove rooms request")
+	return &api.RemoveRoomsResponse{OperationId: operation.ID}, nil
 }
 
-func (h *SchedulersHandler) UpdateScheduler(ctx context.Context, request *api.UpdateSchedulerRequest) (*api.UpdateSchedulerResponse, error) {
-	scheduler := h.fromApiUpdateSchedulerRequestToEntity(request)
-
-	operation, err := h.schedulerManager.CreateUpdateSchedulerOperation(ctx, scheduler)
-	if errors.Is(err, portsErrors.ErrNotFound) {
-		return nil, status.Error(codes.NotFound, err.Error())
-	}
+func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *api.NewSchedulerVersionRequest) (*api.NewSchedulerVersionResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
+	handlerLogger.Info("handling new scheduler version request")
+	scheduler, err := h.fromApiNewSchedulerVersionRequestToEntity(request)
 	if err != nil {
+		apiValidationError := parseValidationError(err.(validator.ValidationErrors))
+		handlerLogger.Error("error parsing scheduler version", zap.Error(apiValidationError))
+		return nil, status.Error(codes.InvalidArgument, apiValidationError.Error())
+	}
+
+	operation, err := h.schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
+
+	if err != nil {
+		handlerLogger.Error("error creating new scheduler version", zap.Error(err))
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	handlerLogger.Info("finish handling new scheduler version request")
+
+	return &api.NewSchedulerVersionResponse{OperationId: operation.ID}, nil
+}
+
+func (h *SchedulersHandler) PatchScheduler(ctx context.Context, request *api.PatchSchedulerRequest) (*api.PatchSchedulerResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()))
+	handlerLogger.Info("handling patch scheduler request")
+
+	patchMap := request_adapters.FromApiPatchSchedulerRequestToChangeMap(request)
+	if len(patchMap) == 0 {
+		return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("no change found to scheduler %s", request.GetName()))
+	}
+
+	operation, err := h.schedulerManager.PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx, request.GetName(), patchMap)
+
+	if err != nil {
+		handlerLogger.Error("error patching scheduler", zap.Error(err))
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		if errors.Is(err, portsErrors.ErrInvalidArgument) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	handlerLogger.Info("finish handling patch scheduler request")
+
+	return &api.PatchSchedulerResponse{OperationId: operation.ID}, nil
+}
+
+func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *api.SwitchActiveVersionRequest) (*api.SwitchActiveVersionResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
+	handlerLogger.Info("handling switch active version request")
+	operation, err := h.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, request.GetSchedulerName(), request.GetVersion())
+
+	if err != nil {
+		handlerLogger.Error(fmt.Sprintf("error switching active version %s", request.GetVersion()), zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	return &api.UpdateSchedulerResponse{
-		OperationId: operation.ID,
+	handlerLogger.Info("finish handling switch active version request")
+	return &api.SwitchActiveVersionResponse{OperationId: operation.ID}, nil
+}
+
+func (h *SchedulersHandler) GetSchedulersInfo(ctx context.Context, request *api.GetSchedulersInfoRequest) (*api.GetSchedulersInfoResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldGame, request.GetGame()))
+	handlerLogger.Info("handling get schedulers info request")
+	filter := filters.SchedulerFilter{Game: request.GetGame()}
+	schedulers, err := h.schedulerManager.GetSchedulersInfo(ctx, &filter)
+
+	if err != nil {
+		handlerLogger.Error("error getting schedulers info", zap.Error(err))
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	schedulersResponse := make([]*api.SchedulerInfo, len(schedulers))
+	for i, scheduler := range schedulers {
+		schedulersResponse[i] = fromEntitySchedulerInfoToListResponse(scheduler)
+	}
+	handlerLogger.Info("finish handling get schedulers info request")
+
+	return &api.GetSchedulersInfoResponse{
+		Schedulers: schedulersResponse,
 	}, nil
 }
 
-func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) *entities.Scheduler {
-	return &entities.Scheduler{
-		Name:     request.GetName(),
-		Game:     request.GetGame(),
-		State:    entities.StateCreating,
-		MaxSurge: request.GetMaxSurge(),
-		PortRange: &entities.PortRange{
-			Start: request.GetPortRange().GetStart(),
-			End:   request.GetPortRange().GetEnd(),
-		},
-		Spec: game_room.Spec{
-			Version:                request.GetVersion(),
-			TerminationGracePeriod: time.Duration(request.GetTerminationGracePeriod()),
-			Affinity:               request.GetAffinity(),
-			Toleration:             request.GetToleration(),
-			Containers:             h.fromApiContainers(request.GetContainers()),
-		},
-	}
+func (h *SchedulersHandler) fromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {
+	return entities.NewScheduler(
+		request.GetName(),
+		request.GetGame(),
+		entities.StateCreating,
+		request.GetMaxSurge(),
+		*h.fromApiSpec(request.GetSpec()),
+		entities.NewPortRange(
+			request.GetPortRange().GetStart(),
+			request.GetPortRange().GetEnd(),
+		),
+		h.fromApiForwarders(request.GetForwarders()),
+	)
 }
 
 func (h *SchedulersHandler) fromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.SchedulerWithoutSpec {
@@ -194,35 +317,36 @@ func (h *SchedulersHandler) fromEntitySchedulerToListResponse(entity *entities.S
 	}
 }
 
-func (h *SchedulersHandler) fromApiUpdateSchedulerRequestToEntity(request *api.UpdateSchedulerRequest) *entities.Scheduler {
-	return &entities.Scheduler{
-		Name:     request.GetName(),
-		Game:     request.GetGame(),
-		MaxSurge: request.GetMaxSurge(),
-		PortRange: &entities.PortRange{
-			Start: request.GetPortRange().GetStart(),
-			End:   request.GetPortRange().GetEnd(),
-		},
-		Spec: game_room.Spec{
-			TerminationGracePeriod: time.Duration(request.GetTerminationGracePeriod()),
-			Affinity:               request.GetAffinity(),
-			Toleration:             request.GetToleration(),
-			Containers:             h.fromApiContainers(request.GetContainers()),
-		},
-	}
+func (h *SchedulersHandler) fromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionRequest) (*entities.Scheduler, error) {
+	return entities.NewScheduler(
+		request.GetName(),
+		request.GetGame(),
+		entities.StateCreating,
+		request.GetMaxSurge(),
+		*h.fromApiSpec(request.GetSpec()),
+		entities.NewPortRange(
+			request.GetPortRange().GetStart(),
+			request.GetPortRange().GetEnd(),
+		),
+		h.fromApiForwarders(request.GetForwarders()),
+	)
 }
 
-func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Scheduler) *api.Scheduler {
-	return &api.Scheduler{
-		Name:      entity.Name,
-		Game:      entity.Game,
-		State:     entity.State,
-		Version:   entity.Spec.Version,
-		PortRange: getPortRange(entity.PortRange),
-		CreatedAt: timestamppb.New(entity.CreatedAt),
-		MaxSurge:  entity.MaxSurge,
-		Spec:      getSpec(entity.Spec),
+func (h *SchedulersHandler) fromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, error) {
+	forwarders, err := h.fromEntityForwardersToResponse(entity.Forwarders)
+	if err != nil {
+		return nil, err
 	}
+	return &api.Scheduler{
+		Name:       entity.Name,
+		Game:       entity.Game,
+		State:      entity.State,
+		PortRange:  getPortRange(entity.PortRange),
+		CreatedAt:  timestamppb.New(entity.CreatedAt),
+		MaxSurge:   entity.MaxSurge,
+		Spec:       getSpec(entity.Spec),
+		Forwarders: forwarders,
+	}, nil
 }
 
 func (h *SchedulersHandler) fromEntitySchedulerVersionListToResponse(entity []*entities.SchedulerVersion) []*api.SchedulerVersion {
@@ -230,10 +354,55 @@ func (h *SchedulersHandler) fromEntitySchedulerVersionListToResponse(entity []*e
 	for i, version := range entity {
 		versions[i] = &api.SchedulerVersion{
 			Version:   version.Version,
+			IsActive:  version.IsActive,
 			CreatedAt: timestamppb.New(version.CreatedAt),
 		}
 	}
 	return versions
+}
+
+func (h *SchedulersHandler) fromEntityForwardersToResponse(entities []*forwarder.Forwarder) ([]*api.Forwarder, error) {
+	forwarders := make([]*api.Forwarder, len(entities))
+	for i, entity := range entities {
+		opts, err := h.fromEntityForwardOptions(entity.Options)
+		if err != nil {
+			return nil, err
+		}
+
+		forwarders[i] = &api.Forwarder{
+			Name:    entity.Name,
+			Enable:  entity.Enabled,
+			Type:    fmt.Sprint(entity.ForwardType),
+			Address: entity.Address,
+			Options: opts,
+		}
+	}
+	return forwarders, nil
+}
+
+func (h *SchedulersHandler) fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderOptions, error) {
+	if entity == nil {
+		return nil, nil
+	}
+	protoStruct, err := _struct.NewStruct(entity.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.ForwarderOptions{
+		Timeout:  int64(entity.Timeout),
+		Metadata: protoStruct,
+	}, nil
+}
+
+func (h *SchedulersHandler) fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
+	return game_room.NewSpec(
+		"",
+		time.Duration(apiSpec.GetTerminationGracePeriod()),
+		h.fromApiContainers(apiSpec.GetContainers()),
+		apiSpec.GetToleration(),
+		apiSpec.GetAffinity(),
+	)
 }
 
 func (h *SchedulersHandler) fromApiContainers(apiContainers []*api.Container) []game_room.Container {
@@ -280,13 +449,47 @@ func (h *SchedulersHandler) fromApiContainerEnvironments(apiEnvironments []*api.
 	var environments []game_room.ContainerEnvironment
 	for _, apiEnvironment := range apiEnvironments {
 		environment := game_room.ContainerEnvironment{
-			Name:  apiEnvironment.GetName(),
-			Value: apiEnvironment.GetValue(),
+			Name: apiEnvironment.GetName(),
+		}
+		switch {
+		case apiEnvironment.Value != nil:
+			environment.Value = *apiEnvironment.Value
+		case apiEnvironment.ValueFrom != nil && apiEnvironment.ValueFrom.SecretKeyRef != nil:
+			environment.ValueFrom = &game_room.ValueFrom{
+				SecretKeyRef: &game_room.SecretKeyRef{
+					Name: apiEnvironment.ValueFrom.SecretKeyRef.Name,
+					Key:  apiEnvironment.ValueFrom.SecretKeyRef.Key,
+				},
+			}
+		case apiEnvironment.ValueFrom != nil && apiEnvironment.ValueFrom.FieldRef != nil:
+			environment.ValueFrom = &game_room.ValueFrom{
+				FieldRef: &game_room.FieldRef{
+					FieldPath: apiEnvironment.ValueFrom.FieldRef.FieldPath,
+				},
+			}
 		}
 		environments = append(environments, environment)
 	}
 
 	return environments
+}
+
+func (h *SchedulersHandler) fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
+	var forwarders []*forwarder.Forwarder
+	for _, apiForwarder := range apiForwarders {
+		forwarder := forwarder.Forwarder{
+			Name:        apiForwarder.GetName(),
+			Enabled:     apiForwarder.GetEnable(),
+			ForwardType: forwarder.ForwardType(apiForwarder.GetType()),
+			Address:     apiForwarder.GetAddress(),
+			Options: &forwarder.ForwardOptions{
+				Timeout:  time.Duration(apiForwarder.Options.GetTimeout()),
+				Metadata: apiForwarder.Options.Metadata.AsMap(),
+			},
+		}
+		forwarders = append(forwarders, &forwarder)
+	}
+	return forwarders
 }
 
 func getPortRange(portRange *entities.PortRange) *api.PortRange {
@@ -334,10 +537,28 @@ func fromEntityContainerToApiContainer(containers []game_room.Container) []*api.
 func fromEntityContainerEnvironmentToApiContainerEnvironment(environments []game_room.ContainerEnvironment) []*api.ContainerEnvironment {
 	var convertedContainerEnvironment []*api.ContainerEnvironment
 	for _, environment := range environments {
-		convertedContainerEnvironment = append(convertedContainerEnvironment, &api.ContainerEnvironment{
-			Name:  environment.Name,
-			Value: environment.Value,
-		})
+		apiContainerEnv := &api.ContainerEnvironment{
+			Name: environment.Name,
+		}
+		switch {
+		case environment.Value != "":
+			envValue := environment.Value
+			apiContainerEnv.Value = &envValue
+		case environment.ValueFrom != nil && environment.ValueFrom.SecretKeyRef != nil:
+			apiContainerEnv.ValueFrom = &api.ContainerEnvironmentValueFrom{
+				SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
+					Name: environment.ValueFrom.SecretKeyRef.Name,
+					Key:  environment.ValueFrom.SecretKeyRef.Key,
+				},
+			}
+		case environment.ValueFrom != nil && environment.ValueFrom.FieldRef != nil:
+			apiContainerEnv.ValueFrom = &api.ContainerEnvironmentValueFrom{
+				FieldRef: &api.ContainerEnvironmentValueFromFieldRef{
+					FieldPath: environment.ValueFrom.FieldRef.FieldPath,
+				},
+			}
+		}
+		convertedContainerEnvironment = append(convertedContainerEnvironment, apiContainerEnv)
 	}
 	return convertedContainerEnvironment
 }
@@ -360,4 +581,16 @@ func fromEntityContainerPortsToApiContainerPorts(ports []game_room.ContainerPort
 		})
 	}
 	return convertedContainerPort
+}
+
+func fromEntitySchedulerInfoToListResponse(entity *entities.SchedulerInfo) *api.SchedulerInfo {
+	return &api.SchedulerInfo{
+		Name:             entity.Name,
+		Game:             entity.Game,
+		State:            entity.State,
+		RoomsReady:       int32(entity.RoomsReady),
+		RoomsOccupied:    int32(entity.RoomsOccupied),
+		RoomsPending:     int32(entity.RoomsPending),
+		RoomsTerminating: int32(entity.RoomsTerminating),
+	}
 }

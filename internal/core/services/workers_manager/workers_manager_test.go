@@ -37,12 +37,12 @@ import (
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
 
-	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
-	configMock "github.com/topfreegames/maestro/internal/config/mock"
+	configmock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/workers"
-	workerMock "github.com/topfreegames/maestro/internal/core/workers/mock"
+	workermock "github.com/topfreegames/maestro/internal/core/workers/mock"
 )
 
 var (
@@ -57,18 +57,18 @@ func BeforeTest(t *testing.T) {
 	recorded = observer
 
 	mockCtrl = gomock.NewController(t)
-	defer mockCtrl.Finish()
+
 }
 
 func TestStart(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		BeforeTest(t)
 
-		configs := configMock.NewMockConfig(mockCtrl)
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		configs := configmock.NewMockConfig(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workerMock.MockWorker{Run: false, StopCh: workerStopCh}
+			return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
 		}
 
 		ctx, cancelFn := context.WithCancel(context.Background())
@@ -125,14 +125,14 @@ func TestStart(t *testing.T) {
 	t.Run("fails when schedulerStorage fails to list all schedulers", func(t *testing.T) {
 		BeforeTest(t)
 
-		configs := configMock.NewMockConfig(mockCtrl)
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		configs := configmock.NewMockConfig(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
 		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return(nil, errors.ErrUnexpected)
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workerMock.MockWorker{Run: false}
+			return &workermock.MockWorker{Run: false}
 		}
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, nil)
@@ -160,12 +160,12 @@ func TestStart(t *testing.T) {
 	t.Run("stops when context stops with no error", func(t *testing.T) {
 		BeforeTest(t)
 
-		configs := configMock.NewMockConfig(mockCtrl)
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		configs := configmock.NewMockConfig(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workerMock.MockWorker{
+			return &workermock.MockWorker{
 				Run:    false,
 				StopCh: workerStopCh,
 			}
@@ -225,12 +225,12 @@ func TestStart(t *testing.T) {
 	t.Run("with success when scheduler added after initial sync", func(t *testing.T) {
 		BeforeTest(t)
 
-		configs := configMock.NewMockConfig(mockCtrl)
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		configs := configmock.NewMockConfig(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workerMock.MockWorker{Run: false, StopCh: workerStopCh}
+			return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
 		}
 
 		ctx, cancelFn := context.WithCancel(context.Background())
@@ -307,12 +307,12 @@ func TestStart(t *testing.T) {
 	t.Run("with success when scheduler removed after bootstrap", func(t *testing.T) {
 		BeforeTest(t)
 
-		configs := configMock.NewMockConfig(mockCtrl)
-		schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
+		configs := configmock.NewMockConfig(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
 		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workerMock.MockWorker{Run: false, StopCh: workerStopCh}
+			return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
 		}
 
 		ctx, cancelFn := context.WithCancel(context.Background())

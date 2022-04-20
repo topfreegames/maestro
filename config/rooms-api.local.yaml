@@ -1,12 +1,12 @@
-internal_api:
-  port: 8091
+internalApi:
+  port: 8071
   gracefulShutdownTimeout: 10s
   metrics:
     enabled: true
   healthcheck:
     enabled: true
-rooms_api:
-  port: 8090
+roomsApi:
+  port: 8070
   gracefulShutdownTimeout: 10s
 adapters:
   portAllocator:
@@ -18,7 +18,14 @@ adapters:
   instanceStorage:
     redis:
       url: "redis://localhost:6379/0"
+  schedulerStorage:
+    postgres:
+      url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
+  schedulerCache:
+    redis:
+      url: "redis://localhost:6379/0"
   runtime:
     kubernetes:
+      inCluster: false
       masterUrl: "https://127.0.0.1:6443"
-      kubeconfig: "./kubeconfig.yaml"
+      kubeconfig: "./kubeconfig/kubeconfig.yaml"

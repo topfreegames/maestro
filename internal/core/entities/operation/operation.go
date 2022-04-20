@@ -29,27 +29,41 @@ import (
 
 type Status int
 
+// OperationEvent holds when and which event occurred during operation
+// execution.
+type OperationEvent struct {
+	CreatedAt time.Time
+	Event     string
+}
+
 const (
-	// Operation was created but no worker has started it yet.
+	// StatusPending operation was created but no worker has started it yet.
 	StatusPending Status = iota
-	// Operation is being executed by a worker.
+	// StatusInProgress operation is being executed by a worker.
 	StatusInProgress
-	// Operation was canceled, usually by an external action or a timeout.
+	// StatusCanceled operation was canceled, usually by an external action or a timeout.
 	StatusCanceled
-	// Operation finished with success.
+	// StatusFinished operation finished with success.
 	StatusFinished
-	// Operation could not execute because it didn’t meet the requirements.
+	// StatusEvicted operation could not execute because it didn't meet the requirements.
 	StatusEvicted
-	// Operation finished with error.
+	// StatusError operation finished with error.
 	StatusError
 )
 
 type Operation struct {
-	ID             string
-	Status         Status
-	DefinitionName string
-	SchedulerName  string
-	CreatedAt      time.Time
+	ID               string
+	Status           Status
+	DefinitionName   string
+	SchedulerName    string
+	Lease            *OperationLease
+	CreatedAt        time.Time
+	Input            []byte           // should be used ony after conversion to its operations.Definition.
+	ExecutionHistory []OperationEvent // should be used only to return information to users.
+}
+
+func (o *Operation) SetLease(lease *OperationLease) {
+	o.Lease = lease
 }
 
 func (s Status) String() (string, error) {

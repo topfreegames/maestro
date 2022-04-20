@@ -37,7 +37,7 @@ func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, schedulerID str
 		return nil, errors.NewErrInvalidArgument("invalid game room spec: %s", err)
 	}
 
-	pod, err = k.clientset.CoreV1().Pods(schedulerID).Create(ctx, pod, metav1.CreateOptions{})
+	pod, err = k.clientSet.CoreV1().Pods(schedulerID).Create(ctx, pod, metav1.CreateOptions{})
 	if err != nil {
 		if kerrors.IsInvalid(err) {
 			return nil, errors.NewErrInvalidArgument("invalid game room spec: %s", err)
@@ -57,10 +57,10 @@ func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, schedulerID str
 }
 
 func (k *kubernetes) DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error {
-	err := k.clientset.CoreV1().Pods(gameRoomInstance.SchedulerID).Delete(ctx, gameRoomInstance.ID, metav1.DeleteOptions{})
+	err := k.clientSet.CoreV1().Pods(gameRoomInstance.SchedulerID).Delete(ctx, gameRoomInstance.ID, metav1.DeleteOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			return errors.NewErrNotFound("game room '%s' already exists", gameRoomInstance.ID)
+			return errors.NewErrNotFound("game room '%s' not found", gameRoomInstance.ID)
 		}
 
 		return errors.NewErrUnexpected("error deleting game room instance: %s", err)

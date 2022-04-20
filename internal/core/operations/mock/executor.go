@@ -37,10 +37,10 @@ func (m *MockExecutor) EXPECT() *MockExecutorMockRecorder {
 }
 
 // Execute mocks base method.
-func (m *MockExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (m *MockExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", ctx, op, definition)
-	ret0, _ := ret[0].(error)
+	ret0, _ := ret[0].(operations.ExecutionError)
 	return ret0
 }
 
@@ -64,16 +64,16 @@ func (mr *MockExecutorMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockExecutor)(nil).Name))
 }
 
-// OnError mocks base method.
-func (m *MockExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+// Rollback mocks base method.
+func (m *MockExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "OnError", ctx, op, definition, executeErr)
+	ret := m.ctrl.Call(m, "Rollback", ctx, op, definition, executeErr)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// OnError indicates an expected call of OnError.
-func (mr *MockExecutorMockRecorder) OnError(ctx, op, definition, executeErr interface{}) *gomock.Call {
+// Rollback indicates an expected call of Rollback.
+func (mr *MockExecutorMockRecorder) Rollback(ctx, op, definition, executeErr interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnError", reflect.TypeOf((*MockExecutor)(nil).OnError), ctx, op, definition, executeErr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockExecutor)(nil).Rollback), ctx, op, definition, executeErr)
 }

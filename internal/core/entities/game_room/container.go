@@ -23,29 +23,44 @@
 package game_room
 
 type Container struct {
-	Name            string   `validate:"min=1"`
-	Image           string   `validate:"min=1"`
-	ImagePullPolicy string   `validate:"regexp=^(Always|Never|IfNotPresent){1}$"`
-	Command         []string `validate:"min=1"`
-	Environment     []ContainerEnvironment
+	Name            string `validate:"required,kube_resource_name"`
+	Image           string `validate:"required"`
+	ImagePullPolicy string `validate:"required,image_pull_policy"`
+	Command         []string
+	Environment     []ContainerEnvironment `validate:"dive"`
 	Requests        ContainerResources
 	Limits          ContainerResources
-	Ports           []ContainerPort `validate:"min=1"`
+	Ports           []ContainerPort `validate:"required,dive"`
 }
 
 type ContainerEnvironment struct {
-	Name  string `validate:"min=1"`
-	Value string
+	Name      string `validate:"required"`
+	Value     string
+	ValueFrom *ValueFrom
+}
+
+type ValueFrom struct {
+	FieldRef     *FieldRef
+	SecretKeyRef *SecretKeyRef
+}
+
+type SecretKeyRef struct {
+	Name string `yaml:"name" json:"name"`
+	Key  string `yaml:"key" json:"key"`
+}
+
+type FieldRef struct {
+	FieldPath string `yaml:"fieldPath" json:"fieldPath"`
 }
 
 type ContainerResources struct {
-	Memory string `validate:"min=1"`
-	CPU    string `validate:"min=1"`
+	Memory string `validate:"required"`
+	CPU    string `validate:"required"`
 }
 
 type ContainerPort struct {
-	Name     string `validate:"min=1"`
-	Protocol string `validate:"min=1"`
-	Port     int    `validate:"min=1"`
+	Name     string `validate:"required,max=15"`
+	Protocol string `validate:"required,ports_protocol"`
+	Port     int    `validate:"required"`
 	HostPort int
 }

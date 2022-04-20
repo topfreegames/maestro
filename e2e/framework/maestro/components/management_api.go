@@ -39,21 +39,21 @@ type ManagementApiServer struct {
 }
 
 func ProvideManagementApi(maestroPath string) (*ManagementApiServer, error) {
-	address := "http://localhost:9094"
+	address := "http://localhost:8080"
 	client := &http.Client{}
 
 	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("test-something")
+	identifier := strings.ToLower("e2e-test")
 
 	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "management-api"}).Invoke()
+	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "management-api"}).Invoke()
 
 	if composeErr.Error != nil {
 		return nil, fmt.Errorf("failed to start management API: %s", composeErr.Error)
 	}
 
 	err := helpers.TimedRetry(func() error {
-		res, err := client.Get("http://localhost:9095/healthz")
+		res, err := client.Get("http://localhost:8081/healthz")
 		if err != nil {
 			return err
 		}
@@ -76,5 +76,5 @@ func ProvideManagementApi(maestroPath string) (*ManagementApiServer, error) {
 }
 
 func (ms *ManagementApiServer) Teardown() {
-	ms.compose.Down()
+	ms.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "management-api"}).Invoke()
 }

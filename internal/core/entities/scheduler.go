@@ -25,7 +25,12 @@ package entities
 import (
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/validations"
 )
 
 const (
@@ -38,17 +43,75 @@ const (
 	//StateInSync represents a cluster state
 	StateInSync = "in-sync"
 
-	//StateTerminating represents a cluster state
+	//StateOnError represents a cluster state
 	StateOnError = "on-error"
 )
 
 type Scheduler struct {
-	Name            string `validate:"min=1"`
-	Game            string `validate:"min=1"`
-	State           string
+	Name            string `validate:"required,kube_resource_name"`
+	Game            string `validate:"required"`
+	State           string `validate:"required"`
 	RollbackVersion string
 	Spec            game_room.Spec
 	PortRange       *PortRange
 	CreatedAt       time.Time
-	MaxSurge        string `validate:"min=1"`
+	MaxSurge        string                 `validate:"required,max_surge"`
+	Forwarders      []*forwarder.Forwarder `validate:"dive"`
+}
+
+func NewScheduler(name string, game string, state string, maxSurge string, spec game_room.Spec, portRange *PortRange, forwarders []*forwarder.Forwarder) (*Scheduler, error) {
+	scheduler := &Scheduler{
+		Name:       name,
+		Game:       game,
+		State:      state,
+		Spec:       spec,
+		PortRange:  portRange,
+		MaxSurge:   maxSurge,
+		Forwarders: forwarders,
+	}
+	return scheduler, scheduler.Validate()
+}
+
+func (s *Scheduler) SetSchedulerVersion(version string) {
+	s.Spec.Version = version
+}
+
+func (s *Scheduler) SetSchedulerRollbackVersion(version string) {
+	s.RollbackVersion = version
+}
+
+func (s *Scheduler) Validate() error {
+	return validations.Validate.Struct(s)
+}
+
+// IsMajorVersion checks if the scheduler changes are major or not.
+// We consider major changes if the Instances need to be recreated, in this case
+// the following fields require it: `Spec` and `PortRange`. Any other field
+// change is considered minor (we don't need to recreate instances).
+func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
+	schedulerContainerPorts := map[string]game_room.ContainerPort{}
+
+	for _, container := range s.Spec.Containers {
+		for _, port := range container.Ports {
+			schedulerContainerPorts[port.Name] = port
+		}
+	}
+
+	return !cmp.Equal(
+		s,
+		newScheduler,
+		cmpopts.IgnoreSliceElements(func(container game_room.ContainerPort) bool {
+			return cmp.Equal(container, schedulerContainerPorts[container.Name], cmpopts.IgnoreFields(container, "HostPort"))
+		}),
+		cmpopts.IgnoreFields(
+			Scheduler{},
+			"Name",
+			"Spec.Version",
+			"Game",
+			"State",
+			"RollbackVersion",
+			"CreatedAt",
+			"MaxSurge",
+		),
+	)
 }

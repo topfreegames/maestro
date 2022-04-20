@@ -1,0 +1,11 @@
+{
+  "schedulers": [{
+    "name": "scheduler-name-1",
+    "game": "game",
+    "state": "creating",
+    "roomsReady": 5,
+    "roomsOccupied": 15,
+    "roomsPending": 10,
+    "roomsTerminating": 20
+  }]
+}

@@ -28,41 +28,58 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"go.uber.org/zap"
 )
 
 type CreateSchedulerExecutor struct {
-	runtime ports.Runtime
-	storage ports.SchedulerStorage
+	runtime          ports.Runtime
+	schedulerManager ports.SchedulerManager
 }
 
-func NewExecutor(runtime ports.Runtime, storage ports.SchedulerStorage) *CreateSchedulerExecutor {
+var _ operations.Executor = (*CreateSchedulerExecutor)(nil)
+
+func NewExecutor(runtime ports.Runtime, schedulerManager ports.SchedulerManager) *CreateSchedulerExecutor {
 	return &CreateSchedulerExecutor{
-		runtime: runtime,
-		storage: storage,
+		runtime:          runtime,
+		schedulerManager: schedulerManager,
 	}
 }
 
-func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
+	logger := zap.L().With(
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
+		zap.String("operation_phase", "Execute"),
+		zap.String(logs.LogFieldOperationID, op.ID),
+	)
 
 	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName})
 	if err != nil {
-		return fmt.Errorf("failed to create scheduler in runtime: %w", err)
+		logger.Error(fmt.Sprintf("failed to create scheduler %s in runtime", op.SchedulerName), zap.Error(err))
+		return operations.NewErrUnexpected(err)
 	}
 
+	logger.Info(fmt.Sprintf("%s operation succeded, %s scheduler was created", definition.Name(), op.SchedulerName))
 	return nil
 }
 
-func (e *CreateSchedulerExecutor) OnError(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
-	scheduler, err := e.storage.GetScheduler(ctx, op.SchedulerName)
+func (e *CreateSchedulerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
+	logger := zap.L().With(
+		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
+		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
+		zap.String("operation_phase", "Rollback"),
+		zap.String(logs.LogFieldOperationID, op.ID),
+	)
+
+	err := e.schedulerManager.DeleteScheduler(ctx, op.SchedulerName)
 	if err != nil {
-		return fmt.Errorf("failed to find scheduler by id: %w", err)
+		logger.Error(fmt.Sprintf("error deleting scheduler %s", op.SchedulerName), zap.Error(err))
+		return fmt.Errorf("error in Rollback function execution: %w", err)
 	}
-
-	scheduler.State = entities.StateOnError
-
-	return e.storage.UpdateScheduler(ctx, scheduler)
+	return nil
 }
 
 func (e *CreateSchedulerExecutor) Name() string {

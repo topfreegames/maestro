@@ -29,40 +29,24 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
+
+	"github.com/topfreegames/maestro/internal/core/operations"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	clock_mock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
-	eventsForwarderMock "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
-	instance_storage_mock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
-	room_storage_mock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
-
-	port_allocator_mock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-	"github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
-	runtime_mock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 )
 
 func TestExecute(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
-	clockMock := clock_mock.NewFakeClock(time.Now())
-	portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
-	instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
-	runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
-	eventsForwarderMock := eventsForwarderMock.NewMockEventsForwarder(mockCtrl)
-
-	t.Run("when there are no rooms to be deleted it returns without error", func(t *testing.T) {
-
-		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, room_manager.RoomManagerConfig{})
+	t.Run("should succeed - no rooms to be deleted => returns without error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		executor := NewExecutor(roomsManager)
 
 		schedulerName := uuid.NewString()
@@ -71,50 +55,36 @@ func TestExecute(t *testing.T) {
 
 		ctx := context.Background()
 
-		roomStorageMock.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{}, nil).AnyTimes()
-		roomStorageMock.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{}, nil).AnyTimes()
+		emptyGameRoomSlice := []*game_room.GameRoom{}
+		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(emptyGameRoomSlice, nil)
 
 		err := executor.Execute(ctx, operation, definition)
-		require.NoError(t, err)
+		require.Nil(t, err)
 	})
 
-	t.Run("when rooms are successfully deleted it returns without error", func(t *testing.T) {
-
-		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, room_manager.RoomManagerConfig{})
+	t.Run("should succeed - rooms are successfully deleted => returns without error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		executor := NewExecutor(roomsManager)
 
 		schedulerName := uuid.NewString()
-		definition := &RemoveRoomsDefinition{Amount: 1}
+		definition := &RemoveRoomsDefinition{Amount: 2}
 		operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
+
+		ctx := context.Background()
 
 		availableRooms := []*game_room.GameRoom{
 			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
 			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
 		}
-		gameRoomInstance := &game_room.Instance{}
-
-		ctx := context.Background()
-		roomStorageMock.EXPECT().GetRoomIDsByStatus(ctx, operation.SchedulerName, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID}, nil).AnyTimes()
-		roomStorageMock.EXPECT().GetRoomIDsByLastPing(ctx, operation.SchedulerName, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID}, nil).AnyTimes()
-		roomStorageMock.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
-
-		gameRoomTerminating := *availableRooms[0]
-		gameRoomTerminating.Status = game_room.GameStatusTerminating
-		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[0].ID).Return(gameRoomInstance, nil)
-		roomStorageStatusWatcher := room_storage_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
-		roomStorageMock.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
-		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoomTerminating.SchedulerID, gameRoomTerminating.ID).Return(&gameRoomTerminating, nil)
-		runtimeMock.EXPECT().DeleteGameRoomInstance(gomock.Any(), gameRoomInstance).Return(nil)
-		roomStorageStatusWatcher.EXPECT().Stop()
+		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).Times(2)
 
 		err := executor.Execute(ctx, operation, definition)
-		require.NoError(t, err)
+		require.Nil(t, err)
 	})
 
-	t.Run("when any room failed to delete it returns without error", func(t *testing.T) {
-		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, room_manager.RoomManagerConfig{})
+	t.Run("when any room failed to delete with unexpected error it returns with error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		executor := NewExecutor(roomsManager)
 
 		schedulerName := uuid.NewString()
@@ -125,45 +95,48 @@ func TestExecute(t *testing.T) {
 			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
 			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
 		}
-		gameRoomInstance := &game_room.Instance{}
 
-		ctx := context.Background()
-		roomStorageMock.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID}, nil).AnyTimes()
-		roomStorageMock.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID}, nil).AnyTimes()
-		roomStorageMock.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
-		roomStorageMock.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
+		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.New("failed to delete instance on the runtime: some error"))
 
-		// first one is successfull
-		gameRoomTerminating := *availableRooms[0]
-		gameRoomTerminating.Status = game_room.GameStatusTerminating
-		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[0].ID).Return(gameRoomInstance, nil)
-		roomStorageStatusWatcher := room_storage_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
-		roomStorageMock.EXPECT().WatchRoomStatus(gomock.Any(), gomock.Any()).Return(roomStorageStatusWatcher, nil)
-		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoomTerminating.SchedulerID, gameRoomTerminating.ID).Return(&gameRoomTerminating, nil)
-		runtimeMock.EXPECT().DeleteGameRoomInstance(gomock.Any(), gameRoomInstance).Return(nil)
-		roomStorageStatusWatcher.EXPECT().Stop()
+		err := executor.Execute(context.Background(), operation, definition)
+		require.Equal(t, operations.ErrKindUnexpected, err.Kind())
+		require.EqualError(t, err.Error(), "failed to remove room: failed to delete instance on the runtime: some error")
+	})
 
-		// second one fails on runtime
-		instanceStorageMock.EXPECT().GetInstance(ctx, schedulerName, availableRooms[1].ID).Return(gameRoomInstance, nil)
-		runtimeMock.EXPECT().DeleteGameRoomInstance(ctx, gameRoomInstance).Return(porterrors.ErrUnexpected)
+	t.Run("when any room failed to delete with timeout error it returns with error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		executor := NewExecutor(roomsManager)
 
-		err := executor.Execute(ctx, operation, definition)
-		require.NoError(t, err)
+		schedulerName := uuid.NewString()
+		definition := &RemoveRoomsDefinition{Amount: 2}
+		operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
+
+		availableRooms := []*game_room.GameRoom{
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+		}
+
+		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
+
+		err := executor.Execute(context.Background(), operation, definition)
+		require.Equal(t, operations.ErrKindTerminatingPingTimeout, err.Kind())
+		require.EqualError(t, err.Error(), "failed to remove room: some error")
 	})
 
 	t.Run("when list rooms has error returns with error", func(t *testing.T) {
-
-		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, room_manager.RoomManagerConfig{})
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 		executor := NewExecutor(roomsManager)
 
 		definition := &RemoveRoomsDefinition{Amount: 2}
 		operation := &operation.Operation{ID: "random-uuid", SchedulerName: uuid.NewString()}
 
 		ctx := context.Background()
-		roomStorageMock.EXPECT().GetRoomIDsByStatus(ctx, operation.SchedulerName, gomock.Any()).Return(nil, errors.New("failed to list rooms"))
+		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error"))
 
 		err := executor.Execute(ctx, operation, definition)
-		require.Error(t, err)
+		require.NotNil(t, err)
+		require.Equal(t, operations.ErrKindUnexpected, err.Kind())
 	})
 }

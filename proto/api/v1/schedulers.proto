@@ -7,6 +7,11 @@ option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
 
 import "google/api/annotations.proto";
 import "api/v1/messages.proto";
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.FieldOptions {
+  optional string validator = 51234;
+}
 
 // Service that manages the configuration and perform actions into schedulers.
 service SchedulersService {
@@ -48,10 +53,18 @@ service SchedulersService {
     };
   }
 
-  // Update a scheduler.
-  rpc UpdateScheduler(UpdateSchedulerRequest) returns (UpdateSchedulerResponse) {
+  // Creates new scheduler version and switch it to active version.
+  rpc NewSchedulerVersion(NewSchedulerVersionRequest) returns (NewSchedulerVersionResponse) {
     option (google.api.http) = {
-      put: "/schedulers/{name=*}",
+      post: "/schedulers/{name=*}",
+      body: "*"
+    };
+  }
+
+  // Patch a scheduler and switch it to active version.
+  rpc PatchScheduler(PatchSchedulerRequest) returns (PatchSchedulerResponse) {
+    option (google.api.http) = {
+      patch: "/schedulers/{name=*}",
       body: "*"
     };
   }
@@ -62,12 +75,34 @@ service SchedulersService {
       get: "/schedulers/{scheduler_name=*}/versions"
     };
   }
+
+  // Switch Active Version to Scheduler
+  rpc SwitchActiveVersion(SwitchActiveVersionRequest) returns (SwitchActiveVersionResponse) {
+    option (google.api.http) = {
+      put: "/schedulers/{scheduler_name=*}",
+      body: "*"
+    };
+  }
+
+  // List Scheduler and Game Rooms info by Game
+  rpc GetSchedulersInfo(GetSchedulersInfoRequest) returns (GetSchedulersInfoResponse) {
+    option (google.api.http) = {
+      get: "/schedulers/info"
+    };
+  }
 }
 
 // List scheduler request options.
-message ListSchedulersRequest {}
+message ListSchedulersRequest {
+  // Unique identifier for the scheduler.
+  string name = 1;
+  // Game the new scheduler will be part of.
+  string game = 2;
+  // Version to for the scheduler.
+  string version = 3;
+}
 
-// The list schedulers reponse message.
+// The list schedulers response message.
 message ListSchedulersResponse {
   // List of schedulers fetched.
   repeated SchedulerWithoutSpec schedulers = 1;
@@ -85,20 +120,14 @@ message CreateSchedulerRequest {
   string name = 1;
   // Game the new scheduler will be part of.
   string game = 2;
-  // ?.
-  string version = 3;
-  // The game room termination grace period.
-  int64 termination_grace_period = 4;
-  // The container object array defines all the game room container configurations.
-  repeated Container containers = 5;
+  // The spec object defines all the game room container configurations and spec of the scheduler.
+  Spec spec = 3;
   // The port range object describes what is the port range used to allocate game rooms.
-  PortRange port_range = 6;
-  // Runtime game room toleration configuration.
-  string toleration = 7;
-  // Runtime game room affinity configuration.
-  string affinity = 8;
+  PortRange port_range = 4;
   // The max surge of new rooms, used to scale and update
-  string max_surge = 9;
+  string max_surge = 5;
+  // List of Scheduler forwarders
+  repeated Forwarder forwarders = 6;
 }
 
 // Add rooms operation request payload + path parameters.
@@ -132,39 +161,55 @@ message RemoveRoomsResponse {
 // Get Scheduler operation request
 message GetSchedulerRequest {
   // Scheduler name where the rooms will be added.
-  string scheduler_name = 1;
+  string scheduler_name = 1 [(api.v1.validator) = "^(?!info$).*"];
   // Scheduler version to be queried (query param)
   string version = 2;
 }
 
-// The list schedulers reponse message.
+// The list schedulers response message.
 message GetSchedulerResponse {
   // List of schedulers fetched.
   Scheduler scheduler = 1;
 }
 
 // Scheduler is the struct that defines a maestro scheduler.
-message UpdateSchedulerRequest {
+message NewSchedulerVersionRequest {
   // Unique identifier for the scheduler.
   string name = 1;
   // Game the new scheduler will be part of.
   string game = 2;
-  // The game room termination grace period.
-  int64 termination_grace_period = 3;
-  // The container object array defines all the game room container configurations.
-  repeated Container containers = 4;
+  // The spec object defines all the game room container configurations and spec.
+  Spec spec = 3;
   // The port range object describes what is the port range used to allocate game rooms.
-  PortRange port_range = 5;
-  // Runtime game room toleration configuration.
-  string toleration = 6;
-  // Runtime game room affinity configuration.
-  string affinity = 7;
+  PortRange port_range = 4;
   // The max surge of new rooms, used to scale and update
-  string max_surge = 8;
+  string max_surge = 5;
+  // List of Scheduler forwarders
+  repeated Forwarder forwarders = 6;
 }
 
 // Update schedule operation response payload.
-message UpdateSchedulerResponse {
+message NewSchedulerVersionResponse {
+  // Operation ID, further this id can be used to consult its state.
+  string operation_id = 1;
+}
+
+// PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler.
+message PatchSchedulerRequest {
+  // Unique identifier for the scheduler.
+  string name = 1;
+  // The spec object defines all the game room container configurations and spec.
+  optional OptionalSpec spec = 2;
+  // The port range object describes what is the port range used to allocate game rooms.
+  optional PortRange port_range = 3;
+  // The max surge of new rooms, used to scale and update
+  optional string max_surge = 4;
+  // List of Scheduler forwarders
+  repeated Forwarder forwarders = 5;
+}
+
+// PatchSchedulerResponse have the operation response id that represents the operation creted to this change.
+message PatchSchedulerResponse {
   // Operation ID, further this id can be used to consult its state.
   string operation_id = 1;
 }
@@ -179,4 +224,30 @@ message GetSchedulerVersionsRequest {
 message GetSchedulerVersionsResponse {
   // List of versions for an scheduler
   repeated SchedulerVersion versions = 1;
+}
+
+// Switch Active Version Request
+message SwitchActiveVersionRequest {
+  // Scheduler Name
+  string scheduler_name = 1;
+  // Version that will be activate in Scheduler
+  string version = 2;
+}
+
+// Switch Active Version Response
+message SwitchActiveVersionResponse {
+  // Operation Id generated
+  string operation_id = 1;
+}
+
+// List Scheduler and Game Rooms Info Request
+message GetSchedulersInfoRequest {
+  // Game name to filter schedulers
+  string game = 1;  // Mapped to URL query parameter `game`.
+}
+
+// List Scheduler and Game Rooms Info Response
+message GetSchedulersInfoResponse {
+  // List of schedulers fetched.
+  repeated SchedulerInfo schedulers = 1;
 }

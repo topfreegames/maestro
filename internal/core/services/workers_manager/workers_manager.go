@@ -31,6 +31,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"go.uber.org/zap"
@@ -56,6 +57,7 @@ type WorkersManager struct {
 	WorkerOptions              *workers.WorkerOptions
 	workersStopTimeoutDuration time.Duration
 	workersWaitGroup           sync.WaitGroup
+	logger                     *zap.Logger
 }
 
 // NewWorkersManager is the default constructor of WorkersManager
@@ -69,6 +71,7 @@ func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, sch
 		syncWorkersInterval:        configs.GetDuration(syncWorkersIntervalPath),
 		WorkerOptions:              workerOptions,
 		workersStopTimeoutDuration: configs.GetDuration(workersStopTimeoutDurationPath),
+		logger:                     zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "workers_manager")),
 	}
 }
 
@@ -131,14 +134,14 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 	desirableWorkers := w.getDesirableWorkers(schedulers)
 	for name, worker := range desirableWorkers {
 		w.startWorker(ctx, name, worker)
-		zap.L().Info("new operation worker running", zap.String("scheduler", name))
+		w.logger.Info("new operation worker running", zap.String("scheduler", name))
 		reportWorkerStart(name)
 	}
 
 	dispensableWorkers := w.getDispensableWorkers(schedulers)
 	for name, worker := range dispensableWorkers {
 		worker.Stop(ctx)
-		zap.L().Info("canceling operation worker", zap.String("scheduler", name))
+		w.logger.Info("canceling operation worker", zap.String("scheduler", name))
 		reportWorkerStop(name)
 	}
 
@@ -152,7 +155,7 @@ func (w *WorkersManager) startWorker(ctx context.Context, name string, wkr worke
 	go func() {
 		err := wkr.Start(ctx)
 		if err != nil {
-			zap.L().
+			w.logger.
 				With(zap.Error(err)).
 				With(zap.String("scheduler", name)).
 				Error("operation worker failed to start")

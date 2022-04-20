@@ -37,6 +37,6 @@ type Config interface {
 	GetFloat64(string) float64
 	// GetBool returns the configuration path as a boolean. Default: false
 	GetBool(string) bool
-	// GetDuration returns a time.Duration of the config. Deafult: 0
+	// GetDuration returns a time.Duration of the config. Default: 0
 	GetDuration(string) time.Duration
 }

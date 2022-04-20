@@ -27,19 +27,26 @@ package operation_manager
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"testing"
 	"time"
 
+	"errors"
+	"fmt"
+
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	opflow "github.com/topfreegames/maestro/internal/adapters/operation_flow/mock"
-	opstorage "github.com/topfreegames/maestro/internal/adapters/operation_storage/mock"
+
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/ports"
+
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
+
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 )
 
@@ -92,17 +99,18 @@ func TestCreateOperation(t *testing.T) {
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
-			defer mockCtrl.Finish()
 
 			schedulerName := "scheduler_name"
-			operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-			operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+			operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+			operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 			definitionConstructors := operations.NewDefinitionConstructors()
-			opManager := New(operationFlow, operationStorage, definitionConstructors)
+			operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+			config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+			opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 			ctx := context.Background()
-			testDefinition, _ := test.definition.(*testOperationDefinition)
-			operationStorage.EXPECT().CreateOperation(ctx, &opMatcher{operation.StatusPending, test.definition}, testDefinition.marshalResult).Return(test.storageErr)
+			operationStorage.EXPECT().CreateOperation(ctx, &opMatcher{operation.StatusPending, test.definition}).Return(test.storageErr)
 
 			if test.storageErr == nil {
 				operationFlow.EXPECT().InsertOperationID(ctx, schedulerName, gomock.Any()).Return(test.flowErr)
@@ -122,8 +130,11 @@ func TestCreateOperation(t *testing.T) {
 				return
 			}
 
-			require.NotNil(t, op)
-			require.Equal(t, operation.StatusPending, op.Status)
+			assert.NotEmpty(t, op.ID)
+			assert.Equal(t, operation.StatusPending, op.Status)
+			assert.Equal(t, test.definition.Name(), op.DefinitionName)
+			assert.Equal(t, schedulerName, op.SchedulerName)
+			assert.EqualValues(t, test.definition.Marshal(), op.Input)
 		})
 	}
 }
@@ -131,50 +142,56 @@ func TestCreateOperation(t *testing.T) {
 func TestGetOperation(t *testing.T) {
 	t.Run("find operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
 		definitionConstructors[defFunc().Name()] = defFunc
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		operationID := "some-op-id"
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
-			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
-			[]byte{},
+			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name(), Status: operation.StatusPending},
 			nil,
 		)
 
 		op, definition, err := opManager.GetOperation(ctx, schedulerName, operationID)
 		require.NoError(t, err)
-		require.NotNil(t, op)
-		require.Equal(t, operationID, op.ID)
-		require.Equal(t, schedulerName, op.SchedulerName)
+
+		assert.Equal(t, op.ID, operationID)
+		assert.Equal(t, operation.StatusPending, op.Status)
+		assert.Equal(t, schedulerName, op.SchedulerName)
+		assert.Equal(t, defFunc().Name(), op.DefinitionName)
+		assert.EqualValues(t, defFunc().Marshal(), op.Input)
+
 		require.IsType(t, defFunc(), definition)
 	})
 
-	t.Run("defition not found", func(t *testing.T) {
+	t.Run("definition not found", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		operationID := "some-op-id"
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
-			[]byte{},
 			nil,
 		)
 
@@ -184,21 +201,22 @@ func TestGetOperation(t *testing.T) {
 
 	t.Run("operation not found", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		operationID := "some-op-id"
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
-			[]byte{},
 			porterrors.ErrNotFound,
 		)
 
@@ -208,21 +226,22 @@ func TestGetOperation(t *testing.T) {
 
 	t.Run("unmarshal error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{unmarshalResult: errors.New("invalid")} }
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		operationID := "some-op-id"
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
-			[]byte{},
 			porterrors.ErrNotFound,
 		)
 
@@ -234,15 +253,17 @@ func TestGetOperation(t *testing.T) {
 func TestNextSchedulerOperation(t *testing.T) {
 	t.Run("fetch operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		definitionConstructors := operations.NewDefinitionConstructors()
 		definitionConstructors[defFunc().Name()] = defFunc
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -251,7 +272,6 @@ func TestNextSchedulerOperation(t *testing.T) {
 		operationFlow.EXPECT().NextOperationID(ctx, schedulerName).Return(operationID, nil)
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			&operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()},
-			[]byte{},
 			nil,
 		)
 
@@ -265,15 +285,17 @@ func TestNextSchedulerOperation(t *testing.T) {
 
 	t.Run("no next operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		definitionConstructors := operations.NewDefinitionConstructors()
 		definitionConstructors[defFunc().Name()] = defFunc
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -285,15 +307,17 @@ func TestNextSchedulerOperation(t *testing.T) {
 
 	t.Run("operation not found", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
 		defFunc := func() operations.Definition { return &testOperationDefinition{} }
 		definitionConstructors := operations.NewDefinitionConstructors()
 		definitionConstructors[defFunc().Name()] = defFunc
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
@@ -302,7 +326,6 @@ func TestNextSchedulerOperation(t *testing.T) {
 		operationFlow.EXPECT().NextOperationID(ctx, schedulerName).Return(operationID, nil)
 		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(
 			nil,
-			[]byte{},
 			porterrors.ErrNotFound,
 		)
 
@@ -314,12 +337,14 @@ func TestNextSchedulerOperation(t *testing.T) {
 func TestStartOperation(t *testing.T) {
 	t.Run("starts operation with success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		op := &operation.Operation{ID: uuid.NewString(), DefinitionName: (&testOperationDefinition{}).Name()}
@@ -333,12 +358,14 @@ func TestStartOperation(t *testing.T) {
 func TestFinishOperation(t *testing.T) {
 	t.Run("finishes operation with success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		op := &operation.Operation{
@@ -362,12 +389,14 @@ func TestFinishOperation(t *testing.T) {
 func TestListSchedulerActiveOperations(t *testing.T) {
 	t.Run("it returns an operation list with pending status", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		operationsResult := []*operation.Operation{
@@ -375,24 +404,99 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 			{ID: uuid.NewString()},
 			{ID: uuid.NewString()},
 		}
+		operationsLease := []*operation.OperationLease{
+			{OperationID: operationsResult[0].ID, Ttl: time.Unix(1641306511, 0)},
+			{OperationID: operationsResult[1].ID, Ttl: time.Unix(1641306522, 0)},
+			{OperationID: operationsResult[2].ID, Ttl: time.Unix(1641306533, 0)},
+		}
+		operationsResult[0].Lease = operationsLease[0]
+		operationsResult[1].Lease = operationsLease[1]
+		operationsResult[2].Lease = operationsLease[2]
+
+		schedulerName := "test-scheduler"
+		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
+		operationLeaseStorage.EXPECT().FetchOperationsLease(ctx, schedulerName, operationsResult[0].ID, operationsResult[1].ID, operationsResult[2].ID).Return(operationsLease, nil)
+		operations, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
+		require.NoError(t, err)
+		require.ElementsMatch(t, operationsResult, operations)
+	})
+	t.Run("it returns an empty list when there is no operation", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+		var operationsResult []*operation.Operation
 
 		schedulerName := "test-scheduler"
 		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
 		operations, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
 		require.NoError(t, err)
-		require.ElementsMatch(t, operationsResult, operations)
+		require.Empty(t, operations)
 	})
+
+	t.Run("it returns error when some error occurs in operation storage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManagerConfig := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, operationManagerConfig, schedulerStorage)
+
+		ctx := context.Background()
+
+		schedulerName := "test-scheduler"
+		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(nil, errors.New("some error"))
+		_, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
+		require.Error(t, err, fmt.Errorf("failed get active operations list fort scheduler %s : %w", schedulerName, errors.New("some error")))
+	})
+
+	t.Run("it returns error when some error occurs in operation lease storage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManagerConfig := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, operationManagerConfig, schedulerStorage)
+
+		ctx := context.Background()
+		operationsResult := []*operation.Operation{
+			{ID: uuid.NewString()},
+			{ID: uuid.NewString()},
+			{ID: uuid.NewString()},
+		}
+		schedulerName := "test-scheduler"
+		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
+		operationLeaseStorage.EXPECT().FetchOperationsLease(ctx, schedulerName, operationsResult[0].ID, operationsResult[1].ID, operationsResult[2].ID).Return([]*operation.OperationLease{}, errors.New("some error"))
+		_, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
+		require.Error(t, err, fmt.Errorf("failed to fetch operations lease for scheduler %s: %w", schedulerName, errors.New("some error")))
+	})
+
 }
 
 func TestListSchedulerFinishedOperations(t *testing.T) {
 	t.Run("it returns an operation list with finished status", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		operationsResult := []*operation.Operation{
@@ -402,8 +506,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		}
 
 		schedulerName := "test-scheduler"
-		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
-		operations, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName).Return(operationsResult, nil)
+		operations, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName)
 		require.NoError(t, err)
 		require.ElementsMatch(t, operationsResult, operations)
 	})
@@ -412,12 +516,14 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 func TestListSchedulerPendingOperations(t *testing.T) {
 	t.Run("it returns an operation list with pending status", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
 		definitionConstructors := operations.NewDefinitionConstructors()
-		opManager := New(operationFlow, operationStorage, definitionConstructors)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
 
 		ctx := context.Background()
 		operationsResult := []*operation.Operation{
@@ -428,9 +534,9 @@ func TestListSchedulerPendingOperations(t *testing.T) {
 
 		schedulerName := "test-scheduler"
 		operationFlow.EXPECT().ListSchedulerPendingOperationIDs(ctx, schedulerName).Return([]string{"1", "2", "3"}, nil)
-		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "1").Return(operationsResult[0], []byte{}, nil)
-		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "2").Return(operationsResult[1], []byte{}, nil)
-		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "3").Return(operationsResult[2], []byte{}, nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "1").Return(operationsResult[0], nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "2").Return(operationsResult[1], nil)
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, "3").Return(operationsResult[2], nil)
 
 		operations, err := opManager.ListSchedulerPendingOperations(ctx, schedulerName)
 		require.NoError(t, err)
@@ -444,14 +550,16 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 
 	t.Run("cancels a operation successfully", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
 
-		operationStorage := opstorage.NewMockOperationStorage(mockCtrl)
-		operationFlow := opflow.NewMockOperationFlow(mockCtrl)
-		opManager := New(operationFlow, operationStorage, nil)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, nil, operationLeaseStorage, config, schedulerStorage)
 
 		cancelableContext, cancelFunction := context.WithCancel(context.Background())
-		opManager.operationCancelFunctions.putFunction(schedulerName, operationID, cancelFunction)
+		opManager.OperationCancelFunctions.putFunction(schedulerName, operationID, cancelFunction)
 
 		requestChannel := make(chan ports.OperationCancellationRequest, 1000)
 		operationFlow.EXPECT().WatchOperationCancellationRequests(gomock.Any()).Return(requestChannel)
@@ -461,7 +569,7 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 			SchedulerName: schedulerName,
 			ID:            operationID,
 			Status:        operation.StatusInProgress,
-		}, nil, nil)
+		}, nil)
 
 		go func() {
 			err := opManager.WatchOperationCancellationRequests(ctx)
@@ -484,4 +592,495 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 
 		ctxCancelFunction()
 	})
+}
+
+func TestGrantLease(t *testing.T) {
+	t.Run("Grant Lease success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		operationLeaseStorage.EXPECT().GrantLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).Return(nil)
+		err := opManager.GrantLease(ctx, op)
+		require.NoError(t, err)
+
+	})
+
+	t.Run("Grant Lease error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		operationLeaseStorage.EXPECT().GrantLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).Return(errors.New("error"))
+		err := opManager.GrantLease(ctx, op)
+		require.Error(t, err)
+		require.Equal(t, err.Error(), "failed to grant lease to operation: error")
+	})
+}
+
+func TestRevokeLease(t *testing.T) {
+	t.Run("Revoke Lease success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		operationLeaseStorage.EXPECT().RevokeLease(ctx, schedulerName, operationID).Return(nil)
+		err := opManager.RevokeLease(ctx, op)
+		require.NoError(t, err)
+	})
+
+	t.Run("Revoke Lease error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		operationLeaseStorage.EXPECT().RevokeLease(ctx, schedulerName, operationID).Return(errors.New("error"))
+		err := opManager.RevokeLease(ctx, op)
+		require.Error(t, err)
+		require.Equal(t, err.Error(), "failed to revoke lease to operation: error")
+	})
+}
+
+func TestStartLeaseRenewGoRoutine(t *testing.T) {
+	t.Run("Renews lease not executed since op.status = finished", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+			Status:        operation.StatusFinished,
+		}
+
+		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).MaxTimes(0)
+		opManager.StartLeaseRenewGoRoutine(ctx, op)
+		time.Sleep(time.Second * 1)
+	})
+	t.Run("changed op.status = finished after starting renew lease go routine", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+			Status:        operation.StatusInProgress,
+		}
+
+		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).MaxTimes(1)
+		opManager.StartLeaseRenewGoRoutine(ctx, op)
+		time.Sleep(time.Second * 1)
+		op.Status = operation.StatusFinished
+		time.Sleep(time.Second * 2)
+	})
+
+	t.Run("Renews lease error does not panic", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx, cancelFunction := context.WithCancel(context.Background())
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).Return(errors.New("error")).MinTimes(1).MaxTimes(2)
+		opManager.StartLeaseRenewGoRoutine(ctx, op)
+		time.Sleep(time.Second * 2)
+		cancelFunction()
+	})
+
+	t.Run("Renews lease being called correct number of times", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx, cancelFunction := context.WithCancel(context.Background())
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		operationLeaseStorage.EXPECT().RenewLease(ctx, schedulerName, operationID, config.OperationLeaseTtl).MaxTimes(3).MinTimes(2)
+		opManager.StartLeaseRenewGoRoutine(ctx, op)
+		time.Sleep(time.Second * 3)
+		cancelFunction()
+	})
+
+	t.Run("Context canceled breaks StartLeaseRenewGoRoutine execution", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx, cancelFunction := context.WithCancel(context.Background())
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName: schedulerName,
+		}
+
+		opManager.StartLeaseRenewGoRoutine(ctx, op)
+		cancelFunction()
+		require.Eventually(t, func() bool {
+			return ctx.Err() == context.Canceled
+		}, time.Second, time.Millisecond*100)
+	})
+}
+
+func TestEnqueueOperationCancellationRequest(t *testing.T) {
+	schedulerName := "scheduler-name"
+	operationID := "123"
+	defFunc := func() operations.Definition { return &testOperationDefinition{} }
+	op := &operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name()}
+
+	t.Run("it returns nil when cancelled op with success", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
+			op,
+			nil,
+		)
+		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Any()).Return(nil)
+
+		err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("it returns error type conflict when op have final state", func(t *testing.T) {
+		t.Parallel()
+		finalStatuses := []operation.Status{operation.StatusFinished, operation.StatusCanceled, operation.StatusEvicted, operation.StatusError}
+		for _, status := range finalStatuses {
+
+			operationFinished := &operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name(), Status: status}
+			mockCtrl := gomock.NewController(t)
+			operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+			operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+			definitionConstructors := operations.NewDefinitionConstructors()
+			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+			operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+			definitionConstructors[defFunc().Name()] = defFunc
+			config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+			opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+			schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
+			operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
+				operationFinished,
+				nil,
+			)
+
+			err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
+
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, porterrors.ErrConflict)
+		}
+	})
+
+	t.Run("it returns error when op have invalid state", func(t *testing.T) {
+		t.Parallel()
+		operationInvalid := &operation.Operation{ID: operationID, SchedulerName: schedulerName, DefinitionName: defFunc().Name(), Status: 9999}
+		mockCtrl := gomock.NewController(t)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
+			operationInvalid,
+			nil,
+		)
+
+		err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
+
+		assert.Error(t, err)
+	})
+
+	t.Run("it returns error when scheduler was not found", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(nil, errors.New("err"))
+
+		err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to fetch scheduler from storage")
+	})
+
+	t.Run("it returns error when op was not found", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
+			nil,
+			errors.New("err"),
+		)
+
+		err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to fetch operation from storage")
+	})
+
+	t.Run("it returns error when op couldn't enqueued", func(t *testing.T) {
+		t.Parallel()
+		mockCtrl := gomock.NewController(t)
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(newValidScheduler(), nil)
+		operationStorage.EXPECT().GetOperation(gomock.Any(), schedulerName, operationID).Return(
+			op,
+			nil,
+		)
+		operationFlow.EXPECT().EnqueueOperationCancellationRequest(gomock.Any(), gomock.Any()).Return(errors.New("err"))
+
+		err := opManager.EnqueueOperationCancellationRequest(context.Background(), schedulerName, operationID)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to enqueue operation cancellation request:")
+	})
+}
+
+func TestAppendOperationEventToExecutionHistory(t *testing.T) {
+	t.Run("success case", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		defFunc := func() operations.Definition { return &testOperationDefinition{} }
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		definitionConstructors[defFunc().Name()] = defFunc
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		operationID := uuid.NewString()
+		op := &operation.Operation{
+			ID: operationID, DefinitionName: (&testOperationDefinition{}).Name(),
+			SchedulerName:    schedulerName,
+			ExecutionHistory: []operation.OperationEvent{},
+		}
+
+		eventMessage := "some-event-message"
+		operationStorage.EXPECT().UpdateOperationExecutionHistory(ctx, op).Do(func(ctx context.Context, op *operation.Operation) {
+			for _, event := range op.ExecutionHistory {
+				if event.Event == eventMessage {
+					return
+				}
+
+				assert.Fail(t, "ExecutionHistory does not have new event")
+			}
+		}).Return(nil)
+		opManager.AppendOperationEventToExecutionHistory(ctx, op, eventMessage)
+	})
+}
+
+// newValidScheduler generates a valid scheduler with the required fields.
+func newValidScheduler() *entities.Scheduler {
+	return &entities.Scheduler{
+		Name:            "scheduler",
+		Game:            "game",
+		State:           entities.StateCreating,
+		MaxSurge:        "10%",
+		RollbackVersion: "",
+		Spec: game_room.Spec{
+			Version:                "v1",
+			TerminationGracePeriod: 60,
+			Toleration:             "toleration",
+			Affinity:               "affinity",
+			Containers: []game_room.Container{
+				{
+					Name:            "default",
+					Image:           "some-image",
+					ImagePullPolicy: "Always",
+					Command:         []string{"hello"},
+					Ports: []game_room.ContainerPort{
+						{Name: "tcp", Protocol: "tcp", Port: 80},
+					},
+					Requests: game_room.ContainerResources{
+						CPU:    "10m",
+						Memory: "100Mi",
+					},
+					Limits: game_room.ContainerResources{
+						CPU:    "10m",
+						Memory: "100Mi",
+					},
+				},
+			},
+		},
+		PortRange: &entities.PortRange{
+			Start: 40000,
+			End:   60000,
+		},
+	}
 }

@@ -62,31 +62,38 @@ func assertInstanceRedis(t *testing.T, client *redis.Client, expectedInstance *g
 func TestRedisInstanceStorage_UpsertInstance(t *testing.T) {
 	client := test.GetRedisConnection(t, redisAddress)
 	storage := NewRedisInstanceStorage(client, 0)
-	instance := &game_room.Instance{
-		ID:          "1",
-		SchedulerID: "game",
-		Status: game_room.InstanceStatus{
-			Type: game_room.InstancePending,
-		},
-	}
-
-	require.NoError(t, storage.UpsertInstance(context.Background(), instance))
-	assertInstanceRedis(t, client, instance)
-
-	instance.Status.Type = game_room.InstanceReady
-	instance.Address = &game_room.Address{
-		Host: "host",
-		Ports: []game_room.Port{
-			{
-				Name:     "game",
-				Port:     7000,
-				Protocol: "udp",
+	t.Run("should succeed", func(t *testing.T) {
+		instance := &game_room.Instance{
+			ID:          "1",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstancePending,
 			},
-		},
-	}
+		}
 
-	require.NoError(t, storage.UpsertInstance(context.Background(), instance))
-	assertInstanceRedis(t, client, instance)
+		require.NoError(t, storage.UpsertInstance(context.Background(), instance))
+		assertInstanceRedis(t, client, instance)
+
+		instance.Status.Type = game_room.InstanceReady
+		instance.Address = &game_room.Address{
+			Host: "host",
+			Ports: []game_room.Port{
+				{
+					Name:     "game",
+					Port:     7000,
+					Protocol: "udp",
+				},
+			},
+		}
+
+		require.NoError(t, storage.UpsertInstance(context.Background(), instance))
+		assertInstanceRedis(t, client, instance)
+	})
+
+	t.Run("should fail - instance is nil", func(t *testing.T) {
+		err := storage.UpsertInstance(context.Background(), nil)
+		require.Error(t, err)
+	})
 }
 
 func TestRedisInstanceStorage_GetInstance(t *testing.T) {
@@ -156,43 +163,7 @@ func TestRedisInstanceStorage_RemoveInstance(t *testing.T) {
 
 func TestRedisInstanceStorage_GetAllInstances(t *testing.T) {
 	storage := NewRedisInstanceStorage(test.GetRedisConnection(t, redisAddress), 0)
-	instances := []*game_room.Instance{
-		{
-			ID:          "1",
-			SchedulerID: "game",
-			Status: game_room.InstanceStatus{
-				Type: game_room.InstanceReady,
-			},
-			Address: &game_room.Address{
-				Host: "host",
-				Ports: []game_room.Port{
-					{
-						Name:     "game",
-						Port:     7000,
-						Protocol: "udp",
-					},
-				},
-			},
-		},
-		{
-			ID:          "2",
-			SchedulerID: "game",
-			Status: game_room.InstanceStatus{
-				Type:        game_room.InstanceError,
-				Description: "error",
-			},
-			Address: &game_room.Address{
-				Host: "host",
-				Ports: []game_room.Port{
-					{
-						Name:     "game",
-						Port:     7000,
-						Protocol: "udp",
-					},
-				},
-			},
-		},
-	}
+	instances := generateInstances()
 
 	for _, instance := range instances {
 		require.NoError(t, storage.UpsertInstance(context.Background(), instance))
@@ -248,4 +219,200 @@ func TestRedisInstanceStorage_GetInstanceCount(t *testing.T) {
 	count, err := storage.GetInstanceCount(context.Background(), "game")
 	require.NoError(t, err)
 	require.Equal(t, 2, count)
+}
+
+func generateInstances() []*game_room.Instance {
+	return []*game_room.Instance{
+		{
+			ID:          "1",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstanceReady,
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		},
+		{
+			ID:          "2",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
+				Description: "error",
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		},
+		{
+			ID:          "3",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstanceReady,
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		},
+		{
+			ID:          "4",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
+				Description: "error",
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		}, {
+			ID:          "5",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstanceReady,
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		},
+		{
+			ID:          "6",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
+				Description: "error",
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		}, {
+			ID:          "7",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstanceReady,
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		},
+		{
+			ID:          "8",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
+				Description: "error",
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		}, {
+			ID:          "9",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type: game_room.InstanceReady,
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		},
+		{
+			ID:          "10",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
+				Description: "error",
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		},
+		{
+			ID:          "11",
+			SchedulerID: "game",
+			Status: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
+				Description: "error",
+			},
+			Address: &game_room.Address{
+				Host: "host",
+				Ports: []game_room.Port{
+					{
+						Name:     "game",
+						Port:     7000,
+						Protocol: "udp",
+					},
+				},
+			},
+		},
+	}
+
 }

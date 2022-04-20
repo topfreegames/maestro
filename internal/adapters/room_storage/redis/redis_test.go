@@ -116,11 +116,12 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 
 	t.Run("game room without metadata", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-1",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:               "room-1",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusReady,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 		}
 		require.NoError(t, storage.CreateRoom(ctx, room))
 		assertRedisState(t, client, room)
@@ -128,11 +129,12 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 
 	t.Run("game room with metadata", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-2",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:               "room-2",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusReady,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
@@ -144,11 +146,12 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 
 	t.Run("error when creating existing room", func(t *testing.T) {
 		firstRoom := &game_room.GameRoom{
-			ID:          "room-3",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:               "room-3",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusReady,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
@@ -158,11 +161,12 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 		assertRedisState(t, client, firstRoom)
 
 		secondRoom := &game_room.GameRoom{
-			ID:          "room-3",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusOccupied,
-			LastPingAt:  lastPing,
+			ID:               "room-3",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusOccupied,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
@@ -180,11 +184,12 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 
 	t.Run("game room without metadata", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-1",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:               "room-1",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusReady,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -195,11 +200,12 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 
 	t.Run("game room with metadata", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-2",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:               "room-2",
+			SchedulerID:      "game",
+			Version:          "1.0",
+			Status:           game_room.GameStatusReady,
+			LastPingAt:       lastPing,
+			IsValidationRoom: false,
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
@@ -257,7 +263,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 		require.Equal(t, expectedRoom, actualRoom)
 	})
 
-	t.Run("game room with metadata", func(t *testing.T) {
+	t.Run("game room with metadata and validation flag true", func(t *testing.T) {
 		expectedRoom := &game_room.GameRoom{
 			ID:          "room-2",
 			SchedulerID: "game",
@@ -267,6 +273,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
+			IsValidationRoom: true,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, expectedRoom))

@@ -1,5 +1,5 @@
-internal_api:
-  port: 8083
+internalApi:
+  port: 8061
   gracefulShutdownTimeout: 10s
   metrics:
     enabled: true
@@ -15,10 +15,14 @@ adapters:
   operationStorage:
     redis:
       url: "redis://localhost:6379/0"
+  operationLeaseStorage:
+    redis:
+      url: "redis://localhost:6379/0"
   runtime:
     kubernetes:
+      inCluster: false
       masterUrl: "https://127.0.0.1:6443"
-      kubeconfig: "./kubeconfig.yaml"
+      kubeconfig: "./kubeconfig/kubeconfig.yaml"
   portAllocator:
     random:
       range: 60001-60010
@@ -28,11 +32,14 @@ adapters:
   instanceStorage:
     redis:
       url: "redis://localhost:6379/0"
+  schedulerCache:
+    redis:
+      url: "redis://localhost:6379/0"
 workers:
   syncInterval: 10s
   stopTimeoutDuration: 1m
 services:
   roomManager:
-    roomPingTimeoutMillis: 90000
+    roomPingTimeoutMillis: 240000
     roomInitializationTimeoutMillis: 120000
     roomDeletionTimeoutMillis: 120000

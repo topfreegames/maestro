@@ -1,0 +1,25 @@
+{
+  "service": "GRPCForwarder",
+  "method": "SendRoomResync",
+  "input": {
+    "contains": {
+      "room": {
+        "metadata":{
+          "eventMetadata1": "value1",
+          "eventMetadata2": "true",
+          "forwarderMetadata1": "value1",
+          "forwarderMetadata2": "245",
+          "mockIdentifier": "f7415c97-5c28-418b-b19b-87380e2d0113"
+        },
+        "roomType": "green"
+      },
+      "statusType": 2
+    }
+  },
+  "output": {
+    "data": {
+      "code": 500,
+      "message": "Internal server error from matchmaker"
+    }
+  }
+}

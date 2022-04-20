@@ -28,16 +28,16 @@ import "fmt"
 type InstanceStatusType int
 
 const (
-	// Instance has an undefined status.
+	// InstanceUnknown has an undefined status.
 	InstanceUnknown InstanceStatusType = iota
-	// Instance is not ready yet. It will be on this state while creating.
+	// InstancePending is not ready yet. It will be on this state while creating.
 	InstancePending
-	// Instance is running fine and all probes are being successful.
+	// InstanceReady is running fine and all probes are being successful.
 	InstanceReady
-	// Instance has received a termination signal and it is on process of
+	// InstanceTerminating has received a termination signal and it is on process of
 	// shutdown.
 	InstanceTerminating
-	// Instance has some sort of error.
+	// InstanceError has some sort of error.
 	InstanceError
 )
 

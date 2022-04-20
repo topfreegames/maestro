@@ -40,7 +40,7 @@ import (
 func TestGameRoomsWatch(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	client := test.GetKubernetesClientset(t, kubernetesContainer)
+	client := test.GetKubernetesClientSet(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("watch pod addition", func(t *testing.T) {
@@ -134,7 +134,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			}
 
 			return false
-		}, time.Minute, time.Second)
+		}, time.Minute*2, time.Second)
 
 		watcher.Stop()
 		require.NoError(t, watcher.Err())
@@ -165,7 +165,7 @@ func TestGameRoomsWatch(t *testing.T) {
 				{
 					Name:    "nginx",
 					Image:   "nginx:stable-alpine",
-					Command: []string{"some", "inexistend", "command"},
+					Command: []string{"some", "inexistent", "command"},
 				},
 			},
 		}
@@ -185,7 +185,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			}
 
 			return false
-		}, time.Minute, time.Second)
+		}, time.Minute*2, time.Second)
 
 		watcher.Stop()
 		require.NoError(t, watcher.Err())

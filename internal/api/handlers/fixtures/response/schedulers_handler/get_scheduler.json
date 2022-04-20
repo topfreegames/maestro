@@ -1,0 +1,80 @@
+{
+  "scheduler": {
+    "name": "zooba-us",
+    "game": "zooba",
+    "state": "in-sync",
+    "portRange": {
+      "start": 1,
+      "end": 2
+    },
+    "createdAt": "2022-01-01T00:00:00Z",
+    "maxSurge": "10%",
+    "spec": {
+      "version": "v1.0.0",
+      "terminationGracePeriod": "100",
+      "containers": [
+        {
+          "name": "game-room-container-name",
+          "image": "game-room-container-image",
+          "imagePullPolicy": "IfNotPresent",
+          "command": [
+            "./run"
+          ],
+          "environment": [
+            {
+              "name": "env-var-name",
+              "value": "env-var-value"
+            },
+            {
+              "name": "env-var-field-ref",
+              "valueFrom": {
+                "fieldRef": {
+                  "fieldPath": "metadata.name"
+                }
+              }
+            },
+            {
+              "name": "env-var-secret-ref",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "name": "secret_name",
+                  "key": "secret_key"
+                }
+              }
+            }
+          ],
+          "requests": {
+            "memory": "100mi",
+            "cpu": "100m"
+          },
+          "limits": {
+            "memory": "200mi",
+            "cpu": "200m"
+          },
+          "ports": [
+            {
+              "name": "container-port-name",
+              "protocol": "https",
+              "port": 12345,
+              "hostPort": 54321
+            }
+          ]
+        }
+      ],
+      "toleration": "",
+      "affinity": ""
+    },
+    "forwarders": [
+      {
+        "name": "forwarder-1",
+        "enable": true,
+        "type": "gRPC",
+        "address": "127.0.0.1:9090",
+        "options": {
+          "timeout": "1000",
+          "metadata": {}
+        }
+      }
+    ]
+  }
+}

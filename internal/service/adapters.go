@@ -25,17 +25,23 @@ package service
 import (
 	"fmt"
 
+	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
+
+	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
+
+	scheduleradapters "github.com/topfreegames/maestro/internal/adapters/scheduler"
+
+	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
+
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
 	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
-	matchmakerEventsForwarder "github.com/topfreegames/maestro/internal/adapters/events_forwarder/noop_forwarder"
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
-	operationFlowRedis "github.com/topfreegames/maestro/internal/adapters/operation_flow/redis"
-	operationStorageRedis "github.com/topfreegames/maestro/internal/adapters/operation_storage/redis"
 	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/port_allocator/random"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
 	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
-	schedulerStoragePg "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/pg"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -48,10 +54,14 @@ const (
 	// Kubernetes runtime
 	runtimeKubernetesMasterUrlPath  = "adapters.runtime.kubernetes.masterUrl"
 	runtimeKubernetesKubeconfigPath = "adapters.runtime.kubernetes.kubeconfig"
+	runtimeKubernetesInCluster      = "adapters.runtime.kubernetes.inCluster"
 	// Redis operation storage
-	operationStorageRedisUrlPath = "adapters.operationStorage.redis.url"
+	operationStorageRedisUrlPath      = "adapters.operationStorage.redis.url"
+	operationLeaseStorageRedisUrlPath = "adapters.operationLeaseStorage.redis.url"
 	// Redis room storage
 	roomStorageRedisUrlPath = "adapters.roomStorage.redis.url"
+	// Redis scheduler cache
+	schedulerCacheRedisUrlPath = "adapters.schedulerCache.redis.url"
 	// Redis instance storage
 	instanceStorageRedisUrlPath      = "adapters.instanceStorage.redis.url"
 	instanceStorageRedisScanSizePath = "adapters.instanceStorage.redis.scanSize"
@@ -63,20 +73,35 @@ const (
 	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
 )
 
+func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig, schedulerStorage ports.SchedulerStorage) ports.OperationManager {
+	return operation_manager.New(flow, storage, operationDefinitionConstructors, leaseStorage, config, schedulerStorage)
+}
+
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config room_manager.RoomManagerConfig) ports.RoomManager {
+	return room_manager.New(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
+}
+
 func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
-	return matchmakerEventsForwarder.NewNoopForwarder(), nil
+	forwarderGrpc := eventsadapters.NewForwarderClient()
+	return eventsadapters.NewEventsForwarder(forwarderGrpc), nil
 }
 
 func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
-	clientset, err := createKubernetesClient(
-		c.GetString(runtimeKubernetesMasterUrlPath),
-		c.GetString(runtimeKubernetesKubeconfigPath),
-	)
+	var masterUrl string
+	var kubeConfigPath string
+
+	inCluster := c.GetBool(runtimeKubernetesInCluster)
+	if !inCluster {
+		masterUrl = c.GetString(runtimeKubernetesMasterUrlPath)
+		kubeConfigPath = c.GetString(runtimeKubernetesKubeconfigPath)
+	}
+
+	clientSet, err := createKubernetesClient(masterUrl, kubeConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Kubernetes runtime: %w", err)
 	}
 
-	return kubernetesRuntime.New(clientset), nil
+	return kubernetesRuntime.New(clientSet), nil
 }
 
 func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.OperationStorage, error) {
@@ -85,7 +110,16 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	return operationStorageRedis.NewRedisOperationStorage(client, clock), nil
+	return operationadapters.NewRedisOperationStorage(client, clock), nil
+}
+
+func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.OperationLeaseStorage, error) {
+	client, err := createRedisClient(c.GetString(operationLeaseStorageRedisUrlPath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Redis operation lease storage: %w", err)
+	}
+
+	return operationadapters.NewRedisOperationLeaseStorage(client, clock), nil
 }
 
 func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
@@ -104,6 +138,15 @@ func NewGameRoomInstanceStorageRedis(c config.Config) (ports.GameRoomInstanceSto
 	}
 
 	return instanceStorageRedis.NewRedisInstanceStorage(client, c.GetInt(instanceStorageRedisScanSizePath)), nil
+}
+
+func NewSchedulerCacheRedis(c config.Config) (ports.SchedulerCache, error) {
+	client, err := createRedisClient(c.GetString(schedulerCacheRedisUrlPath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Redis scheduler cache: %w", err)
+	}
+
+	return scheduleradapters.NewRedisSchedulerCache(client), nil
 }
 
 func NewClockTime() ports.Clock {
@@ -129,7 +172,7 @@ func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
 
-	return schedulerStoragePg.NewSchedulerStorage(opts), nil
+	return scheduleradapters.NewSchedulerStorage(opts), nil
 }
 
 func createRedisClient(url string) (*redis.Client, error) {
@@ -147,7 +190,7 @@ func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	return operationFlowRedis.NewRedisOperationFlow(client), nil
+	return operationadapters.NewRedisOperationFlow(client), nil
 }
 
 func connectToPostgres(url string) (*pg.Options, error) {

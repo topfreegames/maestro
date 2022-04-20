@@ -25,40 +25,28 @@ package add_rooms
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations"
+
+	"context"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	clock_mock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
-	eventsForwarderMock "github.com/topfreegames/maestro/internal/adapters/events_forwarder/mock"
-	instance_storage_mock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
-	port_allocator_mock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-
-	rs_mock "github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
-	runtime_mock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
-	schedulerStorageMock "github.com/topfreegames/maestro/internal/adapters/scheduler_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
-	"context"
-	"github.com/topfreegames/maestro/internal/adapters/room_storage/mock"
-	"testing"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
 func TestAddRoomsExecutor_Execute(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
 
 	clockMock := clock_mock.NewFakeClock(time.Now())
-	portAllocatorMock := port_allocator_mock.NewMockPortAllocator(mockCtrl)
-	roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
-	instanceStorageMock := instance_storage_mock.NewMockGameRoomInstanceStorage(mockCtrl)
-	runtimeMock := runtime_mock.NewMockRuntime(mockCtrl)
-	eventsForwarderMock := eventsForwarderMock.NewMockEventsForwarder(mockCtrl)
-	schedulerStorage := schedulerStorageMock.NewMockSchedulerStorage(mockCtrl)
-	config := room_manager.RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000}
-	roomStorageStatusWatcher := rs_mock.NewMockRoomStorageStatusWatcher(mockCtrl)
+	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 	definition := AddRoomsDefinition{Amount: 10}
 
@@ -98,84 +86,158 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		SchedulerID: "game",
 	}
 
-	operation := operation.Operation{
+	op := operation.Operation{
 		ID:             "some-op-id",
 		SchedulerName:  "zooba_blue:1.0.0",
 		Status:         operation.StatusPending,
 		DefinitionName: "zooba_blue:1.0.0",
 	}
 
-	t.Run("when all room creations succeed then it returns nil without error", func(t *testing.T) {
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, config)
+	t.Run("should succeed - all room creations succeed => return nil, no error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), operation.SchedulerName).Return(&scheduler, nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(10)
 
-		portAllocatorMock.EXPECT().Allocate(nil, 2).
-			Return([]int32{5000, 6000}, nil).
-			Times(10)
-		runtimeMock.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Version:    "1.0.0",
-			Containers: []game_room.Container{container1, container2},
-		}).
-			Return(&gameRoomInstance, nil).
-			Times(10)
+		executor := NewExecutor(roomsManager, schedulerStorage)
+		err := executor.Execute(context.Background(), &op, &definition)
+
+		require.Nil(t, err)
+	})
+
+	t.Run("should fail - some room creation fail, others succeed => returns unexpected error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
 
 		gameRoomReady := gameRoom
 		gameRoomReady.Status = game_room.GameStatusReady
 
-		roomStorageMock.EXPECT().CreateRoom(context.Background(), &gameRoom).Times(10)
-		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoomReady, nil).Times(10)
-		roomStorageMock.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil).Times(10)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error"))
 
-		roomStorageStatusWatcher.EXPECT().Stop().Times(10)
+		executor := NewExecutor(roomsManager, schedulerStorage)
+		err := executor.Execute(context.Background(), &op, &definition)
 
-		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &operation, &definition)
-
-		require.NoError(t, err)
+		require.NotNil(t, err)
+		require.Equal(t, err.Kind(), operations.ErrKindUnexpected)
 	})
 
-	t.Run("when some room creation fail and others succeed then it returns nil without error", func(t *testing.T) {
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, config)
+	t.Run("should fail - some room creation fail with timeout => returns timeout error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), operation.SchedulerName).Return(&scheduler, nil)
-
-		portAllocatorMock.EXPECT().Allocate(nil, 2).
-			Return([]int32{5000, 6000}, nil).
-			Times(10)
-
-		runtimeMock.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Version:    "1.0.0",
-			Containers: []game_room.Container{container1, container2},
-		}).
-			Return(&gameRoomInstance, nil).
-			Times(5)
-		runtimeMock.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Version:    "1.0.0",
-			Containers: []game_room.Container{container1, container2},
-		}).
-			Return(nil, errors.NewErrUnexpected("error create game room instance")).
-			Times(5)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
 
 		gameRoomReady := gameRoom
 		gameRoomReady.Status = game_room.GameStatusReady
 
-		roomStorageMock.EXPECT().CreateRoom(context.Background(), &gameRoom).Times(5)
-		roomStorageMock.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoomReady, nil).Times(5)
-		roomStorageMock.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil).Times(5)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, serviceerrors.NewErrGameRoomStatusWaitingTimeout("context deadline exceeded"))
 
-		roomStorageStatusWatcher.EXPECT().Stop().Times(5)
+		executor := NewExecutor(roomsManager, schedulerStorage)
+		err := executor.Execute(context.Background(), &op, &definition)
 
-		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &operation, &definition)
-
-		require.NoError(t, err)
+		require.NotNil(t, err)
+		require.Equal(t, err.Kind(), operations.ErrKindReadyPingTimeout)
 	})
 
-	t.Run("when no scheduler is found then it returns the proper error", func(t *testing.T) {
-		roomsManager := room_manager.NewRoomManager(clockMock, portAllocatorMock, roomStorageMock, instanceStorageMock, runtimeMock, eventsForwarderMock, config)
+	t.Run("should fail - no scheduler found => returns error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), operation.SchedulerName).Return(nil, errors.NewErrNotFound("scheduler not found"))
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(nil, porterrors.NewErrNotFound("scheduler not found"))
 
-		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &operation, &definition)
-		require.Error(t, err)
+		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &op, &definition)
+		require.NotNil(t, err)
+		require.Equal(t, err.Kind(), operations.ErrKindUnexpected)
 	})
+}
+
+func TestAddRoomsExecutor_Rollback(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	clockMock := clock_mock.NewFakeClock(time.Now())
+	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+
+	definition := AddRoomsDefinition{Amount: 10}
+
+	container1 := game_room.Container{
+		Name: "container1",
+		Ports: []game_room.ContainerPort{
+			{Protocol: "tcp"},
+		},
+	}
+
+	container2 := game_room.Container{
+		Name: "container2",
+		Ports: []game_room.ContainerPort{
+			{Protocol: "udp"},
+		},
+	}
+
+	scheduler := entities.Scheduler{
+		Name: "zooba_blue:1.0.0",
+		Spec: game_room.Spec{
+			Version:    "1.0.0",
+			Containers: []game_room.Container{container1, container2},
+		},
+		PortRange: nil,
+	}
+
+	gameRoom := game_room.GameRoom{
+		ID:          "game-1",
+		SchedulerID: "zooba_blue:1.0.0",
+		Version:     "1.0.0",
+		Status:      game_room.GameStatusPending,
+		LastPingAt:  clockMock.Now(),
+	}
+
+	gameRoomInstance := game_room.Instance{
+		ID:          "game-1",
+		SchedulerID: "game",
+	}
+
+	op := operation.Operation{
+		ID:             "some-op-id",
+		SchedulerName:  "zooba_blue:1.0.0",
+		Status:         operation.StatusPending,
+		DefinitionName: "zooba_blue:1.0.0",
+	}
+
+	t.Run("when no error occurs it deletes previously created rooms and return without error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
+
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error"))
+
+		executor := NewExecutor(roomsManager, schedulerStorage)
+		err := executor.Execute(context.Background(), &op, &definition)
+
+		require.NotNil(t, err)
+
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).Times(9)
+		rollbackErr := executor.Rollback(context.Background(), &op, &definition, nil)
+		require.NoError(t, rollbackErr)
+	})
+
+	t.Run("when some error occurs while deleting rooms it returns error", func(t *testing.T) {
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
+
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
+		roomsManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error"))
+
+		executor := NewExecutor(roomsManager, schedulerStorage)
+		err := executor.Execute(context.Background(), &op, &definition)
+
+		require.NotNil(t, err)
+
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(porterrors.NewErrUnexpected("error")).Times(1)
+
+		rollbackErr := executor.Rollback(context.Background(), &op, &definition, nil)
+		require.Error(t, rollbackErr)
+	})
+
 }

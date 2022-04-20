@@ -28,10 +28,16 @@ type SchedulersServiceClient interface {
 	AddRooms(ctx context.Context, in *AddRoomsRequest, opts ...grpc.CallOption) (*AddRoomsResponse, error)
 	// Given a amount, remove rooms of a scheduler.
 	RemoveRooms(ctx context.Context, in *RemoveRoomsRequest, opts ...grpc.CallOption) (*RemoveRoomsResponse, error)
-	// Update a scheduler.
-	UpdateScheduler(ctx context.Context, in *UpdateSchedulerRequest, opts ...grpc.CallOption) (*UpdateSchedulerResponse, error)
+	// Creates new scheduler version and switch it to active version.
+	NewSchedulerVersion(ctx context.Context, in *NewSchedulerVersionRequest, opts ...grpc.CallOption) (*NewSchedulerVersionResponse, error)
+	// Patch a scheduler and switch it to active version.
+	PatchScheduler(ctx context.Context, in *PatchSchedulerRequest, opts ...grpc.CallOption) (*PatchSchedulerResponse, error)
 	// Given a Scheduler, returns it's versions
 	GetSchedulerVersions(ctx context.Context, in *GetSchedulerVersionsRequest, opts ...grpc.CallOption) (*GetSchedulerVersionsResponse, error)
+	// Switch Active Version to Scheduler
+	SwitchActiveVersion(ctx context.Context, in *SwitchActiveVersionRequest, opts ...grpc.CallOption) (*SwitchActiveVersionResponse, error)
+	// List Scheduler and Game Rooms info by Game
+	GetSchedulersInfo(ctx context.Context, in *GetSchedulersInfoRequest, opts ...grpc.CallOption) (*GetSchedulersInfoResponse, error)
 }
 
 type schedulersServiceClient struct {
@@ -87,9 +93,18 @@ func (c *schedulersServiceClient) RemoveRooms(ctx context.Context, in *RemoveRoo
 	return out, nil
 }
 
-func (c *schedulersServiceClient) UpdateScheduler(ctx context.Context, in *UpdateSchedulerRequest, opts ...grpc.CallOption) (*UpdateSchedulerResponse, error) {
-	out := new(UpdateSchedulerResponse)
-	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/UpdateScheduler", in, out, opts...)
+func (c *schedulersServiceClient) NewSchedulerVersion(ctx context.Context, in *NewSchedulerVersionRequest, opts ...grpc.CallOption) (*NewSchedulerVersionResponse, error) {
+	out := new(NewSchedulerVersionResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/NewSchedulerVersion", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *schedulersServiceClient) PatchScheduler(ctx context.Context, in *PatchSchedulerRequest, opts ...grpc.CallOption) (*PatchSchedulerResponse, error) {
+	out := new(PatchSchedulerResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/PatchScheduler", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +114,24 @@ func (c *schedulersServiceClient) UpdateScheduler(ctx context.Context, in *Updat
 func (c *schedulersServiceClient) GetSchedulerVersions(ctx context.Context, in *GetSchedulerVersionsRequest, opts ...grpc.CallOption) (*GetSchedulerVersionsResponse, error) {
 	out := new(GetSchedulerVersionsResponse)
 	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/GetSchedulerVersions", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *schedulersServiceClient) SwitchActiveVersion(ctx context.Context, in *SwitchActiveVersionRequest, opts ...grpc.CallOption) (*SwitchActiveVersionResponse, error) {
+	out := new(SwitchActiveVersionResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/SwitchActiveVersion", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *schedulersServiceClient) GetSchedulersInfo(ctx context.Context, in *GetSchedulersInfoRequest, opts ...grpc.CallOption) (*GetSchedulersInfoResponse, error) {
+	out := new(GetSchedulersInfoResponse)
+	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/GetSchedulersInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -119,10 +152,16 @@ type SchedulersServiceServer interface {
 	AddRooms(context.Context, *AddRoomsRequest) (*AddRoomsResponse, error)
 	// Given a amount, remove rooms of a scheduler.
 	RemoveRooms(context.Context, *RemoveRoomsRequest) (*RemoveRoomsResponse, error)
-	// Update a scheduler.
-	UpdateScheduler(context.Context, *UpdateSchedulerRequest) (*UpdateSchedulerResponse, error)
+	// Creates new scheduler version and switch it to active version.
+	NewSchedulerVersion(context.Context, *NewSchedulerVersionRequest) (*NewSchedulerVersionResponse, error)
+	// Patch a scheduler and switch it to active version.
+	PatchScheduler(context.Context, *PatchSchedulerRequest) (*PatchSchedulerResponse, error)
 	// Given a Scheduler, returns it's versions
 	GetSchedulerVersions(context.Context, *GetSchedulerVersionsRequest) (*GetSchedulerVersionsResponse, error)
+	// Switch Active Version to Scheduler
+	SwitchActiveVersion(context.Context, *SwitchActiveVersionRequest) (*SwitchActiveVersionResponse, error)
+	// List Scheduler and Game Rooms info by Game
+	GetSchedulersInfo(context.Context, *GetSchedulersInfoRequest) (*GetSchedulersInfoResponse, error)
 	mustEmbedUnimplementedSchedulersServiceServer()
 }
 
@@ -145,11 +184,20 @@ func (UnimplementedSchedulersServiceServer) AddRooms(context.Context, *AddRoomsR
 func (UnimplementedSchedulersServiceServer) RemoveRooms(context.Context, *RemoveRoomsRequest) (*RemoveRoomsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRooms not implemented")
 }
-func (UnimplementedSchedulersServiceServer) UpdateScheduler(context.Context, *UpdateSchedulerRequest) (*UpdateSchedulerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateScheduler not implemented")
+func (UnimplementedSchedulersServiceServer) NewSchedulerVersion(context.Context, *NewSchedulerVersionRequest) (*NewSchedulerVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NewSchedulerVersion not implemented")
+}
+func (UnimplementedSchedulersServiceServer) PatchScheduler(context.Context, *PatchSchedulerRequest) (*PatchSchedulerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PatchScheduler not implemented")
 }
 func (UnimplementedSchedulersServiceServer) GetSchedulerVersions(context.Context, *GetSchedulerVersionsRequest) (*GetSchedulerVersionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchedulerVersions not implemented")
+}
+func (UnimplementedSchedulersServiceServer) SwitchActiveVersion(context.Context, *SwitchActiveVersionRequest) (*SwitchActiveVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SwitchActiveVersion not implemented")
+}
+func (UnimplementedSchedulersServiceServer) GetSchedulersInfo(context.Context, *GetSchedulersInfoRequest) (*GetSchedulersInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSchedulersInfo not implemented")
 }
 func (UnimplementedSchedulersServiceServer) mustEmbedUnimplementedSchedulersServiceServer() {}
 
@@ -254,20 +302,38 @@ func _SchedulersService_RemoveRooms_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SchedulersService_UpdateScheduler_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateSchedulerRequest)
+func _SchedulersService_NewSchedulerVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NewSchedulerVersionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SchedulersServiceServer).UpdateScheduler(ctx, in)
+		return srv.(SchedulersServiceServer).NewSchedulerVersion(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/api.v1.SchedulersService/UpdateScheduler",
+		FullMethod: "/api.v1.SchedulersService/NewSchedulerVersion",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SchedulersServiceServer).UpdateScheduler(ctx, req.(*UpdateSchedulerRequest))
+		return srv.(SchedulersServiceServer).NewSchedulerVersion(ctx, req.(*NewSchedulerVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SchedulersService_PatchScheduler_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PatchSchedulerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SchedulersServiceServer).PatchScheduler(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.SchedulersService/PatchScheduler",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SchedulersServiceServer).PatchScheduler(ctx, req.(*PatchSchedulerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -286,6 +352,42 @@ func _SchedulersService_GetSchedulerVersions_Handler(srv interface{}, ctx contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SchedulersServiceServer).GetSchedulerVersions(ctx, req.(*GetSchedulerVersionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SchedulersService_SwitchActiveVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SwitchActiveVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SchedulersServiceServer).SwitchActiveVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.SchedulersService/SwitchActiveVersion",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SchedulersServiceServer).SwitchActiveVersion(ctx, req.(*SwitchActiveVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SchedulersService_GetSchedulersInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSchedulersInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SchedulersServiceServer).GetSchedulersInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.v1.SchedulersService/GetSchedulersInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SchedulersServiceServer).GetSchedulersInfo(ctx, req.(*GetSchedulersInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -318,12 +420,24 @@ var SchedulersService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SchedulersService_RemoveRooms_Handler,
 		},
 		{
-			MethodName: "UpdateScheduler",
-			Handler:    _SchedulersService_UpdateScheduler_Handler,
+			MethodName: "NewSchedulerVersion",
+			Handler:    _SchedulersService_NewSchedulerVersion_Handler,
+		},
+		{
+			MethodName: "PatchScheduler",
+			Handler:    _SchedulersService_PatchScheduler_Handler,
 		},
 		{
 			MethodName: "GetSchedulerVersions",
 			Handler:    _SchedulersService_GetSchedulerVersions_Handler,
+		},
+		{
+			MethodName: "SwitchActiveVersion",
+			Handler:    _SchedulersService_SwitchActiveVersion_Handler,
+		},
+		{
+			MethodName: "GetSchedulersInfo",
+			Handler:    _SchedulersService_GetSchedulersInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

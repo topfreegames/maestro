@@ -52,7 +52,7 @@ func WithK3sContainer(exec func(container *gnomock.Container)) {
 	_ = gnomock.Stop(k3sContainer)
 }
 
-func GetKubernetesClientset(t *testing.T, container *gnomock.Container) kubernetes.Interface {
+func GetKubernetesClientSet(t *testing.T, container *gnomock.Container) kubernetes.Interface {
 	kubeconfig, err := prek3s.Config(container)
 	require.NoError(t, err)
 

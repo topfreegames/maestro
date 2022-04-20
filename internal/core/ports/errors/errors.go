@@ -32,6 +32,7 @@ const (
 	errNotFound
 	errEncoding
 	errInvalidArgument
+	errConflict
 )
 
 var (
@@ -40,6 +41,7 @@ var (
 	ErrNotFound        = &portsError{kind: errNotFound}
 	ErrEncoding        = &portsError{kind: errEncoding}
 	ErrInvalidArgument = &portsError{kind: errInvalidArgument}
+	ErrConflict        = &portsError{kind: errConflict}
 )
 
 type portsError struct {
@@ -104,6 +106,13 @@ func NewErrEncoding(format string, args ...interface{}) *portsError {
 func NewErrInvalidArgument(format string, args ...interface{}) *portsError {
 	return &portsError{
 		kind:    errInvalidArgument,
+		message: fmt.Sprintf(format, args...),
+	}
+}
+
+func NewErrConflict(format string, args ...interface{}) *portsError {
+	return &portsError{
+		kind:    errConflict,
 		message: fmt.Sprintf(format, args...),
 	}
 }
