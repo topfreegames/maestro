@@ -19,7 +19,7 @@ Management API is the module responsible for receiving user requests. It accepts
 
 #### Rooms API
 
-Rooms API is the module that receive requests from game rooms and executes according to which kind of request was done.
+Rooms API is the module that provides an API that **must** be used by game rooms to sync their status with Maestro. To maestro work properly, it needs to be constantly informed about the status of each game room it manages. Also, if there are forwarders configured for the scheduler, those events are forwarded from Maestro.
 
 > ⚠ Note: The requests that Maestro receives in the Rooms API are documented in [this proto file](https://github.com/topfreegames/protos/blob/master/maestro/grpc/protobuf/events.proto).
 
