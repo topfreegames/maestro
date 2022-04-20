@@ -60,4 +60,6 @@ Runtime Watcher Worker listens to runtime events related to the **Scheduler** an
 
 From time to time Metrics Reporter Worker watch runtime to report metrics from them, such as the number of game rooms instances that are `ready`, `pending`, `error`, `unknown`, or `terminating` status. As well it watches from Game Rooms storage its status that could be `ready`, `pending`, `error`, `occupied`, `terminating`, or `unready`.
 
+This module is optional since you don't need it for any specific functionalities of the application.
+
 ![Metrics Reporter Worker IMAGE](./diagrams/Architecture-Metrics-Reporter-Worker.jpg)
