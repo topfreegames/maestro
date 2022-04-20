@@ -44,7 +44,7 @@ The Operations could be:
 
 > ⚠ Note: In Maestro a worker is a collection of routines that executes a flow related to one and only one **Scheduler** each.
 
-Runtime Watcher Worker listens to runtime events related to the **Scheduler** and reflects the changes in the Maestro. Currently, it listens for Game Rooms creation and deletion.
+Runtime Watcher Worker listens to runtime events related to the **Scheduler** and reflects the changes in **Maestro**. Currently, it listens for Game Rooms creation, deletion, and update.
 
 ![Runtime Watcher Worker IMAGE](./diagrams/Architecture-Runtime-Watcher-Worker.jpg)
 
