@@ -29,7 +29,7 @@ Rooms API is the module that receive requests from game rooms and executes accor
 
 > ⚠ Note: In Maestro a worker is a collection of routines that executes a flow related to one and only one **Scheduler** each.
 
-Operation Execution Worker creates for each **Scheduler** a thread that executes operations enqueued in the related **Scheduler** operation queue. So in this way became possible to track the events that happened and change a certain **Scheduler** in a healthier way.
+Operation Execution Worker is a process that constantly keeps ensuring each active **Scheduler** will have a thread (execution worker) that executes operations enqueued in the related **Scheduler** operation queue. So in this way became possible to track the events that happened and change a certain **Scheduler** in a healthier way.
 
 The Operations could be:
 - Create Scheduler: creates a **Scheduler**
