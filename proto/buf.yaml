@@ -1,0 +1,7 @@
+# TODO(caio.rodrigues): push to buf's BSR. see: https://docs.buf.build/bsr/introduction
+# TODO 2(caio.rodrigues): adds third_party modules as deps
+version: v1
+lint:
+  use:
+    - DEFAULT
+    - COMMENTS

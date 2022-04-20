@@ -36,7 +36,7 @@ lint/go: ## Execute golangci-lint.
 
 .PHONY: lint/protobuf
 lint/protobuf: ## Execute buf linter.
-	@go run github.com/bufbuild/buf/cmd/buf lint --config buf.yaml
+	@go run github.com/bufbuild/buf/cmd/buf lint
 
 .PHONY: run/tests
 run/tests: run/unit-tests run/integration-tests ## Execute all unit and integration tests
