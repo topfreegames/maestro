@@ -25,9 +25,10 @@ Management API relies on Redis for retrieving operations and game rooms, and on 
 
 #### Rooms API
 
-Rooms API is the module that provides an API that **must** be used by game rooms to sync their status with Maestro. To maestro work properly, it needs to be constantly informed about the status of each game room it manages. Also, if there are forwarders configured for the scheduler, those events are forwarded from Maestro.
+Rooms API is the module that provides an API that **must** be used by game rooms to sync their status with Maestro. To maestro work properly, it needs to be constantly informed about the status of each game room it manages. Also, if there are forwarders configured for the scheduler, those events are forwarded from Maestro at this module.
 
-> ⚠ Note: The requests that Maestro receives in the Rooms API are documented in [this proto file](https://github.com/topfreegames/protos/blob/master/maestro/grpc/protobuf/events.proto).
+> ⚠ Note: The requests that Maestro forwards in the Rooms API are documented in [this proto file](https://github.com/topfreegames/protos/blob/master/maestro/grpc/protobuf/events.proto).
+> ⚠ Note: [Maestro client](https://github.com/topfreegames/maestro-client) could be used to ease the integration of the Game Room with Maestro.
 
 ![Rooms API IMAGE](./diagrams/Architecture-Rooms-API.jpg)
 
@@ -37,12 +38,7 @@ Rooms API is the module that provides an API that **must** be used by game rooms
 
 Operation Execution Worker is a process that constantly keeps ensuring each active **Scheduler** will have a thread (execution worker) that executes operations enqueued in the related **Scheduler** operation queue. So in this way became possible to track the events that happened and change a certain **Scheduler** in a healthier way.
 
-The Operations could be:
-- Create Scheduler: creates a **Scheduler**
-- New Scheduler Version: updates a **Scheduler**
-- Switch Active Version: change the current **Scheduler** version that is running. It uses the versions to know if the Game Rooms need to be changed
-- Add Rooms: adds a number of Game Rooms in a **Scheduler**
-- Remove Rooms: removes a number of Game Rooms in a **Scheduler**
+You could find all operations at [Operations section](Operations.md#available-operations)
 
 ![Operation Execution Worker IMAGE](./diagrams/Architecture-Operation-Execution-Worker.jpg)
 
