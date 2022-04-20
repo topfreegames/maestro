@@ -3,6 +3,7 @@ repo_url: https://github.com/topfreegames/maestro
 
 nav:
   - Home: 'index.md'
+  - Getting Started: 'GettingStarted.md'
   - Scheduler: 'Scheduler.md'
   - UserGuides: 'User Guides.md'
   - Developers: 'Developers.md'
