@@ -26,7 +26,7 @@ To simulate a game room, it's important to find the address of running **rooms-a
 To do that, with Maestro containers running, simply use:
 
 ```shell
-docker inspect -f '{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}' maestro_rooms-api_1
+docker inspect -f '{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}' {{ROOMS_API_CONTAINER_NAME}}
 ```
 
 This command should give you an IP address. 
@@ -35,7 +35,8 @@ This IP is important because the game rooms will use it to communicate their sta
 An example of the answer could be: **172.30.0.1**. This is the **ROOMS_API_ADDRESS**.
 
 ## Create a scheduler
-If everything is working as expected till now and each Maestro-module is up and running, use the command below to create a new scheduler:
+If everything is working as expected now, each Maestro-module is up and running. 
+Use the command below to create a new scheduler:
 
 > Be aware to change the {{ROOMS_API_ADDRESS}} for the one found above.
 ```shell
@@ -89,7 +90,7 @@ curl --request POST \
 ```
 
 ## Congratulations
-If you followed the steps above (should not be hard) you have Maestro running in your local machine, and with a [scheduler](Scheduler.md) to try different [operations](Operations.md) on it.
+If you followed the steps above you have Maestro running in your local machine, and with a [scheduler](Scheduler.md) to try different [operations](Operations.md) on it.
 Feel free to explore the available endpoints in the [API](OpenAPI.md) hitting directly the management-API.
 
 If you have any doubts or feedbacks regarding this process, feel free to reach out in [Maestro's GitHub repository](https://github.com/topfreegames/maestro) and open an issue/question.
