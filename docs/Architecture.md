@@ -13,7 +13,13 @@ Each module has its responsibilities and is divided apart in a way to avoid mixi
 
 #### Management API
 
-Management API is the module responsible for receiving user requests. It accepts gRPC and HTTP requests. It could be used to fetch a **Scheduler** status or else to execute a change in them. There is some different kind of routes. In the **Scheduler** creation, it simply adds a new entry in the Postgres (and the worker posteriorly creates a respective queue to it). In the fetch **Scheduler** routes, it fetches from Postgres the **Scheduler** information and in the Redis the **Operations**/game rooms information. And in the change routes, it creates **Operations** and enqueues them in the respective **Scheduler** queue in the Redis. Finally, fetch **Operation**/game rooms routes it fetches its information from Redis.
+Management API is the module responsible for receiving user requests. It accepts gRPC and HTTP requests and provides several kinds of routes that are aggregated in two services: **schedulers service** and **operations service**.
+
+The **schedulers service** exposes features for managing schedulers, like creating a new scheduler, fetching its information, or updating them.  
+The **operations service** exposes features for tracking operations and changing their status, like listing operations by status or canceling them.
+
+Management API relies on Redis for retrieving operations and game rooms, and on Postgres for retrieving and persisting schedulers.
+
 
 ![Management API IMAGE](./diagrams/Architecture-Management-API.jpg)
 
