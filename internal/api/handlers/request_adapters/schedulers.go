@@ -332,17 +332,22 @@ func fromApiContainerEnvironments(apiEnvironments []*api.ContainerEnvironment) [
 func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
 	var forwarders []*forwarder.Forwarder
 	for _, apiForwarder := range apiForwarders {
-		_forwarder := forwarder.Forwarder{
+		var options *forwarder.ForwardOptions
+		if apiForwarder.GetOptions() != nil {
+			options = &forwarder.ForwardOptions{
+				Timeout:  time.Duration(apiForwarder.Options.GetTimeout()),
+				Metadata: apiForwarder.Options.Metadata.AsMap(),
+			}
+		}
+
+		forwarderStruct := forwarder.Forwarder{
 			Name:        apiForwarder.GetName(),
 			Enabled:     apiForwarder.GetEnable(),
 			ForwardType: forwarder.ForwardType(apiForwarder.GetType()),
 			Address:     apiForwarder.GetAddress(),
-			Options: &forwarder.ForwardOptions{
-				Timeout:  time.Duration(apiForwarder.Options.GetTimeout()),
-				Metadata: apiForwarder.Options.Metadata.AsMap(),
-			},
+			Options:     options,
 		}
-		forwarders = append(forwarders, &_forwarder)
+		forwarders = append(forwarders, &forwarderStruct)
 	}
 	return forwarders
 }

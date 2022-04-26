@@ -123,6 +123,8 @@ func TestPatchScheduler(t *testing.T) {
 			}
 			patchSchedulerResponse := &maestrov1.PatchSchedulerResponse{}
 			err = managementApiClient.Do("PATCH", fmt.Sprintf("/schedulers/%s", scheduler.Name), patchSchedulerRequest, patchSchedulerResponse)
+			fmt.Println(err)
+			fmt.Println(patchSchedulerResponse)
 			require.NoError(t, err)
 
 			waitForOperationToFinishByOperationId(t, managementApiClient, scheduler.Name, patchSchedulerResponse.OperationId)
