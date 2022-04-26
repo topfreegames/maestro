@@ -149,7 +149,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 							Enabled:     false,
 							ForwardType: forwarder.ForwardType("another-type"),
 							Address:     "localhost:8888",
-							Options: nil,
+							Options:     nil,
 						},
 					},
 				},
