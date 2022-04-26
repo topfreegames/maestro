@@ -25,8 +25,8 @@ package handlers
 import (
 	"context"
 	"errors"
-	"time"
 
+	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
 	"github.com/topfreegames/maestro/internal/core/logs"
 
 	"go.uber.org/zap"
@@ -39,8 +39,6 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
@@ -90,7 +88,7 @@ func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.Forw
 
 func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.UpdateRoomWithPingRequest) (*api.UpdateRoomWithPingResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
-	gameRoom, err := h.fromApiUpdateRoomRequestToEntity(message)
+	gameRoom, err := request_adapters.FromApiUpdateRoomRequestToEntity(message)
 	handlerLogger.Info("handling room ping request", zap.Any("message", message))
 	if err != nil {
 		handlerLogger.Error("error parsing ping request", zap.Any("ping", message), zap.Error(err))
@@ -126,19 +124,4 @@ func (h *RoomsHandler) UpdateRoomStatus(ctx context.Context, message *api.Update
 		return &api.UpdateRoomStatusResponse{Success: false}, nil
 	}
 	return &api.UpdateRoomStatusResponse{Success: true}, nil
-}
-
-func (h *RoomsHandler) fromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*game_room.GameRoom, error) {
-	status, err := game_room.FromStringToGameRoomPingStatus(request.GetStatus())
-	if err != nil {
-		return nil, err
-	}
-
-	return &game_room.GameRoom{
-		ID:          request.GetRoomName(),
-		SchedulerID: request.GetSchedulerName(),
-		PingStatus:  status,
-		Metadata:    request.Metadata.AsMap(),
-		LastPingAt:  time.Unix(request.GetTimestamp(), 0),
-	}, nil
 }
