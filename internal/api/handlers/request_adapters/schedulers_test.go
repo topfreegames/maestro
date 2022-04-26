@@ -26,14 +26,15 @@
 package request_adapters_test
 
 import (
+	"testing"
+	"time"
+
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/validations"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
@@ -1032,7 +1033,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 						Start: 10000,
 						End:   60000,
 					},
-					MaxSurge:  maxSurgeValue,
+					MaxSurge: maxSurgeValue,
 					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
@@ -1049,9 +1050,9 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 			},
 			Output: Output{
 				ApiScheduler: &api.Scheduler{
-					Name:  genericString,
-					Game:  genericString,
-					State: "creating",
+					Name:      genericString,
+					Game:      genericString,
+					State:     "creating",
 					CreatedAt: timestamppb.New(genericTime),
 					Spec: &api.Spec{
 						Version:                genericValidVersion,
@@ -1200,7 +1201,7 @@ func TestFromEntitySchedulerVersionListToResponse(t *testing.T) {
 					{
 						Version:   "v1.0.0",
 						IsActive:  false,
-						CreatedAt: genericTime.Add(-time.Hour*24),
+						CreatedAt: genericTime.Add(-time.Hour * 24),
 					},
 				},
 			},
@@ -1214,7 +1215,7 @@ func TestFromEntitySchedulerVersionListToResponse(t *testing.T) {
 					{
 						Version:   "v1.0.0",
 						IsActive:  false,
-						CreatedAt: timestamppb.New(genericTime.Add(-time.Hour*24)),
+						CreatedAt: timestamppb.New(genericTime.Add(-time.Hour * 24)),
 					},
 				},
 			},
@@ -1237,7 +1238,6 @@ func TestFromEntitySchedulerInfoToListResponse(t *testing.T) {
 	type Output struct {
 		ApiSchedulerInfo *api.SchedulerInfo
 	}
-
 
 	genericString := "some-value"
 	genericInt := 62
