@@ -29,460 +29,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/validations"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager/patch_scheduler"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
-
-func TestFromApiContainerPort(t *testing.T) {
-	type Input struct {
-		Ports []*api.ContainerPort
-	}
-
-	type Output struct {
-		Ports []game_room.ContainerPort
-	}
-
-	testCases := []struct {
-		Title string
-		Input
-		Output
-	}{
-		{
-			Title: "should convert api.ContainerPort to game_room.ContainerPort",
-			Input: Input{
-				Ports: []*api.ContainerPort{
-					{
-						Name:     "some-port",
-						Protocol: "TCP",
-						Port:     72,
-						HostPort: 1234,
-					},
-					{
-						Name:     "another-port",
-						Protocol: "UDP",
-						Port:     73,
-						HostPort: 12345,
-					},
-				},
-			},
-			Output: Output{
-				Ports: []game_room.ContainerPort{
-					{
-						Name:     "some-port",
-						Protocol: "TCP",
-						Port:     72,
-						HostPort: 1234,
-					},
-					{
-						Name:     "another-port",
-						Protocol: "UDP",
-						Port:     73,
-						HostPort: 12345,
-					},
-				},
-			},
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := request_adapters.FromApiContainerPorts(testCase.Input.Ports)
-			assert.EqualValues(t, testCase.Output.Ports, returnValues)
-		})
-	}
-}
-
-func TestFromApiContainerEnvironments(t *testing.T) {
-	type Input struct {
-		Environments []*api.ContainerEnvironment
-	}
-
-	type Output struct {
-		Environments []game_room.ContainerEnvironment
-	}
-
-	value := "some-value"
-
-	testCases := []struct {
-		Title string
-		Input
-		Output
-	}{
-		{
-			Title: "should convert api.ContainerEnvironment to game_room.ContainerEnvironment",
-			Input: Input{
-				Environments: []*api.ContainerEnvironment{
-					{
-						Name:  "some-environment",
-						Value: &value,
-					},
-					{
-						Name: "another-environment",
-						ValueFrom: &api.ContainerEnvironmentValueFrom{
-							FieldRef: &api.ContainerEnvironmentValueFromFieldRef{
-								FieldPath: "some-field-path",
-							},
-						},
-					},
-					{
-						Name: "another-environment",
-						ValueFrom: &api.ContainerEnvironmentValueFrom{
-							SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
-								Name: "some-name",
-								Key:  "some-key",
-							},
-						},
-					},
-				},
-			},
-			Output: Output{
-				Environments: []game_room.ContainerEnvironment{
-					{
-						Name:  "some-environment",
-						Value: "some-value",
-					},
-					{
-						Name: "another-environment",
-						ValueFrom: &game_room.ValueFrom{
-							FieldRef: &game_room.FieldRef{
-								FieldPath: "some-field-path",
-							},
-						},
-					},
-					{
-						Name: "another-environment",
-						ValueFrom: &game_room.ValueFrom{
-							SecretKeyRef: &game_room.SecretKeyRef{
-								Name: "some-name",
-								Key:  "some-key",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := request_adapters.FromApiContainerEnvironments(testCase.Input.Environments)
-			assert.EqualValues(t, testCase.Output.Environments, returnValues)
-		})
-	}
-}
-
-func TestFromApiForwarders(t *testing.T) {
-	type Input struct {
-		Forwarders []*api.Forwarder
-	}
-
-	type Output struct {
-		Forwarders []*forwarder.Forwarder
-	}
-
-	testCases := []struct {
-		Title string
-		Input
-		Output
-	}{
-		{
-			Title: "should convert api.Forwarder to forwarder.Forwarder",
-			Input: Input{
-				Forwarders: []*api.Forwarder{
-					{
-						Name:    "some-forwarder",
-						Enable:  true,
-						Type:    "some-type",
-						Address: "localhost:8080",
-						Options: &api.ForwarderOptions{
-							Timeout: int64(10),
-						},
-					},
-					{
-						Name:    "another-forwarder",
-						Enable:  false,
-						Type:    "another-type",
-						Address: "localhost:8888",
-						Options: &api.ForwarderOptions{
-							Timeout: int64(10),
-						},
-					},
-				},
-			},
-			Output: Output{
-				Forwarders: []*forwarder.Forwarder{
-					{
-						Name:        "some-forwarder",
-						Enabled:     true,
-						ForwardType: forwarder.ForwardType("some-type"),
-						Address:     "localhost:8080",
-						Options: &forwarder.ForwardOptions{
-							Timeout:  time.Duration(10),
-							Metadata: map[string]interface{}{},
-						},
-					},
-					{
-						Name:        "another-forwarder",
-						Enabled:     false,
-						ForwardType: forwarder.ForwardType("another-type"),
-						Address:     "localhost:8888",
-						Options: &forwarder.ForwardOptions{
-							Timeout:  time.Duration(10),
-							Metadata: map[string]interface{}{},
-						},
-					},
-				},
-			},
-		},
-		{
-			Title: "should convert api.Forwarder to forwarder.Forwarder when options is nil",
-			Input: Input{
-				Forwarders: []*api.Forwarder{
-					{
-						Name:    "some-forwarder",
-						Enable:  true,
-						Type:    "some-type",
-						Address: "localhost:8080",
-						Options: nil,
-					},
-				},
-			},
-			Output: Output{
-				Forwarders: []*forwarder.Forwarder{
-					{
-						Name:        "some-forwarder",
-						Enabled:     true,
-						ForwardType: forwarder.ForwardType("some-type"),
-						Address:     "localhost:8080",
-						Options:     nil,
-					},
-				},
-			},
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := request_adapters.FromApiForwarders(testCase.Input.Forwarders)
-			assert.EqualValues(t, testCase.Output.Forwarders, returnValues)
-		})
-	}
-}
-
-func TestFromApiOptinalContainersToChangeMap(t *testing.T) {
-	type Input struct {
-		Containers []*api.OptionalContainer
-	}
-
-	type Output struct {
-		Containers []map[string]interface{}
-	}
-
-	value := "some-value"
-
-	testCases := []struct {
-		Title string
-		Input
-		Output
-	}{
-		{
-			Title: "should convert api.OptionalContainer to change map",
-			Input: Input{
-				Containers: []*api.OptionalContainer{
-					{
-						Name: &value,
-					},
-					{
-						Image: &value,
-					},
-					{
-						ImagePullPolicy: &value,
-					},
-					{
-						Command: []string{"/bin/sh", "command"},
-					},
-					{
-						Environment: []*api.ContainerEnvironment{
-							{
-								Name:  "some-environment",
-								Value: &value,
-							},
-						},
-					},
-					{
-						Requests: &api.ContainerResources{
-							Memory: "1000m",
-							Cpu:    "100",
-						},
-					},
-					{
-						Limits: &api.ContainerResources{
-							Memory: "2000m",
-							Cpu:    "200",
-						},
-					},
-					{
-						Ports: []*api.ContainerPort{
-							{
-								Name:     "some-port",
-								Protocol: "TCP",
-								Port:     123,
-								HostPort: 1234,
-							},
-						},
-					},
-				},
-			},
-			Output: Output{
-				Containers: []map[string]interface{}{
-					map[string]interface{}{
-						patch_scheduler.LabelContainerName: value,
-					},
-					map[string]interface{}{
-						patch_scheduler.LabelContainerImage: value,
-					},
-					map[string]interface{}{
-						patch_scheduler.LabelContainerImagePullPolicy: value,
-					},
-					map[string]interface{}{
-						patch_scheduler.LabelContainerCommand: []string{"/bin/sh", "command"},
-					},
-					map[string]interface{}{
-						patch_scheduler.LabelContainerEnvironment: []game_room.ContainerEnvironment{
-							{
-								Name:  "some-environment",
-								Value: "some-value",
-							},
-						},
-					},
-					map[string]interface{}{
-						patch_scheduler.LabelContainerRequests: game_room.ContainerResources{
-							CPU:    "100",
-							Memory: "1000m",
-						},
-					},
-					map[string]interface{}{
-						patch_scheduler.LabelContainerLimits: game_room.ContainerResources{
-							CPU:    "200",
-							Memory: "2000m",
-						},
-					},
-					map[string]interface{}{
-						patch_scheduler.LabelContainerPorts: []game_room.ContainerPort{
-							{
-								Name:     "some-port",
-								Protocol: "TCP",
-								Port:     int(123),
-								HostPort: int(1234),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := request_adapters.FromApiOptinalContainersToChangeMap(testCase.Input.Containers)
-			assert.EqualValues(t, testCase.Output.Containers, returnValues)
-		})
-	}
-}
-
-func TestFromApiOptionalSpecToChangeMap(t *testing.T) {
-	type Input struct {
-		Spec *api.OptionalSpec
-	}
-
-	type Output struct {
-		Spec map[string]interface{}
-	}
-
-	terminationValue := int64(62)
-	containerValue := "value"
-	tolerationValue := "some-toleration"
-	affinityValue := "some-affinity"
-
-	testCases := []struct {
-		Title string
-		Input
-		Output
-	}{
-		{
-			Title: "only termination grace period should convert api.OptionalSpec to change map",
-			Input: Input{
-				Spec: &api.OptionalSpec{
-					TerminationGracePeriod: &terminationValue,
-				},
-			},
-			Output: Output{
-				Spec: map[string]interface{}{
-					patch_scheduler.LabelSpecTerminationGracePeriod: time.Duration(terminationValue),
-				},
-			},
-		},
-		{
-			Title: "only containers should convert api.OptionalSpec to change map",
-			Input: Input{
-				Spec: &api.OptionalSpec{
-					Containers: []*api.OptionalContainer{
-						{
-							Image: &containerValue,
-						},
-					},
-				},
-			},
-			Output: Output{
-				Spec: map[string]interface{}{
-					patch_scheduler.LabelSpecContainers: []map[string]interface{}{
-						{
-							patch_scheduler.LabelContainerImage: containerValue,
-						},
-					},
-				},
-			},
-		},
-		{
-			Title: "only toleration should convert api.OptionalSpec to change map",
-			Input: Input{
-				Spec: &api.OptionalSpec{
-					Toleration: &tolerationValue,
-				},
-			},
-			Output: Output{
-				Spec: map[string]interface{}{
-					patch_scheduler.LabelSpecToleration: tolerationValue,
-				},
-			},
-		},
-		{
-			Title: "only affinity should convert api.OptionalSpec to change map",
-			Input: Input{
-				Spec: &api.OptionalSpec{
-					Affinity: &affinityValue,
-				},
-			},
-			Output: Output{
-				Spec: map[string]interface{}{
-					patch_scheduler.LabelSpecAffinity: affinityValue,
-				},
-			},
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := request_adapters.FromApiOptionalSpecToChangeMap(testCase.Input.Spec)
-			assert.EqualValues(t, testCase.Output.Spec, returnValues)
-		})
-	}
-}
 
 func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 	type Input struct {
@@ -495,6 +53,8 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 
 	terminationValue := int64(62)
 	maxSurgeValue := "60%"
+	genericString := "some-value"
+	genericStringList := []string{"some-value", "another-value"}
 
 	testCases := []struct {
 		Title string
@@ -566,6 +126,278 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 							Enable:  false,
 							Type:    "another-type",
 							Address: "localhost:8888",
+							Options: nil,
+						},
+					},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelSchedulerForwarders: []*forwarder.Forwarder{
+						{
+							Name:        "some-forwarder",
+							Enabled:     true,
+							ForwardType: forwarder.ForwardType("some-type"),
+							Address:     "localhost:8080",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+						{
+							Name:        "another-forwarder",
+							Enabled:     false,
+							ForwardType: forwarder.ForwardType("another-type"),
+							Address:     "localhost:8888",
+							Options:     nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			Title: "only containers should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Spec: &api.OptionalSpec{Containers: []*api.OptionalContainer{
+						{
+							Name: &genericString,
+						},
+						{
+							Image: &genericString,
+						},
+						{
+							ImagePullPolicy: &genericString,
+						},
+						{
+							Command: genericStringList,
+						},
+						{
+							Environment: []*api.ContainerEnvironment{
+								{
+									Name:  genericString,
+									Value: &genericString,
+								},
+							},
+						},
+						{
+							Requests: &api.ContainerResources{
+								Memory: "1000m",
+								Cpu:    "100",
+							},
+						},
+						{
+							Limits: &api.ContainerResources{
+								Memory: "2000m",
+								Cpu:    "200",
+							},
+						},
+						{
+							Ports: []*api.ContainerPort{
+								{
+									Name:     "some-port",
+									Protocol: "TCP",
+									Port:     123,
+									HostPort: 1234,
+								},
+							},
+						},
+					}},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelSchedulerSpec: map[string]interface{}{
+						patch_scheduler.LabelSpecContainers: []map[string]interface{}{
+							{
+								patch_scheduler.LabelContainerName: genericString,
+							},
+							{
+								patch_scheduler.LabelContainerImage: genericString,
+							},
+							{
+								patch_scheduler.LabelContainerImagePullPolicy: genericString,
+							},
+							{
+								patch_scheduler.LabelContainerCommand: genericStringList,
+							},
+							{
+								patch_scheduler.LabelContainerEnvironment: []game_room.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: genericString,
+									},
+								},
+							},
+							{
+								patch_scheduler.LabelContainerRequests: game_room.ContainerResources{
+									CPU:    "100",
+									Memory: "1000m",
+								},
+							},
+							{
+								patch_scheduler.LabelContainerLimits: game_room.ContainerResources{
+									CPU:    "200",
+									Memory: "2000m",
+								},
+							},
+							{
+								patch_scheduler.LabelContainerPorts: []game_room.ContainerPort{
+									{
+										Name:     "some-port",
+										Protocol: "TCP",
+										Port:     int(123),
+										HostPort: int(1234),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Title: "only toleration should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Spec: &api.OptionalSpec{Toleration: &genericString},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelSchedulerSpec: map[string]interface{}{
+						patch_scheduler.LabelSpecToleration: genericString,
+					},
+				},
+			},
+		},
+		{
+			Title: "only affinity should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Spec: &api.OptionalSpec{Affinity: &genericString},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelSchedulerSpec: map[string]interface{}{
+						patch_scheduler.LabelSpecAffinity: genericString,
+					},
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Title, func(t *testing.T) {
+			returnValues := request_adapters.FromApiPatchSchedulerRequestToChangeMap(testCase.Input.PatchScheduler)
+			assert.EqualValues(t, testCase.Output.PatchScheduler, returnValues)
+		})
+	}
+}
+
+func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
+	type Input struct {
+		CreateScheduler *api.CreateSchedulerRequest
+	}
+
+	type Output struct {
+		Scheduler *entities.Scheduler
+	}
+
+	genericInt32 := int32(62)
+	genericInt := 62
+	maxSurgeValue := "60%"
+	genericString := "some-value"
+	genericValidVersion := "v1.0.0"
+	genericStringList := []string{"some-value", "another-value"}
+
+	testCases := []struct {
+		Title string
+		Input
+		Output
+	}{
+		{
+			Title: "convert create api scheduler to entity scheduler",
+			Input: Input{
+				CreateScheduler: &api.CreateSchedulerRequest{
+					Name: genericString,
+					Game: genericString,
+					Spec: &api.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: 10,
+						Toleration:             genericString,
+						Affinity:               genericString,
+						Containers: []*api.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []*api.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: &genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											FieldRef: &api.ContainerEnvironmentValueFromFieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Limits: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Ports: []*api.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt32,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+					},
+					PortRange: &api.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge: maxSurgeValue,
+					Forwarders: []*api.Forwarder{
+						{
+							Name:    "some-forwarder",
+							Enable:  true,
+							Type:    "some-type",
+							Address: "localhost:8080",
+							Options: &api.ForwarderOptions{
+								Timeout: int64(10),
+							},
+						},
+						{
+							Name:    "another-forwarder",
+							Enable:  false,
+							Type:    "another-type",
+							Address: "localhost:8888",
 							Options: &api.ForwarderOptions{
 								Timeout: int64(10),
 							},
@@ -574,8 +406,66 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 				},
 			},
 			Output: Output{
-				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerForwarders: []*forwarder.Forwarder{
+				Scheduler: &entities.Scheduler{
+					Name:  genericString,
+					Game:  genericString,
+					State: entities.StateCreating,
+					Spec: game_room.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: time.Duration(10),
+						Containers: []game_room.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []game_room.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											FieldRef: &game_room.FieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											SecretKeyRef: &game_room.SecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Limits: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Ports: []game_room.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &entities.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge: maxSurgeValue,
+					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
 							Enabled:     true,
@@ -604,8 +494,785 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := request_adapters.FromApiPatchSchedulerRequestToChangeMap(testCase.Input.PatchScheduler)
-			assert.EqualValues(t, testCase.Output.PatchScheduler, returnValues)
+			_scheduler, _ := request_adapters.FromApiCreateSchedulerRequestToEntity(testCase.Input.CreateScheduler)
+			assert.EqualValues(t, testCase.Output.Scheduler, _scheduler)
+		})
+	}
+}
+
+func TestFromEntitySchedulerToListResponse(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
+	type Input struct {
+		Scheduler *entities.Scheduler
+	}
+
+	type Output struct {
+		SchedulerWithoutSpec *api.SchedulerWithoutSpec
+	}
+
+	genericInt := 62
+	maxSurgeValue := "60%"
+	genericString := "some-value"
+	genericValidVersion := "v1.0.0"
+	genericStringList := []string{"some-value", "another-value"}
+	genericTime := time.Now()
+
+	testCases := []struct {
+		Title string
+		Input
+		Output
+	}{
+		{
+			Title: "receives entity scheduler without portRange, return api scheduler without spec",
+			Input: Input{
+				Scheduler: &entities.Scheduler{
+					Name:      genericString,
+					Game:      genericString,
+					State:     entities.StateCreating,
+					CreatedAt: genericTime,
+					Spec: game_room.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: time.Duration(10),
+						Containers: []game_room.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []game_room.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											FieldRef: &game_room.FieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											SecretKeyRef: &game_room.SecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Limits: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Ports: []game_room.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: nil,
+					MaxSurge:  maxSurgeValue,
+					Forwarders: []*forwarder.Forwarder{
+						{
+							Name:        "some-forwarder",
+							Enabled:     true,
+							ForwardType: forwarder.ForwardType("some-type"),
+							Address:     "localhost:8080",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+						{
+							Name:        "another-forwarder",
+							Enabled:     false,
+							ForwardType: forwarder.ForwardType("another-type"),
+							Address:     "localhost:8888",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				SchedulerWithoutSpec: &api.SchedulerWithoutSpec{
+					Name:      genericString,
+					Game:      genericString,
+					State:     "creating",
+					Version:   genericValidVersion,
+					PortRange: nil,
+					CreatedAt: timestamppb.New(genericTime),
+					MaxSurge:  maxSurgeValue,
+				},
+			},
+		},
+		{
+			Title: "receives entity scheduler with portRange, return api scheduler without spec",
+			Input: Input{
+				Scheduler: &entities.Scheduler{
+					Name:      genericString,
+					Game:      genericString,
+					State:     entities.StateCreating,
+					CreatedAt: genericTime,
+					Spec: game_room.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: time.Duration(10),
+						Containers: []game_room.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []game_room.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											FieldRef: &game_room.FieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											SecretKeyRef: &game_room.SecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Limits: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Ports: []game_room.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &entities.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge: maxSurgeValue,
+					Forwarders: []*forwarder.Forwarder{
+						{
+							Name:        "some-forwarder",
+							Enabled:     true,
+							ForwardType: forwarder.ForwardType("some-type"),
+							Address:     "localhost:8080",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+						{
+							Name:        "another-forwarder",
+							Enabled:     false,
+							ForwardType: forwarder.ForwardType("another-type"),
+							Address:     "localhost:8888",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				SchedulerWithoutSpec: &api.SchedulerWithoutSpec{
+					Name:    genericString,
+					Game:    genericString,
+					State:   "creating",
+					Version: genericValidVersion,
+					PortRange: &api.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					CreatedAt: timestamppb.New(genericTime),
+					MaxSurge:  maxSurgeValue,
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Title, func(t *testing.T) {
+			returnValues := request_adapters.FromEntitySchedulerToListResponse(testCase.Input.Scheduler)
+
+			assert.EqualValues(t, testCase.Output.SchedulerWithoutSpec, returnValues)
+		})
+	}
+}
+
+func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
+	type Input struct {
+		NewSchedulerVersion *api.NewSchedulerVersionRequest
+	}
+
+	type Output struct {
+		Scheduler *entities.Scheduler
+	}
+
+	genericInt32 := int32(62)
+	genericInt := 62
+	maxSurgeValue := "60%"
+	genericString := "some-value"
+	genericValidVersion := "v1.0.0"
+	genericStringList := []string{"some-value", "another-value"}
+
+	testCases := []struct {
+		Title string
+		Input
+		Output
+	}{
+		{
+			Title: "convert newSchedulerVersion api scheduler to entity scheduler",
+			Input: Input{
+				NewSchedulerVersion: &api.NewSchedulerVersionRequest{
+					Name: genericString,
+					Game: genericString,
+					Spec: &api.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: 10,
+						Toleration:             genericString,
+						Affinity:               genericString,
+						Containers: []*api.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []*api.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: &genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											FieldRef: &api.ContainerEnvironmentValueFromFieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Limits: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Ports: []*api.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt32,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+					},
+					PortRange: &api.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge: maxSurgeValue,
+					Forwarders: []*api.Forwarder{
+						{
+							Name:    "some-forwarder",
+							Enable:  true,
+							Type:    "some-type",
+							Address: "localhost:8080",
+							Options: &api.ForwarderOptions{
+								Timeout: int64(10),
+							},
+						},
+						{
+							Name:    "another-forwarder",
+							Enable:  false,
+							Type:    "another-type",
+							Address: "localhost:8888",
+							Options: &api.ForwarderOptions{
+								Timeout: int64(10),
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				Scheduler: &entities.Scheduler{
+					Name:  genericString,
+					Game:  genericString,
+					State: entities.StateCreating,
+					Spec: game_room.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: time.Duration(10),
+						Containers: []game_room.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []game_room.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											FieldRef: &game_room.FieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											SecretKeyRef: &game_room.SecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Limits: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Ports: []game_room.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &entities.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge: maxSurgeValue,
+					Forwarders: []*forwarder.Forwarder{
+						{
+							Name:        "some-forwarder",
+							Enabled:     true,
+							ForwardType: forwarder.ForwardType("some-type"),
+							Address:     "localhost:8080",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+						{
+							Name:        "another-forwarder",
+							Enabled:     false,
+							ForwardType: forwarder.ForwardType("another-type"),
+							Address:     "localhost:8888",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Title, func(t *testing.T) {
+			_scheduler, _ := request_adapters.FromApiNewSchedulerVersionRequestToEntity(testCase.Input.NewSchedulerVersion)
+			assert.EqualValues(t, testCase.Output.Scheduler, _scheduler)
+		})
+	}
+}
+
+func TestFromEntitySchedulerToResponse(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
+	type Input struct {
+		Scheduler *entities.Scheduler
+	}
+
+	type Output struct {
+		ApiScheduler *api.Scheduler
+	}
+
+	genericInt32 := int32(62)
+	genericInt := 62
+	maxSurgeValue := "60%"
+	genericString := "some-value"
+	genericValidVersion := "v1.0.0"
+	genericStringList := []string{"some-value", "another-value"}
+	genericTime := time.Now()
+
+	testCases := []struct {
+		Title string
+		Input
+		Output
+	}{
+		{
+			Title: "receives entity scheduler return api scheduler",
+			Input: Input{
+				Scheduler: &entities.Scheduler{
+					Name:      genericString,
+					Game:      genericString,
+					State:     entities.StateCreating,
+					CreatedAt: genericTime,
+					Spec: game_room.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: time.Duration(10),
+						Containers: []game_room.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []game_room.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											FieldRef: &game_room.FieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											SecretKeyRef: &game_room.SecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Limits: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Ports: []game_room.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &entities.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge: maxSurgeValue,
+					Forwarders: []*forwarder.Forwarder{
+						{
+							Name:        "some-forwarder",
+							Enabled:     true,
+							ForwardType: forwarder.ForwardType("some-type"),
+							Address:     "localhost:8080",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{"some-value": "another-value"},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				ApiScheduler: &api.Scheduler{
+					Name:      genericString,
+					Game:      genericString,
+					State:     "creating",
+					CreatedAt: timestamppb.New(genericTime),
+					Spec: &api.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: 10,
+						Containers: []*api.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []*api.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: &genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											FieldRef: &api.ContainerEnvironmentValueFromFieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Limits: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Ports: []*api.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt32,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &api.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge: maxSurgeValue,
+					Forwarders: []*api.Forwarder{
+						{
+							Name:    "some-forwarder",
+							Enable:  true,
+							Type:    "some-type",
+							Address: "localhost:8080",
+							Options: &api.ForwarderOptions{
+								Timeout: int64(10),
+								Metadata: &structpb.Struct{
+									Fields: map[string]*structpb.Value{
+										"some-value": {
+											Kind: &structpb.Value_StringValue{
+												StringValue: "another-value",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Title, func(t *testing.T) {
+			returnValues, _ := request_adapters.FromEntitySchedulerToResponse(testCase.Input.Scheduler)
+
+			assert.EqualValues(t, testCase.Output.ApiScheduler, returnValues)
+		})
+	}
+}
+
+func TestFromEntitySchedulerVersionListToResponse(t *testing.T) {
+	type Input struct {
+		SchedulerVersionList []*entities.SchedulerVersion
+	}
+
+	type Output struct {
+		ApiSchedulerVersionList []*api.SchedulerVersion
+	}
+
+	genericTime := time.Now()
+
+	testCases := []struct {
+		Title string
+		Input
+		Output
+	}{
+		{
+			Title: "List have no value returns empty list successfully",
+			Input: Input{
+				SchedulerVersionList: []*entities.SchedulerVersion{},
+			},
+			Output: Output{
+				ApiSchedulerVersionList: []*api.SchedulerVersion{},
+			},
+		},
+		{
+			Title: "List have 1 value returns converted list successfully",
+			Input: Input{
+				SchedulerVersionList: []*entities.SchedulerVersion{
+					{
+						Version:   "v1.0.0",
+						IsActive:  true,
+						CreatedAt: genericTime,
+					},
+				},
+			},
+			Output: Output{
+				ApiSchedulerVersionList: []*api.SchedulerVersion{
+					{
+						Version:   "v1.0.0",
+						IsActive:  true,
+						CreatedAt: timestamppb.New(genericTime),
+					},
+				},
+			},
+		},
+		{
+			Title: "List have more than 1 value returns converted list successfully",
+			Input: Input{
+				SchedulerVersionList: []*entities.SchedulerVersion{
+					{
+						Version:   "v1.1.0",
+						IsActive:  true,
+						CreatedAt: genericTime,
+					},
+					{
+						Version:   "v1.0.0",
+						IsActive:  false,
+						CreatedAt: genericTime.Add(-time.Hour * 24),
+					},
+				},
+			},
+			Output: Output{
+				ApiSchedulerVersionList: []*api.SchedulerVersion{
+					{
+						Version:   "v1.1.0",
+						IsActive:  true,
+						CreatedAt: timestamppb.New(genericTime),
+					},
+					{
+						Version:   "v1.0.0",
+						IsActive:  false,
+						CreatedAt: timestamppb.New(genericTime.Add(-time.Hour * 24)),
+					},
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Title, func(t *testing.T) {
+			returnValues := request_adapters.FromEntitySchedulerVersionListToResponse(testCase.Input.SchedulerVersionList)
+			assert.EqualValues(t, testCase.Output.ApiSchedulerVersionList, returnValues)
+		})
+	}
+}
+
+func TestFromEntitySchedulerInfoToListResponse(t *testing.T) {
+	type Input struct {
+		SchedulerInfo *entities.SchedulerInfo
+	}
+
+	type Output struct {
+		ApiSchedulerInfo *api.SchedulerInfo
+	}
+
+	genericString := "some-value"
+	genericInt := 62
+
+	testCases := []struct {
+		Title string
+		Input
+		Output
+	}{
+		{
+			Title: "only spec should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				SchedulerInfo: &entities.SchedulerInfo{
+					Name:             genericString,
+					Game:             genericString,
+					State:            entities.StateCreating,
+					RoomsReady:       genericInt,
+					RoomsOccupied:    genericInt,
+					RoomsPending:     genericInt,
+					RoomsTerminating: genericInt,
+				},
+			},
+			Output: Output{
+				ApiSchedulerInfo: &api.SchedulerInfo{
+					Name:             genericString,
+					Game:             genericString,
+					State:            "creating",
+					RoomsReady:       int32(genericInt),
+					RoomsOccupied:    int32(genericInt),
+					RoomsPending:     int32(genericInt),
+					RoomsTerminating: int32(genericInt),
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Title, func(t *testing.T) {
+			returnValues := request_adapters.FromEntitySchedulerInfoToListResponse(testCase.Input.SchedulerInfo)
+			assert.EqualValues(t, testCase.Output.ApiSchedulerInfo, returnValues)
 		})
 	}
 }

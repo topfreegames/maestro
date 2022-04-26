@@ -23,7 +23,11 @@
 package request_adapters
 
 import (
+	"fmt"
 	"time"
+
+	_struct "google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -36,7 +40,7 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 	patchMap := make(map[string]interface{})
 
 	if request.Spec != nil {
-		patchMap[patch_scheduler.LabelSchedulerSpec] = FromApiOptionalSpecToChangeMap(request.Spec)
+		patchMap[patch_scheduler.LabelSchedulerSpec] = fromApiOptionalSpecToChangeMap(request.Spec)
 	}
 
 	if request.PortRange != nil {
@@ -51,13 +55,96 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 	}
 
 	if request.Forwarders != nil {
-		patchMap[patch_scheduler.LabelSchedulerForwarders] = FromApiForwarders(request.GetForwarders())
+		patchMap[patch_scheduler.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
 	}
 
 	return patchMap
 }
 
-func FromApiOptionalSpecToChangeMap(request *api.OptionalSpec) map[string]interface{} {
+func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {
+	return entities.NewScheduler(
+		request.GetName(),
+		request.GetGame(),
+		entities.StateCreating,
+		request.GetMaxSurge(),
+		*fromApiSpec(request.GetSpec()),
+		entities.NewPortRange(
+			request.GetPortRange().GetStart(),
+			request.GetPortRange().GetEnd(),
+		),
+		fromApiForwarders(request.GetForwarders()),
+	)
+}
+
+func FromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.SchedulerWithoutSpec {
+	return &api.SchedulerWithoutSpec{
+		Name:      entity.Name,
+		Game:      entity.Game,
+		State:     entity.State,
+		Version:   entity.Spec.Version,
+		PortRange: getPortRange(entity.PortRange),
+		CreatedAt: timestamppb.New(entity.CreatedAt),
+		MaxSurge:  entity.MaxSurge,
+	}
+}
+
+func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionRequest) (*entities.Scheduler, error) {
+	return entities.NewScheduler(
+		request.GetName(),
+		request.GetGame(),
+		entities.StateCreating,
+		request.GetMaxSurge(),
+		*fromApiSpec(request.GetSpec()),
+		entities.NewPortRange(
+			request.GetPortRange().GetStart(),
+			request.GetPortRange().GetEnd(),
+		),
+		fromApiForwarders(request.GetForwarders()),
+	)
+}
+
+func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, error) {
+	forwarders, err := fromEntityForwardersToResponse(entity.Forwarders)
+	if err != nil {
+		return nil, err
+	}
+	return &api.Scheduler{
+		Name:       entity.Name,
+		Game:       entity.Game,
+		State:      entity.State,
+		PortRange:  getPortRange(entity.PortRange),
+		CreatedAt:  timestamppb.New(entity.CreatedAt),
+		MaxSurge:   entity.MaxSurge,
+		Spec:       getSpec(entity.Spec),
+		Forwarders: forwarders,
+	}, nil
+}
+
+func FromEntitySchedulerVersionListToResponse(entity []*entities.SchedulerVersion) []*api.SchedulerVersion {
+	versions := make([]*api.SchedulerVersion, len(entity))
+	for i, version := range entity {
+		versions[i] = &api.SchedulerVersion{
+			Version:   version.Version,
+			IsActive:  version.IsActive,
+			CreatedAt: timestamppb.New(version.CreatedAt),
+		}
+	}
+	return versions
+}
+
+func FromEntitySchedulerInfoToListResponse(entity *entities.SchedulerInfo) *api.SchedulerInfo {
+	return &api.SchedulerInfo{
+		Name:             entity.Name,
+		Game:             entity.Game,
+		State:            entity.State,
+		RoomsReady:       int32(entity.RoomsReady),
+		RoomsOccupied:    int32(entity.RoomsOccupied),
+		RoomsPending:     int32(entity.RoomsPending),
+		RoomsTerminating: int32(entity.RoomsTerminating),
+	}
+}
+
+func fromApiOptionalSpecToChangeMap(request *api.OptionalSpec) map[string]interface{} {
 	changeMap := make(map[string]interface{})
 
 	if request.TerminationGracePeriod != nil {
@@ -65,7 +152,7 @@ func FromApiOptionalSpecToChangeMap(request *api.OptionalSpec) map[string]interf
 	}
 
 	if request.Containers != nil {
-		changeMap[patch_scheduler.LabelSpecContainers] = FromApiOptinalContainersToChangeMap(request.GetContainers())
+		changeMap[patch_scheduler.LabelSpecContainers] = fromApiOptionalContainersToChangeMap(request.GetContainers())
 	}
 
 	if request.Toleration != nil {
@@ -79,7 +166,7 @@ func FromApiOptionalSpecToChangeMap(request *api.OptionalSpec) map[string]interf
 	return changeMap
 }
 
-func FromApiOptinalContainersToChangeMap(request []*api.OptionalContainer) []map[string]interface{} {
+func fromApiOptionalContainersToChangeMap(request []*api.OptionalContainer) []map[string]interface{} {
 	returnSlice := make([]map[string]interface{}, 0, len(request))
 
 	for _, container := range request {
@@ -102,7 +189,7 @@ func FromApiOptinalContainersToChangeMap(request []*api.OptionalContainer) []map
 		}
 
 		if container.Environment != nil {
-			changeMap[patch_scheduler.LabelContainerEnvironment] = FromApiContainerEnvironments(container.GetEnvironment())
+			changeMap[patch_scheduler.LabelContainerEnvironment] = fromApiContainerEnvironments(container.GetEnvironment())
 		}
 
 		if container.Requests != nil {
@@ -120,7 +207,7 @@ func FromApiOptinalContainersToChangeMap(request []*api.OptionalContainer) []map
 		}
 
 		if container.Ports != nil {
-			changeMap[patch_scheduler.LabelContainerPorts] = FromApiContainerPorts(container.GetPorts())
+			changeMap[patch_scheduler.LabelContainerPorts] = fromApiContainerPorts(container.GetPorts())
 		}
 
 		returnSlice = append(returnSlice, changeMap)
@@ -129,28 +216,91 @@ func FromApiOptinalContainersToChangeMap(request []*api.OptionalContainer) []map
 	return returnSlice
 }
 
-func FromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
-	var forwarders []*forwarder.Forwarder
-	for _, apiForwarder := range apiForwarders {
-		forwarderStruct := forwarder.Forwarder{
-			Name:        apiForwarder.GetName(),
-			Enabled:     apiForwarder.GetEnable(),
-			ForwardType: forwarder.ForwardType(apiForwarder.GetType()),
-			Address:     apiForwarder.GetAddress(),
+func fromEntityForwardersToResponse(entities []*forwarder.Forwarder) ([]*api.Forwarder, error) {
+	forwarders := make([]*api.Forwarder, len(entities))
+	for i, entity := range entities {
+		opts, err := fromEntityForwardOptions(entity.Options)
+		if err != nil {
+			return nil, err
 		}
 
-		if apiForwarder.Options != nil {
-			forwarderStruct.Options = &forwarder.ForwardOptions{
-				Timeout:  time.Duration(apiForwarder.Options.GetTimeout()),
-				Metadata: apiForwarder.Options.Metadata.AsMap(),
-			}
+		forwarders[i] = &api.Forwarder{
+			Name:    entity.Name,
+			Enable:  entity.Enabled,
+			Type:    fmt.Sprint(entity.ForwardType),
+			Address: entity.Address,
+			Options: opts,
 		}
-		forwarders = append(forwarders, &forwarderStruct)
 	}
-	return forwarders
+	return forwarders, nil
 }
 
-func FromApiContainerEnvironments(apiEnvironments []*api.ContainerEnvironment) []game_room.ContainerEnvironment {
+func fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderOptions, error) {
+	if entity == nil {
+		return nil, nil
+	}
+	protoStruct, err := _struct.NewStruct(entity.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.ForwarderOptions{
+		Timeout:  int64(entity.Timeout),
+		Metadata: protoStruct,
+	}, nil
+}
+
+func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
+	return game_room.NewSpec(
+		"",
+		time.Duration(apiSpec.GetTerminationGracePeriod()),
+		fromApiContainers(apiSpec.GetContainers()),
+		apiSpec.GetToleration(),
+		apiSpec.GetAffinity(),
+	)
+}
+
+func fromApiContainers(apiContainers []*api.Container) []game_room.Container {
+	var containers []game_room.Container
+	for _, apiContainer := range apiContainers {
+		container := game_room.Container{
+			Name:            apiContainer.GetName(),
+			Image:           apiContainer.GetImage(),
+			ImagePullPolicy: apiContainer.GetImagePullPolicy(),
+			Command:         apiContainer.GetCommand(),
+			Ports:           fromApiContainerPorts(apiContainer.GetPorts()),
+			Environment:     fromApiContainerEnvironments(apiContainer.GetEnvironment()),
+			Requests: game_room.ContainerResources{
+				CPU:    apiContainer.GetRequests().GetCpu(),
+				Memory: apiContainer.GetRequests().GetMemory(),
+			},
+			Limits: game_room.ContainerResources{
+				CPU:    apiContainer.GetLimits().GetCpu(),
+				Memory: apiContainer.GetLimits().GetMemory(),
+			},
+		}
+		containers = append(containers, container)
+	}
+
+	return containers
+}
+
+func fromApiContainerPorts(apiPorts []*api.ContainerPort) []game_room.ContainerPort {
+	var ports []game_room.ContainerPort
+	for _, apiPort := range apiPorts {
+		port := game_room.ContainerPort{
+			Name:     apiPort.GetName(),
+			Port:     int(apiPort.GetPort()),
+			Protocol: apiPort.GetProtocol(),
+			HostPort: int(apiPort.GetHostPort()),
+		}
+		ports = append(ports, port)
+	}
+
+	return ports
+}
+
+func fromApiContainerEnvironments(apiEnvironments []*api.ContainerEnvironment) []game_room.ContainerEnvironment {
 	var environments []game_room.ContainerEnvironment
 	for _, apiEnvironment := range apiEnvironments {
 		environment := game_room.ContainerEnvironment{
@@ -179,17 +329,116 @@ func FromApiContainerEnvironments(apiEnvironments []*api.ContainerEnvironment) [
 	return environments
 }
 
-func FromApiContainerPorts(apiPorts []*api.ContainerPort) []game_room.ContainerPort {
-	var ports []game_room.ContainerPort
-	for _, apiPort := range apiPorts {
-		port := game_room.ContainerPort{
-			Name:     apiPort.GetName(),
-			Port:     int(apiPort.GetPort()),
-			Protocol: apiPort.GetProtocol(),
-			HostPort: int(apiPort.GetHostPort()),
+func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
+	var forwarders []*forwarder.Forwarder
+	for _, apiForwarder := range apiForwarders {
+		var options *forwarder.ForwardOptions
+		if apiForwarder.GetOptions() != nil {
+			options = &forwarder.ForwardOptions{
+				Timeout:  time.Duration(apiForwarder.Options.GetTimeout()),
+				Metadata: apiForwarder.Options.Metadata.AsMap(),
+			}
 		}
-		ports = append(ports, port)
+
+		forwarderStruct := forwarder.Forwarder{
+			Name:        apiForwarder.GetName(),
+			Enabled:     apiForwarder.GetEnable(),
+			ForwardType: forwarder.ForwardType(apiForwarder.GetType()),
+			Address:     apiForwarder.GetAddress(),
+			Options:     options,
+		}
+		forwarders = append(forwarders, &forwarderStruct)
+	}
+	return forwarders
+}
+
+func getPortRange(portRange *entities.PortRange) *api.PortRange {
+	if portRange != nil {
+		return &api.PortRange{
+			Start: portRange.Start,
+			End:   portRange.End,
+		}
 	}
 
-	return ports
+	return nil
+}
+
+func getSpec(spec game_room.Spec) *api.Spec {
+	if spec.Version != "" {
+		return &api.Spec{
+			Version:                spec.Version,
+			Toleration:             spec.Toleration,
+			Containers:             fromEntityContainerToApiContainer(spec.Containers),
+			TerminationGracePeriod: int64(spec.TerminationGracePeriod),
+			Affinity:               spec.Affinity,
+		}
+	}
+
+	return nil
+}
+
+func fromEntityContainerToApiContainer(containers []game_room.Container) []*api.Container {
+	var convertedContainers []*api.Container
+	for _, container := range containers {
+		convertedContainers = append(convertedContainers, &api.Container{
+			Name:            container.Name,
+			Image:           container.Image,
+			ImagePullPolicy: container.ImagePullPolicy,
+			Command:         container.Command,
+			Environment:     fromEntityContainerEnvironmentToApiContainerEnvironment(container.Environment),
+			Requests:        fromEntityContainerResourcesToApiContainerResources(container.Requests),
+			Limits:          fromEntityContainerResourcesToApiContainerResources(container.Limits),
+			Ports:           fromEntityContainerPortsToApiContainerPorts(container.Ports),
+		})
+	}
+	return convertedContainers
+}
+
+func fromEntityContainerEnvironmentToApiContainerEnvironment(environments []game_room.ContainerEnvironment) []*api.ContainerEnvironment {
+	var convertedContainerEnvironment []*api.ContainerEnvironment
+	for _, environment := range environments {
+		apiContainerEnv := &api.ContainerEnvironment{
+			Name: environment.Name,
+		}
+		switch {
+		case environment.Value != "":
+			envValue := environment.Value
+			apiContainerEnv.Value = &envValue
+		case environment.ValueFrom != nil && environment.ValueFrom.SecretKeyRef != nil:
+			apiContainerEnv.ValueFrom = &api.ContainerEnvironmentValueFrom{
+				SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
+					Name: environment.ValueFrom.SecretKeyRef.Name,
+					Key:  environment.ValueFrom.SecretKeyRef.Key,
+				},
+			}
+		case environment.ValueFrom != nil && environment.ValueFrom.FieldRef != nil:
+			apiContainerEnv.ValueFrom = &api.ContainerEnvironmentValueFrom{
+				FieldRef: &api.ContainerEnvironmentValueFromFieldRef{
+					FieldPath: environment.ValueFrom.FieldRef.FieldPath,
+				},
+			}
+		}
+		convertedContainerEnvironment = append(convertedContainerEnvironment, apiContainerEnv)
+	}
+	return convertedContainerEnvironment
+}
+
+func fromEntityContainerResourcesToApiContainerResources(resources game_room.ContainerResources) *api.ContainerResources {
+	return &api.ContainerResources{
+		Memory: resources.Memory,
+		Cpu:    resources.CPU,
+	}
+}
+
+func fromEntityContainerPortsToApiContainerPorts(ports []game_room.ContainerPort) []*api.ContainerPort {
+	var convertedContainerPort []*api.ContainerPort
+	for _, port := range ports {
+		convertedContainerPort = append(convertedContainerPort, &api.ContainerPort{
+			Name:     port.Name,
+			Protocol: port.Protocol,
+			Port:     int32(port.Port),
+			HostPort: int32(port.HostPort),
+		})
+	}
+	return convertedContainerPort
 }
