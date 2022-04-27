@@ -46,15 +46,15 @@ func FromOperationToResponse(entity *operation.Operation) (*api.Operation, error
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert input to struct: %w", err)
 		}
+
 		apiOperation.Input, err = _struct.NewStruct(inputMap)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert input to response struct: %w", err)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert input to response struct: %w", err)
+		}
 	}
 
 	if entity.Lease != nil {
 		apiOperation.Lease = &api.Lease{Ttl: entity.Lease.Ttl.UTC().Format(time.RFC3339)}
-		return apiOperation, nil
 	}
 
 	return apiOperation, nil
