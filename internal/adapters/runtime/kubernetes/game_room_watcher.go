@@ -43,7 +43,7 @@ import (
 
 var (
 	defaultResyncTime = 30 * time.Second
-	eventsChanSize    = 100
+	eventsChanSize    = 2000
 )
 
 type kubernetesWatcher struct {
