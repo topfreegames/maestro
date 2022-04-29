@@ -30,7 +30,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
-	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
+	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 
@@ -76,7 +76,7 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 
 	schedulers := make([]*api.SchedulerWithoutSpec, len(schedulerEntities))
 	for i, entity := range schedulerEntities {
-		schedulers[i] = request_adapters.FromEntitySchedulerToListResponse(entity)
+		schedulers[i] = requestadapters.FromEntitySchedulerToListResponse(entity)
 	}
 
 	handlerLogger.Info("finish handling list schedulers request")
@@ -107,7 +107,7 @@ func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSc
 	}
 	handlerLogger.Info("finish handling get scheduler request")
 
-	returnScheduler, err := request_adapters.FromEntitySchedulerToResponse(scheduler)
+	returnScheduler, err := requestadapters.FromEntitySchedulerToResponse(scheduler)
 	if err != nil {
 		h.logger.Error("error parsing scheduler to response", zap.Any("schedulerName", schedulerName), zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -130,13 +130,13 @@ func (h *SchedulersHandler) GetSchedulerVersions(ctx context.Context, request *a
 	}
 	handlerLogger.Info("finish handling get scheduler versions request")
 
-	return &api.GetSchedulerVersionsResponse{Versions: request_adapters.FromEntitySchedulerVersionListToResponse(versions)}, nil
+	return &api.GetSchedulerVersionsResponse{Versions: requestadapters.FromEntitySchedulerVersionListToResponse(versions)}, nil
 }
 
 func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
 	handlerLogger.Info("handling create scheduler request")
-	scheduler, err := request_adapters.FromApiCreateSchedulerRequestToEntity(request)
+	scheduler, err := requestadapters.FromApiCreateSchedulerRequestToEntity(request)
 	if err != nil {
 		apiValidationError := parseValidationError(err.(validator.ValidationErrors))
 		handlerLogger.Error("error parsing scheduler", zap.Error(apiValidationError))
@@ -153,7 +153,7 @@ func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.Cr
 	}
 	handlerLogger.Info("finish handling create scheduler request")
 
-	returnScheduler, err := request_adapters.FromEntitySchedulerToResponse(scheduler)
+	returnScheduler, err := requestadapters.FromEntitySchedulerToResponse(scheduler)
 	if err != nil {
 		h.logger.Error("error parsing scheduler to response", zap.Any("schedulerName", request.GetName()), zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -198,7 +198,7 @@ func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.Remove
 func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *api.NewSchedulerVersionRequest) (*api.NewSchedulerVersionResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
 	handlerLogger.Info("handling new scheduler version request")
-	scheduler, err := request_adapters.FromApiNewSchedulerVersionRequestToEntity(request)
+	scheduler, err := requestadapters.FromApiNewSchedulerVersionRequestToEntity(request)
 	if err != nil {
 		apiValidationError := parseValidationError(err.(validator.ValidationErrors))
 		handlerLogger.Error("error parsing scheduler version", zap.Error(apiValidationError))
@@ -223,7 +223,7 @@ func (h *SchedulersHandler) PatchScheduler(ctx context.Context, request *api.Pat
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()))
 	handlerLogger.Info("handling patch scheduler request")
 
-	patchMap := request_adapters.FromApiPatchSchedulerRequestToChangeMap(request)
+	patchMap := requestadapters.FromApiPatchSchedulerRequestToChangeMap(request)
 	if len(patchMap) == 0 {
 		return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("no change found to scheduler %s", request.GetName()))
 	}
@@ -276,7 +276,7 @@ func (h *SchedulersHandler) GetSchedulersInfo(ctx context.Context, request *api.
 
 	schedulersResponse := make([]*api.SchedulerInfo, len(schedulers))
 	for i, scheduler := range schedulers {
-		schedulersResponse[i] = request_adapters.FromEntitySchedulerInfoToListResponse(scheduler)
+		schedulersResponse[i] = requestadapters.FromEntitySchedulerInfoToListResponse(scheduler)
 	}
 	handlerLogger.Info("finish handling get schedulers info request")
 

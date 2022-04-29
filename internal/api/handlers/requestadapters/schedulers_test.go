@@ -23,7 +23,7 @@
 //go:build unit
 // +build unit
 
-package request_adapters_test
+package requestadapters_test
 
 import (
 	"testing"
@@ -37,7 +37,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
+	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager/patch_scheduler"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
@@ -290,7 +290,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := request_adapters.FromApiPatchSchedulerRequestToChangeMap(testCase.Input.PatchScheduler)
+			returnValues := requestadapters.FromApiPatchSchedulerRequestToChangeMap(testCase.Input.PatchScheduler)
 			assert.EqualValues(t, testCase.Output.PatchScheduler, returnValues)
 		})
 	}
@@ -494,7 +494,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			_scheduler, _ := request_adapters.FromApiCreateSchedulerRequestToEntity(testCase.Input.CreateScheduler)
+			_scheduler, _ := requestadapters.FromApiCreateSchedulerRequestToEntity(testCase.Input.CreateScheduler)
 			assert.EqualValues(t, testCase.Output.Scheduler, _scheduler)
 		})
 	}
@@ -728,7 +728,7 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := request_adapters.FromEntitySchedulerToListResponse(testCase.Input.Scheduler)
+			returnValues := requestadapters.FromEntitySchedulerToListResponse(testCase.Input.Scheduler)
 
 			assert.EqualValues(t, testCase.Output.SchedulerWithoutSpec, returnValues)
 		})
@@ -933,7 +933,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			_scheduler, _ := request_adapters.FromApiNewSchedulerVersionRequestToEntity(testCase.Input.NewSchedulerVersion)
+			_scheduler, _ := requestadapters.FromApiNewSchedulerVersionRequestToEntity(testCase.Input.NewSchedulerVersion)
 			assert.EqualValues(t, testCase.Output.Scheduler, _scheduler)
 		})
 	}
@@ -1131,7 +1131,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues, _ := request_adapters.FromEntitySchedulerToResponse(testCase.Input.Scheduler)
+			returnValues, _ := requestadapters.FromEntitySchedulerToResponse(testCase.Input.Scheduler)
 
 			assert.EqualValues(t, testCase.Output.ApiScheduler, returnValues)
 		})
@@ -1219,7 +1219,7 @@ func TestFromEntitySchedulerVersionListToResponse(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := request_adapters.FromEntitySchedulerVersionListToResponse(testCase.Input.SchedulerVersionList)
+			returnValues := requestadapters.FromEntitySchedulerVersionListToResponse(testCase.Input.SchedulerVersionList)
 			assert.EqualValues(t, testCase.Output.ApiSchedulerVersionList, returnValues)
 		})
 	}
@@ -1271,7 +1271,7 @@ func TestFromEntitySchedulerInfoToListResponse(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := request_adapters.FromEntitySchedulerInfoToListResponse(testCase.Input.SchedulerInfo)
+			returnValues := requestadapters.FromEntitySchedulerInfoToListResponse(testCase.Input.SchedulerInfo)
 			assert.EqualValues(t, testCase.Output.ApiSchedulerInfo, returnValues)
 		})
 	}

@@ -29,7 +29,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
+	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -71,7 +71,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 	sortOperationsByCreatedAt(pendingOperationEntities, sortingOrder)
 
-	pendingOperationResponse, err := request_adapters.FromOperationsToResponses(pendingOperationEntities)
+	pendingOperationResponse, err := requestadapters.FromOperationsToResponses(pendingOperationEntities)
 	if err != nil {
 		handlerLogger.Error("error converting pending operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -84,7 +84,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 	sortOperationsByCreatedAt(activeOperationEntities, sortingOrder)
 
-	activeOperationResponses, err := request_adapters.FromOperationsToResponses(activeOperationEntities)
+	activeOperationResponses, err := requestadapters.FromOperationsToResponses(activeOperationEntities)
 	if err != nil {
 		handlerLogger.Error("error converting active operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -97,7 +97,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 	sortOperationsByCreatedAt(finishedOperationEntities, sortingOrder)
 
-	finishedOperationResponse, err := request_adapters.FromOperationsToResponses(finishedOperationEntities)
+	finishedOperationResponse, err := requestadapters.FromOperationsToResponses(finishedOperationEntities)
 	if err != nil {
 		handlerLogger.Error("error converting finished operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -139,7 +139,7 @@ func (h *OperationsHandler) GetOperation(ctx context.Context, request *api.GetOp
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	convertedOp, err := request_adapters.FromOperationToResponse(op)
+	convertedOp, err := requestadapters.FromOperationToResponse(op)
 	if err != nil {
 		handlerLogger.Error("invalid operation object. Fail to convert", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())

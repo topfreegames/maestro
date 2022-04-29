@@ -26,7 +26,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
+	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	"github.com/topfreegames/maestro/internal/core/logs"
 
 	"go.uber.org/zap"
@@ -88,7 +88,7 @@ func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.Forw
 
 func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.UpdateRoomWithPingRequest) (*api.UpdateRoomWithPingResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
-	gameRoom, err := request_adapters.FromApiUpdateRoomRequestToEntity(message)
+	gameRoom, err := requestadapters.FromApiUpdateRoomRequestToEntity(message)
 	handlerLogger.Info("handling room ping request", zap.Any("message", message))
 	if err != nil {
 		handlerLogger.Error("error parsing ping request", zap.Any("ping", message), zap.Error(err))
