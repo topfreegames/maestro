@@ -23,7 +23,7 @@
 //go:build unit
 // +build unit
 
-package request_adapters_test
+package requestadapters_test
 
 import (
 	"testing"
@@ -32,7 +32,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/topfreegames/maestro/internal/api/handlers/request_adapters"
+	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
@@ -98,7 +98,7 @@ func TestFromApiUpdateRoomRequestToEntity(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues, err := request_adapters.FromApiUpdateRoomRequestToEntity(testCase.Input.PingRequest)
+			returnValues, err := requestadapters.FromApiUpdateRoomRequestToEntity(testCase.Input.PingRequest)
 			if testCase.Output.GivesError {
 				assert.Error(t, err)
 			}

@@ -24,26 +24,22 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
+	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
-
-	"go.uber.org/zap"
-	_struct "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type OperationsHandler struct {
@@ -75,7 +71,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 	sortOperationsByCreatedAt(pendingOperationEntities, sortingOrder)
 
-	pendingOperationResponse, err := h.fromOperationsToResponses(pendingOperationEntities)
+	pendingOperationResponse, err := requestadapters.FromOperationsToResponses(pendingOperationEntities)
 	if err != nil {
 		handlerLogger.Error("error converting pending operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -88,7 +84,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 	sortOperationsByCreatedAt(activeOperationEntities, sortingOrder)
 
-	activeOperationResponses, err := h.fromOperationsToResponses(activeOperationEntities)
+	activeOperationResponses, err := requestadapters.FromOperationsToResponses(activeOperationEntities)
 	if err != nil {
 		handlerLogger.Error("error converting active operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -101,7 +97,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 	sortOperationsByCreatedAt(finishedOperationEntities, sortingOrder)
 
-	finishedOperationResponse, err := h.fromOperationsToResponses(finishedOperationEntities)
+	finishedOperationResponse, err := requestadapters.FromOperationsToResponses(finishedOperationEntities)
 	if err != nil {
 		handlerLogger.Error("error converting finished operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -143,77 +139,12 @@ func (h *OperationsHandler) GetOperation(ctx context.Context, request *api.GetOp
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	convertedOp, err := h.fromOperationToResponse(op)
+	convertedOp, err := requestadapters.FromOperationToResponse(op)
 	if err != nil {
 		handlerLogger.Error("invalid operation object. Fail to convert", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	return &api.GetOperationResponse{Operation: convertedOp}, nil
-}
-
-func (h *OperationsHandler) fromOperationsToResponses(entities []*operation.Operation) ([]*api.Operation, error) {
-	responses := make([]*api.Operation, len(entities))
-	for i, entity := range entities {
-		response, err := h.fromOperationToResponse(entity)
-		if err != nil {
-			return nil, err
-		}
-		responses[i] = response
-	}
-
-	return responses, nil
-}
-
-func (h *OperationsHandler) fromOperationToResponse(entity *operation.Operation) (*api.Operation, error) {
-	operation := &api.Operation{
-		Id:             entity.ID,
-		DefinitionName: entity.DefinitionName,
-		SchedulerName:  entity.SchedulerName,
-		CreatedAt:      timestamppb.New(entity.CreatedAt),
-	}
-
-	var err error
-	operation.Status, err = entity.Status.String()
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert operation entity to response: %w", err)
-	}
-
-	operation.ExecutionHistory = h.fromOperationEventsToResponse(entity.ExecutionHistory)
-
-	if len(entity.Input) > 0 {
-		var inputMap map[string]interface{} = make(map[string]interface{})
-		err = json.Unmarshal(entity.Input, &inputMap)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert input to struct: %w", err)
-		}
-		operation.Input, err = _struct.NewStruct(inputMap)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert input to response struct: %w", err)
-	}
-
-	if entity.Lease != nil {
-		operation.Lease = &api.Lease{Ttl: entity.Lease.Ttl.UTC().Format(time.RFC3339)}
-		return operation, nil
-	}
-
-	return operation, nil
-}
-
-func (h *OperationsHandler) fromOperationEventsToResponse(entities []operation.OperationEvent) []*api.OperationEvent {
-	apiOperationEvents := make([]*api.OperationEvent, 0, len(entities))
-	for _, entity := range entities {
-		apiOperationEvents = append(apiOperationEvents, h.fromOperationEventToResponse(entity))
-	}
-
-	return apiOperationEvents
-}
-
-func (h *OperationsHandler) fromOperationEventToResponse(entity operation.OperationEvent) *api.OperationEvent {
-	return &api.OperationEvent{
-		CreatedAt: timestamppb.New(entity.CreatedAt),
-		Event:     entity.Event,
-	}
 }
 
 func sortOperationsByCreatedAt(operations []*operation.Operation, order string) {
