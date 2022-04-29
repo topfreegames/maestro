@@ -70,22 +70,32 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 	defer w.cancelFunc()
 
 	resultChan := watcher.ResultChan()
-	for {
-		select {
-		case <-w.ctx.Done():
-			watcher.Stop()
-			return nil
-		case event, ok := <-resultChan:
-			if !ok {
-				watcher.Stop()
-				return nil
+
+	// TODO(guilhermocc): We need to deal better with this events chan processing by using https://github.com/kubernetes/client-go/blob/master/util/workqueue/doc.go
+	for i := 0; i < 200; i++ {
+		go func(goroutineNumber int) {
+			goroutineLogger := w.logger.With(zap.Int("goroutine", goroutineNumber))
+			goroutineLogger.Info("Starting event processing goroutine")
+			for {
+				select {
+				case event, ok := <-resultChan:
+					if !ok {
+						return
+					}
+					err := w.processEvent(w.ctx, event)
+					if err != nil {
+						w.logger.Warn("failed to process event", zap.Error(err))
+					}
+				case <-w.ctx.Done():
+					return
+				}
 			}
-			err := w.processEvent(w.ctx, event)
-			if err != nil {
-				w.logger.Warn("failed to process event", zap.Error(err))
-			}
-		}
+		}(i)
 	}
+
+	<-w.ctx.Done()
+	watcher.Stop()
+	return nil
 }
 
 func (w *runtimeWatcherWorker) Stop(_ context.Context) {
