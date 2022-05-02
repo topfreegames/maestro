@@ -24,6 +24,8 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sync"
 	"time"
 
@@ -35,7 +37,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	kube "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -54,6 +55,7 @@ type kubernetesWatcher struct {
 	err         error
 	stopped     bool
 	stopChan    chan struct{}
+	podsMap     map[string]string
 	logger      *zap.Logger
 }
 
@@ -63,6 +65,7 @@ func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface) *kubern
 		ctx:         ctx,
 		resultsChan: make(chan game_room.InstanceEvent, eventsChanSize),
 		stopChan:    make(chan struct{}),
+		podsMap:     map[string]string{},
 		logger:      zap.L(),
 	}
 }
@@ -105,10 +108,15 @@ func (kw *kubernetesWatcher) convertInstance(pod *v1.Pod) (*game_room.Instance, 
 		return convertPod(pod, nil)
 	}
 
+	start := time.Now()
+
 	node, err := kw.clientSet.CoreV1().Nodes().Get(kw.ctx, pod.Spec.NodeName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
+
+	elapsed := time.Since(start)
+	zap.L().Info(fmt.Sprintf("********* GET NODE TOOK %s *********", elapsed))
 
 	return convertPod(pod, node)
 }
@@ -124,6 +132,17 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		return
+	}
+
+	if version, exists := kw.podsMap[pod.Name]; exists {
+		if version == pod.ResourceVersion {
+			return
+		}
+	}
+	if eventType == game_room.InstanceEventTypeDeleted {
+		delete(kw.podsMap, pod.Name)
+	} else {
+		kw.podsMap[pod.Name] = pod.ResourceVersion
 	}
 
 	instance, err := kw.convertInstance(pod)
