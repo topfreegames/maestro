@@ -24,10 +24,10 @@ package kubernetes
 
 import (
 	"context"
-	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sync"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 
@@ -48,25 +48,25 @@ var (
 )
 
 type kubernetesWatcher struct {
-	mu          sync.Mutex
-	clientSet   kube.Interface
-	ctx         context.Context
-	resultsChan chan game_room.InstanceEvent
-	err         error
-	stopped     bool
-	stopChan    chan struct{}
-	podsMap     map[string]string
-	logger      *zap.Logger
+	mu               sync.Mutex
+	clientSet        kube.Interface
+	ctx              context.Context
+	resultsChan      chan game_room.InstanceEvent
+	err              error
+	stopped          bool
+	stopChan         chan struct{}
+	instanceCacheMap map[string]*game_room.Instance
+	logger           *zap.Logger
 }
 
 func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface) *kubernetesWatcher {
 	return &kubernetesWatcher{
-		clientSet:   clientSet,
-		ctx:         ctx,
-		resultsChan: make(chan game_room.InstanceEvent, eventsChanSize),
-		stopChan:    make(chan struct{}),
-		podsMap:     map[string]string{},
-		logger:      zap.L(),
+		clientSet:        clientSet,
+		ctx:              ctx,
+		resultsChan:      make(chan game_room.InstanceEvent, eventsChanSize),
+		stopChan:         make(chan struct{}),
+		instanceCacheMap: map[string]*game_room.Instance{},
+		logger:           zap.L(),
 	}
 }
 
@@ -108,15 +108,10 @@ func (kw *kubernetesWatcher) convertInstance(pod *v1.Pod) (*game_room.Instance, 
 		return convertPod(pod, nil)
 	}
 
-	start := time.Now()
-
 	node, err := kw.clientSet.CoreV1().Nodes().Get(kw.ctx, pod.Spec.NodeName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-
-	elapsed := time.Since(start)
-	zap.L().Info(fmt.Sprintf("********* GET NODE TOOK %s *********", elapsed))
 
 	return convertPod(pod, node)
 }
@@ -134,22 +129,29 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		return
 	}
 
-	if version, exists := kw.podsMap[pod.Name]; exists {
-		if version == pod.ResourceVersion {
+	var instance *game_room.Instance
+	var err error
+
+	instance, exists := kw.instanceCacheMap[pod.Name]
+	if !exists {
+		instance, err = kw.convertInstance(pod)
+		if err != nil {
+			kw.logger.Error("Error converting pod to game room instance", zap.String(logs.LogFieldInstanceID, pod.ObjectMeta.Name), zap.Error(err))
+			kw.stopWithError(err)
+			return
+		}
+		// Caching before ready consists in lack of information about the instance.
+		if instance.Status.Type == game_room.InstanceReady {
+			kw.instanceCacheMap[pod.Name] = instance
+		}
+	} else {
+		if instance.ResourceVersion == pod.ResourceVersion {
 			return
 		}
 	}
-	if eventType == game_room.InstanceEventTypeDeleted {
-		delete(kw.podsMap, pod.Name)
-	} else {
-		kw.podsMap[pod.Name] = pod.ResourceVersion
-	}
 
-	instance, err := kw.convertInstance(pod)
-	if err != nil {
-		kw.logger.Error("Error converting pod to game room instance", zap.String(logs.LogFieldInstanceID, pod.ObjectMeta.Name), zap.Error(err))
-		kw.stopWithError(err)
-		return
+	if eventType == game_room.InstanceEventTypeDeleted {
+		delete(kw.instanceCacheMap, pod.Name)
 	}
 
 	instanceEvent := game_room.InstanceEvent{
