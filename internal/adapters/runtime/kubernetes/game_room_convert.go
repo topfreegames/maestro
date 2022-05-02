@@ -370,10 +370,11 @@ func convertPod(pod *v1.Pod, node *v1.Node) (*game_room.Instance, error) {
 	}
 
 	return &game_room.Instance{
-		ID:          pod.ObjectMeta.Name,
-		SchedulerID: pod.ObjectMeta.Namespace,
-		Status:      convertPodStatus(pod),
-		Address:     address,
+		ID:              pod.ObjectMeta.Name,
+		SchedulerID:     pod.ObjectMeta.Namespace,
+		Status:          convertPodStatus(pod),
+		Address:         address,
+		ResourceVersion: pod.ResourceVersion,
 	}, nil
 }
 

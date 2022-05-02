@@ -77,8 +77,9 @@ type Address struct {
 }
 
 type Instance struct {
-	ID          string         `json:"id"`
-	SchedulerID string         `json:"schedulerId"`
-	Status      InstanceStatus `json:"status"`
-	Address     *Address       `json:"address"`
+	ID              string         `json:"id"`
+	SchedulerID     string         `json:"schedulerId"`
+	Status          InstanceStatus `json:"status"`
+	Address         *Address       `json:"address"`
+	ResourceVersion string         `json:"resourceVersion"`
 }

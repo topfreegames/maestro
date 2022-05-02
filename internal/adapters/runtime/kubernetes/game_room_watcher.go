@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/topfreegames/maestro/internal/core/logs"
 
 	"go.uber.org/zap"
@@ -35,7 +37,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	kube "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -47,23 +48,25 @@ var (
 )
 
 type kubernetesWatcher struct {
-	mu          sync.Mutex
-	clientSet   kube.Interface
-	ctx         context.Context
-	resultsChan chan game_room.InstanceEvent
-	err         error
-	stopped     bool
-	stopChan    chan struct{}
-	logger      *zap.Logger
+	mu               sync.Mutex
+	clientSet        kube.Interface
+	ctx              context.Context
+	resultsChan      chan game_room.InstanceEvent
+	err              error
+	stopped          bool
+	stopChan         chan struct{}
+	instanceCacheMap map[string]*game_room.Instance
+	logger           *zap.Logger
 }
 
 func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface) *kubernetesWatcher {
 	return &kubernetesWatcher{
-		clientSet:   clientSet,
-		ctx:         ctx,
-		resultsChan: make(chan game_room.InstanceEvent, eventsChanSize),
-		stopChan:    make(chan struct{}),
-		logger:      zap.L(),
+		clientSet:        clientSet,
+		ctx:              ctx,
+		resultsChan:      make(chan game_room.InstanceEvent, eventsChanSize),
+		stopChan:         make(chan struct{}),
+		instanceCacheMap: map[string]*game_room.Instance{},
+		logger:           zap.L(),
 	}
 }
 
@@ -126,11 +129,29 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		return
 	}
 
-	instance, err := kw.convertInstance(pod)
-	if err != nil {
-		kw.logger.Error("Error converting pod to game room instance", zap.String(logs.LogFieldInstanceID, pod.ObjectMeta.Name), zap.Error(err))
-		kw.stopWithError(err)
-		return
+	var instance *game_room.Instance
+	var err error
+
+	instance, exists := kw.instanceCacheMap[pod.Name]
+	if !exists {
+		instance, err = kw.convertInstance(pod)
+		if err != nil {
+			kw.logger.Error("Error converting pod to game room instance", zap.String(logs.LogFieldInstanceID, pod.ObjectMeta.Name), zap.Error(err))
+			kw.stopWithError(err)
+			return
+		}
+		// Caching before ready consists in lack of information about the instance.
+		if instance.Status.Type == game_room.InstanceReady {
+			kw.instanceCacheMap[pod.Name] = instance
+		}
+	} else {
+		if instance.ResourceVersion == pod.ResourceVersion {
+			return
+		}
+	}
+
+	if eventType == game_room.InstanceEventTypeDeleted {
+		delete(kw.instanceCacheMap, pod.Name)
 	}
 
 	instanceEvent := game_room.InstanceEvent{
