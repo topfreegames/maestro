@@ -32,28 +32,47 @@ import (
 )
 
 const (
-	LabelSchedulerName          = "name"
-	LabelSchedulerSpec          = "spec"
-	LabelSchedulerPortRange     = "port_range"
-	LabelSchedulerMaxSurge      = "max_surge"
+	// LabelSchedulerName is the name key in the patch map.
+	LabelSchedulerName = "name"
+	// LabelSchedulerSpec is the spec key in the patch map.
+	LabelSchedulerSpec = "spec"
+	// LabelSchedulerPortRange is the port range key in the patch map.
+	LabelSchedulerPortRange = "port_range"
+	// LabelSchedulerMaxSurge is the max surge key in the patch map.
+	LabelSchedulerMaxSurge = "max_surge"
+	// LabelSchedulerRoomsReplicas is the rooms replicas key in the patch map.
 	LabelSchedulerRoomsReplicas = "rooms_replicas"
-	LabelSchedulerForwarders    = "forwarders"
+	// LabelSchedulerForwarders is the forwarders key in the patch map.
+	LabelSchedulerForwarders = "forwarders"
 
+	// LabelSpecTerminationGracePeriod is the termination grace period key in the patch map.
 	LabelSpecTerminationGracePeriod = "termination_grace_period"
-	LabelSpecContainers             = "containers"
-	LabelSpecToleration             = "toleration"
-	LabelSpecAffinity               = "affinity"
+	// LabelSpecContainers is the containers key in the patch map.
+	LabelSpecContainers = "containers"
+	// LabelSpecToleration is the toleration key in the patch map.
+	LabelSpecToleration = "toleration"
+	// LabelSpecAffinity is the affinity key in the patch map.
+	LabelSpecAffinity = "affinity"
 
-	LabelContainerName            = "name"
-	LabelContainerImage           = "image"
+	// LabelContainerName is the container name key in the patch map.
+	LabelContainerName = "name"
+	// LabelContainerImage is the image name key in the patch map.
+	LabelContainerImage = "image"
+	// LabelContainerImagePullPolicy is the image pull policy name key in the patch map.
 	LabelContainerImagePullPolicy = "image_pull_policy"
-	LabelContainerCommand         = "command"
-	LabelContainerEnvironment     = "environment"
-	LabelContainerRequests        = "requests"
-	LabelContainerLimits          = "limits"
-	LabelContainerPorts           = "ports"
+	// LabelContainerCommand is the command key in the patch map.
+	LabelContainerCommand = "command"
+	// LabelContainerEnvironment is the environment key in the patch map.
+	LabelContainerEnvironment = "environment"
+	// LabelContainerRequests is the requests key in the patch map.
+	LabelContainerRequests = "requests"
+	// LabelContainerLimits is the limits key in the patch map.
+	LabelContainerLimits = "limits"
+	// LabelContainerPorts the ports key in the patch map.
+	LabelContainerPorts = "ports"
 )
 
+// PatchScheduler function apply the patchMap in the in the scheduler, returning the patched Scheduler.
 func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{}) (*entities.Scheduler, error) {
 	if _, ok := patchMap[LabelSchedulerPortRange]; ok {
 		if scheduler.PortRange, ok = patchMap[LabelSchedulerPortRange].(*entities.PortRange); !ok {
@@ -63,6 +82,10 @@ func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{
 
 	if _, ok := patchMap[LabelSchedulerMaxSurge]; ok {
 		scheduler.MaxSurge = fmt.Sprint(patchMap[LabelSchedulerMaxSurge])
+	}
+
+	if _, ok := patchMap[LabelSchedulerRoomsReplicas]; ok {
+		scheduler.RoomsReplicas = (patchMap[LabelSchedulerRoomsReplicas]).(int)
 	}
 
 	if _, ok := patchMap[LabelSchedulerForwarders]; ok {
