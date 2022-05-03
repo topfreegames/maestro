@@ -75,6 +75,7 @@ func TestListSchedulers(t *testing.T) {
 				Game:            game,
 				State:           entities.StateInSync,
 				MaxSurge:        "10%",
+				RoomsReplicas:   6,
 				RollbackVersion: "1.0.0",
 				CreatedAt:       time.Now(),
 				PortRange: &entities.PortRange{
@@ -98,7 +99,7 @@ func TestListSchedulers(t *testing.T) {
 
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 200, rr.Code)
+		require.Equal(t, http.StatusOK, rr.Code)
 
 		bodyString := rr.Body.String()
 		var response api.ListSchedulersResponse
@@ -129,7 +130,7 @@ func TestListSchedulers(t *testing.T) {
 
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 200, rr.Code)
+		require.Equal(t, http.StatusOK, rr.Code)
 
 		bodyString := rr.Body.String()
 		var response api.ListSchedulersResponse
@@ -196,7 +197,6 @@ func TestListSchedulers(t *testing.T) {
 }
 
 func TestGetScheduler(t *testing.T) {
-
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
@@ -208,6 +208,7 @@ func TestGetScheduler(t *testing.T) {
 			Game:            "zooba",
 			State:           entities.StateInSync,
 			MaxSurge:        "10%",
+			RoomsReplicas:   6,
 			RollbackVersion: "1.0.0",
 			Spec: game_room.Spec{
 				Version:                "v1.0.0",
@@ -358,7 +359,6 @@ func TestGetScheduler(t *testing.T) {
 }
 
 func TestGetSchedulerVersions(t *testing.T) {
-
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
@@ -471,10 +471,11 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		scheduler := &entities.Scheduler{
-			Name:     "scheduler-name-1",
-			Game:     "game-name",
-			State:    entities.StateCreating,
-			MaxSurge: "10%",
+			Name:          "scheduler-name-1",
+			Game:          "game-name",
+			State:         entities.StateCreating,
+			MaxSurge:      "10%",
+			RoomsReplicas: 6,
 			Spec: game_room.Spec{
 				Version:                "v1.0.0",
 				TerminationGracePeriod: 100 * time.Nanosecond,
@@ -542,6 +543,7 @@ func TestCreateScheduler(t *testing.T) {
 				assert.Equal(t, scheduler.Game, arg.Game)
 				assert.Equal(t, scheduler.State, arg.State)
 				assert.Equal(t, scheduler.MaxSurge, arg.MaxSurge)
+				assert.Equal(t, scheduler.RoomsReplicas, arg.RoomsReplicas)
 				assert.Equal(t, scheduler.Spec, arg.Spec)
 				assert.Equal(t, scheduler.PortRange, arg.PortRange)
 				for i, forwarder := range arg.Forwarders {
@@ -602,6 +604,7 @@ func TestCreateScheduler(t *testing.T) {
 		assert.Contains(t, schedulerMessage, "Scheduler.Name: Name is a required field")
 		assert.Contains(t, schedulerMessage, "Scheduler.Game: Game is a required field")
 		assert.Contains(t, schedulerMessage, "Scheduler.MaxSurge: MaxSurge is a required field")
+		assert.Contains(t, schedulerMessage, "Scheduler.RoomsReplicas: RoomsReplicas must be 0 or greater")
 		assert.Contains(t, schedulerMessage, "Scheduler.PortRange.Start: Start must be less than End")
 		assert.Contains(t, schedulerMessage, "Scheduler.PortRange.Start: Start must be less than End")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Environment[0].Name: Name is a required field")
@@ -1081,7 +1084,7 @@ func TestPatchScheduler(t *testing.T) {
 		Status   int
 	}
 
-	maxSurge := "60%"
+	roomsReplicas := int32(6)
 	wrongMaxSurge := "wrong-max-surge"
 
 	testCases := []struct {
@@ -1094,7 +1097,7 @@ func TestPatchScheduler(t *testing.T) {
 			Title: "When all is ok",
 			Input: Input{
 				Request: &api.PatchSchedulerRequest{
-					MaxSurge: &maxSurge,
+					RoomsReplicas: &roomsReplicas,
 				},
 			},
 			Mocks: Mocks{
@@ -1117,7 +1120,7 @@ func TestPatchScheduler(t *testing.T) {
 			Title: "When invalid request payload return 400",
 			Input: Input{
 				Request: &api.PatchSchedulerRequest{
-					MaxSurge: &maxSurge,
+					RoomsReplicas: &roomsReplicas,
 				},
 			},
 			Mocks: Mocks{
@@ -1133,7 +1136,7 @@ func TestPatchScheduler(t *testing.T) {
 			},
 		},
 		{
-			Title: "When request payload does not change scheudler return 409",
+			Title: "When request payload does not change scheduler return 409",
 			Input: Input{
 				Request: &api.PatchSchedulerRequest{},
 			},
@@ -1153,7 +1156,7 @@ func TestPatchScheduler(t *testing.T) {
 			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrNotFound return 404",
 			Input: Input{
 				Request: &api.PatchSchedulerRequest{
-					MaxSurge: &maxSurge,
+					RoomsReplicas: &roomsReplicas,
 				},
 			},
 			Mocks: Mocks{
@@ -1191,7 +1194,7 @@ func TestPatchScheduler(t *testing.T) {
 			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrUnexpected return 500",
 			Input: Input{
 				Request: &api.PatchSchedulerRequest{
-					MaxSurge: &maxSurge,
+					RoomsReplicas: &roomsReplicas,
 				},
 			},
 			Mocks: Mocks{
@@ -1210,7 +1213,7 @@ func TestPatchScheduler(t *testing.T) {
 			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return portsErrors.ErrUnexpected return 500",
 			Input: Input{
 				Request: &api.PatchSchedulerRequest{
-					MaxSurge: &maxSurge,
+					RoomsReplicas: &roomsReplicas,
 				},
 			},
 			Mocks: Mocks{
@@ -1296,6 +1299,7 @@ func newValidScheduler() *entities.Scheduler {
 		Game:            "game",
 		State:           entities.StateCreating,
 		MaxSurge:        "10%",
+		RoomsReplicas:   0,
 		RollbackVersion: "",
 		Spec: game_room.Spec{
 			Version:                "v1",

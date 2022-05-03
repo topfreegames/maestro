@@ -166,10 +166,12 @@ message Scheduler {
   google.protobuf.Timestamp created_at = 5;
   // Max surge of rooms 
   string max_surge = 6;
+  // Rooms Replicas is the desired number of rooms 
+  int32 rooms_replicas = 7;
   // GameRoom spec
-  Spec spec = 7;
+  Spec spec = 8;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 8;
+  repeated Forwarder forwarders = 9;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
@@ -190,6 +192,8 @@ message SchedulerWithoutSpec {
   google.protobuf.Timestamp created_at = 6;
   // Max surge of rooms
   string max_surge = 7;
+  // Rooms Replicas is the desired number that a Scheduler should have rooms
+  int32 rooms_replicas = 8;
 }
 
 // The operation object representation

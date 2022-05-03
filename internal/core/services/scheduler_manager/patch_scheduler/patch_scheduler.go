@@ -32,11 +32,12 @@ import (
 )
 
 const (
-	LabelSchedulerName       = "name"
-	LabelSchedulerSpec       = "spec"
-	LabelSchedulerPortRange  = "port_range"
-	LabelSchedulerMaxSurge   = "max_surge"
-	LabelSchedulerForwarders = "forwarders"
+	LabelSchedulerName          = "name"
+	LabelSchedulerSpec          = "spec"
+	LabelSchedulerPortRange     = "port_range"
+	LabelSchedulerMaxSurge      = "max_surge"
+	LabelSchedulerRoomsReplicas = "rooms_replicas"
+	LabelSchedulerForwarders    = "forwarders"
 
 	LabelSpecTerminationGracePeriod = "termination_grace_period"
 	LabelSpecContainers             = "containers"

@@ -436,6 +436,11 @@
                   "type": "string",
                   "title": "The max surge of new rooms, used to scale and update"
                 },
+                "roomsReplicas": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "The rooms replicas is the desired number of rooms that maestro should keep available."
+                },
                 "forwarders": {
                   "type": "array",
                   "items": {
@@ -495,6 +500,11 @@
                 "maxSurge": {
                   "type": "string",
                   "title": "The max surge of new rooms, used to scale and update"
+                },
+                "roomsReplicas": {
+                  "type": "integer",
+                  "format": "int32",
+                  "title": "Rooms Replicas is the desired number of rooms"
                 },
                 "forwarders": {
                   "type": "array",
@@ -1102,6 +1112,11 @@
           "type": "string",
           "title": "The max surge of new rooms, used to scale and update"
         },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The rooms replicas defines the desired number of Game Rooms in a scheduler."
+        },
         "forwarders": {
           "type": "array",
           "items": {
@@ -1449,6 +1464,11 @@
           "type": "string",
           "title": "Max surge of rooms"
         },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Rooms Replicas is the desired number of rooms"
+        },
         "spec": {
           "$ref": "#/definitions/v1Spec",
           "title": "GameRoom spec"
@@ -1551,6 +1571,11 @@
         "maxSurge": {
           "type": "string",
           "title": "Max surge of rooms"
+        },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Rooms Replicas is the desired number that a Scheduler should have rooms"
         }
       },
       "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unnecessary for the list function"

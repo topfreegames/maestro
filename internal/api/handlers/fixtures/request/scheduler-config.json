@@ -2,6 +2,7 @@
   "name": "scheduler-name-1",
   "game": "game-name",
   "maxSurge": "10%",
+  "roomsReplicas": 6,
   "portRange": {
     "start": 1,
     "end": 1000
