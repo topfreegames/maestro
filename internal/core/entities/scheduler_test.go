@@ -155,6 +155,29 @@ func TestNewScheduler(t *testing.T) {
 				1,
 				2,
 			),
+			0,
+			forwarders)
+
+		require.NotNil(t, err)
+	})
+
+	t.Run("fails when try to create scheduler with invalid RoomsReplicas", func(t *testing.T) {
+		_, err := entities.NewScheduler(
+			"",
+			"",
+			entities.StateCreating,
+			"10",
+			*game_room.NewSpec(
+				"v1",
+				10,
+				containers,
+				"10",
+				"10",
+			),
+			entities.NewPortRange(
+				1,
+				2,
+			),
 			-1,
 			forwarders)
 
