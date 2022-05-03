@@ -44,6 +44,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
+	_struct "google.golang.org/protobuf/types/known/structpb"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
