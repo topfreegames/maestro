@@ -148,6 +148,16 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		if instance.ResourceVersion == pod.ResourceVersion {
 			return
 		}
+		tempInstance := &game_room.Instance{
+			ID:              instance.ID,
+			SchedulerID:     instance.SchedulerID,
+			Status:          convertPodStatus(pod),
+			Address:         instance.Address,
+			ResourceVersion: pod.ResourceVersion,
+		}
+		instance = tempInstance
+
+		kw.instanceCacheMap[pod.Name] = instance
 	}
 
 	if eventType == game_room.InstanceEventTypeDeleted {
