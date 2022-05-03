@@ -20,6 +20,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//go:build unit
+// +build unit
+
 package entities_test
 
 import (
@@ -39,6 +42,10 @@ func TestNewScheduler(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error %d'", err)
 	}
+	name := "scheduler-name"
+	game := "scheduler-game"
+	maxSurge := "10"
+	roomsReplicas := 3
 	containers := []game_room.Container{
 		game_room.Container{
 			Name:            "default",
@@ -56,7 +63,19 @@ func TestNewScheduler(t *testing.T) {
 				CPU:    "10m",
 				Memory: "100Mi",
 			},
-		}}
+		},
+	}
+	spec := *game_room.NewSpec(
+		"v1",
+		10,
+		containers,
+		"10",
+		"10",
+	)
+	portRange := entities.NewPortRange(
+		1,
+		2,
+	)
 
 	fwd := &forwarder.Forwarder{
 		Name:        "fwd",
@@ -72,25 +91,28 @@ func TestNewScheduler(t *testing.T) {
 
 	t.Run("with success when create valid scheduler", func(t *testing.T) {
 		scheduler, err := entities.NewScheduler(
-			"scheduler-name",
-			"scheduler-game",
+			name,
+			game,
 			entities.StateCreating,
-			"10",
-			*game_room.NewSpec(
-				"v1",
-				10,
-				containers,
-				"10",
-				"10",
-			),
-			entities.NewPortRange(
-				1,
-				2,
-			),
+			maxSurge,
+			spec,
+			portRange,
+			roomsReplicas,
 			forwarders)
 
+		expectedScheduler := &entities.Scheduler{
+			Name:          name,
+			Game:          game,
+			MaxSurge:      maxSurge,
+			State:         entities.StateCreating,
+			Spec:          spec,
+			PortRange:     portRange,
+			RoomsReplicas: roomsReplicas,
+			Forwarders:    forwarders,
+		}
+
 		require.NoError(t, err)
-		require.NotNil(t, scheduler)
+		require.EqualValues(t, expectedScheduler, scheduler)
 	})
 
 	t.Run("fails when try to create invalid scheduler", func(t *testing.T) {
@@ -110,6 +132,30 @@ func TestNewScheduler(t *testing.T) {
 				1,
 				2,
 			),
+			0,
+			forwarders)
+
+		require.NotNil(t, err)
+	})
+
+	t.Run("fails when try to create scheduler with invalid RoomsReplicas", func(t *testing.T) {
+		_, err := entities.NewScheduler(
+			"",
+			"",
+			entities.StateCreating,
+			"10",
+			*game_room.NewSpec(
+				"v1",
+				10,
+				containers,
+				"10",
+				"10",
+			),
+			entities.NewPortRange(
+				1,
+				2,
+			),
+			-1,
 			forwarders)
 
 		require.NotNil(t, err)
@@ -217,6 +263,11 @@ func TestIsMajorVersion(t *testing.T) {
 					}},
 			}}},
 			expected: false,
+		},
+		"roomsReplicas shouldn't be a major": {
+			currentScheduler: &entities.Scheduler{RoomsReplicas: 0},
+			newScheduler:     &entities.Scheduler{RoomsReplicas: 2},
+			expected:         false,
 		},
 	}
 

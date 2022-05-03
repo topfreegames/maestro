@@ -57,6 +57,7 @@ type schedulerInfo struct {
 	Containers             []game_room.Container
 	PortRange              *entities.PortRange
 	MaxSurge               string
+	RoomsReplicas          int
 	Forwarders             []*forwarder.Forwarder
 }
 
@@ -68,6 +69,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		Containers:             scheduler.Spec.Containers,
 		PortRange:              scheduler.PortRange,
 		MaxSurge:               scheduler.MaxSurge,
+		RoomsReplicas:          scheduler.RoomsReplicas,
 		Forwarders:             scheduler.Forwarders,
 	}
 	yamlBytes, _ := yaml.Marshal(info)
@@ -102,6 +104,7 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		RollbackVersion: s.RollbackVersion,
 		CreatedAt:       s.CreatedAt.Time,
 		MaxSurge:        info.MaxSurge,
+		RoomsReplicas:   info.RoomsReplicas,
 		Forwarders:      info.Forwarders,
 	}, nil
 }
