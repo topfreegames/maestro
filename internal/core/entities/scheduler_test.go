@@ -93,6 +93,7 @@ func TestNewScheduler(t *testing.T) {
 		scheduler, err := entities.NewScheduler(
 			name,
 			game,
+<<<<<<< HEAD
 			entities.StateCreating,
 			maxSurge,
 			spec,
@@ -119,23 +120,32 @@ func TestNewScheduler(t *testing.T) {
 		_, err := entities.NewScheduler(
 			"",
 			"",
+=======
+>>>>>>> c754e898... Improve entities NewScheduler test
 			entities.StateCreating,
-			"10",
-			*game_room.NewSpec(
-				"v1",
-				10,
-				containers,
-				"10",
-				"10",
-			),
-			entities.NewPortRange(
-				1,
-				2,
-			),
-			0,
+			maxSurge,
+			spec,
+			portRange,
+			roomsReplicas,
 			forwarders)
 
+<<<<<<< HEAD
 		require.NotNil(t, err)
+=======
+		expectedScheduler := &entities.Scheduler{
+			Name:          name,
+			Game:          game,
+			MaxSurge:      maxSurge,
+			State:         entities.StateCreating,
+			Spec:          spec,
+			PortRange:     portRange,
+			RoomsReplicas: roomsReplicas,
+			Forwarders:    forwarders,
+		}
+
+		require.NoError(t, err)
+		require.EqualValues(t, expectedScheduler, scheduler)
+>>>>>>> c754e898... Improve entities NewScheduler test
 	})
 
 	t.Run("fails when try to create scheduler with invalid RoomsReplicas", func(t *testing.T) {
