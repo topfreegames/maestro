@@ -141,13 +141,23 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 			return
 		}
 		// Caching before ready consists in lack of information about the instance.
-		if instance.Status.Type == game_room.InstanceReady {
+		if !(instance.Status.Type == game_room.InstanceUnknown || instance.Status.Type == game_room.InstancePending) {
 			kw.instanceCacheMap[pod.Name] = instance
 		}
 	} else {
 		if instance.ResourceVersion == pod.ResourceVersion {
 			return
 		}
+		tempInstance := &game_room.Instance{
+			ID:              instance.ID,
+			SchedulerID:     instance.SchedulerID,
+			Status:          convertPodStatus(pod),
+			Address:         instance.Address,
+			ResourceVersion: pod.ResourceVersion,
+		}
+		instance = tempInstance
+
+		kw.instanceCacheMap[pod.Name] = instance
 	}
 
 	if eventType == game_room.InstanceEventTypeDeleted {
