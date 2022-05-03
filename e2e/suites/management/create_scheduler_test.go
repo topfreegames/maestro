@@ -50,12 +50,13 @@ func TestCreateScheduler(t *testing.T) {
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		t.Run("should succeed", func(t *testing.T) {
-			roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
+			roomsAPIAddress := maestro.RoomsApiServer.ContainerInternalAddress
 			schedulerName := framework.GenerateSchedulerName()
 			createRequest := &maestrov1.CreateSchedulerRequest{
-				Name:     schedulerName,
-				Game:     "test",
-				MaxSurge: "10%",
+				Name:          schedulerName,
+				Game:          "test",
+				MaxSurge:      "10%",
+				RoomsReplicas: 1,
 				Spec: &maestrov1.Spec{
 					TerminationGracePeriod: 15,
 					Containers: []*maestrov1.Container{
@@ -75,7 +76,7 @@ func TestCreateScheduler(t *testing.T) {
 							Environment: []*maestrov1.ContainerEnvironment{
 								{
 									Name:  "ROOMS_API_ADDRESS",
-									Value: &roomsApiAddress,
+									Value: &roomsAPIAddress,
 								},
 								{
 									Name: "HOST_IP",
@@ -143,9 +144,10 @@ func TestCreateScheduler(t *testing.T) {
 			assert.NoError(t, err)
 
 			createRequest := &maestrov1.CreateSchedulerRequest{
-				Name:     schedulerName,
-				Game:     "test",
-				MaxSurge: "10%",
+				Name:          schedulerName,
+				Game:          "test",
+				MaxSurge:      "10%",
+				RoomsReplicas: 1,
 				Spec: &maestrov1.Spec{
 					TerminationGracePeriod: 15,
 					Containers: []*maestrov1.Container{

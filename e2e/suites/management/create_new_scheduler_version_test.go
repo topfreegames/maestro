@@ -104,9 +104,10 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			require.NoError(t, err)
 
 			updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-				Name:     scheduler.Name,
-				Game:     "test",
-				MaxSurge: "10%",
+				Name:          scheduler.Name,
+				Game:          "test",
+				MaxSurge:      "10%",
+				RoomsReplicas: 2,
 				Spec: &maestrov1.Spec{
 					TerminationGracePeriod: 15,
 					Containers: []*maestroApiV1.Container{

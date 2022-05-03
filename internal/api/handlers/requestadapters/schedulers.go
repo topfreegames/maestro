@@ -55,7 +55,7 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 	}
 
 	if request.RoomsReplicas != nil {
-		patchMap[patch_scheduler.LabelSchedulerRoomsReplicas] = request.GetRoomsReplicas()
+		patchMap[patch_scheduler.LabelSchedulerRoomsReplicas] = int(request.GetRoomsReplicas())
 	}
 
 	if request.Forwarders != nil {

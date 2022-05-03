@@ -117,7 +117,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerRoomsReplicas: roomsReplicasValue,
+					patch_scheduler.LabelSchedulerRoomsReplicas: int(roomsReplicasValue),
 				},
 			},
 		},
