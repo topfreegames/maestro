@@ -62,6 +62,7 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 }
 
 func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {
+	roomsReplicas := 0
 	return entities.NewScheduler(
 		request.GetName(),
 		request.GetGame(),
@@ -72,6 +73,7 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		),
+		roomsReplicas,
 		fromApiForwarders(request.GetForwarders()),
 	)
 }
@@ -89,6 +91,7 @@ func FromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.Schedule
 }
 
 func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionRequest) (*entities.Scheduler, error) {
+	roomsReplicas := 0
 	return entities.NewScheduler(
 		request.GetName(),
 		request.GetGame(),
@@ -99,6 +102,7 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		),
+		roomsReplicas,
 		fromApiForwarders(request.GetForwarders()),
 	)
 }
