@@ -74,13 +74,14 @@ func NewScheduler(
 	forwarders []*forwarder.Forwarder,
 ) (*Scheduler, error) {
 	scheduler := &Scheduler{
-		Name:       name,
-		Game:       game,
-		State:      state,
-		Spec:       spec,
-		PortRange:  portRange,
-		MaxSurge:   maxSurge,
-		Forwarders: forwarders,
+		Name:          name,
+		Game:          game,
+		State:         state,
+		Spec:          spec,
+		PortRange:     portRange,
+		MaxSurge:      maxSurge,
+		RoomsReplicas: roomsReplicas,
+		Forwarders:    forwarders,
 	}
 	return scheduler, scheduler.Validate()
 }
