@@ -47,6 +47,8 @@ const (
 	StateOnError = "on-error"
 )
 
+// Scheduler represent one of the basic maestro struct. It holds GameRooms definitions, as
+//   Spectations, PortRange and Forwarders to correct GameRooms work.
 type Scheduler struct {
 	Name            string `validate:"required,kube_resource_name"`
 	Game            string `validate:"required"`
@@ -54,12 +56,23 @@ type Scheduler struct {
 	RollbackVersion string
 	Spec            game_room.Spec
 	PortRange       *PortRange
+	RoomsReplicas   int `validate:"min=0"`
 	CreatedAt       time.Time
 	MaxSurge        string                 `validate:"required,max_surge"`
 	Forwarders      []*forwarder.Forwarder `validate:"dive"`
 }
 
-func NewScheduler(name string, game string, state string, maxSurge string, spec game_room.Spec, portRange *PortRange, forwarders []*forwarder.Forwarder) (*Scheduler, error) {
+// NewScheduler instantiate a new scheduler struct.
+func NewScheduler(
+	name string,
+	game string,
+	state string,
+	maxSurge string,
+	spec game_room.Spec,
+	portRange *PortRange,
+	roomsReplicas int,
+	forwarders []*forwarder.Forwarder,
+) (*Scheduler, error) {
 	scheduler := &Scheduler{
 		Name:       name,
 		Game:       game,
@@ -112,6 +125,7 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 			"RollbackVersion",
 			"CreatedAt",
 			"MaxSurge",
+			"RoomsReplicas",
 		),
 	)
 }

@@ -20,6 +20,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//go:build unit
+// +build unit
+
 package entities_test
 
 import (
@@ -87,6 +90,7 @@ func TestNewScheduler(t *testing.T) {
 				1,
 				2,
 			),
+			0,
 			forwarders)
 
 		require.NoError(t, err)
@@ -110,6 +114,30 @@ func TestNewScheduler(t *testing.T) {
 				1,
 				2,
 			),
+			0,
+			forwarders)
+
+		require.NotNil(t, err)
+	})
+
+	t.Run("fails when try to create scheduler with invalid RoomsReplicas", func(t *testing.T) {
+		_, err := entities.NewScheduler(
+			"",
+			"",
+			entities.StateCreating,
+			"10",
+			*game_room.NewSpec(
+				"v1",
+				10,
+				containers,
+				"10",
+				"10",
+			),
+			entities.NewPortRange(
+				1,
+				2,
+			),
+			-1,
 			forwarders)
 
 		require.NotNil(t, err)
@@ -217,6 +245,11 @@ func TestIsMajorVersion(t *testing.T) {
 					}},
 			}}},
 			expected: false,
+		},
+		"roomsReplicas shouldn't be a major": {
+			currentScheduler: &entities.Scheduler{RoomsReplicas: 0},
+			newScheduler:     &entities.Scheduler{RoomsReplicas: 2},
+			expected:         false,
 		},
 	}
 

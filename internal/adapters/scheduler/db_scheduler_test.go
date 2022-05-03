@@ -62,6 +62,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Toleration:             "toleration",
 					Affinity:               "affinity",
 				},
+				RoomsReplicas: 0,
 			},
 			{
 				Name:            "scheduler-2",
@@ -78,6 +79,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Start: 40000,
 					End:   60000,
 				},
+				RoomsReplicas: 1,
 			},
 			{
 				Name:            "scheduler-3",
@@ -122,6 +124,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Affinity:               "affinity",
 					TerminationGracePeriod: 60,
 				},
+				RoomsReplicas: 2,
 			},
 			{
 				Name:            "scheduler-3",
@@ -170,6 +173,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Start: 40000,
 					End:   60000,
 				},
+				RoomsReplicas: 3,
 			},
 			{
 				Name:            "scheduler-5",
