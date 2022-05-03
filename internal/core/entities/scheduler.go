@@ -47,8 +47,8 @@ const (
 	StateOnError = "on-error"
 )
 
-// Scheduler represent one of the basic maestro struct. It holds GameRooms definitions, as
-//   Spectations, PortRange and Forwarders to correct GameRooms work.
+// Scheduler represents one of the basic maestro structs.
+// It holds GameRooms specifications, as well as optional events forwarders.
 type Scheduler struct {
 	Name            string `validate:"required,kube_resource_name"`
 	Game            string `validate:"required"`
