@@ -83,14 +83,14 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			return fmt.Errorf("failed to get next operation: %w", err)
 		}
 
-		err = w.executeOperation(op, def)
+		err = w.executeOperationFlow(op, def)
 		if err != nil && shouldFinishWorker(err) {
 			return err
 		}
 	}
 }
 
-func (w *OperationExecutionWorker) executeOperation(op *operation.Operation, def operations.Definition) error {
+func (w *OperationExecutionWorker) executeOperationFlow(op *operation.Operation, def operations.Definition) error {
 	loopLogger := w.logger.With(
 		zap.String(logs.LogFieldOperationID, op.ID),
 		zap.String(logs.LogFieldOperationDefinition, def.Name()),
@@ -107,10 +107,12 @@ func (w *OperationExecutionWorker) executeOperation(op *operation.Operation, def
 		return nil
 	}
 
-	err, executionErr := w.startAndExecuteOperationWithLease(op, def, loopLogger, executor)
+	operationContext, err := w.prepareExecutionAndLease(op, loopLogger)
 	if err != nil {
 		return err
 	}
+
+	executionErr := w.executeOperationWithLease(operationContext, op, def, executor)
 
 	if executionErr != nil {
 		w.handleExecutionError(op, executionErr, loopLogger)
@@ -168,7 +170,13 @@ func (w *OperationExecutionWorker) finishOperationAndLease(op *operation.Operati
 	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation finished")
 }
 
-func (w *OperationExecutionWorker) startAndExecuteOperationWithLease(op *operation.Operation, def operations.Definition, loopLogger *zap.Logger, executor operations.Executor) (err error, executionErr operations.ExecutionError) {
+func (w OperationExecutionWorker) executeOperationWithLease(operationContext context.Context, op *operation.Operation, def operations.Definition, executor operations.Executor) operations.ExecutionError {
+	return w.executeCollectingLatencyMetrics(op.DefinitionName, func() operations.ExecutionError {
+		return executor.Execute(operationContext, op, def)
+	})
+}
+
+func (w *OperationExecutionWorker) prepareExecutionAndLease(op *operation.Operation, loopLogger *zap.Logger) (operationContext context.Context, err error) {
 	loopLogger.Info("Starting operation")
 
 	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Starting operation")
@@ -187,7 +195,7 @@ func (w *OperationExecutionWorker) startAndExecuteOperationWithLease(op *operati
 			loopLogger.Error("failed to finish operation", zap.Error(err))
 		}
 
-		return workererrors.NewErrGrantLeaseFailed("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName), nil
+		return operationContext, workererrors.NewErrGrantLeaseFailed("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 	}
 
 	err = w.operationManager.StartOperation(operationContext, op, operationCancellationFunction)
@@ -203,15 +211,12 @@ func (w *OperationExecutionWorker) startAndExecuteOperationWithLease(op *operati
 
 		reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelStartOperationFailed)
 
-		return workererrors.NewErrStartOperationFailed("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName), nil
+		return operationContext, workererrors.NewErrStartOperationFailed("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 	}
 
 	w.operationManager.StartLeaseRenewGoRoutine(operationContext, op)
 
-	executionErr = w.executeCollectingLatencyMetrics(op.DefinitionName, func() operations.ExecutionError {
-		return executor.Execute(operationContext, op, def)
-	})
-	return err, executionErr
+	return operationContext, err
 }
 
 func (w *OperationExecutionWorker) shouldEvictOperation(op *operation.Operation, def operations.Definition, hasExecutor bool, loopLogger *zap.Logger) bool {
