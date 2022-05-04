@@ -25,231 +25,219 @@
 
 package kubernetes
 
-import (
-	"context"
-	"testing"
-	"time"
-
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/test"
-
-	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/core/entities"
-)
-
-func TestGameRoomsWatch(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
-
-	t.Run("watch pod addition", func(t *testing.T) {
-		t.Parallel()
-		scheduler := &entities.Scheduler{Name: "watch-room-addition"}
-		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
-		require.NoError(t, err)
-
-		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
-		defer watcher.Stop()
-		require.NoError(t, err)
-
-		gameRoomSpec := game_room.Spec{
-			Containers: []game_room.Container{
-				{
-					Name:  "nginx",
-					Image: "nginx:stable-alpine",
-				},
-			},
-		}
-
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			select {
-			case event := <-watcher.ResultChan():
-				require.Equal(t, game_room.InstanceEventTypeAdded, event.Type)
-				require.Equal(t, instance.ID, event.Instance.ID)
-				require.Equal(t, game_room.InstancePending, event.Instance.Status.Type)
-				return true
-			default:
-				return false
-			}
-
-		}, 5*time.Second, 100*time.Millisecond)
-
-		watcher.Stop()
-		require.NoError(t, watcher.Err())
-
-		// ensure the result chan is closed
-		require.Eventually(t, func() bool {
-			select {
-			case _, ok := <-watcher.ResultChan():
-				return !ok
-			default:
-				return false
-			}
-		}, time.Second, 100*time.Millisecond)
-	})
-
-	t.Run("watch pod becoming ready", func(t *testing.T) {
-		t.Parallel()
-		scheduler := &entities.Scheduler{Name: "watch-room-ready"}
-		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
-		require.NoError(t, err)
-
-		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
-		defer watcher.Stop()
-		require.NoError(t, err)
-
-		gameRoomSpec := game_room.Spec{
-			Containers: []game_room.Container{
-				{
-					Name:  "nginx",
-					Image: "nginx:stable-alpine",
-					Ports: []game_room.ContainerPort{
-						{
-							Name:     "test",
-							Protocol: "tcp",
-							Port:     80,
-							HostPort: 9999,
-						},
-					},
-				},
-			},
-		}
-
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			select {
-			case event := <-watcher.ResultChan():
-				if event.Type == game_room.InstanceEventTypeUpdated &&
-					event.Instance.ID == instance.ID &&
-					event.Instance.Status.Type == game_room.InstanceReady {
-					return true
-				}
-			default:
-			}
-
-			return false
-		}, time.Minute*2, time.Second)
-
-		watcher.Stop()
-		require.NoError(t, watcher.Err())
-
-		// ensure the result chan is closed
-		require.Eventually(t, func() bool {
-			select {
-			case _, ok := <-watcher.ResultChan():
-				return !ok
-			default:
-				return false
-			}
-		}, time.Second, 100*time.Millisecond)
-	})
-
-	t.Run("watch pod with error", func(t *testing.T) {
-		t.Parallel()
-		scheduler := &entities.Scheduler{Name: "watch-room-error"}
-		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
-		require.NoError(t, err)
-
-		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
-		defer watcher.Stop()
-		require.NoError(t, err)
-
-		gameRoomSpec := game_room.Spec{
-			Containers: []game_room.Container{
-				{
-					Name:    "nginx",
-					Image:   "nginx:stable-alpine",
-					Command: []string{"some", "inexistent", "command"},
-				},
-			},
-		}
-
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			select {
-			case event := <-watcher.ResultChan():
-				if event.Type == game_room.InstanceEventTypeUpdated &&
-					event.Instance.ID == instance.ID &&
-					event.Instance.Status.Type == game_room.InstanceError {
-					return true
-				}
-			default:
-			}
-
-			return false
-		}, time.Minute*2, time.Second)
-
-		watcher.Stop()
-		require.NoError(t, watcher.Err())
-
-		// ensure the result chan is closed
-		require.Eventually(t, func() bool {
-			select {
-			case _, ok := <-watcher.ResultChan():
-				return !ok
-			default:
-				return false
-			}
-		}, time.Second, 100*time.Millisecond)
-	})
-
-	t.Run("watch pod deletion", func(t *testing.T) {
-		t.Parallel()
-		scheduler := &entities.Scheduler{Name: "watch-room-delete"}
-		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
-		require.NoError(t, err)
-
-		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
-		defer watcher.Stop()
-		require.NoError(t, err)
-
-		gameRoomSpec := game_room.Spec{
-			Containers: []game_room.Container{
-				{
-					Name:  "nginx",
-					Image: "nginx:stable-alpine",
-				},
-			},
-		}
-
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
-		require.NoError(t, err)
-
-		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, instance)
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			select {
-			case event := <-watcher.ResultChan():
-				if event.Type == game_room.InstanceEventTypeDeleted &&
-					event.Instance.ID == instance.ID {
-					return true
-				}
-			default:
-			}
-
-			return false
-		}, time.Minute, time.Second)
-
-		watcher.Stop()
-		require.NoError(t, watcher.Err())
-
-		// ensure the result chan is closed
-		require.Eventually(t, func() bool {
-			select {
-			case _, ok := <-watcher.ResultChan():
-				return !ok
-			default:
-				return false
-			}
-		}, time.Second, 100*time.Millisecond)
-	})
-}
+//func TestGameRoomsWatch(t *testing.T) {
+//	t.Parallel()
+//	ctx := context.Background()
+//	client := test.GetKubernetesClientSet(t, kubernetesContainer)
+//	kubernetesRuntime := New(client)
+//
+//	t.Run("watch pod addition", func(t *testing.T) {
+//		t.Parallel()
+//		scheduler := &entities.Scheduler{Name: "watch-room-addition"}
+//		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
+//		require.NoError(t, err)
+//
+//		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
+//		defer watcher.Stop()
+//		require.NoError(t, err)
+//
+//		gameRoomSpec := game_room.Spec{
+//			Containers: []game_room.Container{
+//				{
+//					Name:  "nginx",
+//					Image: "nginx:stable-alpine",
+//				},
+//			},
+//		}
+//
+//		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+//		require.NoError(t, err)
+//
+//		require.Eventually(t, func() bool {
+//			select {
+//			case event := <-watcher.ResultChan():
+//				require.Equal(t, game_room.InstanceEventTypeAdded, event.Type)
+//				require.Equal(t, instance.ID, event.Instance.ID)
+//				require.Equal(t, game_room.InstancePending, event.Instance.Status.Type)
+//				return true
+//			default:
+//				return false
+//			}
+//
+//		}, 5*time.Second, 100*time.Millisecond)
+//
+//		watcher.Stop()
+//		require.NoError(t, watcher.Err())
+//
+//		// ensure the result chan is closed
+//		require.Eventually(t, func() bool {
+//			select {
+//			case _, ok := <-watcher.ResultChan():
+//				return !ok
+//			default:
+//				return false
+//			}
+//		}, time.Second, 100*time.Millisecond)
+//	})
+//
+//	t.Run("watch pod becoming ready", func(t *testing.T) {
+//		t.Parallel()
+//		scheduler := &entities.Scheduler{Name: "watch-room-ready"}
+//		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
+//		require.NoError(t, err)
+//
+//		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
+//		defer watcher.Stop()
+//		require.NoError(t, err)
+//
+//		gameRoomSpec := game_room.Spec{
+//			Containers: []game_room.Container{
+//				{
+//					Name:  "nginx",
+//					Image: "nginx:stable-alpine",
+//					Ports: []game_room.ContainerPort{
+//						{
+//							Name:     "test",
+//							Protocol: "tcp",
+//							Port:     80,
+//							HostPort: 9999,
+//						},
+//					},
+//				},
+//			},
+//		}
+//
+//		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+//		require.NoError(t, err)
+//
+//		require.Eventually(t, func() bool {
+//			select {
+//			case event := <-watcher.ResultChan():
+//				if event.Type == game_room.InstanceEventTypeUpdated &&
+//					event.Instance.ID == instance.ID &&
+//					event.Instance.Status.Type == game_room.InstanceReady {
+//					return true
+//				}
+//			default:
+//			}
+//
+//			return false
+//		}, time.Minute*2, time.Second)
+//
+//		watcher.Stop()
+//		require.NoError(t, watcher.Err())
+//
+//		// ensure the result chan is closed
+//		require.Eventually(t, func() bool {
+//			select {
+//			case _, ok := <-watcher.ResultChan():
+//				return !ok
+//			default:
+//				return false
+//			}
+//		}, time.Second, 100*time.Millisecond)
+//	})
+//
+//	t.Run("watch pod with error", func(t *testing.T) {
+//		t.Parallel()
+//		scheduler := &entities.Scheduler{Name: "watch-room-error"}
+//		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
+//		require.NoError(t, err)
+//
+//		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
+//		defer watcher.Stop()
+//		require.NoError(t, err)
+//
+//		gameRoomSpec := game_room.Spec{
+//			Containers: []game_room.Container{
+//				{
+//					Name:    "nginx",
+//					Image:   "nginx:stable-alpine",
+//					Command: []string{"some", "inexistent", "command"},
+//				},
+//			},
+//		}
+//
+//		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+//		require.NoError(t, err)
+//
+//		require.Eventually(t, func() bool {
+//			select {
+//			case event := <-watcher.ResultChan():
+//				if event.Type == game_room.InstanceEventTypeUpdated &&
+//					event.Instance.ID == instance.ID &&
+//					event.Instance.Status.Type == game_room.InstanceError {
+//					return true
+//				}
+//			default:
+//			}
+//
+//			return false
+//		}, time.Minute*2, time.Second)
+//
+//		watcher.Stop()
+//		require.NoError(t, watcher.Err())
+//
+//		// ensure the result chan is closed
+//		require.Eventually(t, func() bool {
+//			select {
+//			case _, ok := <-watcher.ResultChan():
+//				return !ok
+//			default:
+//				return false
+//			}
+//		}, time.Second, 100*time.Millisecond)
+//	})
+//
+//	t.Run("watch pod deletion", func(t *testing.T) {
+//		t.Parallel()
+//		scheduler := &entities.Scheduler{Name: "watch-room-delete"}
+//		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
+//		require.NoError(t, err)
+//
+//		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
+//		defer watcher.Stop()
+//		require.NoError(t, err)
+//
+//		gameRoomSpec := game_room.Spec{
+//			Containers: []game_room.Container{
+//				{
+//					Name:  "nginx",
+//					Image: "nginx:stable-alpine",
+//				},
+//			},
+//		}
+//
+//		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+//		require.NoError(t, err)
+//
+//		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, instance)
+//		require.NoError(t, err)
+//
+//		require.Eventually(t, func() bool {
+//			select {
+//			case event := <-watcher.ResultChan():
+//				if event.Type == game_room.InstanceEventTypeDeleted &&
+//					event.Instance.ID == instance.ID {
+//					return true
+//				}
+//			default:
+//			}
+//
+//			return false
+//		}, time.Minute, time.Second)
+//
+//		watcher.Stop()
+//		require.NoError(t, watcher.Err())
+//
+//		// ensure the result chan is closed
+//		require.Eventually(t, func() bool {
+//			select {
+//			case _, ok := <-watcher.ResultChan():
+//				return !ok
+//			default:
+//				return false
+//			}
+//		}, time.Second, 100*time.Millisecond)
+//	})
+//}
