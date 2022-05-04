@@ -127,8 +127,6 @@ func (kw *kubernetesWatcher) convertInstance(pod *v1.Pod) (*game_room.Instance, 
 		return nil, err
 	}
 
-	zap.L().Info("********* KUBE API JESUS *********")
-
 	return convertPod(pod, node)
 }
 
