@@ -72,7 +72,7 @@ const (
 	LabelContainerPorts = "ports"
 )
 
-// PatchScheduler function apply the patchMap in the in the scheduler, returning the patched Scheduler.
+// PatchScheduler function applies the patchMap in the scheduler, returning the patched Scheduler.
 func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{}) (*entities.Scheduler, error) {
 	if _, ok := patchMap[LabelSchedulerPortRange]; ok {
 		if scheduler.PortRange, ok = patchMap[LabelSchedulerPortRange].(*entities.PortRange); !ok {
