@@ -84,13 +84,8 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		}
 
 		err = w.executeOperation(op, def)
-		if err != nil {
-			switch {
-			case errors.Is(err, workererrors.ErrStartOperationFailed) ||
-				errors.Is(err, workererrors.ErrGrantLeaseFailed) ||
-				errors.Is(err, workererrors.ErrOperationWithInvalidStatus):
-				return err
-			}
+		if err != nil && shouldFinishWorker(err) {
+			return err
 		}
 	}
 }
@@ -104,7 +99,7 @@ func (w *OperationExecutionWorker) executeOperation(op *operation.Operation, def
 	if op.Status != operation.StatusPending {
 		loopLogger.Warn("operation is at an invalid status to proceed")
 
-		return workererrors.NewErrOperationWithInvalidStatus("operation is at and invalid status to proceed")
+		return workererrors.NewErrOperationWithInvalidStatus("operation is at an invalid status to proceed")
 	}
 
 	executor, hasExecutor := w.executorsByName[def.Name()]
@@ -117,39 +112,43 @@ func (w *OperationExecutionWorker) executeOperation(op *operation.Operation, def
 		return err
 	}
 
-	w.treatExecutionError(op, def, executionErr, loopLogger, executor)
+	if executionErr != nil {
+		w.handleExecutionError(op, executionErr, loopLogger)
+		w.rollbackOperation(op, def, executionErr, loopLogger, executor)
+	} else {
+		op.Status = operation.StatusFinished
+	}
 
 	w.finishOperationAndLease(op, loopLogger)
 
 	return nil
 }
 
-func (w *OperationExecutionWorker) treatExecutionError(op *operation.Operation, def operations.Definition, executionErr operations.ExecutionError, loopLogger *zap.Logger, executor operations.Executor) {
-	op.Status = operation.StatusFinished
-	if executionErr != nil {
-		if executionErr.IsContextCanceled() {
-			op.Status = operation.StatusCanceled
+func (w *OperationExecutionWorker) rollbackOperation(op *operation.Operation, def operations.Definition, executionErr operations.ExecutionError, loopLogger *zap.Logger, executor operations.Executor) {
+	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Starting operation rollback")
+	rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
+		return executor.Rollback(w.workerContext, op, def, executionErr)
+	})
 
-			loopLogger.Info("operation execution canceled")
-			w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation canceled by the user")
-		} else {
-			op.Status = operation.StatusError
+	if rollbackErr != nil {
+		loopLogger.Error("operation rollback failed", zap.Error(rollbackErr))
+		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
+	} else {
+		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation rollback flow execution finished with success")
+	}
+}
 
-			loopLogger.Error("operation execution failed", zap.Error(executionErr.Error()))
-			w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Operation execution failed : %s", executionErr.FormattedMessage()))
-		}
+func (w *OperationExecutionWorker) handleExecutionError(op *operation.Operation, executionErr operations.ExecutionError, loopLogger *zap.Logger) {
+	if executionErr.IsContextCanceled() {
+		op.Status = operation.StatusCanceled
 
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Starting operation rollback")
-		rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
-			return executor.Rollback(w.workerContext, op, def, executionErr)
-		})
+		loopLogger.Info("operation execution canceled")
+		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation canceled by the user")
+	} else {
+		op.Status = operation.StatusError
 
-		if rollbackErr != nil {
-			loopLogger.Error("operation rollback failed", zap.Error(rollbackErr))
-			w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
-		} else {
-			w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation rollback flow execution finished with success")
-		}
+		loopLogger.Error("operation execution failed", zap.Error(executionErr.Error()))
+		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Operation execution failed : %s", executionErr.FormattedMessage()))
 	}
 }
 
@@ -265,4 +264,10 @@ func (w *OperationExecutionWorker) executeRollbackCollectingLatencyMetrics(defin
 	err = f()
 	reportOperationRollbackLatency(rollbackStartTime, w.scheduler.Game, w.scheduler.Name, definitionName, err == nil)
 	return err
+}
+
+func shouldFinishWorker(err error) bool {
+	return errors.Is(err, workererrors.ErrStartOperationFailed) ||
+		errors.Is(err, workererrors.ErrGrantLeaseFailed) ||
+		errors.Is(err, workererrors.ErrOperationWithInvalidStatus)
 }
