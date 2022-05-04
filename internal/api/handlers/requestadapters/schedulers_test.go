@@ -53,6 +53,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 
 	terminationValue := int64(62)
 	maxSurgeValue := "60%"
+	roomsReplicasValue := int32(2)
 	genericString := "some-value"
 	genericStringList := []string{"some-value", "another-value"}
 
@@ -104,6 +105,19 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
 					patch_scheduler.LabelSchedulerMaxSurge: maxSurgeValue,
+				},
+			},
+		},
+		{
+			Title: "only rooms replicas should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					RoomsReplicas: &roomsReplicasValue,
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelSchedulerRoomsReplicas: int(roomsReplicasValue),
 				},
 			},
 		},
@@ -313,6 +327,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 	genericInt32 := int32(62)
 	genericInt := 62
 	maxSurgeValue := "60%"
+	roomsReplicasValue := int32(2)
 	genericString := "some-value"
 	genericValidVersion := "v1.0.0"
 	genericStringList := []string{"some-value", "another-value"}
@@ -382,7 +397,8 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 						Start: 10000,
 						End:   60000,
 					},
-					MaxSurge: maxSurgeValue,
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: roomsReplicasValue,
 					Forwarders: []*api.Forwarder{
 						{
 							Name:    "some-forwarder",
@@ -464,7 +480,8 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 						Start: 10000,
 						End:   60000,
 					},
-					MaxSurge: maxSurgeValue,
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: int(roomsReplicasValue),
 					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
@@ -516,6 +533,7 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 
 	genericInt := 62
 	maxSurgeValue := "60%"
+	roomsReplicasValue := int32(6)
 	genericString := "some-value"
 	genericValidVersion := "v1.0.0"
 	genericStringList := []string{"some-value", "another-value"}
@@ -584,8 +602,9 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 						Toleration: genericString,
 						Affinity:   genericString,
 					},
-					PortRange: nil,
-					MaxSurge:  maxSurgeValue,
+					PortRange:     nil,
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: int(roomsReplicasValue),
 					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
@@ -612,13 +631,14 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 			},
 			Output: Output{
 				SchedulerWithoutSpec: &api.SchedulerWithoutSpec{
-					Name:      genericString,
-					Game:      genericString,
-					State:     "creating",
-					Version:   genericValidVersion,
-					PortRange: nil,
-					CreatedAt: timestamppb.New(genericTime),
-					MaxSurge:  maxSurgeValue,
+					Name:          genericString,
+					Game:          genericString,
+					State:         "creating",
+					Version:       genericValidVersion,
+					PortRange:     nil,
+					CreatedAt:     timestamppb.New(genericTime),
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: roomsReplicasValue,
 				},
 			},
 		},
@@ -684,7 +704,8 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 						Start: 10000,
 						End:   60000,
 					},
-					MaxSurge: maxSurgeValue,
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: int(roomsReplicasValue),
 					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
@@ -719,8 +740,9 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 						Start: 10000,
 						End:   60000,
 					},
-					CreatedAt: timestamppb.New(genericTime),
-					MaxSurge:  maxSurgeValue,
+					CreatedAt:     timestamppb.New(genericTime),
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: roomsReplicasValue,
 				},
 			},
 		},
@@ -752,6 +774,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 	genericInt32 := int32(62)
 	genericInt := 62
 	maxSurgeValue := "60%"
+	roomsReplicasValue := int32(6)
 	genericString := "some-value"
 	genericValidVersion := "v1.0.0"
 	genericStringList := []string{"some-value", "another-value"}
@@ -821,7 +844,8 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 						Start: 10000,
 						End:   60000,
 					},
-					MaxSurge: maxSurgeValue,
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: roomsReplicasValue,
 					Forwarders: []*api.Forwarder{
 						{
 							Name:    "some-forwarder",
@@ -903,7 +927,8 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 						Start: 10000,
 						End:   60000,
 					},
-					MaxSurge: maxSurgeValue,
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: int(roomsReplicasValue),
 					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
@@ -956,6 +981,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 	genericInt32 := int32(62)
 	genericInt := 62
 	maxSurgeValue := "60%"
+	roomsReplicasValue := int32(6)
 	genericString := "some-value"
 	genericValidVersion := "v1.0.0"
 	genericStringList := []string{"some-value", "another-value"}
@@ -1028,7 +1054,8 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 						Start: 10000,
 						End:   60000,
 					},
-					MaxSurge: maxSurgeValue,
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: int(roomsReplicasValue),
 					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
@@ -1103,7 +1130,8 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 						Start: 10000,
 						End:   60000,
 					},
-					MaxSurge: maxSurgeValue,
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: roomsReplicasValue,
 					Forwarders: []*api.Forwarder{
 						{
 							Name:    "some-forwarder",

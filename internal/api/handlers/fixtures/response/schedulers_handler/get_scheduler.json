@@ -9,6 +9,7 @@
     },
     "createdAt": "2022-01-01T00:00:00Z",
     "maxSurge": "10%",
+    "roomsReplicas": 6,
     "spec": {
       "version": "v1.0.0",
       "terminationGracePeriod": "100",

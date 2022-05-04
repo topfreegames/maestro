@@ -20,6 +20,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//go:build unit
+// +build unit
+
 package patch_scheduler_test
 
 import (
@@ -64,6 +67,24 @@ func TestPatchScheduler(t *testing.T) {
 				ChangeSchedulerFunc: func() *entities.Scheduler {
 					scheduler := basicSchedulerToPatchSchedulerTests()
 					scheduler.MaxSurge = "30%"
+
+					return scheduler
+				},
+				Error: nil,
+			},
+		},
+		{
+			Title: "Have rooms replicas return scheduler with changed RoomsReplicas",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelSchedulerRoomsReplicas: 6,
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					scheduler.RoomsReplicas = 6
 
 					return scheduler
 				},
@@ -144,7 +165,7 @@ func TestPatchScheduler(t *testing.T) {
 			},
 		},
 		{
-			Title: " Have wrong forwarders return error",
+			Title: "Have wrong forwarders return error",
 			Input: Input{
 				Scheduler: basicSchedulerToPatchSchedulerTests(),
 				PatchMap: map[string]interface{}{
@@ -631,6 +652,7 @@ func TestPatchScheduler(t *testing.T) {
 			}
 
 			assert.Equal(t, expectedScheduler.MaxSurge, scheduler.MaxSurge)
+			assert.Equal(t, expectedScheduler.RoomsReplicas, scheduler.RoomsReplicas)
 			assert.EqualValues(t, expectedScheduler.PortRange, scheduler.PortRange)
 			forwarders := expectedScheduler.Forwarders
 			for i, expectedForwarder := range expectedScheduler.Forwarders {
@@ -674,6 +696,7 @@ func basicSchedulerToPatchSchedulerTests() *entities.Scheduler {
 		Game:            "game",
 		State:           entities.StateCreating,
 		MaxSurge:        "10%",
+		RoomsReplicas:   0,
 		RollbackVersion: "v1.0.0",
 		Spec: game_room.Spec{
 			Version:                "v1.1.0",

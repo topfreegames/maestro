@@ -126,8 +126,10 @@ message CreateSchedulerRequest {
   PortRange port_range = 4;
   // The max surge of new rooms, used to scale and update
   string max_surge = 5;
+  // The rooms replicas defines the desired number of Game Rooms in a scheduler.
+  int32 rooms_replicas = 6;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 6;
+  repeated Forwarder forwarders = 7;
 }
 
 // Add rooms operation request payload + path parameters.
@@ -184,8 +186,10 @@ message NewSchedulerVersionRequest {
   PortRange port_range = 4;
   // The max surge of new rooms, used to scale and update
   string max_surge = 5;
+  // The rooms replicas is the desired number of rooms that maestro should keep available.
+  int32 rooms_replicas = 6;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 6;
+  repeated Forwarder forwarders = 7;
 }
 
 // Update schedule operation response payload.
@@ -204,8 +208,10 @@ message PatchSchedulerRequest {
   optional PortRange port_range = 3;
   // The max surge of new rooms, used to scale and update
   optional string max_surge = 4;
+  // Rooms Replicas is the desired number of rooms
+  optional int32 rooms_replicas = 5;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 5;
+  repeated Forwarder forwarders = 6;
 }
 
 // PatchSchedulerResponse have the operation response id that represents the operation creted to this change.

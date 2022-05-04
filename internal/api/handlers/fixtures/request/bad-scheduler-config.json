@@ -2,6 +2,7 @@
   "name": "",
   "game": "",
   "maxSurge": "",
+  "roomsReplicas": -1,
   "spec": {
     "version": "",
     "terminationGracePeriod": null,

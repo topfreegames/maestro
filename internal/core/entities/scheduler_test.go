@@ -120,6 +120,20 @@ func TestNewScheduler(t *testing.T) {
 			"",
 			"",
 			entities.StateCreating,
+			maxSurge,
+			spec,
+			portRange,
+			roomsReplicas,
+			forwarders)
+
+		require.Error(t, err)
+	})
+
+	t.Run("fails when try to create scheduler with invalid RoomsReplicas", func(t *testing.T) {
+		_, err := entities.NewScheduler(
+			"",
+			"",
+			entities.StateCreating,
 			"10",
 			*game_room.NewSpec(
 				"v1",
@@ -135,7 +149,7 @@ func TestNewScheduler(t *testing.T) {
 			0,
 			forwarders)
 
-		require.NotNil(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("fails when try to create scheduler with invalid RoomsReplicas", func(t *testing.T) {
@@ -158,7 +172,7 @@ func TestNewScheduler(t *testing.T) {
 			-1,
 			forwarders)
 
-		require.NotNil(t, err)
+		require.Error(t, err)
 	})
 }
 

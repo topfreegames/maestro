@@ -54,6 +54,10 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 		patchMap[patch_scheduler.LabelSchedulerMaxSurge] = request.GetMaxSurge()
 	}
 
+	if request.RoomsReplicas != nil {
+		patchMap[patch_scheduler.LabelSchedulerRoomsReplicas] = int(request.GetRoomsReplicas())
+	}
+
 	if request.Forwarders != nil {
 		patchMap[patch_scheduler.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
 	}
@@ -62,7 +66,6 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 }
 
 func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {
-	roomsReplicas := 0
 	return entities.NewScheduler(
 		request.GetName(),
 		request.GetGame(),
@@ -73,25 +76,25 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		),
-		roomsReplicas,
+		int(request.GetRoomsReplicas()),
 		fromApiForwarders(request.GetForwarders()),
 	)
 }
 
 func FromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.SchedulerWithoutSpec {
 	return &api.SchedulerWithoutSpec{
-		Name:      entity.Name,
-		Game:      entity.Game,
-		State:     entity.State,
-		Version:   entity.Spec.Version,
-		PortRange: getPortRange(entity.PortRange),
-		CreatedAt: timestamppb.New(entity.CreatedAt),
-		MaxSurge:  entity.MaxSurge,
+		Name:          entity.Name,
+		Game:          entity.Game,
+		State:         entity.State,
+		Version:       entity.Spec.Version,
+		PortRange:     getPortRange(entity.PortRange),
+		CreatedAt:     timestamppb.New(entity.CreatedAt),
+		MaxSurge:      entity.MaxSurge,
+		RoomsReplicas: int32(entity.RoomsReplicas),
 	}
 }
 
 func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionRequest) (*entities.Scheduler, error) {
-	roomsReplicas := 0
 	return entities.NewScheduler(
 		request.GetName(),
 		request.GetGame(),
@@ -102,7 +105,7 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		),
-		roomsReplicas,
+		int(request.GetRoomsReplicas()),
 		fromApiForwarders(request.GetForwarders()),
 	)
 }
@@ -113,14 +116,15 @@ func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, 
 		return nil, err
 	}
 	return &api.Scheduler{
-		Name:       entity.Name,
-		Game:       entity.Game,
-		State:      entity.State,
-		PortRange:  getPortRange(entity.PortRange),
-		CreatedAt:  timestamppb.New(entity.CreatedAt),
-		MaxSurge:   entity.MaxSurge,
-		Spec:       getSpec(entity.Spec),
-		Forwarders: forwarders,
+		Name:          entity.Name,
+		Game:          entity.Game,
+		State:         entity.State,
+		PortRange:     getPortRange(entity.PortRange),
+		CreatedAt:     timestamppb.New(entity.CreatedAt),
+		MaxSurge:      entity.MaxSurge,
+		RoomsReplicas: int32(entity.RoomsReplicas),
+		Spec:          getSpec(entity.Spec),
+		Forwarders:    forwarders,
 	}, nil
 }
 
