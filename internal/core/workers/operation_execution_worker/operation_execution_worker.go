@@ -83,27 +83,24 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			return fmt.Errorf("failed to get next operation: %w", err)
 		}
 
-		loopLogger := w.logger.With(
-			zap.String(logs.LogFieldOperationID, op.ID),
-			zap.String(logs.LogFieldOperationDefinition, def.Name()),
-		)
-
-		err = w.executeOperation(ctx, op, loopLogger, def)
+		err = w.executeOperation(op, def)
 		if err != nil {
 			switch {
 			case errors.Is(err, workererrors.ErrStartOperationFailed) ||
 				errors.Is(err, workererrors.ErrGrantLeaseFailed) ||
 				errors.Is(err, workererrors.ErrOperationWithInvalidStatus):
 				return err
-			default:
-				continue
 			}
 		}
-
 	}
 }
 
-func (w *OperationExecutionWorker) executeOperation(ctx context.Context, op *operation.Operation, loopLogger *zap.Logger, def operations.Definition) error {
+func (w *OperationExecutionWorker) executeOperation(op *operation.Operation, def operations.Definition) error {
+	loopLogger := w.logger.With(
+		zap.String(logs.LogFieldOperationID, op.ID),
+		zap.String(logs.LogFieldOperationDefinition, def.Name()),
+	)
+
 	if op.Status != operation.StatusPending {
 		loopLogger.Warn("operation is at an invalid status to proceed")
 
@@ -111,41 +108,87 @@ func (w *OperationExecutionWorker) executeOperation(ctx context.Context, op *ope
 	}
 
 	executor, hasExecutor := w.executorsByName[def.Name()]
-	if !hasExecutor {
-		loopLogger.Warn("operation definition has no executor")
-
-		w.evictOperation(ctx, loopLogger, op)
-		reportOperationEvicted(w.scheduler.Game, w.scheduler.Name, op.DefinitionName, LabelNoOperationExecutorFound)
-
+	if w.shouldEvictOperation(op, def, hasExecutor, loopLogger) {
 		return nil
 	}
 
-	if !def.ShouldExecute(ctx, []*operation.Operation{}) {
-		w.evictOperation(ctx, loopLogger, op)
-		reportOperationEvicted(w.scheduler.Game, w.scheduler.Name, op.DefinitionName, LabelShouldNotExecute)
-
-		return nil
+	err, executionErr := w.startAndExecuteOperationWithLease(op, def, loopLogger, executor)
+	if err != nil {
+		return err
 	}
 
+	w.treatExecutionError(op, def, executionErr, loopLogger, executor)
+
+	w.finishOperationAndLease(op, loopLogger)
+
+	return nil
+}
+
+func (w *OperationExecutionWorker) treatExecutionError(op *operation.Operation, def operations.Definition, executionErr operations.ExecutionError, loopLogger *zap.Logger, executor operations.Executor) {
+	op.Status = operation.StatusFinished
+	if executionErr != nil {
+		if executionErr.IsContextCanceled() {
+			op.Status = operation.StatusCanceled
+
+			loopLogger.Info("operation execution canceled")
+			w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation canceled by the user")
+		} else {
+			op.Status = operation.StatusError
+
+			loopLogger.Error("operation execution failed", zap.Error(executionErr.Error()))
+			w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Operation execution failed : %s", executionErr.FormattedMessage()))
+		}
+
+		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Starting operation rollback")
+		rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
+			return executor.Rollback(w.workerContext, op, def, executionErr)
+		})
+
+		if rollbackErr != nil {
+			loopLogger.Error("operation rollback failed", zap.Error(rollbackErr))
+			w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
+		} else {
+			w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation rollback flow execution finished with success")
+		}
+	}
+}
+
+func (w *OperationExecutionWorker) finishOperationAndLease(op *operation.Operation, loopLogger *zap.Logger) {
+	loopLogger.Info("Finishing operation")
+
+	// TODO(gabrielcorado): we need to propagate the error reason.
+	// TODO(gabrielcorado): consider handling the finish operation error.
+	err := w.operationManager.FinishOperation(w.workerContext, op)
+	if err != nil {
+		loopLogger.Error("failed to finish operation", zap.Error(err))
+	}
+	err = w.operationManager.RevokeLease(w.workerContext, op)
+	if err != nil {
+		loopLogger.Error("failed to revoke operation lease", zap.Error(err))
+	}
+	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation finished")
+}
+
+func (w *OperationExecutionWorker) startAndExecuteOperationWithLease(op *operation.Operation, def operations.Definition, loopLogger *zap.Logger, executor operations.Executor) (err error, executionErr operations.ExecutionError) {
 	loopLogger.Info("Starting operation")
 
-	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation")
+	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Starting operation")
 
-	operationContext, operationCancellationFunction := context.WithCancel(ctx)
-	err := w.operationManager.GrantLease(operationContext, op)
+	operationContext, operationCancellationFunction := context.WithCancel(w.workerContext)
+	err = w.operationManager.GrantLease(operationContext, op)
 	if err != nil {
 		reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelStartOperationFailed)
 		operationCancellationFunction()
 
 		op.Status = operation.StatusError
-		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Failed to grant lease to operation, reason: %s", err.Error()))
+		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Failed to grant lease to operation, reason: %s", err.Error()))
 
-		err = w.operationManager.FinishOperation(ctx, op)
+		err = w.operationManager.FinishOperation(w.workerContext, op)
 		if err != nil {
 			loopLogger.Error("failed to finish operation", zap.Error(err))
 		}
 
-		return workererrors.NewErrGrantLeaseFailed("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
+		return workererrors.NewErrGrantLeaseFailed("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName), nil
 	}
 
 	err = w.operationManager.StartOperation(operationContext, op, operationCancellationFunction)
@@ -153,63 +196,41 @@ func (w *OperationExecutionWorker) executeOperation(ctx context.Context, op *ope
 		operationCancellationFunction()
 
 		op.Status = operation.StatusError
-		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Failed to start operation, reason: %s", err.Error()))
-		err = w.operationManager.FinishOperation(ctx, op)
+		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Failed to start operation, reason: %s", err.Error()))
+		err = w.operationManager.FinishOperation(w.workerContext, op)
 		if err != nil {
 			loopLogger.Error("failed to start operation", zap.Error(err))
 		}
 
 		reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelStartOperationFailed)
 
-		return workererrors.NewErrStartOperationFailed("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
+		return workererrors.NewErrStartOperationFailed("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName), nil
 	}
+
 	w.operationManager.StartLeaseRenewGoRoutine(operationContext, op)
 
-	executionErr := w.executeCollectingLatencyMetrics(op.DefinitionName, func() operations.ExecutionError {
+	executionErr = w.executeCollectingLatencyMetrics(op.DefinitionName, func() operations.ExecutionError {
 		return executor.Execute(operationContext, op, def)
 	})
+	return err, executionErr
+}
 
-	op.Status = operation.StatusFinished
-	if executionErr != nil {
-		if executionErr.IsContextCanceled() {
-			op.Status = operation.StatusCanceled
+func (w *OperationExecutionWorker) shouldEvictOperation(op *operation.Operation, def operations.Definition, hasExecutor bool, loopLogger *zap.Logger) bool {
+	if !hasExecutor {
+		loopLogger.Warn("operation definition has no executor")
+		w.evictOperation(w.workerContext, loopLogger, op)
+		reportOperationEvicted(w.scheduler.Game, w.scheduler.Name, op.DefinitionName, LabelNoOperationExecutorFound)
 
-			loopLogger.Info("operation execution canceled")
-			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation canceled by the user")
-		} else {
-			op.Status = operation.StatusError
-
-			loopLogger.Error("operation execution failed", zap.Error(executionErr.Error()))
-			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation execution failed : %s", executionErr.FormattedMessage()))
-		}
-
-		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation rollback")
-		rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
-			return executor.Rollback(w.workerContext, op, def, executionErr)
-		})
-
-		if rollbackErr != nil {
-			loopLogger.Error("operation rollback failed", zap.Error(rollbackErr))
-			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
-		} else {
-			w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation rollback flow execution finished with success")
-		}
+		return true
 	}
 
-	loopLogger.Info("Finishing operation")
+	if !def.ShouldExecute(w.workerContext, []*operation.Operation{}) {
+		w.evictOperation(w.workerContext, loopLogger, op)
+		reportOperationEvicted(w.scheduler.Game, w.scheduler.Name, op.DefinitionName, LabelShouldNotExecute)
 
-	// TODO(gabrielcorado): we need to propagate the error reason.
-	// TODO(gabrielcorado): consider handling the finish operation error.
-	err = w.operationManager.FinishOperation(ctx, op)
-	if err != nil {
-		loopLogger.Error("failed to finish operation", zap.Error(err))
+		return true
 	}
-	err = w.operationManager.RevokeLease(ctx, op)
-	if err != nil {
-		loopLogger.Error("failed to revoke operation lease", zap.Error(err))
-	}
-	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation finished")
-	return nil
+	return false
 }
 
 func (w *OperationExecutionWorker) Stop(_ context.Context) {
