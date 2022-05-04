@@ -192,7 +192,7 @@ message SchedulerWithoutSpec {
   google.protobuf.Timestamp created_at = 6;
   // Max surge of rooms
   string max_surge = 7;
-  // Rooms Replicas is the desired number that a Scheduler should have rooms
+  // Rooms Replicas is the desired number that a Scheduler maintains.
   int32 rooms_replicas = 8;
 }
 
