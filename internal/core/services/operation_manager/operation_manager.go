@@ -113,14 +113,29 @@ func (om *OperationManager) GetOperation(ctx context.Context, schedulerName, ope
 	return op, definition, nil
 }
 
-// NextSchedulerOperation returns the next scheduler operation to be processed.
-func (om *OperationManager) NextSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, operations.Definition, error) {
-	operationID, err := om.Flow.NextOperationID(ctx, schedulerName)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to retrieve the next operation: %w", err)
-	}
+func (om *OperationManager) PendingOperationsChan(ctx context.Context, schedulerName string) (pendingOpsChan <-chan *ports.OperationComposition) {
+	pendingOperationsChan := make(chan *ports.OperationComposition)
 
-	return om.GetOperation(ctx, schedulerName, operationID)
+	go func(opsChan chan *ports.OperationComposition) {
+		defer close(opsChan)
+
+		for {
+			operationID, err := om.Flow.NextOperationID(ctx, schedulerName)
+			if err != nil {
+				return
+			}
+
+			op, def, err := om.GetOperation(ctx, schedulerName, operationID)
+			if err != nil {
+				return
+			}
+
+			opsChan <- &ports.OperationComposition{Operation: op, Definition: def}
+		}
+
+	}(pendingOperationsChan)
+
+	return pendingOperationsChan
 }
 
 // StartOperation used when an operation will start executing.
