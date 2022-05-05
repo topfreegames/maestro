@@ -337,6 +337,7 @@ func TestPendingOperationsChan(t *testing.T) {
 			mockPreparation{
 				mockSetup: func(opFlow *mockports.MockOperationFlow, opStorage *mockports.MockOperationStorage) {
 					opFlow.EXPECT().NextOperationID(gomock.Any(), "test-scheduler").Return("some-op-id", nil).MinTimes(2)
+					opFlow.EXPECT().RemoveOperation(gomock.Any(), "test-scheduler", "some-op-id").MaxTimes(2)
 				},
 			},
 			args{
@@ -361,6 +362,28 @@ func TestPendingOperationsChan(t *testing.T) {
 			},
 			expectedResult{},
 			true,
+		},
+		{
+			"returns a channel that keeps sending pending operations if some error occurs in removing operations from the flow",
+			mockPreparation{
+				mockSetup: func(opFlow *mockports.MockOperationFlow, opStorage *mockports.MockOperationStorage) {
+					opDef := &testOperationDefinition{}
+					opFlow.EXPECT().NextOperationID(gomock.Any(), "test-scheduler").Return("some-op-id", nil).MinTimes(2)
+					opStorage.EXPECT().GetOperation(gomock.Any(), "test-scheduler", "some-op-id").Return(
+						&operation.Operation{ID: "some-op-id", SchedulerName: "test-scheduler", DefinitionName: opDef.Name()},
+						nil,
+					).MinTimes(1)
+					opFlow.EXPECT().RemoveOperation(gomock.Any(), "test-scheduler", "some-op-id").Return(errors.New("some error"))
+				},
+			},
+			args{
+				ctx:           context.Background(),
+				schedulerName: "test-scheduler",
+			},
+			expectedResult{
+				operationIDs: []string{"some-op-id", "some-op-id"},
+			},
+			false,
 		},
 	}
 	for _, tt := range tests {

@@ -28,9 +28,10 @@ package operation
 import (
 	"context"
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
