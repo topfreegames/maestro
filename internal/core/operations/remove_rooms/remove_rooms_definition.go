@@ -34,7 +34,8 @@ import (
 const OperationName = "remove_rooms"
 
 type RemoveRoomsDefinition struct {
-	Amount int `json:"amount"`
+	Amount   int      `json:"amount"`
+	RoomsIDs []string `json:"rooms_ids"`
 }
 
 func (d *RemoveRoomsDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
