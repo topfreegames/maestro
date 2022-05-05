@@ -184,10 +184,10 @@ func (mr *MockOperationManagerMockRecorder) ListSchedulerPendingOperations(ctx, 
 }
 
 // PendingOperationsChan mocks base method.
-func (m *MockOperationManager) PendingOperationsChan(ctx context.Context, schedulerName string) <-chan string {
+func (m *MockOperationManager) PendingOperationsChan(ctx context.Context, schedulerName string) <-chan *ports.OperationComposition {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PendingOperationsChan", ctx, schedulerName)
-	ret0, _ := ret[0].(<-chan string)
+	ret0, _ := ret[0].(<-chan *ports.OperationComposition)
 	return ret0
 }
 
@@ -300,20 +300,6 @@ func (m *MockOperationFlow) InsertOperationID(ctx context.Context, schedulerName
 func (mr *MockOperationFlowMockRecorder) InsertOperationID(ctx, schedulerName, operationID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertOperationID", reflect.TypeOf((*MockOperationFlow)(nil).InsertOperationID), ctx, schedulerName, operationID)
-}
-
-// InsertPriorityOperationID mocks base method.
-func (m *MockOperationFlow) InsertPriorityOperationID(ctx context.Context, schedulerName, operationID string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InsertPriorityOperationID", ctx, schedulerName, operationID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// InsertPriorityOperationID indicates an expected call of InsertPriorityOperationID.
-func (mr *MockOperationFlowMockRecorder) InsertPriorityOperationID(ctx, schedulerName, operationID interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertPriorityOperationID", reflect.TypeOf((*MockOperationFlow)(nil).InsertPriorityOperationID), ctx, schedulerName, operationID)
 }
 
 // ListSchedulerPendingOperationIDs mocks base method.

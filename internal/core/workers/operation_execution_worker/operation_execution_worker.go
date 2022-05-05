@@ -78,13 +78,13 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 		select {
 		case <-w.workerContext.Done():
 			return nil
-		case opID, ok := <-pendingOpsChan:
+		case opComposition, ok := <-pendingOpsChan:
 			if !ok {
 				reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelNextOperationFailed)
 				return fmt.Errorf("failed to get next operation, channel closed")
 			}
 
-			err := w.executeOperationFlow(opID)
+			err := w.executeOperationFlow(opComposition.Operation, opComposition.Definition)
 			if err != nil && shouldFinishWorker(err) {
 				return err
 			}
@@ -92,12 +92,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 	}
 }
 
-func (w *OperationExecutionWorker) executeOperationFlow(operationID string) error {
-	op, def, err := w.operationManager.GetOperation(w.workerContext, w.scheduler.Name, operationID)
-	if err != nil {
-		return err
-	}
-
+func (w *OperationExecutionWorker) executeOperationFlow(op *operation.Operation, def operations.Definition) error {
 	loopLogger := w.logger.With(
 		zap.String(logs.LogFieldOperationID, op.ID),
 		zap.String(logs.LogFieldOperationDefinition, def.Name()),
