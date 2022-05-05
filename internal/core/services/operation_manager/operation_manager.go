@@ -116,10 +116,10 @@ func (om *OperationManager) GetOperation(ctx context.Context, schedulerName, ope
 	return op, definition, nil
 }
 
-func (om *OperationManager) PendingOperationsChan(ctx context.Context, schedulerName string) (pendingOpsChan <-chan string) {
-	pendingOperationsChan := make(chan string)
+func (om *OperationManager) PendingOperationsChan(ctx context.Context, schedulerName string) (pendingOpsChan <-chan *ports.OperationComposition) {
+	pendingOperationsChan := make(chan *ports.OperationComposition)
 
-	go func(opsChan chan string) {
+	go func(opsChan chan *ports.OperationComposition) {
 		defer close(opsChan)
 
 		for {
@@ -128,7 +128,12 @@ func (om *OperationManager) PendingOperationsChan(ctx context.Context, scheduler
 				return
 			}
 
-			opsChan <- operationID
+			op, def, err := om.GetOperation(ctx, schedulerName, operationID)
+			if err != nil {
+				return
+			}
+
+			opsChan <- &ports.OperationComposition{Operation: op, Definition: def}
 		}
 
 	}(pendingOperationsChan)
