@@ -27,10 +27,9 @@ package kubernetes
 
 import (
 	"context"
+	"github.com/topfreegames/maestro/test"
 	"testing"
 	"time"
-
-	"github.com/topfreegames/maestro/test"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
