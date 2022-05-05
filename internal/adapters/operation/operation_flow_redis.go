@@ -82,13 +82,29 @@ func (r *redisOperationFlow) InsertPriorityOperationID(ctx context.Context, sche
 // pending_operations list.
 func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName string) (opId string, err error) {
 	var opID string
+
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+		opID, err = r.client.LIndex(ctx, r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
+
+		return err
+	})
+
+	if err == nil {
+		return opID, nil
+	}
+
+	if err != nil && err != redis.Nil {
+		return "", errors.NewErrUnexpected("failed to fetch next operation ID from auxiliary queue").WithError(err)
+	}
+
 	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
 		opID, err = r.client.BLMove(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), "LEFT", "RIGHT", 0).Result()
 
 		return err
 	})
+
 	if err != nil {
-		return "", errors.NewErrUnexpected("failed to fetch next operation ID").WithError(err)
+		return "", errors.NewErrUnexpected("failed to fetch next operation ID from main queue").WithError(err)
 	}
 
 	return opID, nil

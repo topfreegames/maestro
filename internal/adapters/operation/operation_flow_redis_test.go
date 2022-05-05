@@ -102,7 +102,30 @@ func TestInsertPriorityOperationID(t *testing.T) {
 }
 
 func TestNextOperationID(t *testing.T) {
-	t.Run("successfully receives the operation ID", func(t *testing.T) {
+	t.Run("successfully receives the operation ID from main queue if auxiliary is empty", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		flow := NewRedisOperationFlow(client)
+
+		schedulerName := "test-scheduler"
+		expectedOperationID := "some-op-id"
+
+		err := client.RPush(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), expectedOperationID).Err()
+		require.NoError(t, err)
+
+		opID, err := flow.NextOperationID(context.Background(), schedulerName)
+		require.NoError(t, err)
+		require.Equal(t, expectedOperationID, opID)
+
+		opIdAuxQueue, err := client.LIndex(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
+		require.Nil(t, err)
+		require.Equal(t, expectedOperationID, opIdAuxQueue)
+
+		opIdMainQueue, err := client.LIndex(context.Background(), flow.buildSchedulerPendingOperationsKey(schedulerName), 0).Result()
+		require.NotNil(t, err)
+		require.Equal(t, "", opIdMainQueue)
+	})
+
+	t.Run("successfully receives the operation ID from main queue if auxiliary is empty", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		flow := NewRedisOperationFlow(client)
 
