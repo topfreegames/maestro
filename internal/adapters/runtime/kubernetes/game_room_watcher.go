@@ -182,13 +182,14 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 
 func (kw *kubernetesWatcher) addFunc(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
-	if err == nil {
-		_ = kw.store.Add(&QueueItem{
-			obj:       obj,
-			eventType: game_room.InstanceEventTypeAdded,
-		})
-		kw.queue.Add(key)
+	if err != nil {
+		return
 	}
+	_ = kw.store.Add(&QueueItem{
+		obj:       obj,
+		eventType: game_room.InstanceEventTypeAdded,
+	})
+	kw.queue.Add(key)
 }
 
 func (kw *kubernetesWatcher) updateFunc(obj interface{}, newObj interface{}) {
@@ -199,24 +200,28 @@ func (kw *kubernetesWatcher) updateFunc(obj interface{}, newObj interface{}) {
 	}
 
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
-	if err == nil {
-		_ = kw.store.Add(&QueueItem{
-			obj:       newObj,
-			eventType: game_room.InstanceEventTypeUpdated,
-		})
-		kw.queue.Add(key)
+	if err != nil {
+		return
 	}
+
+	_ = kw.store.Add(&QueueItem{
+		obj:       newObj,
+		eventType: game_room.InstanceEventTypeUpdated,
+	})
+	kw.queue.Add(key)
+
 }
 
 func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-	if err == nil {
-		_ = kw.store.Add(&QueueItem{
-			obj:       obj,
-			eventType: game_room.InstanceEventTypeDeleted,
-		})
-		kw.queue.Add(key)
+	if err != nil {
+		return
 	}
+	_ = kw.store.Add(&QueueItem{
+		obj:       obj,
+		eventType: game_room.InstanceEventTypeDeleted,
+	})
+	kw.queue.Add(key)
 }
 
 func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
@@ -255,14 +260,6 @@ func (kw *kubernetesWatcher) runWorker() {
 		convertedItem := item.(*QueueItem)
 		kw.processEvent(convertedItem.eventType, convertedItem.obj)
 		kw.queue.Forget(key)
-		//if err == nil {
-		//	kw.queue.Forget(key)
-		//} else if m.queue.NumRequeues(key) < 3 {
-		//	kw.queue.AddRateLimited(key)
-		//} else {
-		//	kw.queue.Forget(key)
-		//	utilruntime.HandleError(err)
-		//}
 
 		kw.queue.Done(key)
 	}
