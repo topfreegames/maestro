@@ -26,15 +26,16 @@
 package operation_test
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"testing"
 )
 
 func TestNewOperation(t *testing.T) {
 	type Input struct {
-		SchedulerName string
-		DefinitionName string
+		SchedulerName   string
+		DefinitionName  string
 		DefinitionInput []byte
 	}
 
@@ -50,21 +51,21 @@ func TestNewOperation(t *testing.T) {
 		Output
 	}{
 		{
-			Title:  "Creates operation successfully",
-			Input:  Input{
+			Title: "Creates operation successfully",
+			Input: Input{
 				SchedulerName:   genericString,
 				DefinitionName:  genericString,
 				DefinitionInput: []byte("test"),
 			},
 			Output: Output{
 				Operation: &operation.Operation{
-					Status:           operation.StatusPending,
-					DefinitionName:   genericString,
-					SchedulerName:    genericString,
-					Input:            []byte("test"),
+					Status:         operation.StatusPending,
+					DefinitionName: genericString,
+					SchedulerName:  genericString,
+					Input:          []byte("test"),
 					ExecutionHistory: []operation.OperationEvent{
 						{
-							Event:     "Created",
+							Event: "Created",
 						},
 					},
 				},
@@ -84,7 +85,7 @@ func TestNewOperation(t *testing.T) {
 			assert.Equal(t, op.Status, out.Status)
 			assert.Equal(t, op.DefinitionName, out.DefinitionName)
 
-			assert.NotEqual(t, "",op.ID)
+			assert.NotEqual(t, "", op.ID)
 
 			assert.NotNil(t, op.CreatedAt)
 			assert.NotNil(t, op.ExecutionHistory[0].CreatedAt)
