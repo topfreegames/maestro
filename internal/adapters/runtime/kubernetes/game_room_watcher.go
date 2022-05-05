@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/client-go/util/workqueue"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -57,6 +59,13 @@ type kubernetesWatcher struct {
 	stopChan         chan struct{}
 	instanceCacheMap map[string]*game_room.Instance
 	logger           *zap.Logger
+	queue            workqueue.RateLimitingInterface
+	store            cache.Store
+}
+
+type QueueItem struct {
+	obj       interface{}
+	eventType game_room.InstanceEventType
 }
 
 func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface) *kubernetesWatcher {
@@ -67,6 +76,11 @@ func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface) *kubern
 		stopChan:         make(chan struct{}),
 		instanceCacheMap: map[string]*game_room.Instance{},
 		logger:           zap.L(),
+		queue:            workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		store: cache.NewStore(func(obj interface{}) (string, error) {
+			item := obj.(*QueueItem)
+			return cache.MetaNamespaceKeyFunc(item.obj)
+		}),
 	}
 }
 
@@ -117,9 +131,6 @@ func (kw *kubernetesWatcher) convertInstance(pod *v1.Pod) (*game_room.Instance, 
 }
 
 func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType, obj interface{}) {
-	kw.mu.Lock()
-	defer kw.mu.Unlock()
-
 	if kw.stopped {
 		return
 	}
@@ -145,9 +156,6 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 			kw.instanceCacheMap[pod.Name] = instance
 		}
 	} else {
-		if instance.ResourceVersion == pod.ResourceVersion {
-			return
-		}
 		tempInstance := &game_room.Instance{
 			ID:              instance.ID,
 			SchedulerID:     instance.SchedulerID,
@@ -173,15 +181,47 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 }
 
 func (kw *kubernetesWatcher) addFunc(obj interface{}) {
-	kw.processEvent(game_room.InstanceEventTypeAdded, obj)
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		return
+	}
+	_ = kw.store.Add(&QueueItem{
+		obj:       obj,
+		eventType: game_room.InstanceEventTypeAdded,
+	})
+	kw.queue.Add(key)
 }
 
 func (kw *kubernetesWatcher) updateFunc(obj interface{}, newObj interface{}) {
-	kw.processEvent(game_room.InstanceEventTypeUpdated, newObj)
+	oldPod := obj.(*v1.Pod)
+	newPod := newObj.(*v1.Pod)
+	if oldPod.ResourceVersion == newPod.ResourceVersion {
+		return
+	}
+
+	key, err := cache.MetaNamespaceKeyFunc(newObj)
+	if err != nil {
+		return
+	}
+
+	_ = kw.store.Add(&QueueItem{
+		obj:       newObj,
+		eventType: game_room.InstanceEventTypeUpdated,
+	})
+	kw.queue.Add(key)
+
 }
 
 func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
-	kw.processEvent(game_room.InstanceEventTypeDeleted, obj)
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		return
+	}
+	_ = kw.store.Add(&QueueItem{
+		obj:       obj,
+		eventType: game_room.InstanceEventTypeDeleted,
+	})
+	kw.queue.Add(key)
 }
 
 func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
@@ -200,5 +240,27 @@ func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *enti
 	})
 
 	go podsInformer.Run(watcher.stopChan)
+
+	// Same amount of routines reading from the channel
+	for i := 0; i < 200; i++ {
+		go watcher.runWorker()
+	}
 	return watcher, nil
+}
+
+func (kw *kubernetesWatcher) runWorker() {
+	for {
+		key, quit := kw.queue.Get()
+		if quit {
+			return
+		}
+
+		item, _, _ := kw.store.GetByKey(key.(string))
+
+		convertedItem := item.(*QueueItem)
+		kw.processEvent(convertedItem.eventType, convertedItem.obj)
+		kw.queue.Forget(key)
+
+		kw.queue.Done(key)
+	}
 }

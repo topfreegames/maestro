@@ -38,13 +38,11 @@ import (
 )
 
 func TestGameRoomsWatch(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
 	t.Run("watch pod addition", func(t *testing.T) {
-		t.Parallel()
 		scheduler := &entities.Scheduler{Name: "watch-room-addition"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
@@ -93,7 +91,6 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod becoming ready", func(t *testing.T) {
-		t.Parallel()
 		scheduler := &entities.Scheduler{Name: "watch-room-ready"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
@@ -151,7 +148,6 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod with error", func(t *testing.T) {
-		t.Parallel()
 		scheduler := &entities.Scheduler{Name: "watch-room-error"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
@@ -202,7 +198,6 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod deletion", func(t *testing.T) {
-		t.Parallel()
 		scheduler := &entities.Scheduler{Name: "watch-room-delete"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
