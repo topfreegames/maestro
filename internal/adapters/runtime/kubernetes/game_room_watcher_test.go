@@ -74,7 +74,7 @@ func TestGameRoomsWatch(t *testing.T) {
 				return false
 			}
 
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 100*time.Millisecond)
 
 		watcher.Stop()
 		require.NoError(t, watcher.Err())
@@ -87,7 +87,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			default:
 				return false
 			}
-		}, time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("watch pod becoming ready", func(t *testing.T) {
