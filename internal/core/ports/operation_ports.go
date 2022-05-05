@@ -36,6 +36,9 @@ import (
 type OperationManager interface {
 	// CreateOperation creates a new operation for the given scheduler and includes it in the execution process.
 	CreateOperation(ctx context.Context, schedulerName string, definition operations.Definition) (*operation.Operation, error)
+	// CreatePriorityOperation creates a new priority operation (it'll run before other enqueued operation)
+	//for the given scheduler and includes it in the execution process.
+	CreatePriorityOperation(ctx context.Context, schedulerName string, definition operations.Definition) (*operation.Operation, error)
 	// GetOperation retrieves the operation and its definition.
 	GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, operations.Definition, error)
 	// NextSchedulerOperation returns the next scheduler operation to be processed.
