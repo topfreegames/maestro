@@ -28,6 +28,7 @@ package operation
 import (
 	"context"
 	"encoding/json"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 
@@ -107,12 +108,20 @@ func TestNextOperationID(t *testing.T) {
 		schedulerName := "test-scheduler"
 		expectedOperationID := "some-op-id"
 
-		err := flow.InsertOperationID(context.Background(), schedulerName, expectedOperationID)
+		err := client.RPush(context.Background(), flow.buildSchedulerPendingOperationsKey(schedulerName), expectedOperationID).Err()
 		require.NoError(t, err)
 
 		opID, err := flow.NextOperationID(context.Background(), schedulerName)
 		require.NoError(t, err)
 		require.Equal(t, expectedOperationID, opID)
+
+		opIdAuxQueue, err := client.LIndex(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
+		require.Nil(t, err)
+		require.Equal(t, expectedOperationID, opIdAuxQueue)
+
+		opIdMainQueue, err := client.LIndex(context.Background(), flow.buildSchedulerPendingOperationsKey(schedulerName), 0).Result()
+		require.NotNil(t, err)
+		require.Equal(t, "", opIdMainQueue)
 	})
 
 	t.Run("failed with context canceled", func(t *testing.T) {
@@ -269,4 +278,78 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 			return false
 		}, 5*time.Second, 100*time.Millisecond)
 	})
+}
+
+func TestRemoveOperation(t *testing.T) {
+
+	type args struct {
+		ctx           context.Context
+		schedulerName string
+		operationID   string
+	}
+	type environmentSetup struct {
+		numberOfOps      int
+		forceClientError bool
+	}
+	tests := []struct {
+		name             string
+		args             args
+		environmentSetup environmentSetup
+	}{
+		{"return no error and pops the operation from de auxiliary operations queue if there is some", args{
+			ctx:           context.Background(),
+			schedulerName: "test-scheduler",
+			operationID:   "some-op-id",
+		},
+			environmentSetup{numberOfOps: 1, forceClientError: false},
+		},
+		{"return no error and does nothing if the auxiliary operations queue is empty", args{
+			ctx:           context.Background(),
+			schedulerName: "test-scheduler",
+			operationID:   "some-op-id",
+		},
+			environmentSetup{numberOfOps: 0, forceClientError: false},
+		},
+
+		{"return error when some error occurs with redis client", args{
+			ctx:           context.Background(),
+			schedulerName: "test-scheduler",
+			operationID:   "some-op-id",
+		},
+			environmentSetup{numberOfOps: 0, forceClientError: true},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+
+			flow := &redisOperationFlow{
+				client: client,
+			}
+
+			schedulerName := tt.args.schedulerName
+			expectedOperationID := tt.args.operationID
+
+			for i := 0; i < tt.environmentSetup.numberOfOps; i++ {
+				err := client.RPush(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), expectedOperationID).Err()
+				require.NoError(t, err)
+			}
+
+			if tt.environmentSetup.forceClientError {
+				go func() {
+					err := flow.RemoveOperation(tt.args.ctx, tt.args.schedulerName, tt.args.operationID)
+					assert.Error(t, err)
+				}()
+
+				client.Close()
+			} else {
+				err := flow.RemoveOperation(tt.args.ctx, tt.args.schedulerName, tt.args.operationID)
+				assert.NoError(t, err)
+
+				opIdBufferedQueue, err := client.LIndex(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
+				require.EqualError(t, err, "redis: nil")
+				require.Equal(t, "", opIdBufferedQueue)
+			}
+		})
+	}
 }
