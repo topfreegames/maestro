@@ -72,20 +72,22 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 	defer w.Stop(ctx)
 
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
+	pendingOpsChan := w.operationManager.PendingOperationsChan(w.workerContext, w.scheduler.Name)
 
 	for {
-		op, def, err := w.operationManager.NextSchedulerOperation(w.workerContext, w.scheduler.Name)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return nil
+		select {
+		case <-w.workerContext.Done():
+			return nil
+		case opComposition, ok := <-pendingOpsChan:
+			if !ok {
+				reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelNextOperationFailed)
+				return fmt.Errorf("failed to get next operation, channel closed")
 			}
-			reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelNextOperationFailed)
-			return fmt.Errorf("failed to get next operation: %w", err)
-		}
 
-		err = w.executeOperationFlow(op, def)
-		if err != nil && shouldFinishWorker(err) {
-			return err
+			err := w.executeOperationFlow(opComposition.Operation, opComposition.Definition)
+			if err != nil && shouldFinishWorker(err) {
+				return err
+			}
 		}
 	}
 }

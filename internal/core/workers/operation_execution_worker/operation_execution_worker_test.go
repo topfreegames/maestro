@@ -32,6 +32,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	"gotest.tools/assert"
 
@@ -70,8 +72,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
 		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		pendingOpsChan := make(chan *ports.OperationComposition)
 
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
 		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
@@ -81,7 +84,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
 		// Ends the worker by cancelling it
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, context.Canceled)
+		//operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, context.Canceled)
 
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).
 			Do(func(ctx, operation, definition interface{}) {
@@ -89,11 +92,19 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			}).
 			Return(nil)
 
+		go func() {
+			pendingOpsChan <- &ports.OperationComposition{
+				Operation:  expectedOperation,
+				Definition: operationDefinition,
+			}
+
+			workerService.Stop(context.Background())
+			require.False(t, workerService.IsRunning())
+		}()
+
 		err := workerService.Start(context.Background())
 		require.NoError(t, err)
 
-		workerService.Stop(context.Background())
-		require.False(t, workerService.IsRunning())
 	})
 
 	t.Run("execute Rollback when a Execute fails", func(t *testing.T) {
@@ -121,8 +132,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
 		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		pendingOpsChan := make(chan *ports.OperationComposition)
 
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
 		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
@@ -143,14 +155,19 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
-		// Ends the worker by cancelling it
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, context.Canceled)
+
+		go func() {
+			pendingOpsChan <- &ports.OperationComposition{
+				Operation:  expectedOperation,
+				Definition: operationDefinition,
+			}
+
+			workerService.Stop(context.Background())
+			require.False(t, workerService.IsRunning())
+		}()
 
 		err := workerService.Start(context.Background())
 		require.NoError(t, err)
-
-		workerService.Stop(context.Background())
-		require.False(t, workerService.IsRunning())
 	})
 
 	t.Run("execute Rollback when a Execute was canceled", func(t *testing.T) {
@@ -178,8 +195,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
 		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		pendingOpsChan := make(chan *ports.OperationComposition)
 
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
 		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
@@ -200,14 +218,19 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
-		// Ends the worker by cancelling it
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, context.Canceled)
+
+		go func() {
+			pendingOpsChan <- &ports.OperationComposition{
+				Operation:  expectedOperation,
+				Definition: operationDefinition,
+			}
+
+			workerService.Stop(context.Background())
+			require.False(t, workerService.IsRunning())
+		}()
 
 		err := workerService.Start(context.Background())
 		require.NoError(t, err)
-
-		workerService.Stop(context.Background())
-		require.False(t, workerService.IsRunning())
 	})
 
 	t.Run("evict operation if there is no executor", func(t *testing.T) {
@@ -233,12 +256,23 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		pendingOpsChan := make(chan *ports.OperationComposition)
 
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation evicted")
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		// Ends the worker by cancelling it
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, context.Canceled)
+		//operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, context.Canceled)
+
+		go func() {
+			pendingOpsChan <- &ports.OperationComposition{
+				Operation:  expectedOperation,
+				Definition: operationDefinition,
+			}
+
+			workerService.Stop(context.Background())
+			require.False(t, workerService.IsRunning())
+		}()
 
 		err := workerService.Start(context.Background())
 		require.NoError(t, err)
@@ -270,20 +304,26 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
 		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		pendingOpsChan := make(chan *ports.OperationComposition)
 
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(false)
-
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation evicted")
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
-		// Ends the worker by cancelling it
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, context.Canceled)
+
+		go func() {
+			pendingOpsChan <- &ports.OperationComposition{
+				Operation:  expectedOperation,
+				Definition: operationDefinition,
+			}
+
+			workerService.Stop(context.Background())
+			require.False(t, workerService.IsRunning())
+			time.Sleep(time.Millisecond * 100)
+		}()
 
 		err := workerService.Start(context.Background())
 		require.NoError(t, err)
-
-		workerService.Stop(context.Background())
-		require.False(t, workerService.IsRunning())
 	})
 
 	t.Run("error starting operation should stop execution of operation and set status as error", func(t *testing.T) {
@@ -314,14 +354,21 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
 
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
+		pendingOpsChan := make(chan *ports.OperationComposition)
 
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
 		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation).Return(nil)
 		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any()).Return(errors.New("some error starting operation"))
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Failed to start operation, reason: some error starting operation")
-		// Ends the worker by cancelling it
+
+		go func() {
+			pendingOpsChan <- &ports.OperationComposition{
+				Operation:  expectedOperation,
+				Definition: operationDefinition,
+			}
+		}()
 
 		err := workerService.Start(context.Background())
 		require.Error(t, err)
@@ -358,14 +405,22 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
 		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		pendingOpsChan := make(chan *ports.OperationComposition)
 
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(expectedOperation, operationDefinition, nil)
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
 		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation).Return(errors.New("some error granting lease"))
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Failed to grant lease to operation, reason: some error granting lease")
 		// Ends the worker by cancelling it
+
+		go func() {
+			pendingOpsChan <- &ports.OperationComposition{
+				Operation:  expectedOperation,
+				Definition: operationDefinition,
+			}
+		}()
 
 		err := workerService.Start(context.Background())
 		require.Error(t, err)
@@ -403,11 +458,13 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 
 		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		pendingOpsChan := make(chan *ports.OperationComposition)
 
-		operationManager.EXPECT().NextSchedulerOperation(gomock.Any(), expectedOperation.SchedulerName).Return(nil, nil, errors.New("error"))
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 
+		close(pendingOpsChan)
 		err := workerService.Start(context.Background())
-		assert.Error(t, err, "failed to get next operation: error")
+		assert.Error(t, err, "failed to get next operation, channel closed")
 
 		workerService.Stop(context.Background())
 		require.False(t, workerService.IsRunning())
