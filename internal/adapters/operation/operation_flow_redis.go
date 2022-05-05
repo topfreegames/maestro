@@ -65,6 +65,19 @@ func (r *redisOperationFlow) InsertOperationID(ctx context.Context, schedulerNam
 	return nil
 }
 
+// InsertPriorityOperationID inserts the operationID on the top of pending operations list.
+func (r *redisOperationFlow) InsertPriorityOperationID(ctx context.Context, schedulerName string, operationID string) (err error) {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+		err = r.client.LPush(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), operationID).Err()
+		return err
+	})
+	if err != nil {
+		return errors.NewErrUnexpected("failed to insert operation ID on redis").WithError(err)
+	}
+
+	return nil
+}
+
 // NextOperationID fetches the next scheduler operation ID from the
 // pending_operations list.
 func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName string) (opId string, err error) {

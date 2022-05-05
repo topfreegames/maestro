@@ -982,7 +982,7 @@ type SchedulerWithoutSpec struct {
 	CreatedAt *timestamp.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// Max surge of rooms
 	MaxSurge string `protobuf:"bytes,7,opt,name=max_surge,json=maxSurge,proto3" json:"max_surge,omitempty"`
-	// Rooms Replicas is the desired number that a Scheduler should have rooms
+	// Rooms Replicas is the desired number that a Scheduler maintains.
 	RoomsReplicas int32 `protobuf:"varint,8,opt,name=rooms_replicas,json=roomsReplicas,proto3" json:"rooms_replicas,omitempty"`
 }
 

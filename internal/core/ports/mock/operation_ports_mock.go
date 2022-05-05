@@ -289,6 +289,20 @@ func (mr *MockOperationFlowMockRecorder) InsertOperationID(ctx, schedulerName, o
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertOperationID", reflect.TypeOf((*MockOperationFlow)(nil).InsertOperationID), ctx, schedulerName, operationID)
 }
 
+// InsertPriorityOperationID mocks base method.
+func (m *MockOperationFlow) InsertPriorityOperationID(ctx context.Context, schedulerName, operationID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertPriorityOperationID", ctx, schedulerName, operationID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InsertPriorityOperationID indicates an expected call of InsertPriorityOperationID.
+func (mr *MockOperationFlowMockRecorder) InsertPriorityOperationID(ctx, schedulerName, operationID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertPriorityOperationID", reflect.TypeOf((*MockOperationFlow)(nil).InsertPriorityOperationID), ctx, schedulerName, operationID)
+}
+
 // ListSchedulerPendingOperationIDs mocks base method.
 func (m *MockOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) ([]string, error) {
 	m.ctrl.T.Helper()

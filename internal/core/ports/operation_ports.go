@@ -67,7 +67,11 @@ type OperationManager interface {
 // Secondary ports (output, driven ports)
 
 type OperationFlow interface {
+	// InsertOperationID pushes the operation ID to the scheduler pending
+	// operations list.
 	InsertOperationID(ctx context.Context, schedulerName, operationID string) error
+	// InsertPriorityOperationID inserts the operationID on the top of pending operations list.
+	InsertPriorityOperationID(ctx context.Context, schedulerName, operationID string) error
 	// NextOperationID fetches the next scheduler operation to be
 	// processed and return its ID.
 	NextOperationID(ctx context.Context, schedulerName string) (string, error)
