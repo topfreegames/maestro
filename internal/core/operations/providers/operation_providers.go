@@ -34,6 +34,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 )
 
+// ProvideDefinitionConstructors create definition constructors.
 func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor {
 
 	definitionConstructors := map[string]operations.DefinitionConstructor{}
@@ -60,17 +61,19 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 
 }
 
+// ProvideExecutors create providerMap to operations.
 func ProvideExecutors(
 	runtime ports.Runtime,
 	schedulerStorage ports.SchedulerStorage,
 	roomManager ports.RoomManager,
+	roomStorage ports.RoomStorage,
 	schedulerManager *scheduler_manager.SchedulerManager,
 ) map[string]operations.Executor {
 
 	executors := map[string]operations.Executor{}
 	executors[create_scheduler.OperationName] = create_scheduler.NewExecutor(runtime, schedulerManager)
 	executors[add_rooms.OperationName] = add_rooms.NewExecutor(roomManager, schedulerStorage)
-	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager)
+	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager, roomStorage)
 	executors[test_operation.OperationName] = test_operation.NewExecutor()
 	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager)
 	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager)
