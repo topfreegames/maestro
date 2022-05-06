@@ -66,6 +66,39 @@ func TestInsertOperationID(t *testing.T) {
 	})
 }
 
+func TestInsertPriorityOperationID(t *testing.T) {
+	t.Run("with success", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		flow := NewRedisOperationFlow(client)
+
+		schedulerName := "test-scheduler"
+
+		lowPriorityOperationID := "low-priority-operation"
+		highPriorityOperationID := "high-priority-operation"
+
+		err := flow.InsertPriorityOperationID(context.Background(), schedulerName, lowPriorityOperationID)
+		require.NoError(t, err)
+
+		err = flow.InsertPriorityOperationID(context.Background(), schedulerName, highPriorityOperationID)
+		require.NoError(t, err)
+
+		opID, err := client.LPop(context.Background(), flow.buildSchedulerPendingOperationsKey(schedulerName)).Result()
+		require.NoError(t, err)
+		require.Equal(t, highPriorityOperationID, opID)
+	})
+
+	t.Run("fails on redis", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		flow := NewRedisOperationFlow(client)
+
+		// "drop" redis connection
+		client.Close()
+
+		err := flow.InsertPriorityOperationID(context.Background(), "", "")
+		require.ErrorIs(t, errors.ErrUnexpected, err)
+	})
+}
+
 func TestNextOperationID(t *testing.T) {
 	t.Run("successfully receives the operation ID", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
