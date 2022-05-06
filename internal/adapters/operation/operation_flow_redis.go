@@ -125,6 +125,7 @@ func (r *redisOperationFlow) RemoveOperation(ctx context.Context, schedulerName,
 }
 
 func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) (operationsIDs []string, err error) {
+	var operationsIDsFromAux []string
 	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
 		operationsIDs, err = r.client.LRange(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), 0, -1).Result()
 		return err
@@ -132,8 +133,15 @@ func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Contex
 	if err != nil {
 		return nil, errors.NewErrUnexpected("failed to list pending operations for \"%s\"", schedulerName).WithError(err)
 	}
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+		operationsIDsFromAux, err = r.client.LRange(ctx, r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0, -1).Result()
+		return err
+	})
+	if err != nil && err != redis.Nil {
+		return nil, errors.NewErrUnexpected("failed to list pending operations for \"%s\"", schedulerName).WithError(err)
+	}
 
-	return operationsIDs, nil
+	return append(operationsIDs, operationsIDsFromAux...), nil
 }
 
 func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Context, request ports.OperationCancellationRequest) (err error) {
