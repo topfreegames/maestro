@@ -25,6 +25,8 @@ package operation
 import (
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Status int
@@ -83,4 +85,21 @@ func (s Status) String() (string, error) {
 	}
 
 	return "", fmt.Errorf("status could not be mapped to string: %d", s)
+}
+
+func New(schedulerName, definitionName string, definitionInput []byte) *Operation {
+	return &Operation{
+		ID:             uuid.NewString(),
+		Status:         StatusPending,
+		DefinitionName: definitionName,
+		SchedulerName:  schedulerName,
+		CreatedAt:      time.Now(),
+		Input:          definitionInput,
+		ExecutionHistory: []OperationEvent{
+			{
+				CreatedAt: time.Now().UTC(),
+				Event:     "Created",
+			},
+		},
+	}
 }

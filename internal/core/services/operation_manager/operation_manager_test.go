@@ -139,6 +139,69 @@ func TestCreateOperation(t *testing.T) {
 	}
 }
 
+func TestCreatePriorityOperation(t *testing.T) {
+	cases := map[string]struct {
+		definition operations.Definition
+		storageErr error
+		flowErr    error
+	}{
+		"create without errors": {
+			definition: &testOperationDefinition{marshalResult: []byte("test")},
+		},
+		"create with storage errors": {
+			definition: &testOperationDefinition{},
+			storageErr: porterrors.ErrUnexpected,
+		},
+		"create with flow errors": {
+			definition: &testOperationDefinition{},
+			flowErr:    porterrors.ErrUnexpected,
+		},
+	}
+
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+
+			schedulerName := "scheduler_name"
+			operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+			operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+			definitionConstructors := operations.NewDefinitionConstructors()
+			operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+			config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+			opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+			ctx := context.Background()
+
+			operationStorage.EXPECT().CreateOperation(ctx, &opMatcher{operation.StatusPending, test.definition}).Return(test.storageErr)
+
+			if test.storageErr == nil {
+				operationFlow.EXPECT().InsertPriorityOperationID(ctx, schedulerName, gomock.Any()).Return(test.flowErr)
+			}
+
+			op, err := opManager.CreatePriorityOperation(ctx, schedulerName, test.definition)
+
+			if test.storageErr != nil {
+				require.ErrorIs(t, err, test.storageErr)
+				require.Nil(t, op)
+				return
+			}
+
+			if test.flowErr != nil {
+				require.ErrorIs(t, err, test.flowErr)
+				require.Nil(t, op)
+				return
+			}
+
+			assert.NotEmpty(t, op.ID)
+			assert.Equal(t, operation.StatusPending, op.Status)
+			assert.Equal(t, test.definition.Name(), op.DefinitionName)
+			assert.Equal(t, schedulerName, op.SchedulerName)
+			assert.EqualValues(t, test.definition.Marshal(), op.Input)
+		})
+	}
+}
+
 func TestGetOperation(t *testing.T) {
 	t.Run("find operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)

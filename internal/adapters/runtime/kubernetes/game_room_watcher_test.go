@@ -30,19 +30,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/test"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
 func TestGameRoomsWatch(t *testing.T) {
-	ctx := context.Background()
-	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
-
 	t.Run("watch pod addition", func(t *testing.T) {
+		ctx := context.Background()
+		client := test.GetKubernetesClientSet(t, kubernetesContainer)
+		kubernetesRuntime := New(client)
+
 		scheduler := &entities.Scheduler{Name: "watch-room-addition"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestGameRoomsWatch(t *testing.T) {
 				return false
 			}
 
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, 100*time.Millisecond)
 
 		watcher.Stop()
 		require.NoError(t, watcher.Err())
@@ -87,10 +87,14 @@ func TestGameRoomsWatch(t *testing.T) {
 			default:
 				return false
 			}
-		}, time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("watch pod becoming ready", func(t *testing.T) {
+		ctx := context.Background()
+		client := test.GetKubernetesClientSet(t, kubernetesContainer)
+		kubernetesRuntime := New(client)
+
 		scheduler := &entities.Scheduler{Name: "watch-room-ready"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
@@ -148,6 +152,10 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod with error", func(t *testing.T) {
+		ctx := context.Background()
+		client := test.GetKubernetesClientSet(t, kubernetesContainer)
+		kubernetesRuntime := New(client)
+
 		scheduler := &entities.Scheduler{Name: "watch-room-error"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
@@ -198,6 +206,10 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod deletion", func(t *testing.T) {
+		ctx := context.Background()
+		client := test.GetKubernetesClientSet(t, kubernetesContainer)
+		kubernetesRuntime := New(client)
+
 		scheduler := &entities.Scheduler{Name: "watch-room-delete"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)

@@ -32,7 +32,6 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
-	"github.com/google/uuid"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -64,20 +63,7 @@ func New(flow ports.OperationFlow, storage ports.OperationStorage, operationDefi
 }
 
 func (om *OperationManager) CreateOperation(ctx context.Context, schedulerName string, definition operations.Definition) (*operation.Operation, error) {
-	op := &operation.Operation{
-		ID:             uuid.NewString(),
-		Status:         operation.StatusPending,
-		DefinitionName: definition.Name(),
-		SchedulerName:  schedulerName,
-		CreatedAt:      time.Now(),
-		Input:          definition.Marshal(),
-		ExecutionHistory: []operation.OperationEvent{
-			{
-				CreatedAt: time.Now().UTC(),
-				Event:     "Created",
-			},
-		},
-	}
+	op := operation.New(schedulerName, definition.Name(), definition.Marshal())
 
 	err := om.Storage.CreateOperation(ctx, op)
 	if err != nil {
@@ -90,6 +76,23 @@ func (om *OperationManager) CreateOperation(ctx context.Context, schedulerName s
 		return nil, fmt.Errorf("failed to insert operation on flow: %w", err)
 	}
 	om.Logger.Info(fmt.Sprintf("operation %s created and enqueued to be executed", op.DefinitionName), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
+	return op, nil
+}
+
+func (om *OperationManager) CreatePriorityOperation(ctx context.Context, schedulerName string, definition operations.Definition) (*operation.Operation, error) {
+	op := operation.New(schedulerName, definition.Name(), definition.Marshal())
+
+	err := om.Storage.CreateOperation(ctx, op)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create operation: %w", err)
+	}
+
+	err = om.Flow.InsertPriorityOperationID(ctx, op.SchedulerName, op.ID)
+	if err != nil {
+		om.Logger.Error(fmt.Sprintf("failed to enqueue (priority) %s operation to be executed", op.DefinitionName), zap.Error(err), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
+		return nil, fmt.Errorf("failed to insert operation on flow: %w", err)
+	}
+	om.Logger.Info(fmt.Sprintf("operation (priority) %s created and enqueued on the top to be executed", op.DefinitionName), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
 	return op, nil
 }
 

@@ -65,6 +65,21 @@ func (mr *MockOperationManagerMockRecorder) CreateOperation(ctx, schedulerName, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOperation", reflect.TypeOf((*MockOperationManager)(nil).CreateOperation), ctx, schedulerName, definition)
 }
 
+// CreatePriorityOperation mocks base method.
+func (m *MockOperationManager) CreatePriorityOperation(ctx context.Context, schedulerName string, definition operations.Definition) (*operation.Operation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatePriorityOperation", ctx, schedulerName, definition)
+	ret0, _ := ret[0].(*operation.Operation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreatePriorityOperation indicates an expected call of CreatePriorityOperation.
+func (mr *MockOperationManagerMockRecorder) CreatePriorityOperation(ctx, schedulerName, definition interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePriorityOperation", reflect.TypeOf((*MockOperationManager)(nil).CreatePriorityOperation), ctx, schedulerName, definition)
+}
+
 // EnqueueOperationCancellationRequest mocks base method.
 func (m *MockOperationManager) EnqueueOperationCancellationRequest(ctx context.Context, schedulerName, operationID string) error {
 	m.ctrl.T.Helper()
