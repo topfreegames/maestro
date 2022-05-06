@@ -260,7 +260,7 @@ func TestPendingOperationsChan(t *testing.T) {
 		mockSetup func(opFlow *mockports.MockOperationFlow, opStorage *mockports.MockOperationStorage)
 	}
 	type expectedResult struct {
-		operations []*ports.OperationComposition
+		operationIDs []string
 	}
 	tests := []struct {
 		name            string
@@ -273,14 +273,7 @@ func TestPendingOperationsChan(t *testing.T) {
 			"returns a channel that keeps sending pending operations if no error occurs",
 			mockPreparation{
 				mockSetup: func(opFlow *mockports.MockOperationFlow, opStorage *mockports.MockOperationStorage) {
-					opDef := &testOperationDefinition{}
-
 					opFlow.EXPECT().NextOperationID(gomock.Any(), "test-scheduler").Return("some-op-id", nil).MinTimes(2)
-					opStorage.EXPECT().GetOperation(gomock.Any(), "test-scheduler", "some-op-id").Return(
-						&operation.Operation{ID: "some-op-id", SchedulerName: "test-scheduler", DefinitionName: opDef.Name()},
-						nil,
-					).MinTimes(1)
-
 				},
 			},
 			args{
@@ -288,16 +281,7 @@ func TestPendingOperationsChan(t *testing.T) {
 				schedulerName: "test-scheduler",
 			},
 			expectedResult{
-				operations: []*ports.OperationComposition{
-					{
-						Operation:  &operation.Operation{ID: "some-op-id", SchedulerName: "test-scheduler", DefinitionName: "test-def"},
-						Definition: &testOperationDefinition{},
-					},
-					{
-						Operation:  &operation.Operation{ID: "some-op-id", SchedulerName: "test-scheduler", DefinitionName: "test-def"},
-						Definition: &testOperationDefinition{},
-					},
-				},
+				operationIDs: []string{"some-op-id", "some-op-id"},
 			},
 			false,
 		},
@@ -306,24 +290,6 @@ func TestPendingOperationsChan(t *testing.T) {
 			mockPreparation{
 				mockSetup: func(opFlow *mockports.MockOperationFlow, opStorage *mockports.MockOperationStorage) {
 					opFlow.EXPECT().NextOperationID(gomock.Any(), "test-scheduler").Return("", errors.New("some error"))
-				},
-			},
-			args{
-				ctx:           context.Background(),
-				schedulerName: "test-scheduler",
-			},
-			expectedResult{},
-			true,
-		},
-		{
-			"returns a channel that is closed if an error occurs fetching data for the next operation",
-			mockPreparation{
-				mockSetup: func(opFlow *mockports.MockOperationFlow, opStorage *mockports.MockOperationStorage) {
-
-					opFlow.EXPECT().NextOperationID(gomock.Any(), "test-scheduler").Return("some-op-id", nil)
-					opStorage.EXPECT().GetOperation(gomock.Any(), "test-scheduler", "some-op-id").Return(
-						nil, errors.New("some error"),
-					).MinTimes(1)
 				},
 			},
 			args{
@@ -361,11 +327,10 @@ func TestPendingOperationsChan(t *testing.T) {
 				require.False(t, ok)
 			} else {
 
-				for _, expectedOp := range tt.expectedResult.operations {
-					opComposition, ok := <-pendingOpChan
+				for _, expectedOpID := range tt.expectedResult.operationIDs {
+					opID, ok := <-pendingOpChan
 					require.True(t, ok)
-					assert.Equal(t, expectedOp.Operation.ID, opComposition.Operation.ID)
-					assert.Equal(t, expectedOp.Definition.Name(), opComposition.Definition.Name())
+					assert.Equal(t, expectedOpID, opID)
 				}
 			}
 		})

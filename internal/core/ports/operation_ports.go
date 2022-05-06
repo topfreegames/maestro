@@ -39,7 +39,7 @@ type OperationManager interface {
 	// GetOperation retrieves the operation and its definition.
 	GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, operations.Definition, error)
 	// PendingOperationsChan returns a read-only channel of pending operations.
-	PendingOperationsChan(ctx context.Context, schedulerName string) (pendingOpsChan <-chan *OperationComposition)
+	PendingOperationsChan(ctx context.Context, schedulerName string) (pendingOpsChan <-chan string)
 	// StartOperation used when an operation will start executing.
 	StartOperation(ctx context.Context, op *operation.Operation, cancelFunction context.CancelFunc) error
 	// FinishOperation used when an operation has finished executing, with error or not.
@@ -114,9 +114,4 @@ type OperationLeaseStorage interface {
 type OperationCancellationRequest struct {
 	SchedulerName string `json:"schedulerName"`
 	OperationID   string `json:"operationID"`
-}
-
-type OperationComposition struct {
-	Operation  *operation.Operation
-	Definition operations.Definition
 }
