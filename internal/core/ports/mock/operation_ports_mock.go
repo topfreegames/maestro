@@ -184,10 +184,10 @@ func (mr *MockOperationManagerMockRecorder) ListSchedulerPendingOperations(ctx, 
 }
 
 // PendingOperationsChan mocks base method.
-func (m *MockOperationManager) PendingOperationsChan(ctx context.Context, schedulerName string) <-chan *ports.OperationComposition {
+func (m *MockOperationManager) PendingOperationsChan(ctx context.Context, schedulerName string) <-chan string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PendingOperationsChan", ctx, schedulerName)
-	ret0, _ := ret[0].(<-chan *ports.OperationComposition)
+	ret0, _ := ret[0].(<-chan string)
 	return ret0
 }
 
