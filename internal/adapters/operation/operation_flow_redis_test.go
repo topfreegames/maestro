@@ -363,3 +363,73 @@ func TestListSchedulerPendingOperationIDs(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveOperation(t *testing.T) {
+
+	type args struct {
+		ctx           context.Context
+		schedulerName string
+	}
+	type environmentSetup struct {
+		numberOfOps      int
+		forceClientError bool
+	}
+	tests := []struct {
+		name             string
+		args             args
+		environmentSetup environmentSetup
+	}{
+		{"return no error and pops the operation from de auxiliary operations queue if there is some", args{
+			ctx:           context.Background(),
+			schedulerName: "test-scheduler",
+		},
+			environmentSetup{numberOfOps: 1, forceClientError: false},
+		},
+		{"return no error and does nothing if the auxiliary operations queue is empty", args{
+			ctx:           context.Background(),
+			schedulerName: "test-scheduler",
+		},
+			environmentSetup{numberOfOps: 0, forceClientError: false},
+		},
+
+		{"return error when some error occurs with redis client", args{
+			ctx:           context.Background(),
+			schedulerName: "test-scheduler",
+		},
+			environmentSetup{numberOfOps: 0, forceClientError: true},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+
+			flow := &redisOperationFlow{
+				client: client,
+			}
+
+			schedulerName := tt.args.schedulerName
+			expectedOperationID := "some-op-id"
+
+			for i := 0; i < tt.environmentSetup.numberOfOps; i++ {
+				err := client.RPush(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), expectedOperationID).Err()
+				require.NoError(t, err)
+			}
+
+			if tt.environmentSetup.forceClientError {
+				go func() {
+					err := flow.RemoveNextOperation(tt.args.ctx, tt.args.schedulerName)
+					assert.Error(t, err)
+				}()
+
+				client.Close()
+			} else {
+				err := flow.RemoveNextOperation(tt.args.ctx, tt.args.schedulerName)
+				assert.NoError(t, err)
+
+				opIdBufferedQueue, err := client.LIndex(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
+				require.EqualError(t, err, "redis: nil")
+				require.Equal(t, "", opIdBufferedQueue)
+			}
+		})
+	}
+}
