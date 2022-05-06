@@ -71,7 +71,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 	sortOperationsByCreatedAt(pendingOperationEntities, sortingOrder)
 
-	pendingOperationResponse, err := requestadapters.FromOperationsToResponses(pendingOperationEntities)
+	pendingOperationResponse, err := requestadapters.FromOperationsToListOperationsResponses(pendingOperationEntities)
 	if err != nil {
 		handlerLogger.Error("error converting pending operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -84,7 +84,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 	sortOperationsByCreatedAt(activeOperationEntities, sortingOrder)
 
-	activeOperationResponses, err := requestadapters.FromOperationsToResponses(activeOperationEntities)
+	activeOperationResponses, err := requestadapters.FromOperationsToListOperationsResponses(activeOperationEntities)
 	if err != nil {
 		handlerLogger.Error("error converting active operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -97,7 +97,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 	sortOperationsByCreatedAt(finishedOperationEntities, sortingOrder)
 
-	finishedOperationResponse, err := requestadapters.FromOperationsToResponses(finishedOperationEntities)
+	finishedOperationResponse, err := requestadapters.FromOperationsToListOperationsResponses(finishedOperationEntities)
 	if err != nil {
 		handlerLogger.Error("error converting finished operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())

@@ -39,13 +39,13 @@ import (
 	_struct "google.golang.org/protobuf/types/known/structpb"
 )
 
-func TestFromOperationsToResponses(t *testing.T) {
+func TestFromOperationsToListOperationsResponses(t *testing.T) {
 	type Input struct {
 		Operations []*operation.Operation
 	}
 
 	type Output struct {
-		ApiOperations []*api.Operation
+		ApiOperations []*api.ListOperationItem
 		GivesError    bool
 	}
 
@@ -55,10 +55,6 @@ func TestFromOperationsToResponses(t *testing.T) {
 	genericString := "some-value"
 	genericTime := time.Now()
 	genericJsonStruct, _ := json.Marshal(genericStruct{"some-value"})
-
-	inputMap := make(map[string]interface{})
-	_ = json.Unmarshal([]byte(genericJsonStruct), &inputMap)
-	genericApiStruct, _ := _struct.NewStruct(inputMap)
 
 	testCases := []struct {
 		Title string
@@ -90,7 +86,7 @@ func TestFromOperationsToResponses(t *testing.T) {
 				},
 			},
 			Output: Output{
-				ApiOperations: []*api.Operation{
+				ApiOperations: []*api.ListOperationItem{
 					{
 						Id:             genericString,
 						Status:         "pending",
@@ -98,13 +94,6 @@ func TestFromOperationsToResponses(t *testing.T) {
 						Lease:          &api.Lease{Ttl: genericTime.UTC().Format(time.RFC3339)},
 						SchedulerName:  genericString,
 						CreatedAt:      timestamppb.New(genericTime),
-						Input:          genericApiStruct,
-						ExecutionHistory: []*api.OperationEvent{
-							{
-								CreatedAt: timestamppb.New(genericTime),
-								Event:     genericString,
-							},
-						},
 					},
 				},
 			},
@@ -115,7 +104,7 @@ func TestFromOperationsToResponses(t *testing.T) {
 				Operations: []*operation.Operation{
 					{
 						ID:             genericString,
-						Status:         operation.StatusPending,
+						Status:         -1,
 						DefinitionName: genericString,
 						SchedulerName:  genericString,
 						Lease: &operation.OperationLease{
@@ -142,7 +131,7 @@ func TestFromOperationsToResponses(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues, err := requestadapters.FromOperationsToResponses(testCase.Input.Operations)
+			returnValues, err := requestadapters.FromOperationsToListOperationsResponses(testCase.Input.Operations)
 			if testCase.Output.GivesError {
 				assert.Error(t, err)
 			}

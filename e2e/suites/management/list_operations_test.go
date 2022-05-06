@@ -92,8 +92,6 @@ func TestListOperations(t *testing.T) {
 				assert.True(t, operationExists)
 
 				assert.Equal(t, apiOperation.SchedulerName, scheduler.Name)
-				assert.NotEmpty(t, apiOperation.Input)
-				assert.Greater(t, len(apiOperation.ExecutionHistory), 0)
 			}
 
 			statusInProgressString, err := operation.StatusInProgress.String()
@@ -105,8 +103,6 @@ func TestListOperations(t *testing.T) {
 				assert.True(t, operationExists)
 
 				assert.Equal(t, apiOperation.SchedulerName, scheduler.Name)
-				assert.NotEmpty(t, apiOperation.Input)
-				assert.Greater(t, len(apiOperation.ExecutionHistory), 0)
 			}
 
 			statusFinishedString, err := operation.StatusFinished.String()
@@ -118,8 +114,6 @@ func TestListOperations(t *testing.T) {
 				assert.True(t, operationExists)
 
 				assert.Equal(t, apiOperation.SchedulerName, scheduler.Name)
-				assert.NotEmpty(t, apiOperation.Input)
-				assert.Greater(t, len(apiOperation.ExecutionHistory), 0)
 			}
 		})
 	})
