@@ -25,6 +25,7 @@ package healthcontroller_test
 import (
 	"context"
 	"errors"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"testing"
 	"time"
 
@@ -288,7 +289,10 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 			operationManager := mockports.NewMockOperationManager(mockCtrl)
-			executor := healthcontroller.NewExecutor(roomsStorage, instanceStorage, schedulerStorage, operationManager)
+			config := room_manager.RoomManagerConfig{
+				RoomPingTimeout:           0,
+			}
+			executor := healthcontroller.NewExecutor(roomsStorage, instanceStorage, schedulerStorage, operationManager, config)
 
 			testCase.ExecutionPlan.PlanMocks(roomsStorage, instanceStorage, schedulerStorage, operationManager)
 

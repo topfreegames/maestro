@@ -25,6 +25,8 @@ package healthcontroller
 import (
 	"context"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -40,20 +42,22 @@ import (
 )
 
 type SchedulerHealthControllerExecutor struct {
-	roomStorage      ports.RoomStorage
-	instanceStorage  ports.GameRoomInstanceStorage
-	schedulerStorage ports.SchedulerStorage
-	operationManager ports.OperationManager
+	roomStorage       ports.RoomStorage
+	instanceStorage   ports.GameRoomInstanceStorage
+	schedulerStorage  ports.SchedulerStorage
+	operationManager  ports.OperationManager
+	roomManagerConfig room_manager.RoomManagerConfig
 }
 
 var _ operations.Executor = (*SchedulerHealthControllerExecutor)(nil)
 
-func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager) *SchedulerHealthControllerExecutor {
+func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomManagerConfig room_manager.RoomManagerConfig) *SchedulerHealthControllerExecutor {
 	return &SchedulerHealthControllerExecutor{
-		roomStorage:      roomStorage,
-		instanceStorage:  instanceStorage,
-		schedulerStorage: schedulerStorage,
-		operationManager: operationManager,
+		roomStorage:       roomStorage,
+		instanceStorage:   instanceStorage,
+		schedulerStorage:  schedulerStorage,
+		operationManager:  operationManager,
+		roomManagerConfig: roomManagerConfig,
 	}
 }
 
@@ -74,11 +78,19 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 	if len(nonexistentGameRoomIDs) > 0 {
 		logger.Error("found registered rooms that no longer exists")
 		ex.tryEnsureCorrectRoomsOnStorage(ctx, op, logger, nonexistentGameRoomIDs)
-
 	}
 
-	if len(instances) != scheduler.RoomsReplicas {
-		err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(instances), scheduler.RoomsReplicas)
+	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, op, gameRoomIDs)
+	if len(expiredRooms) > 0 {
+		logger.Sugar().Infof("found %v expired rooms to be deleted", len(expiredRooms))
+		err = ex.enqueueRemoveExpiredRooms(ctx, op, logger, expiredRooms)
+		if err != nil {
+			logger.Error("could not enqueue operation to delete expired rooms", zap.Error(err))
+		}
+	}
+
+	if len(availableRooms) != scheduler.RoomsReplicas {
+		err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(availableRooms), scheduler.RoomsReplicas)
 		if err != nil {
 			logger.Error("cannot ensure desired amount of instances", zap.Error(err))
 			return operations.NewErrUnexpected(err)
@@ -169,5 +181,46 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 
 	logger.Info(msgToAppend)
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
+	return nil
+}
+
+func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx context.Context, op *operation.Operation, gameRoomsIDs []string) (availableRoomsIDs, expiredRoomsIDs []string) {
+	for _, gameRoomID := range gameRoomsIDs {
+		room, _ := ex.roomStorage.GetRoom(ctx, op.SchedulerName, gameRoomID)
+
+		if ex.isRoomExpired(room) || ex.isRoomStatusError(room) {
+			expiredRoomsIDs = append(expiredRoomsIDs, room.ID)
+			continue
+		}
+
+		if room.Status != game_room.GameStatusTerminating {
+			availableRoomsIDs = append(availableRoomsIDs, gameRoomID)
+		}
+	}
+
+	return availableRoomsIDs, expiredRoomsIDs
+}
+
+func (ex *SchedulerHealthControllerExecutor) isRoomExpired(room *game_room.GameRoom) bool {
+	timeDurationWithoutPing := time.Now().Sub(room.LastPingAt)
+	return timeDurationWithoutPing > ex.roomManagerConfig.RoomPingTimeout
+}
+
+func (ex *SchedulerHealthControllerExecutor) isRoomStatusError(room *game_room.GameRoom) bool {
+	return room.Status == game_room.GameStatusError
+}
+
+func (ex *SchedulerHealthControllerExecutor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, expiredRoomsIDs []string) error {
+	removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove_rooms.RemoveRoomsDefinition{
+		RoomsIDs: expiredRoomsIDs,
+	})
+	if err != nil {
+		return err
+	}
+
+	msgToAppend := fmt.Sprintf("created operation (id: %s) to remove %v expired rooms.", removeOperation.ID, len(expiredRoomsIDs))
+	logger.Info(msgToAppend)
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
+
 	return nil
 }
