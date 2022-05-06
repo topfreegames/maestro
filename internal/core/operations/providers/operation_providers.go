@@ -72,7 +72,6 @@ func ProvideExecutors(
 	roomManager ports.RoomManager,
 	roomStorage ports.RoomStorage,
 	schedulerManager *scheduler_manager.SchedulerManager,
-	roomStorage ports.RoomStorage,
 	instanceStorage ports.GameRoomInstanceStorage,
 	operationManager ports.OperationManager,
 ) map[string]operations.Executor {
