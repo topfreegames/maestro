@@ -107,7 +107,10 @@ func (r *redisOperationFlow) RemoveNextOperation(ctx context.Context, schedulerN
 
 		return err
 	})
-	if err != nil && err != redis.Nil {
+	if err == redis.Nil {
+		return errors.NewErrUnexpected("auxiliary pending operations queue is empty").WithError(err)
+	}
+	if err != nil {
 		return errors.NewErrUnexpected("failed to pop from auxiliary pending operations list").WithError(err)
 	}
 

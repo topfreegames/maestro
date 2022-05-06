@@ -277,7 +277,6 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 
 func TestListSchedulerPendingOperationIDs(t *testing.T) {
 	type args struct {
-		ctx           context.Context
 		schedulerName string
 	}
 	type environmentSetup struct {
@@ -293,7 +292,6 @@ func TestListSchedulerPendingOperationIDs(t *testing.T) {
 	}{
 		{"return no error and the list of pending operations from main queue",
 			args{
-				ctx:           context.Background(),
 				schedulerName: "test-scheduler",
 			},
 			environmentSetup{
@@ -308,7 +306,6 @@ func TestListSchedulerPendingOperationIDs(t *testing.T) {
 		},
 		{"return no error and the list of pending operations from aux queue",
 			args{
-				ctx:           context.Background(),
 				schedulerName: "test-scheduler",
 			},
 			environmentSetup{
@@ -325,7 +322,6 @@ func TestListSchedulerPendingOperationIDs(t *testing.T) {
 		},
 		{"return error when some error occurs with redis client",
 			args{
-				ctx:           context.Background(),
 				schedulerName: "test-scheduler",
 			},
 			environmentSetup{
@@ -341,7 +337,7 @@ func TestListSchedulerPendingOperationIDs(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			flow := NewRedisOperationFlow(client)
 
-			ctx := tt.args.ctx
+			ctx := context.Background()
 			schedulerName := tt.args.schedulerName
 
 			tt.environmentSetup.prepareDatabase(schedulerName, client)
@@ -361,10 +357,8 @@ func TestListSchedulerPendingOperationIDs(t *testing.T) {
 	}
 }
 
-func TestRemoveOperation(t *testing.T) {
-
+func TestRemoveNextOperation(t *testing.T) {
 	type args struct {
-		ctx           context.Context
 		schedulerName string
 	}
 	type environmentSetup struct {
@@ -375,25 +369,33 @@ func TestRemoveOperation(t *testing.T) {
 		name             string
 		args             args
 		environmentSetup environmentSetup
+		errorExpected    error
 	}{
-		{"return no error and pops the operation from de auxiliary operations queue if there is some", args{
-			ctx:           context.Background(),
-			schedulerName: "test-scheduler",
-		},
-			environmentSetup{numberOfOps: 1, forceClientError: false},
-		},
-		{"return no error and does nothing if the auxiliary operations queue is empty", args{
-			ctx:           context.Background(),
-			schedulerName: "test-scheduler",
-		},
-			environmentSetup{numberOfOps: 0, forceClientError: false},
+		{
+			name: "return no error and pops the operation from de auxiliary operations queue if there is some",
+			args: args{
+				schedulerName: "test-scheduler",
+			},
+			environmentSetup: environmentSetup{numberOfOps: 1, forceClientError: false},
+			errorExpected:    nil,
 		},
 
-		{"return error when some error occurs with redis client", args{
-			ctx:           context.Background(),
-			schedulerName: "test-scheduler",
+		{
+			name: "return error if the auxiliary operations queue is empty",
+			args: args{
+				schedulerName: "test-scheduler",
+			},
+			environmentSetup: environmentSetup{numberOfOps: 0, forceClientError: false},
+			errorExpected:    errors.NewErrUnexpected("auxiliary pending operations queue is empty: redis: nil"),
 		},
-			environmentSetup{numberOfOps: 0, forceClientError: true},
+
+		{
+			name: "return error when some error occurs with redis client",
+			args: args{
+				schedulerName: "test-scheduler",
+			},
+			environmentSetup: environmentSetup{numberOfOps: 0, forceClientError: true},
+			errorExpected:    errors.NewErrUnexpected("failed to remove next operation for \"test-scheduler\": redis: client is closed"),
 		},
 	}
 	for _, tt := range tests {
@@ -404,6 +406,7 @@ func TestRemoveOperation(t *testing.T) {
 				client: client,
 			}
 
+			ctx := context.Background()
 			schedulerName := tt.args.schedulerName
 			expectedOperationID := "some-op-id"
 
@@ -414,18 +417,22 @@ func TestRemoveOperation(t *testing.T) {
 
 			if tt.environmentSetup.forceClientError {
 				go func() {
-					err := flow.RemoveNextOperation(tt.args.ctx, tt.args.schedulerName)
+					err := flow.RemoveNextOperation(ctx, tt.args.schedulerName)
 					assert.Error(t, err)
 				}()
 
 				client.Close()
 			} else {
-				err := flow.RemoveNextOperation(tt.args.ctx, tt.args.schedulerName)
-				assert.NoError(t, err)
+				err := flow.RemoveNextOperation(ctx, tt.args.schedulerName)
+				if tt.errorExpected != nil {
+					assert.EqualError(t, err, tt.errorExpected.Error())
+				} else {
+					assert.NoError(t, err)
 
-				opIdBufferedQueue, err := client.LIndex(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
-				require.EqualError(t, err, "redis: nil")
-				require.Equal(t, "", opIdBufferedQueue)
+					opIdBufferedQueue, err := client.LIndex(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
+					require.EqualError(t, err, "redis: nil")
+					require.Equal(t, "", opIdBufferedQueue)
+				}
 			}
 		})
 	}
