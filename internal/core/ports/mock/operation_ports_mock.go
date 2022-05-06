@@ -168,20 +168,18 @@ func (mr *MockOperationManagerMockRecorder) ListSchedulerPendingOperations(ctx, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSchedulerPendingOperations", reflect.TypeOf((*MockOperationManager)(nil).ListSchedulerPendingOperations), ctx, schedulerName)
 }
 
-// NextSchedulerOperation mocks base method.
-func (m *MockOperationManager) NextSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, operations.Definition, error) {
+// PendingOperationsChan mocks base method.
+func (m *MockOperationManager) PendingOperationsChan(ctx context.Context, schedulerName string) <-chan string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NextSchedulerOperation", ctx, schedulerName)
-	ret0, _ := ret[0].(*operation.Operation)
-	ret1, _ := ret[1].(operations.Definition)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret := m.ctrl.Call(m, "PendingOperationsChan", ctx, schedulerName)
+	ret0, _ := ret[0].(<-chan string)
+	return ret0
 }
 
-// NextSchedulerOperation indicates an expected call of NextSchedulerOperation.
-func (mr *MockOperationManagerMockRecorder) NextSchedulerOperation(ctx, schedulerName interface{}) *gomock.Call {
+// PendingOperationsChan indicates an expected call of PendingOperationsChan.
+func (mr *MockOperationManagerMockRecorder) PendingOperationsChan(ctx, schedulerName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextSchedulerOperation", reflect.TypeOf((*MockOperationManager)(nil).NextSchedulerOperation), ctx, schedulerName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PendingOperationsChan", reflect.TypeOf((*MockOperationManager)(nil).PendingOperationsChan), ctx, schedulerName)
 }
 
 // RevokeLease mocks base method.

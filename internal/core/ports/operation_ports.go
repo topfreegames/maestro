@@ -38,8 +38,8 @@ type OperationManager interface {
 	CreateOperation(ctx context.Context, schedulerName string, definition operations.Definition) (*operation.Operation, error)
 	// GetOperation retrieves the operation and its definition.
 	GetOperation(ctx context.Context, schedulerName, operationID string) (*operation.Operation, operations.Definition, error)
-	// NextSchedulerOperation returns the next scheduler operation to be processed.
-	NextSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, operations.Definition, error)
+	// PendingOperationsChan returns a read-only channel of pending operations.
+	PendingOperationsChan(ctx context.Context, schedulerName string) (pendingOpsChan <-chan string)
 	// StartOperation used when an operation will start executing.
 	StartOperation(ctx context.Context, op *operation.Operation, cancelFunction context.CancelFunc) error
 	// FinishOperation used when an operation has finished executing, with error or not.

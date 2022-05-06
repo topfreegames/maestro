@@ -72,25 +72,32 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 	defer w.Stop(ctx)
 
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
+	pendingOpsChan := w.operationManager.PendingOperationsChan(w.workerContext, w.scheduler.Name)
 
 	for {
-		op, def, err := w.operationManager.NextSchedulerOperation(w.workerContext, w.scheduler.Name)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return nil
+		select {
+		case <-w.workerContext.Done():
+			return nil
+		case opID, ok := <-pendingOpsChan:
+			if !ok {
+				reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelNextOperationFailed)
+				return fmt.Errorf("failed to get next operation, channel closed")
 			}
-			reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelNextOperationFailed)
-			return fmt.Errorf("failed to get next operation: %w", err)
-		}
 
-		err = w.executeOperationFlow(op, def)
-		if err != nil && shouldFinishWorker(err) {
-			return err
+			err := w.executeOperationFlow(opID)
+			if err != nil && shouldFinishWorker(err) {
+				return err
+			}
 		}
 	}
 }
 
-func (w *OperationExecutionWorker) executeOperationFlow(op *operation.Operation, def operations.Definition) error {
+func (w *OperationExecutionWorker) executeOperationFlow(operationID string) error {
+	op, def, err := w.operationManager.GetOperation(w.workerContext, w.scheduler.Name, operationID)
+	if err != nil {
+		return err
+	}
+
 	loopLogger := w.logger.With(
 		zap.String(logs.LogFieldOperationID, op.ID),
 		zap.String(logs.LogFieldOperationDefinition, def.Name()),
