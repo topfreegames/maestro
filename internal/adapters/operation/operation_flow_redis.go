@@ -115,23 +115,19 @@ func (r *redisOperationFlow) RemoveNextOperation(ctx context.Context, schedulerN
 }
 
 func (r *redisOperationFlow) ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) (operationsIDs []string, err error) {
-	var operationsIDsFromAux []string
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
-		operationsIDs, err = r.client.LRange(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), 0, -1).Result()
-		return err
-	})
+	operationsIDs, err = r.listPendingOperationsFromQueue(ctx, schedulerName, r.buildSchedulerPendingOperationsKey(schedulerName))
+
 	if err != nil {
-		return nil, errors.NewErrUnexpected("failed to list pending operations for \"%s\"", schedulerName).WithError(err)
+		return nil, errors.NewErrUnexpected("failed to list pending operations for \"%s\" from main queue", schedulerName).WithError(err)
 	}
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
-		operationsIDsFromAux, err = r.client.LRange(ctx, r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0, -1).Result()
-		return err
-	})
+
+	operationsIDsFromAux, err := r.listPendingOperationsFromQueue(ctx, schedulerName, r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName))
+
 	if err != nil && err != redis.Nil {
 		return nil, errors.NewErrUnexpected("failed to list pending operations for \"%s\"", schedulerName).WithError(err)
 	}
 
-	return append(operationsIDs, operationsIDsFromAux...), nil
+	return append(operationsIDsFromAux, operationsIDs...), nil
 }
 
 func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Context, request ports.OperationCancellationRequest) (err error) {
@@ -212,4 +208,13 @@ func (r *redisOperationFlow) waitAndFetchNextOpIDFromMainQueue(ctx context.Conte
 		return err
 	})
 	return opID, err
+}
+
+func (r *redisOperationFlow) listPendingOperationsFromQueue(ctx context.Context, schedulerName string, queueKey string) (operationsIDs []string, err error) {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+		operationsIDs, err = r.client.LRange(ctx, queueKey, 0, -1).Result()
+		return err
+	})
+	return operationsIDs, err
+
 }
