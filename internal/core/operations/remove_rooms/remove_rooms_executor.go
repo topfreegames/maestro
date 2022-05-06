@@ -109,7 +109,6 @@ func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerNam
 		}
 
 		rooms = append(rooms, gameRoom)
-
 	}
 
 	err := e.deleteRooms(ctx, rooms)
