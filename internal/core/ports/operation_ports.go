@@ -73,8 +73,8 @@ type OperationFlow interface {
 	InsertOperationID(ctx context.Context, schedulerName, operationID string) error
 	// NextOperationID fetches the next scheduler operation to be processed and return its ID.
 	NextOperationID(ctx context.Context, schedulerName string) (string, error)
-	// RemoveOperation removes the given operation from the operation flow.
-	RemoveOperation(ctx context.Context, schedulerName, operationID string) error
+	// RemoveNextOperation removes the next operation from the operation flow.
+	RemoveNextOperation(ctx context.Context, schedulerName string) error
 	// ListSchedulerPendingOperationIDs list scheduler pending operation IDs.
 	ListSchedulerPendingOperationIDs(ctx context.Context, schedulerName string) ([]string, error)
 	// EnqueueOperationCancellationRequest enqueue a operation cancellation request

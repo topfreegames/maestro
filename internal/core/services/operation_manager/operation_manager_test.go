@@ -336,7 +336,7 @@ func TestPendingOperationsChan(t *testing.T) {
 			mockPreparation{
 				mockSetup: func(opFlow *mockports.MockOperationFlow, opStorage *mockports.MockOperationStorage) {
 					opFlow.EXPECT().NextOperationID(gomock.Any(), "test-scheduler").Return("some-op-id", nil).MinTimes(2)
-					opFlow.EXPECT().RemoveOperation(gomock.Any(), "test-scheduler", "some-op-id").MaxTimes(2)
+					opFlow.EXPECT().RemoveNextOperation(gomock.Any(), "test-scheduler").MaxTimes(2)
 				},
 			},
 			args{
@@ -367,7 +367,7 @@ func TestPendingOperationsChan(t *testing.T) {
 			mockPreparation{
 				mockSetup: func(opFlow *mockports.MockOperationFlow, opStorage *mockports.MockOperationStorage) {
 					opFlow.EXPECT().NextOperationID(gomock.Any(), "test-scheduler").Return("some-op-id", nil).MinTimes(2)
-					opFlow.EXPECT().RemoveOperation(gomock.Any(), "test-scheduler", "some-op-id").Return(errors.New("some error")).MinTimes(1)
+					opFlow.EXPECT().RemoveNextOperation(gomock.Any(), "test-scheduler").Return(errors.New("some error")).MinTimes(1)
 				},
 			},
 			args{

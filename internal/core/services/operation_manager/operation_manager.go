@@ -129,7 +129,7 @@ func (om *OperationManager) PendingOperationsChan(ctx context.Context, scheduler
 			}
 			opsChan <- operationID
 
-			err = om.Flow.RemoveOperation(ctx, schedulerName, operationID)
+			err = om.Flow.RemoveNextOperation(ctx, schedulerName)
 			if err != nil {
 				om.Logger.Error(fmt.Sprintf("failed to remove operation from flow: %s", err), zap.String(logs.LogFieldOperationID, operationID), zap.String(logs.LogFieldSchedulerName, schedulerName))
 			}

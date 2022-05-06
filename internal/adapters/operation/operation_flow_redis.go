@@ -80,14 +80,8 @@ func (r *redisOperationFlow) InsertPriorityOperationID(ctx context.Context, sche
 
 // NextOperationID fetches the next scheduler operation ID from the
 // pending_operations list.
-func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName string) (opId string, err error) {
-	var opID string
-
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
-		opID, err = r.client.LIndex(ctx, r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
-
-		return err
-	})
+func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName string) (opID string, err error) {
+	opID, err = r.fetchNextOpIDFromAuxiliaryQueue(ctx, schedulerName)
 
 	if err == nil {
 		return opID, nil
@@ -97,11 +91,7 @@ func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName 
 		return "", errors.NewErrUnexpected("failed to fetch next operation ID from auxiliary queue").WithError(err)
 	}
 
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
-		opID, err = r.client.BLMove(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), "LEFT", "RIGHT", 0).Result()
-
-		return err
-	})
+	opID, err = r.waitAndFetchNextOpIDFromMainQueue(ctx, schedulerName)
 
 	if err != nil {
 		return "", errors.NewErrUnexpected("failed to fetch next operation ID from main queue").WithError(err)
@@ -110,8 +100,8 @@ func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName 
 	return opID, nil
 }
 
-// RemoveOperation removes the given operation from the operation flow.
-func (r *redisOperationFlow) RemoveOperation(ctx context.Context, schedulerName, operationID string) (err error) {
+// RemoveNextOperation removes the next operation from the operation flow.
+func (r *redisOperationFlow) RemoveNextOperation(ctx context.Context, schedulerName string) (err error) {
 	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
 		_, err = r.client.LPop(ctx, r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName)).Result()
 
@@ -204,4 +194,22 @@ func (r *redisOperationFlow) buildSchedulerPendingOperationsKey(schedulerName st
 
 func (r *redisOperationFlow) buildSchedulerAuxiliaryPendingOperationsKey(schedulerName string) string {
 	return fmt.Sprintf("pending_operations:%s:auxiliary", schedulerName)
+}
+
+func (r *redisOperationFlow) fetchNextOpIDFromAuxiliaryQueue(ctx context.Context, schedulerName string) (opID string, err error) {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+		opID, err = r.client.LIndex(ctx, r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
+
+		return err
+	})
+	return opID, err
+}
+
+func (r *redisOperationFlow) waitAndFetchNextOpIDFromMainQueue(ctx context.Context, schedulerName string) (opID string, err error) {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+		opID, err = r.client.BLMove(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), "LEFT", "RIGHT", 0).Result()
+
+		return err
+	})
+	return opID, err
 }
