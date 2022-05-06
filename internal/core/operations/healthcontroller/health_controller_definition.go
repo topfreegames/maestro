@@ -20,4 +20,44 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package healthcontroller_test
+package healthcontroller
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"go.uber.org/zap"
+)
+
+const OperationName = "newschedulerversion"
+
+type SchedulerHealthControllerDefinition struct{}
+
+func (def *SchedulerHealthControllerDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+	return true
+}
+
+func (def *SchedulerHealthControllerDefinition) Name() string {
+	return OperationName
+}
+
+func (def *SchedulerHealthControllerDefinition) Marshal() []byte {
+	bytes, err := json.Marshal(def)
+	if err != nil {
+		zap.L().With(zap.Error(err)).Error("error marshalling update scheduler operation definition")
+		return nil
+	}
+
+	return bytes
+}
+
+func (def *SchedulerHealthControllerDefinition) Unmarshal(raw []byte) error {
+	err := json.Unmarshal(raw, def)
+	if err != nil {
+		return fmt.Errorf("error marshalling update scheduler operation definition: %w", err)
+	}
+
+	return nil
+}
