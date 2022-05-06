@@ -31,7 +31,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const OperationName = "newschedulerversion"
+const OperationName = "health_controller"
 
 type SchedulerHealthControllerDefinition struct{}
 

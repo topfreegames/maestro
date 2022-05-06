@@ -73,11 +73,8 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 	nonexistentGameRoomIDs := ex.checkNonexistentGameRoomsIDs(gameRoomIDs, instances)
 	if len(nonexistentGameRoomIDs) > 0 {
 		logger.Error("found registered rooms that no longer exists")
-		err = ex.ensureCorrectRoomsOnStorage(ctx, op, logger, nonexistentGameRoomIDs)
-		if err != nil {
-			logger.Error("cannot ensure correct rooms on storage", zap.Error(err))
-			return operations.NewErrUnexpected(err)
-		}
+		ex.tryEnsureCorrectRoomsOnStorage(ctx, op, logger, nonexistentGameRoomIDs)
+
 	}
 
 	if len(instances) != scheduler.RoomsReplicas {
@@ -135,15 +132,16 @@ func (ex *SchedulerHealthControllerExecutor) checkNonexistentGameRoomsIDs(gameRo
 	return nonexistentGameRoomsIDs
 }
 
-func (ex *SchedulerHealthControllerExecutor) ensureCorrectRoomsOnStorage(ctx context.Context, op *operation.Operation, logger *zap.Logger, nonexistentGameRoomIDs []string) error {
+func (ex *SchedulerHealthControllerExecutor) tryEnsureCorrectRoomsOnStorage(ctx context.Context, op *operation.Operation, logger *zap.Logger, nonexistentGameRoomIDs []string) {
 	for _, gameRoomID := range nonexistentGameRoomIDs {
 		err := ex.roomStorage.DeleteRoom(ctx, op.SchedulerName, gameRoomID)
 		if err != nil {
-			return err
+			msg := fmt.Sprintf("could not delete nonexistent room %s from storage", gameRoomID)
+			logger.Warn(msg, zap.Error(err))
+			continue
 		}
 		logger.Sugar().Infof("remove nonexistent room on storage: %s", gameRoomID)
 	}
-	return nil
 }
 
 func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, logger *zap.Logger, actualAmount, desiredAmount int) error {
