@@ -313,9 +313,9 @@ func TestListSchedulerPendingOperationIDs(t *testing.T) {
 			},
 			environmentSetup{
 				prepareDatabase: func(schedulerName string, client *redis.Client) {
-					err := client.RPush(context.Background(), fmt.Sprintf("pending_operations:%s", schedulerName), "some-op-id1").Err()
+					err := client.RPush(context.Background(), fmt.Sprintf("pending_operations:%s", schedulerName), "some-op-id2").Err()
 					require.NoError(t, err)
-					err = client.RPush(context.Background(), fmt.Sprintf("pending_operations:%s:auxiliary", schedulerName), "some-op-id2").Err()
+					err = client.RPush(context.Background(), fmt.Sprintf("pending_operations:%s:auxiliary", schedulerName), "some-op-id1").Err()
 					require.NoError(t, err)
 				},
 				forceClientError: false,
@@ -333,7 +333,7 @@ func TestListSchedulerPendingOperationIDs(t *testing.T) {
 				forceClientError: true,
 			},
 			[]string{"some-op-id1", "some-op-id2"},
-			errors.NewErrUnexpected("failed to list pending operations for \"test-scheduler\": redis: client is closed"),
+			errors.NewErrUnexpected("failed to list pending operations for \"test-scheduler\" from main queue: redis: client is closed"),
 		},
 	}
 	for _, tt := range tests {
@@ -347,12 +347,9 @@ func TestListSchedulerPendingOperationIDs(t *testing.T) {
 			tt.environmentSetup.prepareDatabase(schedulerName, client)
 
 			if tt.environmentSetup.forceClientError {
-				go func() {
-					_, err := flow.ListSchedulerPendingOperationIDs(ctx, schedulerName)
-					assert.EqualError(t, err, tt.wantErr.Error())
-				}()
-
 				client.Close()
+				_, err := flow.ListSchedulerPendingOperationIDs(ctx, schedulerName)
+				assert.EqualError(t, err, tt.wantErr.Error())
 			} else {
 				gotOperationsIDs, err := flow.ListSchedulerPendingOperationIDs(ctx, schedulerName)
 				if tt.wantErr != nil {
