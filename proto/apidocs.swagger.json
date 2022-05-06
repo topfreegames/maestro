@@ -1575,7 +1575,7 @@
         "roomsReplicas": {
           "type": "integer",
           "format": "int32",
-          "title": "Rooms Replicas is the desired number that a Scheduler should have rooms"
+          "description": "Rooms Replicas is the desired number that a Scheduler maintains."
         }
       },
       "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unnecessary for the list function"
