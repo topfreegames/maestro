@@ -322,5 +322,5 @@ func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *enti
 	if err != nil {
 		return nil, fmt.Errorf("failing in couting game rooms in %s state: %s", game_room.GameStatusTerminating, err)
 	}
-	return entities.NewSchedulerInfo(scheduler.Name, scheduler.Game, scheduler.State, ready, occupied, pending, terminating), nil
+	return entities.NewSchedulerInfo(scheduler.Name, scheduler.Game, scheduler.State, scheduler.RoomsReplicas, ready, occupied, pending, terminating), nil
 }

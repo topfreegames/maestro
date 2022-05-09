@@ -1488,35 +1488,40 @@
       "properties": {
         "name": {
           "type": "string",
-          "title": "Name"
+          "description": "Scheduler name."
         },
         "game": {
           "type": "string",
-          "title": "Game"
+          "description": "Scheduler game."
         },
         "state": {
           "type": "string",
-          "title": "State"
+          "title": "Scheduler state"
+        },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Scheduler room replicas."
         },
         "roomsReady": {
           "type": "integer",
           "format": "int32",
-          "title": "Rooms ready"
+          "description": "Number of game rooms in Ready state."
         },
         "roomsOccupied": {
           "type": "integer",
           "format": "int32",
-          "title": "Rooms Occupied"
+          "description": "Number of game rooms in Occupied state."
         },
         "roomsPending": {
           "type": "integer",
           "format": "int32",
-          "title": "Rooms Pending"
+          "description": "Number of game rooms in Pending state."
         },
         "roomsTerminating": {
           "type": "integer",
           "format": "int32",
-          "title": "Rooms Terminating"
+          "description": "Number of game rooms in Terminating state."
         }
       },
       "title": "Scheduler Info"

@@ -26,12 +26,13 @@ type SchedulerInfo struct {
 	Name             string
 	Game             string
 	State            string
+	RoomsReplicas    int
 	RoomsReady       int
 	RoomsOccupied    int
 	RoomsPending     int
 	RoomsTerminating int
 }
 
-func NewSchedulerInfo(name string, game string, state string, roomsReady int, roomsOccupied int, roomsPending int, roomsTerminating int) *SchedulerInfo {
-	return &SchedulerInfo{Name: name, Game: game, State: state, RoomsReady: roomsReady, RoomsOccupied: roomsOccupied, RoomsPending: roomsPending, RoomsTerminating: roomsTerminating}
+func NewSchedulerInfo(name string, game string, state string, roomsReplicas int, roomsReady int, roomsOccupied int, roomsPending int, roomsTerminating int) *SchedulerInfo {
+	return &SchedulerInfo{Name: name, Game: game, State: state, RoomsReplicas: roomsReplicas, RoomsReady: roomsReady, RoomsOccupied: roomsOccupied, RoomsPending: roomsPending, RoomsTerminating: roomsTerminating}
 }
