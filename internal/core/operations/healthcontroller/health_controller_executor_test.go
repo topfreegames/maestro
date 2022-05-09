@@ -44,7 +44,7 @@ import (
 )
 
 func TestSchedulerHealthController_Execute(t *testing.T) {
-	type ExecutionPlan struct {
+	type executionPlan struct {
 		planMocks func(
 			roomStorage *mockports.MockRoomStorage,
 			instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -60,11 +60,11 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 
 	testCases := []struct {
 		title string
-		ExecutionPlan
+		executionPlan
 	}{
 		{
 			title: "nothing to do, no operations enqueued",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -79,7 +79,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "nonexistent game room IDs found, deletes from storage",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -113,7 +113,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "nonexistent game room IDs found but fails on first, keeps trying to delete",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -148,7 +148,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "expired room found, enqueue remove rooms with specified ID",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -196,7 +196,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "expired room found, enqueue remove rooms with specified ID fails, continues operation and enqueue new add rooms",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -246,7 +246,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "have less available rooms than expected, enqueue add rooms",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -269,7 +269,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "enqueue add rooms fails, finish operation",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -291,7 +291,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "have more available rooms than expected, enqueue remove rooms",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -327,7 +327,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "enqueue remove rooms fails, finish operation with error",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -362,7 +362,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "fails loading rooms, stops operation",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -376,7 +376,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "fails loading instances, stops operation",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -391,7 +391,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "fails loading scheduler, stops operation",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -407,7 +407,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "fails on getRoom, consider room ignored and enqueues new add rooms",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -440,7 +440,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		},
 		{
 			title: "room with status error, consider room ignored and enqueues new add rooms",
-			ExecutionPlan: ExecutionPlan{
+			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -492,11 +492,11 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			}
 			executor := healthcontroller.NewExecutor(roomsStorage, instanceStorage, schedulerStorage, operationManager, config)
 
-			testCase.ExecutionPlan.planMocks(roomsStorage, instanceStorage, schedulerStorage, operationManager)
+			testCase.executionPlan.planMocks(roomsStorage, instanceStorage, schedulerStorage, operationManager)
 
 			ctx := context.Background()
 			err := executor.Execute(ctx, genericOperation, genericDefinition)
-			if testCase.ExecutionPlan.shouldFail {
+			if testCase.executionPlan.shouldFail {
 				assert.NotNil(t, err)
 			} else {
 				assert.Nil(t, err)
