@@ -438,6 +438,46 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				},
 			},
 		},
+		{
+			title: "room with status error, consider room ignored and enqueues new add rooms",
+			ExecutionPlan: ExecutionPlan{
+				planMocks: func(
+					roomStorage *mockports.MockRoomStorage,
+					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					schedulerStorage *mockports.MockSchedulerStorage,
+					operationManager *mockports.MockOperationManager,
+				) {
+					gameRoomIDs := []string{"existent-1", "existent-with-error-2"}
+					instances := []*game_room.Instance{{ID: "existent-1"}, {ID: "existent-with-error-2"}}
+					// load
+					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
+					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
+					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericScheduler, nil)
+
+					// Find game room
+					gameRoom := &game_room.GameRoom{
+						ID:          gameRoomIDs[0],
+						SchedulerID: genericScheduler.Name,
+						Status:      game_room.GameStatusReady,
+						LastPingAt:  time.Now(),
+					}
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericScheduler.Name, gameRoomIDs[0]).Return(gameRoom, nil)
+
+					gameRoomError := &game_room.GameRoom{
+						ID:          gameRoomIDs[0],
+						SchedulerID: genericScheduler.Name,
+						Status:      game_room.GameStatusError,
+						LastPingAt:  time.Now(),
+					}
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericScheduler.Name, gameRoomIDs[1]).Return(gameRoomError, nil)
+
+					genericScheduler.RoomsReplicas = 2
+					op := operation.New(genericScheduler.Name, genericDefinition.Name(), nil)
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericScheduler.Name, &add_rooms.AddRoomsDefinition{Amount: 1}).Return(op, nil)
+				},
+			},
+		},
 	}
 
 	for _, testCase := range testCases {

@@ -194,7 +194,11 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 			continue
 		}
 
-		if ex.isRoomExpired(room) || ex.isRoomStatusError(room) {
+		if ex.isRoomStatusError(room) {
+			continue
+		}
+
+		if ex.isRoomExpired(room) {
 			expiredRoomsIDs = append(expiredRoomsIDs, room.ID)
 			continue
 		}
