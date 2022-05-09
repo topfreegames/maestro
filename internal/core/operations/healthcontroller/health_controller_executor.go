@@ -208,6 +208,8 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 			expiredRoomsIDs = append(expiredRoomsIDs, room.ID)
 		case ex.isRoomStatus(room, game_room.GameStatusTerminating):
 			continue
+		case ex.isRoomStatus(room, game_room.GameStatusError):
+			continue
 		default:
 			availableRoomsIDs = append(availableRoomsIDs, gameRoomID)
 		}
