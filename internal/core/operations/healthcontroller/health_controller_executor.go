@@ -42,6 +42,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// SchedulerHealthControllerExecutor holds dependencies to execute SchedulerHealthControllerExecutor.
 type SchedulerHealthControllerExecutor struct {
 	roomStorage       ports.RoomStorage
 	instanceStorage   ports.GameRoomInstanceStorage
@@ -52,6 +53,7 @@ type SchedulerHealthControllerExecutor struct {
 
 var _ operations.Executor = (*SchedulerHealthControllerExecutor)(nil)
 
+// NewExecutor creates a new instance of SchedulerHealthControllerExecutor.
 func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomManagerConfig room_manager.RoomManagerConfig) *SchedulerHealthControllerExecutor {
 	return &SchedulerHealthControllerExecutor{
 		roomStorage:       roomStorage,
@@ -62,6 +64,7 @@ func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomIn
 	}
 }
 
+// Execute run the operation health_controller.
 func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
@@ -81,7 +84,7 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		ex.tryEnsureCorrectRoomsOnStorage(ctx, op, logger, nonexistentGameRoomIDs)
 	}
 
-	existentGameRoomIDs := difference(gameRoomIDs, nonexistentGameRoomIDs)
+	existentGameRoomIDs := filterExistentGameRooms(gameRoomIDs, nonexistentGameRoomIDs)
 
 	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, op, existentGameRoomIDs)
 	if len(expiredRooms) > 0 {
@@ -103,10 +106,12 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 	return nil
 }
 
+// Rollback does not execute anything when a rollback executes.
 func (ex *SchedulerHealthControllerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
 	return nil
 }
 
+// Name return the name of the operation.
 func (ex *SchedulerHealthControllerExecutor) Name() string {
 	return OperationName
 }
@@ -115,19 +120,19 @@ func (ex *SchedulerHealthControllerExecutor) loadActualState(ctx context.Context
 	gameRoomIDs, err = ex.roomStorage.GetAllRoomIDs(ctx, op.SchedulerName)
 	if err != nil {
 		logger.Error("error fetching game rooms")
-		return gameRoomIDs, instances, scheduler, err
+		return
 	}
 	instances, err = ex.instanceStorage.GetAllInstances(ctx, op.SchedulerName)
 	if err != nil {
 		logger.Error("error fetching instances")
-		return gameRoomIDs, instances, scheduler, err
+		return
 	}
 
 	scheduler, err = ex.schedulerStorage.GetScheduler(ctx, op.SchedulerName)
 	if err != nil {
-		return gameRoomIDs, instances, scheduler, err
+		return
 	}
-	return gameRoomIDs, instances, scheduler, err
+	return
 }
 
 func (ex *SchedulerHealthControllerExecutor) checkNonexistentGameRoomsIDs(gameRoomIDs []string, gameRoomInstances []*game_room.Instance) []string {
@@ -194,16 +199,16 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 			continue
 		}
 
-		if ex.isRoomStatusError(room) {
-			continue
-		}
-
-		if ex.isRoomExpired(room) {
+		switch {
+		case ex.isRoomStatus(room, game_room.GameStatusPending):
+			availableRoomsIDs = append(availableRoomsIDs, gameRoomID)
+		case ex.isRoomStatus(room, game_room.GameStatusUnready):
+			availableRoomsIDs = append(availableRoomsIDs, gameRoomID)
+		case ex.isRoomExpired(room):
 			expiredRoomsIDs = append(expiredRoomsIDs, room.ID)
+		case ex.isRoomStatus(room, game_room.GameStatusTerminating):
 			continue
-		}
-
-		if room.Status != game_room.GameStatusTerminating {
+		default:
 			availableRoomsIDs = append(availableRoomsIDs, gameRoomID)
 		}
 	}
@@ -216,8 +221,8 @@ func (ex *SchedulerHealthControllerExecutor) isRoomExpired(room *game_room.GameR
 	return timeDurationWithoutPing > ex.roomManagerConfig.RoomPingTimeout
 }
 
-func (ex *SchedulerHealthControllerExecutor) isRoomStatusError(room *game_room.GameRoom) bool {
-	return room.Status == game_room.GameStatusError
+func (ex *SchedulerHealthControllerExecutor) isRoomStatus(room *game_room.GameRoom, status game_room.GameRoomStatus) bool {
+	return room.Status == status
 }
 
 func (ex *SchedulerHealthControllerExecutor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, expiredRoomsIDs []string) error {
@@ -235,7 +240,7 @@ func (ex *SchedulerHealthControllerExecutor) enqueueRemoveExpiredRooms(ctx conte
 	return nil
 }
 
-func difference(a, b []string) []string {
+func filterExistentGameRooms(a, b []string) []string {
 	mb := make(map[string]struct{}, len(b))
 	for _, x := range b {
 		mb[x] = struct{}{}
