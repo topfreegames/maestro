@@ -28,8 +28,12 @@ package operation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
@@ -269,4 +273,167 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 			return false
 		}, 5*time.Second, 100*time.Millisecond)
 	})
+}
+
+func TestListSchedulerPendingOperationIDs(t *testing.T) {
+	type args struct {
+		schedulerName string
+	}
+	type environmentSetup struct {
+		prepareDatabase  func(schedulerName string, client *redis.Client)
+		forceClientError bool
+	}
+	tests := []struct {
+		name              string
+		args              args
+		environmentSetup  environmentSetup
+		wantOperationsIDs []string
+		wantErr           error
+	}{
+		{"return no error and the list of pending operations from main queue",
+			args{
+				schedulerName: "test-scheduler",
+			},
+			environmentSetup{
+				prepareDatabase: func(schedulerName string, client *redis.Client) {
+					err := client.RPush(context.Background(), fmt.Sprintf("pending_operations:%s", schedulerName), "some-op-id").Err()
+					require.NoError(t, err)
+				},
+				forceClientError: false,
+			},
+			[]string{"some-op-id"},
+			nil,
+		},
+		{"return no error and the list of pending operations from aux queue",
+			args{
+				schedulerName: "test-scheduler",
+			},
+			environmentSetup{
+				prepareDatabase: func(schedulerName string, client *redis.Client) {
+					err := client.RPush(context.Background(), fmt.Sprintf("pending_operations:%s", schedulerName), "some-op-id2").Err()
+					require.NoError(t, err)
+					err = client.RPush(context.Background(), fmt.Sprintf("pending_operations:%s:auxiliary", schedulerName), "some-op-id1").Err()
+					require.NoError(t, err)
+				},
+				forceClientError: false,
+			},
+			[]string{"some-op-id1", "some-op-id2"},
+			nil,
+		},
+		{"return error when some error occurs with redis client",
+			args{
+				schedulerName: "test-scheduler",
+			},
+			environmentSetup{
+				prepareDatabase:  func(schedulerName string, client *redis.Client) {},
+				forceClientError: true,
+			},
+			[]string{"some-op-id1", "some-op-id2"},
+			errors.NewErrUnexpected("failed to list pending operations for \"test-scheduler\" from main queue: redis: client is closed"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			flow := NewRedisOperationFlow(client)
+
+			ctx := context.Background()
+			schedulerName := tt.args.schedulerName
+
+			tt.environmentSetup.prepareDatabase(schedulerName, client)
+
+			if tt.environmentSetup.forceClientError {
+				client.Close()
+				_, err := flow.ListSchedulerPendingOperationIDs(ctx, schedulerName)
+				assert.EqualError(t, err, tt.wantErr.Error())
+			} else {
+				gotOperationsIDs, err := flow.ListSchedulerPendingOperationIDs(ctx, schedulerName)
+				if tt.wantErr != nil {
+					assert.EqualError(t, err, tt.wantErr.Error())
+				}
+				assert.Equal(t, tt.wantOperationsIDs, gotOperationsIDs)
+			}
+		})
+	}
+}
+
+func TestRemoveNextOperation(t *testing.T) {
+	type args struct {
+		schedulerName string
+	}
+	type environmentSetup struct {
+		numberOfOps      int
+		forceClientError bool
+	}
+	tests := []struct {
+		name             string
+		args             args
+		environmentSetup environmentSetup
+		errorExpected    error
+	}{
+		{
+			name: "return no error and pops the operation from the auxiliary operations queue if there is some",
+			args: args{
+				schedulerName: "test-scheduler",
+			},
+			environmentSetup: environmentSetup{numberOfOps: 1, forceClientError: false},
+			errorExpected:    nil,
+		},
+
+		{
+			name: "return error if the auxiliary operations queue is empty",
+			args: args{
+				schedulerName: "test-scheduler",
+			},
+			environmentSetup: environmentSetup{numberOfOps: 0, forceClientError: false},
+			errorExpected:    errors.NewErrUnexpected("auxiliary pending operations queue is empty: redis: nil"),
+		},
+
+		{
+			name: "return error when some error occurs with redis client",
+			args: args{
+				schedulerName: "test-scheduler",
+			},
+			environmentSetup: environmentSetup{numberOfOps: 0, forceClientError: true},
+			errorExpected:    errors.NewErrUnexpected("failed to remove next operation for \"test-scheduler\": redis: client is closed"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+
+			flow := &redisOperationFlow{
+				client: client,
+			}
+
+			ctx := context.Background()
+			schedulerName := tt.args.schedulerName
+			expectedOperationID := "some-op-id"
+
+			for i := 0; i < tt.environmentSetup.numberOfOps; i++ {
+				err := client.RPush(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), expectedOperationID).Err()
+				require.NoError(t, err)
+			}
+
+			if tt.environmentSetup.forceClientError {
+				go func() {
+					err := flow.RemoveNextOperation(ctx, tt.args.schedulerName)
+					assert.Error(t, err)
+				}()
+
+				client.Close()
+			} else {
+				err := flow.RemoveNextOperation(ctx, tt.args.schedulerName)
+				if tt.errorExpected != nil {
+					assert.EqualError(t, err, tt.errorExpected.Error())
+				} else {
+					assert.NoError(t, err)
+
+					opIdBufferedQueue, err := client.LIndex(context.Background(), flow.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
+					require.EqualError(t, err, "redis: nil")
+					require.Equal(t, "", opIdBufferedQueue)
+				}
+			}
+		})
+	}
 }

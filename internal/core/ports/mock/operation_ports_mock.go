@@ -346,6 +346,20 @@ func (mr *MockOperationFlowMockRecorder) NextOperationID(ctx, schedulerName inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextOperationID", reflect.TypeOf((*MockOperationFlow)(nil).NextOperationID), ctx, schedulerName)
 }
 
+// RemoveNextOperation mocks base method.
+func (m *MockOperationFlow) RemoveNextOperation(ctx context.Context, schedulerName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveNextOperation", ctx, schedulerName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveNextOperation indicates an expected call of RemoveNextOperation.
+func (mr *MockOperationFlowMockRecorder) RemoveNextOperation(ctx, schedulerName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveNextOperation", reflect.TypeOf((*MockOperationFlow)(nil).RemoveNextOperation), ctx, schedulerName)
+}
+
 // WatchOperationCancellationRequests mocks base method.
 func (m *MockOperationFlow) WatchOperationCancellationRequests(ctx context.Context) chan ports.OperationCancellationRequest {
 	m.ctrl.T.Helper()
