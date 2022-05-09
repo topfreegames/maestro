@@ -372,7 +372,7 @@ func TestRemoveNextOperation(t *testing.T) {
 		errorExpected    error
 	}{
 		{
-			name: "return no error and pops the operation from de auxiliary operations queue if there is some",
+			name: "return no error and pops the operation from the auxiliary operations queue if there is some",
 			args: args{
 				schedulerName: "test-scheduler",
 			},
