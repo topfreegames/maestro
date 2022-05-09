@@ -25,8 +25,9 @@ package healthcontroller
 import (
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -80,7 +81,9 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		ex.tryEnsureCorrectRoomsOnStorage(ctx, op, logger, nonexistentGameRoomIDs)
 	}
 
-	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, op, gameRoomIDs)
+	existentGameRoomIDs := difference(gameRoomIDs, nonexistentGameRoomIDs)
+
+	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, op, existentGameRoomIDs)
 	if len(expiredRooms) > 0 {
 		logger.Sugar().Infof("found %v expired rooms to be deleted", len(expiredRooms))
 		err = ex.enqueueRemoveExpiredRooms(ctx, op, logger, expiredRooms)
@@ -186,7 +189,10 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 
 func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx context.Context, op *operation.Operation, gameRoomsIDs []string) (availableRoomsIDs, expiredRoomsIDs []string) {
 	for _, gameRoomID := range gameRoomsIDs {
-		room, _ := ex.roomStorage.GetRoom(ctx, op.SchedulerName, gameRoomID)
+		room, err := ex.roomStorage.GetRoom(ctx, op.SchedulerName, gameRoomID)
+		if err != nil {
+			continue
+		}
 
 		if ex.isRoomExpired(room) || ex.isRoomStatusError(room) {
 			expiredRoomsIDs = append(expiredRoomsIDs, room.ID)
@@ -202,7 +208,7 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 }
 
 func (ex *SchedulerHealthControllerExecutor) isRoomExpired(room *game_room.GameRoom) bool {
-	timeDurationWithoutPing := time.Now().Sub(room.LastPingAt)
+	timeDurationWithoutPing := time.Since(room.LastPingAt)
 	return timeDurationWithoutPing > ex.roomManagerConfig.RoomPingTimeout
 }
 
@@ -223,4 +229,18 @@ func (ex *SchedulerHealthControllerExecutor) enqueueRemoveExpiredRooms(ctx conte
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
 
 	return nil
+}
+
+func difference(a, b []string) []string {
+	mb := make(map[string]struct{}, len(b))
+	for _, x := range b {
+		mb[x] = struct{}{}
+	}
+	var diff []string
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
 }
