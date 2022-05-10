@@ -28,7 +28,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/logs"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	workererrors "github.com/topfreegames/maestro/internal/core/workers/errors"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -42,10 +44,13 @@ import (
 
 var _ workers.Worker = (*OperationExecutionWorker)(nil)
 
+const healthControllerExecutionIntervalConfigPath = "workers.operationExecution.healthControllerInterval"
+
 // OperationExecutionWorker is the service responsible for implementing the worker
 // responsibilities.
 type OperationExecutionWorker struct {
 	scheduler        *entities.Scheduler
+	config           config.Config
 	operationManager ports.OperationManager
 	// TODO(gabrielcorado): check if we this is the right place to have all
 	// executors.
@@ -58,6 +63,7 @@ type OperationExecutionWorker struct {
 
 func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
 	return &OperationExecutionWorker{
+		config:           opts.Config,
 		operationManager: opts.OperationManager,
 		executorsByName:  opts.OperationExecutors,
 		scheduler:        scheduler,
@@ -74,6 +80,8 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
 	pendingOpsChan := w.operationManager.PendingOperationsChan(w.workerContext, w.scheduler.Name)
 
+	healthControllerTicker := time.NewTicker(w.config.GetDuration(healthControllerExecutionIntervalConfigPath))
+
 	for {
 		select {
 		case <-w.workerContext.Done():
@@ -87,6 +95,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			err := w.executeOperationFlow(opID)
 			if err != nil && shouldFinishWorker(err) {
 				return err
+			}
+		case <-healthControllerTicker.C:
+			err := w.createHealthControllerOperation(w.workerContext)
+			if err != nil {
+				w.logger.Error("Error enqueueing new health_controller operation", zap.Error(err))
 			}
 		}
 	}
@@ -242,6 +255,15 @@ func (w *OperationExecutionWorker) shouldEvictOperation(op *operation.Operation,
 		return true
 	}
 	return false
+}
+
+func (w *OperationExecutionWorker) createHealthControllerOperation(ctx context.Context) error {
+	_, err := w.operationManager.CreateOperation(ctx, w.scheduler.Name, &healthcontroller.SchedulerHealthControllerDefinition{})
+	if err != nil {
+		return fmt.Errorf("not able to schedule the 'health_controller' operation: %w", err)
+	}
+
+	return nil
 }
 
 func (w *OperationExecutionWorker) Stop(_ context.Context) {
