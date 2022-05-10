@@ -669,7 +669,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, schedulersInfo)
-
+		require.Equal(t, 2, schedulersInfo[0].RoomsReplicas)
 		require.Equal(t, 5, schedulersInfo[0].RoomsReady)
 		require.Equal(t, 10, schedulersInfo[0].RoomsPending)
 		require.Equal(t, 15, schedulersInfo[0].RoomsOccupied)
@@ -1030,6 +1030,7 @@ func newValidScheduler() *entities.Scheduler {
 		State:           entities.StateCreating,
 		MaxSurge:        "10%",
 		RollbackVersion: "v1.0.0",
+		RoomsReplicas:   2,
 		Spec: game_room.Spec{
 			Version:                "v1.1.0",
 			TerminationGracePeriod: 60,

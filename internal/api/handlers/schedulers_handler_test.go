@@ -1299,7 +1299,7 @@ func newValidScheduler() *entities.Scheduler {
 		Game:            "game",
 		State:           entities.StateCreating,
 		MaxSurge:        "10%",
-		RoomsReplicas:   0,
+		RoomsReplicas:   30,
 		RollbackVersion: "",
 		Spec: game_room.Spec{
 			Version:                "v1",

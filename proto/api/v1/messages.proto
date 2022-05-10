@@ -266,18 +266,20 @@ message ForwarderOptions {
 
 // Scheduler Info
 message SchedulerInfo {
-  // Name
+  // Scheduler name.
   string name = 1;
-  // Game
+  // Scheduler game.
   string game = 2;
-  // State
+  // Scheduler state
   string state = 3;
-  // Rooms ready
-  int32 rooms_ready = 4;
-  // Rooms Occupied
-  int32 rooms_occupied = 5;
-  // Rooms Pending
-  int32 rooms_pending = 6;
-  // Rooms Terminating
-  int32 rooms_terminating = 7;
+  // Scheduler room replicas.
+  int32 rooms_replicas = 4;
+  // Number of game rooms in Ready state.
+  int32 rooms_ready = 5;
+  // Number of game rooms in Occupied state.
+  int32 rooms_occupied = 6;
+  // Number of game rooms in Pending state.
+  int32 rooms_pending = 7;
+  // Number of game rooms in Terminating state.
+  int32 rooms_terminating = 8;
 }

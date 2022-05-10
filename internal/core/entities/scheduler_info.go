@@ -26,12 +26,64 @@ type SchedulerInfo struct {
 	Name             string
 	Game             string
 	State            string
+	RoomsReplicas    int
 	RoomsReady       int
 	RoomsOccupied    int
 	RoomsPending     int
 	RoomsTerminating int
 }
 
-func NewSchedulerInfo(name string, game string, state string, roomsReady int, roomsOccupied int, roomsPending int, roomsTerminating int) *SchedulerInfo {
-	return &SchedulerInfo{Name: name, Game: game, State: state, RoomsReady: roomsReady, RoomsOccupied: roomsOccupied, RoomsPending: roomsPending, RoomsTerminating: roomsTerminating}
+func NewSchedulerInfo(opts ...SchedulerInfoOption) (schedulerInfo *SchedulerInfo) {
+	schedulerInfo = &SchedulerInfo{}
+	for _, opt := range opts {
+		opt(schedulerInfo)
+	}
+
+	return
+}
+
+type SchedulerInfoOption func(*SchedulerInfo)
+
+func WithName(name string) SchedulerInfoOption {
+	return func(schedulerInfo *SchedulerInfo) {
+		schedulerInfo.Name = name
+	}
+}
+func WithGame(game string) SchedulerInfoOption {
+	return func(schedulerInfo *SchedulerInfo) {
+		schedulerInfo.Game = game
+	}
+}
+
+func WithState(state string) SchedulerInfoOption {
+	return func(schedulerInfo *SchedulerInfo) {
+		schedulerInfo.State = state
+	}
+}
+
+func WithRoomsReplicas(roomsReplicas int) SchedulerInfoOption {
+	return func(schedulerInfo *SchedulerInfo) {
+		schedulerInfo.RoomsReplicas = roomsReplicas
+	}
+}
+
+func WithRoomsReady(roomsReady int) SchedulerInfoOption {
+	return func(schedulerInfo *SchedulerInfo) {
+		schedulerInfo.RoomsReady = roomsReady
+	}
+}
+func WithRoomsOccupied(roomsOccupied int) SchedulerInfoOption {
+	return func(schedulerInfo *SchedulerInfo) {
+		schedulerInfo.RoomsOccupied = roomsOccupied
+	}
+}
+func WithRoomsPending(roomsPending int) SchedulerInfoOption {
+	return func(schedulerInfo *SchedulerInfo) {
+		schedulerInfo.RoomsPending = roomsPending
+	}
+}
+func WithRoomsTerminating(roomsTerminating int) SchedulerInfoOption {
+	return func(schedulerInfo *SchedulerInfo) {
+		schedulerInfo.RoomsTerminating = roomsTerminating
+	}
 }

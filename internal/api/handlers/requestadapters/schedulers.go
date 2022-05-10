@@ -145,6 +145,7 @@ func FromEntitySchedulerInfoToListResponse(entity *entities.SchedulerInfo) *api.
 		Name:             entity.Name,
 		Game:             entity.Game,
 		State:            entity.State,
+		RoomsReplicas:    int32(entity.RoomsReplicas),
 		RoomsReady:       int32(entity.RoomsReady),
 		RoomsOccupied:    int32(entity.RoomsOccupied),
 		RoomsPending:     int32(entity.RoomsPending),

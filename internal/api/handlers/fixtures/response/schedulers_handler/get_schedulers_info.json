@@ -3,6 +3,7 @@
     "name": "scheduler-name-1",
     "game": "game",
     "state": "creating",
+    "roomsReplicas": 30,
     "roomsReady": 5,
     "roomsOccupied": 15,
     "roomsPending": 10,
