@@ -26,11 +26,13 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 )
 
@@ -56,6 +58,9 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 	definitionConstructors[switch_active_version.OperationName] = func() operations.Definition {
 		return &switch_active_version.SwitchActiveVersionDefinition{}
 	}
+	definitionConstructors[healthcontroller.OperationName] = func() operations.Definition {
+		return &healthcontroller.SchedulerHealthControllerDefinition{}
+	}
 
 	return definitionConstructors
 
@@ -68,6 +73,9 @@ func ProvideExecutors(
 	roomManager ports.RoomManager,
 	roomStorage ports.RoomStorage,
 	schedulerManager *scheduler_manager.SchedulerManager,
+	instanceStorage ports.GameRoomInstanceStorage,
+	operationManager ports.OperationManager,
+	roomManagerConfig room_manager.RoomManagerConfig,
 ) map[string]operations.Executor {
 
 	executors := map[string]operations.Executor{}
@@ -77,6 +85,7 @@ func ProvideExecutors(
 	executors[test_operation.OperationName] = test_operation.NewExecutor()
 	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager)
 	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager)
+	executors[healthcontroller.OperationName] = healthcontroller.NewExecutor(roomStorage, instanceStorage, schedulerStorage, operationManager, roomManagerConfig)
 
 	return executors
 
