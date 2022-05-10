@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -73,11 +74,30 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
 	pendingOpsChan := w.operationManager.PendingOperationsChan(w.workerContext, w.scheduler.Name)
+	ticker := time.NewTicker(10 * time.Second)
 
 	for {
 		select {
 		case <-w.workerContext.Done():
 			return nil
+		case <-ticker.C:
+			w.logger.Info("Triggering healthcontroller operation")
+
+			pendingOps, err := w.operationManager.ListSchedulerPendingOperations(w.workerContext, w.scheduler.Name)
+			if err != nil {
+				w.logger.Error("Failed to list pending operations", zap.Error(err))
+			}
+
+			if len(pendingOps) == 0 {
+				w.logger.Info("No pending operations, eneuqueing healthcontroller operation")
+				def := &healthcontroller.SchedulerHealthControllerDefinition{}
+
+				_, err1 := w.operationManager.CreateOperation(w.workerContext, w.scheduler.Name, def)
+				if err1 != nil {
+					w.logger.Error("Failed to create healthcontroller operation", zap.Error(err1))
+				}
+			}
+
 		case opID, ok := <-pendingOpsChan:
 			if !ok {
 				reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelNextOperationFailed)
