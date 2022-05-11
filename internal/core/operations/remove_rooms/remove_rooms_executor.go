@@ -27,8 +27,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/core/entities/events"
-
 	"sync"
 
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
@@ -43,19 +41,17 @@ import (
 )
 
 type RemoveRoomsExecutor struct {
-	roomManager   ports.RoomManager
-	roomStorage   ports.RoomStorage
-	eventsService ports.EventsService
+	roomManager ports.RoomManager
+	roomStorage ports.RoomStorage
 }
 
 var _ operations.Executor = (*RemoveRoomsExecutor)(nil)
 
 // NewExecutor creates a new RemoveRoomExecutor
-func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, eventsService ports.EventsService) *RemoveRoomsExecutor {
+func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage) *RemoveRoomsExecutor {
 	return &RemoveRoomsExecutor{
 		roomManager,
 		roomStorage,
-		eventsService,
 	}
 }
 
@@ -145,7 +141,6 @@ func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, logger *zap.Logge
 		if err != nil {
 			return err
 		}
-		e.forwardStatusTerminatingEvent(ctx, logger, room)
 	}
 
 	return nil
@@ -159,17 +154,4 @@ func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation
 // Name returns the operation name
 func (e *RemoveRoomsExecutor) Name() string {
 	return OperationName
-}
-
-func (e *RemoveRoomsExecutor) forwardStatusTerminatingEvent(ctx context.Context, logger *zap.Logger, room *game_room.GameRoom) {
-	if room.Metadata == nil {
-		room.Metadata = map[string]interface{}{}
-	}
-	room.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Arbitrary)
-	room.Metadata["roomEvent"] = game_room.GameStatusTerminating.String()
-
-	err := e.eventsService.ProduceEvent(ctx, events.NewRoomEvent(room.SchedulerID, room.ID, room.Metadata))
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))
-	}
 }

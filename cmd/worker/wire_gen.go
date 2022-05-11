@@ -77,7 +77,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	}
 	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, eventsService, roomManagerConfig)
 	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
-	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager, roomStorage, schedulerManager, gameRoomInstanceStorage, operationManager, eventsService, roomManagerConfig)
+	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager, roomStorage, schedulerManager, gameRoomInstanceStorage, operationManager, roomManagerConfig)
 	workerOptions := workers.ProvideWorkerOptions(operationManager, v2, roomManager, runtime)
 	workersManager := workers_manager.NewWorkersManager(builder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
