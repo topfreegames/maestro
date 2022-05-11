@@ -32,6 +32,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/golang/mock/gomock"
@@ -45,17 +47,6 @@ import (
 )
 
 func TestEventsForwarderService_ProduceEvent(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
-	eventsForwarder := mockports.NewMockEventsForwarder(mockCtrl)
-	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-	instanceStorage := isMock.NewMockGameRoomInstanceStorage(mockCtrl)
-	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-	config := events_forwarder.EventsForwarderConfig{SchedulerCacheTtl: time.Minute}
-
-	eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, instanceStorage, roomStorage, schedulerCache, config)
-
 	fwd := &forwarder.Forwarder{
 		Name:        "fwd",
 		Enabled:     true,
@@ -101,6 +92,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	}
 
 	t.Run("should succeed when scheduler do not have forwarders configured", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, _, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.PlayerEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -123,13 +116,6 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			Forwarders:      nil,
 		}
 
-		room := &game_room.GameRoom{
-			ID:               event.RoomID,
-			SchedulerID:      event.SchedulerID,
-			IsValidationRoom: false,
-		}
-
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(scheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
@@ -141,6 +127,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should succeed when event is PlayerEvent", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, _, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.PlayerEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -150,13 +138,6 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 				"playerId":  "player",
 			},
 		}
-		room := &game_room.GameRoom{
-			ID:               event.RoomID,
-			SchedulerID:      event.SchedulerID,
-			IsValidationRoom: false,
-		}
-
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
 
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
@@ -170,6 +151,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should succeed when event is RoomEvent", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -185,7 +168,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			IsValidationRoom: false,
 		}
 
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
@@ -207,26 +190,121 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		}
 	})
 
+	t.Run("should succeed when event is RoomEvent and game room status is unreliable", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "roomEvent",
+				"roomEvent": "terminating",
+			},
+		}
+
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(nil, errors.New("room not found"))
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(nil, errors.New("instance not found"))
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.NoError(t, err)
+		require.NotEmpty(t, event.Attributes["ports"])
+
+		portsUnmarshalled := make([]map[string]interface{}, 0)
+		err = json.Unmarshal([]byte(event.Attributes["ports"].(string)), &portsUnmarshalled)
+		require.NoError(t, err)
+
+		for _, _port := range portsUnmarshalled {
+			require.NotNil(t, _port["name"])
+			require.NotNil(t, _port["protocol"])
+			require.NotNil(t, _port["port"])
+		}
+	})
+
+	t.Run("should succeed when event is RoomEvent and ping status is unreliable", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "resync",
+				"pingType":  "terminating",
+			},
+		}
+
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(nil, errors.New("room not found"))
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(nil, errors.New("instance not found"))
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.NoError(t, err)
+		require.NotEmpty(t, event.Attributes["ports"])
+
+		portsUnmarshalled := make([]map[string]interface{}, 0)
+		err = json.Unmarshal([]byte(event.Attributes["ports"].(string)), &portsUnmarshalled)
+		require.NoError(t, err)
+
+		for _, _port := range portsUnmarshalled {
+			require.NotNil(t, _port["name"])
+			require.NotNil(t, _port["protocol"])
+			require.NotNil(t, _port["port"])
+		}
+	})
+
+	t.Run("should succeed but not produce event when room type is validation and room status is unreliable", func(t *testing.T) {
+		eventsForwarderService, config, _, schedulerStorage, roomStorage, _, schedulerCache := testSetup(t)
+
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "roomEvent",
+				"roomEvent": "terminating",
+			},
+		}
+
+		room := &game_room.GameRoom{
+			ID:               event.RoomID,
+			SchedulerID:      event.SchedulerID,
+			IsValidationRoom: true,
+		}
+
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.NoError(t, err)
+	})
+
 	t.Run("should fail when event type is not in eventAttributes", func(t *testing.T) {
+		eventsForwarderService, _, _, _, _, _, _ := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
 			RoomID:      "room",
 			Attributes:  map[string]interface{}{},
 		}
-		room := &game_room.GameRoom{
-			ID:               event.RoomID,
-			SchedulerID:      event.SchedulerID,
-			IsValidationRoom: false,
-		}
-
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
 		require.Error(t, err)
 	})
 
 	t.Run("should fail when event is RoomEvent but address has no ports", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -251,7 +329,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			IsValidationRoom: false,
 		}
 
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(instance, nil)
@@ -263,6 +341,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should fail when event is PlayerEvent but playerId is not found", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, _, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.PlayerEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -272,13 +352,6 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			},
 		}
 
-		room := &game_room.GameRoom{
-			ID:               event.RoomID,
-			SchedulerID:      event.SchedulerID,
-			IsValidationRoom: false,
-		}
-
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
@@ -290,6 +363,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should fail when event is RoomEvent, type is ping but pingType is not found", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -304,7 +379,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			IsValidationRoom: false,
 		}
 
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
@@ -316,6 +391,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should fail when scheduler not found", func(t *testing.T) {
+		eventsForwarderService, _, eventsForwarder, schedulerStorage, _, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -325,17 +402,9 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			},
 		}
 
-		room := &game_room.GameRoom{
-			ID:               event.RoomID,
-			SchedulerID:      event.SchedulerID,
-			IsValidationRoom: false,
-		}
-
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, errors.New("scheduler not found"))
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
 		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -343,6 +412,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should fail when instance needed but not found", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -358,10 +429,11 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			IsValidationRoom: false,
 		}
 
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(nil, errors.New("error"))
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
 		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
@@ -369,6 +441,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should fail when forwardRoomEvent fails", func(t *testing.T) {
+		eventsForwarderService, _, eventsForwarder, _, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -385,7 +459,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			IsValidationRoom: false,
 		}
 
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
 		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), gomock.Any(), gomock.Any()).Return(errors.New("error"))
@@ -395,6 +469,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should fail when forwardPlayerEvent fails", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, _, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.PlayerEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -405,13 +481,6 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			},
 		}
 
-		room := &game_room.GameRoom{
-			ID:               event.RoomID,
-			SchedulerID:      event.SchedulerID,
-			IsValidationRoom: false,
-		}
-
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
@@ -423,6 +492,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should succeed even though SetScheduler to cache method fails", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -439,7 +510,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			IsValidationRoom: false,
 		}
 
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
@@ -451,6 +522,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should succeed even though GetScheduler from cache method fails", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -467,7 +540,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			IsValidationRoom: false,
 		}
 
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, errors.New("error"))
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
@@ -479,6 +552,8 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 	})
 
 	t.Run("should succeed but not produce event when room type is validation", func(t *testing.T) {
+		eventsForwarderService, _, _, _, roomStorage, _, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -495,13 +570,16 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			IsValidationRoom: true,
 		}
 
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(room, nil)
+		schedulerCache.EXPECT().GetScheduler(gomock.Any(), event.SchedulerID).Return(expectedScheduler, nil)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
 		require.NoError(t, err)
 	})
 
 	t.Run("should fail if room cannot be found since we would be producing event for non-registered room", func(t *testing.T) {
+		eventsForwarderService, config, _, schedulerStorage, roomStorage, _, schedulerCache := testSetup(t)
+
 		event := &events.Event{
 			Name:        events.RoomEvent,
 			SchedulerID: expectedScheduler.Name,
@@ -512,10 +590,28 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			},
 		}
 
-		roomStorage.EXPECT().GetRoom(context.Background(), event.SchedulerID, event.RoomID).Return(nil, errors.New("error"))
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(nil, errors.New("error"))
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, errors.New("error"))
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(errors.New("error"))
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
 		require.Error(t, err)
 	})
 
+}
+
+func testSetup(t *testing.T) (ports.EventsService, events_forwarder.EventsForwarderConfig, *mockports.MockEventsForwarder, *mockports.MockSchedulerStorage, *mockports.MockRoomStorage, *isMock.MockGameRoomInstanceStorage, *mockports.MockSchedulerCache) {
+	mockCtrl := gomock.NewController(t)
+
+	eventsForwarder := mockports.NewMockEventsForwarder(mockCtrl)
+	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+	instanceStorage := isMock.NewMockGameRoomInstanceStorage(mockCtrl)
+	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+	config := events_forwarder.EventsForwarderConfig{SchedulerCacheTtl: time.Minute}
+
+	eventsForwarderService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, instanceStorage, roomStorage, schedulerCache, config)
+
+	return eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache
 }
