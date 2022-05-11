@@ -81,6 +81,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 	pendingOpsChan := w.operationManager.PendingOperationsChan(w.workerContext, w.scheduler.Name)
 
 	healthControllerTicker := time.NewTicker(w.config.GetDuration(healthControllerExecutionIntervalConfigPath))
+	defer healthControllerTicker.Stop()
 
 	for {
 		select {
