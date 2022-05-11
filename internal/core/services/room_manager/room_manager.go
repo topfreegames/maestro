@@ -163,11 +163,12 @@ func (m *RoomManager) DeleteRoomAndWaitForRoomTerminating(ctx context.Context, g
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
 	defer cancelFunc()
 	err = m.WaitRoomStatus(timeoutContext, gameRoom, game_room.GameStatusTerminating)
-	if err == nil {
-		m.forwardStatusTerminatingEvent(ctx, gameRoom)
+	if err != nil {
+		return err
 	}
+	m.forwardStatusTerminatingEvent(ctx, gameRoom)
 
-	return err
+	return nil
 }
 
 func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
