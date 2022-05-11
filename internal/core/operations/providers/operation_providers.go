@@ -75,13 +75,14 @@ func ProvideExecutors(
 	schedulerManager *scheduler_manager.SchedulerManager,
 	instanceStorage ports.GameRoomInstanceStorage,
 	operationManager ports.OperationManager,
+	eventsService ports.EventsService,
 	roomManagerConfig room_manager.RoomManagerConfig,
 ) map[string]operations.Executor {
 
 	executors := map[string]operations.Executor{}
 	executors[create_scheduler.OperationName] = create_scheduler.NewExecutor(runtime, schedulerManager)
 	executors[add_rooms.OperationName] = add_rooms.NewExecutor(roomManager, schedulerStorage)
-	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager, roomStorage)
+	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager, roomStorage, eventsService)
 	executors[test_operation.OperationName] = test_operation.NewExecutor()
 	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager)
 	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager)

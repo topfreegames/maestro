@@ -26,6 +26,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/topfreegames/maestro/internal/core/entities/events"
+
 	"sync"
 
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
@@ -40,17 +43,19 @@ import (
 )
 
 type RemoveRoomsExecutor struct {
-	roomManager ports.RoomManager
-	roomStorage ports.RoomStorage
+	roomManager   ports.RoomManager
+	roomStorage   ports.RoomStorage
+	eventsService ports.EventsService
 }
 
 var _ operations.Executor = (*RemoveRoomsExecutor)(nil)
 
 // NewExecutor creates a new RemoveRoomExecutor
-func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage) *RemoveRoomsExecutor {
+func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, eventsService ports.EventsService) *RemoveRoomsExecutor {
 	return &RemoveRoomsExecutor{
 		roomManager,
 		roomStorage,
+		eventsService,
 	}
 }
 
@@ -66,7 +71,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 
 	if len(removeDefinition.RoomsIDs) > 0 {
 		logger.Info("start removing rooms", zap.Strings("RoomIDs", removeDefinition.RoomsIDs))
-		err := e.removeRoomsByIDs(ctx, op.SchedulerName, removeDefinition.RoomsIDs)
+		err := e.removeRoomsByIDs(ctx, logger, op.SchedulerName, removeDefinition.RoomsIDs)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
@@ -82,7 +87,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 
 	if removeDefinition.Amount > 0 {
 		logger.Info("start removing rooms", zap.Int("amount", removeDefinition.Amount))
-		err := e.removeRoomsByAmount(ctx, op.SchedulerName, removeDefinition.Amount)
+		err := e.removeRoomsByAmount(ctx, logger, op.SchedulerName, removeDefinition.Amount)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
@@ -100,7 +105,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerName string, roomsIDs []string) error {
+func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, logger *zap.Logger, schedulerName string, roomsIDs []string) error {
 	rooms := make([]*game_room.GameRoom, 0, len(roomsIDs))
 	for _, roomID := range roomsIDs {
 		gameRoom, err := e.roomStorage.GetRoom(ctx, schedulerName, roomID)
@@ -111,7 +116,7 @@ func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerNam
 		rooms = append(rooms, gameRoom)
 	}
 
-	err := e.deleteRooms(ctx, rooms)
+	err := e.deleteRooms(ctx, logger, rooms)
 	if err != nil {
 		return err
 	}
@@ -119,13 +124,13 @@ func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerNam
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, schedulerName string, amount int) error {
+func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, logger *zap.Logger, schedulerName string, amount int) error {
 	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", amount, &sync.Map{})
 	if err != nil {
 		return err
 	}
 
-	err = e.deleteRooms(ctx, rooms)
+	err = e.deleteRooms(ctx, logger, rooms)
 	if err != nil {
 		return err
 	}
@@ -133,13 +138,14 @@ func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, scheduler
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom) error {
+func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, logger *zap.Logger, rooms []*game_room.GameRoom) error {
 	var err error
 	for _, room := range rooms {
 		err = e.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
 		if err != nil {
 			return err
 		}
+		e.forwardStatusTerminatingEvent(ctx, logger, room)
 	}
 
 	return nil
@@ -153,4 +159,17 @@ func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation
 // Name returns the operation name
 func (e *RemoveRoomsExecutor) Name() string {
 	return OperationName
+}
+
+func (e *RemoveRoomsExecutor) forwardStatusTerminatingEvent(ctx context.Context, logger *zap.Logger, room *game_room.GameRoom) {
+	if room.Metadata == nil {
+		room.Metadata = map[string]interface{}{}
+	}
+	room.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Arbitrary)
+	room.Metadata["roomEvent"] = game_room.GameStatusTerminating.String()
+
+	err := e.eventsService.ProduceEvent(ctx, events.NewRoomEvent(room.SchedulerID, room.ID, room.Metadata))
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))
+	}
 }
