@@ -47,11 +47,11 @@ message ListOperationsRequest {
 // There's a list for each operation major status
 message ListOperationsResponse {
   // List of the scheduler pending operations.
-  repeated Operation pending_operations = 1;
+  repeated ListOperationItem pending_operations = 1;
   // List of the scheduler active operations.
-  repeated Operation active_operations = 2;
+  repeated ListOperationItem active_operations = 2;
   // List of the scheduler finished (with error or not) operations.
-  repeated Operation finished_operations = 3;
+  repeated ListOperationItem finished_operations = 3;
 }
 
 // The cancel operation request.

@@ -33,10 +33,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func FromOperationsToResponses(entities []*operation.Operation) ([]*api.Operation, error) {
-	responses := make([]*api.Operation, len(entities))
+func FromOperationsToListOperationsResponses(entities []*operation.Operation) ([]*api.ListOperationItem, error) {
+	responses := make([]*api.ListOperationItem, len(entities))
 	for i, entity := range entities {
-		response, err := FromOperationToResponse(entity)
+		response, err := fromOperationToListOperationResponse(entity)
 		if err != nil {
 			return nil, err
 		}
@@ -73,6 +73,27 @@ func FromOperationToResponse(entity *operation.Operation) (*api.Operation, error
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert input to response struct: %w", err)
 		}
+	}
+
+	if entity.Lease != nil {
+		apiOperation.Lease = &api.Lease{Ttl: entity.Lease.Ttl.UTC().Format(time.RFC3339)}
+	}
+
+	return apiOperation, nil
+}
+
+func fromOperationToListOperationResponse(entity *operation.Operation) (*api.ListOperationItem, error) {
+	apiOperation := &api.ListOperationItem{
+		Id:             entity.ID,
+		DefinitionName: entity.DefinitionName,
+		SchedulerName:  entity.SchedulerName,
+		CreatedAt:      timestamppb.New(entity.CreatedAt),
+	}
+
+	var err error
+	apiOperation.Status, err = entity.Status.String()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert operation entity to response: %w", err)
 	}
 
 	if entity.Lease != nil {

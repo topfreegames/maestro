@@ -196,6 +196,23 @@ message SchedulerWithoutSpec {
   int32 rooms_replicas = 8;
 }
 
+// The List Operation Item object representation.
+message ListOperationItem {
+  // Unique identifier for the operation.
+  string id = 1;
+  // Current status of the operation.
+  // TODO(gabrielcorado): change to enum.
+  string status = 2;
+  // Name of the operation being executed.
+  string definition_name = 3;
+  // Operation lease. This is an optional field since not all operations have a lease.
+  optional Lease lease = 4;
+  // Scheduler identifier that the operation is from.
+  string scheduler_name = 5;
+  // Time the operation was created.
+  google.protobuf.Timestamp created_at = 6;
+}
+
 // The operation object representation
 message Operation {
   // Unique identifier for the operation.

@@ -1262,27 +1262,58 @@
       },
       "title": "The operation lease object representation"
     },
+    "v1ListOperationItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the operation."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the operation.\nTODO(gabrielcorado): change to enum."
+        },
+        "definitionName": {
+          "type": "string",
+          "description": "Name of the operation being executed."
+        },
+        "lease": {
+          "$ref": "#/definitions/v1Lease",
+          "description": "Operation lease. This is an optional field since not all operations have a lease."
+        },
+        "schedulerName": {
+          "type": "string",
+          "description": "Scheduler identifier that the operation is from."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the operation was created."
+        }
+      },
+      "description": "The List Operation Item object representation."
+    },
     "v1ListOperationsResponse": {
       "type": "object",
       "properties": {
         "pendingOperations": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1Operation"
+            "$ref": "#/definitions/v1ListOperationItem"
           },
           "description": "List of the scheduler pending operations."
         },
         "activeOperations": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1Operation"
+            "$ref": "#/definitions/v1ListOperationItem"
           },
           "description": "List of the scheduler active operations."
         },
         "finishedOperations": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/apiv1Operation"
+            "$ref": "#/definitions/v1ListOperationItem"
           },
           "description": "List of the scheduler finished (with error or not) operations."
         }
