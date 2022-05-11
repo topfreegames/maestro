@@ -67,7 +67,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 
 	if len(removeDefinition.RoomsIDs) > 0 {
 		logger.Info("start removing rooms", zap.Strings("RoomIDs", removeDefinition.RoomsIDs))
-		err := e.removeRoomsByIDs(ctx, logger, op.SchedulerName, removeDefinition.RoomsIDs)
+		err := e.removeRoomsByIDs(ctx, op.SchedulerName, removeDefinition.RoomsIDs)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
@@ -83,7 +83,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 
 	if removeDefinition.Amount > 0 {
 		logger.Info("start removing rooms", zap.Int("amount", removeDefinition.Amount))
-		err := e.removeRoomsByAmount(ctx, logger, op.SchedulerName, removeDefinition.Amount)
+		err := e.removeRoomsByAmount(ctx, op.SchedulerName, removeDefinition.Amount)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
@@ -101,7 +101,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, logger *zap.Logger, schedulerName string, roomsIDs []string) error {
+func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerName string, roomsIDs []string) error {
 	rooms := make([]*game_room.GameRoom, 0, len(roomsIDs))
 	for _, roomID := range roomsIDs {
 		gameRoom, err := e.roomStorage.GetRoom(ctx, schedulerName, roomID)
@@ -112,7 +112,7 @@ func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, logger *zap.
 		rooms = append(rooms, gameRoom)
 	}
 
-	err := e.deleteRooms(ctx, logger, rooms)
+	err := e.deleteRooms(ctx, rooms)
 	if err != nil {
 		return err
 	}
@@ -120,13 +120,13 @@ func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, logger *zap.
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, logger *zap.Logger, schedulerName string, amount int) error {
+func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, schedulerName string, amount int) error {
 	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", amount, &sync.Map{})
 	if err != nil {
 		return err
 	}
 
-	err = e.deleteRooms(ctx, logger, rooms)
+	err = e.deleteRooms(ctx, rooms)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, logger *z
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, logger *zap.Logger, rooms []*game_room.GameRoom) error {
+func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom) error {
 	var err error
 	for _, room := range rooms {
 		err = e.roomManager.DeleteRoomAndWaitForRoomTerminating(ctx, room)
