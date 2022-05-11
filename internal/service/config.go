@@ -26,12 +26,16 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
+	"github.com/topfreegames/maestro/internal/core/workers"
 
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 )
 
+const healthControllerExecutionIntervalConfigPath = "workers.operationExecution.healthControllerInterval"
+
+// NewRoomManagerConfig instantiate a new RoomManagerConfig to be used by the RoomManager to customize its configuration.
 func NewRoomManagerConfig(c config.Config) (room_manager.RoomManagerConfig, error) {
 	pingTimeout := time.Duration(c.GetInt("services.roomManager.roomPingTimeoutMillis")) * time.Millisecond
 	initializationTimeout := time.Duration(c.GetInt("services.roomManager.roomInitializationTimeoutMillis")) * time.Millisecond
@@ -46,28 +50,40 @@ func NewRoomManagerConfig(c config.Config) (room_manager.RoomManagerConfig, erro
 	return roomManagerConfig, nil
 }
 
+// NewWorkersConfig instantiate a new workers Config stucture to be used by the workers to customize them from the config package.
+func NewWorkersConfig(c config.Config) (workers.Configuration, error) {
+	healthControllerExecutionInterval := c.GetDuration(healthControllerExecutionIntervalConfigPath)
+	config := workers.Configuration{
+		HealthControllerExecutionInterval: healthControllerExecutionInterval,
+	}
+
+	return config, nil
+}
+
+// NewOperationManagerConfig instantiate a new OperationManagerConfig to be used by the OperationManager to customize its configuration.
 func NewOperationManagerConfig(c config.Config) (operation_manager.OperationManagerConfig, error) {
-	operationLeaseTtl := time.Duration(c.GetInt("services.operationManager.operationLeaseTtlMillis")) * time.Millisecond
+	operationLeaseTTL := time.Duration(c.GetInt("services.operationManager.operationLeaseTtlMillis")) * time.Millisecond
 
 	operationManagerConfig := operation_manager.OperationManagerConfig{
-		OperationLeaseTtl: operationLeaseTtl,
+		OperationLeaseTtl: operationLeaseTTL,
 	}
 
 	return operationManagerConfig, nil
 }
 
+// NewEventsForwarderServiceConfig instantiate a new EventsForwarderConfig to be used by the EventsForwarder to customize its configuration.
 func NewEventsForwarderServiceConfig(c config.Config) (events_forwarder.EventsForwarderConfig, error) {
-	var schedulerCacheTtl time.Duration
-	defaultSchedulerCacheTtl := time.Hour * 24
+	var schedulerCacheTTL time.Duration
+	defaultSchedulerCacheTTL := time.Hour * 24
 
-	if configuredSchedulerCacheTtlInt := c.GetInt("services.eventsForwarder.schedulerCacheTtlMillis"); configuredSchedulerCacheTtlInt > 0 {
-		schedulerCacheTtl = time.Duration(configuredSchedulerCacheTtlInt) * time.Millisecond
+	if configuredSchedulerCacheTTLInt := c.GetInt("services.eventsForwarder.schedulerCacheTtlMillis"); configuredSchedulerCacheTTLInt > 0 {
+		schedulerCacheTTL = time.Duration(configuredSchedulerCacheTTLInt) * time.Millisecond
 	} else {
-		schedulerCacheTtl = defaultSchedulerCacheTtl
+		schedulerCacheTTL = defaultSchedulerCacheTTL
 	}
 
 	eventsForwarderConfig := events_forwarder.EventsForwarderConfig{
-		SchedulerCacheTtl: schedulerCacheTtl,
+		SchedulerCacheTtl: schedulerCacheTTL,
 	}
 
 	return eventsForwarderConfig, nil

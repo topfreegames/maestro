@@ -50,6 +50,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		service.NewPortAllocatorRandom,
 		service.NewRoomStorageRedis,
 		service.NewGameRoomInstanceStorageRedis,
+		service.NewWorkersConfig,
 		service.NewRoomManagerConfig,
 		service.NewRoomManager,
 		service.NewOperationManagerConfig,

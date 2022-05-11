@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	workererrors "github.com/topfreegames/maestro/internal/core/workers/errors"
@@ -44,14 +43,12 @@ import (
 
 var _ workers.Worker = (*OperationExecutionWorker)(nil)
 
-const healthControllerExecutionIntervalConfigPath = "workers.operationExecution.healthControllerInterval"
-
 // OperationExecutionWorker is the service responsible for implementing the worker
 // responsibilities.
 type OperationExecutionWorker struct {
-	scheduler        *entities.Scheduler
-	config           config.Config
-	operationManager ports.OperationManager
+	scheduler                         *entities.Scheduler
+	healthControllerExecutionInterval time.Duration
+	operationManager                  ports.OperationManager
 	// TODO(gabrielcorado): check if we this is the right place to have all
 	// executors.
 	executorsByName     map[string]operations.Executor
@@ -61,13 +58,14 @@ type OperationExecutionWorker struct {
 	logger *zap.Logger
 }
 
+// NewOperationExecutionWorker instantiate a new OperationExecutionWorker to a specified scheduler.
 func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
 	return &OperationExecutionWorker{
-		config:           opts.Config,
-		operationManager: opts.OperationManager,
-		executorsByName:  opts.OperationExecutors,
-		scheduler:        scheduler,
-		logger:           zap.L().With(zap.String(logs.LogFieldServiceName, "worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		healthControllerExecutionInterval: opts.Configuration.HealthControllerExecutionInterval,
+		operationManager:                  opts.OperationManager,
+		executorsByName:                   opts.OperationExecutors,
+		scheduler:                         scheduler,
+		logger:                            zap.L().With(zap.String(logs.LogFieldServiceName, "worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
 
@@ -80,7 +78,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
 	pendingOpsChan := w.operationManager.PendingOperationsChan(w.workerContext, w.scheduler.Name)
 
-	healthControllerTicker := time.NewTicker(w.config.GetDuration(healthControllerExecutionIntervalConfigPath))
+	healthControllerTicker := time.NewTicker(w.healthControllerExecutionInterval)
 	defer healthControllerTicker.Stop()
 
 	for {

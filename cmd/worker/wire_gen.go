@@ -23,6 +23,10 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	if err != nil {
 		return nil, err
 	}
+	configuration, err := service.NewWorkersConfig(c)
+	if err != nil {
+		return nil, err
+	}
 	operationFlow, err := service.NewOperationFlowRedis(c)
 	if err != nil {
 		return nil, err
@@ -78,7 +82,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, eventsService, roomManagerConfig)
 	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager, roomStorage, schedulerManager, gameRoomInstanceStorage, operationManager, roomManagerConfig)
-	workerOptions := workers.ProvideWorkerOptions(c, operationManager, v2, roomManager, runtime)
+	workerOptions := workers.ProvideWorkerOptions(operationManager, v2, roomManager, runtime, configuration)
 	workersManager := workers_manager.NewWorkersManager(builder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
 }
