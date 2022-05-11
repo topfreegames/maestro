@@ -137,7 +137,7 @@ func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, logger *z
 func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, logger *zap.Logger, rooms []*game_room.GameRoom) error {
 	var err error
 	for _, room := range rooms {
-		err = e.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
+		err = e.roomManager.DeleteRoomAndWaitForRoomTerminating(ctx, room)
 		if err != nil {
 			return err
 		}

@@ -74,7 +74,7 @@ func TestExecute(t *testing.T) {
 				{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Metadata: map[string]interface{}{}},
 			}
 			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
-			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil).Times(2)
 			err := executor.Execute(ctx, operation, definition)
 
 			require.Nil(t, err)
@@ -93,7 +93,7 @@ func TestExecute(t *testing.T) {
 			}
 
 			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
-			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.New("failed to remove instance on the runtime: some error"))
+			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(errors.New("failed to remove instance on the runtime: some error"))
 
 			err := executor.Execute(context.Background(), operation, definition)
 			require.Equal(t, operations.ErrKindUnexpected, err.Kind())
@@ -113,7 +113,7 @@ func TestExecute(t *testing.T) {
 			}
 
 			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
-			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
+			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
 
 			err := executor.Execute(context.Background(), operation, definition)
 			require.Equal(t, operations.ErrKindTerminatingPingTimeout, err.Kind())
@@ -175,8 +175,8 @@ func TestExecute(t *testing.T) {
 			}
 			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
 			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
-			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), room).Return(nil)
-			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), secondRoom).Return(nil)
+			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), room).Return(nil)
+			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), secondRoom).Return(nil)
 			err := executor.Execute(ctx, operation, definition)
 			require.Nil(t, err)
 		})
@@ -229,8 +229,8 @@ func TestExecute(t *testing.T) {
 			}
 			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
 			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
-			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), room).Return(nil)
-			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), secondRoom).Return(fmt.Errorf("Error on remove room"))
+			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), room).Return(nil)
+			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), secondRoom).Return(fmt.Errorf("Error on remove room"))
 			err := executor.Execute(ctx, operation, definition)
 			require.Equal(t, operations.ErrKindUnexpected, err.Kind())
 			require.ErrorContains(t, err.Error(), "failed to remove room by ids:")
@@ -259,10 +259,11 @@ func TestExecute(t *testing.T) {
 			}
 			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
 			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
-			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), room).Return(nil)
+			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), room).Return(nil)
+			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), secondRoom).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
+
 			err := executor.Execute(ctx, operation, definition)
 
-			roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), secondRoom).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
 			require.Equal(t, operations.ErrKindTerminatingPingTimeout, err.Kind())
 			require.ErrorContains(t, err.Error(), "failed to remove room")
 		})
@@ -320,12 +321,12 @@ func TestExecute(t *testing.T) {
 		}
 		roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
 		roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
-		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), room).Return(nil)
-		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), secondRoom).Return(nil)
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), room).Return(nil)
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), secondRoom).Return(nil)
 
 		availableRooms := []*game_room.GameRoom{thirdRoom, fourthRoom}
 		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
-		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil).Times(2)
 		err := executor.Execute(ctx, operation, definition)
 		require.Nil(t, err)
 	})

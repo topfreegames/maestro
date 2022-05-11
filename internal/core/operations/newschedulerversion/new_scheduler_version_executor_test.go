@@ -71,7 +71,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.0.0"}, {Version: "v1.1.0"}, {Version: "v1.2.0"}}
 
 		roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), true).Return(&game_room.GameRoom{ID: "id-1"}, nil, nil)
-		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
+		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 
 		schedulerManager.
 			EXPECT().
@@ -110,7 +110,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
 
 		roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), true).Return(&game_room.GameRoom{ID: "id-1"}, nil, nil)
-		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
+		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 
 		schedulerManager.
 			EXPECT().
@@ -149,7 +149,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.1.0"}, {Version: "v1.2.0"}, {Version: "v1.3.0"}}
 
 		roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), true).Return(&game_room.GameRoom{ID: "id-1"}, nil, nil)
-		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
+		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 
 		schedulerManager.
 			EXPECT().
@@ -188,7 +188,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.1.0"}, {Version: "v1.2.0"}, {Version: "v1.3.0"}}
 
 		roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), true).Return(&game_room.GameRoom{ID: "id-1"}, nil, nil)
-		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some_error"))
+		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some_error"))
 
 		schedulerManager.
 			EXPECT().
@@ -630,7 +630,7 @@ func TestCreateNewSchedulerVersionExecutor_Rollback(t *testing.T) {
 
 		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
 		executor.AddValidationRoomId(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
-		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
+		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 		result := executor.Rollback(context.Background(), op, operationDef, nil)
 
 		require.Nil(t, result)
@@ -652,7 +652,7 @@ func TestCreateNewSchedulerVersionExecutor_Rollback(t *testing.T) {
 
 		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
 		executor.AddValidationRoomId(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
-		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some error"))
+		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some error"))
 		result := executor.Rollback(context.Background(), op, operationDef, nil)
 
 		require.EqualError(t, result, "error in Rollback function execution: some error")

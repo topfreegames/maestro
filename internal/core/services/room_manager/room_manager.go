@@ -116,7 +116,7 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 	if err != nil {
 		deleteCtx, deleteCancelFunc := context.WithTimeout(context.Background(), m.Config.RoomDeletionTimeout)
 		defer deleteCancelFunc()
-		deleteErr := m.DeleteRoomAndWaitForRoomTerminated(deleteCtx, room)
+		deleteErr := m.DeleteRoomAndWaitForRoomTerminating(deleteCtx, room)
 		if deleteErr != nil {
 			m.Logger.Error("error deleting room that wasn't created with success", zap.Error(deleteErr))
 		}
@@ -146,7 +146,7 @@ func (m *RoomManager) populateSpecWithHostPort(scheduler entities.Scheduler) (*g
 	return spec, nil
 }
 
-func (m *RoomManager) DeleteRoomAndWaitForRoomTerminated(ctx context.Context, gameRoom *game_room.GameRoom) error {
+func (m *RoomManager) DeleteRoomAndWaitForRoomTerminating(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	instance, err := m.InstanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
 		// TODO(gabriel.corado): deal better with instance not found.
@@ -163,6 +163,10 @@ func (m *RoomManager) DeleteRoomAndWaitForRoomTerminated(ctx context.Context, ga
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
 	defer cancelFunc()
 	err = m.WaitRoomStatus(timeoutContext, gameRoom, game_room.GameStatusTerminating)
+	if err == nil {
+		m.forwardStatusTerminatingEvent(ctx, gameRoom)
+	}
+
 	return err
 }
 
@@ -389,6 +393,19 @@ watchLoop:
 	}
 
 	return nil
+}
+
+func (m *RoomManager) forwardStatusTerminatingEvent(ctx context.Context, room *game_room.GameRoom) {
+	if room.Metadata == nil {
+		room.Metadata = map[string]interface{}{}
+	}
+	room.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Arbitrary)
+	room.Metadata["roomEvent"] = game_room.GameStatusTerminating.String()
+
+	err := m.EventsService.ProduceEvent(ctx, events.NewRoomEvent(room.SchedulerID, room.ID, room.Metadata))
+	if err != nil {
+		m.Logger.Error("failed to forward terminating room event", zap.String(logs.LogFieldRoomID, room.ID), zap.Error(err))
+	}
 }
 
 func removeDuplicateValues(slice []string) []string {
