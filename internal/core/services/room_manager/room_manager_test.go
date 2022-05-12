@@ -331,11 +331,12 @@ func TestRoomManager_DeleteRoomAndWaitForRoomTerminating(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("when room instance is not found on storage do not return error", func(t *testing.T) {
-		roomManager, _, _, instanceStorage, _, _, _ := testSetup(t)
+	t.Run("when room instance is not found on storage, try to delete game room, do not return error", func(t *testing.T) {
+		roomManager, _, roomStorage, instanceStorage, _, _, _ := testSetup(t)
 
 		gameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusTerminating}
 		instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(nil, porterrors.NewErrNotFound("error"))
+		roomStorage.EXPECT().DeleteRoom(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(nil)
 
 		err := roomManager.DeleteRoomAndWaitForRoomTerminating(context.Background(), gameRoom)
 		require.NoError(t, err)
