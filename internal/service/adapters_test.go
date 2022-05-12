@@ -29,6 +29,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/orlangure/gnomock"
@@ -60,6 +61,7 @@ func TestOperationStorageRedis(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisUrlPath).Return(getRedisUrl(t))
+		config.EXPECT().GetDuration(healthControllerOperationTTL).Return(time.Minute)
 		opStorage, err := NewOperationStorageRedis(clock, config)
 		require.NoError(t, err)
 
@@ -74,6 +76,7 @@ func TestOperationStorageRedis(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisUrlPath).Return("redis://somewhere-in-the-world:6379")
+		config.EXPECT().GetDuration(healthControllerOperationTTL).Return(time.Minute)
 		opStorage, err := NewOperationStorageRedis(clock, config)
 		require.NoError(t, err)
 
