@@ -159,6 +159,8 @@ func (m *RoomManager) DeleteRoomAndWaitForRoomTerminating(ctx context.Context, g
 	err = m.Runtime.DeleteGameRoomInstance(ctx, instance)
 	if err != nil {
 		if errors.Is(err, porterrors.ErrNotFound) {
+			_ = m.RoomStorage.DeleteRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
+			_ = m.InstanceStorage.DeleteInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 			return nil
 		}
 		return fmt.Errorf("failed to delete instance on the runtime: %w", err)

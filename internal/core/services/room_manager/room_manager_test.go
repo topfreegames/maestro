@@ -343,12 +343,14 @@ func TestRoomManager_DeleteRoomAndWaitForRoomTerminating(t *testing.T) {
 	})
 
 	t.Run("when room instance is not found on runtime do not return error", func(t *testing.T) {
-		roomManager, _, _, instanceStorage, runtime, _, _ := testSetup(t)
+		roomManager, _, roomStorage, instanceStorage, runtime, _, _ := testSetup(t)
 
 		gameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusTerminating}
 		instance := &game_room.Instance{ID: "test-instance"}
 		instanceStorage.EXPECT().GetInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(instance, nil)
 		runtime.EXPECT().DeleteGameRoomInstance(context.Background(), instance).Return(porterrors.NewErrNotFound("error"))
+		roomStorage.EXPECT().DeleteRoom(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(nil)
+		instanceStorage.EXPECT().DeleteInstance(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(nil)
 
 		err := roomManager.DeleteRoomAndWaitForRoomTerminating(context.Background(), gameRoom)
 		require.NoError(t, err)
