@@ -150,6 +150,7 @@ func (m *RoomManager) DeleteRoomAndWaitForRoomTerminating(ctx context.Context, g
 	instance, err := m.InstanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
 		if errors.Is(err, porterrors.ErrNotFound) {
+			_ = m.RoomStorage.DeleteRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
 			return nil
 		}
 		return fmt.Errorf("unable to fetch game room instance from storage: %w", err)
