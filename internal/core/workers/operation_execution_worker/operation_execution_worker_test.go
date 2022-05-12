@@ -40,11 +40,15 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	mockoperation "github.com/topfreegames/maestro/internal/core/operations/mock"
 	"github.com/topfreegames/maestro/internal/core/workers"
 )
 
 func TestSchedulerOperationsExecutionLoop(t *testing.T) {
+	duration, err := time.ParseDuration("10m")
+	require.NoError(t, err)
+
 	t.Run("successfully runs a single operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
@@ -69,7 +73,10 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
 		pendingOpsChan := make(chan string)
 
 		operationManager.EXPECT().GetOperation(gomock.Any(), scheduler.Name, expectedOperation.ID).Return(expectedOperation, operationDefinition, nil)
@@ -125,7 +132,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
 		pendingOpsChan := make(chan string)
 
 		operationManager.EXPECT().GetOperation(gomock.Any(), scheduler.Name, expectedOperation.ID).Return(expectedOperation, operationDefinition, nil)
@@ -186,7 +197,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
 		pendingOpsChan := make(chan string)
 
 		operationManager.EXPECT().GetOperation(gomock.Any(), scheduler.Name, expectedOperation.ID).Return(expectedOperation, operationDefinition, nil)
@@ -245,7 +260,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		}
 
 		executors := map[string]operations.Executor{}
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
 		pendingOpsChan := make(chan string)
 
 		operationManager.EXPECT().GetOperation(gomock.Any(), scheduler.Name, expectedOperation.ID).Return(expectedOperation, operationDefinition, nil)
@@ -289,7 +308,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
 		pendingOpsChan := make(chan string)
 
 		operationManager.EXPECT().GetOperation(gomock.Any(), scheduler.Name, expectedOperation.ID).Return(expectedOperation, operationDefinition, nil)
@@ -335,7 +358,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
 
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		pendingOpsChan := make(chan string)
@@ -386,7 +413,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
 		pendingOpsChan := make(chan string)
 
 		operationManager.EXPECT().GetOperation(gomock.Any(), scheduler.Name, expectedOperation.ID).Return(expectedOperation, operationDefinition, nil)
@@ -436,8 +467,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
 
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
 		pendingOpsChan := make(chan string)
 
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
@@ -474,7 +508,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		executors := map[string]operations.Executor{}
 		executors[operationName] = operationExecutor
-		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil))
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
 		pendingOpsChan := make(chan string)
 
 		operationManager.EXPECT().GetOperation(gomock.Any(), scheduler.Name, expectedOperation.ID).Return(nil, nil, errors.New("some error"))
@@ -488,6 +526,86 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		}()
 
 		err := workerService.Start(context.Background())
+		require.NoError(t, err)
+	})
+
+	t.Run("when healthcontroller ticks, call operation manager creating a new health_controller operation", func(t *testing.T) {
+		duration, err := time.ParseDuration("1ms")
+		require.NoError(t, err)
+
+		mockCtrl := gomock.NewController(t)
+
+		operationName := "test_operation"
+		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		defFunc := func() operations.Definition { return operationDefinition }
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
+
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
+
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
+		pendingOpsChan := make(chan string)
+
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), gomock.Any()).Return(pendingOpsChan)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, &healthcontroller.SchedulerHealthControllerDefinition{}).Return(&operation.Operation{}, nil).MaxTimes(5)
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		go func() {
+			time.Sleep(5 * time.Millisecond)
+			cancel()
+		}()
+
+		err = workerService.Start(ctx)
+		require.NoError(t, err)
+	})
+
+	t.Run("when healthcontroller ticks and CreateOperation return in error, continue the execution normally", func(t *testing.T) {
+		duration, err := time.ParseDuration("1ms")
+		require.NoError(t, err)
+
+		mockCtrl := gomock.NewController(t)
+
+		operationName := "test_operation"
+		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		defFunc := func() operations.Definition { return operationDefinition }
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
+
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
+
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		config := workers.Configuration{
+			HealthControllerExecutionInterval: duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, workers.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
+		pendingOpsChan := make(chan string)
+
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), gomock.Any()).Return(pendingOpsChan)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, &healthcontroller.SchedulerHealthControllerDefinition{}).Return(nil, fmt.Errorf("Error on creating operation")).MaxTimes(5)
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		go func() {
+			time.Sleep(5 * time.Millisecond)
+			cancel()
+		}()
+
+		err = workerService.Start(ctx)
 		require.NoError(t, err)
 	})
 }

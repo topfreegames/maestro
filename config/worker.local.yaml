@@ -38,6 +38,8 @@ adapters:
 workers:
   syncInterval: 10s
   stopTimeoutDuration: 1m
+  operationExecution:
+    healthControllerInterval: 1m
 services:
   roomManager:
     roomPingTimeoutMillis: 90000

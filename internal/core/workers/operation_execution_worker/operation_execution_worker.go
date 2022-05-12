@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	workererrors "github.com/topfreegames/maestro/internal/core/workers/errors"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -45,8 +46,9 @@ var _ workers.Worker = (*OperationExecutionWorker)(nil)
 // OperationExecutionWorker is the service responsible for implementing the worker
 // responsibilities.
 type OperationExecutionWorker struct {
-	scheduler        *entities.Scheduler
-	operationManager ports.OperationManager
+	scheduler                         *entities.Scheduler
+	healthControllerExecutionInterval time.Duration
+	operationManager                  ports.OperationManager
 	// TODO(gabrielcorado): check if we this is the right place to have all
 	// executors.
 	executorsByName     map[string]operations.Executor
@@ -56,12 +58,14 @@ type OperationExecutionWorker struct {
 	logger *zap.Logger
 }
 
+// NewOperationExecutionWorker instantiate a new OperationExecutionWorker to a specified scheduler.
 func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
 	return &OperationExecutionWorker{
-		operationManager: opts.OperationManager,
-		executorsByName:  opts.OperationExecutors,
-		scheduler:        scheduler,
-		logger:           zap.L().With(zap.String(logs.LogFieldServiceName, "worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		healthControllerExecutionInterval: opts.Configuration.HealthControllerExecutionInterval,
+		operationManager:                  opts.OperationManager,
+		executorsByName:                   opts.OperationExecutors,
+		scheduler:                         scheduler,
+		logger:                            zap.L().With(zap.String(logs.LogFieldServiceName, "worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
 
@@ -73,6 +77,9 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
 	pendingOpsChan := w.operationManager.PendingOperationsChan(w.workerContext, w.scheduler.Name)
+
+	healthControllerTicker := time.NewTicker(w.healthControllerExecutionInterval)
+	defer healthControllerTicker.Stop()
 
 	for {
 		select {
@@ -87,6 +94,11 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			err := w.executeOperationFlow(opID)
 			if err != nil && shouldFinishWorker(err) {
 				return err
+			}
+		case <-healthControllerTicker.C:
+			err := w.createHealthControllerOperation(w.workerContext)
+			if err != nil {
+				w.logger.Error("Error enqueueing new health_controller operation", zap.Error(err))
 			}
 		}
 	}
@@ -242,6 +254,15 @@ func (w *OperationExecutionWorker) shouldEvictOperation(op *operation.Operation,
 		return true
 	}
 	return false
+}
+
+func (w *OperationExecutionWorker) createHealthControllerOperation(ctx context.Context) error {
+	_, err := w.operationManager.CreateOperation(ctx, w.scheduler.Name, &healthcontroller.SchedulerHealthControllerDefinition{})
+	if err != nil {
+		return fmt.Errorf("not able to schedule the 'health_controller' operation: %w", err)
+	}
+
+	return nil
 }
 
 func (w *OperationExecutionWorker) Stop(_ context.Context) {

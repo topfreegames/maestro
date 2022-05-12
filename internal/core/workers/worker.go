@@ -24,6 +24,7 @@ package workers
 
 import (
 	"context"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/workers/config"
 
@@ -46,6 +47,7 @@ type Worker interface {
 // its construction. This struct is going to be used to inject the worker
 // dependencies like ports.
 type WorkerOptions struct {
+	Configuration         Configuration
 	OperationManager      ports.OperationManager
 	OperationExecutors    map[string]operations.Executor
 	RoomManager           ports.RoomManager
@@ -55,13 +57,21 @@ type WorkerOptions struct {
 	MetricsReporterConfig *config.MetricsReporterConfig
 }
 
+// Configuration holds all worker configuration parameters.
+type Configuration struct {
+	HealthControllerExecutionInterval time.Duration
+}
+
+// ProvideWorkerOptions instantiate an WorkerOptions structure.
 func ProvideWorkerOptions(
 	operationManager ports.OperationManager,
 	operationExecutors map[string]operations.Executor,
 	roomManager ports.RoomManager,
 	runtime ports.Runtime,
+	configuration Configuration,
 ) *WorkerOptions {
 	return &WorkerOptions{
+		Configuration:      configuration,
 		OperationManager:   operationManager,
 		OperationExecutors: operationExecutors,
 		RoomManager:        roomManager,
