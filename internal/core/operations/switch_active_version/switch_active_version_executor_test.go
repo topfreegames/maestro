@@ -128,7 +128,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 			}
 			mocks.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
 		}
-		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).MaxTimes(len(append(gameRoomListCycle1, gameRoomListCycle2...)))
+		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil).MaxTimes(len(append(gameRoomListCycle1, gameRoomListCycle2...)))
 
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), newMajorScheduler).Return(nil)
 
@@ -235,7 +235,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*game_room.GameRoom{}, nil).MaxTimes(1)
 
 		mocks.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, nil).MaxTimes(maxSurge)
-		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.New("error")).MaxTimes(maxSurge)
+		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(errors.New("error")).MaxTimes(maxSurge)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
@@ -369,7 +369,7 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 				LastPingAt:  time.Now(),
 			}
 			mocks.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
-			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
+			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 		}
 
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(errors.New("error"))
@@ -386,7 +386,7 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 
 		for range append(gameRoomListCycle1, gameRoomListCycle2...) {
-			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
+			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 		}
 
 		err = executor.Rollback(context.Background(), op, definition, nil)
@@ -432,7 +432,7 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 				LastPingAt:  time.Now(),
 			}
 			mocks.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
-			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil)
+			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 		}
 
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(errors.New("error"))
@@ -448,7 +448,7 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 		require.NotNil(t, execErr)
 		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 
-		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(errors.New("error"))
+		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(errors.New("error"))
 
 		err = executor.Rollback(context.Background(), op, definition, nil)
 		require.Error(t, err)

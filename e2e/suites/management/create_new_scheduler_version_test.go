@@ -347,9 +347,9 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 				}
 			}
 
-			playerEventRequest := &maestroApiV1.ForwardPlayerEventRequest{
+			roomEventRequest := &maestroApiV1.ForwardRoomEventRequest{
 				RoomName:  validationRoomName,
-				Event:     "playerLeft",
+				Event:     "ready",
 				Timestamp: time.Now().Unix(),
 				Metadata: &_struct.Struct{
 					Fields: map[string]*structpb.Value{
@@ -371,10 +371,10 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 					},
 				},
 			}
-			playerEventResponse := &maestroApiV1.ForwardPlayerEventResponse{}
-			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/playerevent", scheduler.Name, validationRoomName), playerEventRequest, playerEventResponse)
+			roomEventResponse := &maestroApiV1.ForwardRoomEventResponse{}
+			err = roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/roomevent", scheduler.Name, validationRoomName), roomEventRequest, roomEventResponse)
 			require.NoError(t, err)
-			require.Equal(t, true, playerEventResponse.Success)
+			require.Equal(t, true, roomEventResponse.Success)
 
 			return true
 		}

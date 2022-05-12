@@ -28,14 +28,12 @@ import (
 	"fmt"
 	"sync"
 
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
-
-	"github.com/topfreegames/maestro/internal/core/logs"
-	"github.com/topfreegames/maestro/internal/core/ports"
-
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/ports"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 	"go.uber.org/zap"
 )
 
@@ -136,7 +134,7 @@ func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, scheduler
 func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom) error {
 	var err error
 	for _, room := range rooms {
-		err = e.roomManager.DeleteRoomAndWaitForRoomTerminated(ctx, room)
+		err = e.roomManager.DeleteRoomAndWaitForRoomTerminating(ctx, room)
 		if err != nil {
 			return err
 		}

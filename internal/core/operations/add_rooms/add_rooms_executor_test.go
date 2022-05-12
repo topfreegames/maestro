@@ -219,7 +219,7 @@ func TestAddRoomsExecutor_Rollback(t *testing.T) {
 
 		require.NotNil(t, err)
 
-		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(nil).Times(9)
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil).Times(9)
 		rollbackErr := executor.Rollback(context.Background(), &op, &definition, nil)
 		require.NoError(t, rollbackErr)
 	})
@@ -237,7 +237,7 @@ func TestAddRoomsExecutor_Rollback(t *testing.T) {
 
 		require.NotNil(t, err)
 
-		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminated(gomock.Any(), gomock.Any()).Return(porterrors.NewErrUnexpected("error")).Times(1)
+		roomsManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(porterrors.NewErrUnexpected("error")).Times(1)
 
 		rollbackErr := executor.Rollback(context.Background(), &op, &definition, nil)
 		require.Error(t, rollbackErr)

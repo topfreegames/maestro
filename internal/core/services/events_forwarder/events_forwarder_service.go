@@ -75,16 +75,6 @@ func NewEventsForwarderService(
 }
 
 func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *events.Event) error {
-	gameRoom, err := es.roomStorage.GetRoom(ctx, event.SchedulerID, event.RoomID)
-	if err != nil {
-		es.logger.Error(fmt.Sprintf("cannot produce event since room \"%s\" is not registered on storage for scheduler \"%s\"", event.RoomID, event.SchedulerID))
-		return err
-	}
-
-	if gameRoom.IsValidationRoom {
-		es.logger.Info(fmt.Sprintf("not producing events for room \"%s\", scheduler \"%s\" since it's a validation room", gameRoom.ID, gameRoom.SchedulerID))
-		return nil
-	}
 	if _, ok := event.Attributes["eventType"].(string); !ok {
 		return errors.New("eventAttributes must contain key \"eventType\"")
 	}
@@ -100,12 +90,7 @@ func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *event
 		for _, _forwarder := range forwarderList {
 			switch event.Name {
 			case events.RoomEvent:
-				instance, err := es.instanceStorage.GetInstance(ctx, event.SchedulerID, event.RoomID)
-				if err != nil {
-					es.logger.Error(fmt.Sprintf("Failed to get instance for room \"%v\" from scheduler \"%v\" info", event.RoomID, event.SchedulerID), zap.Error(err))
-					return err
-				}
-				err = es.forwardRoomEvent(ctx, event, eventType, instance, scheduler, _forwarder)
+				err = es.forwardRoomEvent(ctx, event, eventType, scheduler, _forwarder)
 				if err != nil {
 					return err
 				}
@@ -127,10 +112,39 @@ func (es *EventsForwarderService) forwardRoomEvent(
 	ctx context.Context,
 	event *events.Event,
 	eventType string,
-	instance *game_room.Instance,
 	scheduler *entities.Scheduler,
 	_forwarder *forwarder.Forwarder,
 ) error {
+	var instance *game_room.Instance
+
+	if es.isRoomInUnreliableState(event) {
+		isValidationRoom, err := es.isValidationRoom(ctx, event)
+		if err == nil && isValidationRoom {
+			return nil
+		}
+
+		instance, err = es.instanceStorage.GetInstance(ctx, event.SchedulerID, event.RoomID)
+		if err != nil {
+			instance = &game_room.Instance{Address: &game_room.Address{Host: "", Ports: []game_room.Port{{Port: 0}}}}
+		}
+
+	} else {
+		isValidationRoom, err := es.isValidationRoom(ctx, event)
+		if err != nil {
+			return err
+		}
+
+		if isValidationRoom {
+			return nil
+		}
+
+		instance, err = es.instanceStorage.GetInstance(ctx, event.SchedulerID, event.RoomID)
+		if err != nil {
+			es.logger.Error(fmt.Sprintf("Failed to get instance for room \"%v\" from scheduler \"%v\" info", event.RoomID, event.SchedulerID), zap.Error(err))
+			return err
+		}
+	}
+
 	selectedPort, err := es.selectPort(instance.Address)
 	if err != nil {
 		return fmt.Errorf("no room port found to forward roomEvent. Forwarder name: \"%v\", Scheduler: \"%v\"", _forwarder.Name, event.SchedulerID)
@@ -280,4 +294,35 @@ func (es *EventsForwarderService) getPlayerInfo(event *events.Event) (string, er
 		return "", fmt.Errorf("playerId must be a string")
 	}
 	return playerId, nil
+}
+
+func (es *EventsForwarderService) isValidationRoom(ctx context.Context, event *events.Event) (bool, error) {
+	gameRoom, err := es.roomStorage.GetRoom(ctx, event.SchedulerID, event.RoomID)
+	if err != nil {
+		es.logger.Error(fmt.Sprintf("cannot produce event since room \"%s\" is not registered on storage for scheduler \"%s\"", event.RoomID, event.SchedulerID))
+		return false, err
+	}
+
+	if gameRoom.IsValidationRoom {
+		es.logger.Info(fmt.Sprintf("not producing events for room \"%s\", scheduler \"%s\" since it's a validation room", gameRoom.ID, gameRoom.SchedulerID))
+	}
+
+	return gameRoom.IsValidationRoom, nil
+}
+
+func (es *EventsForwarderService) isRoomInUnreliableState(event *events.Event) bool {
+	if roomEvent, ok := event.Attributes["roomEvent"].(string); ok {
+		if roomEvent == game_room.GameRoomPingStatusTerminating.String() ||
+			roomEvent == game_room.GameRoomPingStatusTerminated.String() {
+			return true
+		}
+	}
+	if roomEvent, ok := event.Attributes["pingType"].(string); ok {
+		if roomEvent == game_room.GameRoomPingStatusTerminating.String() ||
+			roomEvent == game_room.GameRoomPingStatusTerminated.String() {
+			return true
+		}
+	}
+
+	return false
 }
