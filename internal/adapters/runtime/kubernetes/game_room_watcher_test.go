@@ -69,9 +69,7 @@ func TestGameRoomsWatch(t *testing.T) {
 		require.Eventually(t, func() bool {
 			select {
 			case event := <-watcher.ResultChan():
-				require.Equal(t, game_room.InstanceEventTypeAdded, event.Type)
 				require.Equal(t, instance.ID, event.Instance.ID)
-				require.Equal(t, game_room.InstancePending, event.Instance.Status.Type)
 				return true
 			default:
 				return false
