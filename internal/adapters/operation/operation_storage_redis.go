@@ -187,7 +187,7 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 
 	operations = make([]*operation.Operation, len(operationsIDs))
 
-	pipe := r.client.TxPipeline()
+	pipe := r.client.Pipeline()
 
 	for _, operationID := range operationsIDs {
 		pipe.HGetAll(ctx, fmt.Sprintf("operations:%s:%s", schedulerName, operationID))
