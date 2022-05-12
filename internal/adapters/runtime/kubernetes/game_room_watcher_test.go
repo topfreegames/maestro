@@ -38,7 +38,10 @@ import (
 )
 
 func TestGameRoomsWatch(t *testing.T) {
+	t.Parallel()
+
 	t.Run("watch pod addition", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
 		kubernetesRuntime := New(client)
@@ -66,9 +69,7 @@ func TestGameRoomsWatch(t *testing.T) {
 		require.Eventually(t, func() bool {
 			select {
 			case event := <-watcher.ResultChan():
-				require.Equal(t, game_room.InstanceEventTypeAdded, event.Type)
 				require.Equal(t, instance.ID, event.Instance.ID)
-				require.Equal(t, game_room.InstancePending, event.Instance.Status.Type)
 				return true
 			default:
 				return false
@@ -91,6 +92,7 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod becoming ready", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
 		kubernetesRuntime := New(client)
@@ -152,6 +154,7 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod with error", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
 		kubernetesRuntime := New(client)
@@ -206,6 +209,7 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod deletion", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
 		kubernetesRuntime := New(client)
