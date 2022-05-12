@@ -24,8 +24,9 @@ package service
 
 import (
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 
 	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 
