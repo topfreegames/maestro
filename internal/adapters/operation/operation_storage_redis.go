@@ -105,35 +105,7 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 		return nil, errors.NewErrNotFound("operation %s not found in scheduler %s", operationID, schedulerName)
 	}
 
-	var executionHistory []operation.OperationEvent
-	if history, ok := res[executionHistoryRedisKey]; ok {
-		err = json.Unmarshal([]byte(history), &executionHistory)
-		if err != nil {
-			return nil, errors.NewErrEncoding("failed to parse operation execution history").WithError(err)
-		}
-	}
-
-	statusInt, err := strconv.Atoi(res[statusRedisKey])
-	if err != nil {
-		return nil, errors.NewErrEncoding("failed to parse operation status").WithError(err)
-	}
-
-	createdAt, err := time.Parse(time.RFC3339Nano, res[createdAtRedisKey])
-	if err != nil {
-		return nil, errors.NewErrEncoding("failed to parse operation createdAt field").WithError(err)
-	}
-
-	op = &operation.Operation{
-		ID:               res[idRedisKey],
-		SchedulerName:    res[schedulerNameRedisKey],
-		DefinitionName:   res[definitionNameRedisKey],
-		CreatedAt:        createdAt,
-		Status:           operation.Status(statusInt),
-		Input:            []byte(res[definitionContentsRedisKey]),
-		ExecutionHistory: executionHistory,
-	}
-
-	return op, nil
+	return buildOperationFromMap(res)
 }
 
 func (r *redisOperationStorage) UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) (err error) {
@@ -208,22 +180,43 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 }
 
 func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) (operations []*operation.Operation, err error) {
-	var operationsIDs []string
-	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-		operationsIDs, err = r.client.ZRange(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), 0, -1).Result()
-		return err
-	})
+	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName)
 	if err != nil {
-		return nil, errors.NewErrUnexpected("failed to list finished operations for \"%s\"", schedulerName).WithError(err)
+		return nil, err
 	}
 
 	operations = make([]*operation.Operation, len(operationsIDs))
-	for i, operationID := range operationsIDs {
-		op, err := r.GetOperation(ctx, schedulerName, operationID)
+
+	pipe := r.client.TxPipeline()
+
+	for _, operationID := range operationsIDs {
+		pipe.HGetAll(ctx, fmt.Sprintf("operations:%s:%s", schedulerName, operationID))
+	}
+
+	var cmders []redis.Cmder
+	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+		cmders, err = pipe.Exec(ctx)
+		return err
+	})
+
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
+	}
+
+	for i, cmder := range cmders {
+		res, err := cmder.(*redis.StringStringMapCmd).Result()
 		if err != nil {
-			return nil, err
+			return nil, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
 		}
 
+		if len(res) == 0 {
+			return nil, errors.NewErrNotFound("operation not found in scheduler %s", schedulerName)
+		}
+
+		op, err := buildOperationFromMap(res)
+		if err != nil {
+			return nil, errors.NewErrUnexpected("failed to build operation from the hash").WithError(err)
+		}
 		operations[i] = op
 	}
 
@@ -240,4 +233,45 @@ func (r *redisOperationStorage) buildSchedulerActiveOperationsKey(schedulerName 
 
 func (r *redisOperationStorage) buildSchedulerHistoryOperationsKey(schedulerName string) string {
 	return fmt.Sprintf("operations:%s:lists:history", schedulerName)
+}
+
+func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string) (operationsIDs []string, err error) {
+	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+		operationsIDs, err = r.client.ZRange(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), 0, -1).Result()
+		return err
+	})
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed to list finished operations for \"%s\"", schedulerName).WithError(err)
+	}
+	return operationsIDs, err
+}
+
+func buildOperationFromMap(opMap map[string]string) (*operation.Operation, error) {
+	var executionHistory []operation.OperationEvent
+	if history, ok := opMap[executionHistoryRedisKey]; ok {
+		err := json.Unmarshal([]byte(history), &executionHistory)
+		if err != nil {
+			return nil, errors.NewErrEncoding("failed to parse operation execution history").WithError(err)
+		}
+	}
+
+	statusInt, err := strconv.Atoi(opMap[statusRedisKey])
+	if err != nil {
+		return nil, errors.NewErrEncoding("failed to parse operation status").WithError(err)
+	}
+
+	createdAt, err := time.Parse(time.RFC3339Nano, opMap[createdAtRedisKey])
+	if err != nil {
+		return nil, errors.NewErrEncoding("failed to parse operation createdAt field").WithError(err)
+	}
+
+	return &operation.Operation{
+		ID:               opMap[idRedisKey],
+		SchedulerName:    opMap[schedulerNameRedisKey],
+		DefinitionName:   opMap[definitionNameRedisKey],
+		CreatedAt:        createdAt,
+		Status:           operation.Status(statusInt),
+		Input:            []byte(opMap[definitionContentsRedisKey]),
+		ExecutionHistory: executionHistory,
+	}, nil
 }
