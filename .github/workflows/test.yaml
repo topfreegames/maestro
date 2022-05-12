@@ -3,7 +3,7 @@ on: push
 jobs:
   unit:
     name: Unit tests
-    runs-on: ubuntu-latest
+    runs-on: macos-12
     steps:
     - name: Set up Go
       uses: actions/setup-go@v1
@@ -23,7 +23,7 @@ jobs:
       run: bash <(curl -s https://codecov.io/bash)
   integration:
     name: Integration tests
-    runs-on: ubuntu-latest
+    runs-on: macos-12
     steps:
     - name: Set up Go
       uses: actions/setup-go@v1
@@ -44,7 +44,7 @@ jobs:
 
   runtime-integration:
     name: Runtime Integration tests
-    runs-on: ubuntu-latest
+    runs-on: macos-12
     strategy:
       fail-fast: false
       matrix:

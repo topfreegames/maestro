@@ -38,7 +38,10 @@ import (
 )
 
 func TestGameRoomsWatch(t *testing.T) {
+	t.Parallel()
+
 	t.Run("watch pod addition", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
 		kubernetesRuntime := New(client)
@@ -91,6 +94,7 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod becoming ready", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
 		kubernetesRuntime := New(client)
@@ -152,6 +156,7 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod with error", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
 		kubernetesRuntime := New(client)
@@ -206,6 +211,7 @@ func TestGameRoomsWatch(t *testing.T) {
 	})
 
 	t.Run("watch pod deletion", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
 		kubernetesRuntime := New(client)
