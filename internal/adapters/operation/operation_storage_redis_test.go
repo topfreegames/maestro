@@ -312,6 +312,57 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			assert.Empty(t, operationsStored, "expected result to be empty")
 		})
 
+		t.Run("return no error when operations are in the history but not stored", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			clock := clockmock.NewFakeClock(time.Now())
+			storage := NewRedisOperationStorage(client, clock)
+
+			for _, op := range operations {
+				err := client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
+					Member: op.ID,
+					Score:  float64(clock.Now().Unix()),
+				}).Err()
+				require.NoError(t, err)
+			}
+
+			operationsStored, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			assert.NoError(t, err)
+			assert.Empty(t, operationsStored)
+		})
+
+		t.Run("return no error when some operation is in the history but not stored", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			clock := clockmock.NewFakeClock(time.Now())
+			storage := NewRedisOperationStorage(client, clock)
+
+			for _, op := range operations {
+				err := client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
+					Member: op.ID,
+					Score:  float64(clock.Now().Unix()),
+				}).Err()
+				require.NoError(t, err)
+			}
+
+			firstOp := operations[0]
+			executionHistoryJson, err := json.Marshal(firstOp.ExecutionHistory)
+			require.NoError(t, err)
+
+			err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(firstOp.SchedulerName, firstOp.ID), map[string]interface{}{
+				idRedisKey:                 firstOp.ID,
+				schedulerNameRedisKey:      firstOp.SchedulerName,
+				statusRedisKey:             strconv.Itoa(int(firstOp.Status)),
+				definitionNameRedisKey:     firstOp.DefinitionName,
+				createdAtRedisKey:          firstOp.CreatedAt.Format(time.RFC3339Nano),
+				definitionContentsRedisKey: firstOp.Input,
+				executionHistoryRedisKey:   executionHistoryJson,
+			}).Err()
+			require.NoError(t, err)
+
+			operationsStored, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			assert.NoError(t, err)
+			assert.Equal(t, operationsStored, []*operation.Operation{firstOp})
+		})
+
 	})
 
 	t.Run("with error", func(t *testing.T) {
@@ -345,23 +396,6 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				},
 			},
 		}
-
-		t.Run("return error when some operation is in the history but no stored", func(t *testing.T) {
-			client := test.GetRedisConnection(t, redisAddress)
-			clock := clockmock.NewFakeClock(time.Now())
-			storage := NewRedisOperationStorage(client, clock)
-
-			for _, op := range operations {
-				err := client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
-					Member: op.ID,
-					Score:  float64(clock.Now().Unix()),
-				}).Err()
-				require.NoError(t, err)
-			}
-
-			_, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
-			assert.EqualError(t, err, "operation not found in scheduler test-scheduler")
-		})
 
 		t.Run("return error when some error occurs parsing any operation hash", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)

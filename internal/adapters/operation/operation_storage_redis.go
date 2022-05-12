@@ -185,8 +185,6 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 		return nil, err
 	}
 
-	operations = make([]*operation.Operation, len(operationsIDs))
-
 	pipe := r.client.Pipeline()
 
 	for _, operationID := range operationsIDs {
@@ -203,21 +201,21 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 		return nil, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
 	}
 
-	for i, cmder := range cmders {
+	for _, cmder := range cmders {
 		res, err := cmder.(*redis.StringStringMapCmd).Result()
-		if err != nil {
+		if err != nil && err != redis.Nil {
 			return nil, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
 		}
 
 		if len(res) == 0 {
-			return nil, errors.NewErrNotFound("operation not found in scheduler %s", schedulerName)
+			continue
 		}
 
 		op, err := buildOperationFromMap(res)
 		if err != nil {
 			return nil, errors.NewErrUnexpected("failed to build operation from the hash").WithError(err)
 		}
-		operations[i] = op
+		operations = append(operations, op)
 	}
 
 	return operations, nil
