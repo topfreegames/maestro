@@ -149,13 +149,20 @@ func (m *RoomManager) populateSpecWithHostPort(scheduler entities.Scheduler) (*g
 func (m *RoomManager) DeleteRoomAndWaitForRoomTerminating(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	instance, err := m.InstanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
-		// TODO(gabriel.corado): deal better with instance not found.
+		if errors.Is(err, porterrors.ErrNotFound) {
+			_ = m.RoomStorage.DeleteRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
+			return nil
+		}
 		return fmt.Errorf("unable to fetch game room instance from storage: %w", err)
 	}
 
 	err = m.Runtime.DeleteGameRoomInstance(ctx, instance)
 	if err != nil {
-		// TODO(gabriel.corado): deal better with instance not found.
+		if errors.Is(err, porterrors.ErrNotFound) {
+			_ = m.RoomStorage.DeleteRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
+			_ = m.InstanceStorage.DeleteInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
+			return nil
+		}
 		return fmt.Errorf("failed to delete instance on the runtime: %w", err)
 	}
 
