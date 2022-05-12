@@ -3,7 +3,7 @@ on: pull_request
 jobs:
   linters:
     name: Run linters
-    runs-on: macos-12
+    runs-on: ubuntu-latest
     steps:
       - name: Set up Go
         uses: actions/setup-go@v1
