@@ -333,7 +333,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("error starting operation should stop execution of operation and set status as error", func(t *testing.T) {
+	t.Run("error starting operation should set operation status as error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationManager := mock.NewMockOperationManager(mockCtrl)
@@ -377,18 +377,18 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
+
+			workerService.Stop(context.Background())
+			require.False(t, workerService.IsRunning())
 		}()
 
 		err := workerService.Start(context.Background())
-		require.Error(t, err)
+		require.NoError(t, err)
 
 		assert.Equal(t, expectedOperation.Status, operation.StatusError)
-
-		workerService.Stop(context.Background())
-		require.False(t, workerService.IsRunning())
 	})
 
-	t.Run("error granting lease should stop execution of operation and set status as error", func(t *testing.T) {
+	t.Run("error granting lease should set status as error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationManager := mock.NewMockOperationManager(mockCtrl)
@@ -431,18 +431,18 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
+
+			workerService.Stop(context.Background())
+			require.False(t, workerService.IsRunning())
 		}()
 
 		err := workerService.Start(context.Background())
-		require.Error(t, err)
+		require.NoError(t, err)
 
 		assert.Equal(t, expectedOperation.Status, operation.StatusError)
-
-		workerService.Stop(context.Background())
-		require.False(t, workerService.IsRunning())
 	})
 
-	t.Run("error getting next operation id should stop execution of operation", func(t *testing.T) {
+	t.Run("error getting next operation id should stop execution of worker", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationManager := mock.NewMockOperationManager(mockCtrl)
@@ -484,7 +484,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.False(t, workerService.IsRunning())
 	})
 
-	t.Run("no error getting next operation should stop execution of operation", func(t *testing.T) {
+	t.Run("no error getting next operation and nothing to do, should stop execution of operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationName := "test_operation"

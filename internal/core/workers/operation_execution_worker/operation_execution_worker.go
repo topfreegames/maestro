@@ -24,7 +24,6 @@ package operation_execution_worker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -92,8 +91,8 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 			}
 
 			err := w.executeOperationFlow(opID)
-			if err != nil && shouldFinishWorker(err) {
-				return err
+			if err != nil {
+				w.logger.Error("Error executing operation", zap.Error(err))
 			}
 		case <-healthControllerTicker.C:
 			err := w.createHealthControllerOperation(w.workerContext)
@@ -297,10 +296,4 @@ func (w *OperationExecutionWorker) executeRollbackCollectingLatencyMetrics(defin
 	err = f()
 	reportOperationRollbackLatency(rollbackStartTime, w.scheduler.Game, w.scheduler.Name, definitionName, err == nil)
 	return err
-}
-
-func shouldFinishWorker(err error) bool {
-	return errors.Is(err, workererrors.ErrStartOperationFailed) ||
-		errors.Is(err, workererrors.ErrGrantLeaseFailed) ||
-		errors.Is(err, workererrors.ErrOperationWithInvalidStatus)
 }
