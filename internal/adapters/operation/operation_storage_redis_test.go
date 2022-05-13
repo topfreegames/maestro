@@ -117,24 +117,8 @@ func TestCreateOperation(t *testing.T) {
 		err := storage.CreateOperation(context.Background(), op)
 		require.NoError(t, err)
 
-		executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
-		require.NoError(t, err)
-
-		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
-		require.NoError(t, err)
-		require.Equal(t, op.ID, operationStored[idRedisKey])
-		require.Equal(t, op.SchedulerName, operationStored[schedulerNameRedisKey])
-		require.Equal(t, op.DefinitionName, operationStored[definitionNameRedisKey])
-		require.Equal(t, createdAtString, operationStored[createdAtRedisKey])
-		require.EqualValues(t, op.Input, operationStored[definitionContentsRedisKey])
-		require.EqualValues(t, executionHistoryJson, operationStored[executionHistoryRedisKey])
-
-		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
-		require.NoError(t, err)
-		require.Equal(t, op.Status, operation.Status(intStatus))
-
-		time.Sleep(time.Second)
-		operationStored, _ = client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
+		time.Sleep(time.Second * 2)
+		operationStored, _ := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
 		require.True(t, len(operationStored) == 0)
 	})
 
