@@ -18,6 +18,8 @@ adapters:
   operationStorage:
     redis:
       url: "redis://localhost:6379/0"
+      operationsTtl:
+        healthController: 24h
   operationLeaseStorage:
     redis:
       url: "redis://localhost:6379/0"

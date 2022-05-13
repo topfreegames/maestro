@@ -24,6 +24,9 @@ package service
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 
 	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 
@@ -71,6 +74,8 @@ const (
 	schedulerStoragePostgresUrlPath = "adapters.schedulerStorage.postgres.url"
 	// Redis operation flow
 	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
+	// Health Controller operation TTL
+	healthControllerOperationTTL = "adapters.operationStorage.redis.operationsTtl.healthController"
 )
 
 func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig, schedulerStorage ports.SchedulerStorage) ports.OperationManager {
@@ -110,7 +115,11 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	return operationadapters.NewRedisOperationStorage(client, clock), nil
+	operationsTTlMap := map[operationadapters.Definition]time.Duration{
+		healthcontroller.OperationName: c.GetDuration(healthControllerOperationTTL),
+	}
+
+	return operationadapters.NewRedisOperationStorage(client, clock, operationsTTlMap), nil
 }
 
 func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.OperationLeaseStorage, error) {

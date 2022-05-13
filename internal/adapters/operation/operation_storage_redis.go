@@ -52,15 +52,18 @@ var _ ports.OperationStorage = (*redisOperationStorage)(nil)
 
 const operationStorageMetricLabel = "operation-storage"
 
+type Definition string
+
 // redisOperationStorage adapter of the OperationStorage port. It store store
 // the operations in lists to keep their creation/update order.
 type redisOperationStorage struct {
-	client *redis.Client
-	clock  ports.Clock
+	client           *redis.Client
+	clock            ports.Clock
+	operationsTTlMap map[Definition]time.Duration
 }
 
-func NewRedisOperationStorage(client *redis.Client, clock ports.Clock) *redisOperationStorage {
-	return &redisOperationStorage{client, clock}
+func NewRedisOperationStorage(client *redis.Client, clock ports.Clock, operationsTTlMap map[Definition]time.Duration) *redisOperationStorage {
+	return &redisOperationStorage{client, clock, operationsTTlMap}
 }
 
 // CreateOperation marshal and pushes the operation to the scheduler pending
@@ -71,16 +74,24 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 		return errors.NewErrUnexpected("failed to create operation on redis").WithError(err)
 	}
 
+	pipe := r.client.Pipeline()
+
+	pipe.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+		idRedisKey:                 op.ID,
+		schedulerNameRedisKey:      op.SchedulerName,
+		statusRedisKey:             strconv.Itoa(int(op.Status)),
+		definitionNameRedisKey:     op.DefinitionName,
+		createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+		definitionContentsRedisKey: op.Input,
+		executionHistoryRedisKey:   executionHistoryJson,
+	})
+
+	if tll, ok := r.operationsTTlMap[Definition(op.DefinitionName)]; ok {
+		pipe.Expire(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), tll)
+	}
+
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-		err = r.client.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
-			idRedisKey:                 op.ID,
-			schedulerNameRedisKey:      op.SchedulerName,
-			statusRedisKey:             strconv.Itoa(int(op.Status)),
-			definitionNameRedisKey:     op.DefinitionName,
-			createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
-			definitionContentsRedisKey: op.Input,
-			executionHistoryRedisKey:   executionHistoryJson,
-		}).Err()
+		_, err = pipe.Exec(ctx)
 		return err
 	})
 
