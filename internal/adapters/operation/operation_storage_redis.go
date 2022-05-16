@@ -190,7 +190,7 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 	})
 
 	if err != nil {
-		return nil, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
+		return nil, errors.NewErrUnexpected("failed execute pipe for retrieving operations").WithError(err)
 	}
 	operations = make([]*operation.Operation, 0, len(operationsIDs))
 	for _, cmder := range cmders {
