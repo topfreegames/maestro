@@ -187,7 +187,6 @@ func (om *OperationManager) ListSchedulerActiveOperations(ctx context.Context, s
 }
 
 func (om *OperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
-
 	return om.Storage.ListSchedulerFinishedOperations(ctx, schedulerName)
 }
 

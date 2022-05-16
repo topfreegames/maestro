@@ -658,7 +658,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		}
 	})
 
-	t.Run("failed to fetch a operation inside the list", func(t *testing.T) {
+	t.Run("fetching an operation that doesnt exists in the list, return without them", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
 		operationsTTlMap := map[Definition]time.Duration{}
@@ -685,8 +685,8 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		}).Err()
 		require.NoError(t, err)
 
-		_, err = storage.ListSchedulerActiveOperations(context.Background(), schedulerName)
-		require.Error(t, err)
-		require.ErrorIs(t, errors.ErrNotFound, err)
+		resultOperations, err := storage.ListSchedulerActiveOperations(context.Background(), schedulerName)
+		require.NoError(t, err)
+		require.Len(t, resultOperations, len(activeOperations))
 	})
 }
