@@ -49,7 +49,7 @@ const instanceStorageMetricLabel = "instance-storage"
 func (r redisInstanceStorage) GetInstance(ctx context.Context, scheduler string, instanceId string) (instance *game_room.Instance, err error) {
 	var instanceJson string
 	podMapRedisKey := getPodMapRedisKey(scheduler)
-	metrics.RunWithMetrics(instanceStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(instanceStorageMetricLabel, "GetInstance", func() error {
 		instanceJson, err = r.client.HGet(ctx, podMapRedisKey, instanceId).Result()
 		return err
 	})
@@ -75,7 +75,7 @@ func (r redisInstanceStorage) UpsertInstance(ctx context.Context, instance *game
 		return errors.NewErrUnexpected("error marshalling room %s json", instance.ID).WithError(err)
 	}
 	podMapRedisKey := getPodMapRedisKey(instance.SchedulerID)
-	metrics.RunWithMetrics(instanceStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(instanceStorageMetricLabel, "UpsertInstance", func() error {
 		err = r.client.HSet(ctx, podMapRedisKey, instance.ID, instanceJson).Err()
 		return err
 	})
@@ -88,7 +88,7 @@ func (r redisInstanceStorage) UpsertInstance(ctx context.Context, instance *game
 func (r redisInstanceStorage) DeleteInstance(ctx context.Context, scheduler string, instanceId string) (err error) {
 	podMapRedisKey := getPodMapRedisKey(scheduler)
 	var deleted int64
-	metrics.RunWithMetrics(instanceStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(instanceStorageMetricLabel, "DeleteInstance", func() error {
 		deleted, err = r.client.HDel(ctx, getPodMapRedisKey(scheduler), instanceId).Result()
 		return err
 	})
@@ -110,7 +110,7 @@ func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler str
 		var results []string
 		var resultCursor uint64
 
-		metrics.RunWithMetrics(instanceStorageMetricLabel, func() error {
+		metrics.RunWithMetrics(instanceStorageMetricLabel, "GetAllInstances", func() error {
 			results, resultCursor, err = client.HScan(ctx, redisKey, cursor, "*", r.scanPageSize).Result()
 			return err
 		})
@@ -138,7 +138,7 @@ func (r redisInstanceStorage) GetAllInstances(ctx context.Context, scheduler str
 func (r redisInstanceStorage) GetInstanceCount(ctx context.Context, scheduler string) (count int, err error) {
 	podMapRedisKey := getPodMapRedisKey(scheduler)
 	var resultCount int64
-	metrics.RunWithMetrics(instanceStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(instanceStorageMetricLabel, "GetInstanceCount", func() error {
 		resultCount, err = r.client.HLen(ctx, podMapRedisKey).Result()
 		return err
 	})

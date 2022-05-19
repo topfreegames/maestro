@@ -37,6 +37,7 @@ var (
 		Help:      "Redis fails counter metric",
 		Labels: []string{
 			monitoring.LabelStorage,
+			monitoring.LabelMethod,
 		},
 	})
 
@@ -47,21 +48,23 @@ var (
 		Help:      "Redis latency metric",
 		Labels: []string{
 			monitoring.LabelStorage,
+			monitoring.LabelMethod,
 		},
 	})
 )
 
-func RunWithMetrics(storageLabel string, executionFunction func() error) {
+func RunWithMetrics(storageLabel, methodLabel string, executionFunction func() error) {
 	start := time.Now()
 	err := executionFunction()
 	if err != nil && err != redis.Nil {
-		ReportOperationFlowStorageFailsCounterMetric(storageLabel)
+		ReportOperationFlowStorageFailsCounterMetric(storageLabel, methodLabel)
 	}
+	labels := []string{storageLabel, methodLabel}
 	monitoring.ReportLatencyMetricInMillis(
-		RedisLatencyMetric, start, storageLabel,
+		RedisLatencyMetric, start, labels...,
 	)
 }
 
-func ReportOperationFlowStorageFailsCounterMetric(storageLabel string) {
-	RedisFailsCounterMetric.WithLabelValues(storageLabel).Inc()
+func ReportOperationFlowStorageFailsCounterMetric(storageLabel, methodLabel string) {
+	RedisFailsCounterMetric.WithLabelValues(storageLabel, methodLabel).Inc()
 }

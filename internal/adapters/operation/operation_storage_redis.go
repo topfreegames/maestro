@@ -90,7 +90,7 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 		pipe.Expire(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), tll)
 	}
 
-	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationStorageMetricLabel, "CreateOperation", func() error {
 		_, err = pipe.Exec(ctx)
 		return err
 	})
@@ -104,7 +104,7 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 
 func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName, operationID string) (op *operation.Operation, err error) {
 	var res map[string]string
-	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationStorageMetricLabel, "GetOperation", func() error {
 		res, err = r.client.HGetAll(ctx, fmt.Sprintf("operations:%s:%s", schedulerName, operationID)).Result()
 		return err
 	})
@@ -136,7 +136,7 @@ func (r *redisOperationStorage) UpdateOperationStatus(ctx context.Context, sched
 		Member: operationID,
 		Score:  float64(r.clock.Now().Unix()),
 	})
-	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationStorageMetricLabel, "UpdateOperationStatus", func() error {
 		_, err = pipe.Exec(ctx)
 		return err
 	})
@@ -153,7 +153,7 @@ func (r *redisOperationStorage) UpdateOperationExecutionHistory(ctx context.Cont
 	if err != nil {
 		return errors.NewErrUnexpected("failed to marshal operation execution history").WithError(err)
 	}
-	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationStorageMetricLabel, "UpdateOperationExecutionHistory", func() error {
 		err = r.client.HSet(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
 			executionHistoryRedisKey: jsonExecutionHistory,
 		}).Err()
@@ -169,7 +169,7 @@ func (r *redisOperationStorage) UpdateOperationExecutionHistory(ctx context.Cont
 
 func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Context, schedulerName string) (operations []*operation.Operation, err error) {
 	var operationsIDs []string
-	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationStorageMetricLabel, "ListSchedulerActiveOperations:1", func() error {
 		operationsIDs, err = r.client.ZRange(ctx, r.buildSchedulerActiveOperationsKey(schedulerName), 0, -1).Result()
 		return err
 	})
@@ -184,7 +184,7 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 	}
 
 	var cmders []redis.Cmder
-	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationStorageMetricLabel, "ListSchedulerActiveOperations:2", func() error {
 		cmders, err = pipe.Exec(ctx)
 		return err
 	})
@@ -226,7 +226,7 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 	}
 
 	var cmders []redis.Cmder
-	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationStorageMetricLabel, "ListSchedulerFinishedOperations", func() error {
 		cmders, err = pipe.Exec(ctx)
 		return err
 	})
@@ -268,7 +268,7 @@ func (r *redisOperationStorage) buildSchedulerHistoryOperationsKey(schedulerName
 }
 
 func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string) (operationsIDs []string, err error) {
-	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationStorageMetricLabel, "getFinishedOperationsFromHistory", func() error {
 		operationsIDs, err = r.client.ZRange(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), 0, -1).Result()
 		return err
 	})

@@ -50,7 +50,7 @@ func NewRedisSchedulerCache(client *redis.Client) *redisSchedulerCache {
 func (r redisSchedulerCache) GetScheduler(ctx context.Context, schedulerName string) (scheduler *entities.Scheduler, err error) {
 	schedulerCacheKey := r.buildSchedulerKey(schedulerName)
 	var schedulerJson string
-	metrics.RunWithMetrics(schedulerCacheStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(schedulerCacheStorageMetricLabel, "GetScheduler", func() error {
 		schedulerJson, err = r.client.Get(ctx, schedulerCacheKey).Result()
 		return err
 	})
@@ -75,7 +75,7 @@ func (r redisSchedulerCache) SetScheduler(ctx context.Context, scheduler *entiti
 	}
 
 	schedulerCacheKey := r.buildSchedulerKey(scheduler.Name)
-	metrics.RunWithMetrics(schedulerCacheStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(schedulerCacheStorageMetricLabel, "SetScheduler", func() error {
 		err = r.client.Set(ctx, schedulerCacheKey, jsonScheduler, ttl).Err()
 		return err
 	})
@@ -87,7 +87,7 @@ func (r redisSchedulerCache) SetScheduler(ctx context.Context, scheduler *entiti
 }
 
 func (r redisSchedulerCache) DeleteScheduler(ctx context.Context, schedulerName string) (err error) {
-	metrics.RunWithMetrics(schedulerCacheStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(schedulerCacheStorageMetricLabel, "DeleteScheduler", func() error {
 		err = r.client.Del(ctx, r.buildSchedulerKey(schedulerName)).Err()
 		return err
 	})

@@ -180,12 +180,21 @@ func (m *RoomManager) DeleteRoomAndWaitForRoomTerminating(ctx context.Context, g
 
 func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	gameRoom.LastPingAt = m.Clock.Now()
+
+	start := time.Now()
 	err := m.RoomStorage.UpdateRoom(ctx, gameRoom)
+	elapsed := time.Since(start)
+
+	m.Logger.Sugar().Infof("UpdateRoom elapsed %v", elapsed)
 	if err != nil {
 		return fmt.Errorf("failed when updating game room in storage with incoming ping data: %w", err)
 	}
 
+	start = time.Now()
 	err = m.UpdateGameRoomStatus(ctx, gameRoom.SchedulerID, gameRoom.ID)
+	elapsed = time.Since(start)
+
+	m.Logger.Sugar().Infof("UpdateGameRoomStatus elapsed %v", elapsed)
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
@@ -328,12 +337,19 @@ func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities
 }
 
 func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error {
+	start := time.Now()
 	gameRoom, err := m.RoomStorage.GetRoom(ctx, schedulerId, gameRoomId)
+	elapsed := time.Since(start)
+	m.Logger.Sugar().Infof("GetRoom elapsed %v", elapsed)
 	if err != nil {
 		return fmt.Errorf("failed to get game room: %w", err)
 	}
 
+	start = time.Now()
 	instance, err := m.InstanceStorage.GetInstance(ctx, schedulerId, gameRoomId)
+	elapsed = time.Since(start)
+
+	m.Logger.Sugar().Infof("GetInstance elapsed %v", elapsed)
 	if err != nil {
 		return fmt.Errorf("failed to get game room instance: %w", err)
 	}
@@ -352,7 +368,11 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 		return fmt.Errorf("state transition is invalid: %w", err)
 	}
 
+	start = time.Now()
 	err = m.RoomStorage.UpdateRoomStatus(ctx, schedulerId, gameRoomId, newStatus)
+	elapsed = time.Since(start)
+
+	m.Logger.Sugar().Infof("UpdateRoomStatus elapsed %v", elapsed)
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}

@@ -73,7 +73,7 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 	roomHashCmd := r.client.HGetAll(ctx, getRoomRedisKey(room.SchedulerID, room.ID))
 	statusCmd := p.ZScore(ctx, getRoomStatusSetRedisKey(room.SchedulerID), room.ID)
 	pingCmd := p.ZScore(ctx, getRoomPingRedisKey(room.SchedulerID), room.ID)
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "GetRoom", func() error {
 		_, err = p.Exec(ctx)
 		return err
 	})
@@ -128,7 +128,7 @@ func (r *redisStateStorage) CreateRoom(ctx context.Context, room *game_room.Game
 		Score:  float64(room.LastPingAt.Unix()),
 	})
 
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "CreateRoom", func() error {
 		_, err = p.Exec(ctx)
 		return err
 	})
@@ -154,7 +154,7 @@ func (r *redisStateStorage) UpdateRoom(ctx context.Context, room *game_room.Game
 		return err
 	}
 
-	p := r.client.TxPipeline()
+	p := r.client.Pipeline()
 	p.HSet(ctx, getRoomRedisKey(room.SchedulerID, room.ID), map[string]interface{}{
 		metadataKey:   metadataJson,
 		pingStatusKey: strconv.Itoa(int(room.PingStatus)),
@@ -165,7 +165,7 @@ func (r *redisStateStorage) UpdateRoom(ctx context.Context, room *game_room.Game
 		Score:  float64(room.LastPingAt.Unix()),
 	})
 
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "UpdateRoom", func() error {
 		_, err = p.Exec(ctx)
 		return err
 	})
@@ -182,7 +182,7 @@ func (r *redisStateStorage) DeleteRoom(ctx context.Context, scheduler, roomID st
 	p.Del(ctx, getRoomRedisKey(scheduler, roomID))
 	p.ZRem(ctx, getRoomStatusSetRedisKey(scheduler), roomID)
 	p.ZRem(ctx, getRoomPingRedisKey(scheduler), roomID)
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "DeleteRoom", func() error {
 		cmders, err = p.Exec(ctx)
 		return err
 	})
@@ -199,7 +199,7 @@ func (r *redisStateStorage) DeleteRoom(ctx context.Context, scheduler, roomID st
 }
 
 func (r *redisStateStorage) GetAllRoomIDs(ctx context.Context, scheduler string) (rooms []string, err error) {
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "GetAllRoomIDs", func() error {
 		rooms, err = r.client.ZRange(ctx, getRoomStatusSetRedisKey(scheduler), 0, -1).Result()
 		return err
 	})
@@ -212,7 +212,7 @@ func (r *redisStateStorage) GetAllRoomIDs(ctx context.Context, scheduler string)
 
 func (r *redisStateStorage) GetRoomIDsByStatus(ctx context.Context, scheduler string, status game_room.GameRoomStatus) (rooms []string, err error) {
 	statusIntStr := fmt.Sprint(int(status))
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "GetRoomIDsByStatus", func() error {
 		rooms, err = r.client.ZRangeByScore(ctx, getRoomStatusSetRedisKey(scheduler), &redis.ZRangeBy{
 			Min: statusIntStr,
 			Max: statusIntStr,
@@ -227,7 +227,7 @@ func (r *redisStateStorage) GetRoomIDsByStatus(ctx context.Context, scheduler st
 }
 
 func (r *redisStateStorage) GetRoomIDsByLastPing(ctx context.Context, scheduler string, threshold time.Time) (rooms []string, err error) {
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "GetRoomIDsByLastPing", func() error {
 		rooms, err = r.client.ZRangeByScore(ctx, getRoomPingRedisKey(scheduler), &redis.ZRangeBy{
 			Min: "-inf",
 			Max: strconv.FormatInt(threshold.Unix(), 10),
@@ -244,7 +244,7 @@ func (r *redisStateStorage) GetRoomIDsByLastPing(ctx context.Context, scheduler 
 func (r *redisStateStorage) GetRoomCount(ctx context.Context, scheduler string) (count int, err error) {
 	client := r.client
 	var resultCount int64
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "GetRoomCount", func() error {
 		resultCount, err = client.ZCard(ctx, getRoomStatusSetRedisKey(scheduler)).Result()
 		return err
 
@@ -260,7 +260,7 @@ func (r *redisStateStorage) GetRoomCountByStatus(ctx context.Context, scheduler 
 	client := r.client
 	statusIntStr := fmt.Sprint(int(status))
 	var resultCount int64
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "GetRoomCountByStatus", func() error {
 		resultCount, err = client.ZCount(ctx, getRoomStatusSetRedisKey(scheduler), statusIntStr, statusIntStr).Result()
 
 		return err
@@ -273,7 +273,7 @@ func (r *redisStateStorage) GetRoomCountByStatus(ctx context.Context, scheduler 
 
 func (r *redisStateStorage) UpdateRoomStatus(ctx context.Context, scheduler, roomId string, status game_room.GameRoomStatus) error {
 	var statusCmd *redis.IntCmd
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "UpdateRoomStatus:1", func() error {
 		statusCmd = r.client.ZAddXXCh(ctx, getRoomStatusSetRedisKey(scheduler), &redis.Z{
 			Member: roomId,
 			Score:  float64(status),
@@ -295,7 +295,7 @@ func (r *redisStateStorage) UpdateRoomStatus(ctx context.Context, scheduler, roo
 	}
 
 	var publishCmd *redis.IntCmd
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "UpdateRoomStatus:2", func() error {
 		publishCmd = r.client.Publish(ctx, getRoomStatusUpdateChannel(scheduler, roomId), encodedEvent)
 		return publishCmd.Err()
 	})
@@ -308,7 +308,7 @@ func (r *redisStateStorage) UpdateRoomStatus(ctx context.Context, scheduler, roo
 
 func (r *redisStateStorage) WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (ports.RoomStorageStatusWatcher, error) {
 	var sub *redis.PubSub
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(roomStorageMetricLabel, "WatchRoomStatus", func() error {
 		sub = r.client.Subscribe(ctx, getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
 		return nil
 	})

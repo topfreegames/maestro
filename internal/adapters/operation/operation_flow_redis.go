@@ -54,7 +54,7 @@ func NewRedisOperationFlow(client *redis.Client) *redisOperationFlow {
 // InsertOperationID pushes the operation ID to the scheduler pending
 // operations list.
 func (r *redisOperationFlow) InsertOperationID(ctx context.Context, schedulerName string, operationID string) (err error) {
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, "InsertOperationID", func() error {
 		err = r.client.RPush(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), operationID).Err()
 		return err
 	})
@@ -67,7 +67,7 @@ func (r *redisOperationFlow) InsertOperationID(ctx context.Context, schedulerNam
 
 // InsertPriorityOperationID inserts the operationID on the top of pending operations list.
 func (r *redisOperationFlow) InsertPriorityOperationID(ctx context.Context, schedulerName string, operationID string) (err error) {
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, "InsertPriorityOperationID", func() error {
 		err = r.client.LPush(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), operationID).Err()
 		return err
 	})
@@ -102,7 +102,7 @@ func (r *redisOperationFlow) NextOperationID(ctx context.Context, schedulerName 
 
 // RemoveNextOperation removes the next operation from the operation flow.
 func (r *redisOperationFlow) RemoveNextOperation(ctx context.Context, schedulerName string) (err error) {
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, "RemoveNextOperation", func() error {
 		_, err = r.client.LPop(ctx, r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName)).Result()
 
 		return err
@@ -139,7 +139,7 @@ func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Con
 		return fmt.Errorf("failed to marshal operation cancellation request to string: %w", err)
 	}
 
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, "EnqueueOperationCancellationRequest", func() error {
 		err = r.client.Publish(ctx, watchOperationCancellationRequestKey, string(requestAsString)).Err()
 		return err
 	})
@@ -152,7 +152,7 @@ func (r *redisOperationFlow) EnqueueOperationCancellationRequest(ctx context.Con
 
 func (r *redisOperationFlow) WatchOperationCancellationRequests(ctx context.Context) (resultChan chan ports.OperationCancellationRequest) {
 	var sub *redis.PubSub
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, "WatchOperationCancellationRequests", func() error {
 		sub = r.client.Subscribe(ctx, watchOperationCancellationRequestKey)
 		return nil
 	})
@@ -196,7 +196,7 @@ func (r *redisOperationFlow) buildSchedulerAuxiliaryPendingOperationsKey(schedul
 }
 
 func (r *redisOperationFlow) fetchNextOpIDFromAuxiliaryQueue(ctx context.Context, schedulerName string) (opID string, err error) {
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, "fetchNextOpIDFromAuxiliaryQueue", func() error {
 		opID, err = r.client.LIndex(ctx, r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), 0).Result()
 
 		return err
@@ -205,7 +205,7 @@ func (r *redisOperationFlow) fetchNextOpIDFromAuxiliaryQueue(ctx context.Context
 }
 
 func (r *redisOperationFlow) waitAndFetchNextOpIDFromMainQueue(ctx context.Context, schedulerName string) (opID string, err error) {
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, "waitAndFetchNextOpIDFromMainQueue", func() error {
 		opID, err = r.client.BLMove(ctx, r.buildSchedulerPendingOperationsKey(schedulerName), r.buildSchedulerAuxiliaryPendingOperationsKey(schedulerName), "LEFT", "RIGHT", 0).Result()
 
 		return err
@@ -214,7 +214,7 @@ func (r *redisOperationFlow) waitAndFetchNextOpIDFromMainQueue(ctx context.Conte
 }
 
 func (r *redisOperationFlow) listPendingOperationsFromQueue(ctx context.Context, schedulerName string, queueKey string) (operationsIDs []string, err error) {
-	metrics.RunWithMetrics(operationFlowStorageMetricLabel, func() error {
+	metrics.RunWithMetrics(operationFlowStorageMetricLabel, "listPendingOperationsFromQueue", func() error {
 		operationsIDs, err = r.client.LRange(ctx, queueKey, 0, -1).Result()
 		return err
 	})
