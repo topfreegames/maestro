@@ -37,6 +37,7 @@ import (
 	"github.com/stretchr/testify/require"
 	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
@@ -49,8 +50,15 @@ import (
 func TestCancelOperation(t *testing.T) {
 	t.Parallel()
 
+	duration, err := time.ParseDuration("24h")
+	require.NoError(t, err)
+
+	operationsTTLMap := map[operationadapters.Definition]time.Duration{
+		healthcontroller.OperationName: duration,
+	}
+
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock())
+		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
 		operationFlow := operationadapters.NewRedisOperationFlow(redisClient)
 
 		t.Run("cancel pending and in-progress operations successfully", func(t *testing.T) {

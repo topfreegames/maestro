@@ -163,7 +163,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, updateResponse.OperationId, scheduler.Name)
 
-			waitForOperationToFail(t, managementApiClient, scheduler.Name, "create_new_scheduler_version")
+			waitForOperationToFailById(t, managementApiClient, scheduler.Name, updateResponse.OperationId)
 
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
@@ -188,9 +188,19 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			require.Len(t, podsAfterUpdate.Items, 2)
 
 			// Pod's haven't change
-			for i := 0; i < 2; i++ {
-				require.Equal(t, podsAfterUpdate.Items[i].Name, podsBeforeUpdate.Items[i].Name)
+
+			podsNameBeforeUpdate := make([]string, 0, len(podsBeforeUpdate.Items))
+			for _, pod := range podsBeforeUpdate.Items {
+				podsNameBeforeUpdate = append(podsNameBeforeUpdate, pod.Name)
 			}
+
+			podsNameAfterUpdate := make([]string, 0, len(podsAfterUpdate.Items))
+			for _, pod := range podsAfterUpdate.Items {
+				podsNameAfterUpdate = append(podsNameAfterUpdate, pod.Name)
+			}
+
+			require.ElementsMatch(t, podsNameAfterUpdate, podsNameBeforeUpdate)
+
 			// version didn't change
 			require.Equal(t, "v1.0.0", getSchedulerResponse.Scheduler.Spec.Version)
 
@@ -240,9 +250,10 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 	require.NoError(t, err)
 
 	updateRequest := &maestroApiV1.NewSchedulerVersionRequest{
-		Name:     scheduler.Name,
-		Game:     "test",
-		MaxSurge: "10%",
+		Name:          scheduler.Name,
+		Game:          "test",
+		MaxSurge:      "10%",
+		RoomsReplicas: 2,
 		Spec: &maestrov1.Spec{
 			TerminationGracePeriod: 15,
 			Containers: []*maestroApiV1.Container{
@@ -530,10 +541,17 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 	err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 	require.NoError(t, err)
 
-	// Don't replace pods since is a minor change
-	for i := 0; i < 2; i++ {
-		require.Equal(t, podsAfterUpdate.Items[i].Name, podsBeforeUpdate.Items[i].Name)
+	podsNameBeforeUpdate := make([]string, 0, len(podsBeforeUpdate.Items))
+	for _, pod := range podsBeforeUpdate.Items {
+		podsNameBeforeUpdate = append(podsNameBeforeUpdate, pod.Name)
 	}
+
+	podsNameAfterUpdate := make([]string, 0, len(podsAfterUpdate.Items))
+	for _, pod := range podsAfterUpdate.Items {
+		podsNameAfterUpdate = append(podsNameAfterUpdate, pod.Name)
+	}
+
+	require.ElementsMatch(t, podsNameAfterUpdate, podsNameBeforeUpdate)
 
 	require.Equal(t, expectedNewVersion, getSchedulerResponse.Scheduler.Spec.Version)
 }

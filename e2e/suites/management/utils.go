@@ -53,9 +53,10 @@ func createSchedulerAndWaitForIt(
 	roomsApiAddress := maestro.RoomsApiServer.ContainerInternalAddress
 	schedulerName := framework.GenerateSchedulerName()
 	createRequest := &maestroApiV1.CreateSchedulerRequest{
-		Name:     schedulerName,
-		Game:     game,
-		MaxSurge: "10%",
+		Name:          schedulerName,
+		Game:          game,
+		MaxSurge:      "10%",
+		RoomsReplicas: 2,
 		Spec: &maestroApiV1.Spec{
 			TerminationGracePeriod: 15,
 			Containers: []*maestroApiV1.Container{
@@ -142,6 +143,15 @@ func createSchedulerAndWaitForIt(
 	// creating secret used by the pods
 	_, err = createNamespaceSecrets(kubeClient, schedulerName, "namespace-secret", map[string]string{"secret_key": "secret_value"})
 	require.NoError(t, err)
+
+	// check pods was created.
+	require.Eventually(t, func() bool {
+		pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
+		require.NoError(t, err)
+
+		return len(pods.Items) == 2
+	}, 30*time.Second, time.Second)
+
 	return createResponse.Scheduler, err
 }
 
@@ -219,8 +229,9 @@ func createSchedulerWithForwardersAndWaitForIt(
 			Start: 40000,
 			End:   60000,
 		},
-		MaxSurge:   "10%",
-		Forwarders: forwarders,
+		RoomsReplicas: 2,
+		MaxSurge:      "10%",
+		Forwarders:    forwarders,
 	}
 
 	createResponse := &maestroApiV1.CreateSchedulerResponse{}
@@ -249,8 +260,8 @@ func createSchedulerWithForwardersAndWaitForIt(
 		svcAccs, err := kubeClient.CoreV1().ServiceAccounts(schedulerName).List(context.Background(), metav1.ListOptions{})
 		require.NoError(t, err)
 
-		return len(svcAccs.Items) > 0
-	}, 5*time.Second, time.Second)
+		return len(svcAccs.Items) == 1
+	}, 30*time.Second, time.Second)
 
 	// creating secret used by the pods
 	_, err = createNamespaceSecrets(kubeClient, schedulerName, "namespace-secret", map[string]string{"secret_key": "secret_value"})
@@ -292,14 +303,6 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 	)
 
-	// Add rooms to the created scheduler
-	// TODO(guilhermecarvalho): when autoscaling is implemented, this part of the test can be deleted
-	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 2}
-	addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
-	require.NoError(t, err)
-
-	waitForOperationToFinish(t, managementApiClient, scheduler.Name, "add_rooms")
 	return scheduler, err
 }
 
@@ -360,17 +363,15 @@ func waitForOperationToFail(t *testing.T, managementApiClient *framework.APIClie
 
 func waitForOperationToFailById(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operationId string) {
 	require.Eventually(t, func() bool {
-		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		getOperationRequest := &maestroApiV1.GetOperationRequest{}
+		getOperationResponse := &maestroApiV1.GetOperationResponse{}
+		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", schedulerName, operationId), getOperationRequest, getOperationResponse)
 		require.NoError(t, err)
 
-		if len(listOperationsResponse.FinishedOperations) >= 1 {
-			for _, _operation := range listOperationsResponse.FinishedOperations {
-				if _operation.Id == operationId && _operation.Status == "error" {
-					return true
-				}
-			}
+		op := getOperationResponse.GetOperation()
+		statusError, _ := operation.StatusError.String()
+		if op.GetStatus() == statusError {
+			return true
 		}
 
 		return false

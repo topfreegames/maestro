@@ -38,6 +38,7 @@ import (
 
 	"github.com/topfreegames/maestro/e2e/framework"
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
+	k8sCoreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -700,41 +701,15 @@ func createSchedulerWithForwarderAndRooms(t *testing.T, maestro *maestro.Maestro
 			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 		forwarders,
 	)
-
-	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 2}
-	addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
-
-	require.Eventually(t, func() bool {
-		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-		err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
-		require.NoError(t, err)
-
-		if len(listOperationsResponse.FinishedOperations) < 2 {
-			return false
-		}
-
-		require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
-		require.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
-		return true
-	}, 4*time.Minute, time.Second)
-
-	require.Eventually(t, func() bool {
-		podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
-		require.NoError(t, err)
-		require.NotEmpty(t, podsAfterUpdate.Items)
-
-		if len(podsAfterUpdate.Items) == 2 {
-			return true
-		}
-
-		return false
-	}, 30*time.Second, time.Second)
-
-	pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 	require.NoError(t, err)
-	require.NotEmpty(t, pods.Items)
+
+	var pods *k8sCoreV1.PodList
+	require.Eventually(t, func() bool {
+		pods, err = kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+		require.NoError(t, err)
+
+		return len(pods.Items) == 2
+	}, 30*time.Second, time.Second)
 
 	return scheduler, []string{pods.Items[0].Name, pods.Items[1].Name}
 }
