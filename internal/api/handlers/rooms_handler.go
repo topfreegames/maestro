@@ -90,7 +90,6 @@ func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.Forw
 func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.UpdateRoomWithPingRequest) (*api.UpdateRoomWithPingResponse, error) {
 	start := time.Now()
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
-	defer handlerLogger.Sugar().Infof("time elapsed ROOM PING %v", time.Since(start))
 	gameRoom, err := requestadapters.FromApiUpdateRoomRequestToEntity(message)
 	handlerLogger.Info("handling room ping request", zap.Any("message", message))
 	if err != nil {
@@ -111,7 +110,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 
 	handlerLogger.Info("Room updated with ping successfully")
 
-
+	handlerLogger.Sugar().Infof("time elapsed ROOM PING %v", time.Since(start))
 	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 
