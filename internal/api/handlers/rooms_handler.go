@@ -110,7 +110,8 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 
 	handlerLogger.Info("Room updated with ping successfully")
 
-	handlerLogger.Sugar().Infof("time elapsed ROOM PING %v", time.Since(start))
+	elapsed := time.Since(start)
+	handlerLogger.Sugar().Infof("time elapsed ROOM PING %v", elapsed)
 	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 
