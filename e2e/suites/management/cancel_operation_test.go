@@ -69,66 +69,54 @@ func TestCancelOperation(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"sh", "-c", "while true; do sleep 1; done"},
+				[]string{"sh", "-c", "while true; do sleep 100; done"},
 			)
 
 			firstSlowOp := createTestOperation(ctx, t, operationStorage, operationFlow, scheduler.Name, 100000)
 			secondSlowOp := createTestOperation(ctx, t, operationStorage, operationFlow, scheduler.Name, 100000)
 
+			inProgressStatus, err := operation.StatusInProgress.String()
+			require.NoError(t, err)
+
 			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
+				getOperationRequest := &maestroApiV1.GetOperationRequest{}
+				getOperationResponse := &maestroApiV1.GetOperationResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, firstSlowOp.ID), getOperationRequest, getOperationResponse)
 				require.NoError(t, err)
 
-				if len(listOperationsResponse.PendingOperations) < 1 || len(listOperationsResponse.ActiveOperations) < 1 {
+				if getOperationResponse.Operation.Status != inProgressStatus {
 					return false
 				}
 
-				require.Equal(t, firstSlowOp.ID, listOperationsResponse.ActiveOperations[0].Id)
-				require.Equal(t, secondSlowOp.ID, listOperationsResponse.PendingOperations[0].Id)
 				return true
-			}, 240*time.Second, time.Second)
+			}, 240*time.Second, 10*time.Millisecond)
 
 			secondOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: secondSlowOp.ID}
 			secondOpCancelResponse := &maestroApiV1.CancelOperationResponse{}
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, secondSlowOp.ID), secondOpCancelRequest, secondOpCancelResponse)
 			require.NoError(t, err)
 
-			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
-				require.NoError(t, err)
-
-				if len(listOperationsResponse.FinishedOperations) < 2 {
-					return false
-				}
-
-				require.Equal(t, secondSlowOp.ID, listOperationsResponse.FinishedOperations[0].Id)
-				require.Equal(t, firstSlowOp.ID, listOperationsResponse.ActiveOperations[0].Id)
-				return true
-			}, 240*time.Second, time.Second)
-
 			firstOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: firstSlowOp.ID}
 			firstOpCancelResponse := &maestroApiV1.CancelOperationResponse{}
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, firstSlowOp.ID), firstOpCancelRequest, firstOpCancelResponse)
 			require.NoError(t, err)
 
-			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
-				require.NoError(t, err)
+			canceledStatus, err := operation.StatusCanceled.String()
+			require.NoError(t, err)
 
-				if len(listOperationsResponse.FinishedOperations) < 3 {
-					return false
-				}
+			firstOperationRequest := &maestroApiV1.GetOperationRequest{}
+			firstOperationResponse := &maestroApiV1.GetOperationResponse{}
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, firstSlowOp.ID), firstOperationRequest, firstOperationResponse)
+			require.NoError(t, err)
 
-				require.Equal(t, secondSlowOp.ID, listOperationsResponse.FinishedOperations[0].Id)
-				require.Equal(t, firstSlowOp.ID, listOperationsResponse.FinishedOperations[1].Id)
-				return true
-			}, 240*time.Second, time.Second)
+			require.Equal(t, firstOperationResponse.Operation.Status, canceledStatus)
+
+			secondOperationRequest := &maestroApiV1.GetOperationRequest{}
+			secondOperationResponse := &maestroApiV1.GetOperationResponse{}
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, secondSlowOp.ID), secondOperationRequest, secondOperationResponse)
+			require.NoError(t, err)
+
+			require.Equal(t, secondOperationResponse.Operation.Status, canceledStatus)
 		})
 
 		t.Run("error when try to cancel operations on final state", func(t *testing.T) {
