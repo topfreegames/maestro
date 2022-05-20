@@ -268,8 +268,14 @@ func (r *redisOperationStorage) buildSchedulerHistoryOperationsKey(schedulerName
 }
 
 func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string) (operationsIDs []string, err error) {
+	// TODO(guilhermocc): receive this time range as filter argument
+	currentTime := r.clock.Now()
+	lastDay := currentTime.Add(-24 * time.Hour)
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-		operationsIDs, err = r.client.ZRange(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), 0, -1).Result()
+		operationsIDs, err = r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
+			Min: fmt.Sprint(lastDay.Unix()),
+			Max: fmt.Sprint(currentTime.Unix()),
+		}).Result()
 		return err
 	})
 	if err != nil {
