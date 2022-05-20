@@ -233,6 +233,11 @@ func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId 
 		return fmt.Errorf("failed to delete room state: %w", err)
 	}
 
+	m.forwardStatusTerminatingEvent(ctx, &game_room.GameRoom{
+		ID:          roomId,
+		SchedulerID: schedulerName,
+	})
+
 	m.Logger.Info("cleaning room success")
 	return nil
 }
@@ -355,6 +360,13 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 	err = m.RoomStorage.UpdateRoomStatus(ctx, schedulerId, gameRoomId, newStatus)
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
+	}
+
+	if instance.Status.Type == game_room.InstanceTerminating {
+		m.forwardStatusTerminatingEvent(ctx, &game_room.GameRoom{
+			ID:          gameRoomId,
+			SchedulerID: schedulerId,
+		})
 	}
 
 	return nil
