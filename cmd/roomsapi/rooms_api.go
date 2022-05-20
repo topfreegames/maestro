@@ -95,7 +95,7 @@ func runRoomsServer(configs config.Config, mux *runtime.ServeMux) func() error {
 	mdlw := middleware.New(middleware.Config{
 		Service: "rooms-api",
 		Recorder: metrics.NewRecorder(metrics.Config{
-			DurationBuckets: monitoring.DefBucketsMs,
+			DurationBuckets: monitoring.DefBucketsSec,
 		}),
 	})
 

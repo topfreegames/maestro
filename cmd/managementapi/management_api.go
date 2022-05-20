@@ -97,7 +97,7 @@ func runManagementServer(ctx context.Context, configs config.Config, mux *runtim
 	mdlw := middleware.New(middleware.Config{
 		Service: "management-api",
 		Recorder: metrics.NewRecorder(metrics.Config{
-			DurationBuckets: monitoring.DefBucketsMs,
+			DurationBuckets: monitoring.DefBucketsSec,
 		}),
 	})
 
