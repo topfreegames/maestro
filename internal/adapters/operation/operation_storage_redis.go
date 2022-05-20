@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/topfreegames/maestro/internal/adapters/metrics"
 
 	"github.com/go-redis/redis/v8"
@@ -269,6 +271,7 @@ func (r *redisOperationStorage) removeNonExistentOperationFromHistory(ctx contex
 		}
 		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
 			_, err := pipe.Exec(ctx)
+			zap.L().Error("failed to remove non-existent operations from history", zap.Error(err))
 			return err
 		})
 	}()
