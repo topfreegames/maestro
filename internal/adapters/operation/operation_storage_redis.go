@@ -215,6 +215,9 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 
 func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) (operations []*operation.Operation, err error) {
 	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName)
+	var nonExistentOperations []string
+	var executions = make(map[string]redis.Cmder)
+
 	if err != nil {
 		return nil, err
 	}
@@ -222,12 +225,12 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 	pipe := r.client.Pipeline()
 
 	for _, operationID := range operationsIDs {
-		pipe.HGetAll(ctx, fmt.Sprintf("operations:%s:%s", schedulerName, operationID))
+		cmd := pipe.HGetAll(ctx, fmt.Sprintf("operations:%s:%s", schedulerName, operationID))
+		executions[operationID] = cmd
 	}
 
-	var cmders []redis.Cmder
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-		cmders, err = pipe.Exec(ctx)
+		_, err = pipe.Exec(ctx)
 		return err
 	})
 
@@ -235,13 +238,14 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 		return nil, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
 	}
 
-	for _, cmder := range cmders {
+	for opID, cmder := range executions {
 		res, err := cmder.(*redis.StringStringMapCmd).Result()
 		if err != nil && err != redis.Nil {
 			return nil, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
 		}
 
 		if len(res) == 0 {
+			nonExistentOperations = append(nonExistentOperations, opID)
 			continue
 		}
 
@@ -252,7 +256,22 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 		operations = append(operations, op)
 	}
 
+	r.removeNonExistentOperationFromHistory(ctx, schedulerName, nonExistentOperations)
+
 	return operations, nil
+}
+
+func (r *redisOperationStorage) removeNonExistentOperationFromHistory(ctx context.Context, name string, operations []string) {
+	go func() {
+		pipe := r.client.Pipeline()
+		for _, operationID := range operations {
+			pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(name), operationID)
+		}
+		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+			_, err := pipe.Exec(ctx)
+			return err
+		})
+	}()
 }
 
 func (r *redisOperationStorage) buildSchedulerOperationKey(schedulerName, opID string) string {
