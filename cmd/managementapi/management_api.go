@@ -25,6 +25,7 @@ package managementapi
 import (
 	"context"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/topfreegames/maestro/cmd/commom"
 
@@ -39,7 +40,6 @@ import (
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
 var (
@@ -97,7 +97,7 @@ func runManagementServer(ctx context.Context, configs config.Config, mux *runtim
 	mdlw := middleware.New(middleware.Config{
 		Service: "management-api",
 		Recorder: metrics.NewRecorder(metrics.Config{
-			DurationBuckets: monitoring.DefBucketsSec,
+			DurationBuckets: prometheus.DefBuckets,
 		}),
 	})
 

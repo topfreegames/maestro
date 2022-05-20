@@ -30,10 +30,9 @@ import (
 	dto "github.com/prometheus/client_model/go"
 )
 
-// DefBucketsMs is similar to prometheus.DefBuckets, but tailored for milliseconds instead of seconds.
 var (
+	// DefBucketsMs is similar to prometheus.DefBuckets, but tailored for milliseconds instead of seconds.
 	DefBucketsMs = []float64{5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000}
-	DefBucketsSec = []float64{5/1000, 10/1000, 25/1000, 50/1000, 100/1000, 250/1000, 500/1000, 1000/1000, 2500/1000, 5000/1000, 10000/1000}
 )
 
 type MetricOpts struct {
