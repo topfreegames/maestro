@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/topfreegames/maestro/cmd/commom"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -35,8 +37,6 @@ import (
 	"github.com/slok/go-http-metrics/middleware/std"
 	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/monitoring"
-
 	"go.uber.org/zap"
 )
 
@@ -95,7 +95,7 @@ func runRoomsServer(configs config.Config, mux *runtime.ServeMux) func() error {
 	mdlw := middleware.New(middleware.Config{
 		Service: "rooms-api",
 		Recorder: metrics.NewRecorder(metrics.Config{
-			DurationBuckets: monitoring.DefBucketsMs,
+			DurationBuckets: prometheus.DefBuckets,
 		}),
 	})
 
