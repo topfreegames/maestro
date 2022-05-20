@@ -384,7 +384,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			assert.Empty(t, operationsReturned, "expected result to be empty")
 		})
 
-		t.Run("return no error when operations are in the history but not stored", func(t *testing.T) {
+		t.Run("return no error when operations are in the history but not stored, remove nonexistent operations from history asynchronously", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
@@ -401,6 +401,10 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned)
+			assert.Eventually(t, func() bool {
+				ids, _ := client.ZRange(context.Background(), storage.buildSchedulerHistoryOperationsKey(schedulerName), 0, -1).Result()
+				return len(ids) == 0
+			}, time.Second, 10*time.Millisecond, "expected non existent operations to not be in the history anymore")
 		})
 
 		t.Run("return no error when some operation is in the history but not stored", func(t *testing.T) {
