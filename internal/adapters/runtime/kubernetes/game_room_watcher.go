@@ -213,7 +213,6 @@ func (kw *kubernetesWatcher) updateFunc(obj interface{}, newObj interface{}) {
 }
 
 func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
-	kw.logger.Info("POD DELETED")
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		return
