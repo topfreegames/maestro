@@ -30,15 +30,11 @@ import (
 
 	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 
-	"github.com/topfreegames/maestro/internal/core/ports"
-
 	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
-	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
@@ -143,27 +139,4 @@ func TestCancelOperation(t *testing.T) {
 			require.Contains(t, err.Error(), "status 409")
 		})
 	})
-}
-
-func createTestOperation(ctx context.Context, t *testing.T, operationStorage ports.OperationStorage, operationFlow ports.OperationFlow, schedulerName string, sleepSeconds int) *operation.Operation {
-
-	definition := test_operation.TestOperationDefinition{
-		SleepSeconds: sleepSeconds,
-	}
-
-	op := &operation.Operation{
-		ID:             uuid.NewString(),
-		Status:         operation.StatusPending,
-		DefinitionName: definition.Name(),
-		SchedulerName:  schedulerName,
-		CreatedAt:      time.Now(),
-		Input:          definition.Marshal(),
-	}
-
-	err := operationStorage.CreateOperation(ctx, op)
-	require.NoError(t, err)
-	err = operationFlow.InsertOperationID(ctx, op.SchedulerName, op.ID)
-	require.NoError(t, err)
-
-	return op
 }

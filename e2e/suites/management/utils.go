@@ -31,7 +31,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
+	"github.com/topfreegames/maestro/internal/core/ports"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -56,7 +59,7 @@ func createSchedulerAndWaitForIt(
 		Name:          schedulerName,
 		Game:          game,
 		MaxSurge:      "10%",
-		RoomsReplicas: 2,
+		RoomsReplicas: 0,
 		Spec: &maestroApiV1.Spec{
 			TerminationGracePeriod: 15,
 			Containers: []*maestroApiV1.Container{
@@ -143,14 +146,6 @@ func createSchedulerAndWaitForIt(
 	// creating secret used by the pods
 	_, err = createNamespaceSecrets(kubeClient, schedulerName, "namespace-secret", map[string]string{"secret_key": "secret_value"})
 	require.NoError(t, err)
-
-	// check pods was created.
-	require.Eventually(t, func() bool {
-		pods, err := kubeClient.CoreV1().Pods(schedulerName).List(context.Background(), metav1.ListOptions{})
-		require.NoError(t, err)
-
-		return len(pods.Items) == 2
-	}, 30*time.Second, time.Second)
 
 	return createResponse.Scheduler, err
 }
@@ -267,6 +262,28 @@ func createSchedulerWithForwardersAndWaitForIt(
 	_, err = createNamespaceSecrets(kubeClient, schedulerName, "namespace-secret", map[string]string{"secret_key": "secret_value"})
 	require.NoError(t, err)
 	return createResponse.Scheduler, err
+}
+
+func createTestOperation(ctx context.Context, t *testing.T, operationStorage ports.OperationStorage, operationFlow ports.OperationFlow, schedulerName string, sleepSeconds int) *operation.Operation {
+	definition := test_operation.TestOperationDefinition{
+		SleepSeconds: sleepSeconds,
+	}
+
+	op := &operation.Operation{
+		ID:             uuid.NewString(),
+		Status:         operation.StatusPending,
+		DefinitionName: definition.Name(),
+		SchedulerName:  schedulerName,
+		CreatedAt:      time.Now(),
+		Input:          definition.Marshal(),
+	}
+
+	err := operationStorage.CreateOperation(ctx, op)
+	require.NoError(t, err)
+	err = operationFlow.InsertOperationID(ctx, op.SchedulerName, op.ID)
+	require.NoError(t, err)
+
+	return op
 }
 
 func addStubRequestToMockedGrpcServer(stubFileName string) error {
