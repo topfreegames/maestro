@@ -234,8 +234,8 @@ func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId 
 	}
 
 	m.forwardStatusTerminatingEvent(ctx, &game_room.GameRoom{
-		ID:               roomId,
-		SchedulerID:      schedulerName,
+		ID:          roomId,
+		SchedulerID: schedulerName,
 	})
 
 	m.Logger.Info("cleaning room success")
@@ -364,8 +364,8 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 
 	if instance.Status.Type == game_room.InstanceTerminating {
 		m.forwardStatusTerminatingEvent(ctx, &game_room.GameRoom{
-			ID:               gameRoomId,
-			SchedulerID:      schedulerId,
+			ID:          gameRoomId,
+			SchedulerID: schedulerId,
 		})
 	}
 
