@@ -100,19 +100,30 @@ func TestCancelOperation(t *testing.T) {
 			canceledStatus, err := operation.StatusCanceled.String()
 			require.NoError(t, err)
 
-			firstOperationRequest := &maestroApiV1.GetOperationRequest{}
-			firstOperationResponse := &maestroApiV1.GetOperationResponse{}
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, firstSlowOp.ID), firstOperationRequest, firstOperationResponse)
-			require.NoError(t, err)
+			require.Eventually(t, func() bool {
+				firstOperationRequest := &maestroApiV1.GetOperationRequest{}
+				firstOperationResponse := &maestroApiV1.GetOperationResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, firstSlowOp.ID), firstOperationRequest, firstOperationResponse)
+				require.NoError(t, err)
+				if firstOperationResponse.Operation.Status != canceledStatus {
+					return false
+				}
 
-			require.Equal(t, firstOperationResponse.Operation.Status, canceledStatus)
+				return true
+			}, 1*time.Minute, 10*time.Millisecond)
 
-			secondOperationRequest := &maestroApiV1.GetOperationRequest{}
-			secondOperationResponse := &maestroApiV1.GetOperationResponse{}
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, secondSlowOp.ID), secondOperationRequest, secondOperationResponse)
-			require.NoError(t, err)
+			require.Eventually(t, func() bool {
+				secondOperationRequest := &maestroApiV1.GetOperationRequest{}
+				secondOperationResponse := &maestroApiV1.GetOperationResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, secondSlowOp.ID), secondOperationRequest, secondOperationResponse)
+				require.NoError(t, err)
 
-			require.Equal(t, secondOperationResponse.Operation.Status, canceledStatus)
+				if secondOperationResponse.Operation.Status != canceledStatus {
+					return false
+				}
+
+				return true
+			}, 1*time.Minute, 10*time.Millisecond)
 		})
 
 		t.Run("error when try to cancel operations on final state", func(t *testing.T) {
