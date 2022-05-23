@@ -34,6 +34,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 
 	"golang.org/x/sync/errgroup"
@@ -256,6 +258,136 @@ func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, room)
 		require.Nil(t, instance)
+	})
+
+}
+
+func TestRoomManager_CreateRoom(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	now := time.Now()
+	portAllocator := pamock.NewMockPortAllocator(mockCtrl)
+	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	eventsService := mockports.NewMockEventsService(mockCtrl)
+	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+	fakeClock := clockmock.NewFakeClock(now)
+	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
+	roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
+
+	container1 := game_room.Container{
+		Name: "container1",
+		Ports: []game_room.ContainerPort{
+			{Protocol: "tcp"},
+		},
+	}
+
+	container2 := game_room.Container{
+		Name: "container2",
+		Ports: []game_room.ContainerPort{
+			{Protocol: "udp"},
+		},
+	}
+
+	containerWithHostPort1 := game_room.Container{
+		Name: "container1",
+		Ports: []game_room.ContainerPort{
+			{Protocol: "tcp", HostPort: 5000},
+		},
+	}
+
+	containerWithHostPort2 := game_room.Container{
+		Name: "container2",
+		Ports: []game_room.ContainerPort{
+			{Protocol: "udp", HostPort: 6000},
+		},
+	}
+
+	scheduler := entities.Scheduler{
+		Name: "game",
+		Spec: game_room.Spec{
+			Containers: []game_room.Container{container1, container2},
+		},
+		PortRange: nil,
+	}
+
+	gameRoom := game_room.GameRoom{
+		ID:          "game-1",
+		SchedulerID: "game",
+		Status:      game_room.GameStatusPending,
+		LastPingAt:  now,
+	}
+
+	gameRoomInstance := game_room.Instance{
+		ID:          "game-1",
+		SchedulerID: "game",
+	}
+
+	t.Run("when room creation is successful then it returns the game room and instance", func(t *testing.T) {
+		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
+		}).Return(&gameRoomInstance, nil)
+
+		gameRoomReady := gameRoom
+		gameRoomReady.Status = game_room.GameStatusReady
+
+		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
+		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
+
+		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
+		assert.NoError(t, err)
+		assert.Equal(t, &gameRoom, room)
+		assert.Equal(t, &gameRoomInstance, instance)
+	})
+
+	t.Run("when game room creation fails while creating instance on runtime then it returns nil with proper error", func(t *testing.T) {
+		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
+		}).Return(nil, porterrors.NewErrUnexpected("error creating game room on runtime"))
+
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
+		assert.EqualError(t, err, "error creating game room on runtime")
+		assert.Nil(t, room)
+		assert.Nil(t, instance)
+	})
+
+	t.Run("when game room creation fails while creating game room on storage then it returns nil with proper error", func(t *testing.T) {
+		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
+		}).Return(&gameRoomInstance, nil)
+		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
+
+		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(porterrors.NewErrUnexpected("error storing room on redis"))
+
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
+		assert.EqualError(t, err, "error storing room on redis")
+		assert.Nil(t, room)
+		assert.Nil(t, instance)
+	})
+
+	t.Run("when game room creation fails while allocating ports then it returns nil with proper error", func(t *testing.T) {
+		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
+
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
+		assert.EqualError(t, err, "not enough ports to allocate")
+		assert.Nil(t, room)
+		assert.Nil(t, instance)
+	})
+
+	t.Run("when upsert instance fails then it returns nil with proper error", func(t *testing.T) {
+		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
+		}).Return(&gameRoomInstance, nil)
+		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(errors.New("error creating instance"))
+
+		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
+		assert.EqualError(t, err, "error creating instance")
+		assert.Nil(t, room)
+		assert.Nil(t, instance)
 	})
 
 }

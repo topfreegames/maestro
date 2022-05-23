@@ -53,6 +53,22 @@ func (mr *MockRoomManagerMockRecorder) CleanRoomState(ctx, schedulerName, roomId
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanRoomState", reflect.TypeOf((*MockRoomManager)(nil).CleanRoomState), ctx, schedulerName, roomId)
 }
 
+// CreateRoom mocks base method.
+func (m *MockRoomManager) CreateRoom(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateRoom", ctx, scheduler, isValidationRoom)
+	ret0, _ := ret[0].(*game_room.GameRoom)
+	ret1, _ := ret[1].(*game_room.Instance)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// CreateRoom indicates an expected call of CreateRoom.
+func (mr *MockRoomManagerMockRecorder) CreateRoom(ctx, scheduler, isValidationRoom interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRoom", reflect.TypeOf((*MockRoomManager)(nil).CreateRoom), ctx, scheduler, isValidationRoom)
+}
+
 // CreateRoomAndWaitForReadiness mocks base method.
 func (m *MockRoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
 	m.ctrl.T.Helper()

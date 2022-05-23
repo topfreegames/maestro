@@ -77,34 +77,10 @@ func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports
 }
 
 func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
-	spec, err := m.populateSpecWithHostPort(scheduler)
+	room, instance, err := m.createRoomOnStorageAndRuntime(ctx, scheduler, isValidationRoom)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	instance, err := m.Runtime.CreateGameRoomInstance(ctx, scheduler.Name, *spec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = m.InstanceStorage.UpsertInstance(ctx, instance)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	room := &game_room.GameRoom{
-		ID:               instance.ID,
-		SchedulerID:      scheduler.Name,
-		Version:          scheduler.Spec.Version,
-		Status:           game_room.GameStatusPending,
-		LastPingAt:       m.Clock.Now(),
-		IsValidationRoom: isValidationRoom,
-	}
-	err = m.RoomStorage.CreateRoom(ctx, room)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	// TODO: let each scheduler parametrize its timeout and use this config as fallback if the scheduler timeout value
 	// is absent.
 	duration := m.Config.RoomInitializationTimeout
@@ -124,6 +100,10 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 	}
 
 	return room, instance, err
+}
+
+func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
+	return m.createRoomOnStorageAndRuntime(ctx, scheduler, isValidationRoom)
 }
 
 func (m *RoomManager) populateSpecWithHostPort(scheduler entities.Scheduler) (*game_room.Spec, error) {
@@ -413,6 +393,38 @@ watchLoop:
 	}
 
 	return nil
+}
+
+func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
+	spec, err := m.populateSpecWithHostPort(scheduler)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	instance, err := m.Runtime.CreateGameRoomInstance(ctx, scheduler.Name, *spec)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = m.InstanceStorage.UpsertInstance(ctx, instance)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	room := &game_room.GameRoom{
+		ID:               instance.ID,
+		SchedulerID:      scheduler.Name,
+		Version:          scheduler.Spec.Version,
+		Status:           game_room.GameStatusPending,
+		LastPingAt:       m.Clock.Now(),
+		IsValidationRoom: isValidationRoom,
+	}
+	err = m.RoomStorage.CreateRoom(ctx, room)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return room, instance, err
 }
 
 func (m *RoomManager) forwardStatusTerminatingEvent(ctx context.Context, room *game_room.GameRoom) {
