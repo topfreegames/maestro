@@ -122,6 +122,10 @@ func TestOperationLease(t *testing.T) {
 				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
+				if len(listOperationsResponse.ActiveOperations) <= 0 {
+					return false
+				}
+
 				activeOperation := listOperationsResponse.ActiveOperations[0]
 				if activeOperation.Id != slowOp.ID {
 					return false

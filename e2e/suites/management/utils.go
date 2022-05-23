@@ -319,6 +319,39 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 			"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 	)
+	require.NoError(t, err)
+
+	// Change RoomsReplicas
+
+	roomsReplicas := int32(2)
+	patchSchedulerRequest := &maestroApiV1.PatchSchedulerRequest{RoomsReplicas: &roomsReplicas}
+	patchSchedulerResponse := &maestroApiV1.PatchSchedulerResponse{}
+	err = managementApiClient.Do("PATCH", fmt.Sprintf("/schedulers/%s", scheduler.Name), patchSchedulerRequest, patchSchedulerResponse)
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		getOperationRequest := &maestroApiV1.GetOperationRequest{}
+		getOperationResponse := &maestroApiV1.GetOperationResponse{}
+		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, patchSchedulerResponse.OperationId), getOperationRequest, getOperationResponse)
+		require.NoError(t, err)
+
+		if getOperationResponse.Operation.Status != "finished" {
+			return false
+		}
+
+		return true
+	}, 4*time.Minute, 10*time.Millisecond)
+
+	require.Eventually(t, func() bool {
+		pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+		require.NoError(t, err)
+
+		if len(pods.Items) != 2 {
+			return false
+		}
+
+		return true
+	}, 1*time.Minute, 10*time.Millisecond)
 
 	return scheduler, err
 }
@@ -339,7 +372,7 @@ func waitForOperationToFinish(t *testing.T, managementApiClient *framework.APICl
 		}
 
 		return false
-	}, 4*time.Minute, time.Second)
+	}, 4*time.Minute, 10*time.Millisecond)
 }
 
 func waitForOperationToFinishByOperationId(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operationId string) {
