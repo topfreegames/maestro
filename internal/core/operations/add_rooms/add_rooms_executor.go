@@ -26,14 +26,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
@@ -44,22 +42,18 @@ import (
 )
 
 type AddRoomsExecutor struct {
-	roomManager         ports.RoomManager
-	storage             ports.SchedulerStorage
-	logger              *zap.Logger
-	newCreatedRooms     map[string][]*game_room.GameRoom
-	newCreatedRoomsLock sync.Mutex
+	roomManager ports.RoomManager
+	storage     ports.SchedulerStorage
+	logger      *zap.Logger
 }
 
 var _ operations.Executor = (*AddRoomsExecutor)(nil)
 
 func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) *AddRoomsExecutor {
 	return &AddRoomsExecutor{
-		roomManager:         roomManager,
-		storage:             storage,
-		logger:              zap.L().With(zap.String(logs.LogFieldServiceName, "worker")),
-		newCreatedRooms:     map[string][]*game_room.GameRoom{},
-		newCreatedRoomsLock: sync.Mutex{},
+		roomManager: roomManager,
+		storage:     storage,
+		logger:      zap.L().With(zap.String(logs.LogFieldServiceName, "worker")),
 	}
 }
 
@@ -92,26 +86,12 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 		}
 		return operations.NewErrUnexpected(executionErr)
 	}
-	ex.clearNewCreatedRooms(op.SchedulerName)
 
 	executionLogger.Info("finished adding rooms")
 	return nil
 }
 
 func (ex *AddRoomsExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
-	executionLogger := ex.logger.With(
-		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
-		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
-		zap.String(logs.LogFieldOperationID, op.ID),
-	)
-	executionLogger.Info("starting rollback routine")
-
-	err := ex.deleteNewCreatedRooms(ctx, executionLogger, op.SchedulerName)
-	ex.clearNewCreatedRooms(op.SchedulerName)
-	if err != nil {
-		return err
-	}
-	executionLogger.Info("finished rollback routine")
 	return nil
 }
 
@@ -120,37 +100,12 @@ func (ex *AddRoomsExecutor) Name() string {
 }
 
 func (ex *AddRoomsExecutor) createRoom(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
-	gameRoom, _, err := ex.roomManager.CreateRoomAndWaitForReadiness(ctx, *scheduler, false)
+	_, _, err := ex.roomManager.CreateRoom(ctx, *scheduler, false)
 	if err != nil {
 		logger.Error("Error while creating room", zap.Error(err))
 		reportAddRoomOperationExecutionFailed(scheduler.Name, ex.Name())
 		return fmt.Errorf("error while creating room: %w", err)
 	}
-	ex.appendToNewCreatedRooms(scheduler.Name, gameRoom)
 
 	return nil
-}
-
-func (ex *AddRoomsExecutor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string) error {
-	logger.Info("deleting created rooms since add rooms operation had error - start")
-	for _, room := range ex.newCreatedRooms[schedulerName] {
-		err := ex.roomManager.DeleteRoomAndWaitForRoomTerminating(ctx, room)
-		if err != nil {
-			logger.Error("failed to deleted recent created room", zap.Error(err))
-			return err
-		}
-		logger.Sugar().Debugf("deleted room \"%s\" successfully", room.ID)
-	}
-	logger.Info("deleting created rooms since add rooms operation had error - end successfully")
-	return nil
-}
-
-func (ex *AddRoomsExecutor) appendToNewCreatedRooms(schedulerName string, gameRoom *game_room.GameRoom) {
-	ex.newCreatedRoomsLock.Lock()
-	defer ex.newCreatedRoomsLock.Unlock()
-	ex.newCreatedRooms[schedulerName] = append(ex.newCreatedRooms[schedulerName], gameRoom)
-}
-
-func (ex *AddRoomsExecutor) clearNewCreatedRooms(schedulerName string) {
-	delete(ex.newCreatedRooms, schedulerName)
 }
