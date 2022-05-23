@@ -40,9 +40,9 @@ const (
 
 func ConvertToPlayerEventType(value string) (PlayerEventType, error) {
 	switch value {
-	case "playerLeft":
+	case string(PlayerLeft):
 		return PlayerLeft, nil
-	case "playerJoin":
+	case string(PlayerJoin):
 		return PlayerJoin, nil
 	default:
 		return "", fmt.Errorf("invalid PlayerEventType. Should be \"playerLeft\" or \"playerJoin\"")

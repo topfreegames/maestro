@@ -402,8 +402,9 @@ func TestRoomManager_DeleteRoomAndWaitForRoomTerminating(t *testing.T) {
 			SchedulerID: gameRoom.SchedulerID,
 			RoomID:      gameRoom.ID,
 			Attributes: map[string]interface{}{
-				"eventType": "roomEvent",
-				"roomEvent": "terminating",
+				"eventType": "roomStatus",
+				"roomEvent": "terminated",
+				"pingType":  "terminated",
 			},
 		}
 
@@ -446,8 +447,9 @@ func TestRoomManager_DeleteRoomAndWaitForRoomTerminating(t *testing.T) {
 			SchedulerID: gameRoom.SchedulerID,
 			RoomID:      gameRoom.ID,
 			Attributes: map[string]interface{}{
-				"eventType": "roomEvent",
-				"roomEvent": "terminating",
+				"eventType": "roomStatus",
+				"roomEvent": "terminated",
+				"pingType":  "terminated",
 			},
 		}
 
