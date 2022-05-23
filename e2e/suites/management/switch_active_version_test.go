@@ -438,7 +438,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				}
 
 				return true
-			}, 1*time.Minute, 10*time.Millisecond)
+			}, 2*time.Minute, 10*time.Millisecond)
 
 			getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
 			getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
@@ -456,7 +456,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				}
 
 				return false
-			}, 2*time.Minute, time.Second)
+			}, 2*time.Minute, 10*time.Millisecond)
 
 			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 			require.NoError(t, err)

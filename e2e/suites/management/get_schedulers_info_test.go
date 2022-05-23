@@ -25,6 +25,7 @@ package management
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 
@@ -42,25 +43,18 @@ func TestGetSchedulersInfo(t *testing.T) {
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 
-		firstScheduler, err := createSchedulerAndWaitForIt(
-			t,
-			maestro,
-			managementApiClient,
-			kubeClient,
-			"get-schedulerinfo-game",
-			[]string{"sh", "-c", "while true; do sleep 1; done"},
-		)
-
-		secondScheduler, err := createSchedulerWithRoomsAndWaitForIt(
-			t,
-			maestro,
-			managementApiClient,
-			"get-schedulers-info-game",
-			kubeClient,
-		)
-
 		t.Run("Should Succeed - Get schedulers without rooms", func(t *testing.T) {
 			t.Parallel()
+
+			firstScheduler, err := createSchedulerAndWaitForIt(
+				t,
+				maestro,
+				managementApiClient,
+				kubeClient,
+				"get-scheduler-info-game-without-rooms",
+				[]string{"sh", "-c", "while true; do sleep 1; done"},
+			)
+			require.NoError(t, err)
 
 			getSchedulersRequest := &maestroApiV1.GetSchedulersInfoRequest{Game: firstScheduler.Game}
 			getSchedulersResponse := &maestroApiV1.GetSchedulersInfoResponse{}
@@ -81,20 +75,40 @@ func TestGetSchedulersInfo(t *testing.T) {
 		t.Run("Should Succeed - Get schedulers returning schedulers and rooms info", func(t *testing.T) {
 			t.Parallel()
 
-			getSchedulersRequest := &maestroApiV1.GetSchedulersInfoRequest{Game: secondScheduler.Game}
-			getSchedulersResponse := &maestroApiV1.GetSchedulersInfoResponse{}
-
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/info?game=%s", secondScheduler.Game), getSchedulersRequest, getSchedulersResponse)
+			secondScheduler, err := createSchedulerWithRoomsAndWaitForIt(
+				t,
+				maestro,
+				managementApiClient,
+				"get-schedulers-info-game-with-rooms",
+				kubeClient,
+			)
 
 			require.NoError(t, err)
-			require.NotEmpty(t, getSchedulersResponse.Schedulers)
-			require.Equal(t, secondScheduler.Name, getSchedulersResponse.Schedulers[0].Name)
-			require.Equal(t, secondScheduler.Game, getSchedulersResponse.Schedulers[0].Game)
-			require.Equal(t, secondScheduler.State, getSchedulersResponse.Schedulers[0].State)
-			require.EqualValues(t, 2, getSchedulersResponse.Schedulers[0].RoomsReady)
-			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsPending)
-			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsOccupied)
-			require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsTerminating)
+
+			require.Eventually(t, func() bool {
+				getSchedulersRequest := &maestroApiV1.GetSchedulersInfoRequest{Game: secondScheduler.Game}
+				getSchedulersResponse := &maestroApiV1.GetSchedulersInfoResponse{}
+
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/info?game=%s", secondScheduler.Game), getSchedulersRequest, getSchedulersResponse)
+				require.NoError(t, err)
+
+				require.NotEmpty(t, getSchedulersResponse.Schedulers)
+				require.Equal(t, secondScheduler.Name, getSchedulersResponse.Schedulers[0].Name)
+				require.Equal(t, secondScheduler.Game, getSchedulersResponse.Schedulers[0].Game)
+				require.Equal(t, secondScheduler.State, getSchedulersResponse.Schedulers[0].State)
+				require.Equal(t, secondScheduler.RoomsReplicas, getSchedulersResponse.Schedulers[0].RoomsReplicas)
+
+				if getSchedulersResponse.Schedulers[0].RoomsReady != int32(2) {
+					return false
+				}
+
+				require.EqualValues(t, int32(2), getSchedulersResponse.Schedulers[0].RoomsReady)
+				require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsPending)
+				require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsOccupied)
+				require.EqualValues(t, 0, getSchedulersResponse.Schedulers[0].RoomsTerminating)
+
+				return true
+			}, 1*time.Minute, 10*time.Millisecond)
 		})
 
 		t.Run("Should Succeed - Get schedulers game without scheduler should return empty array", func(t *testing.T) {
@@ -105,7 +119,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 			getSchedulersRequest := &maestroApiV1.GetSchedulersInfoRequest{Game: inexistentGame}
 			getSchedulersResponse := &maestroApiV1.GetSchedulersInfoResponse{}
 
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/info?game=%s", inexistentGame), getSchedulersRequest, getSchedulersResponse)
+			err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/info?game=%s", inexistentGame), getSchedulersRequest, getSchedulersResponse)
 
 			require.NoError(t, err)
 			require.Len(t, getSchedulersResponse.Schedulers, 0)

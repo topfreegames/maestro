@@ -350,8 +350,16 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 			return false
 		}
 
+		for _, pod := range pods.Items {
+			if pod.Status.Phase != v1.PodRunning {
+				return false
+			}
+		}
+
 		return true
 	}, 1*time.Minute, 10*time.Millisecond)
+
+	scheduler.RoomsReplicas = 2
 
 	return scheduler, err
 }

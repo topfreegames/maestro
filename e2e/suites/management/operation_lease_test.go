@@ -72,7 +72,7 @@ func TestOperationLease(t *testing.T) {
 				[]string{"sh", "-c", "while true; do sleep 1; done"},
 			)
 
-			slowOp := createTestOperation(context.Background(), t, operationStorage, operationFlow, scheduler.Name, 5)
+			slowOp := createTestOperation(context.Background(), t, operationStorage, operationFlow, scheduler.Name, 1)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
@@ -92,10 +92,10 @@ func TestOperationLease(t *testing.T) {
 
 				return true
 				// 5 seconds is the operation lease ttl renew default factor (worker.yaml)
-			}, 100*time.Second, 10*time.Millisecond)
+			}, 5*time.Second, 10*time.Millisecond)
 
 			// Wait operation finished
-			time.Sleep(5 * time.Second)
+			time.Sleep(2 * time.Second)
 
 			// Asserting that the lease is deleted after the operation finishes
 			_, err = operationLeaseStorage.FetchLeaseTTL(context.Background(), scheduler.Name, slowOp.ID)
