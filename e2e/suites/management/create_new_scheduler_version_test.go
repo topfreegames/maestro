@@ -91,7 +91,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 			require.NoError(t, err)
-			require.Equal(t, "v1.0.0", getSchedulerResponse.Scheduler.Spec.Version)
+			require.Equal(t, "v1.1.0", getSchedulerResponse.Scheduler.Spec.Version)
 		})
 
 		t.Run("Should Fail - image of GRU is invalid. Operation fails, version and pods are unchanged", func(t *testing.T) {
