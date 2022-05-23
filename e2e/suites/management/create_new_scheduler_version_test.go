@@ -202,7 +202,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			require.ElementsMatch(t, podsNameAfterUpdate, podsNameBeforeUpdate)
 
 			// version didn't change
-			require.Equal(t, "v1.0.0", getSchedulerResponse.Scheduler.Spec.Version)
+			require.Equal(t, "v1.1.0", getSchedulerResponse.Scheduler.Spec.Version)
 
 			getVersionsRequest := &maestroApiV1.GetSchedulerVersionsRequest{SchedulerName: scheduler.Name}
 			getVersionsResponse := &maestroApiV1.GetSchedulerVersionsResponse{}
@@ -211,7 +211,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			require.NoError(t, err)
 
 			// No version was created
-			require.Len(t, getVersionsResponse.Versions, 1)
+			require.Len(t, getVersionsResponse.Versions, 2)
 		})
 	})
 }

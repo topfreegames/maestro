@@ -416,6 +416,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 						},
 					},
 				},
+				RoomsReplicas: 2,
 				PortRange: &maestroApiV1.PortRange{
 					Start: 40000,
 					End:   60000,
@@ -449,23 +450,18 @@ func TestSwitchActiveVersion(t *testing.T) {
 			require.Eventually(t, func() bool {
 				podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 				require.NoError(t, err)
-				require.NotEmpty(t, podsAfterUpdate.Items)
 
-				if len(podsAfterUpdate.Items) == 2 {
-					return true
+				if len(podsAfterUpdate.Items) != 2 {
+					return false
 				}
 
-				return false
-			}, 2*time.Minute, 10*time.Millisecond)
+				for i := 0; i < 2; i++ {
+					require.NotEqual(t, podsAfterUpdate.Items[i].Spec, podsBeforeUpdate.Items[i].Spec)
+					require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
+				}
 
-			podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
-			require.NoError(t, err)
-			require.NotEmpty(t, podsAfterUpdate.Items)
-
-			for i := 0; i < 2; i++ {
-				require.NotEqual(t, podsAfterUpdate.Items[i].Spec, podsBeforeUpdate.Items[i].Spec)
-				require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
-			}
+				return true
+			}, 4*time.Minute, 10*time.Millisecond)
 
 			// Rollback scheduler version
 			switchActiveVersionRequest := &maestroApiV1.SwitchActiveVersionRequest{
