@@ -29,6 +29,8 @@ import (
 	"time"
 
 	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
@@ -43,7 +45,19 @@ import (
 func TestOperationLease(t *testing.T) {
 	t.Parallel()
 
+	canceledStatus, err := operation.StatusCanceled.String()
+	require.NoError(t, err)
+
+	duration, err := time.ParseDuration("24h")
+	require.NoError(t, err)
+
+	operationsTTLMap := map[operationadapters.Definition]time.Duration{
+		healthcontroller.OperationName: duration,
+	}
+
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
+		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
+		operationFlow := operationadapters.NewRedisOperationFlow(redisClient)
 		operationLeaseStorage := operationadapters.NewRedisOperationLeaseStorage(redisClient, timeClock.NewClock())
 
 		t.Run("When the operation executes with success, then the lease keeps being renewed while it executes", func(t *testing.T) {
@@ -58,44 +72,34 @@ func TestOperationLease(t *testing.T) {
 				[]string{"sh", "-c", "while true; do sleep 1; done"},
 			)
 
-			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
-			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
-			require.NoError(t, err)
-			addRoomsOpID := addRoomsResponse.OperationId
-			var previousTtl = &time.Time{}
+			slowOp := createTestOperation(context.Background(), t, operationStorage, operationFlow, scheduler.Name, 1)
+
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
 				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
-				// Only exit the loop when the operation finishes
-				if len(listOperationsResponse.FinishedOperations) >= 2 {
-					return true
+				activeOperation := listOperationsResponse.ActiveOperations[0]
+				if activeOperation.Id != slowOp.ID {
+					return false
 				}
 
-				// Make assertions while the operation is being executed
-				if len(listOperationsResponse.ActiveOperations) >= 1 {
-					require.Equal(t, "add_rooms", listOperationsResponse.ActiveOperations[0].DefinitionName)
-					require.NotNil(t, listOperationsResponse.ActiveOperations[0].Lease)
-					require.NotNil(t, listOperationsResponse.ActiveOperations[0].Lease.Ttl)
-					renewedTtl, err := time.Parse(time.RFC3339, listOperationsResponse.ActiveOperations[0].Lease.Ttl)
-					require.NoError(t, err)
-					// Assert that the lease is not expired
-					require.True(t, renewedTtl.After(time.Now()))
-					// Assert that the lease is being renewed
-					require.True(t, previousTtl.Before(renewedTtl))
-					previousTtl = &renewedTtl
-				}
+				renewedTtl, err := time.Parse(time.RFC3339, activeOperation.Lease.Ttl)
+				require.NoError(t, err)
+				// Assert that the lease is not expired
+				require.True(t, renewedTtl.After(time.Now()))
 
-				return false
+				return true
 				// 5 seconds is the operation lease ttl renew default factor (worker.yaml)
-			}, 240*time.Second, 5*time.Second)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			// Wait operation finished
+			time.Sleep(2 * time.Second)
 
 			// Asserting that the lease is deleted after the operation finishes
-			_, err = operationLeaseStorage.FetchLeaseTTL(context.Background(), scheduler.Name, addRoomsOpID)
-			require.Error(t, err, fmt.Sprintf("lease of scheduler \"%s\" and operationId \"%s\" does not exist", scheduler.Name, addRoomsOpID))
+			_, err = operationLeaseStorage.FetchLeaseTTL(context.Background(), scheduler.Name, slowOp.ID)
+			require.Error(t, err, fmt.Sprintf("lease of scheduler \"%s\" and operationId \"%s\" does not exist", scheduler.Name, slowOp.ID))
 		})
 
 		t.Run("When the operation is canceled, then the lease keeps being renewed while it executes", func(t *testing.T) {
@@ -110,10 +114,7 @@ func TestOperationLease(t *testing.T) {
 				[]string{"sh", "-c", "while true; do sleep 1; done"},
 			)
 
-			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
-			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
-			addRoomsOpID := addRoomsResponse.OperationId
+			slowOp := createTestOperation(context.Background(), t, operationStorage, operationFlow, scheduler.Name, 100000)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
@@ -121,45 +122,45 @@ func TestOperationLease(t *testing.T) {
 				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
-				// Don't make assertions while the operation hasn't started
-				if len(listOperationsResponse.ActiveOperations) < 1 {
+				if len(listOperationsResponse.ActiveOperations) <= 0 {
 					return false
 				}
 
-				require.Equal(t, addRoomsOpID, listOperationsResponse.ActiveOperations[0].Id)
-				require.NotNil(t, listOperationsResponse.ActiveOperations[0].Lease)
-				require.NotNil(t, listOperationsResponse.ActiveOperations[0].Lease.Ttl)
-				renewedTtl, err := time.Parse(time.RFC3339, listOperationsResponse.ActiveOperations[0].Lease.Ttl)
+				activeOperation := listOperationsResponse.ActiveOperations[0]
+				if activeOperation.Id != slowOp.ID {
+					return false
+				}
+
+				renewedTtl, err := time.Parse(time.RFC3339, activeOperation.Lease.Ttl)
 				require.NoError(t, err)
 				// Assert that the lease is not expired
 				require.True(t, renewedTtl.After(time.Now()))
 
-				cancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: addRoomsOpID}
-				cancelResponse := &maestroApiV1.CancelOperationResponse{}
-				err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, addRoomsOpID), cancelRequest, cancelResponse)
-				require.NoError(t, err)
-
 				return true
-			}, 240*time.Second, 1*time.Second)
+				// 5 seconds is the operation lease ttl renew default factor (worker.yaml)
+			}, 100*time.Second, 10*time.Millisecond)
+
+			cancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: slowOp.ID}
+			cancelResponse := &maestroApiV1.CancelOperationResponse{}
+			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, slowOp.ID), cancelRequest, cancelResponse)
+			require.NoError(t, err)
 
 			// Asserting that the lease is deleted after the operation finishes
 			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
+				getOperationRequest := &maestroApiV1.GetOperationRequest{}
+				getOperationResponse := &maestroApiV1.GetOperationResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, slowOp.ID), getOperationRequest, getOperationResponse)
 				require.NoError(t, err)
 
-				if len(listOperationsResponse.FinishedOperations) < 2 {
+				if getOperationResponse.Operation.Status != canceledStatus {
 					return false
 				}
 
-				lease, err := operationLeaseStorage.FetchLeaseTTL(context.Background(), scheduler.Name, addRoomsOpID)
-				print(lease.String())
-				require.Error(t, err, fmt.Sprintf("lease of scheduler \"%s\" and operationId \"%s\" does not exist", scheduler.Name, addRoomsOpID))
-
 				return true
-			}, 10*time.Second, 1*time.Second)
+			}, 100*time.Second, 10*time.Millisecond)
+
+			_, err = operationLeaseStorage.FetchLeaseTTL(context.Background(), scheduler.Name, slowOp.ID)
+			require.Error(t, err, fmt.Sprintf("lease of scheduler \"%s\" and operationId \"%s\" does not exist", scheduler.Name, slowOp.ID))
 		})
 	})
-
 }

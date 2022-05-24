@@ -23,13 +23,18 @@
 package management
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
+	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
+	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +49,24 @@ import (
 func TestListOperations(t *testing.T) {
 	t.Parallel()
 
+	duration, err := time.ParseDuration("24h")
+	require.NoError(t, err)
+
+	operationsTTLMap := map[operationadapters.Definition]time.Duration{
+		healthcontroller.OperationName: duration,
+	}
+
+	statusPendingString, err := operation.StatusPending.String()
+	require.NoError(t, err)
+	statusInProgressString, err := operation.StatusInProgress.String()
+	require.NoError(t, err)
+	statusFinishedString, err := operation.StatusFinished.String()
+	require.NoError(t, err)
+
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
+		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
+		operationFlow := operationadapters.NewRedisOperationFlow(redisClient)
+
 		t.Run("when listing operations should return all of them with filled fields", func(t *testing.T) {
 			t.Parallel()
 
@@ -58,9 +80,7 @@ func TestListOperations(t *testing.T) {
 					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"})
 			require.NoError(t, err)
 
-			addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
-			addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
+			createTestOperation(context.Background(), t, operationStorage, operationFlow, scheduler.Name, 1)
 
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
@@ -68,12 +88,18 @@ func TestListOperations(t *testing.T) {
 				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
-				if len(listOperationsResponse.FinishedOperations) < 2 {
+				testPresent := false
+				for _, operation := range listOperationsResponse.FinishedOperations {
+					if operation.DefinitionName == test_operation.OperationName && operation.Status == statusFinishedString {
+						testPresent = true
+						break
+					}
+				}
+
+				if !testPresent {
 					return false
 				}
 
-				assert.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
-				assert.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
 				return true
 			}, 240*time.Second, time.Second)
 
@@ -82,8 +108,6 @@ func TestListOperations(t *testing.T) {
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
 			require.NoError(t, err)
 
-			statusPendingString, err := operation.StatusPending.String()
-			require.NoError(t, err)
 			for _, apiOperation := range listOperationsResponse.PendingOperations {
 				assert.NotEmpty(t, apiOperation.Id)
 				assert.Equal(t, apiOperation.Status, statusPendingString)
@@ -94,7 +118,6 @@ func TestListOperations(t *testing.T) {
 				assert.Equal(t, apiOperation.SchedulerName, scheduler.Name)
 			}
 
-			statusInProgressString, err := operation.StatusInProgress.String()
 			for _, apiOperation := range listOperationsResponse.ActiveOperations {
 				assert.NotEmpty(t, apiOperation.Id)
 				assert.Equal(t, apiOperation.Status, statusInProgressString)
@@ -105,7 +128,6 @@ func TestListOperations(t *testing.T) {
 				assert.Equal(t, apiOperation.SchedulerName, scheduler.Name)
 			}
 
-			statusFinishedString, err := operation.StatusFinished.String()
 			for _, apiOperation := range listOperationsResponse.FinishedOperations {
 				assert.NotEmpty(t, apiOperation.Id)
 				assert.Equal(t, apiOperation.Status, statusFinishedString)

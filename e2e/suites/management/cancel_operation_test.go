@@ -30,14 +30,11 @@ import (
 
 	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 
-	"github.com/topfreegames/maestro/internal/core/ports"
-
 	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
@@ -49,8 +46,15 @@ import (
 func TestCancelOperation(t *testing.T) {
 	t.Parallel()
 
+	duration, err := time.ParseDuration("24h")
+	require.NoError(t, err)
+
+	operationsTTLMap := map[operationadapters.Definition]time.Duration{
+		healthcontroller.OperationName: duration,
+	}
+
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock())
+		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
 		operationFlow := operationadapters.NewRedisOperationFlow(redisClient)
 
 		t.Run("cancel pending and in-progress operations successfully", func(t *testing.T) {
@@ -61,66 +65,65 @@ func TestCancelOperation(t *testing.T) {
 				managementApiClient,
 				kubeClient,
 				"test",
-				[]string{"sh", "-c", "while true; do sleep 1; done"},
+				[]string{"sh", "-c", "while true; do sleep 100; done"},
 			)
 
 			firstSlowOp := createTestOperation(ctx, t, operationStorage, operationFlow, scheduler.Name, 100000)
 			secondSlowOp := createTestOperation(ctx, t, operationStorage, operationFlow, scheduler.Name, 100000)
 
+			inProgressStatus, err := operation.StatusInProgress.String()
+			require.NoError(t, err)
+
 			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
+				getOperationRequest := &maestroApiV1.GetOperationRequest{}
+				getOperationResponse := &maestroApiV1.GetOperationResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, firstSlowOp.ID), getOperationRequest, getOperationResponse)
 				require.NoError(t, err)
 
-				if len(listOperationsResponse.PendingOperations) < 1 || len(listOperationsResponse.ActiveOperations) < 1 {
+				if getOperationResponse.Operation.Status != inProgressStatus {
 					return false
 				}
 
-				require.Equal(t, firstSlowOp.ID, listOperationsResponse.ActiveOperations[0].Id)
-				require.Equal(t, secondSlowOp.ID, listOperationsResponse.PendingOperations[0].Id)
 				return true
-			}, 240*time.Second, time.Second)
+			}, 240*time.Second, 10*time.Millisecond)
 
 			secondOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: secondSlowOp.ID}
 			secondOpCancelResponse := &maestroApiV1.CancelOperationResponse{}
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, secondSlowOp.ID), secondOpCancelRequest, secondOpCancelResponse)
 			require.NoError(t, err)
 
-			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
-				require.NoError(t, err)
-
-				if len(listOperationsResponse.FinishedOperations) < 2 {
-					return false
-				}
-
-				require.Equal(t, secondSlowOp.ID, listOperationsResponse.FinishedOperations[0].Id)
-				require.Equal(t, firstSlowOp.ID, listOperationsResponse.ActiveOperations[0].Id)
-				return true
-			}, 240*time.Second, time.Second)
-
 			firstOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: firstSlowOp.ID}
 			firstOpCancelResponse := &maestroApiV1.CancelOperationResponse{}
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, firstSlowOp.ID), firstOpCancelRequest, firstOpCancelResponse)
 			require.NoError(t, err)
 
-			require.Eventually(t, func() bool {
-				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
-				require.NoError(t, err)
+			canceledStatus, err := operation.StatusCanceled.String()
+			require.NoError(t, err)
 
-				if len(listOperationsResponse.FinishedOperations) < 3 {
+			require.Eventually(t, func() bool {
+				firstOperationRequest := &maestroApiV1.GetOperationRequest{}
+				firstOperationResponse := &maestroApiV1.GetOperationResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, firstSlowOp.ID), firstOperationRequest, firstOperationResponse)
+				require.NoError(t, err)
+				if firstOperationResponse.Operation.Status != canceledStatus {
 					return false
 				}
 
-				require.Equal(t, secondSlowOp.ID, listOperationsResponse.FinishedOperations[0].Id)
-				require.Equal(t, firstSlowOp.ID, listOperationsResponse.FinishedOperations[1].Id)
 				return true
-			}, 240*time.Second, time.Second)
+			}, 1*time.Minute, 10*time.Millisecond)
+
+			require.Eventually(t, func() bool {
+				secondOperationRequest := &maestroApiV1.GetOperationRequest{}
+				secondOperationResponse := &maestroApiV1.GetOperationResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, secondSlowOp.ID), secondOperationRequest, secondOperationResponse)
+				require.NoError(t, err)
+
+				if secondOperationResponse.Operation.Status != canceledStatus {
+					return false
+				}
+
+				return true
+			}, 1*time.Minute, 10*time.Millisecond)
 		})
 
 		t.Run("error when try to cancel operations on final state", func(t *testing.T) {
@@ -147,27 +150,4 @@ func TestCancelOperation(t *testing.T) {
 			require.Contains(t, err.Error(), "status 409")
 		})
 	})
-}
-
-func createTestOperation(ctx context.Context, t *testing.T, operationStorage ports.OperationStorage, operationFlow ports.OperationFlow, schedulerName string, sleepSeconds int) *operation.Operation {
-
-	definition := test_operation.TestOperationDefinition{
-		SleepSeconds: sleepSeconds,
-	}
-
-	op := &operation.Operation{
-		ID:             uuid.NewString(),
-		Status:         operation.StatusPending,
-		DefinitionName: definition.Name(),
-		SchedulerName:  schedulerName,
-		CreatedAt:      time.Now(),
-		Input:          definition.Marshal(),
-	}
-
-	err := operationStorage.CreateOperation(ctx, op)
-	require.NoError(t, err)
-	err = operationFlow.InsertOperationID(ctx, op.SchedulerName, op.ID)
-	require.NoError(t, err)
-
-	return op
 }

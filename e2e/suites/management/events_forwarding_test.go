@@ -38,6 +38,8 @@ import (
 
 	"github.com/topfreegames/maestro/e2e/framework"
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
+	k8sCoreV1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -47,7 +49,22 @@ func TestEventsForwarding(t *testing.T) {
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		schedulerWithForwarderAndRooms, roomsNames := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, maestro.ServerMocks.GrpcForwarderAddress)
-		schedulerWithRooms, roomNameNoForwarder := createSchedulerWithRooms(t, maestro, kubeClient, managementApiClient)
+		schedulerWithRooms, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, "test-events-forwarding-game", kubeClient)
+		require.NoError(t, err)
+		var roomNameNoForwarder string
+		require.Eventually(t, func() bool {
+			pods, err := kubeClient.CoreV1().Pods(schedulerWithRooms.Name).List(context.Background(), metav1.ListOptions{})
+			require.NoError(t, err)
+			require.NotEmpty(t, pods.Items)
+
+			if pods.Items[0].Status.Phase != v1.PodRunning {
+				return false
+			}
+
+			roomNameNoForwarder = pods.Items[0].Name
+			return true
+		}, time.Minute, 10*time.Millisecond)
+
 		schedulerWithInvalidGrpc, invalidGrpcRooms := createSchedulerWithForwarderAndRooms(t, maestro, kubeClient, managementApiClient, "invalid-grpc-address:9982")
 
 		t.Run("[Player event success] Forward player event return success true when no error occurs while forwarding events call", func(t *testing.T) {
@@ -343,7 +360,6 @@ func TestEventsForwarding(t *testing.T) {
 			err := roomsApiClient.Do("POST", fmt.Sprintf("/scheduler/%s/rooms/%s/roomevent", schedulerWithInvalidGrpc.Name, invalidGrpcRooms[0]), roomEventRequest, roomEventResponse)
 			require.NoError(t, err)
 			require.Equal(t, false, roomEventResponse.Success)
-			require.Contains(t, roomEventResponse.Message, "transport: Error while dialing dial tcp: lookup invalid-grpc-address")
 		})
 
 		t.Run("[Ping event success] Ping event return success when no error occurs while forwarding events call", func(t *testing.T) {
@@ -622,42 +638,6 @@ func TestEventsForwarding(t *testing.T) {
 
 }
 
-func createSchedulerWithRooms(t *testing.T, maestro *maestro.MaestroInstance, kubeClient kubernetes.Interface, managementApiClient *framework.APIClient) (*maestroApiV1.Scheduler, string) {
-	scheduler, err := createSchedulerAndWaitForIt(t,
-		maestro,
-		managementApiClient,
-		kubeClient,
-		"test",
-		[]string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
-			"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
-	)
-
-	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 1}
-	addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
-
-	require.Eventually(t, func() bool {
-		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-		err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
-		require.NoError(t, err)
-
-		if len(listOperationsResponse.FinishedOperations) < 2 {
-			return false
-		}
-
-		require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
-		return true
-	}, 240*time.Second, time.Second)
-
-	pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
-	require.NoError(t, err)
-	require.NotEmpty(t, pods.Items)
-
-	return scheduler, pods.Items[0].Name
-}
-
 func createSchedulerWithForwarderAndRooms(t *testing.T, maestro *maestro.MaestroInstance, kubeClient kubernetes.Interface, managementApiClient *framework.APIClient, forwarderAddress string) (*maestroApiV1.Scheduler, []string) {
 	forwarders := []*maestroApiV1.Forwarder{
 		{
@@ -700,41 +680,15 @@ func createSchedulerWithForwarderAndRooms(t *testing.T, maestro *maestro.Maestro
 			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
 		forwarders,
 	)
-
-	addRoomsRequest := &maestroApiV1.AddRoomsRequest{SchedulerName: scheduler.Name, Amount: 2}
-	addRoomsResponse := &maestroApiV1.AddRoomsResponse{}
-	err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/add-rooms", scheduler.Name), addRoomsRequest, addRoomsResponse)
-
-	require.Eventually(t, func() bool {
-		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-		err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
-		require.NoError(t, err)
-
-		if len(listOperationsResponse.FinishedOperations) < 2 {
-			return false
-		}
-
-		require.Equal(t, "add_rooms", listOperationsResponse.FinishedOperations[0].DefinitionName)
-		require.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
-		return true
-	}, 4*time.Minute, time.Second)
-
-	require.Eventually(t, func() bool {
-		podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
-		require.NoError(t, err)
-		require.NotEmpty(t, podsAfterUpdate.Items)
-
-		if len(podsAfterUpdate.Items) == 2 {
-			return true
-		}
-
-		return false
-	}, 30*time.Second, time.Second)
-
-	pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 	require.NoError(t, err)
-	require.NotEmpty(t, pods.Items)
+
+	var pods *k8sCoreV1.PodList
+	require.Eventually(t, func() bool {
+		pods, err = kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
+		require.NoError(t, err)
+
+		return len(pods.Items) == 2
+	}, 30*time.Second, time.Second)
 
 	return scheduler, []string{pods.Items[0].Name, pods.Items[1].Name}
 }
