@@ -431,8 +431,9 @@ func (m *RoomManager) forwardStatusTerminatingEvent(ctx context.Context, room *g
 	if room.Metadata == nil {
 		room.Metadata = map[string]interface{}{}
 	}
-	room.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Arbitrary)
-	room.Metadata["roomEvent"] = game_room.GameStatusTerminating.String()
+	room.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Status)
+	room.Metadata["pingType"] = game_room.GameRoomPingStatusTerminated.String()
+	room.Metadata["roomEvent"] = game_room.GameRoomPingStatusTerminated.String()
 
 	err := m.EventsService.ProduceEvent(ctx, events.NewRoomEvent(room.SchedulerID, room.ID, room.Metadata))
 	if err != nil {
