@@ -222,6 +222,10 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, roomsChan
 			return err
 		}
 
+		if gameRoom == nil {
+			return nil
+		}
+
 		logger.Sugar().Debugf("replaced room \"%s\"", room.ID)
 		ex.roomsBeingReplaced.Delete(room.ID)
 		ex.appendToNewCreatedRooms(scheduler.Name, gameRoom)

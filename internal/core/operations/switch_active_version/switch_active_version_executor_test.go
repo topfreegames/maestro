@@ -395,6 +395,78 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("should succeed - a create room fail, then a delete room fails and triggers rollback", func(t *testing.T) {
+
+		mocks.schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), activeScheduler.Name).Return(activeScheduler, nil)
+		mocks.schedulerManager.EXPECT().GetSchedulerByVersion(gomock.Any(), newMajorScheduler.Name, newMajorScheduler.Spec.Version).Return(newMajorScheduler, nil)
+		mocks.roomManager.EXPECT().SchedulerMaxSurge(gomock.Any(), gomock.Any()).Return(3, nil)
+
+		var gameRoomListCycle1 []*game_room.GameRoom
+		var gameRoomListCycle2 []*game_room.GameRoom
+		var gameRoomListCycle3 []*game_room.GameRoom
+		for i := 0; i < maxSurge; i++ {
+			gameRoomListCycle1 = append(gameRoomListCycle1, &game_room.GameRoom{
+				ID:          fmt.Sprintf("room-%v", i),
+				SchedulerID: newMajorScheduler.Name,
+				Version:     activeScheduler.Spec.Version,
+				Status:      game_room.GameStatusReady,
+				LastPingAt:  time.Now(),
+			})
+		}
+		for i := maxSurge; i < maxSurge*2; i++ {
+			gameRoomListCycle2 = append(gameRoomListCycle2, &game_room.GameRoom{
+				ID:          fmt.Sprintf("room-%v", i),
+				SchedulerID: newMajorScheduler.Name,
+				Version:     activeScheduler.Spec.Version,
+				Status:      game_room.GameStatusReady,
+				LastPingAt:  time.Now(),
+			})
+		}
+		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle1, nil)
+		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle2, nil)
+		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle3, nil)
+
+		allRooms := append(gameRoomListCycle1, gameRoomListCycle2...)
+		for i := range allRooms {
+			if i == len(allRooms) - 1 {
+				mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.New("error"))
+				mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(errors.New("error"))
+				continue
+			}
+			gameRoom := &game_room.GameRoom{
+				ID:          fmt.Sprintf("new-room-%v", i),
+				SchedulerID: newMajorScheduler.Name,
+				Version:     activeScheduler.Spec.Version,
+				Status:      game_room.GameStatusReady,
+				LastPingAt:  time.Now(),
+			}
+			mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
+			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
+		}
+
+
+		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+		op := &operation.Operation{
+			ID:             "op",
+			DefinitionName: definition.Name(),
+			SchedulerName:  newMajorScheduler.Name,
+			CreatedAt:      time.Now(),
+		}
+		execErr := executor.Execute(context.Background(), op, definition)
+		require.NotNil(t, execErr)
+		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
+
+		for i := range allRooms {
+			if i == len(allRooms) - 1 {
+				continue
+			}
+			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
+		}
+
+		err = executor.Rollback(context.Background(), op, definition, nil)
+		require.NoError(t, err)
+	})
+
 	t.Run("should fail - error deleting rooms", func(t *testing.T) {
 		mocks.schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), activeScheduler.Name).Return(activeScheduler, nil)
 		mocks.schedulerManager.EXPECT().GetSchedulerByVersion(gomock.Any(), newMajorScheduler.Name, newMajorScheduler.Spec.Version).Return(newMajorScheduler, nil)
