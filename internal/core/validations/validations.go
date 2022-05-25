@@ -32,6 +32,26 @@ import (
 	"github.com/Masterminds/semver"
 )
 
+func RequiredIfTypeRoomOccupancy(isParameterNil bool, policyType string) bool {
+	if policyType == "roomOccupancy" {
+		return isParameterNil
+	}
+	return true
+}
+
+func IsAutoscalingMinMaxValid(min int, max int) bool {
+	if max >= 0 && min > max {
+		return false
+	}
+	if min < 0 {
+		return false
+	}
+	if max < -1 {
+		return false
+	}
+	return true
+}
+
 //IsMaxSurgeValid check if MaxSurge is valid. A MaxSurge valid is a number greater than zero or a number greater than zero with suffix '%'
 func IsMaxSurgeValid(maxSurge string) bool {
 	if maxSurge == "" {
