@@ -75,12 +75,6 @@ func RegisterValidations() error {
 	}
 	addTranslation(Validate, "required_for_room_occupancy", "{0} must not be nil for RoomOccupancy policy type")
 
-	err = Validate.RegisterValidation("required_for_room_occupancy", roomOccupancyParameterValidate)
-	if err != nil {
-		return errors.New("could not register roomOccupancyParameterValidate")
-	}
-	addTranslation(Validate, "required_for_room_occupancy", "{0} must not be nil for RoomOccupancy policy type")
-
 	err = Validate.RegisterValidation("max_surge", maxSurgeValidate)
 	if err != nil {
 		return errors.New("could not register maxSurgeValidate")
