@@ -428,7 +428,7 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 
 		allRooms := append(gameRoomListCycle1, gameRoomListCycle2...)
 		for i := range allRooms {
-			if i == len(allRooms) - 1 {
+			if i == len(allRooms)-1 {
 				mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.New("error"))
 				mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(errors.New("error"))
 				continue
@@ -444,7 +444,6 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 		}
 
-
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 		op := &operation.Operation{
 			ID:             "op",
@@ -457,7 +456,7 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 
 		for i := range allRooms {
-			if i == len(allRooms) - 1 {
+			if i == len(allRooms)-1 {
 				continue
 			}
 			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
