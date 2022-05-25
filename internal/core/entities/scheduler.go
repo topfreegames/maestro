@@ -130,6 +130,7 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 			"CreatedAt",
 			"MaxSurge",
 			"RoomsReplicas",
+			"Autoscaling",
 		),
 	)
 }

@@ -26,6 +26,7 @@
 package entities_test
 
 import (
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"testing"
 	"time"
 
@@ -281,6 +282,11 @@ func TestIsMajorVersion(t *testing.T) {
 		"roomsReplicas shouldn't be a major": {
 			currentScheduler: &entities.Scheduler{RoomsReplicas: 0},
 			newScheduler:     &entities.Scheduler{RoomsReplicas: 2},
+			expected:         false,
+		},
+		"Autoscaling shouldn't be a major": {
+			currentScheduler: &entities.Scheduler{Autoscaling: &autoscaling.Autoscaling{Enabled: false}},
+			newScheduler:     &entities.Scheduler{Autoscaling: &autoscaling.Autoscaling{Enabled: true}},
 			expected:         false,
 		},
 	}
