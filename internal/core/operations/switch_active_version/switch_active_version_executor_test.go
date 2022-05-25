@@ -126,7 +126,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
 			}
-			mocks.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
+			mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
 		}
 		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil).MaxTimes(len(append(gameRoomListCycle1, gameRoomListCycle2...)))
 
@@ -168,21 +168,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		require.Nil(t, execErr)
 	})
 
-	t.Run("should fail - Can't update scheduler (switch active version on database)", func(t *testing.T) {
-		noReplaceDefinition := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newMinorScheduler.Spec.Version}
-		mocks := newMockRoomAndSchedulerManager(mockCtrl)
-
-		mocks.schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), activeScheduler.Name).Return(activeScheduler, nil)
-		mocks.schedulerManager.EXPECT().GetSchedulerByVersion(gomock.Any(), newMinorScheduler.Name, newMinorScheduler.Spec.Version).Return(newMinorScheduler, nil)
-		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(errors.New("error"))
-
-		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
-		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMinorScheduler.Name}, noReplaceDefinition)
-		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
-	})
-
-	t.Run("should fail - Can't create room", func(t *testing.T) {
+	t.Run("should succeed - Can't create room", func(t *testing.T) {
 		definition := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newMajorScheduler.Spec.Version}
 		mocks := newMockRoomAndSchedulerManager(mockCtrl)
 
@@ -204,10 +190,26 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle1, nil)
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*game_room.GameRoom{}, nil).MaxTimes(1)
 
-		mocks.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.New("error")).MaxTimes(maxSurge)
+		mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.New("error")).MaxTimes(maxSurge)
+		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil).MaxTimes(maxSurge)
+
+		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
 		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
+		require.Nil(t, execErr)
+	})
+
+	t.Run("should fail - Can't update scheduler (switch active version on database)", func(t *testing.T) {
+		noReplaceDefinition := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newMinorScheduler.Spec.Version}
+		mocks := newMockRoomAndSchedulerManager(mockCtrl)
+
+		mocks.schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), activeScheduler.Name).Return(activeScheduler, nil)
+		mocks.schedulerManager.EXPECT().GetSchedulerByVersion(gomock.Any(), newMinorScheduler.Name, newMinorScheduler.Spec.Version).Return(newMinorScheduler, nil)
+		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(errors.New("error"))
+
+		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
+		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMinorScheduler.Name}, noReplaceDefinition)
 		require.NotNil(t, execErr)
 		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
@@ -234,7 +236,7 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle1, nil)
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*game_room.GameRoom{}, nil).MaxTimes(1)
 
-		mocks.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, nil).MaxTimes(maxSurge)
+		mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, nil).MaxTimes(maxSurge)
 		mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(errors.New("error")).MaxTimes(maxSurge)
 
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager)
@@ -368,7 +370,7 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
 			}
-			mocks.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
+			mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
 			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 		}
 
@@ -431,7 +433,7 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 				Status:      game_room.GameStatusReady,
 				LastPingAt:  time.Now(),
 			}
-			mocks.roomManager.EXPECT().CreateRoomAndWaitForReadiness(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
+			mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
 			mocks.roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 		}
 
