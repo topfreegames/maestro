@@ -326,7 +326,7 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 					SchedulerID: "scheduler-name",
 					RoomID:      "room-name",
 					Attributes: map[string]interface{}{
-						"eventType": "roomStatus",
+						"eventType": "status",
 						"pingType":  "ready",
 						"roomType":  "red",
 					},
@@ -365,7 +365,7 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 					SchedulerID: "scheduler-name",
 					RoomID:      "room-name",
 					Attributes: map[string]interface{}{
-						"eventType": "roomStatus",
+						"eventType": "status",
 						"pingType":  "ready",
 						"roomType":  "red",
 					},

@@ -60,18 +60,18 @@ func ConvertToRoomEventType(value string) (RoomEventType, error) {
 	case string(Status):
 		return Status, nil
 	default:
-		return "", fmt.Errorf("invalid RoomEventType. Should be \"resync\" or \"roomEvent\"")
+		return "", fmt.Errorf(fmt.Sprintf("invalid RoomEventType, should be %s, %s or %s", Ping, Arbitrary, Status))
 	}
 }
 
 func FromRoomEventTypeToString(eventType RoomEventType) string {
 	switch eventType {
 	case Ping:
-		return "resync"
+		return string(Ping)
 	case Arbitrary:
-		return "roomEvent"
+		return string(Arbitrary)
 	case Status:
-		return "roomStatus"
+		return string(Status)
 	default:
 		return ""
 	}

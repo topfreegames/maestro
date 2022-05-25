@@ -33,11 +33,15 @@ func TestRoomEvent(t *testing.T) {
 
 		converted, err := ConvertToRoomEventType("resync")
 		require.NoError(t, err)
-		require.IsType(t, RoomEventType("resync"), converted)
+		require.IsType(t, Ping, converted)
 
 		converted, err = ConvertToRoomEventType("roomEvent")
 		require.NoError(t, err)
-		require.IsType(t, RoomEventType("roomEvent"), converted)
+		require.IsType(t, Arbitrary, converted)
+
+		converted, err = ConvertToRoomEventType("status")
+		require.NoError(t, err)
+		require.IsType(t, Status, converted)
 	})
 
 	t.Run("with success when converting to RoomStatusType", func(t *testing.T) {
@@ -61,7 +65,7 @@ func TestRoomEvent(t *testing.T) {
 	t.Run("with error when converting to RoomEventType", func(t *testing.T) {
 
 		_, err := ConvertToRoomEventType("INVALID")
-		require.Error(t, err)
+		require.EqualError(t, err, "invalid RoomEventType, should be resync, roomEvent or status")
 	})
 
 	t.Run("with error when converting to RoomStatusType", func(t *testing.T) {
