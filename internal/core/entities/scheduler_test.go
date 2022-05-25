@@ -26,9 +26,10 @@
 package entities_test
 
 import (
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"testing"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/validations"

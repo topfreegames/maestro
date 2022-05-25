@@ -23,8 +23,9 @@
 package scheduler
 
 import (
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 
