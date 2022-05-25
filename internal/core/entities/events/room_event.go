@@ -60,7 +60,7 @@ func ConvertToRoomEventType(value string) (RoomEventType, error) {
 	case string(Status):
 		return Status, nil
 	default:
-		return "", fmt.Errorf(fmt.Sprintf("invalid RoomEventType. Should be %s, %s or %s", Ping, Arbitrary, Status))
+		return "", fmt.Errorf(fmt.Sprintf("invalid RoomEventType, should be %s, %s or %s", Ping, Arbitrary, Status))
 	}
 }
 
