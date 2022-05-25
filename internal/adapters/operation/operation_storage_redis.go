@@ -270,8 +270,10 @@ func (r *redisOperationStorage) removeNonExistentOperationFromHistory(ctx contex
 			pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(name), operationID)
 		}
 		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-			_, err := pipe.Exec(ctx)
-			zap.L().Error("failed to remove non-existent operations from history", zap.Error(err))
+			_, err := pipe.Exec(context.Background())
+			if err != nil {
+				zap.L().Error("failed to remove non-existent operations from history", zap.Error(err))
+			}
 			return err
 		})
 	}()
