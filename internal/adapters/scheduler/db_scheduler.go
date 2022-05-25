@@ -23,6 +23,7 @@
 package scheduler
 
 import (
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -59,6 +60,7 @@ type schedulerInfo struct {
 	MaxSurge               string
 	RoomsReplicas          int
 	Forwarders             []*forwarder.Forwarder
+	Autoscaling            *autoscaling.Autoscaling
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -71,6 +73,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		MaxSurge:               scheduler.MaxSurge,
 		RoomsReplicas:          scheduler.RoomsReplicas,
 		Forwarders:             scheduler.Forwarders,
+		Autoscaling:            scheduler.Autoscaling,
 	}
 	yamlBytes, _ := yaml.Marshal(info)
 	return &Scheduler{
@@ -106,5 +109,6 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		MaxSurge:        info.MaxSurge,
 		RoomsReplicas:   info.RoomsReplicas,
 		Forwarders:      info.Forwarders,
+		Autoscaling:     info.Autoscaling,
 	}, nil
 }

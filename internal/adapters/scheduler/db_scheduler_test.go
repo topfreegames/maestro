@@ -26,6 +26,7 @@
 package scheduler
 
 import (
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"testing"
 	"time"
 
@@ -187,6 +188,19 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Affinity:               "affinity",
 				},
 				Forwarders: forwarders,
+				Autoscaling: &autoscaling.Autoscaling{
+					Enabled: true,
+					Min:     1,
+					Max:     3,
+					Policy: autoscaling.Policy{
+						Type: autoscaling.RoomOccupancy,
+						Parameters: autoscaling.PolicyParameters{
+							RoomOccupancy: &autoscaling.RoomOccupancyParams{
+								ReadyTarget: 0.1,
+							},
+						},
+					},
+				},
 			},
 		}
 
