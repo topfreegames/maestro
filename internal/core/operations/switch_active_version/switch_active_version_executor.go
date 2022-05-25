@@ -210,11 +210,9 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, roomsChan
 			return nil
 		}
 
-		gameRoom, _, err := roomManager.CreateRoomAndWaitForReadiness(ctx, scheduler, false)
+		gameRoom, _, err := roomManager.CreateRoom(ctx, scheduler, false)
 		if err != nil {
 			logger.Error("error creating room", zap.Error(err))
-			ex.roomsBeingReplaced.Delete(room.ID)
-			return err
 		}
 
 		err = roomManager.DeleteRoomAndWaitForRoomTerminating(ctx, room)
