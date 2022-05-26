@@ -29,6 +29,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 
 	"github.com/stretchr/testify/require"
@@ -187,6 +189,19 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Affinity:               "affinity",
 				},
 				Forwarders: forwarders,
+				Autoscaling: &autoscaling.Autoscaling{
+					Enabled: true,
+					Min:     1,
+					Max:     3,
+					Policy: autoscaling.Policy{
+						Type: autoscaling.RoomOccupancy,
+						Parameters: autoscaling.PolicyParameters{
+							RoomOccupancy: &autoscaling.RoomOccupancyParams{
+								ReadyTarget: 0.1,
+							},
+						},
+					},
+				},
 			},
 		}
 

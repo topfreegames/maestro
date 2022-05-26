@@ -20,6 +20,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//go:build unit
+// +build unit
+
 package validations
 
 import (
@@ -139,5 +142,53 @@ func TestIsForwarderTypeSupported(t *testing.T) {
 		wrongType := "unsupported"
 		supported := IsForwarderTypeSupported(wrongType)
 		assert.False(t, supported)
+	})
+}
+
+func TestIsAutoscalingMinMaxValid(t *testing.T) {
+
+	t.Run("return false when min is bigger than max and max is not -1", func(t *testing.T) {
+		valid := IsAutoscalingMinMaxValid(10, 5)
+		assert.False(t, valid)
+	})
+	t.Run("return false when min is less than zero", func(t *testing.T) {
+		valid := IsAutoscalingMinMaxValid(0, 100)
+		assert.False(t, valid)
+
+		valid = IsAutoscalingMinMaxValid(-1, 100)
+		assert.False(t, valid)
+	})
+
+	t.Run("return false when max is less than -1", func(t *testing.T) {
+		valid := IsAutoscalingMinMaxValid(2, -2)
+		assert.False(t, valid)
+	})
+	t.Run("return true when min is less than max", func(t *testing.T) {
+		valid := IsAutoscalingMinMaxValid(1, 2)
+		assert.True(t, valid)
+	})
+	t.Run("return true when min is bigger than max and max is -1", func(t *testing.T) {
+		valid := IsAutoscalingMinMaxValid(10, -1)
+		assert.True(t, valid)
+	})
+}
+
+func TestRequiredIfTypeRoomOccupancy(t *testing.T) {
+
+	t.Run("return true when policy type is room occupancy and the parameter is not nil", func(t *testing.T) {
+		valid := RequiredIfTypeRoomOccupancy(false, "roomOccupancy")
+		assert.True(t, valid)
+	})
+	t.Run("return true when policy type is not roomOccupancy and parameter is nil", func(t *testing.T) {
+		valid := RequiredIfTypeRoomOccupancy(false, "otherPolicy")
+		assert.True(t, valid)
+	})
+	t.Run("return true when policy type is not roomOccupancy and parameter is not nil", func(t *testing.T) {
+		valid := RequiredIfTypeRoomOccupancy(false, "otherPolicy")
+		assert.True(t, valid)
+	})
+	t.Run("return false when policy type is room occupancy and the parameter is nil", func(t *testing.T) {
+		valid := RequiredIfTypeRoomOccupancy(true, "roomOccupancy")
+		assert.False(t, valid)
 	})
 }

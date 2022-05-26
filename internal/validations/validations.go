@@ -63,6 +63,18 @@ func RegisterValidations() error {
 	}
 	addTranslation(Validate, "ports_protocol", "{0} must be one of the following options: tcp, udp, sctp")
 
+	err = Validate.RegisterValidation("custom_lower_than", autoscalingMinMaxValidate)
+	if err != nil {
+		return errors.New("could not register autoscalingMinMaxValidate")
+	}
+	addTranslation(Validate, "custom_lower_than", "{0} must be a number lower than {1}")
+
+	err = Validate.RegisterValidation("required_for_room_occupancy", roomOccupancyParameterValidate)
+	if err != nil {
+		return errors.New("could not register roomOccupancyParameterValidate")
+	}
+	addTranslation(Validate, "required_for_room_occupancy", "{0} must not be nil for RoomOccupancy policy type")
+
 	err = Validate.RegisterValidation("max_surge", maxSurgeValidate)
 	if err != nil {
 		return errors.New("could not register maxSurgeValidate")
@@ -98,6 +110,30 @@ func imagePullPolicyValidate(fl validator.FieldLevel) bool {
 
 func portsProtocolValidate(fl validator.FieldLevel) bool {
 	return validations.IsProtocolSupported(fl.Field().String())
+}
+
+func autoscalingMinMaxValidate(fl validator.FieldLevel) bool {
+	field := fl.Field()
+	kind := field.Kind()
+
+	topField, topKind, _, ok := fl.GetStructFieldOK2()
+	if !ok || topKind != kind {
+		return false
+	}
+
+	return validations.IsAutoscalingMinMaxValid(int(field.Int()), int(topField.Int()))
+}
+
+func roomOccupancyParameterValidate(fl validator.FieldLevel) bool {
+	field := fl.Field()
+	kind := field.Kind()
+
+	topField, topKind, _, ok := fl.GetStructFieldOK2()
+	if !ok || topKind != kind {
+		return false
+	}
+
+	return validations.RequiredIfTypeRoomOccupancy(field.IsNil(), topField.String())
 }
 
 func maxSurgeValidate(fl validator.FieldLevel) bool {

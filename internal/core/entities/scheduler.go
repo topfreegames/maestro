@@ -25,6 +25,8 @@ package entities
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
@@ -55,6 +57,7 @@ type Scheduler struct {
 	State           string `validate:"required"`
 	RollbackVersion string
 	Spec            game_room.Spec
+	Autoscaling     *autoscaling.Autoscaling
 	PortRange       *PortRange
 	RoomsReplicas   int `validate:"min=0"`
 	CreatedAt       time.Time
@@ -127,6 +130,7 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 			"CreatedAt",
 			"MaxSurge",
 			"RoomsReplicas",
+			"Autoscaling",
 		),
 	)
 }
