@@ -77,11 +77,11 @@ func TestNewAutoscaling(t *testing.T) {
 		t.Run("fails when try to create autoscaling with invalid roomOccupancy Policy", func(t *testing.T) {
 			_, err := NewAutoscaling(true, 1, 10, Policy{})
 			validationErrs := err.(validator.ValidationErrors)
-			assert.Equal(t, "Type must be one of [roomOccupancy]", validationErrs[0].Translate(translator))
+			assert.Contains(t, validationErrs[0].Translate(translator), "Type must be one of")
 
 			_, err = NewAutoscaling(true, 1, 10, Policy{Type: "invalid", Parameters: PolicyParameters{}})
 			validationErrs = err.(validator.ValidationErrors)
-			assert.Equal(t, "Type must be one of [roomOccupancy]", validationErrs[0].Translate(translator))
+			assert.Contains(t, validationErrs[0].Translate(translator), "Type must be one of")
 
 			_, err = NewAutoscaling(true, 1, 10, Policy{Type: "roomOccupancy", Parameters: PolicyParameters{}})
 			validationErrs = err.(validator.ValidationErrors)
