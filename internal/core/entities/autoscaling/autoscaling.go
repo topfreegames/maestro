@@ -47,7 +47,7 @@ type Autoscaling struct {
 	Policy Policy
 }
 
-// Validate check if an Autoscaling struct is well formated.
+// Validate check if an Autoscaling struct is well formatted and contains valid values.
 func (a *Autoscaling) Validate() error {
 	return validations.Validate.Struct(a)
 }
