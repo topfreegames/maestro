@@ -170,8 +170,10 @@ message Scheduler {
   int32 rooms_replicas = 7;
   // GameRoom spec
   Spec spec = 8;
+  // Autoscaling rules to the scheduler
+  optional Autoscaling autoscaling = 9;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 9;
+  repeated Forwarder forwarders = 10;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
@@ -232,6 +234,37 @@ message Operation {
   google.protobuf.Struct input = 7;
   // ExecutionHistory is the execution details filled by Maestro.
   repeated OperationEvent execution_history = 8;
+}
+
+// Autoscaling struct representation
+message Autoscaling {
+  // Enable flag to autoscaling feature
+  bool enabled = 1;
+  // Min is the minimum number of game rooms that a scheduler should have
+  int32 min = 2;
+  // Max is the maximum number of game rooms that a scheduler should have
+  int32 max = 3;
+  // Policy is the autoscaling policy that scheduler should follow
+  AutoscalingPolicy policy = 4;
+}
+
+// AutoscalingPolicy object representation
+message AutoscalingPolicy {
+  // Type is the policy type to the scheduler
+  string type = 1;  
+  // Parameters is the autoscaling arguments to guide the policy execution
+  PolicyParameters parameters = 2;
+}
+
+// PolicyParameters object representation
+message PolicyParameters {
+  // RoomOccupancy is the policy parameters to execute rooms occupancy policy
+  optional RoomOccupancy room_occupancy = 1;
+}
+
+message RoomOccupancy {
+  // ReadyTarget represents the number of rooms ready rate that the scheduler should keep
+  float ready_target = 1;
 }
 
 // The operation lease object representation
