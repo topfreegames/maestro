@@ -100,7 +100,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			assert.ErrorContains(t, err, "Error fetching current state to scheduler")
 		})
 
-		t.Run("When CalculateDesiredNumberOfRooms returns in error", func(t *testing.T) {
+		t.Run("When CalculateDesiredNumberOfRooms returns error", func(t *testing.T) {
 			mockPolicy := policyMock.NewMockPolicy(ctrl)
 
 			currentState := policies.CurrentState{}
