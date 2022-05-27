@@ -29,7 +29,7 @@ type PolicyType string
 
 const (
 	// RoomOccupancy is an implemented policy in maestro autoscaler,
-	// it uses the number of occupied rooms to calculate the desired number of rooms in a scheduler.
+	// it uses the number of occupied rooms and a ready rooms target percentage to calculate the desired number of rooms in a scheduler.
 	RoomOccupancy PolicyType = "roomOccupancy"
 )
 
