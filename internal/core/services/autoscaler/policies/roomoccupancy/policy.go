@@ -29,6 +29,7 @@ import (
 	"math"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	autoscalerPorts "github.com/topfreegames/maestro/internal/core/ports/autoscaler"
@@ -36,8 +37,6 @@ import (
 )
 
 const (
-	// ReadyTargetKey is the key to ready target in the CurrentState map.
-	ReadyTargetKey = "RoomsOccupancyReadyTarget"
 	// OccupiedRoomsKey is the key to occupied rooms in the CurrentState map.
 	OccupiedRoomsKey = "RoomsOccupancyOccupiedRooms"
 )
@@ -64,10 +63,7 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 		return nil, fmt.Errorf("error fetching occupied game rooms amount: %w", err)
 	}
 
-	readyTarget := scheduler.Autoscaling.Policy.Parameters.RoomOccupancy.ReadyTarget
-
 	currentState := policies.CurrentState{
-		ReadyTargetKey:   readyTarget,
 		OccupiedRoomsKey: occupiedRoomsAmount,
 	}
 
@@ -75,10 +71,18 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 }
 
 // CalculateDesiredNumberOfRooms executes to knows how many rooms should a scheduler have based on your current state.
-func (p *Policy) CalculateDesiredNumberOfRooms(currentState policies.CurrentState) (int, error) {
-	readyTarget := currentState[ReadyTargetKey].(float64)
+func (p *Policy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (int, error) {
+	if policyParameters.RoomOccupancy == nil {
+		return -1, errors.New("RoomOccupancy parameters is empty")
+	}
+
+	readyTarget := policyParameters.RoomOccupancy.ReadyTarget
 	if readyTarget >= float64(1) || readyTarget <= 0 {
 		return -1, errors.New("Ready target must be between 0 and 1")
+	}
+
+	if _, ok := currentState[OccupiedRoomsKey].(int); !ok {
+		return -1, errors.New("There are no occupiedRooms in the currentState")
 	}
 
 	occupiedRooms := currentState[OccupiedRoomsKey].(int)

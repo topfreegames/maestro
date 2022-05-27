@@ -26,6 +26,7 @@ import (
 	"context"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies"
 )
 
@@ -33,5 +34,5 @@ import (
 // based on the current state of a scheduler.
 type Policy interface {
 	CurrentStateBuilder(ctx context.Context, scheduler *entities.Scheduler) (policies.CurrentState, error)
-	CalculateDesiredNumberOfRooms(currentState policies.CurrentState) (desiredNumberOfRooms int, err error)
+	CalculateDesiredNumberOfRooms(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (desiredNumberOfRooms int, err error)
 }
