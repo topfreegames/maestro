@@ -34,9 +34,13 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/orlangure/gnomock"
 	predis "github.com/orlangure/gnomock/preset/redis"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	configmock "github.com/topfreegames/maestro/internal/config/mock"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
+	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
 )
 
 func getRedisUrl(t *testing.T) string {
@@ -280,5 +284,16 @@ func TestOperationFlowRedis(t *testing.T) {
 		config.EXPECT().GetString(operationFlowRedisUrlPath).Return("")
 		_, err := NewOperationFlowRedis(config)
 		require.Error(t, err)
+	})
+}
+
+func TestNewPolicyFactory(t *testing.T) {
+	t.Run("Should return RoomOccupancy policy", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
+
+		policyFactory := NewPolicyFactory(roomStorageMock)
+		assert.IsType(t, policyFactory[autoscaling.RoomOccupancy], &roomoccupancy.Policy{})
 	})
 }

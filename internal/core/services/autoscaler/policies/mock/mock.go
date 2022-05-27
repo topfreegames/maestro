@@ -10,6 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	entities "github.com/topfreegames/maestro/internal/core/entities"
+	autoscaling "github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	policies "github.com/topfreegames/maestro/internal/core/services/autoscaler/policies"
 )
 
@@ -37,18 +38,18 @@ func (m *MockPolicy) EXPECT() *MockPolicyMockRecorder {
 }
 
 // CalculateDesiredNumberOfRooms mocks base method.
-func (m *MockPolicy) CalculateDesiredNumberOfRooms(currentState policies.CurrentState) (int, error) {
+func (m *MockPolicy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CalculateDesiredNumberOfRooms", currentState)
+	ret := m.ctrl.Call(m, "CalculateDesiredNumberOfRooms", policyParameters, currentState)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CalculateDesiredNumberOfRooms indicates an expected call of CalculateDesiredNumberOfRooms.
-func (mr *MockPolicyMockRecorder) CalculateDesiredNumberOfRooms(currentState interface{}) *gomock.Call {
+func (mr *MockPolicyMockRecorder) CalculateDesiredNumberOfRooms(policyParameters, currentState interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalculateDesiredNumberOfRooms", reflect.TypeOf((*MockPolicy)(nil).CalculateDesiredNumberOfRooms), currentState)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalculateDesiredNumberOfRooms", reflect.TypeOf((*MockPolicy)(nil).CalculateDesiredNumberOfRooms), policyParameters, currentState)
 }
 
 // CurrentStateBuilder mocks base method.

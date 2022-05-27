@@ -34,12 +34,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	autoscalerPorts "github.com/topfreegames/maestro/internal/core/ports/autoscaler"
-	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies"
 	policyMock "github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/mock"
-	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
 )
 
 func TestCalculateDesiredNumberOfRooms(t *testing.T) {
@@ -48,9 +45,16 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 
 	expectedDesiredNumberOfRooms := 4
 
+	policyType := autoscaling.PolicyType("some-policy-type")
+
 	scheduler := &entities.Scheduler{
-		Name:        "some-name",
-		Autoscaling: &autoscaling.Autoscaling{},
+		Name: "some-name",
+		Autoscaling: &autoscaling.Autoscaling{
+			Policy: autoscaling.Policy{
+				Type:       policyType,
+				Parameters: autoscaling.PolicyParameters{},
+			},
+		},
 	}
 
 	t.Run("Success case", func(t *testing.T) {
@@ -59,13 +63,9 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 		currentState := policies.CurrentState{}
 
 		mockPolicy.EXPECT().CurrentStateBuilder(gomock.Any(), scheduler).Return(currentState, nil)
-		mockPolicy.EXPECT().CalculateDesiredNumberOfRooms(currentState).Return(expectedDesiredNumberOfRooms, nil)
+		mockPolicy.EXPECT().CalculateDesiredNumberOfRooms(scheduler.Autoscaling.Policy.Parameters, currentState).Return(expectedDesiredNumberOfRooms, nil)
 
-		autoscaler := autoscaler.Autoscaler{
-			PolicyFactory: func(autoscaling.PolicyType) (autoscalerPorts.Policy, error) {
-				return mockPolicy, nil
-			},
-		}
+		autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyFactory{policyType: mockPolicy})
 
 		desiredNumberOfRoom, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
 		assert.NoError(t, err)
@@ -74,15 +74,22 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 	})
 
 	t.Run("Error cases", func(t *testing.T) {
-		t.Run("When policy factory retun in error", func(t *testing.T) {
-			autoscaler := autoscaler.Autoscaler{
-				PolicyFactory: func(autoscaling.PolicyType) (autoscalerPorts.Policy, error) {
-					return nil, errors.New("Error getting policy to policyType")
-				},
+		t.Run("When scheduler does not have autoscaling struct", func(t *testing.T) {
+			autoscaler := autoscaler.Autoscaler{}
+
+			scheduler := &entities.Scheduler{
+				Name: "some-name",
 			}
 
 			_, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
-			assert.ErrorContains(t, err, "Error building policy to scheduler")
+			assert.ErrorContains(t, err, "Scheduler does not have autoscaling struct")
+		})
+
+		t.Run("When policyFactory does not have policy retun in error", func(t *testing.T) {
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyFactory{})
+
+			_, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
+			assert.ErrorContains(t, err, "Error finding policy to scheduler")
 		})
 
 		t.Run("When CurrentStateBuilder returns error", func(t *testing.T) {
@@ -90,11 +97,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 
 			mockPolicy.EXPECT().CurrentStateBuilder(gomock.Any(), scheduler).Return(nil, errors.New("Error getting current state"))
 
-			autoscaler := autoscaler.Autoscaler{
-				PolicyFactory: func(autoscaling.PolicyType) (autoscalerPorts.Policy, error) {
-					return mockPolicy, nil
-				},
-			}
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyFactory{policyType: mockPolicy})
 
 			_, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
 			assert.ErrorContains(t, err, "Error fetching current state to scheduler")
@@ -106,40 +109,12 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			currentState := policies.CurrentState{}
 
 			mockPolicy.EXPECT().CurrentStateBuilder(gomock.Any(), scheduler).Return(currentState, nil)
-			mockPolicy.EXPECT().CalculateDesiredNumberOfRooms(currentState).Return(-1, errors.New("Error calculating desired number of rooms"))
+			mockPolicy.EXPECT().CalculateDesiredNumberOfRooms(scheduler.Autoscaling.Policy.Parameters, currentState).Return(-1, errors.New("Error calculating desired number of rooms"))
 
-			autoscaler := autoscaler.Autoscaler{
-				PolicyFactory: func(autoscaling.PolicyType) (autoscalerPorts.Policy, error) {
-					return mockPolicy, nil
-				},
-			}
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyFactory{policyType: mockPolicy})
 
 			_, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
 			assert.ErrorContains(t, err, "Error calculating the desired number of rooms to scheduler")
 		})
-	})
-}
-
-func TestDefaultPolicyFactory(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	t.Run("Success case", func(t *testing.T) {
-		roomStorageMock := mock.NewMockRoomStorage(ctrl)
-
-		autoscaler := autoscaler.NewAutoscaler(roomStorageMock)
-
-		policy, err := autoscaler.DefaultPolicyFactory(autoscaling.RoomOccupancy)
-		assert.NoError(t, err)
-
-		assert.IsType(t, &roomoccupancy.Policy{}, policy)
-	})
-
-	t.Run("Error case", func(t *testing.T) {
-		roomStorageMock := mock.NewMockRoomStorage(ctrl)
-
-		autoscaler := autoscaler.NewAutoscaler(roomStorageMock)
-		_, err := autoscaler.DefaultPolicyFactory(autoscaling.PolicyType("unknown-policy-type"))
-		assert.ErrorContains(t, err, "Autoscaling policy not found")
 	})
 }
