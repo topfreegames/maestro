@@ -61,7 +61,7 @@ func TestCurrentStateBuilder(t *testing.T) {
 		},
 	}
 
-	t.Run("Success cases - when all gonna ok", func(t *testing.T) {
+	t.Run("Success cases - when no error occurs it builds the state with occupied rooms amount", func(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(ctrl)
 
 		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(occupiedRoomsAmount, nil)
