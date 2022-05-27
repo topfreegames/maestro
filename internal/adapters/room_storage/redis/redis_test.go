@@ -290,7 +290,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 			Score:  float64(expectedRoom.LastPingAt.Unix()),
 		})
 
-		p.Exec(ctx)
+		_, _ = p.Exec(ctx)
 
 		actualRoom, err := storage.GetRoom(ctx, expectedRoom.SchedulerID, expectedRoom.ID)
 		require.NoError(t, err)
@@ -332,7 +332,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 			Member: expectedRoom.ID,
 			Score:  float64(expectedRoom.LastPingAt.Unix()),
 		})
-		p.Exec(ctx)
+		_, _ = p.Exec(ctx)
 
 		actualRoom, err := storage.GetRoom(ctx, expectedRoom.SchedulerID, expectedRoom.ID)
 		require.NoError(t, err)

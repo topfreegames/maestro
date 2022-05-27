@@ -200,12 +200,13 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 		}
 
 		switch {
-		case ex.isRoomStatus(room, game_room.GameStatusPending):
-			availableRoomsIDs = append(availableRoomsIDs, gameRoomID)
+
 		case ex.isRoomStatus(room, game_room.GameStatusUnready):
 			availableRoomsIDs = append(availableRoomsIDs, gameRoomID)
-		case ex.isRoomExpired(room):
-			expiredRoomsIDs = append(expiredRoomsIDs, room.ID)
+		case ex.isPendingRoomExpired(room):
+			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomID)
+		case ex.isRoomPingExpired(room):
+			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomID)
 		case ex.isRoomStatus(room, game_room.GameStatusTerminating):
 			continue
 		case ex.isRoomStatus(room, game_room.GameStatusError):
@@ -218,9 +219,14 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 	return availableRoomsIDs, expiredRoomsIDs
 }
 
-func (ex *SchedulerHealthControllerExecutor) isRoomExpired(room *game_room.GameRoom) bool {
+func (ex *SchedulerHealthControllerExecutor) isPendingRoomExpired(room *game_room.GameRoom) bool {
+	timeDurationInPendingState := time.Since(room.CreatedAt)
+	return ex.isRoomStatus(room, game_room.GameStatusPending) && timeDurationInPendingState > ex.roomManagerConfig.RoomInitializationTimeout
+}
+
+func (ex *SchedulerHealthControllerExecutor) isRoomPingExpired(room *game_room.GameRoom) bool {
 	timeDurationWithoutPing := time.Since(room.LastPingAt)
-	return timeDurationWithoutPing > ex.roomManagerConfig.RoomPingTimeout
+	return !ex.isRoomStatus(room, game_room.GameStatusPending) && timeDurationWithoutPing > ex.roomManagerConfig.RoomPingTimeout
 }
 
 func (ex *SchedulerHealthControllerExecutor) isRoomStatus(room *game_room.GameRoom, status game_room.GameRoomStatus) bool {
