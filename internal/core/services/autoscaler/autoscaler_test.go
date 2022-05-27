@@ -85,7 +85,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			assert.ErrorContains(t, err, "Error building policy to scheduler")
 		})
 
-		t.Run("When CurrentStateBuilder returns in error", func(t *testing.T) {
+		t.Run("When CurrentStateBuilder returns error", func(t *testing.T) {
 			mockPolicy := policyMock.NewMockPolicy(ctrl)
 
 			mockPolicy.EXPECT().CurrentStateBuilder(gomock.Any(), scheduler).Return(nil, errors.New("Error getting current state"))
