@@ -22,5 +22,6 @@
 
 package policies
 
-// CurrentState is a map that will be used by policies to calculate the desired number of rooms to a scheduler.
+// CurrentState is a map that represents the current state of a scheduler and can be populated with arbitrary information (rooms count, instances status, etc)
+// it will be used by policies to calculate the desired number of rooms to a scheduler.
 type CurrentState map[string]interface{}
