@@ -75,7 +75,7 @@ func TestCurrentStateBuilder(t *testing.T) {
 		assert.Equal(t, occupiedRoomsAmount, currentState[roomoccupancy.OccupiedRoomsKey])
 	})
 
-	t.Run("Error case - When GetRoomCountByStatus return in error returns nil error", func(t *testing.T) {
+	t.Run("Error case - When some error occurs in GetRoomCountByStatus it returns error", func(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(ctrl)
 
 		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(-1, errors.New("Error getting amount of occupied rooms"))
