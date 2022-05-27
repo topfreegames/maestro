@@ -64,6 +64,18 @@ func assertRedisState(t *testing.T, client *redis.Client, room *game_room.GameRo
 	require.Equal(t, room.Metadata, actualMetadata)
 	require.Equal(t, room.Version, roomHash.Val()[versionKey])
 
+	isValidationRoom, err := strconv.ParseBool(roomHash.Val()[isValidationRoomKey])
+	require.NoError(t, err)
+	require.Equal(t, isValidationRoom, room.IsValidationRoom)
+
+	createdAt, err := strconv.ParseInt(roomHash.Val()[createdAtKey], 10, 64)
+	require.NoError(t, err)
+	createdAtTime := time.Unix(createdAt, 0)
+	now := time.Now()
+	require.Equal(t, now.Year(), createdAtTime.Year())
+	require.Equal(t, now.Month(), createdAtTime.Month())
+	require.Equal(t, now.Day(), createdAtTime.Day())
+
 	pingStatusInt, err := strconv.Atoi(roomHash.Val()[pingStatusKey])
 	require.NoError(t, err)
 	require.Equal(t, room.PingStatus, game_room.GameRoomPingStatus(pingStatusInt))
@@ -248,15 +260,37 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 	storage := NewRedisStateStorage(client)
 
 	t.Run("game room without metadata", func(t *testing.T) {
+		createdAt := time.Unix(time.Date(2020, 1, 1, 2, 2, 0, 0, time.UTC).Unix(), 0)
 		expectedRoom := &game_room.GameRoom{
 			ID:          "room-1",
 			SchedulerID: "game",
 			Version:     "1.0",
 			Status:      game_room.GameStatusReady,
 			LastPingAt:  lastPing,
+			CreatedAt:   createdAt,
 		}
+		metadataJson, _ := json.Marshal(expectedRoom.Metadata)
 
-		require.NoError(t, storage.CreateRoom(ctx, expectedRoom))
+		p := client.TxPipeline()
+		p.HSet(ctx, getRoomRedisKey(expectedRoom.SchedulerID, expectedRoom.ID), map[string]interface{}{
+			versionKey:          expectedRoom.Version,
+			metadataKey:         metadataJson,
+			pingStatusKey:       strconv.Itoa(int(expectedRoom.PingStatus)),
+			isValidationRoomKey: expectedRoom.IsValidationRoom,
+			createdAtKey:        expectedRoom.CreatedAt.Unix(),
+		})
+
+		_ = p.ZAddNX(ctx, getRoomStatusSetRedisKey(expectedRoom.SchedulerID), &redis.Z{
+			Member: expectedRoom.ID,
+			Score:  float64(expectedRoom.Status),
+		})
+
+		_ = p.ZAddNX(ctx, getRoomPingRedisKey(expectedRoom.SchedulerID), &redis.Z{
+			Member: expectedRoom.ID,
+			Score:  float64(expectedRoom.LastPingAt.Unix()),
+		})
+
+		p.Exec(ctx)
 
 		actualRoom, err := storage.GetRoom(ctx, expectedRoom.SchedulerID, expectedRoom.ID)
 		require.NoError(t, err)
@@ -264,6 +298,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 	})
 
 	t.Run("game room with metadata and validation flag true", func(t *testing.T) {
+		createdAt := time.Unix(time.Date(2020, 1, 1, 2, 2, 0, 0, time.UTC).Unix(), 0)
 		expectedRoom := &game_room.GameRoom{
 			ID:          "room-2",
 			SchedulerID: "game",
@@ -274,9 +309,30 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 				"region": "us",
 			},
 			IsValidationRoom: true,
+			CreatedAt:        createdAt,
 		}
 
-		require.NoError(t, storage.CreateRoom(ctx, expectedRoom))
+		metadataJson, _ := json.Marshal(expectedRoom.Metadata)
+
+		p := client.TxPipeline()
+		p.HSet(ctx, getRoomRedisKey(expectedRoom.SchedulerID, expectedRoom.ID), map[string]interface{}{
+			versionKey:          expectedRoom.Version,
+			metadataKey:         metadataJson,
+			pingStatusKey:       strconv.Itoa(int(expectedRoom.PingStatus)),
+			isValidationRoomKey: expectedRoom.IsValidationRoom,
+			createdAtKey:        expectedRoom.CreatedAt.Unix(),
+		})
+
+		_ = p.ZAddNX(ctx, getRoomStatusSetRedisKey(expectedRoom.SchedulerID), &redis.Z{
+			Member: expectedRoom.ID,
+			Score:  float64(expectedRoom.Status),
+		})
+
+		_ = p.ZAddNX(ctx, getRoomPingRedisKey(expectedRoom.SchedulerID), &redis.Z{
+			Member: expectedRoom.ID,
+			Score:  float64(expectedRoom.LastPingAt.Unix()),
+		})
+		p.Exec(ctx)
 
 		actualRoom, err := storage.GetRoom(ctx, expectedRoom.SchedulerID, expectedRoom.ID)
 		require.NoError(t, err)
