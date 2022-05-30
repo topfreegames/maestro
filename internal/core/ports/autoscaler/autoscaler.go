@@ -24,6 +24,7 @@ package autoscaler
 
 import (
 	"context"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies"

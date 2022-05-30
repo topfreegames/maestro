@@ -699,11 +699,12 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 			operationManager := mockports.NewMockOperationManager(mockCtrl)
+			autoscaler := mockports.NewMockAutoscaler(mockCtrl)
 			config := room_manager.RoomManagerConfig{
 				RoomPingTimeout:           2 * time.Minute,
 				RoomInitializationTimeout: 4 * time.Minute,
 			}
-			executor := healthcontroller.NewExecutor(roomsStorage, instanceStorage, schedulerStorage, operationManager, config)
+			executor := healthcontroller.NewExecutor(roomsStorage, instanceStorage, schedulerStorage, operationManager, config, autoscaler)
 
 			testCase.executionPlan.planMocks(roomsStorage, instanceStorage, schedulerStorage, operationManager)
 

@@ -77,7 +77,9 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	}
 	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, eventsService, roomManagerConfig)
 	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
-	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager, roomStorage, schedulerManager, gameRoomInstanceStorage, operationManager, roomManagerConfig)
+	policyFactory := service.NewPolicyFactory(roomStorage)
+	autoscaler := service.NewAutoscaler(policyFactory)
+	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager, roomStorage, schedulerManager, gameRoomInstanceStorage, operationManager, roomManagerConfig, autoscaler)
 	configuration, err := service.NewWorkersConfig(c)
 	if err != nil {
 		return nil, err

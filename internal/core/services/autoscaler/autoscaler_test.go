@@ -30,13 +30,14 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies"
-	policyMock "github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/mock"
 )
 
 func TestCalculateDesiredNumberOfRooms(t *testing.T) {
@@ -63,7 +64,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 
 	t.Run("Success cases", func(t *testing.T) {
 		t.Run("When DesiredNumber is between Min and Max", func(t *testing.T) {
-			mockPolicy := policyMock.NewMockPolicy(ctrl)
+			mockPolicy := mock.NewMockPolicy(ctrl)
 
 			currentState := policies.CurrentState{}
 
@@ -79,7 +80,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 		})
 
 		t.Run("When DesiredNumber is lower than Min should return Min", func(t *testing.T) {
-			mockPolicy := policyMock.NewMockPolicy(ctrl)
+			mockPolicy := mock.NewMockPolicy(ctrl)
 
 			currentState := policies.CurrentState{}
 
@@ -95,7 +96,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 		})
 
 		t.Run("When DesiredNumber is greater than Max should return Max", func(t *testing.T) {
-			mockPolicy := policyMock.NewMockPolicy(ctrl)
+			mockPolicy := mock.NewMockPolicy(ctrl)
 
 			currentState := policies.CurrentState{}
 
@@ -131,7 +132,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 		})
 
 		t.Run("When CurrentStateBuilder returns error", func(t *testing.T) {
-			mockPolicy := policyMock.NewMockPolicy(ctrl)
+			mockPolicy := mock.NewMockPolicy(ctrl)
 
 			mockPolicy.EXPECT().CurrentStateBuilder(gomock.Any(), scheduler).Return(nil, errors.New("Error getting current state"))
 
@@ -142,7 +143,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 		})
 
 		t.Run("When CalculateDesiredNumberOfRooms returns error", func(t *testing.T) {
-			mockPolicy := policyMock.NewMockPolicy(ctrl)
+			mockPolicy := mock.NewMockPolicy(ctrl)
 
 			currentState := policies.CurrentState{}
 

@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"time"
 
+	autoscalerports "github.com/topfreegames/maestro/internal/core/ports/autoscaler"
+
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 
