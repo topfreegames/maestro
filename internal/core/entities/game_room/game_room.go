@@ -123,8 +123,9 @@ type GameRoom struct {
 	Status           GameRoomStatus
 	PingStatus       GameRoomPingStatus
 	Metadata         map[string]interface{}
-	LastPingAt       time.Time
 	IsValidationRoom bool
+	LastPingAt       time.Time
+	CreatedAt        time.Time
 }
 
 // validStatusTransitions this map has all possible status changes for a game
