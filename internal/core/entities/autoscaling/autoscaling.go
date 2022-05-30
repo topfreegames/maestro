@@ -84,3 +84,15 @@ type RoomOccupancyParams struct {
 	// ReadyTarget indicates the target percentage of ready rooms a scheduler should maintain.
 	ReadyTarget float64 `validate:"gt=0,lt=1"`
 }
+
+func NewRoomOccupancyPolicy(readyTarget float64) Policy {
+	newPolicy := Policy{
+		Type: RoomOccupancy,
+		Parameters: PolicyParameters{
+			RoomOccupancy: &RoomOccupancyParams{
+				ReadyTarget: readyTarget,
+			},
+		},
+	}
+	return newPolicy
+}

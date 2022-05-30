@@ -262,6 +262,7 @@ message PolicyParameters {
   optional RoomOccupancy room_occupancy = 1;
 }
 
+// RoomOccupancy optional policy parameter
 message RoomOccupancy {
   // ReadyTarget represents the number of rooms ready rate that the scheduler should keep
   float ready_target = 1;

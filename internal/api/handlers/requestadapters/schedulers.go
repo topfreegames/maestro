@@ -23,8 +23,11 @@
 package requestadapters
 
 import (
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	_struct "google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -58,6 +61,10 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 		patchMap[patch_scheduler.LabelSchedulerRoomsReplicas] = int(request.GetRoomsReplicas())
 	}
 
+	if request.Autoscaling != nil {
+		patchMap[patch_scheduler.LabelAutoscaling] = request.GetAutoscaling()
+	}
+
 	if request.Forwarders != nil {
 		patchMap[patch_scheduler.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
 	}
@@ -66,6 +73,11 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 }
 
 func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {
+	schedulerAutoscaling, err := fromApiAutoscaling(request.GetAutoscaling())
+	if err != nil {
+		return nil, err
+	}
+
 	return entities.NewScheduler(
 		request.GetName(),
 		request.GetGame(),
@@ -77,6 +89,7 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 			request.GetPortRange().GetEnd(),
 		),
 		int(request.GetRoomsReplicas()),
+		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
 	)
 }
@@ -95,6 +108,11 @@ func FromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.Schedule
 }
 
 func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionRequest) (*entities.Scheduler, error) {
+	schedulerAutoscaling, err := fromApiAutoscaling(request.GetAutoscaling())
+	if err != nil {
+		return nil, err
+	}
+
 	return entities.NewScheduler(
 		request.GetName(),
 		request.GetGame(),
@@ -106,6 +124,7 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 			request.GetPortRange().GetEnd(),
 		),
 		int(request.GetRoomsReplicas()),
+		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
 	)
 }
@@ -124,6 +143,7 @@ func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, 
 		MaxSurge:      entity.MaxSurge,
 		RoomsReplicas: int32(entity.RoomsReplicas),
 		Spec:          getSpec(entity.Spec),
+		Autoscaling:   getAutoscaling(entity.Autoscaling),
 		Forwarders:    forwarders,
 	}, nil
 }
@@ -269,6 +289,32 @@ func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
 	)
 }
 
+func fromApiAutoscalingPolicy(apiAutoscalingPolicy *api.AutoscalingPolicy) (autoscaling.Policy, error) {
+	switch {
+	case apiAutoscalingPolicy.GetType() == string(autoscaling.RoomOccupancy):
+		readyTarget := float64(apiAutoscalingPolicy.GetParameters().GetRoomOccupancy().ReadyTarget)
+		return autoscaling.NewRoomOccupancyPolicy(readyTarget), nil
+	default:
+		return autoscaling.Policy{}, errors.New("unknown autoscaling policy")
+	}
+}
+
+func fromApiAutoscaling(apiAutoscaling *api.Autoscaling) (*autoscaling.Autoscaling, error) {
+	if apiAutoscaling != nil {
+		autoscalingPolicy, err := fromApiAutoscalingPolicy(apiAutoscaling.GetPolicy())
+		if err != nil {
+			return nil, err
+		}
+		return autoscaling.NewAutoscaling(
+			apiAutoscaling.GetEnabled(),
+			int(apiAutoscaling.GetMin()),
+			int(apiAutoscaling.GetMax()),
+			autoscalingPolicy,
+		)
+	}
+	return nil, nil
+}
+
 func fromApiContainers(apiContainers []*api.Container) []game_room.Container {
 	var containers []game_room.Container
 	for _, apiContainer := range apiContainers {
@@ -384,6 +430,35 @@ func getSpec(spec game_room.Spec) *api.Spec {
 	}
 
 	return nil
+}
+
+func getAutoscaling(autoscaling *autoscaling.Autoscaling) *api.Autoscaling {
+	if autoscaling != nil {
+		return &api.Autoscaling{
+			Enabled: autoscaling.Enabled,
+			Min:     int32(autoscaling.Min),
+			Max:     int32(autoscaling.Max),
+			Policy:  getPolicy(autoscaling.Policy),
+		}
+	}
+
+	return nil
+}
+
+func getPolicy(autoscalingPolicy autoscaling.Policy) *api.AutoscalingPolicy {
+	switch {
+	case autoscalingPolicy.Type == autoscaling.RoomOccupancy:
+		readyTarget := autoscalingPolicy.Parameters.RoomOccupancy.ReadyTarget
+		return &api.AutoscalingPolicy{
+			Parameters: &api.PolicyParameters{
+				RoomOccupancy: &api.RoomOccupancy{
+					ReadyTarget: float32(readyTarget),
+				},
+			},
+		}
+	default:
+		return nil
+	}
 }
 
 func fromEntityContainerToApiContainer(containers []game_room.Container) []*api.Container {
