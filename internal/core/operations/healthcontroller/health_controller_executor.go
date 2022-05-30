@@ -99,12 +99,10 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		}
 	}
 
-	if len(availableRooms) != scheduler.RoomsReplicas {
-		err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(availableRooms), scheduler.RoomsReplicas)
-		if err != nil {
-			logger.Error("cannot ensure desired amount of instances", zap.Error(err))
-			return operations.NewErrUnexpected(err)
-		}
+	err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(availableRooms), scheduler.RoomsReplicas)
+	if err != nil {
+		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
+		return operations.NewErrUnexpected(err)
 	}
 
 	return nil
@@ -171,7 +169,8 @@ func (ex *SchedulerHealthControllerExecutor) tryEnsureCorrectRoomsOnStorage(ctx 
 func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, logger *zap.Logger, actualAmount, desiredAmount int) error {
 	var msgToAppend string
 
-	if actualAmount > desiredAmount {
+	switch {
+	case actualAmount > desiredAmount: // Need to scale down
 		removeAmount := actualAmount - desiredAmount
 		removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove_rooms.RemoveRoomsDefinition{
 			Amount: removeAmount,
@@ -180,7 +179,7 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 			return err
 		}
 		msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
-	} else {
+	case actualAmount < desiredAmount: // Need to scale up
 		addAmount := desiredAmount - actualAmount
 		addOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &add_rooms.AddRoomsDefinition{
 			Amount: int32(addAmount),
@@ -189,6 +188,9 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 			return err
 		}
 		msgToAppend = fmt.Sprintf("created operation (id: %s) to add %v rooms.", addOperation.ID, addAmount)
+	default: // No need to scale
+		msgToAppend = "current amount of rooms is equal to desired amount, no changes needed"
+
 	}
 
 	logger.Info(msgToAppend)
