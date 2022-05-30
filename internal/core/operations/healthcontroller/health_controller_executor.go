@@ -99,7 +99,13 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		}
 	}
 
-	err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(availableRooms), scheduler.RoomsReplicas)
+	desiredNumberOfRooms, err := ex.getDesiredNumberOfRooms(ctx, logger, scheduler)
+	if err != nil {
+		logger.Error("error getting the desired number of rooms", zap.Error(err))
+		return operations.NewErrUnexpected(err)
+	}
+
+	err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(availableRooms), desiredNumberOfRooms)
 	if err != nil {
 		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
 		return operations.NewErrUnexpected(err)
@@ -250,6 +256,20 @@ func (ex *SchedulerHealthControllerExecutor) enqueueRemoveExpiredRooms(ctx conte
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
 
 	return nil
+}
+
+func (ex *SchedulerHealthControllerExecutor) getDesiredNumberOfRooms(ctx context.Context, logger *zap.Logger, scheduler *entities.Scheduler) (int, error) {
+	if scheduler.Autoscaling != nil && scheduler.Autoscaling.Enabled {
+		desiredNumberOfRooms, err := ex.autoscaler.CalculateDesiredNumberOfRooms(ctx, scheduler)
+		if err != nil {
+			logger.Error("error using autoscaling policy to calculate the desired number of rooms", zap.Error(err))
+
+			return 0, err
+		}
+		return desiredNumberOfRooms, nil
+	}
+
+	return scheduler.RoomsReplicas, nil
 }
 
 func filterExistentGameRooms(a, b []string) []string {
