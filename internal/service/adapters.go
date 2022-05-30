@@ -196,8 +196,8 @@ func createRedisClient(url string) (*redis.Client, error) {
 	return redis.NewClient(opts), nil
 }
 
-func NewPolicyFactory(roomStorage ports.RoomStorage) autoscaler.PolicyFactory {
-	return autoscaler.PolicyFactory{
+func NewPolicyMap(roomStorage ports.RoomStorage) autoscaler.PolicyMap {
+	return autoscaler.PolicyMap{
 		autoscaling.RoomOccupancy: roomoccupancy.NewPolicy(roomStorage),
 	}
 }

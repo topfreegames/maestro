@@ -32,18 +32,18 @@ import (
 	autoscalerPorts "github.com/topfreegames/maestro/internal/core/ports/autoscaler"
 )
 
-// PolicyFactory is a type that corelates a policy type with an autoscaling policy.
-type PolicyFactory map[autoscaling.PolicyType]autoscalerPorts.Policy
+// PolicyMap is a type that corelates a policy type with an autoscaling policy.
+type PolicyMap map[autoscaling.PolicyType]autoscalerPorts.Policy
 
 // Autoscaler is a service that holds dependencies to execute autoscaling feature.
 type Autoscaler struct {
-	policyFactory PolicyFactory
+	policyMap PolicyMap
 }
 
 // NewAutoscaler returns a new instance of autoscaler.
-func NewAutoscaler(policyFactory PolicyFactory) *Autoscaler {
+func NewAutoscaler(policyMap PolicyMap) *Autoscaler {
 	autoscaler := &Autoscaler{
-		policyFactory: policyFactory,
+		policyMap: policyMap,
 	}
 
 	return autoscaler
@@ -55,11 +55,11 @@ func (a *Autoscaler) CalculateDesiredNumberOfRooms(ctx context.Context, schedule
 		return -1, errors.New("Scheduler does not have autoscaling struct")
 	}
 
-	if _, ok := a.policyFactory[scheduler.Autoscaling.Policy.Type]; !ok {
+	if _, ok := a.policyMap[scheduler.Autoscaling.Policy.Type]; !ok {
 		return -1, fmt.Errorf("Error finding policy to scheduler %s", scheduler.Name)
 	}
 
-	policy := a.policyFactory[scheduler.Autoscaling.Policy.Type]
+	policy := a.policyMap[scheduler.Autoscaling.Policy.Type]
 
 	currentState, err := policy.CurrentStateBuilder(ctx, scheduler)
 	if err != nil {

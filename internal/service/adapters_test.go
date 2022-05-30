@@ -287,13 +287,13 @@ func TestOperationFlowRedis(t *testing.T) {
 	})
 }
 
-func TestNewPolicyFactory(t *testing.T) {
+func TestNewPolicyMap(t *testing.T) {
 	t.Run("Should return RoomOccupancy policy", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		roomStorageMock := mock.NewMockRoomStorage(mockCtrl)
 
-		policyFactory := NewPolicyFactory(roomStorageMock)
-		assert.IsType(t, policyFactory[autoscaling.RoomOccupancy], &roomoccupancy.Policy{})
+		policyMap := NewPolicyMap(roomStorageMock)
+		assert.IsType(t, policyMap[autoscaling.RoomOccupancy], &roomoccupancy.Policy{})
 	})
 }
