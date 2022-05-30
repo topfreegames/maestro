@@ -200,7 +200,6 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 		}
 
 		switch {
-
 		case ex.isRoomStatus(room, game_room.GameStatusUnready):
 			availableRoomsIDs = append(availableRoomsIDs, gameRoomID)
 		case ex.isPendingRoomExpired(room):
