@@ -52,23 +52,23 @@ func NewAutoscaler(policyMap PolicyMap) *Autoscaler {
 // CalculateDesiredNumberOfRooms return the number of rooms that a Scheduler should have based on its policy or error if it can calculate.
 func (a *Autoscaler) CalculateDesiredNumberOfRooms(ctx context.Context, scheduler *entities.Scheduler) (int, error) {
 	if scheduler.Autoscaling == nil {
-		return -1, errors.New("Scheduler does not have autoscaling struct")
+		return -1, errors.New("scheduler does not have autoscaling struct")
 	}
 
 	if _, ok := a.policyMap[scheduler.Autoscaling.Policy.Type]; !ok {
-		return -1, fmt.Errorf("Error finding policy to scheduler %s", scheduler.Name)
+		return -1, fmt.Errorf("error finding policy to scheduler %s", scheduler.Name)
 	}
 
 	policy := a.policyMap[scheduler.Autoscaling.Policy.Type]
 
 	currentState, err := policy.CurrentStateBuilder(ctx, scheduler)
 	if err != nil {
-		return -1, fmt.Errorf("Error fetching current state to scheduler %s: %w", scheduler.Name, err)
+		return -1, fmt.Errorf("error fetching current state to scheduler %s: %w", scheduler.Name, err)
 	}
 
 	desiredNumberOfRooms, err := policy.CalculateDesiredNumberOfRooms(scheduler.Autoscaling.Policy.Parameters, currentState)
 	if err != nil {
-		return -1, fmt.Errorf("Error calculating the desired number of rooms to scheduler %s: %w", scheduler.Name, err)
+		return -1, fmt.Errorf("error calculating the desired number of rooms to scheduler %s: %w", scheduler.Name, err)
 	}
 
 	desiredNumberOfRooms = ensureDesiredNumberIsBetweenMinAndMax(scheduler.Autoscaling, desiredNumberOfRooms)

@@ -120,14 +120,14 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			}
 
 			_, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
-			assert.ErrorContains(t, err, "Scheduler does not have autoscaling struct")
+			assert.ErrorContains(t, err, "scheduler does not have autoscaling struct")
 		})
 
 		t.Run("When policyMap does not have policy retun in error", func(t *testing.T) {
 			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{})
 
 			_, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
-			assert.ErrorContains(t, err, "Error finding policy to scheduler")
+			assert.ErrorContains(t, err, "error finding policy to scheduler")
 		})
 
 		t.Run("When CurrentStateBuilder returns error", func(t *testing.T) {
@@ -138,7 +138,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: mockPolicy})
 
 			_, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
-			assert.ErrorContains(t, err, "Error fetching current state to scheduler")
+			assert.ErrorContains(t, err, "error fetching current state to scheduler")
 		})
 
 		t.Run("When CalculateDesiredNumberOfRooms returns error", func(t *testing.T) {
@@ -152,7 +152,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: mockPolicy})
 
 			_, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
-			assert.ErrorContains(t, err, "Error calculating the desired number of rooms to scheduler")
+			assert.ErrorContains(t, err, "error calculating the desired number of rooms to scheduler")
 		})
 	})
 }
