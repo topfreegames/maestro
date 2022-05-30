@@ -165,7 +165,53 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "game room status unready found, considered available, so nothing to do, no operations enqueued",
+			title: "game room status unready with initialization timeout found, considered expired, remove room operation enqueued",
+			executionPlan: executionPlan{
+				planMocks: func(
+					roomStorage *mockports.MockRoomStorage,
+					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					schedulerStorage *mockports.MockSchedulerStorage,
+					operationManager *mockports.MockOperationManager,
+				) {
+					gameRoomIDs := []string{"existent-1", "existent-pending-2"}
+					instances := []*game_room.Instance{{ID: "existent-1"}, {ID: "existent-pending-2"}}
+					// load
+					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
+					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
+					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericScheduler, nil)
+
+					// Find game room
+					gameRoom := &game_room.GameRoom{
+						ID:          gameRoomIDs[0],
+						SchedulerID: genericScheduler.Name,
+						Status:      game_room.GameStatusReady,
+						LastPingAt:  time.Now(),
+					}
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericScheduler.Name, gameRoomIDs[0]).Return(gameRoom, nil)
+
+					expiredCreatedAt := time.Now().Add(5 * -time.Minute)
+					gameRoomUnready := &game_room.GameRoom{
+						ID:          gameRoomIDs[0],
+						SchedulerID: genericScheduler.Name,
+						Status:      game_room.GameStatusUnready,
+						LastPingAt:  time.Now(),
+						CreatedAt:   expiredCreatedAt,
+					}
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericScheduler.Name, gameRoomIDs[1]).Return(gameRoomUnready, nil)
+
+					op := operation.New(genericScheduler.Name, genericDefinition.Name(), nil)
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericScheduler.Name, &remove_rooms.RemoveRoomsDefinition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(op, nil)
+
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericScheduler.Name, &add_rooms.AddRoomsDefinition{Amount: 1}).Return(op, nil)
+
+					genericScheduler.RoomsReplicas = 2
+				},
+			},
+		},
+		{
+			title: "game room status unready and not expired found, considered available, so nothing to do, no operations enqueued",
 			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
@@ -186,6 +232,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 						SchedulerID: genericScheduler.Name,
 						Status:      game_room.GameStatusReady,
 						LastPingAt:  time.Now(),
+						CreatedAt:   time.Now(),
 					}
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericScheduler.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 
@@ -194,6 +241,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 						SchedulerID: genericScheduler.Name,
 						Status:      game_room.GameStatusUnready,
 						LastPingAt:  time.Now(),
+						CreatedAt:   time.Now(),
 					}
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericScheduler.Name, gameRoomIDs[1]).Return(gameRoomUnready, nil)
 
