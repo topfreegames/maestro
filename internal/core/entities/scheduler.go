@@ -74,6 +74,7 @@ func NewScheduler(
 	spec game_room.Spec,
 	portRange *PortRange,
 	roomsReplicas int,
+	autoscaling *autoscaling.Autoscaling,
 	forwarders []*forwarder.Forwarder,
 ) (*Scheduler, error) {
 	scheduler := &Scheduler{
@@ -84,6 +85,7 @@ func NewScheduler(
 		PortRange:     portRange,
 		MaxSurge:      maxSurge,
 		RoomsReplicas: roomsReplicas,
+		Autoscaling:   autoscaling,
 		Forwarders:    forwarders,
 	}
 	return scheduler, scheduler.Validate()

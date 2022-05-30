@@ -70,6 +70,8 @@ const (
 	LabelContainerLimits = "limits"
 	// LabelContainerPorts the ports key in the patch map.
 	LabelContainerPorts = "ports"
+	// LabelAutoscaling is the key to autoscaling in the patch map.
+	LabelAutoscaling = "autoscaling"
 )
 
 // PatchScheduler function applies the patchMap in the scheduler, returning the patched Scheduler.

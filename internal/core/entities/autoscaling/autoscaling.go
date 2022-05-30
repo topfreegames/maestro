@@ -79,3 +79,15 @@ type PolicyType string
 const (
 	RoomOccupancy PolicyType = "roomOccupancy"
 )
+
+func NewRoomOccupancyPolicy(readyTarget float64) Policy {
+	newPolicy := Policy{
+		Type: RoomOccupancy,
+		Parameters: PolicyParameters{
+			RoomOccupancy: &RoomOccupancyParams{
+				ReadyTarget: readyTarget,
+			},
+		},
+	}
+	return newPolicy
+}
