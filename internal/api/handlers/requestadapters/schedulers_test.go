@@ -681,6 +681,176 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 				},
 			},
 		},
+		{
+			Title: "convert create api scheduler without autoscaling to entity scheduler",
+			Input: Input{
+				CreateScheduler: &api.CreateSchedulerRequest{
+					Name: genericString,
+					Game: genericString,
+					Spec: &api.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: 10,
+						Toleration:             genericString,
+						Affinity:               genericString,
+						Containers: []*api.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []*api.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: &genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											FieldRef: &api.ContainerEnvironmentValueFromFieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Limits: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Ports: []*api.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt32,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+					},
+					PortRange: &api.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: roomsReplicasValue,
+					Forwarders: []*api.Forwarder{
+						{
+							Name:    "some-forwarder",
+							Enable:  true,
+							Type:    "some-type",
+							Address: "localhost:8080",
+							Options: &api.ForwarderOptions{
+								Timeout: int64(10),
+							},
+						},
+						{
+							Name:    "another-forwarder",
+							Enable:  false,
+							Type:    "another-type",
+							Address: "localhost:8888",
+							Options: &api.ForwarderOptions{
+								Timeout: int64(10),
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				Scheduler: &entities.Scheduler{
+					Name:  genericString,
+					Game:  genericString,
+					State: entities.StateCreating,
+					Spec: game_room.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: time.Duration(10),
+						Containers: []game_room.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []game_room.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											FieldRef: &game_room.FieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											SecretKeyRef: &game_room.SecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Limits: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Ports: []game_room.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &entities.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: int(roomsReplicasValue),
+					Forwarders: []*forwarder.Forwarder{
+						{
+							Name:        "some-forwarder",
+							Enabled:     true,
+							ForwardType: forwarder.ForwardType("some-type"),
+							Address:     "localhost:8080",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+						{
+							Name:        "another-forwarder",
+							Enabled:     false,
+							ForwardType: forwarder.ForwardType("another-type"),
+							Address:     "localhost:8888",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -1359,6 +1529,169 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 							},
 						},
 					},
+					Forwarders: []*api.Forwarder{
+						{
+							Name:    "some-forwarder",
+							Enable:  true,
+							Type:    "some-type",
+							Address: "localhost:8080",
+							Options: &api.ForwarderOptions{
+								Timeout: int64(10),
+								Metadata: &structpb.Struct{
+									Fields: map[string]*structpb.Value{
+										"some-value": {
+											Kind: &structpb.Value_StringValue{
+												StringValue: "another-value",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Title: "receives entity scheduler without autoscaling, return api scheduler",
+			Input: Input{
+				Scheduler: &entities.Scheduler{
+					Name:      genericString,
+					Game:      genericString,
+					State:     entities.StateCreating,
+					CreatedAt: genericTime,
+					Spec: game_room.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: time.Duration(10),
+						Containers: []game_room.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []game_room.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											FieldRef: &game_room.FieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											SecretKeyRef: &game_room.SecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Limits: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Ports: []game_room.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &entities.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: int(roomsReplicasValue),
+					Forwarders: []*forwarder.Forwarder{
+						{
+							Name:        "some-forwarder",
+							Enabled:     true,
+							ForwardType: forwarder.ForwardType("some-type"),
+							Address:     "localhost:8080",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{"some-value": "another-value"},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				ApiScheduler: &api.Scheduler{
+					Name:      genericString,
+					Game:      genericString,
+					State:     "creating",
+					CreatedAt: timestamppb.New(genericTime),
+					Spec: &api.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: 10,
+						Containers: []*api.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []*api.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: &genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											FieldRef: &api.ContainerEnvironmentValueFromFieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Limits: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Ports: []*api.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt32,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &api.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: roomsReplicasValue,
 					Forwarders: []*api.Forwarder{
 						{
 							Name:    "some-forwarder",
