@@ -28,9 +28,10 @@ package scheduler_manager
 import (
 	"context"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"testing"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"

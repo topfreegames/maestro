@@ -30,13 +30,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 
