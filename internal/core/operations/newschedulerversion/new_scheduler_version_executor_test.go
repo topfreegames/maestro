@@ -68,8 +68,10 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		switchOpID := "switch-active-version-op-id"
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.0.0"}, {Version: "v1.1.0"}, {Version: "v1.2.0"}}
 
@@ -80,12 +82,13 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			EXPECT().
 			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) (string, error) {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
-					return nil
+					return switchOpID, nil
 				})
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -107,8 +110,10 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		switchOpID := "switch-active-version-op-id"
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
 
@@ -119,12 +124,13 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			EXPECT().
 			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) (string, error) {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
-					return nil
+					return switchOpID, nil
 				})
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -146,8 +152,10 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		switchOpID := "switch-active-version-op-id"
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.1.0"}, {Version: "v1.2.0"}, {Version: "v1.3.0"}}
 
@@ -158,12 +166,13 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			EXPECT().
 			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) (string, error) {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
-					return nil
+					return switchOpID, nil
 				})
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -185,8 +194,10 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		switchOpID := "switch-active-version-op-id"
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.1.0"}, {Version: "v1.2.0"}, {Version: "v1.3.0"}}
 
@@ -197,12 +208,13 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			EXPECT().
 			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) (string, error) {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
-					return nil
+					return switchOpID, nil
 				})
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -223,8 +235,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return([]*entities.SchedulerVersion{}, errors.NewErrUnexpected("some_error"))
@@ -250,9 +263,10 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v-----"}}
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
@@ -278,7 +292,8 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
 
 		newSchedulerWithNewVersion := newScheduler
@@ -311,7 +326,8 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
 
 		newSchedulerWithNewVersion := newScheduler
@@ -345,8 +361,10 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		switchOpID := "switch-active-version-op-id"
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v4.2.0"}}
 
@@ -354,12 +372,13 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			EXPECT().
 			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) (string, error) {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
-					return nil
+					return switchOpID, nil
 				})
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -381,8 +400,10 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		switchOpID := "switch-active-version-op-id"
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v1.3.0"}, {Version: "v1.5.0"}}
 
@@ -390,12 +411,13 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			EXPECT().
 			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) (string, error) {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
-					return nil
+					return switchOpID, nil
 				})
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -417,8 +439,10 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		switchOpID := "switch-active-version-op-id"
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v2.1.0"}, {Version: "v3.5.0"}}
 
@@ -426,12 +450,13 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			EXPECT().
 			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
 			DoAndReturn(
-				func(ctx context.Context, scheduler *entities.Scheduler) error {
+				func(ctx context.Context, scheduler *entities.Scheduler) (string, error) {
 					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
-					return nil
+					return switchOpID, nil
 				})
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -452,8 +477,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return([]*entities.SchedulerVersion{}, errors.NewErrUnexpected("some_error"))
@@ -479,9 +505,10 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v-----"}}
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
@@ -507,8 +534,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 		newSchedulerWithNewVersion := newScheduler
 		newSchedulerWithNewVersion.Spec.Version = "v1.1.0"
 		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
@@ -518,7 +546,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerManager.
 			EXPECT().
 			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
-			Return(errors.NewErrUnexpected("some_error"))
+			Return("", errors.NewErrUnexpected("some_error"))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -540,8 +568,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 		newSchedulerWithNewVersion := newScheduler
 		newSchedulerWithNewVersion.Spec.Version = "v1.1.0"
 		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
@@ -568,8 +597,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &add_rooms.AddRoomsDefinition{}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 		newSchedulerWithNewVersion := newScheduler
 		newSchedulerWithNewVersion.Spec.Version = "v1.1.0"
 		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
@@ -596,8 +626,9 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 
 		// mocks for SchedulerManager GetActiveScheduler method
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
@@ -630,8 +661,9 @@ func TestCreateNewSchedulerVersionExecutor_Rollback(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 		executor.AddValidationRoomId(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
 		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(nil)
 		result := executor.Rollback(context.Background(), op, operationDef, nil)
@@ -652,8 +684,9 @@ func TestCreateNewSchedulerVersionExecutor_Rollback(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 		executor.AddValidationRoomId(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
 		roomManager.EXPECT().DeleteRoomAndWaitForRoomTerminating(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some error"))
 		result := executor.Rollback(context.Background(), op, operationDef, nil)
@@ -674,8 +707,9 @@ func TestCreateNewSchedulerVersionExecutor_Rollback(t *testing.T) {
 		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager)
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager)
 		result := executor.Rollback(context.Background(), op, operationDef, nil)
 
 		require.Nil(t, result)

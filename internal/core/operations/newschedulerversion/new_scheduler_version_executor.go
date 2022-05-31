@@ -48,15 +48,17 @@ import (
 type CreateNewSchedulerVersionExecutor struct {
 	roomManager          ports.RoomManager
 	schedulerManager     ports.SchedulerManager
+	operationManager     ports.OperationManager
 	validationRoomIdsMap map[string]*game_room.GameRoom
 }
 
 var _ operations.Executor = (*CreateNewSchedulerVersionExecutor)(nil)
 
-func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager) *CreateNewSchedulerVersionExecutor {
+func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager) *CreateNewSchedulerVersionExecutor {
 	return &CreateNewSchedulerVersionExecutor{
 		roomManager:          roomManager,
 		schedulerManager:     schedulerManager,
+		operationManager:     operationManager,
 		validationRoomIdsMap: map[string]*game_room.GameRoom{},
 	}
 }
@@ -99,10 +101,12 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 			return operations.NewErrUnexpected(validationErr)
 		}
 	}
-	err = ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
+	switchOpID, err := ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
 		return operations.NewErrUnexpected(err)
 	}
+
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("enqueued switch active version operation with id %s", switchOpID))
 	logger.Sugar().Infof("new scheduler version created: %s, is major: %t", newScheduler.Spec.Version, isSchedulerMajorVersion)
 	logger.Sugar().Infof("%s operation succeded, %s operation enqueued to continue scheduler update process, switching to version %s", opDef.Name(), switch_active_version.OperationName, newScheduler.Spec.Version)
 	return nil
@@ -153,13 +157,13 @@ func (ex *CreateNewSchedulerVersionExecutor) RemoveValidationRoomId(schedulerNam
 	delete(ex.validationRoomIdsMap, schedulerName)
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) error {
-	err := ex.schedulerManager.CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx, newScheduler)
+func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) (string, error) {
+	opId, err := ex.schedulerManager.CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx, newScheduler)
 	if err != nil {
 		logger.Error("error creating new scheduler version in db", zap.Error(err))
-		return fmt.Errorf("error creating new scheduler version in db: %w", err)
+		return "", fmt.Errorf("error creating new scheduler version in db: %w", err)
 	}
-	return nil
+	return opId, nil
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) populateSchedulerNewVersion(ctx context.Context, newScheduler *entities.Scheduler, currentVersion string, isMajorVersion bool) error {

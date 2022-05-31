@@ -54,11 +54,12 @@ func (mr *MockSchedulerManagerMockRecorder) CreateNewSchedulerVersion(ctx, sched
 }
 
 // CreateNewSchedulerVersionAndEnqueueSwitchVersion mocks base method.
-func (m *MockSchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler) error {
+func (m *MockSchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateNewSchedulerVersionAndEnqueueSwitchVersion", ctx, scheduler)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateNewSchedulerVersionAndEnqueueSwitchVersion indicates an expected call of CreateNewSchedulerVersionAndEnqueueSwitchVersion.
