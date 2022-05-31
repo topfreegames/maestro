@@ -24,6 +24,7 @@ package patch_scheduler
 
 import (
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -107,6 +108,11 @@ func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{
 		}
 
 		scheduler.Spec = *spec
+	}
+
+	if newAutoscaling, ok := patchMap[LabelAutoscaling]; ok {
+		newAutoscalingConverted := newAutoscaling.(*autoscaling.Autoscaling)
+		scheduler.Autoscaling.Enabled = newAutoscalingConverted.Enabled
 	}
 
 	return &scheduler, nil

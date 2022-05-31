@@ -39,7 +39,7 @@ import (
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
-func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest) (map[string]interface{}, error) {
+func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest) map[string]interface{} {
 	patchMap := make(map[string]interface{})
 
 	if request.Spec != nil {
@@ -62,10 +62,7 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 	}
 
 	if request.Autoscaling != nil {
-		newAutoscaling, err := fromApiAutoscaling(request.GetAutoscaling())
-		if err != nil {
-			return map[string]interface{}{}, err
-		}
+		newAutoscaling := fromApiOptionalAutoscalingToChangeMap(request.GetAutoscaling())
 		patchMap[patch_scheduler.LabelAutoscaling] = newAutoscaling
 	}
 
@@ -73,7 +70,11 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 		patchMap[patch_scheduler.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
 	}
 
-	return patchMap, nil
+	return patchMap
+}
+
+func fromApiOptionalAutoscalingToChangeMap(apiAutoscaling *api.OptionalAutoscaling) map[string]interface{} {
+	return map[string]interface{}{}
 }
 
 func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {

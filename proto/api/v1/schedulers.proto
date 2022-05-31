@@ -215,7 +215,7 @@ message PatchSchedulerRequest {
   // Rooms Replicas is the desired number of rooms
   optional int32 rooms_replicas = 5;
   // Autoscaling rules to the scheduler
-  optional Autoscaling autoscaling = 6;
+  optional OptionalAutoscaling autoscaling = 6;
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 7;
 }

@@ -511,7 +511,7 @@
                   "title": "Rooms Replicas is the desired number of rooms"
                 },
                 "autoscaling": {
-                  "$ref": "#/definitions/v1Autoscaling",
+                  "$ref": "#/definitions/v1OptionalAutoscaling",
                   "title": "Autoscaling rules to the scheduler"
                 },
                 "forwarders": {
@@ -1408,6 +1408,30 @@
       },
       "description": "OperationEvent object represent an execution event."
     },
+    "v1OptionalAutoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable flag to autoscaling feature"
+        },
+        "min": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Min is the minimum number of game rooms that a scheduler should have"
+        },
+        "max": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Max is the maximum number of game rooms that a scheduler should have"
+        },
+        "policy": {
+          "$ref": "#/definitions/v1AutoscalingPolicy",
+          "title": "Policy is the autoscaling policy that scheduler should follow"
+        }
+      },
+      "title": "Autoscaling struct representation"
+    },
     "v1OptionalContainer": {
       "type": "object",
       "properties": {
@@ -1535,7 +1559,8 @@
           "format": "float",
           "title": "ReadyTarget represents the number of rooms ready rate that the scheduler should keep"
         }
-      }
+      },
+      "title": "RoomOccupancy optional policy parameter"
     },
     "v1Scheduler": {
       "type": "object",

@@ -1228,32 +1228,6 @@ func TestPatchScheduler(t *testing.T) {
 				Status:   http.StatusInternalServerError,
 			},
 		},
-		{
-			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return error since patchMap is invalid return 500",
-			Input: Input{
-				Request: &api.PatchSchedulerRequest{
-					Autoscaling: &api.Autoscaling{
-						Enabled: true,
-						Min:     int32(1),
-						Max:     int32(5),
-						Policy: &api.AutoscalingPolicy{
-							Type: "UNKNOWN",
-						},
-					},
-				},
-			},
-			Mocks: Mocks{
-				RequestFile:           "invalid-patch-scheduler.json",
-				GetSchedulerReturn:    newValidScheduler(),
-				GetSchedulerError:     nil,
-				CreateOperationReturn: nil,
-				CreateOperationError:  portsErrors.NewErrUnexpected("unexpected error"),
-			},
-			Output: Output{
-				Response: nil,
-				Status:   http.StatusBadRequest,
-			},
-		},
 	}
 
 	err := validations.RegisterValidations()

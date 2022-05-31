@@ -237,6 +237,18 @@ message Operation {
 }
 
 // Autoscaling struct representation
+message OptionalAutoscaling {
+  // Enable flag to autoscaling feature
+  optional bool enabled = 1;
+  // Min is the minimum number of game rooms that a scheduler should have
+  optional int32 min = 2;
+  // Max is the maximum number of game rooms that a scheduler should have
+  optional int32 max = 3;
+  // Policy is the autoscaling policy that scheduler should follow
+  optional AutoscalingPolicy policy = 4;
+}
+
+// Autoscaling struct representation
 message Autoscaling {
   // Enable flag to autoscaling feature
   bool enabled = 1;
