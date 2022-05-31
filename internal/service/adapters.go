@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 
 	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
@@ -35,6 +36,8 @@ import (
 	scheduleradapters "github.com/topfreegames/maestro/internal/adapters/scheduler"
 
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/services/autoscaler"
+	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
 	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 
@@ -191,6 +194,12 @@ func createRedisClient(url string) (*redis.Client, error) {
 	}
 
 	return redis.NewClient(opts), nil
+}
+
+func NewPolicyMap(roomStorage ports.RoomStorage) autoscaler.PolicyMap {
+	return autoscaler.PolicyMap{
+		autoscaling.RoomOccupancy: roomoccupancy.NewPolicy(roomStorage),
+	}
 }
 
 func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {

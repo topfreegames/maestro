@@ -24,6 +24,15 @@ package autoscaling
 
 import "github.com/topfreegames/maestro/internal/validations"
 
+// PolicyType represents an enum of possible policy types/strategies a scheduler can have.
+type PolicyType string
+
+const (
+	// RoomOccupancy is an implemented policy in maestro autoscaler,
+	// it uses the number of occupied rooms and a ready rooms target percentage to calculate the desired number of rooms in a scheduler.
+	RoomOccupancy PolicyType = "roomOccupancy"
+)
+
 // Autoscaling represents the autoscaling configuration for a scheduler.
 type Autoscaling struct {
 	// Enabled indicates if autoscaling is enabled.
@@ -38,10 +47,12 @@ type Autoscaling struct {
 	Policy Policy
 }
 
+// Validate check if an Autoscaling struct is well formatted and contains valid values.
 func (a *Autoscaling) Validate() error {
 	return validations.Validate.Struct(a)
 }
 
+// NewAutoscaling instantiates a new autoscaling struct based on its parameters.
 func NewAutoscaling(enabled bool, min, max int, policy Policy) (*Autoscaling, error) {
 	autoscaling := &Autoscaling{
 		Enabled: enabled,
@@ -68,14 +79,8 @@ type PolicyParameters struct {
 	RoomOccupancy *RoomOccupancyParams `validate:"required_for_room_occupancy=Type"`
 }
 
+// RoomOccupancyParams represents the parameters accepted by rooms occupancy autoscaling properties.
 type RoomOccupancyParams struct {
 	// ReadyTarget indicates the target percentage of ready rooms a scheduler should maintain.
 	ReadyTarget float64 `validate:"gt=0,lt=1"`
 }
-
-// PolicyType represents an enum of possible policy types/strategies a scheduler can have.
-type PolicyType string
-
-const (
-	RoomOccupancy PolicyType = "roomOccupancy"
-)
