@@ -296,8 +296,21 @@ func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
 func fromApiAutoscalingPolicy(apiAutoscalingPolicy *api.AutoscalingPolicy) (autoscaling.Policy, error) {
 	switch {
 	case apiAutoscalingPolicy.GetType() == string(autoscaling.RoomOccupancy):
-		readyTarget := float64(apiAutoscalingPolicy.GetParameters().GetRoomOccupancy().ReadyTarget)
-		return autoscaling.NewRoomOccupancyPolicy(readyTarget), nil
+		params := apiAutoscalingPolicy.GetParameters()
+		if params == nil {
+			return autoscaling.Policy{}, errors.New("autoscaling policy type roomOccupancy without params")
+		}
+
+		roomOccupancy := params.GetRoomOccupancy()
+		if roomOccupancy == nil {
+			return autoscaling.Policy{}, errors.New("autoscaling policy type roomOccupancy without roomOccupancy params")
+		}
+
+		readyTarget := roomOccupancy.GetReadyTarget()
+		if readyTarget == 0 {
+			return autoscaling.Policy{}, errors.New("autoscaling policy type roomOccupancy should have a non-zero ready target")
+		}
+		return autoscaling.NewRoomOccupancyPolicy(float64(readyTarget)), nil
 	default:
 		return autoscaling.Policy{}, errors.New("unknown autoscaling policy")
 	}

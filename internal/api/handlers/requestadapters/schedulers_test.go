@@ -383,6 +383,67 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 				Error:          true,
 			},
 		},
+		{
+			Title: "autoscaling roomOccupancy params nil",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+						},
+					},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{},
+				Error:          true,
+			},
+		},
+		{
+			Title: "autoscaling invalid roomOccupancy params",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type:       "roomOccupancy",
+							Parameters: &api.PolicyParameters{},
+						},
+					},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{},
+				Error:          true,
+			},
+		},
+		{
+			Title: "autoscaling invalid roomOccupancy params (no ready target)",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{},
+				Error:          true,
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
