@@ -7,6 +7,11 @@
     "roomsReady": 5,
     "roomsOccupied": 15,
     "roomsPending": 10,
-    "roomsTerminating": 20
+    "roomsTerminating": 20,
+    "autoscaling": {
+      "enabled": true,
+      "min": 1,
+      "max": 5
+    }
   }]
 }

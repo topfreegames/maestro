@@ -1271,7 +1271,7 @@ func TestFromEntitySchedulerInfoToListResponse(t *testing.T) {
 		Output
 	}{
 		{
-			Title: "only spec should convert api.PatchSchedulerRequest to change map",
+			Title: "convert scheduler info entity to api without autoscaling",
 			Input: Input{
 				SchedulerInfo: &entities.SchedulerInfo{
 					Name:             genericString,
@@ -1294,6 +1294,43 @@ func TestFromEntitySchedulerInfoToListResponse(t *testing.T) {
 					RoomsOccupied:    int32(genericInt),
 					RoomsPending:     int32(genericInt),
 					RoomsTerminating: int32(genericInt),
+				},
+			},
+		},
+		{
+			Title: "convert scheduler info entity to api with autoscaling",
+			Input: Input{
+				SchedulerInfo: &entities.SchedulerInfo{
+					Name:             genericString,
+					Game:             genericString,
+					State:            entities.StateCreating,
+					RoomsReplicas:    genericInt,
+					RoomsReady:       genericInt,
+					RoomsOccupied:    genericInt,
+					RoomsPending:     genericInt,
+					RoomsTerminating: genericInt,
+					Autoscaling: &entities.AutoscalingInfo{
+						Enabled: true,
+						Min:     genericInt,
+						Max:     genericInt,
+					},
+				},
+			},
+			Output: Output{
+				ApiSchedulerInfo: &api.SchedulerInfo{
+					Name:             genericString,
+					Game:             genericString,
+					State:            "creating",
+					RoomsReplicas:    int32(genericInt),
+					RoomsReady:       int32(genericInt),
+					RoomsOccupied:    int32(genericInt),
+					RoomsPending:     int32(genericInt),
+					RoomsTerminating: int32(genericInt),
+					Autoscaling: &api.AutoscalingInfo{
+						Enabled: true,
+						Min:     int32(genericInt),
+						Max:     int32(genericInt),
+					},
 				},
 			},
 		},

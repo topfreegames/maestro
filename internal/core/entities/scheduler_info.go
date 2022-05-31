@@ -22,6 +22,14 @@
 
 package entities
 
+import "github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+
+type AutoscalingInfo struct {
+	Enabled bool
+	Min     int
+	Max     int
+}
+
 type SchedulerInfo struct {
 	Name             string
 	Game             string
@@ -31,6 +39,7 @@ type SchedulerInfo struct {
 	RoomsOccupied    int
 	RoomsPending     int
 	RoomsTerminating int
+	Autoscaling      *AutoscalingInfo
 }
 
 func NewSchedulerInfo(opts ...SchedulerInfoOption) (schedulerInfo *SchedulerInfo) {
@@ -85,5 +94,18 @@ func WithRoomsPending(roomsPending int) SchedulerInfoOption {
 func WithRoomsTerminating(roomsTerminating int) SchedulerInfoOption {
 	return func(schedulerInfo *SchedulerInfo) {
 		schedulerInfo.RoomsTerminating = roomsTerminating
+	}
+}
+
+func WithAutoscalingInfo(schedulerAutoscaling *autoscaling.Autoscaling) SchedulerInfoOption {
+	return func(schedulerInfo *SchedulerInfo) {
+		if schedulerAutoscaling != nil {
+			autoscalingInfo := &AutoscalingInfo{
+				Enabled: schedulerAutoscaling.Enabled,
+				Min:     schedulerAutoscaling.Min,
+				Max:     schedulerAutoscaling.Max,
+			}
+			schedulerInfo.Autoscaling = autoscalingInfo
+		}
 	}
 }
