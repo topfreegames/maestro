@@ -1172,7 +1172,7 @@ func TestPatchScheduler(t *testing.T) {
 			},
 		},
 		{
-			Title: "When patch scheduler results in an invalid scheulder return 400",
+			Title: "When patch scheduler results in an invalid scheduler return 400",
 			Input: Input{
 				Request: &api.PatchSchedulerRequest{
 					MaxSurge: &wrongMaxSurge,
@@ -1226,6 +1226,32 @@ func TestPatchScheduler(t *testing.T) {
 			Output: Output{
 				Response: nil,
 				Status:   http.StatusInternalServerError,
+			},
+		},
+		{
+			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return error since patchMap is invalid return 500",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "UNKNOWN",
+						},
+					},
+				},
+			},
+			Mocks: Mocks{
+				RequestFile:           "invalid-patch-scheduler.json",
+				GetSchedulerReturn:    newValidScheduler(),
+				GetSchedulerError:     nil,
+				CreateOperationReturn: nil,
+				CreateOperationError:  portsErrors.NewErrUnexpected("unexpected error"),
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusBadRequest,
 			},
 		},
 	}

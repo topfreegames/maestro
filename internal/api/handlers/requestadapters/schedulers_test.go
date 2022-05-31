@@ -29,6 +29,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -43,12 +45,18 @@ import (
 )
 
 func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
 	type Input struct {
 		PatchScheduler *api.PatchSchedulerRequest
 	}
 
 	type Output struct {
 		PatchScheduler map[string]interface{}
+		Error          bool
 	}
 
 	terminationValue := int64(62)
@@ -56,6 +64,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 	roomsReplicasValue := int32(2)
 	genericString := "some-value"
 	genericStringList := []string{"some-value", "another-value"}
+	genericFloat32 := float32(0.3)
 
 	testCases := []struct {
 		Title string
@@ -166,6 +175,19 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 							Options:     nil,
 						},
 					},
+				},
+			},
+		},
+		{
+			Title: "only empty forwarders should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Forwarders: []*api.Forwarder{},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelSchedulerForwarders: []*forwarder.Forwarder{},
 				},
 			},
 		},
@@ -300,11 +322,75 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 				},
 			},
 		},
+		{
+			Title: "only autoscaling should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{
+									ReadyTarget: genericFloat32,
+								},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: &autoscaling.Autoscaling{
+						Enabled: true,
+						Min:     1,
+						Max:     5,
+						Policy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Title: "unknown autoscaling - return error",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "UNKNOWN",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{
+									ReadyTarget: genericFloat32,
+								},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{},
+				Error:          true,
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues := requestadapters.FromApiPatchSchedulerRequestToChangeMap(testCase.Input.PatchScheduler)
+			returnValues, err := requestadapters.FromApiPatchSchedulerRequestToChangeMap(testCase.Input.PatchScheduler)
+			if testCase.Output.Error {
+				assert.Error(t, err)
+			}
 			assert.EqualValues(t, testCase.Output.PatchScheduler, returnValues)
 		})
 	}
@@ -331,6 +417,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 	genericString := "some-value"
 	genericValidVersion := "v1.0.0"
 	genericStringList := []string{"some-value", "another-value"}
+	genericFloat32 := float32(0.3)
 
 	testCases := []struct {
 		Title string
@@ -399,6 +486,19 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					},
 					MaxSurge:      maxSurgeValue,
 					RoomsReplicas: roomsReplicasValue,
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{
+									ReadyTarget: genericFloat32,
+								},
+							},
+						},
+					},
 					Forwarders: []*api.Forwarder{
 						{
 							Name:    "some-forwarder",
@@ -482,6 +582,19 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					},
 					MaxSurge:      maxSurgeValue,
 					RoomsReplicas: int(roomsReplicasValue),
+					Autoscaling: &autoscaling.Autoscaling{
+						Enabled: true,
+						Min:     1,
+						Max:     5,
+						Policy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					},
 					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
@@ -778,6 +891,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 	genericString := "some-value"
 	genericValidVersion := "v1.0.0"
 	genericStringList := []string{"some-value", "another-value"}
+	genericFloat32 := float32(0.3)
 
 	testCases := []struct {
 		Title string
@@ -846,6 +960,19 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 					},
 					MaxSurge:      maxSurgeValue,
 					RoomsReplicas: roomsReplicasValue,
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{
+									ReadyTarget: genericFloat32,
+								},
+							},
+						},
+					},
 					Forwarders: []*api.Forwarder{
 						{
 							Name:    "some-forwarder",
@@ -929,6 +1056,19 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 					},
 					MaxSurge:      maxSurgeValue,
 					RoomsReplicas: int(roomsReplicasValue),
+					Autoscaling: &autoscaling.Autoscaling{
+						Enabled: true,
+						Min:     1,
+						Max:     5,
+						Policy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					},
 					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
@@ -1056,6 +1196,19 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					},
 					MaxSurge:      maxSurgeValue,
 					RoomsReplicas: int(roomsReplicasValue),
+					Autoscaling: &autoscaling.Autoscaling{
+						Enabled: true,
+						Min:     1,
+						Max:     5,
+						Policy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: 0.3,
+								},
+							},
+						},
+					},
 					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
@@ -1132,6 +1285,19 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					},
 					MaxSurge:      maxSurgeValue,
 					RoomsReplicas: roomsReplicasValue,
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{
+									ReadyTarget: float32(0.3),
+								},
+							},
+						},
+					},
 					Forwarders: []*api.Forwarder{
 						{
 							Name:    "some-forwarder",
