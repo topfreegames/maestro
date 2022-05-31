@@ -39,7 +39,7 @@ import (
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
-func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest) map[string]interface{} {
+func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest) (map[string]interface{}, error) {
 	patchMap := make(map[string]interface{})
 
 	if request.Spec != nil {
@@ -62,14 +62,18 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 	}
 
 	if request.Autoscaling != nil {
-		patchMap[patch_scheduler.LabelAutoscaling] = request.GetAutoscaling()
+		newAutoscaling, err := fromApiAutoscaling(request.GetAutoscaling())
+		if err != nil {
+			return map[string]interface{}{}, err
+		}
+		patchMap[patch_scheduler.LabelAutoscaling] = newAutoscaling
 	}
 
 	if request.Forwarders != nil {
 		patchMap[patch_scheduler.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
 	}
 
-	return patchMap
+	return patchMap, nil
 }
 
 func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {
@@ -385,7 +389,7 @@ func fromApiContainerEnvironments(apiEnvironments []*api.ContainerEnvironment) [
 }
 
 func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
-	var forwarders []*forwarder.Forwarder
+	forwarders := make([]*forwarder.Forwarder, 0)
 	for _, apiForwarder := range apiForwarders {
 		var options *forwarder.ForwardOptions
 		if apiForwarder.GetOptions() != nil {
@@ -450,6 +454,7 @@ func getPolicy(autoscalingPolicy autoscaling.Policy) *api.AutoscalingPolicy {
 	case autoscalingPolicy.Type == autoscaling.RoomOccupancy:
 		readyTarget := autoscalingPolicy.Parameters.RoomOccupancy.ReadyTarget
 		return &api.AutoscalingPolicy{
+			Type: string(autoscaling.RoomOccupancy),
 			Parameters: &api.PolicyParameters{
 				RoomOccupancy: &api.RoomOccupancy{
 					ReadyTarget: float32(readyTarget),
