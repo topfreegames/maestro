@@ -28,20 +28,18 @@ package gen
 // Wire
 //go:generate go run github.com/google/wire/cmd/wire ./../...
 
-// Primary "input" ports Mocks
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/events_ports.go -destination=../internal/core/ports/mock/events_ports_mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/operation_ports.go -destination=../internal/core/ports/mock/operation_ports_mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/room_ports.go -destination=../internal/core/ports/mock/rooms_ports_mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/scheduler_ports.go -destination=../internal/core/ports/mock/scheduler_ports_mock.go -package=mock
+//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/autoscaler/autoscaler.go -destination=../internal/core/ports/mock/autoscaler_ports_mock.go -package=mock
 
-// Secondary "output" ports Mocks
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/port_allocator.go -destination=../internal/adapters/port_allocator/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/runtime.go -destination=../internal/adapters/runtime/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/instance_storage.go -destination=../internal/adapters/instance_storage/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/config/config.go -destination=../internal/config/mock/mock.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/operations/definition.go -destination=../internal/core/operations/mock/definition.go -package=mock
 //go:generate go run github.com/golang/mock/mockgen -source=../internal/core/operations/executor.go -destination=../internal/core/operations/mock/executor.go -package=mock
-//go:generate go run github.com/golang/mock/mockgen -source=../internal/core/ports/autoscaler/policy.go -destination=../internal/core/services/autoscaler/policies/mock/mock.go -package=mock
 
 // License
 //go:generate go run github.com/google/addlicense -v -skip yml -skip yaml -skip proto -f ../LICENSE ../

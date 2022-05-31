@@ -35,6 +35,8 @@ import (
 
 	scheduleradapters "github.com/topfreegames/maestro/internal/adapters/scheduler"
 
+	autoscalerports "github.com/topfreegames/maestro/internal/core/ports/autoscaler"
+
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
@@ -200,6 +202,10 @@ func NewPolicyMap(roomStorage ports.RoomStorage) autoscaler.PolicyMap {
 	return autoscaler.PolicyMap{
 		autoscaling.RoomOccupancy: roomoccupancy.NewPolicy(roomStorage),
 	}
+}
+
+func NewAutoscaler(policies autoscaler.PolicyMap) autoscalerports.Autoscaler {
+	return autoscaler.NewAutoscaler(policies)
 }
 
 func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {

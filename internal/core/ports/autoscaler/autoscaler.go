@@ -30,9 +30,22 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies"
 )
 
-// Policy is an interface that helps to calculates the desired number of rooms in the autoscaler
-// based on the current state of a scheduler.
+// Primary ports (input, driving ports)
+
+// Autoscaler is the interface to the primary port of the autoscaler service.
+type Autoscaler interface {
+	// CalculateDesiredNumberOfRooms return the number of rooms that a Scheduler should have based on its policy or error if it can calculate.
+	CalculateDesiredNumberOfRooms(ctx context.Context, scheduler *entities.Scheduler) (int, error)
+}
+
+// Secondary ports (output, driven ports)
+
+// Policy is an interface to the port that builds the current scheduler state and calculates the desired number of rooms
+// based on it.
 type Policy interface {
+	// CurrentStateBuilder builds and return the current state of the scheduler required by the policy to calculate the
+	// desired number of rooms.
 	CurrentStateBuilder(ctx context.Context, scheduler *entities.Scheduler) (policies.CurrentState, error)
+	// CalculateDesiredNumberOfRooms calculates the desired number of rooms based on the current state of the scheduler.
 	CalculateDesiredNumberOfRooms(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (desiredNumberOfRooms int, err error)
 }

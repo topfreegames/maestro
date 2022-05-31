@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/ports/autoscaler"
+
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -44,6 +46,7 @@ import (
 
 // SchedulerHealthControllerExecutor holds dependencies to execute SchedulerHealthControllerExecutor.
 type SchedulerHealthControllerExecutor struct {
+	autoscaler        autoscaler.Autoscaler
 	roomStorage       ports.RoomStorage
 	instanceStorage   ports.GameRoomInstanceStorage
 	schedulerStorage  ports.SchedulerStorage
@@ -54,8 +57,9 @@ type SchedulerHealthControllerExecutor struct {
 var _ operations.Executor = (*SchedulerHealthControllerExecutor)(nil)
 
 // NewExecutor creates a new instance of SchedulerHealthControllerExecutor.
-func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomManagerConfig room_manager.RoomManagerConfig) *SchedulerHealthControllerExecutor {
+func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomManagerConfig room_manager.RoomManagerConfig, autoscaler autoscaler.Autoscaler) *SchedulerHealthControllerExecutor {
 	return &SchedulerHealthControllerExecutor{
+		autoscaler:        autoscaler,
 		roomStorage:       roomStorage,
 		instanceStorage:   instanceStorage,
 		schedulerStorage:  schedulerStorage,
@@ -95,12 +99,16 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		}
 	}
 
-	if len(availableRooms) != scheduler.RoomsReplicas {
-		err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(availableRooms), scheduler.RoomsReplicas)
-		if err != nil {
-			logger.Error("cannot ensure desired amount of instances", zap.Error(err))
-			return operations.NewErrUnexpected(err)
-		}
+	desiredNumberOfRooms, err := ex.getDesiredNumberOfRooms(ctx, logger, scheduler)
+	if err != nil {
+		logger.Error("error getting the desired number of rooms", zap.Error(err))
+		return operations.NewErrUnexpected(err)
+	}
+
+	err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(availableRooms), desiredNumberOfRooms)
+	if err != nil {
+		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
+		return operations.NewErrUnexpected(err)
 	}
 
 	return nil
@@ -167,7 +175,8 @@ func (ex *SchedulerHealthControllerExecutor) tryEnsureCorrectRoomsOnStorage(ctx 
 func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, logger *zap.Logger, actualAmount, desiredAmount int) error {
 	var msgToAppend string
 
-	if actualAmount > desiredAmount {
+	switch {
+	case actualAmount > desiredAmount: // Need to scale down
 		removeAmount := actualAmount - desiredAmount
 		removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove_rooms.RemoveRoomsDefinition{
 			Amount: removeAmount,
@@ -176,7 +185,7 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 			return err
 		}
 		msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
-	} else {
+	case actualAmount < desiredAmount: // Need to scale up
 		addAmount := desiredAmount - actualAmount
 		addOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &add_rooms.AddRoomsDefinition{
 			Amount: int32(addAmount),
@@ -185,6 +194,9 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 			return err
 		}
 		msgToAppend = fmt.Sprintf("created operation (id: %s) to add %v rooms.", addOperation.ID, addAmount)
+	default: // No need to scale
+		msgToAppend = "current amount of rooms is equal to desired amount, no changes needed"
+
 	}
 
 	logger.Info(msgToAppend)
@@ -244,6 +256,20 @@ func (ex *SchedulerHealthControllerExecutor) enqueueRemoveExpiredRooms(ctx conte
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
 
 	return nil
+}
+
+func (ex *SchedulerHealthControllerExecutor) getDesiredNumberOfRooms(ctx context.Context, logger *zap.Logger, scheduler *entities.Scheduler) (int, error) {
+	if scheduler.Autoscaling != nil && scheduler.Autoscaling.Enabled {
+		desiredNumberOfRooms, err := ex.autoscaler.CalculateDesiredNumberOfRooms(ctx, scheduler)
+		if err != nil {
+			logger.Error("error using autoscaling policy to calculate the desired number of rooms", zap.Error(err))
+
+			return 0, err
+		}
+		return desiredNumberOfRooms, nil
+	}
+
+	return scheduler.RoomsReplicas, nil
 }
 
 func filterExistentGameRooms(a, b []string) []string {

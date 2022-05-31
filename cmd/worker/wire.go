@@ -56,6 +56,8 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		service.NewOperationManagerConfig,
 		service.NewEventsForwarder,
 		service.NewEventsForwarderServiceConfig,
+		service.NewPolicyMap,
+		service.NewAutoscaler,
 
 		// scheduler operations
 		providers.ProvideDefinitionConstructors,
