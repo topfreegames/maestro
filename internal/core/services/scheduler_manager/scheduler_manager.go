@@ -323,6 +323,7 @@ func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *enti
 	if err != nil {
 		return nil, fmt.Errorf("failing in couting game rooms in %s state: %s", game_room.GameStatusTerminating, err)
 	}
+
 	return entities.NewSchedulerInfo(
 		entities.WithName(scheduler.Name),
 		entities.WithGame(scheduler.Game),
@@ -332,5 +333,6 @@ func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *enti
 		entities.WithRoomsOccupied(occupied),
 		entities.WithRoomsPending(pending),
 		entities.WithRoomsTerminating(terminating),
+		entities.WithAutoscalingInfo(scheduler.Autoscaling),
 	), nil
 }

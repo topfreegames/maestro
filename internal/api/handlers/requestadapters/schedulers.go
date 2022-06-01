@@ -150,6 +150,18 @@ func FromEntitySchedulerInfoToListResponse(entity *entities.SchedulerInfo) *api.
 		RoomsOccupied:    int32(entity.RoomsOccupied),
 		RoomsPending:     int32(entity.RoomsPending),
 		RoomsTerminating: int32(entity.RoomsTerminating),
+		Autoscaling:      fromEntityAutoscalingInfoToApiResponse(entity.Autoscaling),
+	}
+}
+
+func fromEntityAutoscalingInfoToApiResponse(entity *entities.AutoscalingInfo) *api.AutoscalingInfo {
+	if entity == nil {
+		return nil
+	}
+	return &api.AutoscalingInfo{
+		Enabled: entity.Enabled,
+		Min:     int32(entity.Min),
+		Max:     int32(entity.Max),
 	}
 }
 

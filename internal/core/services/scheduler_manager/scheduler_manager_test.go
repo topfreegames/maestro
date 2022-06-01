@@ -31,6 +31,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
@@ -712,7 +714,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 
 func TestNewSchedulerInfo(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	t.Run("with valid request it returns a scheduler and game rooms information", func(t *testing.T) {
+	t.Run("with valid request it returns a scheduler and game rooms information (no autoscaling)", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
@@ -729,6 +731,36 @@ func TestNewSchedulerInfo(t *testing.T) {
 		require.Equal(t, 10, schedulersInfo.RoomsPending)
 		require.Equal(t, 15, schedulersInfo.RoomsOccupied)
 		require.Equal(t, 20, schedulersInfo.RoomsTerminating)
+		require.Nil(t, schedulersInfo.Autoscaling)
+	})
+
+	t.Run("with valid request it returns a scheduler and game rooms information and autoscaling", func(t *testing.T) {
+		ctx := context.Background()
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(10, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(15, nil)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(20, nil)
+		scheduler := newValidScheduler()
+
+		scheduler.Autoscaling = &autoscaling.Autoscaling{
+			Enabled: true,
+			Min:     1,
+			Max:     5,
+		}
+
+		schedulersInfo, err := schedulerManager.newSchedulerInfo(ctx, scheduler)
+
+		require.NoError(t, err)
+		require.Equal(t, 5, schedulersInfo.RoomsReady)
+		require.Equal(t, 10, schedulersInfo.RoomsPending)
+		require.Equal(t, 15, schedulersInfo.RoomsOccupied)
+		require.Equal(t, 20, schedulersInfo.RoomsTerminating)
+		require.NotNil(t, schedulersInfo.Autoscaling)
+		require.Equal(t, 5, schedulersInfo.Autoscaling.Max)
+		require.Equal(t, 1, schedulersInfo.Autoscaling.Min)
+		require.Equal(t, true, schedulersInfo.Autoscaling.Enabled)
 	})
 
 	t.Run("it returns with error when couldn't get game rooms information in ready state", func(t *testing.T) {

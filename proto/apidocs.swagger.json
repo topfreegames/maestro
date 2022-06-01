@@ -944,6 +944,26 @@
       },
       "description": "Add rooms operation response payload, empty."
     },
+    "v1AutoscalingInfo": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable flag to autoscaling feature"
+        },
+        "min": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Min is the minimum number of game rooms that a scheduler should have"
+        },
+        "max": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Max is the maximum number of game rooms that a scheduler should have"
+        }
+      },
+      "title": "Autoscaling Info for schedulerInfo message"
+    },
     "v1CancelOperationResponse": {
       "type": "object",
       "description": "Empty response of the cancel operation request."
@@ -1553,6 +1573,10 @@
           "type": "integer",
           "format": "int32",
           "description": "Number of game rooms in Terminating state."
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/v1AutoscalingInfo",
+          "title": "Autoscaling info (min, max, enabled)"
         }
       },
       "title": "Scheduler Info"

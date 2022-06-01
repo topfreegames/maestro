@@ -281,6 +281,16 @@ message ForwarderOptions {
   google.protobuf.Struct metadata = 2;
 }
 
+// Autoscaling Info for schedulerInfo message
+message AutoscalingInfo {
+  // Enable flag to autoscaling feature
+  bool enabled = 1;
+  // Min is the minimum number of game rooms that a scheduler should have
+  int32 min = 2;
+  // Max is the maximum number of game rooms that a scheduler should have
+  int32 max = 3;
+}
+
 // Scheduler Info
 message SchedulerInfo {
   // Scheduler name.
@@ -299,4 +309,6 @@ message SchedulerInfo {
   int32 rooms_pending = 7;
   // Number of game rooms in Terminating state.
   int32 rooms_terminating = 8;
+  // Autoscaling info (min, max, enabled)
+  AutoscalingInfo autoscaling = 9;
 }
