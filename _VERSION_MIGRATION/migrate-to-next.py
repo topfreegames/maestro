@@ -489,14 +489,6 @@ def main():
                 sys.exit()
             print("...success")
 
-            # print(f'.{scheduler.get("name")} - creating new rooms...')
-            # created, reason = create_rooms_existed_before(scheduler)
-            # if not created:
-            #     print(f"WARN: could not create rooms for scheduler '{scheduler_name}'. reason => {reason}")
-            #     print(f"INFO: stop execution")
-            #     sys.exit()
-            # print("...success")
-
             print(f'.{scheduler.get("name")} - done')
         print("=====> migration finished")
     except Exception as e:
