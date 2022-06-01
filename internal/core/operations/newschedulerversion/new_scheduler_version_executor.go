@@ -106,7 +106,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		return operations.NewErrUnexpected(err)
 	}
 
-	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("enqueued switch active version operation with id %s", switchOpID))
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
 	logger.Sugar().Infof("new scheduler version created: %s, is major: %t", newScheduler.Spec.Version, isSchedulerMajorVersion)
 	logger.Sugar().Infof("%s operation succeded, %s operation enqueued to continue scheduler update process, switching to version %s", opDef.Name(), switch_active_version.OperationName, newScheduler.Spec.Version)
 	return nil
