@@ -58,8 +58,9 @@ def get_forwarders(forwarders):
 def get_ports(ports):
     port_list = []
     for port in ports:
+        port_name = port['name'] if port.get('name') else "tcp"
         port_list.append({
-            "name": port['name'],
+            "name": port_name,
             "protocol": str(port['protocol']).lower(),
             "port": port['containerPort']
         })
@@ -111,6 +112,7 @@ def convert_v9_config_to_next(config):
         next_config = {
             'name': config['name'],
             'game': config['game'],
+            'roomsReplicas': '1',
             'spec': get_spec(config),
             'forwarders': get_forwarders(config.get('forwarders')),
             'portRange': get_port_range(),
@@ -205,6 +207,7 @@ def get_v9_game_schedulers():
             schedulers = r.json()
             schedulers = list(
                 filter(lambda x: x.get('game') == game, schedulers))
+                # filter(lambda x: x.get('name') == 'sniper3d-game-s13', schedulers))
         else:
             raise Exception(
                 "could not fetch maestro-v9 endpoint. err =>", r.text)
@@ -486,13 +489,13 @@ def main():
                 sys.exit()
             print("...success")
 
-            print(f'.{scheduler.get("name")} - creating new rooms...')
-            created, reason = create_rooms_existed_before(scheduler)
-            if not created:
-                print(f"WARN: could not create rooms for scheduler '{scheduler_name}'. reason => {reason}")
-                print(f"INFO: stop execution")
-                sys.exit()
-            print("...success")
+            # print(f'.{scheduler.get("name")} - creating new rooms...')
+            # created, reason = create_rooms_existed_before(scheduler)
+            # if not created:
+            #     print(f"WARN: could not create rooms for scheduler '{scheduler_name}'. reason => {reason}")
+            #     print(f"INFO: stop execution")
+            #     sys.exit()
+            # print("...success")
 
             print(f'.{scheduler.get("name")} - done')
         print("=====> migration finished")
