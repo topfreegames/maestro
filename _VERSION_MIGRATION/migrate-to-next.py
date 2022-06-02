@@ -58,8 +58,9 @@ def get_forwarders(forwarders):
 def get_ports(ports):
     port_list = []
     for port in ports:
+        port_name = port['name'] if port.get('name') else "tcp"
         port_list.append({
-            "name": port['name'],
+            "name": port_name,
             "protocol": str(port['protocol']).lower(),
             "port": port['containerPort']
         })
@@ -106,11 +107,12 @@ def get_spec(config):
     }
 
 
-def convert_v9_config_to_next(config):
+def convert_v9_config_to_next(config, rooms_replica):
     try:
         next_config = {
             'name': config['name'],
             'game': config['game'],
+            'roomsReplicas': rooms_replica,
             'spec': get_spec(config),
             'forwarders': get_forwarders(config.get('forwarders')),
             'portRange': get_port_range(),
@@ -205,6 +207,7 @@ def get_v9_game_schedulers():
             schedulers = r.json()
             schedulers = list(
                 filter(lambda x: x.get('game') == game, schedulers))
+                # filter(lambda x: x.get('name') == 'sniper3d-game-s13', schedulers))
         else:
             raise Exception(
                 "could not fetch maestro-v9 endpoint. err =>", r.text)
@@ -332,60 +335,6 @@ def create_next_scheduler(scheduler):
         return False, r.text
 
 
-def wait_for_operation_by_id(scheduler_name, operation_id):
-    """Waits for 240 sec
-    :returns: succeeded, reason
-    """
-    timeout_in_seconds = 240
-    for i in range(0, timeout_in_seconds):
-        request = requests.get(f'{maestro_next_endpoint}/schedulers/{scheduler_name}/operations')
-        if request.status_code == 200:
-            finished_operations = request.json()["finishedOperations"]
-            if len(finished_operations) > 1:
-                finished = list(filter(lambda x: x["id"] == operation_id, finished_operations))
-                if len(finished) > 0:
-                    finished_operation = finished[0]
-                    if finished_operation['status'] == 'finished':
-                        return True, ""
-                    else:
-                        execution_history = finished_operation["executionHistory"]
-                        return False, execution_history
-
-        time.sleep(1)
-    return False, "timeout waiting for operation to finish"
-
-
-def create_rooms_existed_before(scheduler):
-    """
-    scheduler: {
-        'autoscalingDownTriggerUsage': int,
-        'autoscalingMin': int,
-        'autoscalingUpTriggerUsage': int,
-        'game': string,
-        'name': string,
-        'roomsCreating': int,
-        'roomsOccupied': int,
-        'roomsReady': int,
-        'roomsTerminating': int,
-        'state': string,
-        'yaml': string,
-        'config': dict,
-        'next-config': dict
-    }
-
-    :returns: created, reason
-    """
-    r = requests.post(f'{maestro_next_endpoint}/schedulers/{scheduler["name"]}/add-rooms', data=json.dumps({
-        'amount': scheduler['roomsReady']
-    }))
-    if r.status_code == 200:
-        operation_id = r.json()['operationId']
-        could_create, reason = wait_for_operation_by_id(scheduler["name"], operation_id)
-        return could_create, reason
-    else:
-        return False, r.text
-
-
 # SCRIPT SPECIFIC METHODS
 def map_configs_for_schedulers(schedulers):
     """
@@ -413,7 +362,7 @@ def map_configs_for_schedulers(schedulers):
 def map_maestro_next_configs_for_scheduler(schedulers):
     for index, scheduler in enumerate(tqdm(schedulers)):
         schedulers[index]["next-config"] = convert_v9_config_to_next(
-            scheduler["config"])
+            scheduler["config"], scheduler['roomsReady'])
 
     return schedulers
 
@@ -483,14 +432,6 @@ def main():
                     f"ERROR: could not create scheduler '{scheduler_name}' on next. reason=> {reason}")
                 print(f"INFO: stop execution")
                 create_v9_scheduler(scheduler)
-                sys.exit()
-            print("...success")
-
-            print(f'.{scheduler.get("name")} - creating new rooms...')
-            created, reason = create_rooms_existed_before(scheduler)
-            if not created:
-                print(f"WARN: could not create rooms for scheduler '{scheduler_name}'. reason => {reason}")
-                print(f"INFO: stop execution")
                 sys.exit()
             print("...success")
 
