@@ -509,6 +509,9 @@ func getPolicyParameters(parameters autoscaling.PolicyParameters) *api.PolicyPar
 }
 
 func getRoomOccupancy(roomOccupancyParameters *autoscaling.RoomOccupancyParams) *api.RoomOccupancy {
+	if roomOccupancyParameters == nil {
+		return nil
+	}
 	return &api.RoomOccupancy{
 		ReadyTarget: float32(roomOccupancyParameters.ReadyTarget),
 	}
